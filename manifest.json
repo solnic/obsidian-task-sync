@@ -1,0 +1,11 @@
+{
+	"id": "obsidian-task-sync",
+	"name": "Task Sync",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Sync tasks between Obsidian and external systems with project/area organization using GTD methodology",
+	"author": "Peter Solnica",
+	"authorUrl": "https://github.com/solnic",
+	"fundingUrl": "https://github.com/sponsors/solnic",
+	"isDesktopOnly": false
+}

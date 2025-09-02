@@ -1,0 +1,99 @@
+/*
+
+This CSS file will be included with your plugin, and
+available in the app when your plugin is enabled.
+
+If your plugin does not need CSS, delete this file.
+
+*/
+
+.task-sync-modal {
+  max-width: 600px;
+  max-height: 80vh;
+}
+
+.task-sync-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.task-sync-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.task-sync-form-group label {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.task-sync-form-group input,
+.task-sync-form-group select,
+.task-sync-form-group textarea {
+  padding: 0.5rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.task-sync-form-group input:focus,
+.task-sync-form-group select:focus,
+.task-sync-form-group textarea:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.task-sync-button-group {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.task-sync-dashboard {
+  padding: 1rem;
+}
+
+.task-sync-dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.task-sync-dashboard-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.task-sync-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.task-sync-stat-card {
+  padding: 1rem;
+  background: var(--background-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.task-sync-stat-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--interactive-accent);
+}
+
+.task-sync-stat-label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-top: 0.25rem;
+}
