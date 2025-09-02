@@ -27,7 +27,7 @@ __export(main_exports, {
   default: () => TaskSyncPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian5 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 
 // src/services/VaultScannerService.ts
 var import_obsidian = require("obsidian");
@@ -335,1738 +335,124 @@ var VaultScanner = class {
   }
 };
 
-// src/components/ui/BaseModal.ts
-var import_obsidian3 = require("obsidian");
-
-// src/components/ui/BaseComponents.ts
+// src/components/modals/TaskCreateModal.ts
 var import_obsidian2 = require("obsidian");
-var FormField = class {
-  constructor(containerEl, options) {
-    this.validators = [];
-    this.containerEl = containerEl;
-    this.options = options;
-    this.value = options.value || "";
-    this.createField();
-  }
-  createField() {
-    this.setting = new import_obsidian2.Setting(this.containerEl).setName(this.options.label);
-    if (this.options.description) {
-      this.setting.setDesc(this.options.description);
-    }
-    switch (this.options.type) {
-      case "textarea":
-        this.createTextArea();
-        break;
-      case "select":
-        this.createSelect();
-        break;
-      case "date":
-        this.createDateInput();
-        break;
-      case "toggle":
-        this.createToggle();
-        break;
-      default:
-        this.createTextInput();
-    }
-  }
-  createTextInput() {
-    this.setting.addText((text) => {
-      text.setPlaceholder(this.options.placeholder || "").setValue(this.value).onChange((value) => {
-        var _a;
-        this.value = value;
-        (_a = this.onChangeCallback) == null ? void 0 : _a.call(this, value);
-      });
-    });
-  }
-  createTextArea() {
-    this.setting.addTextArea((textarea) => {
-      textarea.setPlaceholder(this.options.placeholder || "").setValue(this.value).onChange((value) => {
-        var _a;
-        this.value = value;
-        (_a = this.onChangeCallback) == null ? void 0 : _a.call(this, value);
-      });
-    });
-  }
-  createSelect() {
-    this.setting.addDropdown((dropdown) => {
-      if (this.options.options) {
-        this.options.options.forEach((option) => {
-          dropdown.addOption(option, option);
-        });
-      }
-      dropdown.setValue(this.value).onChange((value) => {
-        var _a;
-        this.value = value;
-        (_a = this.onChangeCallback) == null ? void 0 : _a.call(this, value);
-      });
-    });
-  }
-  createDateInput() {
-    this.setting.addText((text) => {
-      text.setPlaceholder("YYYY-MM-DD").setValue(this.value).onChange((value) => {
-        var _a;
-        this.value = value;
-        (_a = this.onChangeCallback) == null ? void 0 : _a.call(this, value);
-      });
-      text.inputEl.type = "date";
-    });
-  }
-  createToggle() {
-    this.setting.addToggle((toggle) => {
-      toggle.setValue(this.value || false).onChange((value) => {
-        var _a;
-        this.value = value;
-        (_a = this.onChangeCallback) == null ? void 0 : _a.call(this, value);
-      });
-    });
-  }
-  onChange(callback) {
-    this.onChangeCallback = callback;
-    return this;
-  }
-  addValidator(validator) {
-    this.validators.push(validator);
-    return this;
-  }
-  validate() {
-    const errors = [];
-    if (this.options.required && (!this.value || this.value.toString().trim() === "")) {
-      errors.push(`${this.options.label} is required`);
-    }
-    for (const validator of this.validators) {
-      const error = validator(this.value);
-      if (error) {
-        errors.push(error);
-      }
-    }
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
-  }
-  getValue() {
-    return this.value;
-  }
-  setValue(value) {
-    this.value = value;
-    this.setting.components.forEach((component) => {
-      if ("setValue" in component) {
-        component.setValue(value);
-      }
-    });
-  }
-  setError(error) {
-    this.setting.setDesc(`${this.options.description || ""} ${error ? `\u26A0\uFE0F ${error}` : ""}`);
-  }
-  clearError() {
-    this.setting.setDesc(this.options.description || "");
-  }
-};
-var Form = class {
-  constructor(containerEl) {
-    this.fields = /* @__PURE__ */ new Map();
-    this.containerEl = containerEl;
-    this.containerEl.addClass("task-sync-form");
-  }
-  addField(name, options) {
-    const fieldContainer = this.containerEl.createDiv("task-sync-form-group");
-    const field = new FormField(fieldContainer, options);
-    this.fields.set(name, field);
-    return field;
-  }
-  addSubmitButton(text = "Submit") {
-    const buttonContainer = this.containerEl.createDiv("task-sync-form-actions");
-    const button = buttonContainer.createEl("button", {
-      text,
-      cls: "mod-cta"
-    });
-    button.addEventListener("click", () => {
-      this.handleSubmit();
-    });
-    return button;
-  }
-  addCancelButton(text = "Cancel", callback) {
-    const buttonContainer = this.containerEl.querySelector(".task-sync-form-actions") || this.containerEl.createDiv("task-sync-form-actions");
-    const button = buttonContainer.createEl("button", {
-      text,
-      cls: "mod-secondary"
-    });
-    button.addEventListener("click", () => {
-      callback == null ? void 0 : callback();
-    });
-    return button;
-  }
-  onSubmit(callback) {
-    this.submitCallback = callback;
-    return this;
-  }
-  handleSubmit() {
-    var _a;
-    const validation = this.validate();
-    if (!validation.isValid) {
-      this.showErrors(validation.errors);
-      return;
-    }
-    const data = {};
-    this.fields.forEach((field, name) => {
-      data[name] = field.getValue();
-    });
-    (_a = this.submitCallback) == null ? void 0 : _a.call(this, data);
-  }
-  validate() {
-    const allErrors = [];
-    let isValid = true;
-    this.fields.forEach((field, name) => {
-      const result = field.validate();
-      if (!result.isValid) {
-        isValid = false;
-        allErrors.push(...result.errors);
-        field.setError(result.errors[0]);
-      } else {
-        field.clearError();
-      }
-    });
-    return {
-      isValid,
-      errors: allErrors
-    };
-  }
-  showErrors(errors) {
-    const existingError = this.containerEl.querySelector(".task-sync-form-errors");
-    if (existingError) {
-      existingError.remove();
-    }
-    if (errors.length > 0) {
-      const errorContainer = this.containerEl.createDiv("task-sync-form-errors");
-      errors.forEach((error) => {
-        errorContainer.createDiv("task-sync-form-error").setText(error);
-      });
-    }
-  }
-  getField(name) {
-    return this.fields.get(name);
-  }
-  setFieldValue(name, value) {
-    const field = this.fields.get(name);
-    if (field) {
-      field.setValue(value);
-    }
-  }
-  getFormData() {
-    const data = {};
-    this.fields.forEach((field, name) => {
-      data[name] = field.getValue();
-    });
-    return data;
-  }
-  reset() {
-    this.fields.forEach((field) => {
-      field.setValue("");
-      field.clearError();
-    });
-    const errorContainer = this.containerEl.querySelector(".task-sync-form-errors");
-    if (errorContainer) {
-      errorContainer.remove();
-    }
-  }
-};
-var Validators = {
-  required: (value) => {
-    if (!value || value.toString().trim() === "") {
-      return "This field is required";
-    }
-    return null;
-  },
-  minLength: (min) => (value) => {
-    if (value && value.length < min) {
-      return `Must be at least ${min} characters`;
-    }
-    return null;
-  },
-  maxLength: (max) => (value) => {
-    if (value && value.length > max) {
-      return `Must be no more than ${max} characters`;
-    }
-    return null;
-  },
-  date: (value) => {
-    if (value && !Date.parse(value)) {
-      return "Please enter a valid date";
-    }
-    return null;
-  },
-  folderPath: (value) => {
-    if (value && (value.includes("..") || value.startsWith("/"))) {
-      return "Invalid folder path";
-    }
-    return null;
-  }
-};
-
-// src/components/ui/BaseModal.ts
-var BaseModal = class extends import_obsidian3.Modal {
-  constructor(app, options) {
+var TaskCreateModal = class extends import_obsidian2.Modal {
+  constructor(app, plugin) {
     super(app);
-    this.options = options;
-    this.setupModal();
-  }
-  setupModal() {
-    this.titleEl.setText(this.options.title);
-    this.modalEl.addClass("task-sync-modal");
-    if (this.options.className) {
-      this.modalEl.addClass(this.options.className);
-    }
-    if (this.options.width) {
-      this.modalEl.style.width = this.options.width;
-    }
-    if (this.options.height) {
-      this.modalEl.style.height = this.options.height;
-    }
+    this.plugin = plugin;
+    this.modalEl.addClass("task-sync-create-task");
   }
   onOpen() {
-    this.contentEl.empty();
+    this.titleEl.setText("Create New Task");
     this.createContent();
   }
-  onClose() {
-    this.cleanup();
-  }
-  /**
-   * Optional cleanup method for subclasses
-   */
-  cleanup() {
-  }
-  /**
-   * Create a form within the modal
-   */
-  createForm() {
-    const formContainer = this.contentEl.createDiv("task-sync-modal-form");
-    this.form = new Form(formContainer);
-    return this.form;
-  }
-  /**
-   * Add a header section to the modal
-   */
-  createHeader(text, description) {
-    const header = this.contentEl.createDiv("task-sync-modal-header");
-    header.createEl("h3", { text });
-    if (description) {
-      header.createEl("p", {
-        text: description,
-        cls: "task-sync-modal-description"
-      });
-    }
-    return header;
-  }
-  /**
-   * Add a footer section to the modal
-   */
-  createFooter() {
-    const footer = this.contentEl.createDiv("task-sync-modal-footer");
-    return footer;
-  }
-  /**
-   * Show loading state
-   */
-  showLoading(message = "Loading...") {
-    this.contentEl.empty();
-    const loadingContainer = this.contentEl.createDiv("task-sync-modal-loading");
-    loadingContainer.createEl("div", { cls: "task-sync-spinner" });
-    loadingContainer.createEl("p", { text: message });
-  }
-  /**
-   * Show error state
-   */
-  showError(message, retry) {
-    this.contentEl.empty();
-    const errorContainer = this.contentEl.createDiv("task-sync-modal-error");
-    errorContainer.createEl("div", {
-      cls: "task-sync-error-icon",
-      text: "\u26A0\uFE0F"
-    });
-    errorContainer.createEl("p", { text: message });
-    if (retry) {
-      const retryButton = errorContainer.createEl("button", {
-        text: "Retry",
-        cls: "mod-cta"
-      });
-      retryButton.addEventListener("click", retry);
-    }
-  }
-  /**
-   * Show success message
-   */
-  showSuccess(message, autoClose = true) {
-    const successContainer = this.contentEl.createDiv("task-sync-modal-success");
-    successContainer.createEl("div", {
-      cls: "task-sync-success-icon",
-      text: "\u2705"
-    });
-    successContainer.createEl("p", { text: message });
-    if (autoClose) {
-      setTimeout(() => {
-        this.close();
-      }, 2e3);
-    }
-  }
-  /**
-   * Create a tabbed interface within the modal
-   */
-  createTabs(tabs) {
-    var _a;
-    const tabContainer = this.contentEl.createDiv("task-sync-modal-tabs");
-    const tabHeaders = tabContainer.createDiv("task-sync-tab-headers");
-    const tabContent = tabContainer.createDiv("task-sync-tab-content");
-    let activeTab = (_a = tabs[0]) == null ? void 0 : _a.id;
-    tabs.forEach((tab, index) => {
-      const tabHeader = tabHeaders.createEl("button", {
-        text: tab.label,
-        cls: `task-sync-tab-header ${index === 0 ? "active" : ""}`
-      });
-      tabHeader.addEventListener("click", () => {
-        tabHeaders.querySelectorAll(".task-sync-tab-header").forEach((h) => h.removeClass("active"));
-        tabHeader.addClass("active");
-        activeTab = tab.id;
-        tabContent.empty();
-        tab.content();
-      });
-    });
-    if (tabs.length > 0) {
-      tabs[0].content();
-    }
-  }
-  /**
-   * Utility method to create a button with consistent styling
-   */
-  createButton(container, text, onClick, variant = "primary") {
-    const button = container.createEl("button", { text });
-    switch (variant) {
-      case "primary":
-        button.addClass("mod-cta");
-        break;
-      case "secondary":
-        button.addClass("mod-secondary");
-        break;
-      case "danger":
-        button.addClass("mod-warning");
-        break;
-    }
-    button.addEventListener("click", onClick);
-    return button;
-  }
-  /**
-   * Utility method to create a divider
-   */
-  createDivider() {
-    return this.contentEl.createEl("hr", { cls: "task-sync-divider" });
-  }
-  /**
-   * Utility method to create an info box
-   */
-  createInfoBox(message, type = "info") {
-    const infoBox = this.contentEl.createDiv(`task-sync-info-box task-sync-info-${type}`);
-    infoBox.createEl("p", { text: message });
-    return infoBox;
-  }
-  /**
-   * Handle keyboard shortcuts
-   */
-  handleKeydown(event) {
-    if (event.key === "Escape") {
-      this.close();
-    } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-      if (this.form) {
-        const submitButton = this.contentEl.querySelector("button.mod-cta");
-        if (submitButton) {
-          submitButton.click();
-        }
-      }
-    }
-  }
-  /**
-   * Set up keyboard event listeners
-   */
-  setupKeyboardHandlers() {
-    this.modalEl.addEventListener("keydown", this.handleKeydown.bind(this));
-  }
-  /**
-   * Validate form if present
-   */
-  validateForm() {
-    if (!this.form) return true;
-    const validation = this.form.validate();
-    return validation.isValid;
-  }
-  /**
-   * Get form data if form is present
-   */
-  getFormData() {
-    if (!this.form) return null;
-    return this.form.getFormData();
-  }
-  /**
-   * Reset form if present
-   */
-  resetForm() {
-    if (this.form) {
-      this.form.reset();
-    }
-  }
-};
-
-// src/types/entities.ts
-var TaskStatus = /* @__PURE__ */ ((TaskStatus2) => {
-  TaskStatus2["TODO"] = "todo";
-  TaskStatus2["IN_PROGRESS"] = "in-progress";
-  TaskStatus2["WAITING"] = "waiting";
-  TaskStatus2["DONE"] = "done";
-  TaskStatus2["CANCELLED"] = "cancelled";
-  return TaskStatus2;
-})(TaskStatus || {});
-var TaskPriority = /* @__PURE__ */ ((TaskPriority2) => {
-  TaskPriority2["LOW"] = "low";
-  TaskPriority2["MEDIUM"] = "medium";
-  TaskPriority2["HIGH"] = "high";
-  TaskPriority2["URGENT"] = "urgent";
-  return TaskPriority2;
-})(TaskPriority || {});
-
-// src/components/modals/DashboardModal.ts
-var DashboardModal = class extends BaseModal {
-  constructor(app, plugin) {
-    super(app, {
-      title: "Task Sync Dashboard",
-      width: "900px",
-      height: "700px",
-      className: "task-sync-dashboard"
-    });
-    this.currentView = "overview";
-    this.filteredTasks = [];
-    this.searchQuery = "";
-    this.statusFilter = "all";
-    this.priorityFilter = "all";
-    this.plugin = plugin;
-    this.data = {
-      tasks: [],
-      projects: [],
-      areas: []
-    };
-  }
-  async createContent() {
-    this.setupKeyboardHandlers();
-    try {
-      this.showLoading("Loading dashboard data...");
-      await this.loadData();
-      this.renderDashboard();
-    } catch (error) {
-      console.error("Failed to load dashboard data:", error);
-      this.showError("Failed to load dashboard data. Please try again.", () => {
-        this.createContent();
-      });
-    }
-  }
-  async loadData() {
-    this.data = {
-      tasks: this.createMockTasks(),
-      projects: this.createMockProjects(),
-      areas: this.createMockAreas()
-    };
-    this.filteredTasks = [...this.data.tasks];
-  }
-  createMockTasks() {
-    const now = /* @__PURE__ */ new Date();
-    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1e3);
-    return [
-      {
-        id: "1",
-        name: "Review project proposal",
-        description: "Review the Q4 project proposal document",
-        status: "todo" /* TODO */,
-        priority: "high" /* HIGH */,
-        deadline: tomorrow,
-        projectId: "proj1",
-        areaId: "area1",
-        tags: ["review", "urgent"],
-        createdAt: now,
-        updatedAt: now,
-        fileExists: false,
-        dependsOn: [],
-        blocks: []
-      },
-      {
-        id: "2",
-        name: "Update documentation",
-        description: "Update the API documentation with new endpoints",
-        status: "in-progress" /* IN_PROGRESS */,
-        priority: "medium" /* MEDIUM */,
-        projectId: "proj1",
-        tags: ["documentation"],
-        createdAt: now,
-        updatedAt: now,
-        fileExists: false,
-        dependsOn: [],
-        blocks: []
-      },
-      {
-        id: "3",
-        name: "Team meeting preparation",
-        description: "Prepare agenda and materials for weekly team meeting",
-        status: "done" /* DONE */,
-        priority: "low" /* LOW */,
-        completedAt: now,
-        areaId: "area2",
-        tags: ["meeting"],
-        createdAt: now,
-        updatedAt: now,
-        fileExists: false,
-        dependsOn: [],
-        blocks: []
-      }
-    ];
-  }
-  createMockProjects() {
-    const now = /* @__PURE__ */ new Date();
-    return [
-      {
-        id: "proj1",
-        name: "Q4 Development Sprint",
-        description: "Major development sprint for Q4 deliverables",
-        status: "active",
-        areaId: "area1",
-        tags: ["development", "sprint"],
-        createdAt: now,
-        updatedAt: now,
-        fileExists: false,
-        progress: 0.3,
-        taskIds: ["1", "2"],
-        objectives: ["Complete API development", "Implement UI components"],
-        successCriteria: ["All tests passing", "Code review completed"]
-      }
-    ];
-  }
-  createMockAreas() {
-    const now = /* @__PURE__ */ new Date();
-    return [
-      {
-        id: "area1",
-        name: "Work",
-        description: "Professional work and projects",
-        tags: ["professional"],
-        createdAt: now,
-        updatedAt: now,
-        fileExists: false,
-        projectIds: ["proj1"],
-        goals: ["Advance career", "Complete projects on time"],
-        isActive: true
-      },
-      {
-        id: "area2",
-        name: "Personal",
-        description: "Personal tasks and activities",
-        tags: ["personal"],
-        createdAt: now,
-        updatedAt: now,
-        fileExists: false,
-        projectIds: [],
-        goals: ["Maintain work-life balance", "Personal development"],
-        isActive: true
-      }
-    ];
-  }
-  renderDashboard() {
-    this.contentEl.empty();
-    this.createDashboardHeader();
-    const mainContent = this.contentEl.createDiv("task-sync-dashboard-content");
-    switch (this.currentView) {
-      case "overview":
-        this.renderOverview(mainContent);
-        break;
-      case "tasks":
-        this.renderTasksView(mainContent);
-        break;
-      case "projects":
-        this.renderProjectsView(mainContent);
-        break;
-      case "areas":
-        this.renderAreasView(mainContent);
-        break;
-    }
-  }
-  createDashboardHeader() {
-    const header = this.contentEl.createDiv("task-sync-dashboard-header");
-    const tabs = [
-      { id: "overview", label: "Overview", icon: "\u{1F4CA}" },
-      { id: "tasks", label: "Tasks", icon: "\u2705" },
-      { id: "projects", label: "Projects", icon: "\u{1F4C1}" },
-      { id: "areas", label: "Areas", icon: "\u{1F3F7}\uFE0F" }
-    ];
-    const tabContainer = header.createDiv("task-sync-dashboard-tabs");
-    tabs.forEach((tab) => {
-      const tabButton = tabContainer.createEl("button", {
-        text: `${tab.icon} ${tab.label}`,
-        cls: `task-sync-dashboard-tab ${this.currentView === tab.id ? "active" : ""}`
-      });
-      tabButton.addEventListener("click", () => {
-        this.currentView = tab.id;
-        this.renderDashboard();
-      });
-    });
-    const actions = header.createDiv("task-sync-dashboard-actions");
-    this.createButton(actions, "+ Task", () => {
-      console.log("Create new task");
-    }, "primary");
-    this.createButton(actions, "+ Project", () => {
-      console.log("Create new project");
-    }, "secondary");
-  }
-  renderOverview(container) {
-    const statsContainer = container.createDiv("task-sync-dashboard-stats");
-    const taskStats = this.calculateTaskStats();
-    this.createStatCard(statsContainer, "Total Tasks", taskStats.total.toString(), "\u{1F4DD}");
-    this.createStatCard(statsContainer, "In Progress", taskStats.inProgress.toString(), "\u{1F504}");
-    this.createStatCard(statsContainer, "Completed", taskStats.completed.toString(), "\u2705");
-    this.createStatCard(statsContainer, "Overdue", taskStats.overdue.toString(), "\u26A0\uFE0F");
-    const recentSection = container.createDiv("task-sync-dashboard-section");
-    recentSection.createEl("h3", { text: "Recent Tasks" });
-    const recentTasks = this.data.tasks.slice(0, 5);
-    this.renderTaskList(recentSection, recentTasks, true);
-    const projectsSection = container.createDiv("task-sync-dashboard-section");
-    projectsSection.createEl("h3", { text: "Active Projects" });
-    if (this.data.projects.length === 0) {
-      projectsSection.createEl("p", {
-        text: "No projects found. Create your first project to get started.",
-        cls: "task-sync-empty-state"
-      });
-    } else {
-      this.renderProjectList(projectsSection, this.data.projects);
-    }
-  }
-  renderTasksView(container) {
-    const filtersContainer = container.createDiv("task-sync-dashboard-filters");
-    this.createTaskFilters(filtersContainer);
-    const tasksContainer = container.createDiv("task-sync-dashboard-tasks");
-    this.renderTaskList(tasksContainer, this.filteredTasks);
-  }
-  renderProjectsView(container) {
-    const projectsContainer = container.createDiv("task-sync-dashboard-projects");
-    if (this.data.projects.length === 0) {
-      this.createEmptyState(projectsContainer, "No projects found", "Create your first project to organize your tasks.");
-    } else {
-      this.renderProjectList(projectsContainer, this.data.projects);
-    }
-  }
-  renderAreasView(container) {
-    const areasContainer = container.createDiv("task-sync-dashboard-areas");
-    if (this.data.areas.length === 0) {
-      this.createEmptyState(areasContainer, "No areas found", "Create areas to organize your projects and tasks.");
-    } else {
-      this.renderAreaList(areasContainer, this.data.areas);
-    }
-  }
-  createStatCard(container, title, value, icon) {
-    const card = container.createDiv("task-sync-stat-card");
-    card.createEl("div", { text: icon, cls: "task-sync-stat-icon" });
-    card.createEl("div", { text: value, cls: "task-sync-stat-value" });
-    card.createEl("div", { text: title, cls: "task-sync-stat-title" });
-  }
-  calculateTaskStats() {
-    const now = /* @__PURE__ */ new Date();
-    return {
-      total: this.data.tasks.length,
-      inProgress: this.data.tasks.filter((t) => t.status === "in-progress" /* IN_PROGRESS */).length,
-      completed: this.data.tasks.filter((t) => t.status === "done" /* DONE */).length,
-      overdue: this.data.tasks.filter((t) => t.deadline && t.deadline < now && t.status !== "done" /* DONE */).length
-    };
-  }
-  createTaskFilters(container) {
-    const searchContainer = container.createDiv("task-sync-filter-group");
-    searchContainer.createEl("label", { text: "Search:" });
-    const searchInput = searchContainer.createEl("input", {
-      type: "text",
-      placeholder: "Search tasks...",
-      value: this.searchQuery
-    });
-    searchInput.addEventListener("input", (e) => {
-      this.searchQuery = e.target.value;
-      this.applyFilters();
-    });
-    const statusContainer = container.createDiv("task-sync-filter-group");
-    statusContainer.createEl("label", { text: "Status:" });
-    const statusSelect = statusContainer.createEl("select");
-    statusSelect.createEl("option", { value: "all", text: "All Statuses" });
-    Object.values(TaskStatus).forEach((status) => {
-      statusSelect.createEl("option", { value: status, text: status });
-    });
-    statusSelect.value = this.statusFilter;
-    statusSelect.addEventListener("change", (e) => {
-      this.statusFilter = e.target.value;
-      this.applyFilters();
-    });
-    const priorityContainer = container.createDiv("task-sync-filter-group");
-    priorityContainer.createEl("label", { text: "Priority:" });
-    const prioritySelect = priorityContainer.createEl("select");
-    prioritySelect.createEl("option", { value: "all", text: "All Priorities" });
-    Object.values(TaskPriority).forEach((priority) => {
-      prioritySelect.createEl("option", { value: priority, text: priority });
-    });
-    prioritySelect.value = this.priorityFilter;
-    prioritySelect.addEventListener("change", (e) => {
-      this.priorityFilter = e.target.value;
-      this.applyFilters();
-    });
-  }
-  applyFilters() {
-    this.filteredTasks = this.data.tasks.filter((task) => {
-      if (this.searchQuery && !task.name.toLowerCase().includes(this.searchQuery.toLowerCase())) {
-        return false;
-      }
-      if (this.statusFilter !== "all" && task.status !== this.statusFilter) {
-        return false;
-      }
-      if (this.priorityFilter !== "all" && task.priority !== this.priorityFilter) {
-        return false;
-      }
-      return true;
-    });
-    if (this.currentView === "tasks") {
-      this.renderDashboard();
-    }
-  }
-  renderTaskList(container, tasks, compact = false) {
-    if (tasks.length === 0) {
-      this.createEmptyState(container, "No tasks found", "Create your first task to get started.");
-      return;
-    }
-    const taskList = container.createDiv("task-sync-task-list");
-    tasks.forEach((task) => {
-      const taskItem = taskList.createDiv("task-sync-task-item");
-      const statusIcon = this.getStatusIcon(task.status);
-      taskItem.createEl("span", { text: statusIcon, cls: "task-sync-task-status" });
-      const taskContent = taskItem.createDiv("task-sync-task-content");
-      taskContent.createEl("div", { text: task.name, cls: "task-sync-task-name" });
-      if (!compact && task.description) {
-        taskContent.createEl("div", { text: task.description, cls: "task-sync-task-description" });
-      }
-      const taskMeta = taskItem.createDiv("task-sync-task-meta");
-      if (task.priority) {
-        taskMeta.createEl("span", {
-          text: task.priority,
-          cls: `task-sync-priority task-sync-priority-${task.priority}`
-        });
-      }
-      if (task.deadline) {
-        const deadlineText = this.formatDate(task.deadline);
-        const isOverdue = task.deadline < /* @__PURE__ */ new Date() && task.status !== "done" /* DONE */;
-        taskMeta.createEl("span", {
-          text: deadlineText,
-          cls: `task-sync-deadline ${isOverdue ? "overdue" : ""}`
-        });
-      }
-      const taskActions = taskItem.createDiv("task-sync-task-actions");
-      this.createButton(taskActions, "Edit", () => {
-        console.log("Edit task:", task.id);
-      }, "secondary");
-    });
-  }
-  renderProjectList(container, projects) {
-    const projectList = container.createDiv("task-sync-project-list");
-    projects.forEach((project) => {
-      const projectItem = projectList.createDiv("task-sync-project-item");
-      projectItem.createEl("h4", { text: project.name, cls: "task-sync-project-name" });
-      if (project.description) {
-        projectItem.createEl("p", { text: project.description, cls: "task-sync-project-description" });
-      }
-      const projectTasks = this.data.tasks.filter((t) => t.projectId === project.id);
-      const completedTasks = projectTasks.filter((t) => t.status === "done" /* DONE */).length;
-      const projectMeta = projectItem.createDiv("task-sync-project-meta");
-      projectMeta.createEl("span", { text: `${completedTasks}/${projectTasks.length} tasks completed` });
-      const projectActions = projectItem.createDiv("task-sync-project-actions");
-      this.createButton(projectActions, "View Tasks", () => {
-        this.currentView = "tasks";
-        this.filteredTasks = projectTasks;
-        this.renderDashboard();
-      }, "secondary");
-    });
-  }
-  renderAreaList(container, areas) {
-    const areaList = container.createDiv("task-sync-area-list");
-    areas.forEach((area) => {
-      const areaItem = areaList.createDiv("task-sync-area-item");
-      areaItem.createEl("h4", { text: area.name, cls: "task-sync-area-name" });
-      if (area.description) {
-        areaItem.createEl("p", { text: area.description, cls: "task-sync-area-description" });
-      }
-      const areaTasks = this.data.tasks.filter((t) => t.areaId === area.id);
-      const areaProjects = this.data.projects.filter((p) => p.areaId === area.id);
-      const areaMeta = areaItem.createDiv("task-sync-area-meta");
-      areaMeta.createEl("span", { text: `${areaProjects.length} projects, ${areaTasks.length} tasks` });
-    });
-  }
-  createEmptyState(container, title, description) {
-    const emptyState = container.createDiv("task-sync-empty-state");
-    emptyState.createEl("h3", { text: title });
-    emptyState.createEl("p", { text: description });
-  }
-  getStatusIcon(status) {
-    switch (status) {
-      case "todo" /* TODO */:
-        return "\u2B55";
-      case "in-progress" /* IN_PROGRESS */:
-        return "\u{1F504}";
-      case "waiting" /* WAITING */:
-        return "\u23F8\uFE0F";
-      case "done" /* DONE */:
-        return "\u2705";
-      case "cancelled" /* CANCELLED */:
-        return "\u274C";
-      default:
-        return "\u2B55";
-    }
-  }
-  formatDate(date) {
-    const now = /* @__PURE__ */ new Date();
-    const diffTime = date.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1e3 * 60 * 60 * 24));
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Tomorrow";
-    if (diffDays === -1) return "Yesterday";
-    if (diffDays < 0) return `${Math.abs(diffDays)} days ago`;
-    if (diffDays < 7) return `In ${diffDays} days`;
-    return date.toLocaleDateString();
-  }
-};
-
-// src/components/ui/ProjectAreaPicker.ts
-var import_obsidian4 = require("obsidian");
-var ProjectPicker = class {
-  constructor(containerEl, projects, options = {}) {
-    this.selectedProjectId = null;
-    this.containerEl = containerEl;
-    this.projects = projects;
-    this.options = {
-      allowEmpty: true,
-      placeholder: "Select a project...",
-      showCreateNew: false,
-      ...options
-    };
-    this.createPicker();
-  }
-  createPicker() {
-    this.setting = new import_obsidian4.Setting(this.containerEl).setName("Project").setDesc("Select a project for this task");
-    this.setting.addDropdown((dropdown) => {
-      if (this.options.allowEmpty) {
-        dropdown.addOption("", this.options.placeholder || "No project");
-      }
-      this.projects.forEach((project) => {
-        dropdown.addOption(project.id, project.name);
-      });
-      if (this.options.showCreateNew) {
-        dropdown.addOption("__create_new__", "+ Create New Project");
-      }
-      dropdown.setValue(this.selectedProjectId || "").onChange((value) => {
-        var _a, _b, _c;
-        if (value === "__create_new__") {
-          (_b = (_a = this.options).onCreateNew) == null ? void 0 : _b.call(_a);
-          dropdown.setValue("");
-          return;
-        }
-        this.selectedProjectId = value || null;
-        (_c = this.onChangeCallback) == null ? void 0 : _c.call(this, this.selectedProjectId);
-      });
-    });
-  }
-  onChange(callback) {
-    this.onChangeCallback = callback;
-    return this;
-  }
-  setValue(projectId) {
-    this.selectedProjectId = projectId;
-    this.setting.components.forEach((component) => {
-      if ("setValue" in component) {
-        component.setValue(projectId || "");
-      }
-    });
-  }
-  getValue() {
-    return this.selectedProjectId;
-  }
-  updateProjects(projects) {
-    this.projects = projects;
-    this.setting.settingEl.remove();
-    this.createPicker();
-  }
-  getSelectedProject() {
-    if (!this.selectedProjectId) return null;
-    return this.projects.find((p) => p.id === this.selectedProjectId) || null;
-  }
-};
-var AreaPicker = class {
-  constructor(containerEl, areas, options = {}) {
-    this.selectedAreaId = null;
-    this.containerEl = containerEl;
-    this.areas = areas;
-    this.options = {
-      allowEmpty: true,
-      placeholder: "Select an area...",
-      showCreateNew: false,
-      ...options
-    };
-    this.createPicker();
-  }
-  createPicker() {
-    this.setting = new import_obsidian4.Setting(this.containerEl).setName("Area").setDesc("Select an area for this task");
-    this.setting.addDropdown((dropdown) => {
-      if (this.options.allowEmpty) {
-        dropdown.addOption("", this.options.placeholder || "No area");
-      }
-      this.areas.forEach((area) => {
-        dropdown.addOption(area.id, area.name);
-      });
-      if (this.options.showCreateNew) {
-        dropdown.addOption("__create_new__", "+ Create New Area");
-      }
-      dropdown.setValue(this.selectedAreaId || "").onChange((value) => {
-        var _a, _b, _c;
-        if (value === "__create_new__") {
-          (_b = (_a = this.options).onCreateNew) == null ? void 0 : _b.call(_a);
-          dropdown.setValue("");
-          return;
-        }
-        this.selectedAreaId = value || null;
-        (_c = this.onChangeCallback) == null ? void 0 : _c.call(this, this.selectedAreaId);
-      });
-    });
-  }
-  onChange(callback) {
-    this.onChangeCallback = callback;
-    return this;
-  }
-  setValue(areaId) {
-    this.selectedAreaId = areaId;
-    this.setting.components.forEach((component) => {
-      if ("setValue" in component) {
-        component.setValue(areaId || "");
-      }
-    });
-  }
-  getValue() {
-    return this.selectedAreaId;
-  }
-  updateAreas(areas) {
-    this.areas = areas;
-    this.setting.settingEl.remove();
-    this.createPicker();
-  }
-  getSelectedArea() {
-    if (!this.selectedAreaId) return null;
-    return this.areas.find((a) => a.id === this.selectedAreaId) || null;
-  }
-};
-var ProjectAreaPicker = class {
-  constructor(containerEl, data, options = {}) {
-    this.containerEl = containerEl;
-    this.data = data;
-    this.options = options;
-    this.createPickers();
-  }
-  createPickers() {
-    const projectContainer = this.containerEl.createDiv("task-sync-picker-group");
-    this.projectPicker = new ProjectPicker(projectContainer, this.data.projects, {
-      ...this.options,
-      onCreateNew: () => {
-        var _a, _b;
-        (_b = (_a = this.options).onCreateNew) == null ? void 0 : _b.call(_a);
-      }
-    });
-    const areaContainer = this.containerEl.createDiv("task-sync-picker-group");
-    this.areaPicker = new AreaPicker(areaContainer, this.data.areas, {
-      ...this.options,
-      onCreateNew: () => {
-        var _a, _b;
-        (_b = (_a = this.options).onCreateNew) == null ? void 0 : _b.call(_a);
-      }
-    });
-    this.areaPicker.onChange((areaId) => {
-      this.updateProjectsForArea(areaId);
-    });
-  }
-  updateProjectsForArea(areaId) {
-    if (!areaId) {
-      this.projectPicker.updateProjects(this.data.projects);
-      return;
-    }
-    const filteredProjects = this.data.projects.filter((p) => p.areaId === areaId);
-    this.projectPicker.updateProjects(filteredProjects);
-    const currentProject = this.projectPicker.getSelectedProject();
-    if (currentProject && currentProject.areaId !== areaId) {
-      this.projectPicker.setValue(null);
-    }
-  }
-  onProjectChange(callback) {
-    this.projectPicker.onChange(callback);
-    return this;
-  }
-  onAreaChange(callback) {
-    this.areaPicker.onChange(callback);
-    return this;
-  }
-  setProjectValue(projectId) {
-    this.projectPicker.setValue(projectId);
-  }
-  setAreaValue(areaId) {
-    this.areaPicker.setValue(areaId);
-    this.updateProjectsForArea(areaId);
-  }
-  getProjectValue() {
-    return this.projectPicker.getValue();
-  }
-  getAreaValue() {
-    return this.areaPicker.getValue();
-  }
-  getSelectedProject() {
-    return this.projectPicker.getSelectedProject();
-  }
-  getSelectedArea() {
-    return this.areaPicker.getSelectedArea();
-  }
-  updateData(data) {
-    this.data = data;
-    this.projectPicker.updateProjects(data.projects);
-    this.areaPicker.updateAreas(data.areas);
-  }
-  getValues() {
-    return {
-      projectId: this.getProjectValue(),
-      areaId: this.getAreaValue()
-    };
-  }
-  setValues(values) {
-    if (values.areaId !== void 0) {
-      this.setAreaValue(values.areaId);
-    }
-    if (values.projectId !== void 0) {
-      this.setProjectValue(values.projectId);
-    }
-  }
-};
-
-// src/components/modals/TaskCreateModal.ts
-var TaskCreateModal = class extends BaseModal {
-  constructor(app, plugin, pickerData) {
-    super(app, {
-      title: "Create New Task",
-      width: "600px",
-      className: "task-sync-create-task"
-    });
-    this.plugin = plugin;
-    this.pickerData = pickerData;
-  }
   createContent() {
-    this.setupKeyboardHandlers();
-    this.createHeader(
-      "Create New Task",
-      "Fill in the details below to create a new task. Required fields are marked with *"
-    );
-    const form = this.createForm();
-    this.setupForm(form);
-    this.createFormFooter();
+    this.contentEl.empty();
+    const form = this.contentEl.createEl("form");
+    form.addClass("task-sync-create-task-form");
+    this.createField(form, "name", "Task Name *", "text", "Enter task name...", true);
+    this.createField(form, "type", "Type", "text", "Task type (optional)");
+    this.createField(form, "areas", "Areas", "text", "Related areas (optional)");
+    this.createField(form, "parentTask", "Parent Task", "text", "Parent task (optional)");
+    this.createField(form, "subTasks", "Sub-tasks", "text", "Sub-tasks (optional)");
+    this.createField(form, "tags", "Tags", "text", "Comma-separated tags");
+    this.createField(form, "project", "Project", "text", "Related project (optional)");
+    this.createSelectField(form, "status", "Status", ["Backlog", "Todo", "In Progress", "Done"], "Backlog");
+    this.createSelectField(form, "priority", "Priority", ["Low", "Medium", "High", "Urgent"], "");
+    this.createTextareaField(form, "description", "Description", "Task description...");
+    this.createFormActions(form);
   }
-  setupForm(form) {
-    form.addField("name", {
-      label: "Task Name *",
-      description: "A clear, descriptive name for your task",
-      placeholder: "Enter task name...",
-      required: true,
-      type: "text"
-    }).addValidator(Validators.required).addValidator(Validators.minLength(3)).addValidator(Validators.maxLength(200));
-    form.addField("description", {
-      label: "Description",
-      description: "Optional detailed description of the task",
-      placeholder: "Enter task description...",
-      type: "textarea"
-    }).addValidator(Validators.maxLength(1e3));
-    form.addField("status", {
-      label: "Status",
-      description: "Current status of the task",
-      type: "select",
-      value: "todo" /* TODO */,
-      options: Object.values(TaskStatus)
-    });
-    form.addField("priority", {
-      label: "Priority",
-      description: "Priority level for this task",
-      type: "select",
-      value: "medium" /* MEDIUM */,
-      options: Object.values(TaskPriority)
-    });
-    form.addField("deadline", {
-      label: "Deadline",
-      description: "Optional deadline for task completion",
-      type: "date"
-    }).addValidator(Validators.date);
-    form.addField("scheduledDate", {
-      label: "Scheduled Date",
-      description: "When you plan to work on this task",
-      type: "date"
-    }).addValidator(Validators.date);
-    form.addField("tags", {
-      label: "Tags",
-      description: "Comma-separated tags for organizing tasks",
-      placeholder: "work, urgent, review...",
-      type: "text"
-    });
-    form.addField("estimatedDuration", {
-      label: "Estimated Duration (minutes)",
-      description: "How long you expect this task to take",
-      placeholder: "60",
-      type: "text"
-    }).addValidator((value) => {
-      if (value && (isNaN(Number(value)) || Number(value) < 0)) {
-        return "Please enter a valid number of minutes";
-      }
-      return null;
-    });
-    this.createProjectAreaSection();
-    form.onSubmit(async (data) => {
-      await this.handleSubmit(data);
-    });
-  }
-  createProjectAreaSection() {
-    const pickerContainer = this.contentEl.createDiv("task-sync-picker-section");
-    pickerContainer.createEl("h4", { text: "Organization" });
-    pickerContainer.createEl("p", {
-      text: "Assign this task to a project and/or area for better organization.",
-      cls: "task-sync-section-description"
-    });
-    this.projectAreaPicker = new ProjectAreaPicker(pickerContainer, this.pickerData, {
-      allowEmpty: true,
-      showCreateNew: true,
-      onCreateNew: () => {
-        console.log("Create new project/area");
+  createField(form, name, label, type, placeholder, required = false) {
+    const fieldContainer = form.createDiv("task-sync-field");
+    fieldContainer.createEl("label", { text: label, attr: { for: name } });
+    const input = fieldContainer.createEl("input", {
+      attr: {
+        type,
+        name,
+        placeholder,
+        ...required && { required: "true" }
       }
     });
   }
-  createFormFooter() {
-    const footer = this.createFooter();
-    this.createButton(footer, "Cancel", () => {
-      this.close();
-    }, "secondary");
-    this.createButton(footer, "Create Task", async () => {
-      if (this.validateForm()) {
-        const formData = this.getFormData();
-        if (formData) {
-          await this.handleSubmit(formData);
-        }
+  createSelectField(form, name, label, options, defaultValue) {
+    const fieldContainer = form.createDiv("task-sync-field");
+    fieldContainer.createEl("label", { text: label, attr: { for: name } });
+    const select = fieldContainer.createEl("select", { attr: { name } });
+    if (!defaultValue) {
+      select.createEl("option", { text: "Select...", attr: { value: "" } });
+    }
+    options.forEach((option) => {
+      const optionEl = select.createEl("option", { text: option, attr: { value: option } });
+      if (option === defaultValue) {
+        optionEl.selected = true;
       }
-    }, "primary");
+    });
   }
-  async handleSubmit(formData) {
+  createTextareaField(form, name, label, placeholder) {
+    const fieldContainer = form.createDiv("task-sync-field");
+    fieldContainer.createEl("label", { text: label, attr: { for: name } });
+    fieldContainer.createEl("textarea", {
+      attr: {
+        name,
+        placeholder,
+        rows: "3"
+      }
+    });
+  }
+  createFormActions(form) {
+    const actionsContainer = form.createDiv("task-sync-form-actions");
+    const cancelButton = actionsContainer.createEl("button", {
+      text: "Cancel",
+      type: "button",
+      cls: "mod-cancel"
+    });
+    cancelButton.addEventListener("click", () => this.close());
+    const submitButton = actionsContainer.createEl("button", {
+      text: "Create Task",
+      type: "submit",
+      cls: "mod-cta"
+    });
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      this.handleSubmit(form);
+    });
+  }
+  async handleSubmit(form) {
+    var _a;
+    const formData = new FormData(form);
+    const taskData = {
+      name: formData.get("name"),
+      type: formData.get("type") || void 0,
+      areas: formData.get("areas") || void 0,
+      parentTask: formData.get("parentTask") || void 0,
+      subTasks: formData.get("subTasks") || void 0,
+      tags: this.parseTags(formData.get("tags") || ""),
+      project: formData.get("project") || void 0,
+      done: false,
+      status: formData.get("status") || "Backlog",
+      priority: formData.get("priority") || void 0,
+      description: formData.get("description") || void 0
+    };
+    if (!((_a = taskData.name) == null ? void 0 : _a.trim())) {
+      return;
+    }
     try {
-      this.showLoading("Creating task...");
-      const taskData = {
-        name: formData.name,
-        description: formData.description || void 0,
-        status: formData.status,
-        priority: formData.priority,
-        deadline: formData.deadline ? new Date(formData.deadline) : void 0,
-        scheduledDate: formData.scheduledDate ? new Date(formData.scheduledDate) : void 0,
-        projectId: this.projectAreaPicker.getProjectValue() || void 0,
-        areaId: this.projectAreaPicker.getAreaValue() || void 0,
-        tags: this.parseTags(formData.tags),
-        estimatedDuration: formData.estimatedDuration ? Number(formData.estimatedDuration) : void 0
-      };
-      if (taskData.deadline && taskData.scheduledDate && taskData.deadline < taskData.scheduledDate) {
-        this.showError("Deadline cannot be before the scheduled date.");
-        return;
-      }
       if (this.onSubmitCallback) {
         await this.onSubmitCallback(taskData);
-      } else {
-        await this.createTask(taskData);
       }
-      this.showSuccess("Task created successfully!");
+      this.close();
     } catch (error) {
       console.error("Failed to create task:", error);
-      this.showError("Failed to create task. Please try again.");
     }
   }
-  async createTask(taskData) {
-    console.log("Creating task:", taskData);
-    await new Promise((resolve) => setTimeout(resolve, 1e3));
-  }
   parseTags(tagsString) {
-    if (!tagsString) return [];
-    return tagsString.split(",").map((tag) => tag.trim()).filter((tag) => tag.length > 0).map((tag) => tag.toLowerCase());
+    return tagsString.split(",").map((tag) => tag.trim()).filter((tag) => tag.length > 0);
   }
   onSubmit(callback) {
     this.onSubmitCallback = callback;
-    return this;
   }
-  setInitialValues(values) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
-    if (values.name) (_a = this.form) == null ? void 0 : _a.setFieldValue("name", values.name);
-    if (values.description) (_b = this.form) == null ? void 0 : _b.setFieldValue("description", values.description);
-    if (values.status) (_c = this.form) == null ? void 0 : _c.setFieldValue("status", values.status);
-    if (values.priority) (_d = this.form) == null ? void 0 : _d.setFieldValue("priority", values.priority);
-    if (values.deadline) (_e = this.form) == null ? void 0 : _e.setFieldValue("deadline", values.deadline.toISOString().split("T")[0]);
-    if (values.scheduledDate) (_f = this.form) == null ? void 0 : _f.setFieldValue("scheduledDate", values.scheduledDate.toISOString().split("T")[0]);
-    if (values.tags) (_g = this.form) == null ? void 0 : _g.setFieldValue("tags", values.tags.join(", "));
-    if (values.estimatedDuration) (_h = this.form) == null ? void 0 : _h.setFieldValue("estimatedDuration", values.estimatedDuration.toString());
-    if (this.projectAreaPicker) {
-      this.projectAreaPicker.setValues({
-        projectId: values.projectId,
-        areaId: values.areaId
-      });
-    }
-    return this;
-  }
-  updatePickerData(data) {
-    this.pickerData = data;
-    if (this.projectAreaPicker) {
-      this.projectAreaPicker.updateData(data);
-    }
-  }
-  cleanup() {
-    super.cleanup();
-  }
-};
-
-// src/components/modals/ProjectCreateModal.ts
-var ProjectCreateModal = class extends BaseModal {
-  constructor(app, plugin, areas, templates = []) {
-    super(app, {
-      title: "Create New Project",
-      width: "650px",
-      className: "task-sync-create-project"
-    });
-    this.plugin = plugin;
-    this.areas = areas;
-    this.templates = templates;
-  }
-  createContent() {
-    this.setupKeyboardHandlers();
-    this.createHeader(
-      "Create New Project",
-      "Projects help you organize related tasks and track progress toward larger goals."
-    );
-    const form = this.createForm();
-    this.setupForm(form);
-    this.createFormFooter();
-  }
-  setupForm(form) {
-    form.addField("name", {
-      label: "Project Name *",
-      description: "A clear, descriptive name for your project",
-      placeholder: "Enter project name...",
-      required: true,
-      type: "text"
-    }).addValidator(Validators.required).addValidator(Validators.minLength(3)).addValidator(Validators.maxLength(200));
-    form.addField("description", {
-      label: "Description",
-      description: "Detailed description of the project goals and scope",
-      placeholder: "Enter project description...",
-      type: "textarea"
-    }).addValidator(Validators.maxLength(2e3));
-    form.addField("status", {
-      label: "Status",
-      description: "Current status of the project",
-      type: "select",
-      value: "active",
-      options: ["active", "on-hold", "completed", "archived"]
-    });
-    if (this.templates.length > 0) {
-      const templateOptions = ["", ...this.templates.map((t) => t.id)];
-      const templateLabels = ["No template", ...this.templates.map((t) => t.name)];
-      form.addField("templateId", {
-        label: "Template",
-        description: "Choose a template to pre-populate project structure",
-        type: "select",
-        options: templateOptions
-      });
-      const templateField = form.getField("templateId");
-      if (templateField) {
-        templateField.onChange((templateId) => {
-          if (templateId) {
-            this.applyTemplate(templateId, form);
-          }
-        });
-      }
-    }
-    form.addField("startDate", {
-      label: "Start Date",
-      description: "When you plan to start working on this project",
-      type: "date"
-    }).addValidator(Validators.date);
-    form.addField("endDate", {
-      label: "End Date",
-      description: "Target completion date for the project",
-      type: "date"
-    }).addValidator(Validators.date);
-    form.addField("goals", {
-      label: "Project Goals",
-      description: "Key objectives and outcomes (one per line)",
-      placeholder: "Enter project goals, one per line...",
-      type: "textarea"
-    });
-    form.addField("tags", {
-      label: "Tags",
-      description: "Comma-separated tags for organizing projects",
-      placeholder: "work, development, q4...",
-      type: "text"
-    });
-    this.createAreaSection();
-    form.onSubmit(async (data) => {
-      await this.handleSubmit(data);
-    });
-  }
-  createAreaSection() {
-    const pickerContainer = this.contentEl.createDiv("task-sync-picker-section");
-    pickerContainer.createEl("h4", { text: "Area Assignment" });
-    pickerContainer.createEl("p", {
-      text: "Assign this project to an area for better organization.",
-      cls: "task-sync-section-description"
-    });
-    this.areaPicker = new AreaPicker(pickerContainer, this.areas, {
-      allowEmpty: true,
-      showCreateNew: true,
-      onCreateNew: () => {
-        console.log("Create new area");
-      }
-    });
-  }
-  applyTemplate(templateId, form) {
-    const template = this.templates.find((t) => t.id === templateId);
-    if (!template) return;
-    if (template.content.includes("{{description}}")) {
-      const descriptionField = form.getField("description");
-      if (descriptionField && !descriptionField.getValue()) {
-        descriptionField.setValue(template.content.replace("{{description}}", ""));
-      }
-    }
-    if (template.metadata) {
-      if (template.metadata.defaultTags) {
-        const tagsField = form.getField("tags");
-        if (tagsField && !tagsField.getValue()) {
-          tagsField.setValue(template.metadata.defaultTags.join(", "));
-        }
-      }
-      if (template.metadata.defaultGoals) {
-        const goalsField = form.getField("goals");
-        if (goalsField && !goalsField.getValue()) {
-          goalsField.setValue(template.metadata.defaultGoals.join("\n"));
-        }
-      }
-    }
-  }
-  createFormFooter() {
-    const footer = this.createFooter();
-    this.createButton(footer, "Cancel", () => {
-      this.close();
-    }, "secondary");
-    this.createButton(footer, "Create Project", async () => {
-      if (this.validateForm()) {
-        const formData = this.getFormData();
-        if (formData) {
-          await this.handleSubmit(formData);
-        }
-      }
-    }, "primary");
-  }
-  async handleSubmit(formData) {
-    try {
-      this.showLoading("Creating project...");
-      const projectData = {
-        name: formData.name,
-        description: formData.description || void 0,
-        status: formData.status,
-        areaId: this.areaPicker.getValue() || void 0,
-        tags: this.parseTags(formData.tags),
-        templateId: formData.templateId || void 0,
-        startDate: formData.startDate ? new Date(formData.startDate) : void 0,
-        endDate: formData.endDate ? new Date(formData.endDate) : void 0,
-        goals: this.parseGoals(formData.goals)
-      };
-      if (projectData.startDate && projectData.endDate && projectData.startDate > projectData.endDate) {
-        this.showError("Start date cannot be after the end date.");
-        return;
-      }
-      if (this.onSubmitCallback) {
-        await this.onSubmitCallback(projectData);
-      } else {
-        await this.createProject(projectData);
-      }
-      this.showSuccess("Project created successfully!");
-    } catch (error) {
-      console.error("Failed to create project:", error);
-      this.showError("Failed to create project. Please try again.");
-    }
-  }
-  async createProject(projectData) {
-    console.log("Creating project:", projectData);
-    await new Promise((resolve) => setTimeout(resolve, 1e3));
-  }
-  parseTags(tagsString) {
-    if (!tagsString) return [];
-    return tagsString.split(",").map((tag) => tag.trim()).filter((tag) => tag.length > 0).map((tag) => tag.toLowerCase());
-  }
-  parseGoals(goalsString) {
-    if (!goalsString) return [];
-    return goalsString.split("\n").map((goal) => goal.trim()).filter((goal) => goal.length > 0);
-  }
-  onSubmit(callback) {
-    this.onSubmitCallback = callback;
-    return this;
-  }
-  setInitialValues(values) {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
-    if (values.name) (_a = this.form) == null ? void 0 : _a.setFieldValue("name", values.name);
-    if (values.description) (_b = this.form) == null ? void 0 : _b.setFieldValue("description", values.description);
-    if (values.status) (_c = this.form) == null ? void 0 : _c.setFieldValue("status", values.status);
-    if (values.startDate) (_d = this.form) == null ? void 0 : _d.setFieldValue("startDate", values.startDate.toISOString().split("T")[0]);
-    if (values.endDate) (_e = this.form) == null ? void 0 : _e.setFieldValue("endDate", values.endDate.toISOString().split("T")[0]);
-    if (values.tags) (_f = this.form) == null ? void 0 : _f.setFieldValue("tags", values.tags.join(", "));
-    if (values.goals) (_g = this.form) == null ? void 0 : _g.setFieldValue("goals", values.goals.join("\n"));
-    if (values.templateId) (_h = this.form) == null ? void 0 : _h.setFieldValue("templateId", values.templateId);
-    if (this.areaPicker && values.areaId) {
-      this.areaPicker.setValue(values.areaId);
-    }
-    return this;
-  }
-  updateAreas(areas) {
-    this.areas = areas;
-    if (this.areaPicker) {
-      this.areaPicker.updateAreas(areas);
-    }
-  }
-  updateTemplates(templates) {
-    this.templates = templates;
-  }
-  cleanup() {
-    super.cleanup();
-  }
-};
-
-// src/components/modals/AreaCreateModal.ts
-var AreaCreateModal = class extends BaseModal {
-  constructor(app, plugin, templates = []) {
-    super(app, {
-      title: "Create New Area",
-      width: "600px",
-      className: "task-sync-create-area"
-    });
-    this.plugin = plugin;
-    this.templates = templates;
-  }
-  createContent() {
-    this.setupKeyboardHandlers();
-    this.createHeader(
-      "Create New Area",
-      "Areas represent the different spheres of your life and work. They help organize projects and tasks by context."
-    );
-    const form = this.createForm();
-    this.setupForm(form);
-    this.createFormFooter();
-  }
-  setupForm(form) {
-    form.addField("name", {
-      label: "Area Name *",
-      description: "A clear name for this area of responsibility",
-      placeholder: "e.g., Work, Personal, Health, Finance...",
-      required: true,
-      type: "text"
-    }).addValidator(Validators.required).addValidator(Validators.minLength(2)).addValidator(Validators.maxLength(100));
-    form.addField("description", {
-      label: "Description",
-      description: "Detailed description of this area and its scope",
-      placeholder: "Enter area description...",
-      type: "textarea"
-    }).addValidator(Validators.maxLength(1e3));
-    if (this.templates.length > 0) {
-      const areaTemplates = this.templates.filter((t) => t.type === "area");
-      if (areaTemplates.length > 0) {
-        const templateOptions = ["", ...areaTemplates.map((t) => t.id)];
-        form.addField("templateId", {
-          label: "Template",
-          description: "Choose a template to pre-populate area structure",
-          type: "select",
-          options: templateOptions
-        });
-        const templateField = form.getField("templateId");
-        if (templateField) {
-          templateField.onChange((templateId) => {
-            if (templateId) {
-              this.applyTemplate(templateId, form);
-            }
-          });
-        }
-      }
-    }
-    form.addField("icon", {
-      label: "Icon",
-      description: "Optional emoji or icon to represent this area",
-      placeholder: "\u{1F3E2} \u{1F4BC} \u{1F3E0} \u{1F4AA} \u{1F4DA}...",
-      type: "text"
-    }).addValidator(Validators.maxLength(10));
-    form.addField("color", {
-      label: "Color",
-      description: "Optional color for visual organization",
-      type: "select",
-      options: [
-        "",
-        "blue",
-        "green",
-        "red",
-        "yellow",
-        "purple",
-        "orange",
-        "pink",
-        "gray"
-      ]
-    });
-    form.addField("reviewFrequency", {
-      label: "Review Frequency",
-      description: "How often you want to review this area",
-      type: "select",
-      value: "weekly",
-      options: ["daily", "weekly", "monthly", "quarterly", "yearly"]
-    });
-    form.addField("goals", {
-      label: "Area Goals",
-      description: "Key objectives and outcomes for this area (one per line)",
-      placeholder: "Enter area goals, one per line...",
-      type: "textarea"
-    });
-    form.addField("tags", {
-      label: "Tags",
-      description: "Comma-separated tags for organizing areas",
-      placeholder: "professional, personal, health...",
-      type: "text"
-    });
-    form.addField("isArchived", {
-      label: "Archived",
-      description: "Mark this area as archived (hidden from active views)",
-      type: "toggle",
-      value: false
-    });
-    form.onSubmit(async (data) => {
-      await this.handleSubmit(data);
-    });
-  }
-  applyTemplate(templateId, form) {
-    const template = this.templates.find((t) => t.id === templateId);
-    if (!template) return;
-    if (template.content.includes("{{description}}")) {
-      const descriptionField = form.getField("description");
-      if (descriptionField && !descriptionField.getValue()) {
-        descriptionField.setValue(template.content.replace("{{description}}", ""));
-      }
-    }
-    if (template.metadata) {
-      if (template.metadata.defaultTags) {
-        const tagsField = form.getField("tags");
-        if (tagsField && !tagsField.getValue()) {
-          tagsField.setValue(template.metadata.defaultTags.join(", "));
-        }
-      }
-      if (template.metadata.defaultGoals) {
-        const goalsField = form.getField("goals");
-        if (goalsField && !goalsField.getValue()) {
-          goalsField.setValue(template.metadata.defaultGoals.join("\n"));
-        }
-      }
-      if (template.metadata.defaultIcon) {
-        const iconField = form.getField("icon");
-        if (iconField && !iconField.getValue()) {
-          iconField.setValue(template.metadata.defaultIcon);
-        }
-      }
-      if (template.metadata.defaultColor) {
-        const colorField = form.getField("color");
-        if (colorField && !colorField.getValue()) {
-          colorField.setValue(template.metadata.defaultColor);
-        }
-      }
-      if (template.metadata.defaultReviewFrequency) {
-        const reviewField = form.getField("reviewFrequency");
-        if (reviewField) {
-          reviewField.setValue(template.metadata.defaultReviewFrequency);
-        }
-      }
-    }
-  }
-  createFormFooter() {
-    const footer = this.createFooter();
-    this.createButton(footer, "Cancel", () => {
-      this.close();
-    }, "secondary");
-    this.createButton(footer, "Create Area", async () => {
-      if (this.validateForm()) {
-        const formData = this.getFormData();
-        if (formData) {
-          await this.handleSubmit(formData);
-        }
-      }
-    }, "primary");
-  }
-  async handleSubmit(formData) {
-    try {
-      this.showLoading("Creating area...");
-      const areaData = {
-        name: formData.name,
-        description: formData.description || void 0,
-        tags: this.parseTags(formData.tags),
-        templateId: formData.templateId || void 0,
-        color: formData.color || void 0,
-        icon: formData.icon || void 0,
-        isArchived: formData.isArchived || false,
-        goals: this.parseGoals(formData.goals),
-        reviewFrequency: formData.reviewFrequency
-      };
-      if (this.onSubmitCallback) {
-        await this.onSubmitCallback(areaData);
-      } else {
-        await this.createArea(areaData);
-      }
-      this.showSuccess("Area created successfully!");
-    } catch (error) {
-      console.error("Failed to create area:", error);
-      this.showError("Failed to create area. Please try again.");
-    }
-  }
-  async createArea(areaData) {
-    console.log("Creating area:", areaData);
-    await new Promise((resolve) => setTimeout(resolve, 1e3));
-  }
-  parseTags(tagsString) {
-    if (!tagsString) return [];
-    return tagsString.split(",").map((tag) => tag.trim()).filter((tag) => tag.length > 0).map((tag) => tag.toLowerCase());
-  }
-  parseGoals(goalsString) {
-    if (!goalsString) return [];
-    return goalsString.split("\n").map((goal) => goal.trim()).filter((goal) => goal.length > 0);
-  }
-  onSubmit(callback) {
-    this.onSubmitCallback = callback;
-    return this;
-  }
-  setInitialValues(values) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _i;
-    if (values.name) (_a = this.form) == null ? void 0 : _a.setFieldValue("name", values.name);
-    if (values.description) (_b = this.form) == null ? void 0 : _b.setFieldValue("description", values.description);
-    if (values.tags) (_c = this.form) == null ? void 0 : _c.setFieldValue("tags", values.tags.join(", "));
-    if (values.templateId) (_d = this.form) == null ? void 0 : _d.setFieldValue("templateId", values.templateId);
-    if (values.color) (_e = this.form) == null ? void 0 : _e.setFieldValue("color", values.color);
-    if (values.icon) (_f = this.form) == null ? void 0 : _f.setFieldValue("icon", values.icon);
-    if (values.isArchived !== void 0) (_g = this.form) == null ? void 0 : _g.setFieldValue("isArchived", values.isArchived);
-    if (values.goals) (_h = this.form) == null ? void 0 : _h.setFieldValue("goals", values.goals.join("\n"));
-    if (values.reviewFrequency) (_i = this.form) == null ? void 0 : _i.setFieldValue("reviewFrequency", values.reviewFrequency);
-    return this;
-  }
-  updateTemplates(templates) {
-    this.templates = templates;
-  }
-  cleanup() {
-    super.cleanup();
+  onClose() {
   }
 };
 
@@ -2075,47 +461,23 @@ var DEFAULT_SETTINGS = {
   tasksFolder: "Tasks",
   projectsFolder: "Projects",
   areasFolder: "Areas",
-  enableAutoSync: true,
-  syncInterval: 3e5,
-  // 5 minutes
   templateFolder: "Templates",
   useTemplater: false,
   defaultTaskTemplate: "",
   defaultProjectTemplate: "",
   defaultAreaTemplate: ""
 };
-var TaskSyncPlugin = class extends import_obsidian5.Plugin {
+var TaskSyncPlugin = class extends import_obsidian3.Plugin {
   async onload() {
     console.log("Loading Task Sync Plugin");
     await this.loadSettings();
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
     this.addCommand({
-      id: "open-task-dashboard",
-      name: "Open Task Dashboard",
-      callback: () => {
-        this.openDashboard();
-      }
-    });
-    this.addCommand({
       id: "add-task",
       name: "Add Task",
       callback: () => {
         this.openTaskCreateModal();
-      }
-    });
-    this.addCommand({
-      id: "add-project",
-      name: "Add Project",
-      callback: () => {
-        this.openProjectCreateModal();
-      }
-    });
-    this.addCommand({
-      id: "add-area",
-      name: "Add Area",
-      callback: () => {
-        this.openAreaCreateModal();
       }
     });
   }
@@ -2142,15 +504,8 @@ var TaskSyncPlugin = class extends import_obsidian5.Plugin {
     }
   }
   async migrateSettings() {
-    if (!this.settings.hasOwnProperty("enableAutoSync")) {
-      this.settings.enableAutoSync = DEFAULT_SETTINGS.enableAutoSync;
-    }
   }
   validateSettings() {
-    if (typeof this.settings.syncInterval !== "number" || this.settings.syncInterval < 6e4) {
-      console.warn("Task Sync: Invalid sync interval, using default");
-      this.settings.syncInterval = DEFAULT_SETTINGS.syncInterval;
-    }
     const folderFields = ["tasksFolder", "projectsFolder", "areasFolder", "templateFolder"];
     folderFields.forEach((field) => {
       if (typeof this.settings[field] !== "string") {
@@ -2160,56 +515,52 @@ var TaskSyncPlugin = class extends import_obsidian5.Plugin {
     });
   }
   // UI Methods
-  async openDashboard() {
-    try {
-      const modal = new DashboardModal(this.app, this);
-      modal.open();
-    } catch (error) {
-      console.error("Failed to open dashboard:", error);
-    }
-  }
   async openTaskCreateModal() {
     try {
-      const pickerData = {
-        projects: [],
-        areas: []
-      };
-      const modal = new TaskCreateModal(this.app, this, pickerData);
+      const modal = new TaskCreateModal(this.app, this);
       modal.onSubmit(async (taskData) => {
-        console.log("Creating task:", taskData);
+        await this.createTask(taskData);
       });
       modal.open();
     } catch (error) {
       console.error("Failed to open task creation modal:", error);
     }
   }
-  async openProjectCreateModal() {
+  // Task creation logic
+  async createTask(taskData) {
     try {
-      const areas = [];
-      const templates = [];
-      const modal = new ProjectCreateModal(this.app, this, areas, templates);
-      modal.onSubmit(async (projectData) => {
-        console.log("Creating project:", projectData);
-      });
-      modal.open();
+      const taskFileName = `${taskData.name.replace(/[^a-zA-Z0-9\s]/g, "").replace(/\s+/g, "-")}.md`;
+      const taskPath = `${this.settings.tasksFolder}/${taskFileName}`;
+      const taskContent = this.generateTaskContent(taskData);
+      await this.app.vault.create(taskPath, taskContent);
+      console.log("Task created successfully:", taskPath);
     } catch (error) {
-      console.error("Failed to open project creation modal:", error);
+      console.error("Failed to create task:", error);
+      throw error;
     }
   }
-  async openAreaCreateModal() {
-    try {
-      const templates = [];
-      const modal = new AreaCreateModal(this.app, this, templates);
-      modal.onSubmit(async (areaData) => {
-        console.log("Creating area:", areaData);
-      });
-      modal.open();
-    } catch (error) {
-      console.error("Failed to open area creation modal:", error);
-    }
+  generateTaskContent(taskData) {
+    const frontmatter = [
+      "---",
+      `Title: ${taskData.name}`,
+      `Type: ${taskData.type || "Task"}`,
+      `Areas: ${taskData.areas || ""}`,
+      `Parent task: ${taskData.parentTask || ""}`,
+      `Sub-tasks: ${taskData.subTasks || ""}`,
+      `tags: ${taskData.tags ? taskData.tags.join(", ") : ""}`,
+      `Project: ${taskData.project || ""}`,
+      `Done: ${taskData.done || false}`,
+      `Status: ${taskData.status || "Backlog"}`,
+      `Priority: ${taskData.priority || ""}`,
+      "---",
+      "",
+      taskData.description || "Task description...",
+      ""
+    ];
+    return frontmatter.join("\n");
   }
 };
-var TaskSyncSettingTab = class extends import_obsidian5.PluginSettingTab {
+var TaskSyncSettingTab = class extends import_obsidian3.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.validationErrors = /* @__PURE__ */ new Map();
@@ -2233,10 +584,7 @@ var TaskSyncSettingTab = class extends import_obsidian5.PluginSettingTab {
     const tabContent = tabContainer.createDiv("task-sync-settings-tab-content");
     const tabs = [
       { id: "folders", label: "\u{1F4C1} Folders", content: () => this.createFolderSettings(tabContent) },
-      { id: "sync", label: "\u{1F504} Sync", content: () => this.createSyncSettings(tabContent) },
-      { id: "templates", label: "\u{1F4DD} Templates", content: () => this.createTemplateSettings(tabContent) },
-      { id: "ui", label: "\u{1F3A8} Interface", content: () => this.createUISettings(tabContent) },
-      { id: "advanced", label: "\u2699\uFE0F Advanced", content: () => this.createAdvancedSettings(tabContent) }
+      { id: "templates", label: "\u{1F4DD} Templates", content: () => this.createTemplateSettings(tabContent) }
     ];
     let activeTab = "folders";
     tabs.forEach((tab, index) => {
@@ -2286,7 +634,7 @@ var TaskSyncSettingTab = class extends import_obsidian5.PluginSettingTab {
     infoBox.appendText("Folders will be created automatically if they don't exist. Use relative paths from your vault root.");
   }
   createFolderSetting(container, key, name, desc, placeholder) {
-    const setting = new import_obsidian5.Setting(container).setName(name).setDesc(desc).addText((text) => {
+    const setting = new import_obsidian3.Setting(container).setName(name).setDesc(desc).addText((text) => {
       text.setPlaceholder(placeholder).setValue(this.plugin.settings[key]).onChange(async (value) => {
         const validation = this.validateFolderPath(value);
         if (validation.isValid) {
@@ -2301,28 +649,6 @@ var TaskSyncSettingTab = class extends import_obsidian5.PluginSettingTab {
     });
     this.updateSettingValidation(setting, key);
   }
-  createSyncSettings(container) {
-    container.createEl("h3", { text: "Sync Configuration" });
-    container.createEl("p", {
-      text: "Configure how and when your tasks are synchronized.",
-      cls: "task-sync-settings-section-desc"
-    });
-    new import_obsidian5.Setting(container).setName("Enable Auto Sync").setDesc("Automatically sync tasks at regular intervals").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableAutoSync).onChange(async (value) => {
-      this.plugin.settings.enableAutoSync = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian5.Setting(container).setName("Sync Interval (minutes)").setDesc("How often to sync tasks (in minutes)").addText((text) => text.setPlaceholder("5").setValue(String(this.plugin.settings.syncInterval / 6e4)).onChange(async (value) => {
-      const validation = this.validateSyncInterval(value);
-      if (validation.isValid) {
-        this.clearValidationError("syncInterval");
-        const minutes = parseInt(value) || 5;
-        this.plugin.settings.syncInterval = minutes * 6e4;
-        await this.plugin.saveSettings();
-      } else {
-        this.setValidationError("syncInterval", validation.error);
-      }
-    }));
-  }
   createTemplateSettings(container) {
     container.createEl("h3", { text: "Template Configuration" });
     container.createEl("p", {
@@ -2336,19 +662,19 @@ var TaskSyncSettingTab = class extends import_obsidian5.PluginSettingTab {
       "Folder where templates are stored",
       "Templates"
     );
-    new import_obsidian5.Setting(container).setName("Use Templater Plugin").setDesc("Enable integration with Templater plugin for advanced templates").addToggle((toggle) => toggle.setValue(this.plugin.settings.useTemplater).onChange(async (value) => {
+    new import_obsidian3.Setting(container).setName("Use Templater Plugin").setDesc("Enable integration with Templater plugin for advanced templates").addToggle((toggle) => toggle.setValue(this.plugin.settings.useTemplater).onChange(async (value) => {
       this.plugin.settings.useTemplater = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian5.Setting(container).setName("Default Task Template").setDesc("Default template to use when creating new tasks").addText((text) => text.setPlaceholder("task-template.md").setValue(this.plugin.settings.defaultTaskTemplate).onChange(async (value) => {
+    new import_obsidian3.Setting(container).setName("Default Task Template").setDesc("Default template to use when creating new tasks").addText((text) => text.setPlaceholder("task-template.md").setValue(this.plugin.settings.defaultTaskTemplate).onChange(async (value) => {
       this.plugin.settings.defaultTaskTemplate = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian5.Setting(container).setName("Default Project Template").setDesc("Default template to use when creating new projects").addText((text) => text.setPlaceholder("project-template.md").setValue(this.plugin.settings.defaultProjectTemplate).onChange(async (value) => {
+    new import_obsidian3.Setting(container).setName("Default Project Template").setDesc("Default template to use when creating new projects").addText((text) => text.setPlaceholder("project-template.md").setValue(this.plugin.settings.defaultProjectTemplate).onChange(async (value) => {
       this.plugin.settings.defaultProjectTemplate = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian5.Setting(container).setName("Default Area Template").setDesc("Default template to use when creating new areas").addText((text) => text.setPlaceholder("area-template.md").setValue(this.plugin.settings.defaultAreaTemplate).onChange(async (value) => {
+    new import_obsidian3.Setting(container).setName("Default Area Template").setDesc("Default template to use when creating new areas").addText((text) => text.setPlaceholder("area-template.md").setValue(this.plugin.settings.defaultAreaTemplate).onChange(async (value) => {
       this.plugin.settings.defaultAreaTemplate = value;
       await this.plugin.saveSettings();
     }));

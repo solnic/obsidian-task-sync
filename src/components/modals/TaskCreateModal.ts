@@ -3,308 +3,186 @@
  * Provides a form interface for creating new tasks with all required fields
  */
 
-import { App } from 'obsidian';
-import { BaseModal } from '../ui/BaseModal';
-import { Form, Validators } from '../ui/BaseComponents';
-import { ProjectAreaPicker, PickerData } from '../ui/ProjectAreaPicker';
-import { Task, TaskStatus, TaskPriority, Project, Area } from '../../types/entities';
+import { App, Modal } from 'obsidian';
 import TaskSyncPlugin from '../../main';
 
 export interface TaskCreateData {
   name: string;
-  description?: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-  deadline?: Date;
-  scheduledDate?: Date;
-  projectId?: string;
-  areaId?: string;
+  type?: string;
+  areas?: string;
+  parentTask?: string;
+  subTasks?: string;
   tags: string[];
-  estimatedDuration?: number;
+  project?: string;
+  done: boolean;
+  status: string;
+  priority?: string;
+  description?: string;
 }
 
-export class TaskCreateModal extends BaseModal {
+export class TaskCreateModal extends Modal {
   private plugin: TaskSyncPlugin;
-  private projectAreaPicker: ProjectAreaPicker;
-  private pickerData: PickerData;
   private onSubmitCallback?: (taskData: TaskCreateData) => Promise<void>;
 
-  constructor(app: App, plugin: TaskSyncPlugin, pickerData: PickerData) {
-    super(app, {
-      title: 'Create New Task',
-      width: '600px',
-      className: 'task-sync-create-task'
-    });
+  constructor(app: App, plugin: TaskSyncPlugin) {
+    super(app);
     this.plugin = plugin;
-    this.pickerData = pickerData;
+    this.modalEl.addClass('task-sync-create-task');
   }
 
-  protected createContent(): void {
-    this.setupKeyboardHandlers();
-    
-    // Create header
-    this.createHeader(
-      'Create New Task',
-      'Fill in the details below to create a new task. Required fields are marked with *'
-    );
+  onOpen(): void {
+    this.titleEl.setText('Create New Task');
+    this.createContent();
+  }
+
+  private createContent(): void {
+    this.contentEl.empty();
 
     // Create form
-    const form = this.createForm();
-    this.setupForm(form);
+    const form = this.contentEl.createEl('form');
+    form.addClass('task-sync-create-task-form');
 
-    // Create footer with buttons
-    this.createFormFooter();
-  }
-
-  private setupForm(form: Form): void {
     // Task name (required)
-    form.addField('name', {
-      label: 'Task Name *',
-      description: 'A clear, descriptive name for your task',
-      placeholder: 'Enter task name...',
-      required: true,
-      type: 'text'
-    })
-    .addValidator(Validators.required)
-    .addValidator(Validators.minLength(3))
-    .addValidator(Validators.maxLength(200));
+    this.createField(form, 'name', 'Task Name *', 'text', 'Enter task name...', true);
 
-    // Task description
-    form.addField('description', {
-      label: 'Description',
-      description: 'Optional detailed description of the task',
-      placeholder: 'Enter task description...',
-      type: 'textarea'
-    })
-    .addValidator(Validators.maxLength(1000));
+    // Type
+    this.createField(form, 'type', 'Type', 'text', 'Task type (optional)');
 
-    // Status
-    form.addField('status', {
-      label: 'Status',
-      description: 'Current status of the task',
-      type: 'select',
-      value: TaskStatus.TODO,
-      options: Object.values(TaskStatus)
-    });
+    // Areas
+    this.createField(form, 'areas', 'Areas', 'text', 'Related areas (optional)');
 
-    // Priority
-    form.addField('priority', {
-      label: 'Priority',
-      description: 'Priority level for this task',
-      type: 'select',
-      value: TaskPriority.MEDIUM,
-      options: Object.values(TaskPriority)
-    });
+    // Parent task
+    this.createField(form, 'parentTask', 'Parent Task', 'text', 'Parent task (optional)');
 
-    // Deadline
-    form.addField('deadline', {
-      label: 'Deadline',
-      description: 'Optional deadline for task completion',
-      type: 'date'
-    })
-    .addValidator(Validators.date);
-
-    // Scheduled date
-    form.addField('scheduledDate', {
-      label: 'Scheduled Date',
-      description: 'When you plan to work on this task',
-      type: 'date'
-    })
-    .addValidator(Validators.date);
+    // Sub-tasks
+    this.createField(form, 'subTasks', 'Sub-tasks', 'text', 'Sub-tasks (optional)');
 
     // Tags
-    form.addField('tags', {
-      label: 'Tags',
-      description: 'Comma-separated tags for organizing tasks',
-      placeholder: 'work, urgent, review...',
-      type: 'text'
-    });
+    this.createField(form, 'tags', 'Tags', 'text', 'Comma-separated tags');
 
-    // Estimated duration
-    form.addField('estimatedDuration', {
-      label: 'Estimated Duration (minutes)',
-      description: 'How long you expect this task to take',
-      placeholder: '60',
-      type: 'text'
-    })
-    .addValidator((value: string) => {
-      if (value && (isNaN(Number(value)) || Number(value) < 0)) {
-        return 'Please enter a valid number of minutes';
-      }
-      return null;
-    });
+    // Project
+    this.createField(form, 'project', 'Project', 'text', 'Related project (optional)');
 
-    // Create project/area picker section
-    this.createProjectAreaSection();
+    // Status
+    this.createSelectField(form, 'status', 'Status', ['Backlog', 'Todo', 'In Progress', 'Done'], 'Backlog');
 
-    // Set up form submission
-    form.onSubmit(async (data) => {
-      await this.handleSubmit(data);
-    });
+    // Priority
+    this.createSelectField(form, 'priority', 'Priority', ['Low', 'Medium', 'High', 'Urgent'], '');
+
+    // Description
+    this.createTextareaField(form, 'description', 'Description', 'Task description...');
+
+    this.createFormActions(form);
   }
 
-  private createProjectAreaSection(): void {
-    const pickerContainer = this.contentEl.createDiv('task-sync-picker-section');
-    pickerContainer.createEl('h4', { text: 'Organization' });
-    pickerContainer.createEl('p', { 
-      text: 'Assign this task to a project and/or area for better organization.',
-      cls: 'task-sync-section-description'
-    });
-
-    this.projectAreaPicker = new ProjectAreaPicker(pickerContainer, this.pickerData, {
-      allowEmpty: true,
-      showCreateNew: true,
-      onCreateNew: () => {
-        // TODO: Open project/area creation modal
-        console.log('Create new project/area');
+  private createField(form: HTMLFormElement, name: string, label: string, type: string, placeholder: string, required = false): void {
+    const fieldContainer = form.createDiv('task-sync-field');
+    fieldContainer.createEl('label', { text: label, attr: { for: name } });
+    const input = fieldContainer.createEl('input', {
+      attr: {
+        type,
+        name,
+        placeholder,
+        ...(required && { required: 'true' })
       }
     });
   }
 
-  private createFormFooter(): void {
-    const footer = this.createFooter();
-    
-    this.createButton(footer, 'Cancel', () => {
-      this.close();
-    }, 'secondary');
+  private createSelectField(form: HTMLFormElement, name: string, label: string, options: string[], defaultValue: string): void {
+    const fieldContainer = form.createDiv('task-sync-field');
+    fieldContainer.createEl('label', { text: label, attr: { for: name } });
+    const select = fieldContainer.createEl('select', { attr: { name } });
 
-    this.createButton(footer, 'Create Task', async () => {
-      if (this.validateForm()) {
-        const formData = this.getFormData();
-        if (formData) {
-          await this.handleSubmit(formData);
-        }
+    if (!defaultValue) {
+      select.createEl('option', { text: 'Select...', attr: { value: '' } });
+    }
+
+    options.forEach(option => {
+      const optionEl = select.createEl('option', { text: option, attr: { value: option } });
+      if (option === defaultValue) {
+        optionEl.selected = true;
       }
-    }, 'primary');
+    });
   }
 
-  private async handleSubmit(formData: Record<string, any>): Promise<void> {
+  private createTextareaField(form: HTMLFormElement, name: string, label: string, placeholder: string): void {
+    const fieldContainer = form.createDiv('task-sync-field');
+    fieldContainer.createEl('label', { text: label, attr: { for: name } });
+    fieldContainer.createEl('textarea', {
+      attr: {
+        name,
+        placeholder,
+        rows: '3'
+      }
+    });
+  }
+
+  private createFormActions(form: HTMLFormElement): void {
+    const actionsContainer = form.createDiv('task-sync-form-actions');
+
+    const cancelButton = actionsContainer.createEl('button', {
+      text: 'Cancel',
+      type: 'button',
+      cls: 'mod-cancel'
+    });
+    cancelButton.addEventListener('click', () => this.close());
+
+    const submitButton = actionsContainer.createEl('button', {
+      text: 'Create Task',
+      type: 'submit',
+      cls: 'mod-cta'
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      this.handleSubmit(form);
+    });
+  }
+
+  private async handleSubmit(form: HTMLFormElement): Promise<void> {
+    const formData = new FormData(form);
+
+    const taskData: TaskCreateData = {
+      name: formData.get('name') as string,
+      type: formData.get('type') as string || undefined,
+      areas: formData.get('areas') as string || undefined,
+      parentTask: formData.get('parentTask') as string || undefined,
+      subTasks: formData.get('subTasks') as string || undefined,
+      tags: this.parseTags(formData.get('tags') as string || ''),
+      project: formData.get('project') as string || undefined,
+      done: false,
+      status: formData.get('status') as string || 'Backlog',
+      priority: formData.get('priority') as string || undefined,
+      description: formData.get('description') as string || undefined
+    };
+
+    if (!taskData.name?.trim()) {
+      // Show error
+      return;
+    }
+
     try {
-      this.showLoading('Creating task...');
-
-      // Parse form data into TaskCreateData
-      const taskData: TaskCreateData = {
-        name: formData.name,
-        description: formData.description || undefined,
-        status: formData.status as TaskStatus,
-        priority: formData.priority as TaskPriority,
-        deadline: formData.deadline ? new Date(formData.deadline) : undefined,
-        scheduledDate: formData.scheduledDate ? new Date(formData.scheduledDate) : undefined,
-        projectId: this.projectAreaPicker.getProjectValue() || undefined,
-        areaId: this.projectAreaPicker.getAreaValue() || undefined,
-        tags: this.parseTags(formData.tags),
-        estimatedDuration: formData.estimatedDuration ? Number(formData.estimatedDuration) : undefined
-      };
-
-      // Validate dates
-      if (taskData.deadline && taskData.scheduledDate && taskData.deadline < taskData.scheduledDate) {
-        this.showError('Deadline cannot be before the scheduled date.');
-        return;
-      }
-
-      // Call the submit callback if provided
       if (this.onSubmitCallback) {
         await this.onSubmitCallback(taskData);
-      } else {
-        // Default behavior: create task using plugin services
-        await this.createTask(taskData);
       }
-
-      this.showSuccess('Task created successfully!');
-      
+      this.close();
     } catch (error) {
       console.error('Failed to create task:', error);
-      this.showError('Failed to create task. Please try again.');
     }
-  }
-
-  private async createTask(taskData: TaskCreateData): Promise<void> {
-    // TODO: Implement actual task creation using plugin services
-    // For now, just log the task data
-    console.log('Creating task:', taskData);
-    
-    // Simulate async operation
-    await new Promise(resolve => setTimeout(resolve, 1000));
   }
 
   private parseTags(tagsString: string): string[] {
-    if (!tagsString) return [];
-    
     return tagsString
       .split(',')
       .map(tag => tag.trim())
-      .filter(tag => tag.length > 0)
-      .map(tag => tag.toLowerCase());
+      .filter(tag => tag.length > 0);
   }
 
-  public onSubmit(callback: (taskData: TaskCreateData) => Promise<void>): TaskCreateModal {
+  public onSubmit(callback: (taskData: TaskCreateData) => Promise<void>): void {
     this.onSubmitCallback = callback;
-    return this;
   }
 
-  public setInitialValues(values: Partial<TaskCreateData>): TaskCreateModal {
-    // Set form field values
-    if (values.name) this.form?.setFieldValue('name', values.name);
-    if (values.description) this.form?.setFieldValue('description', values.description);
-    if (values.status) this.form?.setFieldValue('status', values.status);
-    if (values.priority) this.form?.setFieldValue('priority', values.priority);
-    if (values.deadline) this.form?.setFieldValue('deadline', values.deadline.toISOString().split('T')[0]);
-    if (values.scheduledDate) this.form?.setFieldValue('scheduledDate', values.scheduledDate.toISOString().split('T')[0]);
-    if (values.tags) this.form?.setFieldValue('tags', values.tags.join(', '));
-    if (values.estimatedDuration) this.form?.setFieldValue('estimatedDuration', values.estimatedDuration.toString());
-
-    // Set project/area picker values
-    if (this.projectAreaPicker) {
-      this.projectAreaPicker.setValues({
-        projectId: values.projectId,
-        areaId: values.areaId
-      });
-    }
-
-    return this;
+  onClose(): void {
+    // Cleanup if needed
   }
-
-  public updatePickerData(data: PickerData): void {
-    this.pickerData = data;
-    if (this.projectAreaPicker) {
-      this.projectAreaPicker.updateData(data);
-    }
-  }
-
-  protected cleanup(): void {
-    // Clean up any resources if needed
-    super.cleanup();
-  }
-}
-
-/**
- * Utility function to open a task creation modal
- */
-export async function openTaskCreateModal(
-  app: App, 
-  plugin: TaskSyncPlugin, 
-  pickerData: PickerData,
-  initialValues?: Partial<TaskCreateData>
-): Promise<TaskCreateData | null> {
-  return new Promise((resolve) => {
-    const modal = new TaskCreateModal(app, plugin, pickerData);
-    
-    if (initialValues) {
-      modal.setInitialValues(initialValues);
-    }
-    
-    modal.onSubmit(async (taskData) => {
-      resolve(taskData);
-      modal.close();
-    });
-    
-    // Handle modal close without submission
-    const originalClose = modal.close.bind(modal);
-    modal.close = () => {
-      resolve(null);
-      originalClose();
-    };
-    
-    modal.open();
-  });
 }

@@ -1,15 +1,24 @@
 # Obsidian Task Sync Plugin - Development Task List
 
+## Simplified Architecture Overview
+
+**🎯 Plugin Focus**: Simple task creation that works seamlessly with Obsidian's Bases feature
+- **Core Functionality**: Quick task creation modal with template-aligned fields
+- **Bases Integration**: Relies on Bases for task visualization and management (no custom UI needed)
+- **No Sync Logic**: Bases handles automatic syncing, no interval-based sync required
+- **Minimal Settings**: Only folder paths and template preferences
+
 ## Progress Summary
 
-**✅ Completed Phases: 3/8**
+**✅ Completed Phases: 4/5** (Simplified from original 8 phases)
 - **Phase 1**: Infrastructure & Configuration (100% complete)
-- **Phase 2**: Data Model & Detection (100% complete)
-- **Phase 3**: UI Components (100% complete)
+- **Phase 2**: Data Model & Task Creation (100% complete)
+- **Phase 3**: Simplified UI Components (100% complete)
+- **Phase 4**: Essential Commands (100% complete)
 
-**🚧 Current Status**: Ready for Phase 4 (Command System)
+**🚧 Current Status**: Ready for Phase 5 (Testing & Polish)
 
-**📊 Overall Progress**: 37.5% complete (3 of 8 phases)
+**📊 Overall Progress**: 80% complete (4 of 5 phases)
 
 ---
 
@@ -17,98 +26,76 @@
   - [x] Set up TypeScript project structure using modern Obsidian plugin template
   - [x] Create plugin manifest.json with proper metadata and permissions
   - [x] Implement basic plugin class structure with onload/onunload methods
-  - [x] Define TaskSyncSettings interface with all configuration options
+  - [x] Define simplified TaskSyncSettings interface (folders + templates only)
   - [x] Create default settings object with sensible defaults
-  - [x] Implement settings tab UI for configurable folder locations
+  - [x] Implement simplified settings tab UI for folder paths and templates
   - [x] Add settings persistence using Obsidian's data.json system
   - [x] Implement settings loading and validation on plugin startup
-  - [x] Add settings migration logic for future version updates
+  - [x] Remove sync-related settings (Bases handles syncing automatically)
   - [x] Create basic error handling for settings operations
 
-- [x] **Phase 2: Data Model & Detection** ✅ COMPLETE
-  - [x] Create TypeScript interfaces for Task entity with all properties
-  - [x] Create TypeScript interfaces for Project entity
-  - [x] Create TypeScript interfaces for Area entity
+- [x] **Phase 2: Data Model & Task Creation** ✅ COMPLETE
+  - [x] Create TypeScript interfaces for Task entity matching template structure
+  - [x] Align task properties with user template (Title, Type, Areas, Parent task, Sub-tasks, tags, Project, Done, Status, Priority)
   - [x] Implement vault scanning service to find configured folders
-  - [x] Create base file parser to read .base file syntax (basic implementation)
-  - [x] Implement base file creation with proper Obsidian Bases format (basic implementation)
-  - [x] Add template detection logic for native Obsidian templates (basic implementation)
-  - [x] Implement Templater plugin detection and integration hooks (basic implementation)
-  - [x] Create data validation utilities for parsed entities (basic implementation)
-  - [x] Add file system watching for dynamic updates (basic implementation)
+  - [x] Create task file generation with proper frontmatter format
+  - [x] Add template-based content generation for tasks
+  - [x] Remove complex project/area entity management (rely on Bases)
+  - [x] Implement basic file creation in configured folders
+  - [x] Add proper markdown file formatting
+  - [x] Create task data validation utilities
+  - [x] Remove complex base file management (Bases handles this)
 
-- [x] **Phase 3: UI Components** ✅ COMPLETE
-  - [x] Create main dashboard modal component with task overview
-  - [x] Build task creation modal with form fields (name, deadline, status)
-  - [x] Add project/area picker component for task assignment
-  - [x] Implement task editing modal with pre-populated fields
-  - [x] Create project creation form with template selection
-  - [x] Build area creation form with template integration
-  - [x] Design settings panel UI with folder path inputs
-  - [x] Add form validation and error messaging
-  - [x] Implement responsive modal layouts
-  - [x] Create reusable UI components for consistency
+- [x] **Phase 3: Simplified UI Components** ✅ COMPLETE
+  - [x] Create simple task creation modal with template-aligned fields
+  - [x] Remove complex dashboard modal (Bases provides visualization)
+  - [x] Remove project/area creation modals (not needed with Bases)
+  - [x] Remove complex project/area picker components
+  - [x] Implement basic form validation and error messaging
+  - [x] Create clean, minimal modal layout
+  - [x] Remove complex reusable UI components (simplified approach)
+  - [x] Focus on essential task creation functionality only
+  - [x] Remove task editing modal (users can edit files directly)
+  - [x] Simplify settings panel to essential options only
 
-- [ ] **Phase 4: Command System**
-  - [ ] Implement "Add Task" command with modal integration
-  - [ ] Create "Update Task" command with task selection
-  - [ ] Add "Add Project" command with template support
-  - [ ] Implement "Add Area" command with template integration
-  - [ ] Create "Open Dashboard" command for main interface
-  - [ ] Configure default hotkey bindings for all commands
-  - [ ] Add command palette integration
-  - [ ] Implement context menu commands for files
-  - [ ] Add ribbon icon with command shortcuts
-  - [ ] Create command error handling and user feedback
+- [x] **Phase 4: Essential Commands** ✅ COMPLETE
+  - [x] Implement "Add Task" command with modal integration
+  - [x] Remove complex commands (dashboard, project/area creation)
+  - [x] Add command palette integration for task creation
+  - [x] Implement basic command error handling and user feedback
+  - [x] Remove unnecessary hotkey bindings (keep simple)
+  - [x] Remove ribbon icon and context menus (minimal approach)
+  - [x] Focus on single essential command for task creation
+  - [x] Remove task editing commands (users edit files directly)
+  - [x] Simplify command system to core functionality
+  - [x] Test command integration with Obsidian
 
-- [ ] **Phase 5: Bases Integration**
-  - [ ] Implement automatic tasks.base file generation
-  - [ ] Create dynamic base file updating on task changes
-  - [ ] Add project-specific base file management
-  - [ ] Implement area-specific base file management
-  - [ ] Prepare data structures for Kanban view compatibility
-  - [ ] Add filtering capabilities for base views
-  - [ ] Implement sorting options for task lists
-  - [ ] Create base file synchronization service
-  - [ ] Add base file backup and recovery
-  - [ ] Optimize base file performance for large datasets
-
-- [ ] **Phase 6: Template System Integration**
-  - [ ] Add native Obsidian template support for tasks
-  - [ ] Implement Templater plugin integration for advanced templates
-  - [ ] Create template variable injection for task properties
-  - [ ] Add template selection dropdown in creation modals
-  - [ ] Implement template-based content generation
-  - [ ] Create custom template variables for plugin data
-  - [ ] Add template validation and error handling
-  - [ ] Implement template caching for performance
-  - [ ] Create template preview functionality
-  - [ ] Add template management utilities
-
-- [ ] **Phase 7: Advanced Task Workflow**
-  - [ ] Implement task status tracking (todo, doing, done)
-  - [ ] Add deadline management with date picker
-  - [ ] Create reminder system with notifications
-  - [ ] Implement advanced sorting capabilities
-  - [ ] Add comprehensive filtering options
-  - [ ] Create project/area archiving functionality
-  - [ ] Implement cross-referencing between tasks and projects
-  - [ ] Add batch update operations for multiple tasks
-  - [ ] Build reporting and analytics dashboard
-  - [ ] Create task dependency management
-  - [ ] Add task priority levels and sorting
-  - [ ] Implement task search and quick filters
-
-- [ ] **Phase 8: Testing & Polish**
-  - [ ] Implement comprehensive error handling throughout plugin
-  - [ ] Add performance optimizations for large vaults
+- [ ] **Phase 5: Testing & Polish**
+  - [x] Add automated unit tests for core functionality ✅
+  - [x] Create integration tests for plugin lifecycle ✅
+  - [x] Implement comprehensive error handling throughout plugin ✅
+  - [x] Test build system and TypeScript compilation ✅
   - [ ] Create user documentation with examples
-  - [ ] Write developer documentation for extensibility
+  - [ ] Write developer documentation for simplified architecture
   - [ ] Polish plugin manifest with proper descriptions
-  - [ ] Implement semantic versioning system
-  - [ ] Add automated unit tests for core functionality
-  - [ ] Create integration tests for UI components
-  - [ ] Conduct performance testing with large datasets
-  - [ ] Perform final QA testing and bug fixes
-  - [ ] Prepare plugin for Obsidian community store submission
-  - [ ] Create release notes and changelog
+  - [ ] Add performance optimizations for task creation
+  - [ ] Conduct final QA testing and bug fixes
+  - [ ] Prepare plugin for distribution
+
+## Removed/Simplified Features (No longer needed with Bases)
+
+**❌ Removed Complex Features:**
+- Dashboard modal (Bases provides visualization)
+- Project/Area creation modals (users create manually, Bases manages)
+- Complex UI components and pickers
+- Sync intervals and auto-sync logic (Bases handles syncing)
+- Task editing modals (direct file editing preferred)
+- Complex base file management (Bases API will handle when available)
+- Advanced workflow features (can be added later if needed)
+
+**🎯 Current Focus:**
+- Simple, fast task creation
+- Template-aligned field structure
+- Minimal settings and configuration
+- Seamless Bases integration
+- Clean, maintainable codebase

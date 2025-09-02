@@ -8,8 +8,6 @@ describe('TaskSync Settings', () => {
         tasksFolder: 'Tasks',
         projectsFolder: 'Projects',
         areasFolder: 'Areas',
-        enableAutoSync: true,
-        syncInterval: 300000,
         templateFolder: 'Templates',
         useTemplater: false,
         defaultTaskTemplate: '',
@@ -20,8 +18,6 @@ describe('TaskSync Settings', () => {
       expect(defaultSettings.tasksFolder).toBe('Tasks');
       expect(defaultSettings.projectsFolder).toBe('Projects');
       expect(defaultSettings.areasFolder).toBe('Areas');
-      expect(defaultSettings.enableAutoSync).toBe(true);
-      expect(defaultSettings.syncInterval).toBe(300000);
       expect(defaultSettings.templateFolder).toBe('Templates');
       expect(defaultSettings.useTemplater).toBe(false);
       expect(defaultSettings.defaultTaskTemplate).toBe('');
@@ -32,30 +28,28 @@ describe('TaskSync Settings', () => {
     it('should allow partial settings objects', () => {
       const partialSettings: Partial<TaskSyncSettings> = {
         tasksFolder: 'MyTasks',
-        enableAutoSync: false
+        useTemplater: true
       };
 
       expect(partialSettings.tasksFolder).toBe('MyTasks');
-      expect(partialSettings.enableAutoSync).toBe(false);
+      expect(partialSettings.useTemplater).toBe(true);
       expect(partialSettings.projectsFolder).toBeUndefined();
     });
 
-    it('should validate sync interval types', () => {
+    it('should validate template settings', () => {
       const settings: TaskSyncSettings = {
         tasksFolder: 'Tasks',
         projectsFolder: 'Projects',
         areasFolder: 'Areas',
-        enableAutoSync: true,
-        syncInterval: 60000, // 1 minute
         templateFolder: 'Templates',
         useTemplater: false,
-        defaultTaskTemplate: '',
-        defaultProjectTemplate: '',
-        defaultAreaTemplate: ''
+        defaultTaskTemplate: 'Task Template',
+        defaultProjectTemplate: 'Project Template',
+        defaultAreaTemplate: 'Area Template'
       };
 
-      expect(typeof settings.syncInterval).toBe('number');
-      expect(settings.syncInterval).toBeGreaterThan(0);
+      expect(typeof settings.defaultTaskTemplate).toBe('string');
+      expect(settings.defaultTaskTemplate).toBe('Task Template');
     });
 
     it('should validate boolean settings', () => {
@@ -63,8 +57,6 @@ describe('TaskSync Settings', () => {
         tasksFolder: 'Tasks',
         projectsFolder: 'Projects',
         areasFolder: 'Areas',
-        enableAutoSync: false,
-        syncInterval: 300000,
         templateFolder: 'Templates',
         useTemplater: true,
         defaultTaskTemplate: '',
@@ -72,9 +64,7 @@ describe('TaskSync Settings', () => {
         defaultAreaTemplate: ''
       };
 
-      expect(typeof settings.enableAutoSync).toBe('boolean');
       expect(typeof settings.useTemplater).toBe('boolean');
-      expect(settings.enableAutoSync).toBe(false);
       expect(settings.useTemplater).toBe(true);
     });
 
@@ -83,8 +73,6 @@ describe('TaskSync Settings', () => {
         tasksFolder: 'Custom/Tasks',
         projectsFolder: 'Custom/Projects',
         areasFolder: 'Custom/Areas',
-        enableAutoSync: true,
-        syncInterval: 300000,
         templateFolder: 'Custom/Templates',
         useTemplater: false,
         defaultTaskTemplate: 'task-template.md',
@@ -108,8 +96,6 @@ describe('TaskSync Settings', () => {
         tasksFolder: '',
         projectsFolder: '',
         areasFolder: '',
-        enableAutoSync: true,
-        syncInterval: 300000,
         templateFolder: '',
         useTemplater: false,
         defaultTaskTemplate: '',
@@ -124,11 +110,11 @@ describe('TaskSync Settings', () => {
       expect(settings.templateFolder).toBe('');
     });
 
-    it('should handle minimum sync interval', () => {
-      const minInterval = 60000; // 1 minute minimum
-      
-      expect(minInterval).toBeGreaterThan(0);
-      expect(minInterval).toBeLessThanOrEqual(300000); // Should be reasonable
+    it('should handle template folder validation', () => {
+      const templateFolder = 'Templates';
+
+      expect(typeof templateFolder).toBe('string');
+      expect(templateFolder.length).toBeGreaterThan(0);
     });
 
     it('should handle template settings combinations', () => {
@@ -137,8 +123,6 @@ describe('TaskSync Settings', () => {
         tasksFolder: 'Tasks',
         projectsFolder: 'Projects',
         areasFolder: 'Areas',
-        enableAutoSync: true,
-        syncInterval: 300000,
         templateFolder: 'Templates',
         useTemplater: true,
         defaultTaskTemplate: '',
@@ -154,8 +138,6 @@ describe('TaskSync Settings', () => {
         tasksFolder: 'Tasks',
         projectsFolder: 'Projects',
         areasFolder: 'Areas',
-        enableAutoSync: true,
-        syncInterval: 300000,
         templateFolder: 'Templates',
         useTemplater: false,
         defaultTaskTemplate: 'task.md',

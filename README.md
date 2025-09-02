@@ -1,15 +1,14 @@
 # Obsidian Task Sync Plugin
 
-A comprehensive task management plugin for Obsidian that implements GTD (Getting Things Done) methodology with project and area organization.
+A simple, focused task creation plugin for Obsidian that works seamlessly with the Bases feature for task management and visualization.
 
 ## Features
 
-- **Task Management**: Create, edit, and organize tasks with deadlines and status tracking
-- **Project Organization**: Group related tasks into projects with templates
-- **Area Management**: Organize projects and tasks by life/work areas
-- **Template Integration**: Support for both native Obsidian templates and Templater plugin
-- **Bases Integration**: Automatic generation of .base files for Kanban-style views
-- **Settings Persistence**: Configurable folder locations and sync preferences
+- **Quick Task Creation**: Simple modal for creating tasks with template-aligned fields
+- **Bases Integration**: Designed to work perfectly with Obsidian's Bases feature for task visualization
+- **Template Alignment**: Task structure matches your existing templates (Title, Type, Areas, Parent task, Sub-tasks, tags, Project, Done, Status, Priority)
+- **Minimal Configuration**: Simple settings for folder paths and template preferences
+- **No Sync Complexity**: Relies on Bases for automatic syncing and data management
 
 ## Installation
 
@@ -30,10 +29,7 @@ A comprehensive task management plugin for Obsidian that implements GTD (Getting
 
 ### Commands
 
-- **Open Task Dashboard**: View all tasks, projects, and areas in a unified interface
-- **Add Task**: Create a new task with deadline and project assignment
-- **Add Project**: Create a new project with template selection
-- **Add Area**: Create a new area for organizing projects
+- **Add Task**: Create a new task with a simple modal form that matches your template structure
 
 ### Settings
 
@@ -41,7 +37,17 @@ Configure the plugin through Settings > Community Plugins > Task Sync:
 
 - **Folder Locations**: Set custom folders for tasks, projects, and areas
 - **Template Settings**: Configure template folder and Templater integration
-- **Sync Options**: Enable auto-sync and set sync intervals
+
+### Working with Bases
+
+This plugin is designed to work with Obsidian's Bases feature:
+
+1. Create tasks using the plugin's "Add Task" command
+2. Set up Bases to visualize and manage your tasks (e.g., Kanban boards, tables)
+3. Use Bases for filtering, sorting, and organizing your task data
+4. Edit tasks directly in Obsidian or through Bases interface
+
+**Note**: There's no Bases API yet, so you'll need to set up your Bases manually for now.
 
 ## Development
 

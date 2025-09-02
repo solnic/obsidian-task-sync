@@ -1,18 +1,12 @@
 import { Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { VaultScanner } from './services/VaultScannerService';
-import { DashboardModal } from './components/modals/DashboardModal';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
-import { ProjectCreateModal } from './components/modals/ProjectCreateModal';
-import { AreaCreateModal } from './components/modals/AreaCreateModal';
-import { Project, Area, Template } from './types/entities';
 
 // Settings interface
 export interface TaskSyncSettings {
   tasksFolder: string;
   projectsFolder: string;
   areasFolder: string;
-  enableAutoSync: boolean;
-  syncInterval: number;
   templateFolder: string;
   useTemplater: boolean;
   defaultTaskTemplate: string;
@@ -25,8 +19,6 @@ const DEFAULT_SETTINGS: TaskSyncSettings = {
   tasksFolder: 'Tasks',
   projectsFolder: 'Projects',
   areasFolder: 'Areas',
-  enableAutoSync: true,
-  syncInterval: 300000, // 5 minutes
   templateFolder: 'Templates',
   useTemplater: false,
   defaultTaskTemplate: '',
@@ -52,34 +44,10 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Add commands
     this.addCommand({
-      id: 'open-task-dashboard',
-      name: 'Open Task Dashboard',
-      callback: () => {
-        this.openDashboard();
-      }
-    });
-
-    this.addCommand({
       id: 'add-task',
       name: 'Add Task',
       callback: () => {
         this.openTaskCreateModal();
-      }
-    });
-
-    this.addCommand({
-      id: 'add-project',
-      name: 'Add Project',
-      callback: () => {
-        this.openProjectCreateModal();
-      }
-    });
-
-    this.addCommand({
-      id: 'add-area',
-      name: 'Add Area',
-      callback: () => {
-        this.openAreaCreateModal();
       }
     });
   }
@@ -116,18 +84,9 @@ export default class TaskSyncPlugin extends Plugin {
   private async migrateSettings() {
     // Future settings migration logic will go here
     // For now, just ensure we have the current version structure
-    if (!this.settings.hasOwnProperty('enableAutoSync')) {
-      this.settings.enableAutoSync = DEFAULT_SETTINGS.enableAutoSync;
-    }
   }
 
   private validateSettings() {
-    // Validate sync interval
-    if (typeof this.settings.syncInterval !== 'number' || this.settings.syncInterval < 60000) {
-      console.warn('Task Sync: Invalid sync interval, using default');
-      this.settings.syncInterval = DEFAULT_SETTINGS.syncInterval;
-    }
-
     // Validate folder names (allow empty strings but ensure they're strings)
     const folderFields = ['tasksFolder', 'projectsFolder', 'areasFolder', 'templateFolder'];
     folderFields.forEach(field => {
@@ -139,27 +98,11 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   // UI Methods
-  private async openDashboard(): Promise<void> {
-    try {
-      const modal = new DashboardModal(this.app, this);
-      modal.open();
-    } catch (error) {
-      console.error('Failed to open dashboard:', error);
-    }
-  }
-
   private async openTaskCreateModal(): Promise<void> {
     try {
-      // TODO: Load actual projects and areas from services
-      const pickerData = {
-        projects: [] as Project[],
-        areas: [] as Area[]
-      };
-
-      const modal = new TaskCreateModal(this.app, this, pickerData);
+      const modal = new TaskCreateModal(this.app, this);
       modal.onSubmit(async (taskData) => {
-        console.log('Creating task:', taskData);
-        // TODO: Implement actual task creation
+        await this.createTask(taskData);
       });
       modal.open();
     } catch (error) {
@@ -167,37 +110,43 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
-  private async openProjectCreateModal(): Promise<void> {
+  // Task creation logic
+  private async createTask(taskData: any): Promise<void> {
     try {
-      // TODO: Load actual areas and templates from services
-      const areas: Area[] = [];
-      const templates: Template[] = [];
+      const taskFileName = `${taskData.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')}.md`;
+      const taskPath = `${this.settings.tasksFolder}/${taskFileName}`;
 
-      const modal = new ProjectCreateModal(this.app, this, areas, templates);
-      modal.onSubmit(async (projectData) => {
-        console.log('Creating project:', projectData);
-        // TODO: Implement actual project creation
-      });
-      modal.open();
+      // Create task content based on your template structure
+      const taskContent = this.generateTaskContent(taskData);
+
+      await this.app.vault.create(taskPath, taskContent);
+      console.log('Task created successfully:', taskPath);
     } catch (error) {
-      console.error('Failed to open project creation modal:', error);
+      console.error('Failed to create task:', error);
+      throw error;
     }
   }
 
-  private async openAreaCreateModal(): Promise<void> {
-    try {
-      // TODO: Load actual templates from services
-      const templates: Template[] = [];
+  private generateTaskContent(taskData: any): string {
+    const frontmatter = [
+      '---',
+      `Title: ${taskData.name}`,
+      `Type: ${taskData.type || 'Task'}`,
+      `Areas: ${taskData.areas || ''}`,
+      `Parent task: ${taskData.parentTask || ''}`,
+      `Sub-tasks: ${taskData.subTasks || ''}`,
+      `tags: ${taskData.tags ? taskData.tags.join(', ') : ''}`,
+      `Project: ${taskData.project || ''}`,
+      `Done: ${taskData.done || false}`,
+      `Status: ${taskData.status || 'Backlog'}`,
+      `Priority: ${taskData.priority || ''}`,
+      '---',
+      '',
+      taskData.description || 'Task description...',
+      ''
+    ];
 
-      const modal = new AreaCreateModal(this.app, this, templates);
-      modal.onSubmit(async (areaData) => {
-        console.log('Creating area:', areaData);
-        // TODO: Implement actual area creation
-      });
-      modal.open();
-    } catch (error) {
-      console.error('Failed to open area creation modal:', error);
-    }
+    return frontmatter.join('\n');
   }
 }
 
@@ -235,10 +184,7 @@ class TaskSyncSettingTab extends PluginSettingTab {
 
     const tabs = [
       { id: 'folders', label: '📁 Folders', content: () => this.createFolderSettings(tabContent) },
-      { id: 'sync', label: '🔄 Sync', content: () => this.createSyncSettings(tabContent) },
-      { id: 'templates', label: '📝 Templates', content: () => this.createTemplateSettings(tabContent) },
-      { id: 'ui', label: '🎨 Interface', content: () => this.createUISettings(tabContent) },
-      { id: 'advanced', label: '⚙️ Advanced', content: () => this.createAdvancedSettings(tabContent) }
+      { id: 'templates', label: '📝 Templates', content: () => this.createTemplateSettings(tabContent) }
     ];
 
     let activeTab = 'folders';
@@ -310,41 +256,7 @@ class TaskSyncSettingTab extends PluginSettingTab {
     this.updateSettingValidation(setting, key);
   }
 
-  private createSyncSettings(container: HTMLElement): void {
-    container.createEl('h3', { text: 'Sync Configuration' });
-    container.createEl('p', {
-      text: 'Configure how and when your tasks are synchronized.',
-      cls: 'task-sync-settings-section-desc'
-    });
 
-    new Setting(container)
-      .setName('Enable Auto Sync')
-      .setDesc('Automatically sync tasks at regular intervals')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.enableAutoSync)
-        .onChange(async (value) => {
-          this.plugin.settings.enableAutoSync = value;
-          await this.plugin.saveSettings();
-        }));
-
-    new Setting(container)
-      .setName('Sync Interval (minutes)')
-      .setDesc('How often to sync tasks (in minutes)')
-      .addText(text => text
-        .setPlaceholder('5')
-        .setValue(String(this.plugin.settings.syncInterval / 60000))
-        .onChange(async (value) => {
-          const validation = this.validateSyncInterval(value);
-          if (validation.isValid) {
-            this.clearValidationError('syncInterval');
-            const minutes = parseInt(value) || 5;
-            this.plugin.settings.syncInterval = minutes * 60000;
-            await this.plugin.saveSettings();
-          } else {
-            this.setValidationError('syncInterval', validation.error!);
-          }
-        }));
-  }
 
   private createTemplateSettings(container: HTMLElement): void {
     container.createEl('h3', { text: 'Template Configuration' });
