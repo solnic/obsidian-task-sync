@@ -8,7 +8,8 @@ set -e
 # Configuration
 PLUGIN_NAME="obsidian-task-sync"
 PLUGIN_SOURCE_DIR="."
-OBSIDIAN_PLUGINS_DIR="/Users/solnic/Documents/Obsidian/Main/.obsidian/plugins"
+# Use environment variable if set, otherwise default path
+OBSIDIAN_PLUGINS_DIR="${OBSIDIAN_PLUGINS_DIR:-$HOME/Documents/Obsidian/Main/.obsidian/plugins}"
 PLUGIN_TARGET_DIR="$OBSIDIAN_PLUGINS_DIR/$PLUGIN_NAME"
 
 echo "🔧 Installing Task Sync Plugin for Obsidian..."
@@ -23,6 +24,7 @@ fi
 if [ ! -d "$OBSIDIAN_PLUGINS_DIR" ]; then
     echo "❌ Error: Obsidian plugins directory '$OBSIDIAN_PLUGINS_DIR' not found"
     echo "💡 Make sure Obsidian is installed and you have opened a vault"
+    echo "💡 You can also set a custom path: OBSIDIAN_PLUGINS_DIR=/path/to/vault/.obsidian/plugins ./install-plugin.sh"
     exit 1
 fi
 

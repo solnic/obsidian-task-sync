@@ -1,0 +1,8 @@
+{
+  "vaults": {
+    "test-vault": {
+      "path": "/tmp/test-vault",
+      "ts": 1693574400000
+    }
+  }
+}

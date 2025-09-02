@@ -4,8 +4,31 @@ import * as fs from 'fs';
 
 /**
  * Setup Obsidian with Task Sync plugin for e2e testing
+ * Uses the shared context system for proper test isolation
  */
 export async function setupObsidianWithTaskSync(
+  vaultPath: string,
+  dataDir: string
+): Promise<{ electronApp: ElectronApplication; page: Page }> {
+  // Import shared context system
+  const { getSharedTestContext } = await import('./shared-context');
+
+  // Use shared context instead of creating new instances
+  const context = await getSharedTestContext();
+
+  return {
+    electronApp: context.electronApp,
+    page: context.page
+  };
+}
+
+/**
+ * Setup Obsidian with Playwright/Electron
+ * Launches Obsidian, waits for initialization, and enables the task-sync plugin
+ * @param vaultPath Required vault path for testing
+ * @param dataDir Required data directory for testing
+ */
+export async function setupObsidianElectron(
   vaultPath: string,
   dataDir: string
 ): Promise<{ electronApp: ElectronApplication; page: Page }> {
@@ -106,7 +129,7 @@ export async function setupObsidianWithTaskSync(
   await page.evaluate(async () => {
     const testSettings = {
       tasksFolder: "Tasks",
-      projectsFolder: "Projects", 
+      projectsFolder: "Projects",
       areasFolder: "Areas",
       templateFolder: "Templates",
       enableAutoSync: false, // Disable for testing
@@ -185,7 +208,7 @@ export async function createTestFolders(page: Page): Promise<void> {
   await page.evaluate(async () => {
     const app = (window as any).app;
     const folders = ['Tasks', 'Projects', 'Areas', 'Templates'];
-    
+
     for (const folder of folders) {
       try {
         const exists = await app.vault.adapter.exists(folder);
@@ -204,8 +227,8 @@ export async function createTestFolders(page: Page): Promise<void> {
  * Create a test task file
  */
 export async function createTestTaskFile(
-  page: Page, 
-  filename: string, 
+  page: Page,
+  filename: string,
   frontmatter: Record<string, any> = {},
   content: string = ''
 ): Promise<void> {
@@ -242,11 +265,11 @@ export async function getFileContent(page: Page, filePath: string): Promise<stri
     async ({ path }) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(path);
-      
+
       if (!file) {
         return null;
       }
-      
+
       try {
         return await app.vault.read(file);
       } catch (error) {
@@ -279,15 +302,64 @@ export async function listFilesInFolder(page: Page, folderPath: string): Promise
     async ({ path }) => {
       const app = (window as any).app;
       const folder = app.vault.getAbstractFileByPath(path);
-      
+
       if (!folder || !folder.children) {
         return [];
       }
-      
+
       return folder.children
         .filter((child: any) => child.extension === 'md')
         .map((child: any) => child.path);
     },
     { path: folderPath }
   );
+}
+
+/**
+ * Helper function to check if an element is visible
+ */
+export async function isElementVisible(page: Page, selector: string): Promise<boolean> {
+  try {
+    const element = page.locator(selector);
+    return await element.isVisible();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Helper function to check if an element is enabled
+ */
+export async function isElementEnabled(page: Page, selector: string): Promise<boolean> {
+  try {
+    const element = page.locator(selector);
+    return await element.isEnabled();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Helper function to check if an element has a specific class
+ */
+export async function elementHasClass(page: Page, selector: string, className: string | RegExp): Promise<boolean> {
+  try {
+    const element = page.locator(selector);
+    const classAttribute = await element.getAttribute('class');
+    if (!classAttribute) return false;
+
+    if (className instanceof RegExp) {
+      return className.test(classAttribute);
+    }
+    return classAttribute.includes(className);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Helper function to wait for an element to be visible
+ */
+export async function waitForElementVisible(page: Page, selector: string, timeout = 5000): Promise<void> {
+  await page.waitForSelector(selector, { state: 'visible', timeout });
 }

@@ -1,5 +1,6 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { cleanupAllWorkerContexts } from './helpers/shared-context';
 
 const execAsync = promisify(exec);
 
@@ -11,16 +12,19 @@ export default async function globalTeardown() {
   console.log("🧹 Starting global e2e test teardown...");
 
   try {
+    // Clean up all worker contexts first
+    await cleanupAllWorkerContexts();
+
     // Kill any remaining Electron processes
     console.log('🔍 Cleaning up any remaining Electron processes...');
-    
+
     try {
       const { stdout } = await execAsync('pgrep -f "Electron.*obsidian.*main.js" || true');
-      
+
       if (stdout.trim()) {
         const pids = stdout.trim().split('\n').filter(pid => pid.trim());
         console.log(`🔪 Found ${pids.length} remaining Electron processes, killing them...`);
-        
+
         for (const pid of pids) {
           try {
             process.kill(parseInt(pid), 'SIGKILL');

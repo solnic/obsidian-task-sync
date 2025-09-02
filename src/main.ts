@@ -1,5 +1,6 @@
 import { Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { VaultScanner } from './services/VaultScannerService';
+import { BaseManager } from './services/BaseManager';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
 
 // Settings interface
@@ -12,6 +13,18 @@ export interface TaskSyncSettings {
   defaultTaskTemplate: string;
   defaultProjectTemplate: string;
   defaultAreaTemplate: string;
+  // Base-related settings
+  basesFolder: string;
+  tasksBaseFile: string;
+  autoGenerateBases: boolean;
+  autoUpdateBaseViews: boolean;
+}
+
+// File context interface for context-aware modal
+export interface FileContext {
+  type: 'project' | 'area' | 'none';
+  name?: string;
+  path?: string;
 }
 
 // Default settings
@@ -23,12 +36,18 @@ const DEFAULT_SETTINGS: TaskSyncSettings = {
   useTemplater: false,
   defaultTaskTemplate: '',
   defaultProjectTemplate: '',
-  defaultAreaTemplate: ''
+  defaultAreaTemplate: '',
+  // Base-related defaults
+  basesFolder: 'Bases',
+  tasksBaseFile: 'Tasks.base',
+  autoGenerateBases: true,
+  autoUpdateBaseViews: true
 };
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
   vaultScanner: VaultScanner;
+  baseManager: BaseManager;
 
   async onload() {
     console.log('Loading Task Sync Plugin');
@@ -38,9 +57,15 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize services
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
+    this.baseManager = new BaseManager(this.app.vault, this.settings);
 
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
+
+    // Initialize bases if auto-generate is enabled
+    if (this.settings.autoGenerateBases) {
+      await this.initializeBases();
+    }
 
     // Add commands
     this.addCommand({
@@ -48,6 +73,22 @@ export default class TaskSyncPlugin extends Plugin {
       name: 'Add Task',
       callback: () => {
         this.openTaskCreateModal();
+      }
+    });
+
+    this.addCommand({
+      id: 'regenerate-bases',
+      name: 'Regenerate Task Bases',
+      callback: async () => {
+        await this.regenerateBases();
+      }
+    });
+
+    this.addCommand({
+      id: 'refresh-base-views',
+      name: 'Refresh Base Views',
+      callback: async () => {
+        await this.refreshBaseViews();
       }
     });
   }
@@ -100,14 +141,50 @@ export default class TaskSyncPlugin extends Plugin {
   // UI Methods
   private async openTaskCreateModal(): Promise<void> {
     try {
-      const modal = new TaskCreateModal(this.app, this);
+      const context = this.detectCurrentFileContext();
+      const modal = new TaskCreateModal(this.app, this, context);
       modal.onSubmit(async (taskData) => {
         await this.createTask(taskData);
+        // Refresh base views if auto-update is enabled
+        if (this.settings.autoUpdateBaseViews) {
+          await this.refreshBaseViews();
+        }
       });
       modal.open();
     } catch (error) {
       console.error('Failed to open task creation modal:', error);
     }
+  }
+
+  private detectCurrentFileContext(): FileContext {
+    const activeFile = this.app.workspace.getActiveFile();
+
+    if (!activeFile) {
+      return { type: 'none' };
+    }
+
+    const filePath = activeFile.path;
+    const fileName = activeFile.name;
+
+    // Check if file is in projects folder
+    if (filePath.startsWith(this.settings.projectsFolder + '/')) {
+      return {
+        type: 'project',
+        name: fileName.replace('.md', ''),
+        path: filePath
+      };
+    }
+
+    // Check if file is in areas folder
+    if (filePath.startsWith(this.settings.areasFolder + '/')) {
+      return {
+        type: 'area',
+        name: fileName.replace('.md', ''),
+        path: filePath
+      };
+    }
+
+    return { type: 'none' };
   }
 
   // Task creation logic
@@ -148,6 +225,47 @@ export default class TaskSyncPlugin extends Plugin {
 
     return frontmatter.join('\n');
   }
+
+  // Base Management Methods
+
+  /**
+   * Initialize bases on plugin load
+   */
+  private async initializeBases(): Promise<void> {
+    try {
+      await this.baseManager.ensureBasesFolder();
+      await this.regenerateBases();
+      console.log('Task Sync: Bases initialized successfully');
+    } catch (error) {
+      console.error('Task Sync: Failed to initialize bases:', error);
+    }
+  }
+
+  /**
+   * Regenerate all base files
+   */
+  async regenerateBases(): Promise<void> {
+    try {
+      const projectsAndAreas = await this.baseManager.getProjectsAndAreas();
+      await this.baseManager.createOrUpdateTasksBase(projectsAndAreas);
+
+      // Ensure base embedding in project and area files
+      for (const item of projectsAndAreas) {
+        await this.baseManager.ensureBaseEmbedding(item.path);
+      }
+
+      console.log('Task Sync: Bases regenerated successfully');
+    } catch (error) {
+      console.error('Task Sync: Failed to regenerate bases:', error);
+    }
+  }
+
+  /**
+   * Refresh base views (same as regenerate for now)
+   */
+  private async refreshBaseViews(): Promise<void> {
+    await this.regenerateBases();
+  }
 }
 
 class TaskSyncSettingTab extends PluginSettingTab {
@@ -184,7 +302,8 @@ class TaskSyncSettingTab extends PluginSettingTab {
 
     const tabs = [
       { id: 'folders', label: '📁 Folders', content: () => this.createFolderSettings(tabContent) },
-      { id: 'templates', label: '📝 Templates', content: () => this.createTemplateSettings(tabContent) }
+      { id: 'templates', label: '📝 Templates', content: () => this.createTemplateSettings(tabContent) },
+      { id: 'bases', label: '🗂️ Bases', content: () => this.createBaseSettings(tabContent) }
     ];
 
     let activeTab = 'folders';
@@ -313,6 +432,75 @@ class TaskSyncSettingTab extends PluginSettingTab {
         }));
   }
 
+  private createBaseSettings(container: HTMLElement): void {
+    container.createEl('h3', { text: 'Bases Configuration' });
+    container.createEl('p', {
+      text: 'Configure Obsidian Bases integration for task management and visualization.',
+      cls: 'task-sync-settings-section-desc'
+    });
+
+    this.createFolderSetting(container, 'basesFolder', 'Bases Folder',
+      'Folder where .base files are stored', 'Bases');
+
+    new Setting(container)
+      .setName('Tasks Base File')
+      .setDesc('Name of the main tasks base file')
+      .addText(text => text
+        .setPlaceholder('Tasks.base')
+        .setValue(this.plugin.settings.tasksBaseFile)
+        .onChange(async (value) => {
+          this.plugin.settings.tasksBaseFile = value;
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(container)
+      .setName('Auto-Generate Bases')
+      .setDesc('Automatically create and update base files when the plugin loads')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.autoGenerateBases)
+        .onChange(async (value) => {
+          this.plugin.settings.autoGenerateBases = value;
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(container)
+      .setName('Auto-Update Base Views')
+      .setDesc('Automatically refresh base views when tasks, projects, or areas change')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.autoUpdateBaseViews)
+        .onChange(async (value) => {
+          this.plugin.settings.autoUpdateBaseViews = value;
+          await this.plugin.saveSettings();
+        }));
+
+    // Action buttons
+    const actionsContainer = container.createDiv('task-sync-settings-actions');
+
+    const regenerateButton = actionsContainer.createEl('button', {
+      text: 'Regenerate Bases',
+      cls: 'mod-cta'
+    });
+    regenerateButton.addEventListener('click', async () => {
+      regenerateButton.disabled = true;
+      regenerateButton.setText('Regenerating...');
+      try {
+        await this.plugin.regenerateBases();
+        regenerateButton.setText('✓ Regenerated');
+        setTimeout(() => {
+          regenerateButton.disabled = false;
+          regenerateButton.setText('Regenerate Bases');
+        }, 2000);
+      } catch (error) {
+        regenerateButton.setText('✗ Failed');
+        console.error('Failed to regenerate bases:', error);
+        setTimeout(() => {
+          regenerateButton.disabled = false;
+          regenerateButton.setText('Regenerate Bases');
+        }, 2000);
+      }
+    });
+  }
+
   private createUISettings(container: HTMLElement): void {
     container.createEl('h3', { text: 'Interface Settings' });
     container.createEl('p', {
@@ -379,4 +567,6 @@ class TaskSyncSettingTab extends PluginSettingTab {
       setting.settingEl.removeClass('task-sync-setting-error');
     }
   }
+
+
 }

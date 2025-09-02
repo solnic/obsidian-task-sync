@@ -16,13 +16,20 @@
     "test:e2e:headless": "xvfb-run -a --server-args=\"-screen 0 1280x1024x24 -ac -nolisten tcp -dpi 96\" npx vitest run --config vitest.playwright.config.mjs",
     "test:e2e:windowed": "E2E_HEADLESS=false npx vitest run --config vitest.playwright.config.mjs",
     "test:e2e:ci": "CI=true npx vitest run --config vitest.playwright.config.mjs --reporter=verbose",
+    "setup:obsidian-playwright": "bash scripts/setup-obsidian-playwright.sh",
     "setup:headless": "bash scripts/setup-headless-testing.sh",
     "test:headless-detection": "node scripts/test-headless-detection.js",
     "test:xvfb": "node scripts/test-xvfb-electron.js",
     "validate:headless": "node scripts/validate-headless-setup.js",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
-  "keywords": ["obsidian", "plugin", "task", "sync", "productivity"],
+  "keywords": [
+    "obsidian",
+    "plugin",
+    "task",
+    "sync",
+    "productivity"
+  ],
   "author": "Peter Solnica",
   "license": "MIT",
   "devDependencies": {
@@ -44,5 +51,8 @@
     "vite": "^7.1.3",
     "vitest": "^3.2.4"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "js-yaml": "^4.1.0"
+  }
 }

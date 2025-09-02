@@ -6,7 +6,10 @@
 set -e
 
 PLUGIN_SOURCE_DIR="."
-PLUGIN_TARGET_DIR="/Users/solnic/Documents/Obsidian/Main/.obsidian/plugins/obsidian-task-sync"
+PLUGIN_NAME="obsidian-task-sync"
+# Use environment variable if set, otherwise default path
+OBSIDIAN_PLUGINS_DIR="${OBSIDIAN_PLUGINS_DIR:-$HOME/Documents/Obsidian/Main/.obsidian/plugins}"
+PLUGIN_TARGET_DIR="$OBSIDIAN_PLUGINS_DIR/$PLUGIN_NAME"
 
 echo "🔄 Updating Task Sync Plugin..."
 
@@ -52,6 +55,11 @@ if [ "$NEEDS_REINSTALL" = true ]; then
     npm install
 fi
 
+# Run tests first
+echo "🧪 Running tests..."
+npm run test
+
+echo "🔨 Building plugin..."
 npm run build
 
 # Check if build was successful

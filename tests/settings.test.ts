@@ -12,7 +12,11 @@ describe('TaskSync Settings', () => {
         useTemplater: false,
         defaultTaskTemplate: '',
         defaultProjectTemplate: '',
-        defaultAreaTemplate: ''
+        defaultAreaTemplate: '',
+        basesFolder: 'Bases',
+        tasksBaseFile: 'Tasks.base',
+        autoGenerateBases: true,
+        autoUpdateBaseViews: true
       };
 
       expect(defaultSettings.tasksFolder).toBe('Tasks');
@@ -45,7 +49,11 @@ describe('TaskSync Settings', () => {
         useTemplater: false,
         defaultTaskTemplate: 'Task Template',
         defaultProjectTemplate: 'Project Template',
-        defaultAreaTemplate: 'Area Template'
+        defaultAreaTemplate: 'Area Template',
+        basesFolder: 'Bases',
+        tasksBaseFile: 'Tasks.base',
+        autoGenerateBases: true,
+        autoUpdateBaseViews: true
       };
 
       expect(typeof settings.defaultTaskTemplate).toBe('string');
@@ -61,7 +69,11 @@ describe('TaskSync Settings', () => {
         useTemplater: true,
         defaultTaskTemplate: '',
         defaultProjectTemplate: '',
-        defaultAreaTemplate: ''
+        defaultAreaTemplate: '',
+        basesFolder: 'Bases',
+        tasksBaseFile: 'Tasks.base',
+        autoGenerateBases: true,
+        autoUpdateBaseViews: true
       };
 
       expect(typeof settings.useTemplater).toBe('boolean');
@@ -77,7 +89,11 @@ describe('TaskSync Settings', () => {
         useTemplater: false,
         defaultTaskTemplate: 'task-template.md',
         defaultProjectTemplate: 'project-template.md',
-        defaultAreaTemplate: 'area-template.md'
+        defaultAreaTemplate: 'area-template.md',
+        basesFolder: 'Bases',
+        tasksBaseFile: 'Tasks.base',
+        autoGenerateBases: true,
+        autoUpdateBaseViews: true
       };
 
       expect(typeof settings.tasksFolder).toBe('string');
@@ -100,7 +116,11 @@ describe('TaskSync Settings', () => {
         useTemplater: false,
         defaultTaskTemplate: '',
         defaultProjectTemplate: '',
-        defaultAreaTemplate: ''
+        defaultAreaTemplate: '',
+        basesFolder: 'Bases',
+        tasksBaseFile: 'Tasks.base',
+        autoGenerateBases: true,
+        autoUpdateBaseViews: true
       };
 
       // Empty strings should be valid (user might not want to use certain folders)
@@ -127,7 +147,11 @@ describe('TaskSync Settings', () => {
         useTemplater: true,
         defaultTaskTemplate: '',
         defaultProjectTemplate: '',
-        defaultAreaTemplate: ''
+        defaultAreaTemplate: '',
+        basesFolder: 'Bases',
+        tasksBaseFile: 'Tasks.base',
+        autoGenerateBases: true,
+        autoUpdateBaseViews: true
       };
 
       expect(settings1.useTemplater).toBe(true);
@@ -142,7 +166,11 @@ describe('TaskSync Settings', () => {
         useTemplater: false,
         defaultTaskTemplate: 'task.md',
         defaultProjectTemplate: 'project.md',
-        defaultAreaTemplate: 'area.md'
+        defaultAreaTemplate: 'area.md',
+        basesFolder: 'Bases',
+        tasksBaseFile: 'Tasks.base',
+        autoGenerateBases: true,
+        autoUpdateBaseViews: true
       };
 
       expect(settings2.useTemplater).toBe(false);

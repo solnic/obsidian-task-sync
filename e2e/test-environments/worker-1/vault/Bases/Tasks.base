@@ -1,0 +1,51 @@
+properties:
+  file.name:
+    displayName: Title
+  note.Status:
+    displayName: Done
+  file.ctime:
+    displayName: Created At
+  file.mtime:
+    displayName: Updated At
+  note.tags:
+    displayName: Tags
+  note.title:
+    displayName: Title
+  note.Type:
+    displayName: Type
+  note.Areas:
+    displayName: Areas
+  note.Project:
+    displayName: Project
+  note.Priority:
+    displayName: Priority
+  note.Parent task:
+    displayName: Parent task
+  note.Sub-tasks:
+    displayName: Sub-tasks
+views:
+  - type: table
+    name: All
+    filters:
+      and:
+        - file.folder == "Tasks"
+    order:
+      - Done
+      - file.name
+      - Areas
+      - Project
+      - Parent task
+      - Sub-tasks
+      - Type
+      - tags
+      - file.ctime
+      - file.mtime
+    sort:
+      - property: tags
+        direction: ASC
+      - property: file.name
+        direction: DESC
+    columnSize:
+      note.Type: 103
+      note.tags: 259
+      file.ctime: 183

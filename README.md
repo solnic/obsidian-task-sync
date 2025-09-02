@@ -56,7 +56,20 @@ This plugin is designed to work with Obsidian's Bases feature:
 - Node.js 18+
 - npm
 
-### Setup
+### Quick Setup
+
+```bash
+# Set up development environment (handles cross-platform dependencies)
+./setup-dev.sh
+
+# Install plugin to Obsidian
+./install-plugin.sh
+
+# Make changes and update plugin
+./update-plugin.sh
+```
+
+### Manual Setup
 
 ```bash
 # Install dependencies
@@ -74,6 +87,16 @@ npm test
 # Run e2e tests
 npm run test:e2e
 ```
+
+### Cross-Platform Development
+
+This plugin supports development on both macOS and Linux. The scripts automatically handle platform-specific dependencies:
+
+- **`./setup-dev.sh`** - Sets up development environment for current platform
+- **`./install-plugin.sh`** - Installs plugin to Obsidian vault
+- **`./update-plugin.sh`** - Quick update during development
+
+**Note**: If you switch between platforms (e.g., develop on macOS then test on Linux), run `./setup-dev.sh` again to reinstall platform-specific dependencies.
 
 ### Testing
 
