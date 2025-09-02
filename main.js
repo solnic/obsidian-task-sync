@@ -27,7 +27,315 @@ __export(main_exports, {
   default: () => TaskSyncPlugin
 });
 module.exports = __toCommonJS(main_exports);
+var import_obsidian2 = require("obsidian");
+
+// src/services/VaultScannerService.ts
 var import_obsidian = require("obsidian");
+var VaultScanner = class {
+  constructor(vault, settings) {
+    this.vault = vault;
+    this.settings = settings;
+  }
+  async scanTasksFolder() {
+    return this.scanFolder(this.settings.tasksFolder);
+  }
+  async scanProjectsFolder() {
+    return this.scanFolder(this.settings.projectsFolder);
+  }
+  async scanAreasFolder() {
+    return this.scanFolder(this.settings.areasFolder);
+  }
+  async scanTemplatesFolder() {
+    return this.scanFolder(this.settings.templateFolder);
+  }
+  async scanFolder(folderPath) {
+    if (!folderPath) return [];
+    try {
+      const folder = this.vault.getAbstractFileByPath(folderPath);
+      if (!folder || !this.isFolder(folder)) {
+        return [];
+      }
+      const files = [];
+      this.collectMarkdownFiles(folder, files);
+      return files;
+    } catch (error) {
+      console.error(`Failed to scan folder ${folderPath}:`, error);
+      return [];
+    }
+  }
+  collectMarkdownFiles(folder, files) {
+    for (const child of folder.children) {
+      if (this.isFile(child) && child.extension === "md") {
+        files.push(child.path);
+      } else if (this.isFolder(child)) {
+        this.collectMarkdownFiles(child, files);
+      }
+    }
+  }
+  isFolder(obj) {
+    var _a;
+    return obj && (obj instanceof import_obsidian.TFolder || ((_a = obj.constructor) == null ? void 0 : _a.name) === "TFolder" || obj.children !== void 0);
+  }
+  isFile(obj) {
+    var _a;
+    return obj && (obj instanceof import_obsidian.TFile || ((_a = obj.constructor) == null ? void 0 : _a.name) === "TFile" || obj.extension !== void 0);
+  }
+  async findTaskFiles() {
+    const taskPaths = await this.scanTasksFolder();
+    const taskFiles = [];
+    for (const path of taskPaths) {
+      try {
+        const fileInfo = await this.getFileInfo(path);
+        if (fileInfo) {
+          taskFiles.push(fileInfo);
+        }
+      } catch (error) {
+        console.error(`Failed to process task file ${path}:`, error);
+      }
+    }
+    return taskFiles;
+  }
+  async findProjectFiles() {
+    const projectPaths = await this.scanProjectsFolder();
+    const projectFiles = [];
+    for (const path of projectPaths) {
+      try {
+        const fileInfo = await this.getFileInfo(path);
+        if (fileInfo) {
+          const projectFile = {
+            ...fileInfo,
+            taskFiles: await this.findRelatedTaskFiles(path)
+          };
+          projectFiles.push(projectFile);
+        }
+      } catch (error) {
+        console.error(`Failed to process project file ${path}:`, error);
+      }
+    }
+    return projectFiles;
+  }
+  async findAreaFiles() {
+    const areaPaths = await this.scanAreasFolder();
+    const areaFiles = [];
+    for (const path of areaPaths) {
+      try {
+        const fileInfo = await this.getFileInfo(path);
+        if (fileInfo) {
+          const areaFile = {
+            ...fileInfo,
+            projectFiles: await this.findRelatedProjectFiles(path)
+          };
+          areaFiles.push(areaFile);
+        }
+      } catch (error) {
+        console.error(`Failed to process area file ${path}:`, error);
+      }
+    }
+    return areaFiles;
+  }
+  async findTemplateFiles() {
+    const templatePaths = await this.scanTemplatesFolder();
+    const templateFiles = [];
+    for (const path of templatePaths) {
+      try {
+        const fileInfo = await this.getFileInfo(path);
+        if (fileInfo) {
+          const templateFile = {
+            ...fileInfo,
+            templateType: this.detectTemplateType(path, fileInfo.content || ""),
+            variables: this.extractTemplateVariables(fileInfo.content || "")
+          };
+          templateFiles.push(templateFile);
+        }
+      } catch (error) {
+        console.error(`Failed to process template file ${path}:`, error);
+      }
+    }
+    return templateFiles;
+  }
+  async findBaseFiles() {
+    const allFiles = this.vault.getMarkdownFiles();
+    const baseFiles = [];
+    for (const file of allFiles) {
+      if (file.extension === "base" || file.name.endsWith(".base.md")) {
+        try {
+          const content = await this.vault.read(file);
+          const baseFile = {
+            path: file.path,
+            name: file.name,
+            exists: true,
+            lastModified: new Date(file.stat.mtime),
+            size: file.stat.size,
+            content,
+            frontmatter: this.extractFrontmatter(content),
+            viewType: this.detectBaseViewType(content),
+            entityType: this.detectBaseEntityType(content),
+            isValid: this.validateBaseFile(content),
+            errors: this.getBaseFileErrors(content)
+          };
+          baseFiles.push(baseFile);
+        } catch (error) {
+          console.error(`Failed to process base file ${file.path}:`, error);
+        }
+      }
+    }
+    return baseFiles;
+  }
+  async validateFolderStructure() {
+    const result = {
+      isValid: true,
+      errors: [],
+      warnings: [],
+      missingFolders: [],
+      suggestions: []
+    };
+    const foldersToCheck = [
+      { path: this.settings.tasksFolder, name: "Tasks" },
+      { path: this.settings.projectsFolder, name: "Projects" },
+      { path: this.settings.areasFolder, name: "Areas" },
+      { path: this.settings.templateFolder, name: "Templates" }
+    ];
+    for (const folder of foldersToCheck) {
+      if (!folder.path) {
+        result.warnings.push(`${folder.name} folder path is not configured`);
+        continue;
+      }
+      const exists = await this.folderExists(folder.path);
+      if (!exists) {
+        result.missingFolders.push(folder.path);
+        result.errors.push(`${folder.name} folder does not exist: ${folder.path}`);
+        result.isValid = false;
+      }
+    }
+    const paths = foldersToCheck.map((f) => f.path).filter(Boolean);
+    const duplicates = paths.filter((path, index) => paths.indexOf(path) !== index);
+    if (duplicates.length > 0) {
+      result.errors.push(`Duplicate folder paths detected: ${duplicates.join(", ")}`);
+      result.isValid = false;
+    }
+    if (result.missingFolders.length > 0) {
+      result.suggestions.push('Use the "Create Missing Folders" command to automatically create missing folders');
+    }
+    return result;
+  }
+  async createMissingFolders() {
+    const foldersToCreate = [
+      this.settings.tasksFolder,
+      this.settings.projectsFolder,
+      this.settings.areasFolder,
+      this.settings.templateFolder
+    ].filter(Boolean);
+    for (const folderPath of foldersToCreate) {
+      try {
+        const exists = await this.folderExists(folderPath);
+        if (!exists) {
+          await this.vault.createFolder(folderPath);
+          console.log(`Created folder: ${folderPath}`);
+        }
+      } catch (error) {
+        console.error(`Failed to create folder ${folderPath}:`, error);
+      }
+    }
+  }
+  async getFileInfo(path) {
+    try {
+      const file = this.vault.getAbstractFileByPath(path);
+      if (!file || !this.isFile(file)) {
+        return null;
+      }
+      const tfile = file;
+      const content = await this.vault.read(tfile);
+      return {
+        path: tfile.path,
+        name: tfile.name,
+        exists: true,
+        lastModified: new Date(tfile.stat.mtime),
+        size: tfile.stat.size,
+        content,
+        frontmatter: this.extractFrontmatter(content)
+      };
+    } catch (error) {
+      console.error(`Failed to get file info for ${path}:`, error);
+      return null;
+    }
+  }
+  async findRelatedTaskFiles(projectPath) {
+    return [];
+  }
+  async findRelatedProjectFiles(areaPath) {
+    return [];
+  }
+  detectTemplateType(path, content) {
+    const pathLower = path.toLowerCase();
+    if (pathLower.includes("task")) return "task";
+    if (pathLower.includes("project")) return "project";
+    if (pathLower.includes("area")) return "area";
+    const contentLower = content.toLowerCase();
+    if (contentLower.includes("deadline") || contentLower.includes("status")) return "task";
+    if (contentLower.includes("objectives") || contentLower.includes("milestones")) return "project";
+    return "task";
+  }
+  extractTemplateVariables(content) {
+    const variables = [];
+    const variableRegex = /\{\{([^}]+)\}\}/g;
+    let match;
+    while ((match = variableRegex.exec(content)) !== null) {
+      const variable = match[1].trim();
+      if (!variables.includes(variable)) {
+        variables.push(variable);
+      }
+    }
+    return variables;
+  }
+  detectBaseViewType(content) {
+    return "kanban";
+  }
+  detectBaseEntityType(content) {
+    return "task";
+  }
+  validateBaseFile(content) {
+    return content.includes("```base") || content.includes("view:");
+  }
+  getBaseFileErrors(content) {
+    const errors = [];
+    if (!this.validateBaseFile(content)) {
+      errors.push("Invalid base file format");
+    }
+    return errors;
+  }
+  extractFrontmatter(content) {
+    const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
+    const match = content.match(frontmatterRegex);
+    if (!match) return {};
+    try {
+      const frontmatterText = match[1];
+      const lines = frontmatterText.split("\n");
+      const result = {};
+      for (const line of lines) {
+        const colonIndex = line.indexOf(":");
+        if (colonIndex > 0) {
+          const key = line.substring(0, colonIndex).trim();
+          const value = line.substring(colonIndex + 1).trim();
+          result[key] = value;
+        }
+      }
+      return result;
+    } catch (error) {
+      console.error("Failed to parse frontmatter:", error);
+      return {};
+    }
+  }
+  async folderExists(path) {
+    try {
+      const folder = this.vault.getAbstractFileByPath(path);
+      return this.isFolder(folder);
+    } catch (e) {
+      return false;
+    }
+  }
+};
+
+// src/main.ts
 var DEFAULT_SETTINGS = {
   tasksFolder: "Tasks",
   projectsFolder: "Projects",
@@ -41,10 +349,11 @@ var DEFAULT_SETTINGS = {
   defaultProjectTemplate: "",
   defaultAreaTemplate: ""
 };
-var TaskSyncPlugin = class extends import_obsidian.Plugin {
+var TaskSyncPlugin = class extends import_obsidian2.Plugin {
   async onload() {
     console.log("Loading Task Sync Plugin");
     await this.loadSettings();
+    this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
     this.addCommand({
       id: "open-task-dashboard",
@@ -116,7 +425,7 @@ var TaskSyncPlugin = class extends import_obsidian.Plugin {
     });
   }
 };
-var TaskSyncSettingTab = class extends import_obsidian.PluginSettingTab {
+var TaskSyncSettingTab = class extends import_obsidian2.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -126,34 +435,34 @@ var TaskSyncSettingTab = class extends import_obsidian.PluginSettingTab {
     containerEl.empty();
     containerEl.createEl("h2", { text: "Task Sync Settings" });
     containerEl.createEl("h3", { text: "Folder Configuration" });
-    new import_obsidian.Setting(containerEl).setName("Tasks Folder").setDesc("Folder where task files will be stored").addText((text) => text.setPlaceholder("Tasks").setValue(this.plugin.settings.tasksFolder).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Tasks Folder").setDesc("Folder where task files will be stored").addText((text) => text.setPlaceholder("Tasks").setValue(this.plugin.settings.tasksFolder).onChange(async (value) => {
       this.plugin.settings.tasksFolder = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian.Setting(containerEl).setName("Projects Folder").setDesc("Folder where project files will be stored").addText((text) => text.setPlaceholder("Projects").setValue(this.plugin.settings.projectsFolder).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Projects Folder").setDesc("Folder where project files will be stored").addText((text) => text.setPlaceholder("Projects").setValue(this.plugin.settings.projectsFolder).onChange(async (value) => {
       this.plugin.settings.projectsFolder = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian.Setting(containerEl).setName("Areas Folder").setDesc("Folder where area files will be stored").addText((text) => text.setPlaceholder("Areas").setValue(this.plugin.settings.areasFolder).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Areas Folder").setDesc("Folder where area files will be stored").addText((text) => text.setPlaceholder("Areas").setValue(this.plugin.settings.areasFolder).onChange(async (value) => {
       this.plugin.settings.areasFolder = value;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h3", { text: "Sync Configuration" });
-    new import_obsidian.Setting(containerEl).setName("Enable Auto Sync").setDesc("Automatically sync tasks at regular intervals").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableAutoSync).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Enable Auto Sync").setDesc("Automatically sync tasks at regular intervals").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableAutoSync).onChange(async (value) => {
       this.plugin.settings.enableAutoSync = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian.Setting(containerEl).setName("Sync Interval (minutes)").setDesc("How often to sync tasks (in minutes)").addText((text) => text.setPlaceholder("5").setValue(String(this.plugin.settings.syncInterval / 6e4)).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Sync Interval (minutes)").setDesc("How often to sync tasks (in minutes)").addText((text) => text.setPlaceholder("5").setValue(String(this.plugin.settings.syncInterval / 6e4)).onChange(async (value) => {
       const minutes = parseInt(value) || 5;
       this.plugin.settings.syncInterval = minutes * 6e4;
       await this.plugin.saveSettings();
     }));
     containerEl.createEl("h3", { text: "Template Configuration" });
-    new import_obsidian.Setting(containerEl).setName("Template Folder").setDesc("Folder where templates are stored").addText((text) => text.setPlaceholder("Templates").setValue(this.plugin.settings.templateFolder).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Template Folder").setDesc("Folder where templates are stored").addText((text) => text.setPlaceholder("Templates").setValue(this.plugin.settings.templateFolder).onChange(async (value) => {
       this.plugin.settings.templateFolder = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian.Setting(containerEl).setName("Use Templater Plugin").setDesc("Enable integration with Templater plugin for advanced templates").addToggle((toggle) => toggle.setValue(this.plugin.settings.useTemplater).onChange(async (value) => {
+    new import_obsidian2.Setting(containerEl).setName("Use Templater Plugin").setDesc("Enable integration with Templater plugin for advanced templates").addToggle((toggle) => toggle.setValue(this.plugin.settings.useTemplater).onChange(async (value) => {
       this.plugin.settings.useTemplater = value;
       await this.plugin.saveSettings();
     }));

@@ -1,4 +1,5 @@
 import { Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { VaultScanner } from './services/VaultScannerService';
 
 // Settings interface
 export interface TaskSyncSettings {
@@ -30,12 +31,16 @@ const DEFAULT_SETTINGS: TaskSyncSettings = {
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
+  vaultScanner: VaultScanner;
 
   async onload() {
     console.log('Loading Task Sync Plugin');
 
     // Load settings
     await this.loadSettings();
+
+    // Initialize services
+    this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
 
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));

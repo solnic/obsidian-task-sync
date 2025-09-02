@@ -1,0 +1,8 @@
+{
+  "vaults": {
+    "test-vault": {
+      "path": "./e2e/test_obsidian_data/vault",
+      "ts": 1640995200000
+    }
+  }
+}
