@@ -34,17 +34,38 @@ export async function setupObsidianElectron(
 ): Promise<{ electronApp: ElectronApplication; page: Page }> {
   const { _electron: electron } = await import('playwright');
 
-  const appPath = path.resolve('./.obsidian-unpacked/main.js');
-  const resolvedVaultPath = path.resolve(vaultPath);
-  const userDataDir = path.resolve(dataDir);
+  // Check for different possible Obsidian structures
+  const mainJsPath = path.resolve('./.obsidian-unpacked/main.js');
+  const appExtractedMainJs = path.resolve('./.obsidian-unpacked/app-extracted/main.js');
+  const obsidianBinaryPath = path.resolve('./.obsidian-unpacked/obsidian');
+  const appAsarPath = path.resolve('./.obsidian-unpacked/resources/app.asar');
 
-  // Check if Obsidian is unpacked
-  if (!fs.existsSync(appPath)) {
+  let appPath: string;
+  if (fs.existsSync(appExtractedMainJs)) {
+    // New structure with extracted app - use the extracted main.js with dependencies
+    appPath = appExtractedMainJs;
+    console.log('🔧 Using extracted app structure with dependencies');
+  } else if (fs.existsSync(mainJsPath)) {
+    // Old structure with main.js
+    appPath = mainJsPath;
+    console.log('🔧 Using legacy main.js structure');
+  } else if (fs.existsSync(appAsarPath)) {
+    // New structure with app.asar - use the binary with app.asar
+    appPath = obsidianBinaryPath;
+    console.log('🔧 Using native binary structure');
+  } else if (fs.existsSync(obsidianBinaryPath)) {
+    // Fallback to binary
+    appPath = obsidianBinaryPath;
+    console.log('🔧 Using fallback binary');
+  } else {
     throw new Error(
-      `Unpacked Obsidian not found at ${appPath}. ` +
+      `Unpacked Obsidian not found. Checked: ${appExtractedMainJs}, ${mainJsPath}, ${appAsarPath}, ${obsidianBinaryPath}. ` +
       'Please run: npm run setup:obsidian-playwright'
     );
   }
+
+  const resolvedVaultPath = path.resolve(vaultPath);
+  const userDataDir = path.resolve(dataDir);
 
   console.log("🚀 Launching Obsidian with Task Sync plugin...");
 
@@ -114,7 +135,38 @@ export async function setupObsidianElectron(
 
   // Get the first window with increased timeout
   console.log("⏳ Waiting for first window...");
-  const page = await electronApp.firstWindow({ timeout: 60000 });
+
+  // Add debugging to see what windows are available
+  let page;
+  try {
+    // Wait a bit for the app to initialize
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Check if any windows exist
+    const windows = electronApp.windows();
+    console.log(`🔍 Found ${windows.length} windows`);
+
+    if (windows.length > 0) {
+      page = windows[0];
+      console.log("✅ Using existing window");
+    } else {
+      console.log("⏳ No windows found, waiting for first window...");
+      page = await electronApp.firstWindow({ timeout: 30000 });
+    }
+  } catch (windowError) {
+    console.error("❌ Failed to get window:", windowError.message);
+
+    // Try to get any available windows as fallback
+    const windows = electronApp.windows();
+    console.log(`🔍 Fallback: Found ${windows.length} windows`);
+
+    if (windows.length > 0) {
+      page = windows[0];
+      console.log("✅ Using fallback window");
+    } else {
+      throw new Error(`No windows available. Original error: ${windowError.message}`);
+    }
+  }
   console.log("📱 Got main window, title:", await page.title());
 
   // Wait for Obsidian to be fully loaded

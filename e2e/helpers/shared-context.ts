@@ -55,7 +55,9 @@ export async function getSharedTestContext(): Promise<SharedTestContext> {
   let electronApp: any, page: any;
 
   try {
+    console.log(`🔧 Setting up Obsidian Electron for ${workerId}...`);
     const result = await setupObsidianElectron(vaultPath, dataPath);
+    console.log(`🔧 Obsidian Electron setup completed for ${workerId}`);
     electronApp = result.electronApp;
     page = result.page;
   } catch (setupError) {
@@ -532,7 +534,14 @@ export function setupE2ETestHooks(): SharedTestContext {
   let consoleLogs: Array<{ type: string; text: string; timestamp: Date }> = [];
 
   beforeAll(async () => {
-    context = await getSharedTestContext();
+    console.log('🔧 Starting beforeAll hook...');
+    try {
+      context = await getSharedTestContext();
+      console.log('🔧 beforeAll hook completed successfully');
+    } catch (error) {
+      console.error('❌ beforeAll hook failed:', error.message);
+      throw error;
+    }
 
     // Set up console log capture from the Electron app
     context.page.on('console', (msg) => {
@@ -555,10 +564,24 @@ export function setupE2ETestHooks(): SharedTestContext {
   });
 
   afterEach(async (testContext) => {
+    // Debug: Log test context to understand the structure
+    console.log('🔍 Test context meta:', JSON.stringify((testContext as any)?.meta, null, 2));
+
     // Capture screenshot on test failure
-    if ((testContext as any)?.meta?.result?.state === 'fail') {
+    const testResult = (testContext as any)?.meta?.result;
+    const testState = testResult?.state;
+    const hasErrors = testResult?.errors?.length > 0;
+
+    console.log(`🔍 Test state: ${testState}, has errors: ${hasErrors}`);
+
+    if (testState === 'fail' || hasErrors) {
       const testName = (testContext as any)?.meta?.name?.replace(/[^a-zA-Z0-9]/g, '-') || 'unknown-test';
-      await captureScreenshotOnFailure(context, `test-failure-${testName}`);
+      console.log(`📸 Capturing screenshot for failed test: ${testName}`);
+      try {
+        await captureScreenshotOnFailure(context, `test-failure-${testName}`);
+      } catch (error) {
+        console.error(`❌ Failed to capture screenshot: ${error.message}`);
+      }
     }
 
     await cleanupTestState();

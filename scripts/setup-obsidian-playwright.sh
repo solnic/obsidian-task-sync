@@ -132,7 +132,7 @@ rm -rf "$TEMP_EXTRACT_DIR"
 
 echo "✅ Obsidian extracted to ${UNPACKED_DIR}"
 
-# Verify extraction
+# Verify extraction and handle app.asar for Playwright
 if [ -f "${UNPACKED_DIR}/main.js" ] || [ -f "${UNPACKED_DIR}/obsidian" ]; then
     echo "✅ Extraction successful!"
     if [ -f "${UNPACKED_DIR}/main.js" ]; then
@@ -143,6 +143,74 @@ if [ -f "${UNPACKED_DIR}/main.js" ] || [ -f "${UNPACKED_DIR}/obsidian" ]; then
     elif [ -f "${UNPACKED_DIR}/obsidian" ]; then
         echo "   Main file: ${UNPACKED_DIR}/obsidian"
         echo "   Architecture: $(file ${UNPACKED_DIR}/obsidian | cut -d',' -f2 | xargs)"
+
+        # For Playwright Electron testing, we need to extract app.asar
+        if [ -f "${UNPACKED_DIR}/resources/app.asar" ]; then
+            echo "🔧 Extracting app.asar for Playwright compatibility..."
+
+            # Check if asar is available
+            if command_exists npx; then
+                # Extract app.asar to get main.js for Playwright
+                cd "${UNPACKED_DIR}"
+                npx asar extract resources/app.asar app-extracted 2>/dev/null || {
+                    echo "⚠️ Could not extract app.asar with npx asar, trying manual approach..."
+                    # Create a simple main.js that launches the binary
+                    cat > main.js << 'EOF'
+const { spawn } = require('child_process');
+const path = require('path');
+
+// Launch the Obsidian binary
+const obsidianPath = path.join(__dirname, 'obsidian');
+const args = process.argv.slice(2);
+
+const child = spawn(obsidianPath, args, {
+  stdio: 'inherit',
+  detached: false
+});
+
+child.on('exit', (code) => {
+  process.exit(code);
+});
+EOF
+                    echo "   Created wrapper main.js"
+                }
+
+                # If extraction worked, copy main.js
+                if [ -f "app-extracted/main.js" ]; then
+                    cp app-extracted/main.js ./main.js
+                    echo "   Extracted main.js from app.asar"
+                fi
+
+                # Create package.json if it doesn't exist
+                if [ ! -f "package.json" ] && [ -f "app-extracted/package.json" ]; then
+                    cp app-extracted/package.json ./package.json
+                    echo "   Extracted package.json from app.asar"
+                fi
+
+                cd - > /dev/null
+            else
+                echo "⚠️ npx not available, creating wrapper main.js..."
+                # Create a simple main.js that launches the binary
+                cat > "${UNPACKED_DIR}/main.js" << 'EOF'
+const { spawn } = require('child_process');
+const path = require('path');
+
+// Launch the Obsidian binary
+const obsidianPath = path.join(__dirname, 'obsidian');
+const args = process.argv.slice(2);
+
+const child = spawn(obsidianPath, args, {
+  stdio: 'inherit',
+  detached: false
+});
+
+child.on('exit', (code) => {
+  process.exit(code);
+});
+EOF
+                echo "   Created wrapper main.js"
+            fi
+        fi
     fi
 else
     echo "❌ Error: Extraction failed - neither main.js nor obsidian binary found"

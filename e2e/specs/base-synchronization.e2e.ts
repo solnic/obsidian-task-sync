@@ -71,7 +71,7 @@ Areas: Health
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.taskTypes.push('Epic');
+        plugin.settings.taskTypes.push({ name: 'Epic', color: 'orange' });
         await plugin.saveSettings();
         // Trigger sync
         await plugin.syncAreaProjectBases();
@@ -190,7 +190,7 @@ Learning and development area.
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.taskTypes.push('Story');
+        plugin.settings.taskTypes.push({ name: 'Story', color: 'teal' });
         await plugin.saveSettings();
         // Don't trigger sync since auto-sync is disabled
       }
@@ -271,7 +271,7 @@ REST API development project.
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.taskTypes.push('Research');
+        plugin.settings.taskTypes.push({ name: 'Research', color: 'indigo' });
         await plugin.saveSettings();
         // Sync will be triggered automatically
       }
@@ -386,7 +386,11 @@ Documentation improvement project.
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.taskTypes.push('Documentation', 'Review', 'Testing');
+        plugin.settings.taskTypes.push(
+          { name: 'Documentation', color: 'yellow' },
+          { name: 'Review', color: 'pink' },
+          { name: 'Testing', color: 'teal' }
+        );
         await plugin.saveSettings();
         await plugin.syncAreaProjectBases();
       }

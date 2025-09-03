@@ -8,36 +8,86 @@ import {
   createTestFolders,
   waitForAsyncOperation
 } from '../helpers/task-sync-setup';
-import { setupE2ETestHooks } from '../helpers/shared-context';
+import { setupE2ETestHooks, captureScreenshotOnFailure } from '../helpers/shared-context';
 
 describe('Task Type Configuration', () => {
   const context = setupE2ETestHooks();
 
   async function openTaskSyncSettings() {
     // Open settings
+    console.log('🔧 Opening settings with Ctrl+,');
     await context.page.keyboard.press('Control+,');
     await waitForAsyncOperation(1000);
 
+    // Check if settings opened
+    const settingsModal = context.page.locator('.modal-container, .setting-tab-container');
+    const settingsVisible = await settingsModal.isVisible();
+    console.log(`🔧 Settings modal visible: ${settingsVisible}`);
+
+    if (!settingsVisible) {
+      throw new Error('Settings modal did not open');
+    }
+
     // Navigate to Community Plugins
-    await context.page.locator('.vertical-tab-nav-item').filter({ hasText: 'Community plugins' }).click();
+    console.log('🔧 Looking for Community plugins tab');
+    const communityPluginsTab = context.page.locator('.vertical-tab-nav-item').filter({ hasText: 'Community plugins' });
+    const tabExists = await communityPluginsTab.count();
+    console.log(`🔧 Community plugins tab count: ${tabExists}`);
+
+    if (tabExists === 0) {
+      // Debug: List all available tabs
+      const allTabs = await context.page.locator('.vertical-tab-nav-item').allTextContents();
+      console.log('🔧 Available tabs:', allTabs);
+      throw new Error('Community plugins tab not found');
+    }
+
+    await communityPluginsTab.click();
     await waitForAsyncOperation(500);
 
     // Find and click Task Sync plugin settings
-    const taskSyncSettings = context.page.locator('.setting-item').filter({ hasText: 'Task Sync' }).locator('button').filter({ hasText: 'Options' });
+    console.log('🔧 Looking for Task Sync plugin');
+    const taskSyncItems = context.page.locator('.setting-item').filter({ hasText: 'Task Sync' });
+    const taskSyncCount = await taskSyncItems.count();
+    console.log(`🔧 Task Sync items found: ${taskSyncCount}`);
+
+    if (taskSyncCount === 0) {
+      // Debug: List all plugins
+      const allPlugins = await context.page.locator('.setting-item').allTextContents();
+      console.log('🔧 Available plugins:', allPlugins.slice(0, 10)); // First 10 to avoid spam
+      throw new Error('Task Sync plugin not found in settings');
+    }
+
+    const taskSyncSettings = taskSyncItems.locator('button').filter({ hasText: 'Options' });
+    const optionsButtonExists = await taskSyncSettings.count();
+    console.log(`🔧 Options button count: ${optionsButtonExists}`);
+
+    if (optionsButtonExists === 0) {
+      throw new Error('Task Sync Options button not found');
+    }
+
     await taskSyncSettings.click();
     await waitForAsyncOperation(1000);
+
+    console.log('🔧 Task Sync settings should now be open');
   }
 
   async function scrollToTaskTypesSection() {
     // Scroll to Task Types section (no tabs anymore, just sections)
     const taskTypesSection = context.page.locator('.task-sync-section-header').filter({ hasText: 'Task Types' });
     await taskTypesSection.scrollIntoViewIfNeeded();
-    await waitForAsyncOperation(500);
+    await waitForAsyncOperation(1000);
   }
 
-  test('should display task types settings section', async () => {
+  test('should display task types settings section', { timeout: 15000 }, async () => {
     await createTestFolders(context.page);
+
+    // Capture screenshot before opening settings
+    await captureScreenshotOnFailure(context, 'before-opening-settings');
+
     await openTaskSyncSettings();
+
+    // Capture screenshot after opening settings
+    await captureScreenshotOnFailure(context, 'after-opening-settings');
 
     // Check if Task Types section exists
     const taskTypesSection = context.page.locator('.task-sync-section-header').filter({ hasText: 'Task Types' });
@@ -55,7 +105,7 @@ describe('Task Type Configuration', () => {
     expect(await addTypeSection.isVisible()).toBe(true);
   });
 
-  test('should display default task types', async () => {
+  test('should display default task types', { timeout: 15000 }, async () => {
     await createTestFolders(context.page);
     await openTaskSyncSettings();
     await scrollToTaskTypesSection();
@@ -82,7 +132,7 @@ describe('Task Type Configuration', () => {
     expect(dropdownCount).toBeGreaterThanOrEqual(5); // At least one for each default task type
   });
 
-  test('should add new task type', async () => {
+  test('should add new task type', { timeout: 15000 }, async () => {
     await createTestFolders(context.page);
     await openTaskSyncSettings();
     await scrollToTaskTypesSection();
@@ -339,5 +389,15 @@ Area for testing sync functionality.
     // Check that task type appears as a setting
     const userStorySetting = context.page.locator('.setting-item').filter({ hasText: 'User Story (UI/UX)' }).first();
     expect(await userStorySetting.isVisible()).toBe(true);
+  });
+
+  test('debug screenshot test', async () => {
+    await createTestFolders(context.page);
+
+    // Capture a screenshot manually
+    await captureScreenshotOnFailure(context, 'debug-manual-screenshot');
+
+    // Force a failure to test screenshot capture
+    expect(true).toBe(false);
   });
 });
