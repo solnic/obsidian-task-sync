@@ -286,6 +286,17 @@ export async function waitForAsyncOperation(timeout: number = 1000): Promise<voi
 }
 
 /**
+ * Wait for the Task Sync plugin to be fully loaded and ready
+ */
+export async function waitForTaskSyncPlugin(page: Page, timeout: number = 10000): Promise<void> {
+  await page.waitForFunction(() => {
+    const app = (window as any).app;
+    const plugin = app?.plugins?.plugins?.['obsidian-task-sync'];
+    return plugin && plugin.settings && typeof plugin.regenerateBases === 'function';
+  }, { timeout });
+}
+
+/**
  * Get the Task Sync plugin instance
  */
 export async function getTaskSyncPlugin(page: Page): Promise<any> {
@@ -298,22 +309,34 @@ export async function getTaskSyncPlugin(page: Page): Promise<any> {
  * Create a test folder structure
  */
 export async function createTestFolders(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    const app = (window as any).app;
-    const folders = ['Tasks', 'Projects', 'Areas', 'Templates'];
+  try {
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const folders = ['Tasks', 'Projects', 'Areas', 'Templates'];
 
-    for (const folder of folders) {
-      try {
-        const exists = await app.vault.adapter.exists(folder);
-        if (!exists) {
-          await app.vault.createFolder(folder);
-          console.log(`Created folder: ${folder}`);
+      console.log('🔧 Starting folder creation...');
+
+      for (const folder of folders) {
+        try {
+          const exists = await app.vault.adapter.exists(folder);
+          if (!exists) {
+            await app.vault.createFolder(folder);
+            console.log(`✅ Created folder: ${folder}`);
+          } else {
+            console.log(`📁 Folder already exists: ${folder}`);
+          }
+        } catch (error) {
+          console.log(`❌ Error creating folder ${folder}:`, error.message);
+          // Don't throw, continue with other folders
         }
-      } catch (error) {
-        console.log(`Error creating folder ${folder}:`, error.message);
       }
-    }
-  });
+
+      console.log('✅ Folder creation completed');
+    });
+  } catch (error) {
+    console.error('❌ createTestFolders failed:', error.message);
+    throw error;
+  }
 }
 
 /**

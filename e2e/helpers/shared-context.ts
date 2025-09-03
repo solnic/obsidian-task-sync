@@ -268,7 +268,7 @@ export async function captureScreenshotOnFailure(context: SharedTestContext, nam
 /**
  * Capture a full debugging package including screenshot, console logs, and app state
  */
-export async function captureFullDebugInfo(context: SharedTestContext, name: string): Promise<void> {
+export async function captureFullDebugInfo(context: SharedTestContext, name: string, consoleLogs?: Array<{ type: string; text: string; timestamp: Date }>): Promise<void> {
   try {
     const debugDir = path.join(process.cwd(), 'e2e', 'debug', name);
     await fs.promises.mkdir(debugDir, { recursive: true });
@@ -280,14 +280,16 @@ export async function captureFullDebugInfo(context: SharedTestContext, name: str
 
     // Capture console logs if available
     try {
-      const logs = await context.page.evaluate(() => {
-        // Get console history if available
-        return (window as any).console?.history || [];
-      });
+      let logs = consoleLogs || [];
+
+      // If no console logs provided, try to get them from the context if it has the getConsoleLogs method
+      if (logs.length === 0 && typeof (context as any).getConsoleLogs === 'function') {
+        logs = (context as any).getConsoleLogs();
+      }
 
       const logsPath = path.join(debugDir, `console-logs-${timestamp}.json`);
       await fs.promises.writeFile(logsPath, JSON.stringify(logs, null, 2));
-      console.log(`📝 Console logs captured: ${logsPath}`);
+      console.log(`📝 Console logs captured: ${logsPath} (${logs.length} entries)`);
     } catch (error) {
       console.warn(`⚠️ Console logs capture failed: ${error.message}`);
     }
@@ -577,7 +579,7 @@ export function setupE2ETestHooks(): SharedTestContext {
       console.log(`📸 Capturing screenshot for failed test: ${testName}`);
       try {
         await captureScreenshotOnFailure(context, `test-failure-${testName}`);
-        await captureFullDebugInfo(context, `test-failure-${testName}`);
+        await captureFullDebugInfo(context, `test-failure-${testName}`, consoleLogs);
       } catch (error) {
         console.error(`❌ Failed to capture screenshot: ${error.message}`);
       }

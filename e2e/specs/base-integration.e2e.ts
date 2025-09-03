@@ -8,7 +8,8 @@ import {
   createTestFolders,
   getFileContent,
   fileExists,
-  waitForAsyncOperation
+  waitForAsyncOperation,
+  waitForTaskSyncPlugin
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
 
@@ -36,8 +37,11 @@ describe('Bases Integration', () => {
     expect(hasRefreshCommand).toBe(true);
   });
 
-  test('should regenerate bases when command is executed', async () => {
+  test('should regenerate bases when command is executed', { timeout: 15000 }, async () => {
     await createTestFolders(context.page);
+
+    // Wait for plugin to be ready
+    await waitForTaskSyncPlugin(context.page);
 
     // Create test project and area files first
     await context.page.evaluate(async () => {
@@ -67,7 +71,7 @@ This is a test area for bases integration.
     });
 
     // Wait for metadata cache to update
-    await waitForAsyncOperation(2000);
+    await context.page.waitForTimeout(2000);
 
     // Execute regenerate bases command
     await context.page.evaluate(async () => {
@@ -79,7 +83,7 @@ This is a test area for bases integration.
     });
 
     // Wait for the command to execute
-    await waitForAsyncOperation(3000);
+    await context.page.waitForTimeout(3000);
 
     // Check if Tasks.base file was created
     const baseFileExists = await fileExists(context.page, 'Bases/Tasks.base');

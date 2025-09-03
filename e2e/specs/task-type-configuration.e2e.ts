@@ -230,7 +230,7 @@ Test area for sync testing.
 
     // Wait for plugin to be ready
     await context.page.waitForFunction(() => {
-      return typeof (window as any).app?.plugins?.plugins?.['task-sync'] !== 'undefined';
+      return typeof (window as any).app?.plugins?.plugins?.['obsidian-task-sync'] !== 'undefined';
     }, { timeout: 5000 });
 
     await openTaskSyncSettingsWrapper();
@@ -254,9 +254,9 @@ Test area for sync testing.
     // Verify that the Research task type was successfully added to the plugin settings
     const hasResearchTaskType = await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['task-sync'];
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin && plugin.settings && plugin.settings.taskTypes) {
-        return plugin.settings.taskTypes.includes('Research');
+        return plugin.settings.taskTypes.some((t: any) => t.name === 'Research');
       }
       return false;
     });
@@ -296,7 +296,7 @@ Area for testing sync functionality.
 
     // Wait for plugin to be ready
     await context.page.waitForFunction(() => {
-      return typeof (window as any).app?.plugins?.plugins?.['task-sync'] !== 'undefined';
+      return typeof (window as any).app?.plugins?.plugins?.['obsidian-task-sync'] !== 'undefined';
     }, { timeout: 5000 });
 
     await openTaskSyncSettingsWrapper();
