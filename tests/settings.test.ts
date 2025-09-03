@@ -17,7 +17,13 @@ describe('TaskSync Settings', () => {
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
         autoUpdateBaseViews: true,
-        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        taskTypes: [
+          { name: 'Task', color: 'blue' },
+          { name: 'Bug', color: 'red' },
+          { name: 'Feature', color: 'green' },
+          { name: 'Improvement', color: 'purple' },
+          { name: 'Chore', color: 'gray' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -58,7 +64,13 @@ describe('TaskSync Settings', () => {
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
         autoUpdateBaseViews: true,
-        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        taskTypes: [
+          { name: 'Task', color: 'blue' },
+          { name: 'Bug', color: 'red' },
+          { name: 'Feature', color: 'green' },
+          { name: 'Improvement', color: 'purple' },
+          { name: 'Chore', color: 'gray' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -82,7 +94,13 @@ describe('TaskSync Settings', () => {
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
         autoUpdateBaseViews: true,
-        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        taskTypes: [
+          { name: 'Task', color: 'blue' },
+          { name: 'Bug', color: 'red' },
+          { name: 'Feature', color: 'green' },
+          { name: 'Improvement', color: 'purple' },
+          { name: 'Chore', color: 'gray' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -106,7 +124,13 @@ describe('TaskSync Settings', () => {
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
         autoUpdateBaseViews: true,
-        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        taskTypes: [
+          { name: 'Task', color: 'blue' },
+          { name: 'Bug', color: 'red' },
+          { name: 'Feature', color: 'green' },
+          { name: 'Improvement', color: 'purple' },
+          { name: 'Chore', color: 'gray' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -137,7 +161,13 @@ describe('TaskSync Settings', () => {
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
         autoUpdateBaseViews: true,
-        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        taskTypes: [
+          { name: 'Task', color: 'blue' },
+          { name: 'Bug', color: 'red' },
+          { name: 'Feature', color: 'green' },
+          { name: 'Improvement', color: 'purple' },
+          { name: 'Chore', color: 'gray' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -172,7 +202,13 @@ describe('TaskSync Settings', () => {
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
         autoUpdateBaseViews: true,
-        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        taskTypes: [
+          { name: 'Task', color: 'blue' },
+          { name: 'Bug', color: 'red' },
+          { name: 'Feature', color: 'green' },
+          { name: 'Improvement', color: 'purple' },
+          { name: 'Chore', color: 'gray' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -195,7 +231,13 @@ describe('TaskSync Settings', () => {
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
         autoUpdateBaseViews: true,
-        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        taskTypes: [
+          { name: 'Task', color: 'blue' },
+          { name: 'Bug', color: 'red' },
+          { name: 'Feature', color: 'green' },
+          { name: 'Improvement', color: 'purple' },
+          { name: 'Chore', color: 'gray' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true

@@ -6,6 +6,19 @@ import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateM
 import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
 import pluralize from 'pluralize';
 
+// Task type interface with color support
+export interface TaskType {
+  name: string;
+  color: string;
+}
+
+// Available colors for task types
+export const TASK_TYPE_COLORS = [
+  'blue', 'red', 'green', 'yellow', 'purple', 'orange', 'pink', 'gray', 'teal', 'indigo'
+] as const;
+
+export type TaskTypeColor = typeof TASK_TYPE_COLORS[number];
+
 // Settings interface
 export interface TaskSyncSettings {
   tasksFolder: string;
@@ -22,7 +35,7 @@ export interface TaskSyncSettings {
   autoGenerateBases: boolean;
   autoUpdateBaseViews: boolean;
   // Task types configuration
-  taskTypes: string[];
+  taskTypes: TaskType[];
   // Individual area/project bases
   areaBasesEnabled: boolean;
   projectBasesEnabled: boolean;
@@ -52,7 +65,13 @@ const DEFAULT_SETTINGS: TaskSyncSettings = {
   autoGenerateBases: true,
   autoUpdateBaseViews: true,
   // Task types defaults
-  taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+  taskTypes: [
+    { name: 'Task', color: 'blue' },
+    { name: 'Bug', color: 'red' },
+    { name: 'Feature', color: 'green' },
+    { name: 'Improvement', color: 'purple' },
+    { name: 'Chore', color: 'gray' }
+  ],
   // Individual area/project bases defaults
   areaBasesEnabled: true,
   projectBasesEnabled: true,
@@ -874,96 +893,121 @@ class TaskSyncSettingTab extends PluginSettingTab {
 
     // Section header
     section.createEl('h2', { text: 'Task Types', cls: 'task-sync-section-header' });
-
-    // Current task types list
-    const typesContainer = section.createDiv('task-sync-task-types-container');
-    this.renderTaskTypesList(typesContainer);
-
-    // Add new task type
-    let newTypeInput: HTMLInputElement;
-    const addSetting = new Setting(section)
-      .setName('New Task Type')
-      .setDesc('Enter a name for the new task type')
-      .addText(text => {
-        newTypeInput = text.inputEl;
-        text.setPlaceholder('e.g., Epic, Story, Research')
-          .onChange((value) => {
-            // Enable/disable add button based on input
-            addButton.disabled = !value.trim() || this.plugin.settings.taskTypes.includes(value.trim());
-          });
-      });
-
-    const addButton = section.createEl('button', {
-      text: 'Add Task Type',
-      cls: 'mod-cta'
+    section.createEl('p', {
+      text: 'Configure task types with colors for better visual organization.',
+      cls: 'task-sync-settings-section-desc'
     });
-    addButton.disabled = true;
 
-    addButton.addEventListener('click', async () => {
-      const newType = newTypeInput.value.trim();
-      if (newType && !this.plugin.settings.taskTypes.includes(newType)) {
-        this.plugin.settings.taskTypes.push(newType);
-        await this.plugin.saveSettings();
+    // Render existing task types
+    this.renderTaskTypeSettings(section);
 
-        // Refresh the list
-        typesContainer.empty();
-        this.renderTaskTypesList(typesContainer);
+    // Add new task type section
+    this.createAddTaskTypeSection(section);
+  }
 
-        // Clear input
-        newTypeInput.value = '';
-        addButton.disabled = true;
+  private renderTaskTypeSettings(container: HTMLElement): void {
+    const count = this.plugin.settings.taskTypes.length;
 
-        // Trigger base sync if enabled
-        if (this.plugin.settings.autoSyncAreaProjectBases) {
-          await this.plugin.syncAreaProjectBases();
-        }
+    if (count === 0) {
+      const emptySetting = new Setting(container)
+        .setName('No task types configured')
+        .setDesc('Add your first task type below to get started');
+      emptySetting.settingEl.addClass('task-sync-empty-state');
+      return;
+    }
+
+    // Create a setting for each task type
+    this.plugin.settings.taskTypes.forEach((taskType, index) => {
+      const setting = new Setting(container)
+        .setName(taskType.name)
+        .setDesc(`Configure the "${taskType.name}" task type`)
+        .addDropdown(dropdown => {
+          // Add color options
+          TASK_TYPE_COLORS.forEach(color => {
+            dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+          });
+
+          dropdown.setValue(taskType.color)
+            .onChange(async (value: TaskTypeColor) => {
+              this.plugin.settings.taskTypes[index].color = value;
+              await this.plugin.saveSettings();
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            });
+        });
+
+      // Add color preview badge
+      const colorPreview = setting.controlEl.createDiv('task-type-preview');
+      colorPreview.innerHTML = `<span class="task-type-badge task-type-${taskType.color}">${taskType.name}</span>`;
+
+      // Add delete button (don't allow deleting if it's the last type)
+      if (this.plugin.settings.taskTypes.length > 1) {
+        setting.addButton(button => {
+          button.setButtonText('Delete')
+            .setWarning()
+            .onClick(async () => {
+              this.plugin.settings.taskTypes.splice(index, 1);
+              await this.plugin.saveSettings();
+
+              // Refresh the entire section
+              container.empty();
+              this.createTaskTypesSection(container);
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            });
+        });
       }
     });
   }
 
-  private renderTaskTypesList(container: HTMLElement): void {
-    const count = this.plugin.settings.taskTypes.length;
-    const headerText = count === 0 ? 'Task Types' :
-      count === 1 ? '1 Task Type' :
-        `${count} ${pluralize('Type', count)}`;
+  private createAddTaskTypeSection(container: HTMLElement): void {
+    let newTypeName = '';
+    let newTypeColor: TaskTypeColor = 'blue';
 
-    container.createEl('h4', { text: headerText });
-
-    if (count === 0) {
-      container.createEl('p', { text: 'No task types configured.', cls: 'task-sync-empty-state' });
-      return;
-    }
-
-    const listContainer = container.createDiv('task-sync-task-types-list');
-
-    this.plugin.settings.taskTypes.forEach((type, index) => {
-      const typeItem = listContainer.createDiv('task-sync-task-type-item');
-
-      const typeLabel = typeItem.createEl('span', { text: type, cls: 'task-sync-task-type-label' });
-
-      const actionsContainer = typeItem.createDiv('task-sync-task-type-actions');
-
-      // Delete button (don't allow deleting if it's the last type)
-      if (this.plugin.settings.taskTypes.length > 1) {
-        const deleteButton = actionsContainer.createEl('button', {
-          text: '×',
-          cls: 'task-sync-delete-button'
+    const addSetting = new Setting(container)
+      .setName('Add New Task Type')
+      .setDesc('Create a new task type with a custom color')
+      .addText(text => {
+        text.setPlaceholder('e.g., Epic, Story, Research')
+          .onChange((value) => {
+            newTypeName = value.trim();
+          });
+      })
+      .addDropdown(dropdown => {
+        TASK_TYPE_COLORS.forEach(color => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
         });
-        deleteButton.addEventListener('click', async () => {
-          this.plugin.settings.taskTypes.splice(index, 1);
-          await this.plugin.saveSettings();
 
-          // Refresh the list
-          container.empty();
-          this.renderTaskTypesList(container);
+        dropdown.setValue(newTypeColor)
+          .onChange((value: TaskTypeColor) => {
+            newTypeColor = value;
+          });
+      })
+      .addButton(button => {
+        button.setButtonText('Add Task Type')
+          .setCta()
+          .onClick(async () => {
+            if (newTypeName && !this.plugin.settings.taskTypes.some(t => t.name === newTypeName)) {
+              this.plugin.settings.taskTypes.push({ name: newTypeName, color: newTypeColor });
+              await this.plugin.saveSettings();
 
-          // Trigger base sync if enabled
-          if (this.plugin.settings.autoSyncAreaProjectBases) {
-            await this.plugin.syncAreaProjectBases();
-          }
-        });
-      }
-    });
+              // Refresh the entire section
+              container.empty();
+              this.createTaskTypesSection(container);
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            }
+          });
+      });
   }
 
   private createUISettings(container: HTMLElement): void {

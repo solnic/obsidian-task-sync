@@ -5,12 +5,13 @@
  */
 
 import { App, Vault, TFile } from 'obsidian';
-import { TaskSyncSettings } from '../main';
+import { TaskSyncSettings, TaskType } from '../main';
 import * as yaml from 'js-yaml';
 
 export interface BaseProperty {
   displayName: string;
   type?: string;
+  formula?: string;
 }
 
 export interface BaseView {
@@ -47,6 +48,17 @@ export class BaseManager {
   ) { }
 
   /**
+   * Generate a formula for displaying colorful task type badges
+   */
+  private generateTypeFormula(): string {
+    const conditions = this.settings.taskTypes.map(taskType =>
+      `Type == "${taskType.name}" ? "<span class='task-type-badge task-type-${taskType.color}'>${taskType.name}</span>"`
+    ).join(' : ');
+
+    return conditions + ' : Type';
+  }
+
+  /**
    * Generate the main Tasks.base file with all task properties and default views
    */
   async generateTasksBase(projectsAndAreas: ProjectAreaInfo[]): Promise<string> {
@@ -71,7 +83,8 @@ export class BaseManager {
           displayName: 'Title'
         },
         'note.Type': {
-          displayName: 'Type'
+          displayName: 'Type',
+          formula: this.generateTypeFormula()
         },
         'note.Areas': {
           displayName: 'Areas'
@@ -446,7 +459,8 @@ export class BaseManager {
           displayName: 'Done'
         },
         'note.Type': {
-          displayName: 'Type'
+          displayName: 'Type',
+          formula: this.generateTypeFormula()
         },
         'note.Project': {
           displayName: 'Project'
@@ -487,15 +501,15 @@ export class BaseManager {
 
     // Add type-specific views
     for (const taskType of this.settings.taskTypes) {
-      if (taskType !== 'Task') { // Skip generic 'Task' type for specific views
+      if (taskType.name !== 'Task') { // Skip generic 'Task' type for specific views
         baseConfig.views.push({
           type: 'table',
-          name: taskType + 's',
+          name: taskType.name + 's',
           filters: {
             and: [
               `file.folder == "${this.settings.tasksFolder}"`,
               `Areas.contains(link("${area.path}", "${area.name}"))`,
-              `Type == "${taskType}"`
+              `Type == "${taskType.name}"`
             ]
           },
           order: [
@@ -529,7 +543,8 @@ export class BaseManager {
           displayName: 'Done'
         },
         'note.Type': {
-          displayName: 'Type'
+          displayName: 'Type',
+          formula: this.generateTypeFormula()
         },
         'note.Areas': {
           displayName: 'Areas'
@@ -570,15 +585,15 @@ export class BaseManager {
 
     // Add type-specific views
     for (const taskType of this.settings.taskTypes) {
-      if (taskType !== 'Task') { // Skip generic 'Task' type for specific views
+      if (taskType.name !== 'Task') { // Skip generic 'Task' type for specific views
         baseConfig.views.push({
           type: 'table',
-          name: taskType + 's',
+          name: taskType.name + 's',
           filters: {
             and: [
               `file.folder == "${this.settings.tasksFolder}"`,
               `Project.contains(link("${project.path}", "${project.name}"))`,
-              `Type == "${taskType}"`
+              `Type == "${taskType.name}"`
             ]
           },
           order: [

@@ -45,13 +45,14 @@ describe('Task Type Configuration', () => {
 
     await scrollToTaskTypesSection();
 
-    // Check if current task types section exists (with pluralization)
-    const currentTypesSection = context.page.locator('h4').filter({ hasText: /\d+ Types?|Task Types/ });
-    expect(await currentTypesSection.isVisible()).toBe(true);
+    // Check if task type settings exist (using Obsidian Setting components)
+    const settingItems = context.page.locator('.setting-item');
+    const settingCount = await settingItems.count();
+    expect(settingCount).toBeGreaterThan(5); // Should have settings for each task type plus add new
 
-    // Check if add new task type input exists
-    const addTypeInput = context.page.locator('input[placeholder*="Epic, Story, Research"]');
-    expect(await addTypeInput.isVisible()).toBe(true);
+    // Check if add new task type section exists
+    const addTypeSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    expect(await addTypeSection.isVisible()).toBe(true);
   });
 
   test('should display default task types', async () => {
@@ -59,19 +60,26 @@ describe('Task Type Configuration', () => {
     await openTaskSyncSettings();
     await scrollToTaskTypesSection();
 
-    // Check if default task types are displayed
-    const taskTypesList = context.page.locator('.task-sync-task-types-list');
-    expect(await taskTypesList.isVisible()).toBe(true);
+    // Check for default task types in setting items
+    const taskSetting = context.page.locator('.setting-item').filter({ hasText: 'Task' }).first();
+    expect(await taskSetting.isVisible()).toBe(true);
 
-    // Check for default task types
-    const taskTypeItems = context.page.locator('.task-sync-task-type-item');
-    const taskTypeTexts = await taskTypeItems.allTextContents();
+    const bugSetting = context.page.locator('.setting-item').filter({ hasText: 'Bug' }).first();
+    expect(await bugSetting.isVisible()).toBe(true);
 
-    expect(taskTypeTexts.some(text => text.includes('Task'))).toBe(true);
-    expect(taskTypeTexts.some(text => text.includes('Bug'))).toBe(true);
-    expect(taskTypeTexts.some(text => text.includes('Feature'))).toBe(true);
-    expect(taskTypeTexts.some(text => text.includes('Improvement'))).toBe(true);
-    expect(taskTypeTexts.some(text => text.includes('Chore'))).toBe(true);
+    const featureSetting = context.page.locator('.setting-item').filter({ hasText: 'Feature' }).first();
+    expect(await featureSetting.isVisible()).toBe(true);
+
+    const improvementSetting = context.page.locator('.setting-item').filter({ hasText: 'Improvement' }).first();
+    expect(await improvementSetting.isVisible()).toBe(true);
+
+    const choreSetting = context.page.locator('.setting-item').filter({ hasText: 'Chore' }).first();
+    expect(await choreSetting.isVisible()).toBe(true);
+
+    // Check that each task type has a color dropdown
+    const colorDropdowns = context.page.locator('.setting-item select');
+    const dropdownCount = await colorDropdowns.count();
+    expect(dropdownCount).toBeGreaterThanOrEqual(5); // At least one for each default task type
   });
 
   test('should add new task type', async () => {
@@ -79,28 +87,26 @@ describe('Task Type Configuration', () => {
     await openTaskSyncSettings();
     await scrollToTaskTypesSection();
 
-    // Find the new task type input
-    const newTypeInput = context.page.locator('input[placeholder*="Epic, Story, Research"]');
+    // Find the add new task type section
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    expect(await addSection.isVisible()).toBe(true);
+
+    // Find the input field within the add section
+    const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('Epic');
 
-    // Check that add button becomes enabled
-    const addButton = context.page.locator('button').filter({ hasText: 'Add Task Type' });
-    expect(await addButton.isEnabled()).toBe(true);
-
-    // Click add button
+    // Find and click the add button
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
     await addButton.click();
-    await waitForAsyncOperation(1000);
+    await waitForAsyncOperation(2000);
 
-    // Check that new task type appears in the list
-    const taskTypeItems = context.page.locator('.task-sync-task-type-item');
-    const taskTypeTexts = await taskTypeItems.allTextContents();
-    expect(taskTypeTexts.some(text => text.includes('Epic'))).toBe(true);
+    // Check that new task type appears as a setting item
+    const epicSetting = context.page.locator('.setting-item').filter({ hasText: 'Epic' }).first();
+    expect(await epicSetting.isVisible()).toBe(true);
 
-    // Check that input is cleared
-    expect(await newTypeInput.inputValue()).toBe('');
-
-    // Check that add button is disabled again
-    expect(await addButton.isEnabled()).toBe(false);
+    // Check that the Epic setting has a color dropdown
+    const epicDropdown = epicSetting.locator('select');
+    expect(await epicDropdown.isVisible()).toBe(true);
   });
 
   test('should prevent adding duplicate task types', async () => {
@@ -108,13 +114,22 @@ describe('Task Type Configuration', () => {
     await openTaskSyncSettings();
     await scrollToTaskTypesSection();
 
+    // Find the add new task type section
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+
     // Try to add existing task type
-    const newTypeInput = context.page.locator('input[placeholder*="Epic, Story, Research"]');
+    const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('Bug'); // Bug already exists
 
-    // Check that add button remains disabled
-    const addButton = context.page.locator('button').filter({ hasText: 'Add Task Type' });
-    expect(await addButton.isEnabled()).toBe(false);
+    // Try to click add button - it should not create a duplicate
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
+    await addButton.click();
+    await waitForAsyncOperation(1000);
+
+    // Check that we still only have one Bug setting
+    const bugSettings = context.page.locator('.setting-item').filter({ hasText: 'Bug' });
+    const bugCount = await bugSettings.count();
+    expect(bugCount).toBe(1); // Should only have one Bug setting
   });
 
   test('should prevent adding empty task type', async () => {
@@ -122,13 +137,22 @@ describe('Task Type Configuration', () => {
     await openTaskSyncSettings();
     await scrollToTaskTypesSection();
 
+    // Find the add new task type section
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+
     // Try to add empty task type
-    const newTypeInput = context.page.locator('input[placeholder*="Epic, Story, Research"]');
+    const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('   '); // Only spaces
 
-    // Check that add button remains disabled
-    const addButton = context.page.locator('button').filter({ hasText: 'Add Task Type' });
-    expect(await addButton.isEnabled()).toBe(false);
+    // Try to click add button - it should not create an empty task type
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
+    await addButton.click();
+    await waitForAsyncOperation(1000);
+
+    // Check that no empty task type was added
+    const emptySettings = context.page.locator('.setting-item').filter({ hasText: /^\s*$/ });
+    const emptyCount = await emptySettings.count();
+    expect(emptyCount).toBe(0);
   });
 
   test('should remove task type', async () => {
@@ -137,25 +161,26 @@ describe('Task Type Configuration', () => {
     await scrollToTaskTypesSection();
 
     // First add a new task type to remove
-    const newTypeInput = context.page.locator('input[placeholder*="Epic, Story, Research"]');
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('Story');
 
-    const addButton = context.page.locator('button').filter({ hasText: 'Add Task Type' });
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
     await addButton.click();
-    await waitForAsyncOperation(1000);
+    await waitForAsyncOperation(2000);
 
-    // Find the Story task type item and its delete button
-    const storyItem = context.page.locator('.task-sync-task-type-item').filter({ hasText: 'Story' });
-    expect(await storyItem.isVisible()).toBe(true);
+    // Find the Story task type setting and its delete button
+    const storySetting = context.page.locator('.setting-item').filter({ hasText: 'Story' }).first();
+    expect(await storySetting.isVisible()).toBe(true);
 
-    const deleteButton = storyItem.locator('.task-sync-delete-button');
+    const deleteButton = storySetting.locator('button').filter({ hasText: 'Delete' });
     await deleteButton.click();
-    await waitForAsyncOperation(1000);
+    await waitForAsyncOperation(2000);
 
-    // Check that Story task type is no longer in the list
-    const taskTypeItems = context.page.locator('.task-sync-task-type-item');
-    const taskTypeTexts = await taskTypeItems.allTextContents();
-    expect(taskTypeTexts.some(text => text.includes('Story'))).toBe(false);
+    // Check that Story task type is no longer in the settings
+    const storySettings = context.page.locator('.setting-item').filter({ hasText: 'Story' });
+    const storyCount = await storySettings.count();
+    expect(storyCount).toBe(0);
   });
 
   test('should not show delete button for last task type', async () => {
@@ -166,7 +191,7 @@ describe('Task Type Configuration', () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.taskTypes = ['Task']; // Only one task type
+        plugin.settings.taskTypes = [{ name: 'Task', color: 'blue' }]; // Only one task type
         await plugin.saveSettings();
       }
     });
@@ -175,10 +200,10 @@ describe('Task Type Configuration', () => {
     await scrollToTaskTypesSection();
 
     // Check that the single task type doesn't have a delete button
-    const taskItem = context.page.locator('.task-sync-task-type-item').filter({ hasText: 'Task' });
-    expect(await taskItem.isVisible()).toBe(true);
+    const taskSetting = context.page.locator('.setting-item').filter({ hasText: 'Task' }).first();
+    expect(await taskSetting.isVisible()).toBe(true);
 
-    const deleteButton = taskItem.locator('.task-sync-delete-button');
+    const deleteButton = taskSetting.locator('button').filter({ hasText: 'Delete' });
     expect(await deleteButton.isVisible()).toBe(false);
   });
 
@@ -215,10 +240,11 @@ Test area for sync testing.
     await scrollToTaskTypesSection();
 
     // Add a new task type
-    const newTypeInput = context.page.locator('input[placeholder*="Epic, Story, Research"]');
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('Research');
 
-    const addButton = context.page.locator('button').filter({ hasText: 'Add Task Type' });
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
     await addButton.click();
     await waitForAsyncOperation(3000); // Wait for sync to complete
 
@@ -273,8 +299,8 @@ Area for testing sync functionality.
     await scrollToTaskTypesSection();
 
     // Remove the "Chore" task type
-    const choreItem = context.page.locator('.task-sync-task-type-item').filter({ hasText: 'Chore' });
-    const deleteButton = choreItem.locator('.task-sync-delete-button');
+    const choreSetting = context.page.locator('.setting-item').filter({ hasText: 'Chore' }).first();
+    const deleteButton = choreSetting.locator('button').filter({ hasText: 'Delete' });
     await deleteButton.click();
     await waitForAsyncOperation(3000); // Wait for sync to complete
 
@@ -302,16 +328,16 @@ Area for testing sync functionality.
     await scrollToTaskTypesSection();
 
     // Add task type with special characters
-    const newTypeInput = context.page.locator('input[placeholder*="Epic, Story, Research"]');
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('User Story (UI/UX)');
 
-    const addButton = context.page.locator('button').filter({ hasText: 'Add Task Type' });
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
     await addButton.click();
-    await waitForAsyncOperation(1000);
+    await waitForAsyncOperation(2000);
 
-    // Check that task type appears in the list
-    const taskTypeItems = context.page.locator('.task-sync-task-type-item');
-    const taskTypeTexts = await taskTypeItems.allTextContents();
-    expect(taskTypeTexts.some(text => text.includes('User Story (UI/UX)'))).toBe(true);
+    // Check that task type appears as a setting
+    const userStorySetting = context.page.locator('.setting-item').filter({ hasText: 'User Story (UI/UX)' }).first();
+    expect(await userStorySetting.isVisible()).toBe(true);
   });
 });

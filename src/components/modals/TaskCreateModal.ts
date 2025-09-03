@@ -56,7 +56,7 @@ export class TaskCreateModal extends Modal {
     // Pre-fill form data based on context
     this.formData = {
       name: '',
-      type: this.plugin.settings.taskTypes[0] || 'Task', // Use first configured task type
+      type: this.plugin.settings.taskTypes[0]?.name || 'Task', // Use first configured task type
       done: false,
       status: 'Backlog',
       tags: []
@@ -116,10 +116,10 @@ export class TaskCreateModal extends Modal {
       .addDropdown(dropdown => {
         // Use configured task types from settings
         this.plugin.settings.taskTypes.forEach(taskType => {
-          dropdown.addOption(taskType, taskType);
+          dropdown.addOption(taskType.name, taskType.name);
         });
 
-        dropdown.setValue(this.formData.type || this.plugin.settings.taskTypes[0])
+        dropdown.setValue(this.formData.type || this.plugin.settings.taskTypes[0]?.name)
           .onChange(value => {
             this.formData.type = value;
           });
