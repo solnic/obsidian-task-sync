@@ -1,2 +1,2 @@
-2025/09/03-05:04:45.458 15cb Creating DB /workspaces/obsidian-task-sync/e2e/test-environments/worker-2/data/IndexedDB/app_obsidian.md_0.indexeddb.leveldb since it was missing.
-2025/09/03-05:04:45.460 15cb Reusing MANIFEST /workspaces/obsidian-task-sync/e2e/test-environments/worker-2/data/IndexedDB/app_obsidian.md_0.indexeddb.leveldb/MANIFEST-000001
+2025/09/03-05:08:59.951 1dd0 Creating DB /workspaces/obsidian-task-sync/e2e/test-environments/worker-2/data/IndexedDB/app_obsidian.md_0.indexeddb.leveldb since it was missing.
+2025/09/03-05:08:59.954 1dd0 Reusing MANIFEST /workspaces/obsidian-task-sync/e2e/test-environments/worker-2/data/IndexedDB/app_obsidian.md_0.indexeddb.leveldb/MANIFEST-000001

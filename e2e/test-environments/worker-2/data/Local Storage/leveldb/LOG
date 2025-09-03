@@ -1,2 +1,2 @@
-2025/09/03-05:04:44.954 15a6 Creating DB /workspaces/obsidian-task-sync/e2e/test-environments/worker-2/data/Local Storage/leveldb since it was missing.
-2025/09/03-05:04:44.992 15a6 Reusing MANIFEST /workspaces/obsidian-task-sync/e2e/test-environments/worker-2/data/Local Storage/leveldb/MANIFEST-000001
+2025/09/03-05:08:59.536 1dd0 Creating DB /workspaces/obsidian-task-sync/e2e/test-environments/worker-2/data/Local Storage/leveldb since it was missing.
+2025/09/03-05:08:59.559 1dd0 Reusing MANIFEST /workspaces/obsidian-task-sync/e2e/test-environments/worker-2/data/Local Storage/leveldb/MANIFEST-000001

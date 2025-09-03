@@ -1,14 +1,14 @@
 {
   "main": {
-    "id": "9f3a04a215a3f896",
+    "id": "0c9c3d507e462b4e",
     "type": "split",
     "children": [
       {
-        "id": "2e27bdb347c0efd1",
+        "id": "2c9ed24609ca9eee",
         "type": "tabs",
         "children": [
           {
-            "id": "f7beb304de20953d",
+            "id": "957c9af844edb749",
             "type": "leaf",
             "state": {
               "type": "empty",
@@ -23,15 +23,15 @@
     "direction": "vertical"
   },
   "left": {
-    "id": "b8b1adb7f86a0560",
+    "id": "33ad1c94abba47dc",
     "type": "split",
     "children": [
       {
-        "id": "ba77947c1d89b127",
+        "id": "8cf0a9cd79db3764",
         "type": "tabs",
         "children": [
           {
-            "id": "949cc7e5b1365cd8",
+            "id": "4b9366051c957107",
             "type": "leaf",
             "state": {
               "type": "file-explorer",
@@ -44,7 +44,7 @@
             }
           },
           {
-            "id": "445bea70d82fab3b",
+            "id": "62538a8677dc642e",
             "type": "leaf",
             "state": {
               "type": "search",
@@ -61,7 +61,7 @@
             }
           },
           {
-            "id": "f6074e2fe8ab3dae",
+            "id": "fd2d1bd91f1fec97",
             "type": "leaf",
             "state": {
               "type": "bookmarks",
@@ -77,15 +77,15 @@
     "width": 300
   },
   "right": {
-    "id": "f730553bafb95a75",
+    "id": "80fae450c108ac7b",
     "type": "split",
     "children": [
       {
-        "id": "c3ecf48f9c0b9aea",
+        "id": "5a4a800746bc8b4b",
         "type": "tabs",
         "children": [
           {
-            "id": "01575912982bca0d",
+            "id": "9ae96a6725f58411",
             "type": "leaf",
             "state": {
               "type": "backlink",
@@ -103,7 +103,7 @@
             }
           },
           {
-            "id": "ed4cc60ff19da68d",
+            "id": "384281ea73dcd7dd",
             "type": "leaf",
             "state": {
               "type": "outgoing-link",
@@ -116,7 +116,7 @@
             }
           },
           {
-            "id": "f55e63111a43d977",
+            "id": "d7351e3ec11ee490",
             "type": "leaf",
             "state": {
               "type": "tag",
@@ -131,7 +131,7 @@
             }
           },
           {
-            "id": "68b8fed731276c24",
+            "id": "67b76f4c7bf12dce",
             "type": "leaf",
             "state": {
               "type": "outline",
@@ -161,7 +161,7 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "f7beb304de20953d",
+  "active": "957c9af844edb749",
   "lastOpenFiles": [
     "Projects/Sample Project.md",
     "Areas/Test Area.md",
