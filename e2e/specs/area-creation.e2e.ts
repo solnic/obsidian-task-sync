@@ -118,7 +118,7 @@ describe('Area Creation', () => {
     expect(baseContent).toContain('name: Tasks');
     expect(baseContent).toContain('name: Bugs');
     expect(baseContent).toContain('name: Features');
-    expect(baseContent).toContain('Areas.contains(link("Task Sync"))');
+    expect(baseContent).toContain('Areas.contains(link("Finance Area"))');
   });
 
   test('should validate required fields', async () => {

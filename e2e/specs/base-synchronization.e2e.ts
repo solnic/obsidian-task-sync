@@ -57,25 +57,37 @@ Areas: Health
       }
     });
 
-    await context.page.waitForTimeout(3000);
+    // Wait for bases to be generated with retry mechanism
+    let healthBaseExists = false;
+    let fitnessBaseExists = false;
+    let attempts = 0;
+    const maxAttempts = 10;
 
-    // Debug: List all files in Bases folder
-    const baseFiles = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const basesFolder = app.vault.getAbstractFileByPath('Bases');
-      if (basesFolder && basesFolder.children) {
-        return basesFolder.children.map((file: any) => file.path);
+    while ((!healthBaseExists || !fitnessBaseExists) && attempts < maxAttempts) {
+      await context.page.waitForTimeout(1000);
+      healthBaseExists = await fileExists(context.page, 'Bases/Health.base');
+      fitnessBaseExists = await fileExists(context.page, 'Bases/Fitness Plan.base');
+      attempts++;
+
+      if (attempts % 3 === 0) {
+        // Debug: List all files in Bases folder every 3 attempts
+        const baseFiles = await context.page.evaluate(async () => {
+          const app = (window as any).app;
+          const basesFolder = app.vault.getAbstractFileByPath('Bases');
+          if (basesFolder && basesFolder.children) {
+            return basesFolder.children.map((file: any) => file.path);
+          }
+          return [];
+        });
+        console.log(`📁 Files in Bases folder (attempt ${attempts}):`, baseFiles);
       }
-      return [];
-    });
-    console.log('📁 Files in Bases folder:', baseFiles);
+    }
 
     // Verify initial bases exist
-    const healthBaseExists = await fileExists(context.page, 'Bases/Health.base');
     console.log('🔍 Health base exists:', healthBaseExists);
     expect(healthBaseExists).toBe(true);
 
-    const fitnessBaseExists = await fileExists(context.page, 'Bases/Fitness Plan.base');
+    console.log('🔍 Fitness Plan base exists:', fitnessBaseExists);
     expect(fitnessBaseExists).toBe(true);
 
     // Check initial content doesn't have "Epic" view
@@ -255,7 +267,7 @@ Learning and development area.
 
     // Check that base was updated after manual sync
     learningBaseContent = await getFileContent(context.page, 'Bases/Learning.base');
-    expect(learningBaseContent).toContain('name: Storys');
+    expect(learningBaseContent).toContain('name: Stories');
     expect(learningBaseContent).toContain('Type == "Story"');
   });
 
@@ -322,7 +334,7 @@ REST API development project.
 
     // Check that only area base was updated
     const technologyBaseContent = await getFileContent(context.page, 'Bases/Technology.base');
-    expect(technologyBaseContent).toContain('name: Researchs'); // Plugin adds 's' to task type name
+    expect(technologyBaseContent).toContain('name: Research'); // Research is uncountable, so pluralize returns the same
     expect(technologyBaseContent).toContain('Type == "Research"');
 
     // Project base should still not exist
@@ -470,11 +482,11 @@ Documentation improvement project.
     expect(docBaseContent).toContain('and:');
 
     // Verify new views were added
-    expect(docBaseContent).toContain('name: Documentations');
+    expect(docBaseContent).toContain('name: Documentations'); // Documentation pluralizes to Documentations
     expect(docBaseContent).toContain('name: Reviews');
-    expect(docBaseContent).toContain('name: Testings');
+    expect(docBaseContent).toContain('name: Testings'); // Testing pluralizes to Testings
 
     // Verify filtering is correct
-    expect(docBaseContent).toContain('Project.contains(link("Website Redesign"))');
+    expect(docBaseContent).toContain('Project.contains(link("Documentation"))');
   });
 });

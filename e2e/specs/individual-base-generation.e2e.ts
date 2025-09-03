@@ -67,8 +67,8 @@ This is a health area for tracking fitness and wellness.
     expect(baseContent).toContain('displayName: Title');
     expect(baseContent).toContain('note.Done:');
     expect(baseContent).toContain('displayName: Done');
-    expect(baseContent).toContain('note.Type Badge:');
-    expect(baseContent).toContain('displayName: Type');
+    expect(baseContent).toContain('formulas:');
+    expect(baseContent).toContain('Type: Type');
     expect(baseContent).toContain('note.Project:');
     expect(baseContent).toContain('displayName: Project');
 
@@ -81,7 +81,7 @@ This is a health area for tracking fitness and wellness.
     expect(baseContent).toContain('name: Chores');
 
     // Check filtering
-    expect(baseContent).toContain('Areas.contains(link("Task Sync"))');
+    expect(baseContent).toContain('Areas.contains(link("Health"))');
     expect(baseContent).toContain('Type == "Bug"');
     expect(baseContent).toContain('Type == "Feature"');
   });

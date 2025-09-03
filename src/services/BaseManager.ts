@@ -7,6 +7,7 @@
 import { App, Vault, TFile } from 'obsidian';
 import { TaskSyncSettings } from '../main';
 import * as yaml from 'js-yaml';
+import pluralize from 'pluralize';
 
 export interface BaseProperty {
   displayName: string;
@@ -549,7 +550,7 @@ export class BaseManager {
       if (taskType.name !== 'Task') { // Skip generic 'Task' type for specific views
         baseConfig.views.push({
           type: 'table',
-          name: taskType.name + 's',
+          name: pluralize(taskType.name),
           filters: {
             and: [
               `file.folder == "${this.settings.tasksFolder}"`,
@@ -632,7 +633,7 @@ export class BaseManager {
       if (taskType.name !== 'Task') { // Skip generic 'Task' type for specific views
         baseConfig.views.push({
           type: 'table',
-          name: taskType.name + 's',
+          name: pluralize(taskType.name),
           filters: {
             and: [
               `file.folder == "${this.settings.tasksFolder}"`,
