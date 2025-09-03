@@ -1,11 +1,7 @@
----
-Name: Test Project
-Type: Project
----
-
 # Test Project
 
-This is a test project for bases integration.
+This is a test project file.
 
-## Tasks
-![[Tasks.base]]
+## Objectives
+- Complete the project
+- Test functionality

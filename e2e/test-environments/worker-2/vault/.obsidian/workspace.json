@@ -1,20 +1,24 @@
 {
   "main": {
-    "id": "5899fbbe3507ba0e",
+    "id": "ffe30f1f6c3e685b",
     "type": "split",
     "children": [
       {
-        "id": "ab986a7a43bbd799",
+        "id": "f4e005b019da7071",
         "type": "tabs",
         "children": [
           {
-            "id": "9317f282b88ae67e",
+            "id": "08f87187988d55ea",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "Projects/Test Project.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "Test Project"
             }
           }
         ]
@@ -23,15 +27,15 @@
     "direction": "vertical"
   },
   "left": {
-    "id": "51ea7d771724c68e",
+    "id": "619f0c1077ae56e1",
     "type": "split",
     "children": [
       {
-        "id": "e47770dac1ce2069",
+        "id": "242946be2d4bc840",
         "type": "tabs",
         "children": [
           {
-            "id": "fdd8b5f426c40ba3",
+            "id": "9da66af61759d150",
             "type": "leaf",
             "state": {
               "type": "file-explorer",
@@ -44,7 +48,7 @@
             }
           },
           {
-            "id": "97bae8cdfed2a6e7",
+            "id": "f0e161a633cc8e6d",
             "type": "leaf",
             "state": {
               "type": "search",
@@ -61,7 +65,7 @@
             }
           },
           {
-            "id": "d74374f164b8fce6",
+            "id": "da892e34711ef814",
             "type": "leaf",
             "state": {
               "type": "bookmarks",
@@ -77,19 +81,20 @@
     "width": 300
   },
   "right": {
-    "id": "edac00520be2aa9c",
+    "id": "1f040ddab775359b",
     "type": "split",
     "children": [
       {
-        "id": "234aa1a818d1afc3",
+        "id": "18d3c424e704478c",
         "type": "tabs",
         "children": [
           {
-            "id": "c9d06168b0fb25f4",
+            "id": "9d5d418887d70bee",
             "type": "leaf",
             "state": {
               "type": "backlink",
               "state": {
+                "file": "Projects/Test Project.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -99,24 +104,25 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks"
+              "title": "Backlinks for Test Project"
             }
           },
           {
-            "id": "0442718997e48080",
+            "id": "cc673bd0d7783099",
             "type": "leaf",
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "Projects/Test Project.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links"
+              "title": "Outgoing links from Test Project"
             }
           },
           {
-            "id": "3758849edd90b2c7",
+            "id": "e66d15e489fe1a15",
             "type": "leaf",
             "state": {
               "type": "tag",
@@ -131,17 +137,18 @@
             }
           },
           {
-            "id": "4d2536603e8ee521",
+            "id": "bfa614b92452285c",
             "type": "leaf",
             "state": {
               "type": "outline",
               "state": {
+                "file": "Projects/Test Project.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of Test Project"
             }
           }
         ]
@@ -161,10 +168,8 @@
       "command-palette:Open command palette": false
     }
   },
-  "active": "9317f282b88ae67e",
+  "active": "08f87187988d55ea",
   "lastOpenFiles": [
-    "Projects/Sample Project.md",
-    "Areas/Test Area.md",
     "Projects/Test Project.md",
     "Templates",
     "Areas",
