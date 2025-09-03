@@ -67,7 +67,7 @@ This is a health area for tracking fitness and wellness.
     expect(baseContent).toContain('displayName: Title');
     expect(baseContent).toContain('note.Done:');
     expect(baseContent).toContain('displayName: Done');
-    expect(baseContent).toContain('note.Type:');
+    expect(baseContent).toContain('note.Type Badge:');
     expect(baseContent).toContain('displayName: Type');
     expect(baseContent).toContain('note.Project:');
     expect(baseContent).toContain('displayName: Project');
@@ -136,7 +136,7 @@ This is a website redesign project.
     expect(baseContent).toContain('displayName: Title');
     expect(baseContent).toContain('note.Done:');
     expect(baseContent).toContain('displayName: Done');
-    expect(baseContent).toContain('note.Type:');
+    expect(baseContent).toContain('note.Type Badge:');
     expect(baseContent).toContain('displayName: Type');
     expect(baseContent).toContain('note.Areas:');
     expect(baseContent).toContain('displayName: Areas');
@@ -268,7 +268,7 @@ Learning and skill development area.
 
     // Check that the area file was updated with specific base embedding
     const areaContent = await getFileContent(context.page, 'Areas/Learning.md');
-    expect(areaContent).toContain('![[Learning.base]]');
+    expect(areaContent).toContain('![[Bases/Learning.base]]');
     expect(areaContent).not.toContain('![[Tasks.base]]');
   });
 

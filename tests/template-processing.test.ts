@@ -22,7 +22,8 @@ class MockTaskSyncPlugin {
   app = mockApp;
   settings = {
     templateFolder: 'Templates',
-    useTemplater: false
+    useTemplater: false,
+    basesFolder: 'Bases'
   };
 
   private processTemplateVariables(content: string, data: any): string {
@@ -45,7 +46,7 @@ class MockTaskSyncPlugin {
 
     // Replace {{tasks}} with appropriate base embed
     if (data.name) {
-      const baseEmbed = `![[${data.name}.base]]`;
+      const baseEmbed = `![[${this.settings.basesFolder}/${data.name}.base]]`;
       processedContent = processedContent.replace(/\{\{tasks\}\}/g, baseEmbed);
     }
 
@@ -87,7 +88,7 @@ class MockTaskSyncPlugin {
 
   private ensureProperBaseEmbedding(content: string, data: any): string {
     const entityName = data.name;
-    const expectedBaseEmbed = `![[${entityName}.base]]`;
+    const expectedBaseEmbed = `![[${this.settings.basesFolder}/${entityName}.base]]`;
 
     // Check if {{tasks}} was already processed
     if (content.includes(expectedBaseEmbed)) {
@@ -152,7 +153,7 @@ Type: Project
 
       const result = plugin.testProcessTemplateVariables(template, data);
 
-      expect(result).toContain('![[Mobile App.base]]');
+      expect(result).toContain('![[Bases/Mobile App.base]]');
       expect(result).not.toContain('{{tasks}}');
     });
 
@@ -166,7 +167,7 @@ Type: Project
       const data = { name: 'Test Project' };
       const result = plugin.testProcessTemplateVariables(template, data);
 
-      const matches = result.match(/!\[\[Test Project\.base\]\]/g);
+      const matches = result.match(/!\[\[Bases\/Test Project\.base\]\]/g);
       expect(matches).toHaveLength(2);
     });
 
@@ -182,7 +183,7 @@ Type: Area
       const data = { name: 'Health & Fitness' };
       const result = plugin.testProcessTemplateVariables(template, data);
 
-      expect(result).toContain('![[Health & Fitness.base]]');
+      expect(result).toContain('![[Bases/Health & Fitness.base]]');
     });
   });
 
@@ -192,7 +193,7 @@ Type: Area
 Some content
 
 ## Tasks
-![[Mobile App.base]]`;
+![[Bases/Mobile App.base]]`;
 
       const data = { name: 'Mobile App' };
       const result = plugin.testEnsureProperBaseEmbedding(content, data);
@@ -210,7 +211,7 @@ Some content
       const data = { name: 'Mobile App' };
       const result = plugin.testEnsureProperBaseEmbedding(content, data);
 
-      expect(result).toContain('![[Mobile App.base]]');
+      expect(result).toContain('![[Bases/Mobile App.base]]');
       expect(result).not.toContain('![[Tasks.base]]');
     });
 

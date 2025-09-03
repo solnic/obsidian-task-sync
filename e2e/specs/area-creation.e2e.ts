@@ -76,7 +76,7 @@ describe('Area Creation', () => {
     expect(areaContent).toContain('Name: Test Area');
     expect(areaContent).toContain('Type: Area');
     expect(areaContent).toContain('This is a test area for e2e testing');
-    expect(areaContent).toContain('![[Test Area.base]]');
+    expect(areaContent).toContain('![[Bases/Test Area.base]]');
   });
 
   test('should create individual area base when enabled', async () => {
@@ -236,6 +236,6 @@ Custom: true
     expect(areaContent).toContain('## Overview');
     expect(areaContent).toContain('## Goals');
     expect(areaContent).toContain('Continuous learning and skill development');
-    expect(areaContent).toContain('![[Learning Area.base]]');
+    expect(areaContent).toContain('![[Bases/Learning Area.base]]');
   });
 });

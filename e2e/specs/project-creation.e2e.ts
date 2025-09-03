@@ -81,7 +81,7 @@ describe('Project Creation', () => {
     expect(projectContent).toContain('Type: Project');
     expect(projectContent).toContain('Areas: Work, Development');
     expect(projectContent).toContain('This is a test project for e2e testing');
-    expect(projectContent).toContain('![[Test Project.base]]');
+    expect(projectContent).toContain('![[Bases/Test Project.base]]');
   });
 
   test('should create individual project base when enabled', async () => {
@@ -256,7 +256,7 @@ Status: Planning
     expect(projectContent).toContain('## Milestones');
     expect(projectContent).toContain('Build a modern e-commerce platform with React and Node.js');
     expect(projectContent).toContain('Areas: Work, Technology');
-    expect(projectContent).toContain('![[E-commerce Platform.base]]');
+    expect(projectContent).toContain('![[Bases/E-commerce Platform.base]]');
   });
 
   test('should create project without areas', async () => {

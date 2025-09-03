@@ -2962,7 +2962,7 @@ var BaseManager = class {
         "note.title": {
           displayName: "Title"
         },
-        "note.Type": {
+        "note.Type Badge": {
           displayName: "Type",
           formula: this.generateTypeFormula()
         },
@@ -3007,7 +3007,7 @@ var BaseManager = class {
         { property: "file.name", direction: "DESC" }
       ],
       columnSize: {
-        "note.Type": 103,
+        "note.Type Badge": 103,
         "note.tags": 259,
         "file.ctime": 183
       }
@@ -3048,7 +3048,7 @@ var BaseManager = class {
       ],
       columnSize: {
         "file.name": 440,
-        "note.Type": 103,
+        "note.Type Badge": 103,
         "note.tags": 338,
         "file.ctime": 183
       }
@@ -3147,11 +3147,15 @@ var BaseManager = class {
       const file = this.vault.getAbstractFileByPath(filePath);
       if (!(file instanceof import_obsidian2.TFile)) return;
       const content = await this.vault.read(file);
-      const anyBasePattern = /!\[\[.*\.base\]\]/;
+      const anyBasePattern = /!\[\[.*\.base(\|.*?)?\]\]/;
       if (anyBasePattern.test(content)) {
         return;
       }
-      const updatedContent = content.trim() + "\n\n## Tasks\n![[Tasks.base]]";
+      const baseFilePath = `${this.settings.basesFolder}/${this.settings.tasksBaseFile}`;
+      const updatedContent = content.trim() + `
+
+## Tasks
+![[${baseFilePath}]]`;
       await this.vault.modify(file, updatedContent);
       console.log(`Added base embedding to: ${filePath}`);
     } catch (error) {
@@ -3286,7 +3290,7 @@ var BaseManager = class {
         "note.Done": {
           displayName: "Done"
         },
-        "note.Type": {
+        "note.Type Badge": {
           displayName: "Type",
           formula: this.generateTypeFormula()
         },
@@ -3364,7 +3368,7 @@ var BaseManager = class {
         "note.Done": {
           displayName: "Done"
         },
-        "note.Type": {
+        "note.Type Badge": {
           displayName: "Type",
           formula: this.generateTypeFormula()
         },
@@ -3438,14 +3442,15 @@ var BaseManager = class {
       const file = this.vault.getAbstractFileByPath(filePath);
       if (!(file instanceof import_obsidian2.TFile)) return;
       const content = await this.vault.read(file);
-      const specificBasePattern = new RegExp(`!\\[\\[${baseFileName}\\]\\]`);
+      const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
+      const specificBasePattern = new RegExp(`!\\[\\[${baseFilePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\|.*?)?\\]\\]`);
       if (specificBasePattern.test(content)) {
         return;
       }
       let updatedContent = content;
       const allBasePatterns = [
-        /!\[\[Tasks\.base\]\]/g,
-        /!\[\[.*\.base\]\]/g
+        /!\[\[.*Tasks\.base(\|.*?)?\]\]/g,
+        /!\[\[.*\.base(\|.*?)?\]\]/g
       ];
       for (const pattern of allBasePatterns) {
         updatedContent = updatedContent.replace(pattern, "");
@@ -3455,10 +3460,10 @@ var BaseManager = class {
         updatedContent = updatedContent.trim() + `
 
 ## Tasks
-![[${baseFileName}]]`;
+![[${baseFilePath}]]`;
       } else {
         updatedContent = updatedContent.trim() + `
-![[${baseFileName}]]`;
+![[${baseFilePath}]]`;
       }
       await this.vault.modify(file, updatedContent);
       console.log(`Updated base embedding to ${baseFileName} in: ${filePath}`);
@@ -4243,7 +4248,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
       processedContent = processedContent.replace(/\{\{areas\}\}/g, data.areas);
     }
     if (data.name) {
-      const baseEmbed = `![[${data.name}.base]]`;
+      const baseEmbed = `![[${this.settings.basesFolder}/${data.name}.base]]`;
       processedContent = processedContent.replace(/\{\{tasks\}\}/g, baseEmbed);
     }
     const now = /* @__PURE__ */ new Date();
@@ -4279,7 +4284,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
    */
   ensureProperBaseEmbedding(content, data) {
     const entityName = data.name;
-    const expectedBaseEmbed = `![[${entityName}.base]]`;
+    const expectedBaseEmbed = `![[${this.settings.basesFolder}/${entityName}.base]]`;
     if (content.includes(expectedBaseEmbed)) {
       return content;
     }
@@ -4287,7 +4292,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
     if (genericBasePattern.test(content)) {
       return content.replace(genericBasePattern, expectedBaseEmbed);
     }
-    const anyBasePattern = /!\[\[.*\.base\]\]/;
+    const anyBasePattern = /!\[\[.*\.base(\|.*?)?\]\]/;
     if (anyBasePattern.test(content)) {
       return content;
     }
@@ -4341,11 +4346,14 @@ ${expectedBaseEmbed}`;
     try {
       const projectsAndAreas = await this.baseManager.getProjectsAndAreas();
       await this.baseManager.createOrUpdateTasksBase(projectsAndAreas);
-      for (const item of projectsAndAreas) {
-        await this.baseManager.ensureBaseEmbedding(item.path);
-      }
       if (this.settings.areaBasesEnabled || this.settings.projectBasesEnabled) {
         await this.baseManager.syncAreaProjectBases();
+      }
+      for (const item of projectsAndAreas) {
+        const shouldHaveIndividualBase = item.type === "area" && this.settings.areaBasesEnabled || item.type === "project" && this.settings.projectBasesEnabled;
+        if (!shouldHaveIndividualBase) {
+          await this.baseManager.ensureBaseEmbedding(item.path);
+        }
       }
       console.log("Task Sync: Bases regenerated successfully");
     } catch (error) {

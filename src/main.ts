@@ -487,7 +487,7 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Replace {{tasks}} with appropriate base embed
     if (data.name) {
-      const baseEmbed = `![[${data.name}.base]]`;
+      const baseEmbed = `![[${this.settings.basesFolder}/${data.name}.base]]`;
       processedContent = processedContent.replace(/\{\{tasks\}\}/g, baseEmbed);
     }
 
@@ -536,7 +536,7 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private ensureProperBaseEmbedding(content: string, data: any): string {
     const entityName = data.name;
-    const expectedBaseEmbed = `![[${entityName}.base]]`;
+    const expectedBaseEmbed = `![[${this.settings.basesFolder}/${entityName}.base]]`;
 
     // Check if {{tasks}} was already processed (content contains the expected base embed)
     if (content.includes(expectedBaseEmbed)) {
@@ -550,8 +550,8 @@ export default class TaskSyncPlugin extends Plugin {
       return content.replace(genericBasePattern, expectedBaseEmbed);
     }
 
-    // Check if template has any other base embedding already
-    const anyBasePattern = /!\[\[.*\.base\]\]/;
+    // Check if template has any other base embedding already (including display text)
+    const anyBasePattern = /!\[\[.*\.base(\|.*?)?\]\]/;
     if (anyBasePattern.test(content)) {
       return content; // Template already has some base embedding, don't interfere
     }
@@ -615,14 +615,20 @@ export default class TaskSyncPlugin extends Plugin {
       const projectsAndAreas = await this.baseManager.getProjectsAndAreas();
       await this.baseManager.createOrUpdateTasksBase(projectsAndAreas);
 
-      // Ensure base embedding in project and area files
-      for (const item of projectsAndAreas) {
-        await this.baseManager.ensureBaseEmbedding(item.path);
-      }
-
       // Generate individual area and project bases if enabled
       if (this.settings.areaBasesEnabled || this.settings.projectBasesEnabled) {
         await this.baseManager.syncAreaProjectBases();
+      }
+
+      // Ensure base embedding in project and area files that don't have individual bases
+      for (const item of projectsAndAreas) {
+        const shouldHaveIndividualBase =
+          (item.type === 'area' && this.settings.areaBasesEnabled) ||
+          (item.type === 'project' && this.settings.projectBasesEnabled);
+
+        if (!shouldHaveIndividualBase) {
+          await this.baseManager.ensureBaseEmbedding(item.path);
+        }
       }
 
       console.log('Task Sync: Bases regenerated successfully');

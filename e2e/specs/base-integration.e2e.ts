@@ -137,7 +137,7 @@ Some project content.
 
     // Check if base embedding was added to the project file
     const content = await getFileContent(context.page, 'Projects/Sample Project.md');
-    expect(content).toContain('![[Sample Project.base]]');
+    expect(content).toContain('![[Bases/Sample Project.base]]');
   });
 
   test('should create Bases folder automatically', async () => {

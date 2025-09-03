@@ -81,7 +81,7 @@ Additional project notes here.
     const projectContent = await getFileContent(context.page, 'Projects/Mobile App Development.md');
 
     // Verify {{tasks}} was replaced with specific base embed
-    expect(projectContent).toContain('![[Mobile App Development.base]]');
+    expect(projectContent).toContain('![[Bases/Mobile App Development.base]]');
     expect(projectContent).not.toContain('{{tasks}}');
 
     // Verify other variables were processed
@@ -159,7 +159,7 @@ Links and resources for this area.
     const areaContent = await getFileContent(context.page, 'Areas/Health & Wellness.md');
 
     // Verify {{tasks}} was replaced with specific base embed
-    expect(areaContent).toContain('![[Health & Wellness.base]]');
+    expect(areaContent).toContain('![[Bases/Health & Wellness.base]]');
     expect(areaContent).not.toContain('{{tasks}}');
 
     // Verify other variables were processed
@@ -229,7 +229,7 @@ Type: Project
     // Count base embeds - should only have one
     const baseEmbedMatches = projectContent.match(/!\[\[.*\.base\]\]/g);
     expect(baseEmbedMatches).toHaveLength(1);
-    expect(baseEmbedMatches[0]).toBe('![[Test Project.base]]');
+    expect(baseEmbedMatches[0]).toBe('![[Bases/Test Project.base]]');
   });
 
   test('should handle multiple {{tasks}} occurrences in template', async () => {
@@ -284,7 +284,7 @@ Type: Project
     const projectContent = await getFileContent(context.page, 'Projects/Multi Tasks Project.md');
 
     // Should have two base embeds (one for each {{tasks}})
-    const baseEmbedMatches = projectContent.match(/!\[\[Multi Tasks Project\.base\]\]/g);
+    const baseEmbedMatches = projectContent.match(/!\[\[Bases\/Multi Tasks Project\.base\]\]/g);
     expect(baseEmbedMatches).toHaveLength(2);
     expect(projectContent).not.toContain('{{tasks}}');
   });

@@ -82,7 +82,7 @@ export class BaseManager {
         'note.title': {
           displayName: 'Title'
         },
-        'note.Type': {
+        'note.Type Badge': {
           displayName: 'Type',
           formula: this.generateTypeFormula()
         },
@@ -129,7 +129,7 @@ export class BaseManager {
         { property: 'file.name', direction: 'DESC' }
       ],
       columnSize: {
-        'note.Type': 103,
+        'note.Type Badge': 103,
         'note.tags': 259,
         'file.ctime': 183
       }
@@ -174,7 +174,7 @@ export class BaseManager {
       ],
       columnSize: {
         'file.name': 440,
-        'note.Type': 103,
+        'note.Type Badge': 103,
         'note.tags': 338,
         'file.ctime': 183
       }
@@ -286,14 +286,15 @@ export class BaseManager {
 
       const content = await this.vault.read(file);
 
-      // Check if any base embedding already exists
-      const anyBasePattern = /!\[\[.*\.base\]\]/;
+      // Check if any base embedding already exists (including display text)
+      const anyBasePattern = /!\[\[.*\.base(\|.*?)?\]\]/;
       if (anyBasePattern.test(content)) {
         return; // Already has some base embedding, don't add another
       }
 
       // Only add Tasks.base if no base embedding exists at all
-      const updatedContent = content.trim() + '\n\n## Tasks\n![[Tasks.base]]';
+      const baseFilePath = `${this.settings.basesFolder}/${this.settings.tasksBaseFile}`;
+      const updatedContent = content.trim() + `\n\n## Tasks\n![[${baseFilePath}]]`;
       await this.vault.modify(file, updatedContent);
       console.log(`Added base embedding to: ${filePath}`);
     } catch (error) {
@@ -458,7 +459,7 @@ export class BaseManager {
         'note.Done': {
           displayName: 'Done'
         },
-        'note.Type': {
+        'note.Type Badge': {
           displayName: 'Type',
           formula: this.generateTypeFormula()
         },
@@ -542,7 +543,7 @@ export class BaseManager {
         'note.Done': {
           displayName: 'Done'
         },
-        'note.Type': {
+        'note.Type Badge': {
           displayName: 'Type',
           formula: this.generateTypeFormula()
         },
@@ -623,7 +624,8 @@ export class BaseManager {
       if (!(file instanceof TFile)) return;
 
       const content = await this.vault.read(file);
-      const specificBasePattern = new RegExp(`!\\[\\[${baseFileName}\\]\\]`);
+      const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
+      const specificBasePattern = new RegExp(`!\\[\\[${baseFilePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\|.*?)?\\]\\]`);
 
       // If the specific base embed already exists, we're done
       if (specificBasePattern.test(content)) {
@@ -634,8 +636,8 @@ export class BaseManager {
 
       // Remove any existing base embeds to prevent duplicates
       const allBasePatterns = [
-        /!\[\[Tasks\.base\]\]/g,
-        /!\[\[.*\.base\]\]/g
+        /!\[\[.*Tasks\.base(\|.*?)?\]\]/g,
+        /!\[\[.*\.base(\|.*?)?\]\]/g
       ];
 
       for (const pattern of allBasePatterns) {
@@ -645,11 +647,11 @@ export class BaseManager {
       // Clean up any empty "## Tasks" sections that might be left
       updatedContent = updatedContent.replace(/## Tasks\s*\n\s*\n/g, '');
 
-      // Add the specific base embedding
+      // Add the specific base embedding with proper path
       if (!updatedContent.trim().endsWith('## Tasks')) {
-        updatedContent = updatedContent.trim() + `\n\n## Tasks\n![[${baseFileName}]]`;
+        updatedContent = updatedContent.trim() + `\n\n## Tasks\n![[${baseFilePath}]]`;
       } else {
-        updatedContent = updatedContent.trim() + `\n![[${baseFileName}]]`;
+        updatedContent = updatedContent.trim() + `\n![[${baseFilePath}]]`;
       }
 
       await this.vault.modify(file, updatedContent);
