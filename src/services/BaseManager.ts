@@ -272,14 +272,17 @@ export class BaseManager {
       if (!(file instanceof TFile)) return;
 
       const content = await this.vault.read(file);
-      const baseEmbedPattern = /!\[\[Tasks\.base\]\]/;
 
-      if (!baseEmbedPattern.test(content)) {
-        // Add base embedding at the end
-        const updatedContent = content.trim() + '\n\n## Tasks\n![[Tasks.base]]';
-        await this.vault.modify(file, updatedContent);
-        console.log(`Added base embedding to: ${filePath}`);
+      // Check if any base embedding already exists
+      const anyBasePattern = /!\[\[.*\.base\]\]/;
+      if (anyBasePattern.test(content)) {
+        return; // Already has some base embedding, don't add another
       }
+
+      // Only add Tasks.base if no base embedding exists at all
+      const updatedContent = content.trim() + '\n\n## Tasks\n![[Tasks.base]]';
+      await this.vault.modify(file, updatedContent);
+      console.log(`Added base embedding to: ${filePath}`);
     } catch (error) {
       console.error(`Failed to add base embedding to ${filePath}:`, error);
     }
@@ -605,20 +608,39 @@ export class BaseManager {
       if (!(file instanceof TFile)) return;
 
       const content = await this.vault.read(file);
-      const baseEmbedPattern = new RegExp(`!\\[\\[${baseFileName}\\]\\]`);
+      const specificBasePattern = new RegExp(`!\\[\\[${baseFileName}\\]\\]`);
 
-      if (!baseEmbedPattern.test(content)) {
-        // Remove old Tasks.base embedding if it exists
-        const oldBasePattern = /!\[\[Tasks\.base\]\]/g;
-        let updatedContent = content.replace(oldBasePattern, '');
-
-        // Add specific base embedding at the end
-        updatedContent = updatedContent.trim() + `\n\n## Tasks\n![[${baseFileName}]]`;
-        await this.vault.modify(file, updatedContent);
-        console.log(`Added specific base embedding to: ${filePath}`);
+      // If the specific base embed already exists, we're done
+      if (specificBasePattern.test(content)) {
+        return;
       }
+
+      let updatedContent = content;
+
+      // Remove any existing base embeds to prevent duplicates
+      const allBasePatterns = [
+        /!\[\[Tasks\.base\]\]/g,
+        /!\[\[.*\.base\]\]/g
+      ];
+
+      for (const pattern of allBasePatterns) {
+        updatedContent = updatedContent.replace(pattern, '');
+      }
+
+      // Clean up any empty "## Tasks" sections that might be left
+      updatedContent = updatedContent.replace(/## Tasks\s*\n\s*\n/g, '');
+
+      // Add the specific base embedding
+      if (!updatedContent.trim().endsWith('## Tasks')) {
+        updatedContent = updatedContent.trim() + `\n\n## Tasks\n![[${baseFileName}]]`;
+      } else {
+        updatedContent = updatedContent.trim() + `\n![[${baseFileName}]]`;
+      }
+
+      await this.vault.modify(file, updatedContent);
+      console.log(`Updated base embedding to ${baseFileName} in: ${filePath}`);
     } catch (error) {
-      console.error(`Failed to add specific base embedding to ${filePath}:`, error);
+      console.error(`Failed to update base embedding in ${filePath}:`, error);
     }
   }
 }

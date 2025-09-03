@@ -446,7 +446,7 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
-   * Process template variables (basic implementation)
+   * Process template variables with {{tasks}} syntax support
    */
   private processTemplateVariables(content: string, data: any): string {
     let processedContent = content;
@@ -466,10 +466,48 @@ export default class TaskSyncPlugin extends Plugin {
       processedContent = processedContent.replace(/\{\{areas\}\}/g, data.areas);
     }
 
+    // Replace {{tasks}} with appropriate base embed
+    if (data.name) {
+      const baseEmbed = `![[${data.name}.base]]`;
+      processedContent = processedContent.replace(/\{\{tasks\}\}/g, baseEmbed);
+    }
+
     // Replace date variables
     const now = new Date();
     processedContent = processedContent.replace(/\{\{date\}\}/g, now.toISOString().split('T')[0]);
     processedContent = processedContent.replace(/\{\{time\}\}/g, now.toISOString());
+
+    // Process Templater syntax if enabled
+    if (this.settings.useTemplater) {
+      processedContent = this.processTemplaterSyntax(processedContent, data);
+    }
+
+    return processedContent;
+  }
+
+  /**
+   * Process Templater plugin syntax if available
+   */
+  private processTemplaterSyntax(content: string, data: any): string {
+    let processedContent = content;
+
+    // Check if Templater plugin is available
+    const templaterPlugin = (this.app as any).plugins?.plugins?.['templater-obsidian'];
+    if (!templaterPlugin) {
+      console.warn('Templater plugin not found, falling back to basic processing');
+      return processedContent;
+    }
+
+    // Basic Templater syntax processing (can be extended)
+    if (data.name) {
+      processedContent = processedContent.replace(/<% tp\.file\.title %>/g, data.name);
+      processedContent = processedContent.replace(/<% tp\.file\.basename %>/g, data.name);
+    }
+
+    // Add more Templater syntax processing as needed
+    const now = new Date();
+    processedContent = processedContent.replace(/<% tp\.date\.now\(\) %>/g, now.toISOString().split('T')[0]);
+    processedContent = processedContent.replace(/<% tp\.date\.now\("YYYY-MM-DD"\) %>/g, now.toISOString().split('T')[0]);
 
     return processedContent;
   }
@@ -481,20 +519,25 @@ export default class TaskSyncPlugin extends Plugin {
     const entityName = data.name;
     const expectedBaseEmbed = `![[${entityName}.base]]`;
 
-    // Check if template already has a specific base embedding
-    const specificBasePattern = new RegExp(`!\\[\\[${entityName}\\.base\\]\\]`);
-    if (specificBasePattern.test(content)) {
-      return content; // Already has the correct embedding
+    // Check if {{tasks}} was already processed (content contains the expected base embed)
+    if (content.includes(expectedBaseEmbed)) {
+      return content; // {{tasks}} was processed, no need to add more
     }
 
-    // Check if template has generic Tasks.base embedding
+    // Check if template has generic Tasks.base embedding - replace it first
     const genericBasePattern = /!\[\[Tasks\.base\]\]/;
     if (genericBasePattern.test(content)) {
       // Replace generic with specific
       return content.replace(genericBasePattern, expectedBaseEmbed);
     }
 
-    // If no base embedding found, add it at the end
+    // Check if template has any other base embedding already
+    const anyBasePattern = /!\[\[.*\.base\]\]/;
+    if (anyBasePattern.test(content)) {
+      return content; // Template already has some base embedding, don't interfere
+    }
+
+    // Only add base embedding if no base-related content exists
     if (!content.includes('![[') || !content.includes('.base]]')) {
       return content.trim() + `\n\n## Tasks\n${expectedBaseEmbed}`;
     }

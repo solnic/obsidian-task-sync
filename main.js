@@ -3500,12 +3500,13 @@ var BaseManager = class {
       const file = this.vault.getAbstractFileByPath(filePath);
       if (!(file instanceof import_obsidian2.TFile)) return;
       const content = await this.vault.read(file);
-      const baseEmbedPattern = /!\[\[Tasks\.base\]\]/;
-      if (!baseEmbedPattern.test(content)) {
-        const updatedContent = content.trim() + "\n\n## Tasks\n![[Tasks.base]]";
-        await this.vault.modify(file, updatedContent);
-        console.log(`Added base embedding to: ${filePath}`);
+      const anyBasePattern = /!\[\[.*\.base\]\]/;
+      if (anyBasePattern.test(content)) {
+        return;
       }
+      const updatedContent = content.trim() + "\n\n## Tasks\n![[Tasks.base]]";
+      await this.vault.modify(file, updatedContent);
+      console.log(`Added base embedding to: ${filePath}`);
     } catch (error) {
       console.error(`Failed to add base embedding to ${filePath}:`, error);
     }
@@ -3788,19 +3789,32 @@ var BaseManager = class {
       const file = this.vault.getAbstractFileByPath(filePath);
       if (!(file instanceof import_obsidian2.TFile)) return;
       const content = await this.vault.read(file);
-      const baseEmbedPattern = new RegExp(`!\\[\\[${baseFileName}\\]\\]`);
-      if (!baseEmbedPattern.test(content)) {
-        const oldBasePattern = /!\[\[Tasks\.base\]\]/g;
-        let updatedContent = content.replace(oldBasePattern, "");
+      const specificBasePattern = new RegExp(`!\\[\\[${baseFileName}\\]\\]`);
+      if (specificBasePattern.test(content)) {
+        return;
+      }
+      let updatedContent = content;
+      const allBasePatterns = [
+        /!\[\[Tasks\.base\]\]/g,
+        /!\[\[.*\.base\]\]/g
+      ];
+      for (const pattern of allBasePatterns) {
+        updatedContent = updatedContent.replace(pattern, "");
+      }
+      updatedContent = updatedContent.replace(/## Tasks\s*\n\s*\n/g, "");
+      if (!updatedContent.trim().endsWith("## Tasks")) {
         updatedContent = updatedContent.trim() + `
 
 ## Tasks
 ![[${baseFileName}]]`;
-        await this.vault.modify(file, updatedContent);
-        console.log(`Added specific base embedding to: ${filePath}`);
+      } else {
+        updatedContent = updatedContent.trim() + `
+![[${baseFileName}]]`;
       }
+      await this.vault.modify(file, updatedContent);
+      console.log(`Updated base embedding to ${baseFileName} in: ${filePath}`);
     } catch (error) {
-      console.error(`Failed to add specific base embedding to ${filePath}:`, error);
+      console.error(`Failed to update base embedding in ${filePath}:`, error);
     }
   }
 };
@@ -4545,7 +4559,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
     }
   }
   /**
-   * Process template variables (basic implementation)
+   * Process template variables with {{tasks}} syntax support
    */
   processTemplateVariables(content, data) {
     let processedContent = content;
@@ -4560,9 +4574,36 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
     if (data.areas) {
       processedContent = processedContent.replace(/\{\{areas\}\}/g, data.areas);
     }
+    if (data.name) {
+      const baseEmbed = `![[${data.name}.base]]`;
+      processedContent = processedContent.replace(/\{\{tasks\}\}/g, baseEmbed);
+    }
     const now = /* @__PURE__ */ new Date();
     processedContent = processedContent.replace(/\{\{date\}\}/g, now.toISOString().split("T")[0]);
     processedContent = processedContent.replace(/\{\{time\}\}/g, now.toISOString());
+    if (this.settings.useTemplater) {
+      processedContent = this.processTemplaterSyntax(processedContent, data);
+    }
+    return processedContent;
+  }
+  /**
+   * Process Templater plugin syntax if available
+   */
+  processTemplaterSyntax(content, data) {
+    var _a, _b;
+    let processedContent = content;
+    const templaterPlugin = (_b = (_a = this.app.plugins) == null ? void 0 : _a.plugins) == null ? void 0 : _b["templater-obsidian"];
+    if (!templaterPlugin) {
+      console.warn("Templater plugin not found, falling back to basic processing");
+      return processedContent;
+    }
+    if (data.name) {
+      processedContent = processedContent.replace(/<% tp\.file\.title %>/g, data.name);
+      processedContent = processedContent.replace(/<% tp\.file\.basename %>/g, data.name);
+    }
+    const now = /* @__PURE__ */ new Date();
+    processedContent = processedContent.replace(/<% tp\.date\.now\(\) %>/g, now.toISOString().split("T")[0]);
+    processedContent = processedContent.replace(/<% tp\.date\.now\("YYYY-MM-DD"\) %>/g, now.toISOString().split("T")[0]);
     return processedContent;
   }
   /**
@@ -4571,13 +4612,16 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
   ensureProperBaseEmbedding(content, data) {
     const entityName = data.name;
     const expectedBaseEmbed = `![[${entityName}.base]]`;
-    const specificBasePattern = new RegExp(`!\\[\\[${entityName}\\.base\\]\\]`);
-    if (specificBasePattern.test(content)) {
+    if (content.includes(expectedBaseEmbed)) {
       return content;
     }
     const genericBasePattern = /!\[\[Tasks\.base\]\]/;
     if (genericBasePattern.test(content)) {
       return content.replace(genericBasePattern, expectedBaseEmbed);
+    }
+    const anyBasePattern = /!\[\[.*\.base\]\]/;
+    if (anyBasePattern.test(content)) {
+      return content;
     }
     if (!content.includes("![[") || !content.includes(".base]]")) {
       return content.trim() + `
