@@ -1,2 +1,0 @@
-2025/09/03-08:23:08.573 7932 Creating DB /workspaces/obsidian-task-sync/e2e/test-environments/worker-1/data/IndexedDB/app_obsidian.md_0.indexeddb.leveldb since it was missing.
-2025/09/03-08:23:08.592 7932 Reusing MANIFEST /workspaces/obsidian-task-sync/e2e/test-environments/worker-1/data/IndexedDB/app_obsidian.md_0.indexeddb.leveldb/MANIFEST-000001
