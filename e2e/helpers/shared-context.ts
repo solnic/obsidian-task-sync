@@ -112,27 +112,84 @@ export async function resetSharedTestContext(): Promise<void> {
 /**
  * Clean up test-specific state
  * This should be called in afterEach hooks
+ * Resets the entire vault to pristine state for complete test isolation
  */
 export async function cleanupTestState(): Promise<void> {
   const context = await getSharedTestContext();
   await resetObsidianUI(context.page);
 
-  // Clear any test files from the worker's isolated directories
-  const testDirs = ['Tasks', 'Projects', 'Areas', 'Templates'];
-  for (const dir of testDirs) {
-    const dirPath = path.join(context.vaultPath, dir);
-    if (fs.existsSync(dirPath)) {
-      const files = fs.readdirSync(dirPath);
-      for (const file of files) {
-        if (file.includes('test-') && file.endsWith('.md')) {
-          try {
-            fs.unlinkSync(path.join(dirPath, file));
-          } catch (error) {
-            console.log(`⚠️ Could not remove test file ${file}:`, error.message);
+  // Perform complete vault reset to pristine state
+  await resetVaultToPristineState(context.vaultPath, context.dataPath);
+}
+
+/**
+ * Reset vault and data directories to pristine state
+ * Preserves plugin files to avoid rebuilding
+ */
+async function resetVaultToPristineState(vaultPath: string, dataPath: string): Promise<void> {
+  try {
+    console.log(`🔄 Resetting vault to pristine state: ${vaultPath}`);
+
+    // Step 1: Preserve plugin files before vault reset
+    const pluginDir = path.join(vaultPath, '.obsidian', 'plugins', 'obsidian-task-sync');
+    const tempPluginDir = path.join(path.dirname(vaultPath), 'temp-plugin-backup');
+
+    let pluginFilesExist = false;
+    if (fs.existsSync(pluginDir)) {
+      await copyDirectory(pluginDir, tempPluginDir);
+      pluginFilesExist = true;
+      console.log(`📋 Backed up plugin files to temp location`);
+    }
+
+    // Step 2: Clear vault contents (except .obsidian directory initially)
+    await clearDirectoryContents(vaultPath, ['.obsidian']);
+
+    // Step 3: Restore pristine vault contents
+    const pristineVaultPath = path.resolve('./tests/vault/Test.pristine');
+    if (fs.existsSync(pristineVaultPath)) {
+      await copyDirectoryContents(pristineVaultPath, vaultPath);
+      console.log(`📋 Restored pristine vault contents`);
+    } else {
+      console.warn(`⚠️ Pristine vault not found at ${pristineVaultPath}`);
+    }
+
+    // Step 4: Reset data directory
+    await clearDirectoryContents(dataPath);
+    const pristineDataPath = path.resolve('./e2e/obsidian-data.pristine');
+    if (fs.existsSync(pristineDataPath)) {
+      await copyDirectoryContents(pristineDataPath, dataPath);
+
+      // Update obsidian.json to point to the correct vault path
+      const obsidianJsonPath = path.join(dataPath, 'obsidian.json');
+      if (fs.existsSync(obsidianJsonPath)) {
+        try {
+          const obsidianConfig = JSON.parse(await fs.promises.readFile(obsidianJsonPath, 'utf8'));
+          if (obsidianConfig.vaults) {
+            for (const vaultId in obsidianConfig.vaults) {
+              obsidianConfig.vaults[vaultId].path = vaultPath;
+            }
           }
+          await fs.promises.writeFile(obsidianJsonPath, JSON.stringify(obsidianConfig, null, 2));
+        } catch (error) {
+          console.warn(`⚠️ Failed to update obsidian.json: ${error.message}`);
         }
       }
+      console.log(`📋 Restored pristine data directory`);
     }
+
+    // Step 5: Restore plugin files
+    if (pluginFilesExist) {
+      await fs.promises.mkdir(pluginDir, { recursive: true });
+      await copyDirectoryContents(tempPluginDir, pluginDir);
+      await fs.promises.rm(tempPluginDir, { recursive: true, force: true });
+      console.log(`📋 Restored plugin files`);
+    }
+
+    console.log(`✅ Vault reset to pristine state completed`);
+
+  } catch (error) {
+    console.error(`❌ Failed to reset vault to pristine state: ${error.message}`);
+    throw error;
   }
 }
 
@@ -556,6 +613,59 @@ async function copyDirectory(src: string, dest: string): Promise<void> {
       await copyDirectory(srcPath, destPath);
     } else {
       await fs.promises.copyFile(srcPath, destPath);
+    }
+  }
+}
+
+/**
+ * Copy contents of source directory to destination directory
+ * Does not create the destination directory itself, only copies contents
+ */
+async function copyDirectoryContents(src: string, dest: string): Promise<void> {
+  await fs.promises.mkdir(dest, { recursive: true });
+
+  const entries = await fs.promises.readdir(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      await copyDirectory(srcPath, destPath);
+    } else {
+      await fs.promises.copyFile(srcPath, destPath);
+    }
+  }
+}
+
+/**
+ * Clear all contents of a directory while preserving the directory itself
+ * @param dirPath Directory to clear
+ * @param preservePaths Optional array of paths to preserve (relative to dirPath)
+ */
+async function clearDirectoryContents(dirPath: string, preservePaths: string[] = []): Promise<void> {
+  if (!fs.existsSync(dirPath)) {
+    return;
+  }
+
+  const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
+
+  for (const entry of entries) {
+    // Skip preserved paths
+    if (preservePaths.includes(entry.name)) {
+      continue;
+    }
+
+    const entryPath = path.join(dirPath, entry.name);
+
+    try {
+      if (entry.isDirectory()) {
+        await fs.promises.rm(entryPath, { recursive: true, force: true });
+      } else {
+        await fs.promises.unlink(entryPath);
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to remove ${entryPath}: ${error.message}`);
     }
   }
 }

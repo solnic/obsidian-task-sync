@@ -209,6 +209,13 @@ Website redesign project for the company.
     await context.page.evaluate(async () => {
       const app = (window as any).app;
 
+      // Create the numbered folder if it doesn't exist
+      try {
+        await app.vault.createFolder('2. Areas');
+      } catch (error) {
+        // Folder might already exist
+      }
+
       await app.vault.create('2. Areas/Health & Fitness.md', `---
 Name: Health & Fitness
 Type: Area
@@ -268,6 +275,13 @@ Marathon training project.
     // Create files with special characters
     await context.page.evaluate(async () => {
       const app = (window as any).app;
+
+      // Create the numbered folder if it doesn't exist
+      try {
+        await app.vault.createFolder('2. Areas');
+      } catch (error) {
+        // Folder might already exist
+      }
 
       await app.vault.create('2. Areas/R&D (Research).md', `---
 Name: R&D (Research)
