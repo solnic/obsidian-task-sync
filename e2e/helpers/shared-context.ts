@@ -213,52 +213,96 @@ export async function captureScreenshotOnFailure(context: SharedTestContext, nam
     const filename = `${name}-${timestamp}-${context.workerId}.png`;
     const screenshotPath = path.join(screenshotsDir, filename);
 
-    // Try to capture page screenshot first (most detailed)
-    try {
-      await context.page.screenshot({
-        path: screenshotPath,
-        fullPage: true,
-        type: 'png',
-        timeout: 5000
-      });
-      console.log(`📸 Page screenshot captured: ${screenshotPath}`);
-    } catch (pageError) {
-      console.warn(`⚠️ Page screenshot failed: ${pageError.message}`);
+    console.log(`📸 Attempting to capture screenshot: ${screenshotPath}`);
 
-      // Fallback: try to get all windows and screenshot them
+    // Check if page is still available
+    if (!context.page || context.page.isClosed()) {
+      console.warn(`⚠️ Page is not available or closed, trying Electron windows`);
+
+      // Try Electron windows directly
       try {
         const windows = context.electronApp.windows();
         if (windows.length > 0) {
-          const appScreenshotPath = screenshotPath.replace('.png', '-app.png');
+          const appScreenshotPath = screenshotPath.replace('.png', '-electron.png');
           await windows[0].screenshot({
             path: appScreenshotPath,
             type: 'png',
-            timeout: 5000
+            timeout: 10000
           });
           console.log(`📸 Electron window screenshot captured: ${appScreenshotPath}`);
-        } else {
-          console.warn(`⚠️ No Electron windows available for screenshot`);
+          return;
         }
-      } catch (appError) {
-        console.warn(`⚠️ Electron window screenshot also failed: ${appError.message}`);
+      } catch (electronError) {
+        console.warn(`⚠️ Electron window screenshot failed: ${electronError.message}`);
+      }
+    } else {
+      // Try to capture page screenshot first (most detailed)
+      try {
+        // Wait a moment for any animations to settle
+        await context.page.waitForTimeout(500);
 
-        // Last resort: capture basic info about the state
+        await context.page.screenshot({
+          path: screenshotPath,
+          fullPage: true,
+          type: 'png',
+          timeout: 10000
+        });
+        console.log(`📸 Page screenshot captured: ${screenshotPath}`);
+        return;
+      } catch (pageError) {
+        console.warn(`⚠️ Page screenshot failed: ${pageError.message}`);
+
+        // Fallback: try to get all windows and screenshot them
         try {
-          const debugInfo = await context.page.evaluate(() => ({
+          const windows = context.electronApp.windows();
+          if (windows.length > 0) {
+            const appScreenshotPath = screenshotPath.replace('.png', '-app.png');
+            await windows[0].screenshot({
+              path: appScreenshotPath,
+              type: 'png',
+              timeout: 10000
+            });
+            console.log(`📸 Electron window screenshot captured: ${appScreenshotPath}`);
+            return;
+          } else {
+            console.warn(`⚠️ No Electron windows available for screenshot`);
+          }
+        } catch (appError) {
+          console.warn(`⚠️ Electron window screenshot also failed: ${appError.message}`);
+        }
+      }
+    }
+
+    // Last resort: capture basic info about the state
+    try {
+      let debugInfo: any = {
+        timestamp: new Date().toISOString(),
+        error: 'Could not capture screenshot',
+        electronAppClosed: !context.electronApp || context.electronApp.process()?.killed,
+        pageClosed: !context.page || context.page.isClosed()
+      };
+
+      // Try to get page info if available
+      if (context.page && !context.page.isClosed()) {
+        try {
+          const pageInfo = await context.page.evaluate(() => ({
             url: window.location.href,
             title: document.title,
             readyState: document.readyState,
             hasApp: typeof (window as any).app !== 'undefined',
-            timestamp: new Date().toISOString()
+            hasObsidian: typeof (window as any).app?.vault !== 'undefined'
           }));
-
-          const debugPath = screenshotPath.replace('.png', '-debug.json');
-          await fs.promises.writeFile(debugPath, JSON.stringify(debugInfo, null, 2));
-          console.log(`📝 Debug info captured: ${debugPath}`);
-        } catch (debugError) {
-          console.warn(`⚠️ Debug info capture failed: ${debugError.message}`);
+          debugInfo = { ...debugInfo, ...pageInfo };
+        } catch (evalError) {
+          debugInfo.pageEvalError = evalError.message;
         }
       }
+
+      const debugPath = screenshotPath.replace('.png', '-debug.json');
+      await fs.promises.writeFile(debugPath, JSON.stringify(debugInfo, null, 2));
+      console.log(`📝 Debug info captured: ${debugPath}`);
+    } catch (debugError) {
+      console.warn(`⚠️ Debug info capture failed: ${debugError.message}`);
     }
   } catch (error) {
     console.warn(`⚠️ Screenshot capture completely failed: ${error.message}`);
@@ -568,21 +612,56 @@ export function setupE2ETestHooks(): SharedTestContext {
   afterEach(async (testContext) => {
     const context = await getSharedTestContext();
 
-    // Only capture screenshots and debug info on actual test failures
+    // Get test information from multiple possible sources
     const testResult = (testContext as any)?.meta?.result;
     const testState = testResult?.state;
     const hasErrors = testResult?.errors?.length > 0;
 
-    // Only capture on explicit failures, not on timeouts or undefined states
-    if (testState === 'fail' || hasErrors) {
-      const testName = (testContext as any)?.meta?.name?.replace(/[^a-zA-Z0-9]/g, '-') || 'unknown-test';
-      console.log(`📸 Capturing screenshot for failed test: ${testName}`);
+    // Try to get test name from different sources
+    let testName = 'unknown-test';
+    if ((testContext as any)?.meta?.name) {
+      testName = (testContext as any).meta.name;
+    } else if ((testContext as any)?.task?.name) {
+      testName = (testContext as any).task.name;
+    } else if ((testContext as any)?.name) {
+      testName = (testContext as any).name;
+    }
+
+    // Clean up test name for file system
+    testName = testName.replace(/[^a-zA-Z0-9\s]/g, '-').replace(/\s+/g, '-');
+
+    // Capture debug info for ALL test failures (including timeouts)
+    // Timeouts are often the most important failures to debug
+    const isFailure = testState === 'fail' || hasErrors || testState === 'timeout';
+
+    if (isFailure) {
+      console.log(`📸 Test failed with state: ${testState}, capturing debug info for: ${testName}`);
+      console.log(`📊 Console logs captured: ${consoleLogs.length} entries`);
+
       try {
+        // Always capture screenshot first (most important for debugging)
         await captureScreenshotOnFailure(context, `test-failure-${testName}`);
+        console.log(`✅ Screenshot captured successfully`);
+
+        // Then capture full debug info
         await captureFullDebugInfo(context, `test-failure-${testName}`, consoleLogs);
+        console.log(`✅ Full debug info captured successfully`);
       } catch (error) {
-        console.error(`❌ Failed to capture screenshot: ${error.message}`);
+        console.error(`❌ Failed to capture debug info: ${error.message}`);
+        console.error(`❌ Error details:`, error);
+
+        // Try a simpler screenshot capture as fallback
+        try {
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const fallbackPath = `e2e/screenshots/fallback-${testName}-${timestamp}.png`;
+          await context.page.screenshot({ path: fallbackPath, fullPage: true });
+          console.log(`📸 Fallback screenshot saved: ${fallbackPath}`);
+        } catch (fallbackError) {
+          console.error(`❌ Even fallback screenshot failed: ${fallbackError.message}`);
+        }
       }
+    } else {
+      console.log(`✅ Test passed: ${testName}`);
     }
 
     await cleanupTestState();
