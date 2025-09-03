@@ -5,7 +5,7 @@
  */
 
 import { App, Vault, TFile } from 'obsidian';
-import { TaskSyncSettings, TaskType } from '../main';
+import { TaskSyncSettings } from '../main';
 import * as yaml from 'js-yaml';
 
 export interface BaseProperty {
@@ -30,6 +30,7 @@ export interface BaseView {
 }
 
 export interface BaseConfig {
+  formulas?: Record<string, string>;
   properties: Record<string, BaseProperty>;
   views: BaseView[];
 }
@@ -48,14 +49,37 @@ export class BaseManager {
   ) { }
 
   /**
-   * Generate a formula for displaying colorful task type badges
+   * Generate a filter expression for areas
+   *
+   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
+   * Using full paths or adding display names will break the filter.
+   *
+   * Correct: link("Task Sync")
+   * Wrong: link("Areas/Task Sync.md") or link("Areas/Task Sync.md", "Task Sync")
+   */
+  private createAreaFilter(area: ProjectAreaInfo): string {
+    return `Areas.contains(link("${area.name}"))`;
+  }
+
+  /**
+   * Generate a filter expression for projects
+   *
+   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
+   * Using full paths or adding display names will break the filter.
+   *
+   * Correct: link("Website Redesign")
+   * Wrong: link("Projects/Website Redesign.md") or link("Projects/Website Redesign.md", "Website Redesign")
+   */
+  private createProjectFilter(project: ProjectAreaInfo): string {
+    return `Project.contains(link("${project.name}"))`;
+  }
+
+  /**
+   * Generate a formula for displaying task types
+   * Simply returns the Type property as-is for clean display
    */
   private generateTypeFormula(): string {
-    const conditions = this.settings.taskTypes.map(taskType =>
-      `Type == "${taskType.name}" ? "<span class='task-type-badge task-type-${taskType.color}'>${taskType.name}</span>"`
-    ).join(' : ');
-
-    return conditions + ' : Type';
+    return 'Type';
   }
 
   /**
@@ -63,6 +87,9 @@ export class BaseManager {
    */
   async generateTasksBase(projectsAndAreas: ProjectAreaInfo[]): Promise<string> {
     const baseConfig: BaseConfig = {
+      formulas: {
+        'Type': this.generateTypeFormula()
+      },
       properties: {
         'file.name': {
           displayName: 'Title'
@@ -81,10 +108,6 @@ export class BaseManager {
         },
         'note.title': {
           displayName: 'Title'
-        },
-        'note.Type Badge': {
-          displayName: 'Type',
-          formula: this.generateTypeFormula()
         },
         'note.Areas': {
           displayName: 'Areas'
@@ -119,7 +142,7 @@ export class BaseManager {
         'Project',
         'Parent task',
         'Sub-tasks',
-        'Type',
+        'formula.Type',
         'tags',
         'file.ctime',
         'file.mtime'
@@ -129,7 +152,7 @@ export class BaseManager {
         { property: 'file.name', direction: 'DESC' }
       ],
       columnSize: {
-        'note.Type Badge': 103,
+        'formula.Type': 103,
         'note.tags': 259,
         'file.ctime': 183
       }
@@ -157,13 +180,13 @@ export class BaseManager {
       filters: {
         and: [
           `file.folder == "${this.settings.tasksFolder}"`,
-          `Project.contains(link("${project.name}"))`
+          this.createProjectFilter(project)
         ]
       },
       order: [
         'Done',
         'file.name',
-        'Type',
+        'formula.Type',
         'tags',
         'file.mtime',
         'file.ctime'
@@ -174,7 +197,7 @@ export class BaseManager {
       ],
       columnSize: {
         'file.name': 440,
-        'note.Type Badge': 103,
+        'formula.Type': 103,
         'note.tags': 338,
         'file.ctime': 183
       }
@@ -191,7 +214,7 @@ export class BaseManager {
       filters: {
         and: [
           `file.folder == "${this.settings.tasksFolder}"`,
-          `Areas.contains(link("${area.path}", "${area.name}"))`
+          this.createAreaFilter(area)
         ]
       },
       order: [
@@ -246,23 +269,7 @@ export class BaseManager {
     const baseFilePath = `${this.settings.basesFolder}/${this.settings.tasksBaseFile}`;
     const content = await this.generateTasksBase(projectsAndAreas);
 
-    try {
-      // Check if file exists
-      const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
-
-      if (existingFile instanceof TFile) {
-        // Update existing file
-        await this.vault.modify(existingFile, content);
-        console.log(`Updated Tasks base file: ${baseFilePath}`);
-      } else {
-        // Create new file
-        await this.vault.create(baseFilePath, content);
-        console.log(`Created Tasks base file: ${baseFilePath}`);
-      }
-    } catch (error) {
-      console.error(`Failed to create/update Tasks base file: ${error}`);
-      throw error;
-    }
+    await this.createOrUpdateBaseFile(baseFilePath, content, 'Tasks');
   }
 
   /**
@@ -273,6 +280,62 @@ export class BaseManager {
     if (!folderExists) {
       await this.vault.createFolder(this.settings.basesFolder);
       console.log(`Created bases folder: ${this.settings.basesFolder}`);
+    }
+  }
+
+  /**
+   * Helper method to create or update a base file with robust error handling
+   */
+  private async createOrUpdateBaseFile(baseFilePath: string, content: string, type: string): Promise<void> {
+    try {
+      // Use more reliable file existence check
+      const fileExists = await this.vault.adapter.exists(baseFilePath);
+
+      if (fileExists) {
+        // File exists, get it and update
+        const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
+        if (existingFile instanceof TFile) {
+          await this.vault.modify(existingFile, content);
+          console.log(`Updated ${type} base file: ${baseFilePath}`);
+        } else {
+          // File exists but not in cache, try to create and handle error
+          try {
+            await this.vault.create(baseFilePath, content);
+            console.log(`Created ${type} base file: ${baseFilePath}`);
+          } catch (createError) {
+            // If create fails due to existing file, try to get and modify
+            const retryFile = this.vault.getAbstractFileByPath(baseFilePath);
+            if (retryFile instanceof TFile) {
+              await this.vault.modify(retryFile, content);
+              console.log(`Updated ${type} base file after retry: ${baseFilePath}`);
+            } else {
+              throw createError;
+            }
+          }
+        }
+      } else {
+        // File doesn't exist, create it
+        try {
+          await this.vault.create(baseFilePath, content);
+          console.log(`Created ${type} base file: ${baseFilePath}`);
+        } catch (createError) {
+          // If create fails, the file might have been created by another process
+          if (createError.message?.includes('already exists')) {
+            const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
+            if (existingFile instanceof TFile) {
+              await this.vault.modify(existingFile, content);
+              console.log(`Updated ${type} base file after creation conflict: ${baseFilePath}`);
+            } else {
+              throw createError;
+            }
+          } else {
+            throw createError;
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to create/update ${type} base file: ${error}`);
+      throw error;
     }
   }
 
@@ -402,16 +465,7 @@ export class BaseManager {
     const content = await this.generateAreaBase(area);
 
     try {
-      const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
-
-      if (existingFile instanceof TFile) {
-        await this.vault.modify(existingFile, content);
-        console.log(`Updated area base file: ${baseFilePath}`);
-      } else {
-        await this.vault.create(baseFilePath, content);
-        console.log(`Created area base file: ${baseFilePath}`);
-      }
-
+      await this.createOrUpdateBaseFile(baseFilePath, content, 'area');
       // Update the area file to embed the specific base
       await this.ensureSpecificBaseEmbedding(area.path, baseFileName);
     } catch (error) {
@@ -429,16 +483,7 @@ export class BaseManager {
     const content = await this.generateProjectBase(project);
 
     try {
-      const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
-
-      if (existingFile instanceof TFile) {
-        await this.vault.modify(existingFile, content);
-        console.log(`Updated project base file: ${baseFilePath}`);
-      } else {
-        await this.vault.create(baseFilePath, content);
-        console.log(`Created project base file: ${baseFilePath}`);
-      }
-
+      await this.createOrUpdateBaseFile(baseFilePath, content, 'project');
       // Update the project file to embed the specific base
       await this.ensureSpecificBaseEmbedding(project.path, baseFileName);
     } catch (error) {
@@ -452,16 +497,15 @@ export class BaseManager {
    */
   async generateAreaBase(area: ProjectAreaInfo): Promise<string> {
     const baseConfig: BaseConfig = {
+      formulas: {
+        'Type': this.generateTypeFormula()
+      },
       properties: {
         'file.name': {
           displayName: 'Title'
         },
         'note.Done': {
           displayName: 'Done'
-        },
-        'note.Type Badge': {
-          displayName: 'Type',
-          formula: this.generateTypeFormula()
         },
         'note.Project': {
           displayName: 'Project'
@@ -483,14 +527,14 @@ export class BaseManager {
       filters: {
         and: [
           `file.folder == "${this.settings.tasksFolder}"`,
-          `Areas.contains(link("${area.path}", "${area.name}"))`
+          this.createAreaFilter(area)
         ]
       },
       order: [
         'Done',
         'file.name',
         'Project',
-        'Type',
+        'formula.Type',
         'file.ctime',
         'file.mtime'
       ],
@@ -509,7 +553,7 @@ export class BaseManager {
           filters: {
             and: [
               `file.folder == "${this.settings.tasksFolder}"`,
-              `Areas.contains(link("${area.path}", "${area.name}"))`,
+              this.createAreaFilter(area),
               `Type == "${taskType.name}"`
             ]
           },
@@ -536,16 +580,15 @@ export class BaseManager {
    */
   async generateProjectBase(project: ProjectAreaInfo): Promise<string> {
     const baseConfig: BaseConfig = {
+      formulas: {
+        'Type': this.generateTypeFormula()
+      },
       properties: {
         'file.name': {
           displayName: 'Title'
         },
         'note.Done': {
           displayName: 'Done'
-        },
-        'note.Type Badge': {
-          displayName: 'Type',
-          formula: this.generateTypeFormula()
         },
         'note.Areas': {
           displayName: 'Areas'
@@ -567,14 +610,14 @@ export class BaseManager {
       filters: {
         and: [
           `file.folder == "${this.settings.tasksFolder}"`,
-          `Project.contains(link("${project.path}", "${project.name}"))`
+          this.createProjectFilter(project)
         ]
       },
       order: [
         'Done',
         'file.name',
         'Areas',
-        'Type',
+        'formula.Type',
         'file.ctime',
         'file.mtime'
       ],
@@ -593,7 +636,7 @@ export class BaseManager {
           filters: {
             and: [
               `file.folder == "${this.settings.tasksFolder}"`,
-              `Project.contains(link("${project.path}", "${project.name}"))`,
+              this.createProjectFilter(project),
               `Type == "${taskType.name}"`
             ]
           },

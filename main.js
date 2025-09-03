@@ -2930,19 +2930,44 @@ var BaseManager = class {
     this.settings = settings;
   }
   /**
-   * Generate a formula for displaying colorful task type badges
+   * Generate a filter expression for areas
+   *
+   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
+   * Using full paths or adding display names will break the filter.
+   *
+   * Correct: link("Task Sync")
+   * Wrong: link("Areas/Task Sync.md") or link("Areas/Task Sync.md", "Task Sync")
+   */
+  createAreaFilter(area) {
+    return `Areas.contains(link("${area.name}"))`;
+  }
+  /**
+   * Generate a filter expression for projects
+   *
+   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
+   * Using full paths or adding display names will break the filter.
+   *
+   * Correct: link("Website Redesign")
+   * Wrong: link("Projects/Website Redesign.md") or link("Projects/Website Redesign.md", "Website Redesign")
+   */
+  createProjectFilter(project) {
+    return `Project.contains(link("${project.name}"))`;
+  }
+  /**
+   * Generate a formula for displaying task types
+   * Simply returns the Type property as-is for clean display
    */
   generateTypeFormula() {
-    const conditions = this.settings.taskTypes.map(
-      (taskType) => `Type == "${taskType.name}" ? "<span class='task-type-badge task-type-${taskType.color}'>${taskType.name}</span>"`
-    ).join(" : ");
-    return conditions + " : Type";
+    return "Type";
   }
   /**
    * Generate the main Tasks.base file with all task properties and default views
    */
   async generateTasksBase(projectsAndAreas) {
     const baseConfig = {
+      formulas: {
+        "Type": this.generateTypeFormula()
+      },
       properties: {
         "file.name": {
           displayName: "Title"
@@ -2961,10 +2986,6 @@ var BaseManager = class {
         },
         "note.title": {
           displayName: "Title"
-        },
-        "note.Type Badge": {
-          displayName: "Type",
-          formula: this.generateTypeFormula()
         },
         "note.Areas": {
           displayName: "Areas"
@@ -2997,7 +3018,7 @@ var BaseManager = class {
         "Project",
         "Parent task",
         "Sub-tasks",
-        "Type",
+        "formula.Type",
         "tags",
         "file.ctime",
         "file.mtime"
@@ -3007,7 +3028,7 @@ var BaseManager = class {
         { property: "file.name", direction: "DESC" }
       ],
       columnSize: {
-        "note.Type Badge": 103,
+        "formula.Type": 103,
         "note.tags": 259,
         "file.ctime": 183
       }
@@ -3031,13 +3052,13 @@ var BaseManager = class {
       filters: {
         and: [
           `file.folder == "${this.settings.tasksFolder}"`,
-          `Project.contains(link("${project.name}"))`
+          this.createProjectFilter(project)
         ]
       },
       order: [
         "Done",
         "file.name",
-        "Type",
+        "formula.Type",
         "tags",
         "file.mtime",
         "file.ctime"
@@ -3048,7 +3069,7 @@ var BaseManager = class {
       ],
       columnSize: {
         "file.name": 440,
-        "note.Type Badge": 103,
+        "formula.Type": 103,
         "note.tags": 338,
         "file.ctime": 183
       }
@@ -3064,7 +3085,7 @@ var BaseManager = class {
       filters: {
         and: [
           `file.folder == "${this.settings.tasksFolder}"`,
-          `Areas.contains(link("${area.path}", "${area.name}"))`
+          this.createAreaFilter(area)
         ]
       },
       order: [
@@ -3115,19 +3136,7 @@ var BaseManager = class {
   async createOrUpdateTasksBase(projectsAndAreas) {
     const baseFilePath = `${this.settings.basesFolder}/${this.settings.tasksBaseFile}`;
     const content = await this.generateTasksBase(projectsAndAreas);
-    try {
-      const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
-      if (existingFile instanceof import_obsidian2.TFile) {
-        await this.vault.modify(existingFile, content);
-        console.log(`Updated Tasks base file: ${baseFilePath}`);
-      } else {
-        await this.vault.create(baseFilePath, content);
-        console.log(`Created Tasks base file: ${baseFilePath}`);
-      }
-    } catch (error) {
-      console.error(`Failed to create/update Tasks base file: ${error}`);
-      throw error;
-    }
+    await this.createOrUpdateBaseFile(baseFilePath, content, "Tasks");
   }
   /**
    * Ensure the bases folder exists
@@ -3137,6 +3146,55 @@ var BaseManager = class {
     if (!folderExists) {
       await this.vault.createFolder(this.settings.basesFolder);
       console.log(`Created bases folder: ${this.settings.basesFolder}`);
+    }
+  }
+  /**
+   * Helper method to create or update a base file with robust error handling
+   */
+  async createOrUpdateBaseFile(baseFilePath, content, type2) {
+    var _a;
+    try {
+      const fileExists = await this.vault.adapter.exists(baseFilePath);
+      if (fileExists) {
+        const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
+        if (existingFile instanceof import_obsidian2.TFile) {
+          await this.vault.modify(existingFile, content);
+          console.log(`Updated ${type2} base file: ${baseFilePath}`);
+        } else {
+          try {
+            await this.vault.create(baseFilePath, content);
+            console.log(`Created ${type2} base file: ${baseFilePath}`);
+          } catch (createError) {
+            const retryFile = this.vault.getAbstractFileByPath(baseFilePath);
+            if (retryFile instanceof import_obsidian2.TFile) {
+              await this.vault.modify(retryFile, content);
+              console.log(`Updated ${type2} base file after retry: ${baseFilePath}`);
+            } else {
+              throw createError;
+            }
+          }
+        }
+      } else {
+        try {
+          await this.vault.create(baseFilePath, content);
+          console.log(`Created ${type2} base file: ${baseFilePath}`);
+        } catch (createError) {
+          if ((_a = createError.message) == null ? void 0 : _a.includes("already exists")) {
+            const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
+            if (existingFile instanceof import_obsidian2.TFile) {
+              await this.vault.modify(existingFile, content);
+              console.log(`Updated ${type2} base file after creation conflict: ${baseFilePath}`);
+            } else {
+              throw createError;
+            }
+          } else {
+            throw createError;
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to create/update ${type2} base file: ${error}`);
+      throw error;
     }
   }
   /**
@@ -3242,14 +3300,7 @@ var BaseManager = class {
     const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
     const content = await this.generateAreaBase(area);
     try {
-      const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
-      if (existingFile instanceof import_obsidian2.TFile) {
-        await this.vault.modify(existingFile, content);
-        console.log(`Updated area base file: ${baseFilePath}`);
-      } else {
-        await this.vault.create(baseFilePath, content);
-        console.log(`Created area base file: ${baseFilePath}`);
-      }
+      await this.createOrUpdateBaseFile(baseFilePath, content, "area");
       await this.ensureSpecificBaseEmbedding(area.path, baseFileName);
     } catch (error) {
       console.error(`Failed to create/update area base file: ${error}`);
@@ -3264,14 +3315,7 @@ var BaseManager = class {
     const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
     const content = await this.generateProjectBase(project);
     try {
-      const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
-      if (existingFile instanceof import_obsidian2.TFile) {
-        await this.vault.modify(existingFile, content);
-        console.log(`Updated project base file: ${baseFilePath}`);
-      } else {
-        await this.vault.create(baseFilePath, content);
-        console.log(`Created project base file: ${baseFilePath}`);
-      }
+      await this.createOrUpdateBaseFile(baseFilePath, content, "project");
       await this.ensureSpecificBaseEmbedding(project.path, baseFileName);
     } catch (error) {
       console.error(`Failed to create/update project base file: ${error}`);
@@ -3283,16 +3327,15 @@ var BaseManager = class {
    */
   async generateAreaBase(area) {
     const baseConfig = {
+      formulas: {
+        "Type": this.generateTypeFormula()
+      },
       properties: {
         "file.name": {
           displayName: "Title"
         },
         "note.Done": {
           displayName: "Done"
-        },
-        "note.Type Badge": {
-          displayName: "Type",
-          formula: this.generateTypeFormula()
         },
         "note.Project": {
           displayName: "Project"
@@ -3312,14 +3355,14 @@ var BaseManager = class {
       filters: {
         and: [
           `file.folder == "${this.settings.tasksFolder}"`,
-          `Areas.contains(link("${area.path}", "${area.name}"))`
+          this.createAreaFilter(area)
         ]
       },
       order: [
         "Done",
         "file.name",
         "Project",
-        "Type",
+        "formula.Type",
         "file.ctime",
         "file.mtime"
       ],
@@ -3336,7 +3379,7 @@ var BaseManager = class {
           filters: {
             and: [
               `file.folder == "${this.settings.tasksFolder}"`,
-              `Areas.contains(link("${area.path}", "${area.name}"))`,
+              this.createAreaFilter(area),
               `Type == "${taskType.name}"`
             ]
           },
@@ -3361,16 +3404,15 @@ var BaseManager = class {
    */
   async generateProjectBase(project) {
     const baseConfig = {
+      formulas: {
+        "Type": this.generateTypeFormula()
+      },
       properties: {
         "file.name": {
           displayName: "Title"
         },
         "note.Done": {
           displayName: "Done"
-        },
-        "note.Type Badge": {
-          displayName: "Type",
-          formula: this.generateTypeFormula()
         },
         "note.Areas": {
           displayName: "Areas"
@@ -3390,14 +3432,14 @@ var BaseManager = class {
       filters: {
         and: [
           `file.folder == "${this.settings.tasksFolder}"`,
-          `Project.contains(link("${project.path}", "${project.name}"))`
+          this.createProjectFilter(project)
         ]
       },
       order: [
         "Done",
         "file.name",
         "Areas",
-        "Type",
+        "formula.Type",
         "file.ctime",
         "file.mtime"
       ],
@@ -3414,7 +3456,7 @@ var BaseManager = class {
           filters: {
             and: [
               `file.folder == "${this.settings.tasksFolder}"`,
-              `Project.contains(link("${project.path}", "${project.name}"))`,
+              this.createProjectFilter(project),
               `Type == "${taskType.name}"`
             ]
           },
@@ -3928,9 +3970,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
-    if (this.settings.autoGenerateBases) {
-      await this.initializeBases();
-    }
+    await this.baseManager.ensureBasesFolder();
     this.addCommand({
       id: "add-task",
       name: "Add Task",
@@ -4306,40 +4346,6 @@ ${expectedBaseEmbed}`;
   }
   // Base Management Methods
   /**
-   * Initialize bases on plugin load
-   */
-  async initializeBases() {
-    try {
-      await this.baseManager.ensureBasesFolder();
-      await this.regenerateBases();
-      if (this.settings.areaBasesEnabled || this.settings.projectBasesEnabled) {
-        await this.autoGenerateExistingBases();
-      }
-      console.log("Task Sync: Bases initialized successfully");
-    } catch (error) {
-      console.error("Task Sync: Failed to initialize bases:", error);
-    }
-  }
-  /**
-   * Auto-generate bases for existing areas and projects
-   */
-  async autoGenerateExistingBases() {
-    try {
-      console.log("Auto-generating bases for existing areas and projects...");
-      const projectsAndAreas = await this.baseManager.getProjectsAndAreas();
-      for (const item of projectsAndAreas) {
-        if (item.type === "area" && this.settings.areaBasesEnabled) {
-          await this.baseManager.createOrUpdateAreaBase(item);
-        } else if (item.type === "project" && this.settings.projectBasesEnabled) {
-          await this.baseManager.createOrUpdateProjectBase(item);
-        }
-      }
-      console.log("Auto-generation of existing bases completed");
-    } catch (error) {
-      console.error("Failed to auto-generate existing bases:", error);
-    }
-  }
-  /**
    * Regenerate all base files
    */
   async regenerateBases() {
@@ -4490,10 +4496,6 @@ var TaskSyncSettingTab = class extends import_obsidian6.PluginSettingTab {
       this.plugin.settings.tasksBaseFile = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian6.Setting(section).setName("Auto-Generate Bases").setDesc("Automatically create and update base files when the plugin loads").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoGenerateBases).onChange(async (value) => {
-      this.plugin.settings.autoGenerateBases = value;
-      await this.plugin.saveSettings();
-    }));
     new import_obsidian6.Setting(section).setName("Auto-Update Base Views").setDesc("Automatically refresh base views when tasks, projects, or areas change").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoUpdateBaseViews).onChange(async (value) => {
       this.plugin.settings.autoUpdateBaseViews = value;
       await this.plugin.saveSettings();
@@ -4539,7 +4541,7 @@ var TaskSyncSettingTab = class extends import_obsidian6.PluginSettingTab {
     const section = container.createDiv("task-sync-settings-section");
     section.createEl("h2", { text: "Task Types", cls: "task-sync-section-header" });
     section.createEl("p", {
-      text: "Configure task types with colors for better visual organization.",
+      text: "Configure the available task types for your workflow.",
       cls: "task-sync-settings-section-desc"
     });
     this.renderTaskTypeSettings(section);
@@ -4553,20 +4555,7 @@ var TaskSyncSettingTab = class extends import_obsidian6.PluginSettingTab {
       return;
     }
     this.plugin.settings.taskTypes.forEach((taskType, index) => {
-      const setting = new import_obsidian6.Setting(container).setName(taskType.name).setDesc(`Configure the "${taskType.name}" task type`).addDropdown((dropdown) => {
-        TASK_TYPE_COLORS.forEach((color) => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
-        });
-        dropdown.setValue(taskType.color).onChange(async (value) => {
-          this.plugin.settings.taskTypes[index].color = value;
-          await this.plugin.saveSettings();
-          if (this.plugin.settings.autoSyncAreaProjectBases) {
-            await this.plugin.syncAreaProjectBases();
-          }
-        });
-      });
-      const colorPreview = setting.controlEl.createDiv("task-type-preview");
-      colorPreview.innerHTML = `<span class="task-type-badge task-type-${taskType.color}">${taskType.name}</span>`;
+      const setting = new import_obsidian6.Setting(container).setName(taskType.name).setDesc(`Task type: ${taskType.name}`);
       if (this.plugin.settings.taskTypes.length > 1) {
         setting.addButton((button) => {
           button.setButtonText("Delete").setWarning().onClick(async () => {
@@ -4584,22 +4573,15 @@ var TaskSyncSettingTab = class extends import_obsidian6.PluginSettingTab {
   }
   createAddTaskTypeSection(container) {
     let newTypeName = "";
-    let newTypeColor = "blue";
-    const addSetting = new import_obsidian6.Setting(container).setName("Add New Task Type").setDesc("Create a new task type with a custom color").addText((text) => {
+    const addSetting = new import_obsidian6.Setting(container).setName("Add New Task Type").setDesc("Create a new task type for your workflow").addText((text) => {
       text.setPlaceholder("e.g., Epic, Story, Research").onChange((value) => {
         newTypeName = value.trim();
-      });
-    }).addDropdown((dropdown) => {
-      TASK_TYPE_COLORS.forEach((color) => {
-        dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
-      });
-      dropdown.setValue(newTypeColor).onChange((value) => {
-        newTypeColor = value;
       });
     }).addButton((button) => {
       button.setButtonText("Add Task Type").setCta().onClick(async () => {
         if (newTypeName && !this.plugin.settings.taskTypes.some((t) => t.name === newTypeName)) {
-          this.plugin.settings.taskTypes.push({ name: newTypeName, color: newTypeColor });
+          const defaultColor = this.getNextAvailableColor();
+          this.plugin.settings.taskTypes.push({ name: newTypeName, color: defaultColor });
           await this.plugin.saveSettings();
           container.empty();
           this.createTaskTypesSection(container);
@@ -4609,6 +4591,14 @@ var TaskSyncSettingTab = class extends import_obsidian6.PluginSettingTab {
         }
       });
     });
+  }
+  /**
+   * Get the next available color for a new task type
+   */
+  getNextAvailableColor() {
+    const usedColors = this.plugin.settings.taskTypes.map((t) => t.color);
+    const availableColors = TASK_TYPE_COLORS.filter((color) => !usedColors.includes(color));
+    return availableColors.length > 0 ? availableColors[0] : TASK_TYPE_COLORS[0];
   }
   createUISettings(container) {
     container.createEl("h3", { text: "Interface Settings" });

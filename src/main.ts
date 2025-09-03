@@ -4,6 +4,7 @@ import { BaseManager } from './services/BaseManager';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
 import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
 import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
+
 import pluralize from 'pluralize';
 
 // Task type interface with color support
@@ -96,10 +97,8 @@ export default class TaskSyncPlugin extends Plugin {
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
 
-    // Initialize bases if auto-generate is enabled
-    if (this.settings.autoGenerateBases) {
-      await this.initializeBases();
-    }
+    // Only ensure the bases folder exists, don't regenerate bases on startup
+    await this.baseManager.ensureBasesFolder();
 
     // Add commands
     this.addCommand({
@@ -566,46 +565,9 @@ export default class TaskSyncPlugin extends Plugin {
 
   // Base Management Methods
 
-  /**
-   * Initialize bases on plugin load
-   */
-  private async initializeBases(): Promise<void> {
-    try {
-      await this.baseManager.ensureBasesFolder();
-      await this.regenerateBases();
 
-      // Auto-generate individual bases for existing areas and projects
-      if (this.settings.areaBasesEnabled || this.settings.projectBasesEnabled) {
-        await this.autoGenerateExistingBases();
-      }
 
-      console.log('Task Sync: Bases initialized successfully');
-    } catch (error) {
-      console.error('Task Sync: Failed to initialize bases:', error);
-    }
-  }
 
-  /**
-   * Auto-generate bases for existing areas and projects
-   */
-  private async autoGenerateExistingBases(): Promise<void> {
-    try {
-      console.log('Auto-generating bases for existing areas and projects...');
-      const projectsAndAreas = await this.baseManager.getProjectsAndAreas();
-
-      for (const item of projectsAndAreas) {
-        if (item.type === 'area' && this.settings.areaBasesEnabled) {
-          await this.baseManager.createOrUpdateAreaBase(item);
-        } else if (item.type === 'project' && this.settings.projectBasesEnabled) {
-          await this.baseManager.createOrUpdateProjectBase(item);
-        }
-      }
-
-      console.log('Auto-generation of existing bases completed');
-    } catch (error) {
-      console.error('Failed to auto-generate existing bases:', error);
-    }
-  }
 
   /**
    * Regenerate all base files
@@ -817,16 +779,6 @@ class TaskSyncSettingTab extends PluginSettingTab {
         }));
 
     new Setting(section)
-      .setName('Auto-Generate Bases')
-      .setDesc('Automatically create and update base files when the plugin loads')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.autoGenerateBases)
-        .onChange(async (value) => {
-          this.plugin.settings.autoGenerateBases = value;
-          await this.plugin.saveSettings();
-        }));
-
-    new Setting(section)
       .setName('Auto-Update Base Views')
       .setDesc('Automatically refresh base views when tasks, projects, or areas change')
       .addToggle(toggle => toggle
@@ -900,7 +852,7 @@ class TaskSyncSettingTab extends PluginSettingTab {
     // Section header
     section.createEl('h2', { text: 'Task Types', cls: 'task-sync-section-header' });
     section.createEl('p', {
-      text: 'Configure task types with colors for better visual organization.',
+      text: 'Configure the available task types for your workflow.',
       cls: 'task-sync-settings-section-desc'
     });
 
@@ -926,28 +878,7 @@ class TaskSyncSettingTab extends PluginSettingTab {
     this.plugin.settings.taskTypes.forEach((taskType, index) => {
       const setting = new Setting(container)
         .setName(taskType.name)
-        .setDesc(`Configure the "${taskType.name}" task type`)
-        .addDropdown(dropdown => {
-          // Add color options
-          TASK_TYPE_COLORS.forEach(color => {
-            dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
-          });
-
-          dropdown.setValue(taskType.color)
-            .onChange(async (value: TaskTypeColor) => {
-              this.plugin.settings.taskTypes[index].color = value;
-              await this.plugin.saveSettings();
-
-              // Trigger base sync if enabled
-              if (this.plugin.settings.autoSyncAreaProjectBases) {
-                await this.plugin.syncAreaProjectBases();
-              }
-            });
-        });
-
-      // Add color preview badge
-      const colorPreview = setting.controlEl.createDiv('task-type-preview');
-      colorPreview.innerHTML = `<span class="task-type-badge task-type-${taskType.color}">${taskType.name}</span>`;
+        .setDesc(`Task type: ${taskType.name}`);
 
       // Add delete button (don't allow deleting if it's the last type)
       if (this.plugin.settings.taskTypes.length > 1) {
@@ -974,25 +905,14 @@ class TaskSyncSettingTab extends PluginSettingTab {
 
   private createAddTaskTypeSection(container: HTMLElement): void {
     let newTypeName = '';
-    let newTypeColor: TaskTypeColor = 'blue';
 
     const addSetting = new Setting(container)
       .setName('Add New Task Type')
-      .setDesc('Create a new task type with a custom color')
+      .setDesc('Create a new task type for your workflow')
       .addText(text => {
         text.setPlaceholder('e.g., Epic, Story, Research')
           .onChange((value) => {
             newTypeName = value.trim();
-          });
-      })
-      .addDropdown(dropdown => {
-        TASK_TYPE_COLORS.forEach(color => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
-        });
-
-        dropdown.setValue(newTypeColor)
-          .onChange((value: TaskTypeColor) => {
-            newTypeColor = value;
           });
       })
       .addButton(button => {
@@ -1000,7 +920,9 @@ class TaskSyncSettingTab extends PluginSettingTab {
           .setCta()
           .onClick(async () => {
             if (newTypeName && !this.plugin.settings.taskTypes.some(t => t.name === newTypeName)) {
-              this.plugin.settings.taskTypes.push({ name: newTypeName, color: newTypeColor });
+              // Assign a default color automatically (cycling through available colors)
+              const defaultColor = this.getNextAvailableColor();
+              this.plugin.settings.taskTypes.push({ name: newTypeName, color: defaultColor });
               await this.plugin.saveSettings();
 
               // Refresh the entire section
@@ -1014,6 +936,17 @@ class TaskSyncSettingTab extends PluginSettingTab {
             }
           });
       });
+  }
+
+  /**
+   * Get the next available color for a new task type
+   */
+  private getNextAvailableColor(): TaskTypeColor {
+    const usedColors = this.plugin.settings.taskTypes.map(t => t.color);
+    const availableColors = TASK_TYPE_COLORS.filter(color => !usedColors.includes(color));
+
+    // If all colors are used, cycle back to the first one
+    return availableColors.length > 0 ? availableColors[0] : TASK_TYPE_COLORS[0];
   }
 
   private createUISettings(container: HTMLElement): void {

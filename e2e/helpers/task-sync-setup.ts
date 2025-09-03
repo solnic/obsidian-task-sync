@@ -215,7 +215,7 @@ export async function setupObsidianElectron(
     (window as any).app.plugins.setEnable(true);
   });
 
-  await waitForAsyncOperation(500);
+  await page.waitForTimeout(500);
 
   // Configure plugin settings
   await page.evaluate(async () => {
@@ -253,7 +253,7 @@ export async function setupObsidianElectron(
     }
   });
 
-  await waitForAsyncOperation(1000);
+  await page.waitForTimeout(1000);
 
   // Verify plugin is loaded
   try {
@@ -294,6 +294,54 @@ export async function waitForTaskSyncPlugin(page: Page, timeout: number = 10000)
     const plugin = app?.plugins?.plugins?.['obsidian-task-sync'];
     return plugin && plugin.settings && typeof plugin.regenerateBases === 'function';
   }, { timeout });
+}
+
+/**
+ * Wait for a base file to be created or updated
+ */
+export async function waitForBaseFile(page: Page, baseFilePath: string, timeout: number = 5000): Promise<void> {
+  await page.waitForFunction(
+    ({ filePath }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(filePath);
+      return file !== null;
+    },
+    { filePath: baseFilePath },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for base content to contain specific text
+ */
+export async function waitForBaseContent(page: Page, baseFilePath: string, expectedContent: string, timeout: number = 5000): Promise<void> {
+  await page.waitForFunction(
+    async ({ filePath, content }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(filePath);
+      if (!file) return false;
+
+      try {
+        const fileContent = await app.vault.read(file);
+        return fileContent.includes(content);
+      } catch (error) {
+        return false;
+      }
+    },
+    { filePath: baseFilePath, content: expectedContent },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for bases regeneration to complete
+ */
+export async function waitForBasesRegeneration(page: Page, timeout: number = 5000): Promise<void> {
+  // Wait for the main Tasks.base file to exist
+  await waitForBaseFile(page, 'Bases/Tasks.base', timeout);
+
+  // Add a small delay to ensure all operations are complete
+  await page.waitForTimeout(500);
 }
 
 /**

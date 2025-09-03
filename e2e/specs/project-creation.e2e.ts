@@ -127,7 +127,7 @@ describe('Project Creation', () => {
     expect(baseContent).toContain('name: Tasks');
     expect(baseContent).toContain('name: Bugs');
     expect(baseContent).toContain('name: Features');
-    expect(baseContent).toContain('Project.contains(link("Projects/Website Redesign.md", "Website Redesign"))');
+    expect(baseContent).toContain('Project.contains(link("Website Redesign"))');
   });
 
   test('should validate required fields', async () => {

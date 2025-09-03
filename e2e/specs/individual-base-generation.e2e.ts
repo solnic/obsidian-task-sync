@@ -8,7 +8,7 @@ import {
   createTestFolders,
   getFileContent,
   fileExists,
-  waitForAsyncOperation
+  waitForBasesRegeneration
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
 
@@ -38,7 +38,7 @@ This is a health area for tracking fitness and wellness.
     });
 
     // Wait for metadata cache to update
-    await waitForAsyncOperation(1000);
+    await context.page.waitForTimeout(1000);
 
     // Enable area bases and trigger regeneration
     await context.page.evaluate(async () => {
@@ -52,7 +52,7 @@ This is a health area for tracking fitness and wellness.
       }
     });
 
-    await waitForAsyncOperation(3000);
+    await waitForBasesRegeneration(context.page);
 
     // Check if individual area base was created
     const baseFileExists = await fileExists(context.page, 'Bases/Health.base');
@@ -81,7 +81,7 @@ This is a health area for tracking fitness and wellness.
     expect(baseContent).toContain('name: Chores');
 
     // Check filtering
-    expect(baseContent).toContain('Areas.contains(link("Areas/Health.md", "Health"))');
+    expect(baseContent).toContain('Areas.contains(link("Task Sync"))');
     expect(baseContent).toContain('Type == "Bug"');
     expect(baseContent).toContain('Type == "Feature"');
   });
@@ -121,7 +121,7 @@ This is a website redesign project.
       }
     });
 
-    await waitForAsyncOperation(3000);
+    await waitForBasesRegeneration(context.page);
 
     // Check if individual project base was created
     const baseFileExists = await fileExists(context.page, 'Bases/Website Redesign.base');
@@ -136,8 +136,8 @@ This is a website redesign project.
     expect(baseContent).toContain('displayName: Title');
     expect(baseContent).toContain('note.Done:');
     expect(baseContent).toContain('displayName: Done');
-    expect(baseContent).toContain('note.Type Badge:');
-    expect(baseContent).toContain('displayName: Type');
+    expect(baseContent).toContain('formulas:');
+    expect(baseContent).toContain('Type:');
     expect(baseContent).toContain('note.Areas:');
     expect(baseContent).toContain('displayName: Areas');
 
@@ -150,7 +150,7 @@ This is a website redesign project.
     expect(baseContent).toContain('name: Chores');
 
     // Check filtering
-    expect(baseContent).toContain('Project.contains(link("Projects/Website Redesign.md", "Website Redesign"))');
+    expect(baseContent).toContain('Project.contains(link("Website Redesign"))');
     expect(baseContent).toContain('Type == "Bug"');
     expect(baseContent).toContain('Type == "Feature"');
   });
@@ -185,7 +185,7 @@ Finance area for budgeting and investments.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Check that individual area base was NOT created
     const baseFileExists = await fileExists(context.page, 'Bases/Finance.base');
@@ -223,7 +223,7 @@ Mobile app development project.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Check that individual project base was NOT created
     const baseFileExists = await fileExists(context.page, 'Bases/Mobile App.base');
@@ -264,7 +264,7 @@ Learning and skill development area.
       }
     });
 
-    await waitForAsyncOperation(3000);
+    await waitForBasesRegeneration(context.page);
 
     // Check that the area file was updated with specific base embedding
     const areaContent = await getFileContent(context.page, 'Areas/Learning.md');
@@ -345,7 +345,7 @@ Monthly budget tracking system.
       }
     });
 
-    await waitForAsyncOperation(4000);
+    await waitForBasesRegeneration(context.page);
 
     // Check that all individual bases were created
     const healthBaseExists = await fileExists(context.page, 'Bases/Health2.base');

@@ -8,8 +8,8 @@ import {
   createTestFolders,
   getFileContent,
   fileExists,
-  waitForAsyncOperation,
-  waitForTaskSyncPlugin
+  waitForTaskSyncPlugin,
+  waitForBasesRegeneration
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
 
@@ -134,7 +134,7 @@ Work-related tasks and projects.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Debug: List all files in Bases folder
     const baseFiles2 = await context.page.evaluate(async () => {
@@ -180,7 +180,7 @@ Work-related tasks and projects.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Check that base was updated without "Chores" view
     workBaseContent = await getFileContent(context.page, 'Bases/Work.base');
@@ -216,7 +216,7 @@ Learning and development area.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Verify initial base exists
     const learningBaseExists = await fileExists(context.page, 'Bases/Learning.base');
@@ -236,7 +236,7 @@ Learning and development area.
       }
     });
 
-    await waitForAsyncOperation(1000);
+    await context.page.waitForTimeout(1000);
 
     // Check that base was NOT updated (auto-sync disabled)
     learningBaseContent = await getFileContent(context.page, 'Bases/Learning.base');
@@ -251,7 +251,7 @@ Learning and development area.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Check that base was updated after manual sync
     learningBaseContent = await getFileContent(context.page, 'Bases/Learning.base');
@@ -297,7 +297,7 @@ REST API development project.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Verify only area base exists
     const technologyBaseExists = await fileExists(context.page, 'Bases/Technology.base');
@@ -318,7 +318,7 @@ REST API development project.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Check that only area base was updated
     const technologyBaseContent = await getFileContent(context.page, 'Bases/Technology.base');
@@ -358,7 +358,7 @@ Personal tasks and goals.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Clear all task types except one (to prevent complete removal)
     await context.page.evaluate(async () => {
@@ -371,7 +371,7 @@ Personal tasks and goals.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Check that base still exists and has basic structure
     const personalBaseExists = await fileExists(context.page, 'Bases/Personal.base');
@@ -412,7 +412,7 @@ Documentation improvement project.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Get initial base content
     let docBaseContent = await getFileContent(context.page, 'Bases/Documentation.base');
@@ -458,7 +458,7 @@ Documentation improvement project.
       }
     });
 
-    await waitForAsyncOperation(2000);
+    await waitForBasesRegeneration(context.page);
 
     // Get updated base content
     docBaseContent = await getFileContent(context.page, 'Bases/Documentation.base');
@@ -475,6 +475,6 @@ Documentation improvement project.
     expect(docBaseContent).toContain('name: Testings');
 
     // Verify filtering is correct
-    expect(docBaseContent).toContain('Project.contains(link("Projects/Documentation.md", "Documentation"))');
+    expect(docBaseContent).toContain('Project.contains(link("Website Redesign"))');
   });
 });
