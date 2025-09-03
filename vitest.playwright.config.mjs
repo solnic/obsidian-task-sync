@@ -22,8 +22,8 @@ export default defineConfig({
     globals: true,
     include: ['e2e/**/*.e2e.ts'],
     exclude: ['tests/**/*'],
-    testTimeout: isHeadless ? 120000 : 60000,  // Longer timeouts for headless mode
-    hookTimeout: isHeadless ? 60000 : 30000,
+    testTimeout: 5000,
+    hookTimeout: 5000,
     fileParallelism: true,
     maxConcurrency: isHeadless ? 1 : 3,        // Single concurrency for headless stability
     pool: 'threads',
@@ -38,7 +38,9 @@ export default defineConfig({
       junit: './test-results/junit.xml'
     } : undefined,
     globalSetup: './e2e/global-setup.ts',
-    globalTeardown: './e2e/global-teardown.ts'
+    globalTeardown: './e2e/global-teardown.ts',
+    // Ensure screenshots and debug directories are preserved
+    setupFiles: ['./e2e/test-setup.ts']
   },
   define: {
     global: 'globalThis'

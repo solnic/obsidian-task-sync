@@ -1,7 +1,10 @@
-import { Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 import { VaultScanner } from './services/VaultScannerService';
 import { BaseManager } from './services/BaseManager';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
+import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
+import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
+import pluralize from 'pluralize';
 
 // Settings interface
 export interface TaskSyncSettings {
@@ -18,6 +21,12 @@ export interface TaskSyncSettings {
   tasksBaseFile: string;
   autoGenerateBases: boolean;
   autoUpdateBaseViews: boolean;
+  // Task types configuration
+  taskTypes: string[];
+  // Individual area/project bases
+  areaBasesEnabled: boolean;
+  projectBasesEnabled: boolean;
+  autoSyncAreaProjectBases: boolean;
 }
 
 // File context interface for context-aware modal
@@ -41,7 +50,13 @@ const DEFAULT_SETTINGS: TaskSyncSettings = {
   basesFolder: 'Bases',
   tasksBaseFile: 'Tasks.base',
   autoGenerateBases: true,
-  autoUpdateBaseViews: true
+  autoUpdateBaseViews: true,
+  // Task types defaults
+  taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+  // Individual area/project bases defaults
+  areaBasesEnabled: true,
+  projectBasesEnabled: true,
+  autoSyncAreaProjectBases: true
 };
 
 export default class TaskSyncPlugin extends Plugin {
@@ -57,7 +72,7 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize services
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
-    this.baseManager = new BaseManager(this.app.vault, this.settings);
+    this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
 
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
@@ -89,6 +104,22 @@ export default class TaskSyncPlugin extends Plugin {
       name: 'Refresh Base Views',
       callback: async () => {
         await this.refreshBaseViews();
+      }
+    });
+
+    this.addCommand({
+      id: 'create-area',
+      name: 'Create Area',
+      callback: () => {
+        this.openAreaCreateModal();
+      }
+    });
+
+    this.addCommand({
+      id: 'create-project',
+      name: 'Create Project',
+      callback: () => {
+        this.openProjectCreateModal();
       }
     });
   }
@@ -156,6 +187,44 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
+  /**
+   * Open area creation modal
+   */
+  private openAreaCreateModal(): void {
+    try {
+      const modal = new AreaCreateModal(this.app, this);
+      modal.onSubmit(async (areaData) => {
+        await this.createArea(areaData);
+        // Refresh base views if auto-update is enabled
+        if (this.settings.autoUpdateBaseViews) {
+          await this.refreshBaseViews();
+        }
+      });
+      modal.open();
+    } catch (error) {
+      console.error('Failed to open area creation modal:', error);
+    }
+  }
+
+  /**
+   * Open project creation modal
+   */
+  private openProjectCreateModal(): void {
+    try {
+      const modal = new ProjectCreateModal(this.app, this);
+      modal.onSubmit(async (projectData) => {
+        await this.createProject(projectData);
+        // Refresh base views if auto-update is enabled
+        if (this.settings.autoUpdateBaseViews) {
+          await this.refreshBaseViews();
+        }
+      });
+      modal.open();
+    } catch (error) {
+      console.error('Failed to open project creation modal:', error);
+    }
+  }
+
   private detectCurrentFileContext(): FileContext {
     const activeFile = this.app.workspace.getActiveFile();
 
@@ -190,7 +259,7 @@ export default class TaskSyncPlugin extends Plugin {
   // Task creation logic
   private async createTask(taskData: any): Promise<void> {
     try {
-      const taskFileName = `${taskData.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-')}.md`;
+      const taskFileName = `${taskData.name}.md`;
       const taskPath = `${this.settings.tasksFolder}/${taskFileName}`;
 
       // Create task content based on your template structure
@@ -226,6 +295,213 @@ export default class TaskSyncPlugin extends Plugin {
     return frontmatter.join('\n');
   }
 
+  /**
+   * Create a new area
+   */
+  private async createArea(areaData: AreaCreateData): Promise<void> {
+    try {
+      const areaFileName = `${areaData.name}.md`;
+      const areaPath = `${this.settings.areasFolder}/${areaFileName}`;
+
+      // Use template if configured, otherwise use default
+      let areaContent: string;
+      if (this.settings.defaultAreaTemplate) {
+        areaContent = await this.generateFromTemplate(this.settings.defaultAreaTemplate, areaData);
+      } else {
+        areaContent = this.generateAreaContent(areaData);
+      }
+
+      await this.app.vault.create(areaPath, areaContent);
+      console.log('Area created successfully:', areaPath);
+
+      // Create individual base if enabled
+      if (this.settings.areaBasesEnabled && this.settings.autoSyncAreaProjectBases) {
+        await this.baseManager.createOrUpdateAreaBase({
+          name: areaData.name,
+          path: areaPath,
+          type: 'area'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create area:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new project
+   */
+  private async createProject(projectData: ProjectCreateData): Promise<void> {
+    try {
+      const projectFileName = `${projectData.name}.md`;
+      const projectPath = `${this.settings.projectsFolder}/${projectFileName}`;
+
+      // Use template if configured, otherwise use default
+      let projectContent: string;
+      if (this.settings.defaultProjectTemplate) {
+        projectContent = await this.generateFromTemplate(this.settings.defaultProjectTemplate, projectData);
+      } else {
+        projectContent = this.generateProjectContent(projectData);
+      }
+
+      await this.app.vault.create(projectPath, projectContent);
+      console.log('Project created successfully:', projectPath);
+
+      // Create individual base if enabled
+      if (this.settings.projectBasesEnabled && this.settings.autoSyncAreaProjectBases) {
+        await this.baseManager.createOrUpdateProjectBase({
+          name: projectData.name,
+          path: projectPath,
+          type: 'project'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate default area content
+   */
+  private generateAreaContent(areaData: AreaCreateData): string {
+    const frontmatter = [
+      '---',
+      `Name: ${areaData.name}`,
+      `Type: Area`,
+      '---',
+      '',
+      '## Notes',
+      '',
+      areaData.description || 'This is a cool area',
+      '',
+      '## Tasks',
+      '',
+      `![[${areaData.name}.base]]`,
+      ''
+    ];
+
+    return frontmatter.join('\n');
+  }
+
+  /**
+   * Generate default project content
+   */
+  private generateProjectContent(projectData: ProjectCreateData): string {
+    const frontmatter = [
+      '---',
+      `Name: ${projectData.name}`,
+      `Type: Project`,
+      `Areas: ${projectData.areas || ''}`,
+      '---',
+      '',
+      '## Notes',
+      '',
+      projectData.description || 'This is a cool project',
+      '',
+      '## Tasks',
+      '',
+      `![[${projectData.name}.base]]`,
+      ''
+    ];
+
+    return frontmatter.join('\n');
+  }
+
+  /**
+   * Generate content from template with proper base embedding
+   */
+  private async generateFromTemplate(templateName: string, data: any): Promise<string> {
+    try {
+      const templatePath = `${this.settings.templateFolder}/${templateName}`;
+      const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+
+      if (!templateFile || !(templateFile instanceof TFile)) {
+        console.warn(`Template not found: ${templatePath}, using default content`);
+        if (data.hasOwnProperty('areas')) {
+          return this.generateProjectContent(data as ProjectCreateData);
+        } else {
+          return this.generateAreaContent(data as AreaCreateData);
+        }
+      }
+
+      let templateContent = await this.app.vault.read(templateFile);
+
+      // Replace template variables
+      templateContent = this.processTemplateVariables(templateContent, data);
+
+      // Ensure proper base embedding
+      templateContent = this.ensureProperBaseEmbedding(templateContent, data);
+
+      return templateContent;
+    } catch (error) {
+      console.error(`Failed to process template ${templateName}:`, error);
+      // Fallback to default content
+      if (data.hasOwnProperty('areas')) {
+        return this.generateProjectContent(data as ProjectCreateData);
+      } else {
+        return this.generateAreaContent(data as AreaCreateData);
+      }
+    }
+  }
+
+  /**
+   * Process template variables (basic implementation)
+   */
+  private processTemplateVariables(content: string, data: any): string {
+    let processedContent = content;
+
+    // Replace common variables
+    if (data.name) {
+      processedContent = processedContent.replace(/<% tp\.file\.title %>/g, data.name);
+      processedContent = processedContent.replace(/\{\{title\}\}/g, data.name);
+      processedContent = processedContent.replace(/\{\{name\}\}/g, data.name);
+    }
+
+    if (data.description) {
+      processedContent = processedContent.replace(/\{\{description\}\}/g, data.description);
+    }
+
+    if (data.areas) {
+      processedContent = processedContent.replace(/\{\{areas\}\}/g, data.areas);
+    }
+
+    // Replace date variables
+    const now = new Date();
+    processedContent = processedContent.replace(/\{\{date\}\}/g, now.toISOString().split('T')[0]);
+    processedContent = processedContent.replace(/\{\{time\}\}/g, now.toISOString());
+
+    return processedContent;
+  }
+
+  /**
+   * Ensure proper base embedding in template content
+   */
+  private ensureProperBaseEmbedding(content: string, data: any): string {
+    const entityName = data.name;
+    const expectedBaseEmbed = `![[${entityName}.base]]`;
+
+    // Check if template already has a specific base embedding
+    const specificBasePattern = new RegExp(`!\\[\\[${entityName}\\.base\\]\\]`);
+    if (specificBasePattern.test(content)) {
+      return content; // Already has the correct embedding
+    }
+
+    // Check if template has generic Tasks.base embedding
+    const genericBasePattern = /!\[\[Tasks\.base\]\]/;
+    if (genericBasePattern.test(content)) {
+      // Replace generic with specific
+      return content.replace(genericBasePattern, expectedBaseEmbed);
+    }
+
+    // If no base embedding found, add it at the end
+    if (!content.includes('![[') || !content.includes('.base]]')) {
+      return content.trim() + `\n\n## Tasks\n${expectedBaseEmbed}`;
+    }
+
+    return content;
+  }
+
   // Base Management Methods
 
   /**
@@ -235,9 +511,37 @@ export default class TaskSyncPlugin extends Plugin {
     try {
       await this.baseManager.ensureBasesFolder();
       await this.regenerateBases();
+
+      // Auto-generate individual bases for existing areas and projects
+      if (this.settings.areaBasesEnabled || this.settings.projectBasesEnabled) {
+        await this.autoGenerateExistingBases();
+      }
+
       console.log('Task Sync: Bases initialized successfully');
     } catch (error) {
       console.error('Task Sync: Failed to initialize bases:', error);
+    }
+  }
+
+  /**
+   * Auto-generate bases for existing areas and projects
+   */
+  private async autoGenerateExistingBases(): Promise<void> {
+    try {
+      console.log('Auto-generating bases for existing areas and projects...');
+      const projectsAndAreas = await this.baseManager.getProjectsAndAreas();
+
+      for (const item of projectsAndAreas) {
+        if (item.type === 'area' && this.settings.areaBasesEnabled) {
+          await this.baseManager.createOrUpdateAreaBase(item);
+        } else if (item.type === 'project' && this.settings.projectBasesEnabled) {
+          await this.baseManager.createOrUpdateProjectBase(item);
+        }
+      }
+
+      console.log('Auto-generation of existing bases completed');
+    } catch (error) {
+      console.error('Failed to auto-generate existing bases:', error);
     }
   }
 
@@ -254,6 +558,11 @@ export default class TaskSyncPlugin extends Plugin {
         await this.baseManager.ensureBaseEmbedding(item.path);
       }
 
+      // Generate individual area and project bases if enabled
+      if (this.settings.areaBasesEnabled || this.settings.projectBasesEnabled) {
+        await this.baseManager.syncAreaProjectBases();
+      }
+
       console.log('Task Sync: Bases regenerated successfully');
     } catch (error) {
       console.error('Task Sync: Failed to regenerate bases:', error);
@@ -265,6 +574,20 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async refreshBaseViews(): Promise<void> {
     await this.regenerateBases();
+  }
+
+  /**
+   * Sync area and project bases when settings change
+   */
+  async syncAreaProjectBases(): Promise<void> {
+    try {
+      console.log('Syncing area and project bases...');
+      await this.baseManager.syncAreaProjectBases();
+      console.log('Area and project bases synced successfully');
+    } catch (error) {
+      console.error('Failed to sync area and project bases:', error);
+      throw error;
+    }
   }
 }
 
@@ -291,63 +614,37 @@ class TaskSyncSettingTab extends PluginSettingTab {
       cls: 'task-sync-settings-description'
     });
 
-    // Create tabbed interface
-    this.createTabbedInterface(containerEl);
+    // Create section-based interface
+    this.createSectionInterface(containerEl);
   }
 
-  private createTabbedInterface(containerEl: HTMLElement): void {
-    const tabContainer = containerEl.createDiv('task-sync-settings-tabs');
-    const tabHeaders = tabContainer.createDiv('task-sync-settings-tab-headers');
-    const tabContent = tabContainer.createDiv('task-sync-settings-tab-content');
+  private createSectionInterface(containerEl: HTMLElement): void {
+    const sectionsContainer = containerEl.createDiv('task-sync-settings-sections');
 
-    const tabs = [
-      { id: 'folders', label: '📁 Folders', content: () => this.createFolderSettings(tabContent) },
-      { id: 'templates', label: '📝 Templates', content: () => this.createTemplateSettings(tabContent) },
-      { id: 'bases', label: '🗂️ Bases', content: () => this.createBaseSettings(tabContent) }
-    ];
-
-    let activeTab = 'folders';
-
-    tabs.forEach((tab, index) => {
-      const tabHeader = tabHeaders.createEl('button', {
-        text: tab.label,
-        cls: `task-sync-settings-tab-header ${index === 0 ? 'active' : ''}`
-      });
-
-      tabHeader.addEventListener('click', () => {
-        // Update active tab
-        tabHeaders.querySelectorAll('.task-sync-settings-tab-header').forEach(h => h.removeClass('active'));
-        tabHeader.addClass('active');
-        activeTab = tab.id;
-
-        // Update content
-        tabContent.empty();
-        tab.content();
-      });
-    });
-
-    // Initialize with first tab
-    tabs[0].content();
+    // Create all sections in order
+    this.createGeneralSection(sectionsContainer);
+    this.createTemplatesSection(sectionsContainer);
+    this.createBasesSection(sectionsContainer);
+    this.createTaskTypesSection(sectionsContainer);
   }
 
-  private createFolderSettings(container: HTMLElement): void {
-    container.createEl('h3', { text: 'Folder Configuration' });
-    container.createEl('p', {
-      text: 'Specify where your tasks, projects, and areas will be stored in your vault.',
-      cls: 'task-sync-settings-section-desc'
-    });
+  private createGeneralSection(container: HTMLElement): void {
+    const section = container.createDiv('task-sync-settings-section');
 
-    this.createFolderSetting(container, 'tasksFolder', 'Tasks Folder',
+    // Section header
+    section.createEl('h2', { text: 'General', cls: 'task-sync-section-header' });
+
+    this.createFolderSetting(section, 'tasksFolder', 'Tasks Folder',
       'Folder where task files will be stored', 'Tasks');
 
-    this.createFolderSetting(container, 'projectsFolder', 'Projects Folder',
+    this.createFolderSetting(section, 'projectsFolder', 'Projects Folder',
       'Folder where project files will be stored', 'Projects');
 
-    this.createFolderSetting(container, 'areasFolder', 'Areas Folder',
+    this.createFolderSetting(section, 'areasFolder', 'Areas Folder',
       'Folder where area files will be stored', 'Areas');
 
     // Add folder validation info
-    const infoBox = container.createDiv('task-sync-settings-info');
+    const infoBox = section.createDiv('task-sync-settings-info');
     infoBox.createEl('strong', { text: 'Note: ' });
     infoBox.appendText('Folders will be created automatically if they don\'t exist. Use relative paths from your vault root.');
   }
@@ -377,17 +674,16 @@ class TaskSyncSettingTab extends PluginSettingTab {
 
 
 
-  private createTemplateSettings(container: HTMLElement): void {
-    container.createEl('h3', { text: 'Template Configuration' });
-    container.createEl('p', {
-      text: 'Configure template integration for creating tasks, projects, and areas.',
-      cls: 'task-sync-settings-section-desc'
-    });
+  private createTemplatesSection(container: HTMLElement): void {
+    const section = container.createDiv('task-sync-settings-section');
 
-    this.createFolderSetting(container, 'templateFolder', 'Template Folder',
+    // Section header
+    section.createEl('h2', { text: 'Templates', cls: 'task-sync-section-header' });
+
+    this.createFolderSetting(section, 'templateFolder', 'Template Folder',
       'Folder where templates are stored', 'Templates');
 
-    new Setting(container)
+    new Setting(section)
       .setName('Use Templater Plugin')
       .setDesc('Enable integration with Templater plugin for advanced templates')
       .addToggle(toggle => toggle
@@ -398,7 +694,7 @@ class TaskSyncSettingTab extends PluginSettingTab {
         }));
 
     // Default template settings
-    new Setting(container)
+    new Setting(section)
       .setName('Default Task Template')
       .setDesc('Default template to use when creating new tasks')
       .addText(text => text
@@ -409,7 +705,7 @@ class TaskSyncSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
-    new Setting(container)
+    new Setting(section)
       .setName('Default Project Template')
       .setDesc('Default template to use when creating new projects')
       .addText(text => text
@@ -420,7 +716,7 @@ class TaskSyncSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
-    new Setting(container)
+    new Setting(section)
       .setName('Default Area Template')
       .setDesc('Default template to use when creating new areas')
       .addText(text => text
@@ -432,17 +728,16 @@ class TaskSyncSettingTab extends PluginSettingTab {
         }));
   }
 
-  private createBaseSettings(container: HTMLElement): void {
-    container.createEl('h3', { text: 'Bases Configuration' });
-    container.createEl('p', {
-      text: 'Configure Obsidian Bases integration for task management and visualization.',
-      cls: 'task-sync-settings-section-desc'
-    });
+  private createBasesSection(container: HTMLElement): void {
+    const section = container.createDiv('task-sync-settings-section');
 
-    this.createFolderSetting(container, 'basesFolder', 'Bases Folder',
+    // Section header
+    section.createEl('h2', { text: 'Bases Integration', cls: 'task-sync-section-header' });
+
+    this.createFolderSetting(section, 'basesFolder', 'Bases Folder',
       'Folder where .base files are stored', 'Bases');
 
-    new Setting(container)
+    new Setting(section)
       .setName('Tasks Base File')
       .setDesc('Name of the main tasks base file')
       .addText(text => text
@@ -453,7 +748,7 @@ class TaskSyncSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
-    new Setting(container)
+    new Setting(section)
       .setName('Auto-Generate Bases')
       .setDesc('Automatically create and update base files when the plugin loads')
       .addToggle(toggle => toggle
@@ -463,7 +758,7 @@ class TaskSyncSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
-    new Setting(container)
+    new Setting(section)
       .setName('Auto-Update Base Views')
       .setDesc('Automatically refresh base views when tasks, projects, or areas change')
       .addToggle(toggle => toggle
@@ -473,8 +768,38 @@ class TaskSyncSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
+    new Setting(section)
+      .setName('Enable Area Bases')
+      .setDesc('Create individual base files for each area with filtered views')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.areaBasesEnabled)
+        .onChange(async (value) => {
+          this.plugin.settings.areaBasesEnabled = value;
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(section)
+      .setName('Enable Project Bases')
+      .setDesc('Create individual base files for each project with filtered views')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.projectBasesEnabled)
+        .onChange(async (value) => {
+          this.plugin.settings.projectBasesEnabled = value;
+          await this.plugin.saveSettings();
+        }));
+
+    new Setting(section)
+      .setName('Auto-Sync Area/Project Bases')
+      .setDesc('Automatically update area and project bases when settings change')
+      .addToggle(toggle => toggle
+        .setValue(this.plugin.settings.autoSyncAreaProjectBases)
+        .onChange(async (value) => {
+          this.plugin.settings.autoSyncAreaProjectBases = value;
+          await this.plugin.saveSettings();
+        }));
+
     // Action buttons
-    const actionsContainer = container.createDiv('task-sync-settings-actions');
+    const actionsContainer = section.createDiv('task-sync-settings-actions');
 
     const regenerateButton = actionsContainer.createEl('button', {
       text: 'Regenerate Bases',
@@ -497,6 +822,103 @@ class TaskSyncSettingTab extends PluginSettingTab {
           regenerateButton.disabled = false;
           regenerateButton.setText('Regenerate Bases');
         }, 2000);
+      }
+    });
+  }
+
+  private createTaskTypesSection(container: HTMLElement): void {
+    const section = container.createDiv('task-sync-settings-section');
+
+    // Section header
+    section.createEl('h2', { text: 'Task Types', cls: 'task-sync-section-header' });
+
+    // Current task types list
+    const typesContainer = section.createDiv('task-sync-task-types-container');
+    this.renderTaskTypesList(typesContainer);
+
+    // Add new task type
+    let newTypeInput: HTMLInputElement;
+    const addSetting = new Setting(section)
+      .setName('New Task Type')
+      .setDesc('Enter a name for the new task type')
+      .addText(text => {
+        newTypeInput = text.inputEl;
+        text.setPlaceholder('e.g., Epic, Story, Research')
+          .onChange((value) => {
+            // Enable/disable add button based on input
+            addButton.disabled = !value.trim() || this.plugin.settings.taskTypes.includes(value.trim());
+          });
+      });
+
+    const addButton = section.createEl('button', {
+      text: 'Add Task Type',
+      cls: 'mod-cta'
+    });
+    addButton.disabled = true;
+
+    addButton.addEventListener('click', async () => {
+      const newType = newTypeInput.value.trim();
+      if (newType && !this.plugin.settings.taskTypes.includes(newType)) {
+        this.plugin.settings.taskTypes.push(newType);
+        await this.plugin.saveSettings();
+
+        // Refresh the list
+        typesContainer.empty();
+        this.renderTaskTypesList(typesContainer);
+
+        // Clear input
+        newTypeInput.value = '';
+        addButton.disabled = true;
+
+        // Trigger base sync if enabled
+        if (this.plugin.settings.autoSyncAreaProjectBases) {
+          await this.plugin.syncAreaProjectBases();
+        }
+      }
+    });
+  }
+
+  private renderTaskTypesList(container: HTMLElement): void {
+    const count = this.plugin.settings.taskTypes.length;
+    const headerText = count === 0 ? 'Task Types' :
+      count === 1 ? '1 Task Type' :
+        `${count} ${pluralize('Type', count)}`;
+
+    container.createEl('h4', { text: headerText });
+
+    if (count === 0) {
+      container.createEl('p', { text: 'No task types configured.', cls: 'task-sync-empty-state' });
+      return;
+    }
+
+    const listContainer = container.createDiv('task-sync-task-types-list');
+
+    this.plugin.settings.taskTypes.forEach((type, index) => {
+      const typeItem = listContainer.createDiv('task-sync-task-type-item');
+
+      const typeLabel = typeItem.createEl('span', { text: type, cls: 'task-sync-task-type-label' });
+
+      const actionsContainer = typeItem.createDiv('task-sync-task-type-actions');
+
+      // Delete button (don't allow deleting if it's the last type)
+      if (this.plugin.settings.taskTypes.length > 1) {
+        const deleteButton = actionsContainer.createEl('button', {
+          text: '×',
+          cls: 'task-sync-delete-button'
+        });
+        deleteButton.addEventListener('click', async () => {
+          this.plugin.settings.taskTypes.splice(index, 1);
+          await this.plugin.saveSettings();
+
+          // Refresh the list
+          container.empty();
+          this.renderTaskTypesList(container);
+
+          // Trigger base sync if enabled
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
+        });
       }
     });
   }

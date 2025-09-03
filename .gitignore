@@ -1,6 +1,8 @@
 .env
 main.js
 
+.obsidian-unpacked/
+
 e2e/recordings/*
 e2e/test-environments/*
 e2e/screenshots/*

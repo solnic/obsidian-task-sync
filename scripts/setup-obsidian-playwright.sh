@@ -40,16 +40,41 @@ echo "🔍 Fetching latest Obsidian version..."
 OBSIDIAN_VERSION=$(get_latest_version)
 echo "📋 Latest Obsidian version: $OBSIDIAN_VERSION"
 
-# Set up URLs and paths
-OBSIDIAN_URL="https://github.com/obsidianmd/obsidian-releases/releases/download/v${OBSIDIAN_VERSION}/Obsidian-${OBSIDIAN_VERSION}.AppImage"
-APPIMAGE_PATH="${DOWNLOAD_DIR}/Obsidian-${OBSIDIAN_VERSION}.AppImage"
+# Detect architecture
+ARCH=$(uname -m)
+case $ARCH in
+    x86_64)
+        ARCH_SUFFIX=""
+        ;;
+    aarch64|arm64)
+        ARCH_SUFFIX="-arm64"
+        ;;
+    *)
+        echo "❌ Error: Unsupported architecture: $ARCH"
+        echo "   Supported architectures: x86_64, aarch64/arm64"
+        exit 1
+        ;;
+esac
+
+echo "🏗️ Detected architecture: $ARCH (using suffix: ${ARCH_SUFFIX:-none})"
+
+# Set up URLs and paths - use tar.gz for proper Electron structure
+OBSIDIAN_URL="https://github.com/obsidianmd/obsidian-releases/releases/download/v${OBSIDIAN_VERSION}/obsidian-${OBSIDIAN_VERSION}${ARCH_SUFFIX}.tar.gz"
+ARCHIVE_PATH="${DOWNLOAD_DIR}/obsidian-${OBSIDIAN_VERSION}${ARCH_SUFFIX}.tar.gz"
 
 # Create download directory
 mkdir -p "$DOWNLOAD_DIR"
 
-# Check if already unpacked
-if [ -f "${UNPACKED_DIR}/main.js" ]; then
-    CURRENT_VERSION=$(cat ${UNPACKED_DIR}/package.json | grep '"version"' | cut -d'"' -f4)
+# Check if already unpacked (check for both main.js and obsidian binary)
+if [ -f "${UNPACKED_DIR}/main.js" ] || [ -f "${UNPACKED_DIR}/obsidian" ]; then
+    # Try to get version from package.json if it exists
+    if [ -f "${UNPACKED_DIR}/package.json" ]; then
+        CURRENT_VERSION=$(cat ${UNPACKED_DIR}/package.json | grep '"version"' | cut -d'"' -f4)
+    else
+        # For AppImage extractions, we might not have package.json, so assume different version
+        CURRENT_VERSION="unknown"
+    fi
+
     echo "✅ Obsidian is already unpacked at ${UNPACKED_DIR}"
     echo "   Current version: $CURRENT_VERSION"
     echo "   Latest version: $OBSIDIAN_VERSION"
@@ -63,44 +88,44 @@ if [ -f "${UNPACKED_DIR}/main.js" ]; then
     fi
 fi
 
-# Download Obsidian AppImage if not already downloaded
-if [ ! -f "$APPIMAGE_PATH" ]; then
+# Download Obsidian tar.gz if not already downloaded
+if [ ! -f "$ARCHIVE_PATH" ]; then
     echo "📥 Downloading Obsidian v${OBSIDIAN_VERSION}..."
 
     if command_exists curl; then
-        curl -L -o "$APPIMAGE_PATH" "$OBSIDIAN_URL"
+        curl -L -o "$ARCHIVE_PATH" "$OBSIDIAN_URL"
     elif command_exists wget; then
-        wget -O "$APPIMAGE_PATH" "$OBSIDIAN_URL"
+        wget -O "$ARCHIVE_PATH" "$OBSIDIAN_URL"
     else
         echo "❌ Error: Neither curl nor wget is available for downloading"
         echo "   Please install curl or wget and try again"
         exit 1
     fi
 
-    echo "✅ Downloaded Obsidian AppImage"
+    echo "✅ Downloaded Obsidian archive"
 else
-    echo "✅ Obsidian AppImage already downloaded"
+    echo "✅ Obsidian archive already downloaded"
 fi
 
-# Make AppImage executable
-chmod +x "$APPIMAGE_PATH"
-
-# Extract AppImage
-echo "📦 Extracting Obsidian AppImage..."
+# Extract tar.gz
+echo "📦 Extracting Obsidian archive..."
 
 # Create temporary extraction directory
 TEMP_EXTRACT_DIR="${DOWNLOAD_DIR}/obsidian-extract"
 rm -rf "$TEMP_EXTRACT_DIR"
 mkdir -p "$TEMP_EXTRACT_DIR"
 
-# Extract AppImage
+# Extract tar.gz
 cd "$TEMP_EXTRACT_DIR"
-"../../$APPIMAGE_PATH" --appimage-extract >/dev/null 2>&1
+tar -xzf "../../$ARCHIVE_PATH"
 
 # Move the extracted content to the unpacked directory
 cd ../..
 rm -rf "$UNPACKED_DIR"
-mv "${TEMP_EXTRACT_DIR}/squashfs-root" "$UNPACKED_DIR"
+# The tar.gz contains a directory named after the version
+mv "${TEMP_EXTRACT_DIR}/Obsidian-${OBSIDIAN_VERSION}${ARCH_SUFFIX}" "$UNPACKED_DIR" 2>/dev/null || \
+mv "${TEMP_EXTRACT_DIR}/obsidian-${OBSIDIAN_VERSION}${ARCH_SUFFIX}" "$UNPACKED_DIR" 2>/dev/null || \
+mv "${TEMP_EXTRACT_DIR}"/* "$UNPACKED_DIR" 2>/dev/null
 
 # Clean up temporary directory
 rm -rf "$TEMP_EXTRACT_DIR"
@@ -108,19 +133,26 @@ rm -rf "$TEMP_EXTRACT_DIR"
 echo "✅ Obsidian extracted to ${UNPACKED_DIR}"
 
 # Verify extraction
-if [ -f "${UNPACKED_DIR}/main.js" ]; then
+if [ -f "${UNPACKED_DIR}/main.js" ] || [ -f "${UNPACKED_DIR}/obsidian" ]; then
     echo "✅ Extraction successful!"
-    echo "   Main file: ${UNPACKED_DIR}/main.js"
-    echo "   Version: $(cat ${UNPACKED_DIR}/package.json | grep '"version"' | cut -d'"' -f4)"
+    if [ -f "${UNPACKED_DIR}/main.js" ]; then
+        echo "   Main file: ${UNPACKED_DIR}/main.js"
+        if [ -f "${UNPACKED_DIR}/package.json" ]; then
+            echo "   Version: $(cat ${UNPACKED_DIR}/package.json | grep '"version"' | cut -d'"' -f4)"
+        fi
+    elif [ -f "${UNPACKED_DIR}/obsidian" ]; then
+        echo "   Main file: ${UNPACKED_DIR}/obsidian"
+        echo "   Architecture: $(file ${UNPACKED_DIR}/obsidian | cut -d',' -f2 | xargs)"
+    fi
 else
-    echo "❌ Error: Extraction failed - main.js not found"
+    echo "❌ Error: Extraction failed - neither main.js nor obsidian binary found"
     exit 1
 fi
 
-# Clean up AppImage if extraction was successful
-if [ -f "$APPIMAGE_PATH" ]; then
-    echo "🧹 Cleaning up AppImage file..."
-    rm "$APPIMAGE_PATH"
+# Clean up archive if extraction was successful
+if [ -f "$ARCHIVE_PATH" ]; then
+    echo "🧹 Cleaning up archive file..."
+    rm "$ARCHIVE_PATH"
 fi
 
 echo ""

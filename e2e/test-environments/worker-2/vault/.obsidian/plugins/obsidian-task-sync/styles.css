@@ -788,44 +788,25 @@ Provides consistent styling for all UI components
   line-height: 1.4;
 }
 
-.task-sync-settings-tabs {
+.task-sync-settings-sections {
   display: flex;
   flex-direction: column;
+  gap: 2rem;
 }
 
-.task-sync-settings-tab-headers {
-  display: flex;
-  border-bottom: 1px solid var(--background-modifier-border);
+.task-sync-settings-section {
+  padding: 0;
   margin-bottom: 2rem;
-  overflow-x: auto;
 }
 
-.task-sync-settings-tab-header {
-  background: none;
-  border: none;
-  padding: 1rem 1.5rem;
-  cursor: pointer;
-  color: var(--text-muted);
-  font-weight: 500;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  font-size: 0.9rem;
-}
-
-.task-sync-settings-tab-header:hover {
+.task-sync-section-header {
+  margin: 0 0 1.5rem 0;
+  padding: 0;
   color: var(--text-normal);
-  background: var(--background-modifier-hover);
-}
-
-.task-sync-settings-tab-header.active {
-  color: var(--interactive-accent);
-  border-bottom-color: var(--interactive-accent);
-  background: var(--background-modifier-hover);
-}
-
-.task-sync-settings-tab-content {
-  min-height: 400px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 0.5rem;
 }
 
 .task-sync-settings-section-desc {
@@ -833,10 +814,6 @@ Provides consistent styling for all UI components
   color: var(--text-muted);
   font-size: 0.9rem;
   line-height: 1.4;
-  padding: 0.75rem;
-  background: var(--background-secondary);
-  border-radius: 4px;
-  border-left: 3px solid var(--interactive-accent);
 }
 
 .task-sync-settings-info {
@@ -847,6 +824,21 @@ Provides consistent styling for all UI components
   border-left: 3px solid var(--color-blue);
   font-size: 0.9rem;
   line-height: 1.4;
+}
+
+/* Section spacing and visual separation */
+.task-sync-settings-section:not(:last-child) {
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+  padding-bottom: 2rem;
+}
+
+.task-sync-settings-section .setting-item {
+  border: none;
+  padding: 0.75rem 0;
+}
+
+.task-sync-settings-section .setting-item:not(:last-child) {
+  border-bottom: 1px solid var(--background-modifier-border-hover);
 }
 
 .task-sync-settings-placeholder {

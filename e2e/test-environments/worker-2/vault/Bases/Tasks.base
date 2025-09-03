@@ -49,3 +49,187 @@ views:
       note.Type: 103
       note.tags: 259
       file.ctime: 183
+  - type: table
+    name: Documentation
+    filters:
+      and:
+        - file.folder == "Tasks"
+        - Project.contains(link("Documentation"))
+    order:
+      - Done
+      - file.name
+      - Type
+      - tags
+      - file.mtime
+      - file.ctime
+    sort:
+      - property: file.ctime
+        direction: DESC
+      - property: file.name
+        direction: ASC
+    columnSize:
+      file.name: 440
+      note.Type: 103
+      note.tags: 338
+      file.ctime: 183
+  - type: table
+    name: API Development
+    filters:
+      and:
+        - file.folder == "Tasks"
+        - Project.contains(link("API Development"))
+    order:
+      - Done
+      - file.name
+      - Type
+      - tags
+      - file.mtime
+      - file.ctime
+    sort:
+      - property: file.ctime
+        direction: DESC
+      - property: file.name
+        direction: ASC
+    columnSize:
+      file.name: 440
+      note.Type: 103
+      note.tags: 338
+      file.ctime: 183
+  - type: table
+    name: Fitness Plan
+    filters:
+      and:
+        - file.folder == "Tasks"
+        - Project.contains(link("Fitness Plan"))
+    order:
+      - Done
+      - file.name
+      - Type
+      - tags
+      - file.mtime
+      - file.ctime
+    sort:
+      - property: file.ctime
+        direction: DESC
+      - property: file.name
+        direction: ASC
+    columnSize:
+      file.name: 440
+      note.Type: 103
+      note.tags: 338
+      file.ctime: 183
+  - type: table
+    name: Personal
+    filters:
+      and:
+        - file.folder == "Tasks"
+        - Areas.contains(link("Areas/Personal.md", "Personal"))
+    order:
+      - Status
+      - file.name
+      - tags
+      - file.mtime
+      - file.ctime
+      - Project
+    sort:
+      - property: file.mtime
+        direction: ASC
+      - property: file.name
+        direction: ASC
+    columnSize:
+      file.name: 382
+      note.tags: 134
+      file.mtime: 165
+      file.ctime: 183
+  - type: table
+    name: Technology
+    filters:
+      and:
+        - file.folder == "Tasks"
+        - Areas.contains(link("Areas/Technology.md", "Technology"))
+    order:
+      - Status
+      - file.name
+      - tags
+      - file.mtime
+      - file.ctime
+      - Project
+    sort:
+      - property: file.mtime
+        direction: ASC
+      - property: file.name
+        direction: ASC
+    columnSize:
+      file.name: 382
+      note.tags: 134
+      file.mtime: 165
+      file.ctime: 183
+  - type: table
+    name: Learning
+    filters:
+      and:
+        - file.folder == "Tasks"
+        - Areas.contains(link("Areas/Learning.md", "Learning"))
+    order:
+      - Status
+      - file.name
+      - tags
+      - file.mtime
+      - file.ctime
+      - Project
+    sort:
+      - property: file.mtime
+        direction: ASC
+      - property: file.name
+        direction: ASC
+    columnSize:
+      file.name: 382
+      note.tags: 134
+      file.mtime: 165
+      file.ctime: 183
+  - type: table
+    name: Work
+    filters:
+      and:
+        - file.folder == "Tasks"
+        - Areas.contains(link("Areas/Work.md", "Work"))
+    order:
+      - Status
+      - file.name
+      - tags
+      - file.mtime
+      - file.ctime
+      - Project
+    sort:
+      - property: file.mtime
+        direction: ASC
+      - property: file.name
+        direction: ASC
+    columnSize:
+      file.name: 382
+      note.tags: 134
+      file.mtime: 165
+      file.ctime: 183
+  - type: table
+    name: Health
+    filters:
+      and:
+        - file.folder == "Tasks"
+        - Areas.contains(link("Areas/Health.md", "Health"))
+    order:
+      - Status
+      - file.name
+      - tags
+      - file.mtime
+      - file.ctime
+      - Project
+    sort:
+      - property: file.mtime
+        direction: ASC
+      - property: file.name
+        direction: ASC
+    columnSize:
+      file.name: 382
+      note.tags: 134
+      file.mtime: 165
+      file.ctime: 183

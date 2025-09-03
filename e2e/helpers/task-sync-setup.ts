@@ -72,7 +72,11 @@ export async function setupObsidianElectron(
     !process.env.DISPLAY;
 
   if (needsSandboxDisabled) {
-    launchArgs.push('--no-sandbox');
+    launchArgs.push(
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage'
+    );
   }
 
   if (isHeadless) {
@@ -88,7 +92,10 @@ export async function setupObsidianElectron(
       '--disable-ipc-flooding-protection',
       '--disable-web-security',
       '--allow-running-insecure-content',
-      '--disable-features=VizDisplayCompositor'
+      '--disable-features=VizDisplayCompositor',
+      '--disable-dbus',
+      '--disable-default-apps',
+      '--disable-component-update'
     );
   }
 
@@ -105,16 +112,48 @@ export async function setupObsidianElectron(
 
   console.log("✅ Obsidian launched successfully");
 
-  // Get the first window
-  const page = await electronApp.firstWindow();
+  // Get the first window with increased timeout
+  console.log("⏳ Waiting for first window...");
+  const page = await electronApp.firstWindow({ timeout: 60000 });
   console.log("📱 Got main window, title:", await page.title());
 
   // Wait for Obsidian to be fully loaded
-  await page.waitForFunction(() => {
-    return typeof (window as any).app !== 'undefined' &&
-      (window as any).app.workspace !== undefined &&
-      (window as any).app.workspace.layoutReady === true;
-  }, { timeout: 30000 });
+  console.log("⏳ Waiting for Obsidian app to be ready...");
+  try {
+    await page.waitForFunction(() => {
+      const app = (window as any).app;
+      const hasApp = typeof app !== 'undefined';
+      const hasWorkspace = hasApp && app.workspace !== undefined;
+      const isLayoutReady = hasWorkspace && app.workspace.layoutReady === true;
+
+      // Log progress for debugging
+      if (!hasApp) {
+        console.log("🔍 Waiting for app object...");
+      } else if (!hasWorkspace) {
+        console.log("🔍 App found, waiting for workspace...");
+      } else if (!isLayoutReady) {
+        console.log("🔍 Workspace found, waiting for layout to be ready...");
+      }
+
+      return isLayoutReady;
+    }, { timeout: 90000 });
+  } catch (error) {
+    console.error("❌ Timeout waiting for Obsidian to be ready:", error.message);
+
+    // Get current state for debugging
+    const currentState = await page.evaluate(() => {
+      const app = (window as any).app;
+      return {
+        hasApp: typeof app !== 'undefined',
+        hasWorkspace: app && app.workspace !== undefined,
+        layoutReady: app && app.workspace && app.workspace.layoutReady,
+        appKeys: app ? Object.keys(app) : [],
+        workspaceKeys: app && app.workspace ? Object.keys(app.workspace) : []
+      };
+    });
+    console.log("🔍 Current Obsidian state:", JSON.stringify(currentState, null, 2));
+    throw error;
+  }
 
   console.log("✅ Obsidian app object is ready");
 

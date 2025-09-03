@@ -16,7 +16,11 @@ describe('TaskSync Settings', () => {
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
-        autoUpdateBaseViews: true
+        autoUpdateBaseViews: true,
+        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        areaBasesEnabled: true,
+        projectBasesEnabled: true,
+        autoSyncAreaProjectBases: true
       };
 
       expect(defaultSettings.tasksFolder).toBe('Tasks');
@@ -53,7 +57,11 @@ describe('TaskSync Settings', () => {
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
-        autoUpdateBaseViews: true
+        autoUpdateBaseViews: true,
+        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        areaBasesEnabled: true,
+        projectBasesEnabled: true,
+        autoSyncAreaProjectBases: true
       };
 
       expect(typeof settings.defaultTaskTemplate).toBe('string');
@@ -73,7 +81,11 @@ describe('TaskSync Settings', () => {
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
-        autoUpdateBaseViews: true
+        autoUpdateBaseViews: true,
+        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        areaBasesEnabled: true,
+        projectBasesEnabled: true,
+        autoSyncAreaProjectBases: true
       };
 
       expect(typeof settings.useTemplater).toBe('boolean');
@@ -93,7 +105,11 @@ describe('TaskSync Settings', () => {
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
-        autoUpdateBaseViews: true
+        autoUpdateBaseViews: true,
+        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        areaBasesEnabled: true,
+        projectBasesEnabled: true,
+        autoSyncAreaProjectBases: true
       };
 
       expect(typeof settings.tasksFolder).toBe('string');
@@ -120,7 +136,11 @@ describe('TaskSync Settings', () => {
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
-        autoUpdateBaseViews: true
+        autoUpdateBaseViews: true,
+        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        areaBasesEnabled: true,
+        projectBasesEnabled: true,
+        autoSyncAreaProjectBases: true
       };
 
       // Empty strings should be valid (user might not want to use certain folders)
@@ -151,7 +171,11 @@ describe('TaskSync Settings', () => {
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
-        autoUpdateBaseViews: true
+        autoUpdateBaseViews: true,
+        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        areaBasesEnabled: true,
+        projectBasesEnabled: true,
+        autoSyncAreaProjectBases: true
       };
 
       expect(settings1.useTemplater).toBe(true);
@@ -170,7 +194,11 @@ describe('TaskSync Settings', () => {
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
-        autoUpdateBaseViews: true
+        autoUpdateBaseViews: true,
+        taskTypes: ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'],
+        areaBasesEnabled: true,
+        projectBasesEnabled: true,
+        autoSyncAreaProjectBases: true
       };
 
       expect(settings2.useTemplater).toBe(false);

@@ -4,7 +4,7 @@
  * with proper properties and views for task management
  */
 
-import { Vault, TFile } from 'obsidian';
+import { App, Vault, TFile } from 'obsidian';
 import { TaskSyncSettings } from '../main';
 import * as yaml from 'js-yaml';
 
@@ -41,9 +41,10 @@ export interface ProjectAreaInfo {
 
 export class BaseManager {
   constructor(
+    private app: App,
     private vault: Vault,
     private settings: TaskSyncSettings
-  ) {}
+  ) { }
 
   /**
    * Generate the main Tasks.base file with all task properties and default views
@@ -235,7 +236,7 @@ export class BaseManager {
     try {
       // Check if file exists
       const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
-      
+
       if (existingFile instanceof TFile) {
         // Update existing file
         await this.vault.modify(existingFile, content);
@@ -272,7 +273,7 @@ export class BaseManager {
 
       const content = await this.vault.read(file);
       const baseEmbedPattern = /!\[\[Tasks\.base\]\]/;
-      
+
       if (!baseEmbedPattern.test(content)) {
         // Add base embedding at the end
         const updatedContent = content.trim() + '\n\n## Tasks\n![[Tasks.base]]';
@@ -290,40 +291,52 @@ export class BaseManager {
   async getProjectsAndAreas(): Promise<ProjectAreaInfo[]> {
     const items: ProjectAreaInfo[] = [];
 
-    // Scan projects folder
+    // Scan projects folder for files with Type: Project
     try {
       const projectsFolder = this.vault.getAbstractFileByPath(this.settings.projectsFolder);
       if (projectsFolder) {
-        const projectFiles = this.vault.getMarkdownFiles().filter(file => 
+        const projectFiles = this.vault.getMarkdownFiles().filter(file =>
           file.path.startsWith(this.settings.projectsFolder + '/')
         );
-        
+
         for (const file of projectFiles) {
-          items.push({
-            name: file.basename,
-            path: file.path,
-            type: 'project'
-          });
+          const cache = this.app.metadataCache.getFileCache(file);
+          const frontmatter = cache?.frontmatter;
+
+          // Only include files with Type: Project
+          if (frontmatter?.Type === 'Project') {
+            items.push({
+              name: file.basename,
+              path: file.path,
+              type: 'project'
+            });
+          }
         }
       }
     } catch (error) {
       console.error('Failed to scan projects folder:', error);
     }
 
-    // Scan areas folder
+    // Scan areas folder for files with Type: Area
     try {
       const areasFolder = this.vault.getAbstractFileByPath(this.settings.areasFolder);
       if (areasFolder) {
-        const areaFiles = this.vault.getMarkdownFiles().filter(file => 
+        const areaFiles = this.vault.getMarkdownFiles().filter(file =>
           file.path.startsWith(this.settings.areasFolder + '/')
         );
-        
+
         for (const file of areaFiles) {
-          items.push({
-            name: file.basename,
-            path: file.path,
-            type: 'area'
-          });
+          const cache = this.app.metadataCache.getFileCache(file);
+          const frontmatter = cache?.frontmatter;
+
+          // Only include files with Type: Area
+          if (frontmatter?.Type === 'Area') {
+            items.push({
+              name: file.basename,
+              path: file.path,
+              type: 'area'
+            });
+          }
         }
       }
     } catch (error) {
@@ -331,5 +344,281 @@ export class BaseManager {
     }
 
     return items;
+  }
+
+  /**
+   * Sync area and project bases when settings change
+   */
+  async syncAreaProjectBases(): Promise<void> {
+    if (!this.settings.areaBasesEnabled && !this.settings.projectBasesEnabled) {
+      console.log('Area and project bases are disabled, skipping sync');
+      return;
+    }
+
+    const projectsAndAreas = await this.getProjectsAndAreas();
+
+    // Create individual bases for areas if enabled
+    if (this.settings.areaBasesEnabled) {
+      const areas = projectsAndAreas.filter(item => item.type === 'area');
+      for (const area of areas) {
+        await this.createOrUpdateAreaBase(area);
+      }
+    }
+
+    // Create individual bases for projects if enabled
+    if (this.settings.projectBasesEnabled) {
+      const projects = projectsAndAreas.filter(item => item.type === 'project');
+      for (const project of projects) {
+        await this.createOrUpdateProjectBase(project);
+      }
+    }
+
+    console.log('Area and project bases synced successfully');
+  }
+
+  /**
+   * Create or update an individual area base file
+   */
+  async createOrUpdateAreaBase(area: ProjectAreaInfo): Promise<void> {
+    const baseFileName = `${area.name}.base`;
+    const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
+    const content = await this.generateAreaBase(area);
+
+    try {
+      const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
+
+      if (existingFile instanceof TFile) {
+        await this.vault.modify(existingFile, content);
+        console.log(`Updated area base file: ${baseFilePath}`);
+      } else {
+        await this.vault.create(baseFilePath, content);
+        console.log(`Created area base file: ${baseFilePath}`);
+      }
+
+      // Update the area file to embed the specific base
+      await this.ensureSpecificBaseEmbedding(area.path, baseFileName);
+    } catch (error) {
+      console.error(`Failed to create/update area base file: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Create or update an individual project base file
+   */
+  async createOrUpdateProjectBase(project: ProjectAreaInfo): Promise<void> {
+    const baseFileName = `${project.name}.base`;
+    const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
+    const content = await this.generateProjectBase(project);
+
+    try {
+      const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
+
+      if (existingFile instanceof TFile) {
+        await this.vault.modify(existingFile, content);
+        console.log(`Updated project base file: ${baseFilePath}`);
+      } else {
+        await this.vault.create(baseFilePath, content);
+        console.log(`Created project base file: ${baseFilePath}`);
+      }
+
+      // Update the project file to embed the specific base
+      await this.ensureSpecificBaseEmbedding(project.path, baseFileName);
+    } catch (error) {
+      console.error(`Failed to create/update project base file: ${error}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate base configuration for a specific area
+   */
+  async generateAreaBase(area: ProjectAreaInfo): Promise<string> {
+    const baseConfig: BaseConfig = {
+      properties: {
+        'file.name': {
+          displayName: 'Title'
+        },
+        'note.Done': {
+          displayName: 'Done'
+        },
+        'note.Type': {
+          displayName: 'Type'
+        },
+        'note.Project': {
+          displayName: 'Project'
+        },
+        'file.ctime': {
+          displayName: 'Created At'
+        },
+        'file.mtime': {
+          displayName: 'Updated At'
+        }
+      },
+      views: []
+    };
+
+    // Add main Tasks view
+    baseConfig.views.push({
+      type: 'table',
+      name: 'Tasks',
+      filters: {
+        and: [
+          `file.folder == "${this.settings.tasksFolder}"`,
+          `Areas.contains(link("${area.path}", "${area.name}"))`
+        ]
+      },
+      order: [
+        'Done',
+        'file.name',
+        'Project',
+        'Type',
+        'file.ctime',
+        'file.mtime'
+      ],
+      sort: [
+        { property: 'file.mtime', direction: 'DESC' },
+        { property: 'file.name', direction: 'ASC' }
+      ]
+    });
+
+    // Add type-specific views
+    for (const taskType of this.settings.taskTypes) {
+      if (taskType !== 'Task') { // Skip generic 'Task' type for specific views
+        baseConfig.views.push({
+          type: 'table',
+          name: taskType + 's',
+          filters: {
+            and: [
+              `file.folder == "${this.settings.tasksFolder}"`,
+              `Areas.contains(link("${area.path}", "${area.name}"))`,
+              `Type == "${taskType}"`
+            ]
+          },
+          order: [
+            'Done',
+            'file.name',
+            'Project',
+            'file.ctime',
+            'file.mtime'
+          ],
+          sort: [
+            { property: 'file.mtime', direction: 'DESC' },
+            { property: 'file.name', direction: 'ASC' }
+          ]
+        });
+      }
+    }
+
+    return this.serializeBaseConfig(baseConfig);
+  }
+
+  /**
+   * Generate base configuration for a specific project
+   */
+  async generateProjectBase(project: ProjectAreaInfo): Promise<string> {
+    const baseConfig: BaseConfig = {
+      properties: {
+        'file.name': {
+          displayName: 'Title'
+        },
+        'note.Done': {
+          displayName: 'Done'
+        },
+        'note.Type': {
+          displayName: 'Type'
+        },
+        'note.Areas': {
+          displayName: 'Areas'
+        },
+        'file.ctime': {
+          displayName: 'Created At'
+        },
+        'file.mtime': {
+          displayName: 'Updated At'
+        }
+      },
+      views: []
+    };
+
+    // Add main Tasks view
+    baseConfig.views.push({
+      type: 'table',
+      name: 'Tasks',
+      filters: {
+        and: [
+          `file.folder == "${this.settings.tasksFolder}"`,
+          `Project.contains(link("${project.path}", "${project.name}"))`
+        ]
+      },
+      order: [
+        'Done',
+        'file.name',
+        'Areas',
+        'Type',
+        'file.ctime',
+        'file.mtime'
+      ],
+      sort: [
+        { property: 'file.mtime', direction: 'DESC' },
+        { property: 'file.name', direction: 'ASC' }
+      ]
+    });
+
+    // Add type-specific views
+    for (const taskType of this.settings.taskTypes) {
+      if (taskType !== 'Task') { // Skip generic 'Task' type for specific views
+        baseConfig.views.push({
+          type: 'table',
+          name: taskType + 's',
+          filters: {
+            and: [
+              `file.folder == "${this.settings.tasksFolder}"`,
+              `Project.contains(link("${project.path}", "${project.name}"))`,
+              `Type == "${taskType}"`
+            ]
+          },
+          order: [
+            'Done',
+            'file.name',
+            'Areas',
+            'file.ctime',
+            'file.mtime'
+          ],
+          sort: [
+            { property: 'file.mtime', direction: 'DESC' },
+            { property: 'file.name', direction: 'ASC' }
+          ]
+        });
+      }
+    }
+
+    return this.serializeBaseConfig(baseConfig);
+  }
+
+  /**
+   * Ensure specific base embedding in area/project files
+   */
+  async ensureSpecificBaseEmbedding(filePath: string, baseFileName: string): Promise<void> {
+    try {
+      const file = this.vault.getAbstractFileByPath(filePath);
+      if (!(file instanceof TFile)) return;
+
+      const content = await this.vault.read(file);
+      const baseEmbedPattern = new RegExp(`!\\[\\[${baseFileName}\\]\\]`);
+
+      if (!baseEmbedPattern.test(content)) {
+        // Remove old Tasks.base embedding if it exists
+        const oldBasePattern = /!\[\[Tasks\.base\]\]/g;
+        let updatedContent = content.replace(oldBasePattern, '');
+
+        // Add specific base embedding at the end
+        updatedContent = updatedContent.trim() + `\n\n## Tasks\n![[${baseFileName}]]`;
+        await this.vault.modify(file, updatedContent);
+        console.log(`Added specific base embedding to: ${filePath}`);
+      }
+    } catch (error) {
+      console.error(`Failed to add specific base embedding to ${filePath}:`, error);
+    }
   }
 }

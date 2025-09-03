@@ -52,7 +52,35 @@ export async function getSharedTestContext(): Promise<SharedTestContext> {
 
   // Create Electron instance using simplified setup
   const { setupObsidianElectron } = await import('./task-sync-setup');
-  const { electronApp, page } = await setupObsidianElectron(vaultPath, dataPath);
+  let electronApp: any, page: any;
+
+  try {
+    const result = await setupObsidianElectron(vaultPath, dataPath);
+    electronApp = result.electronApp;
+    page = result.page;
+  } catch (setupError) {
+    console.error(`❌ Failed to setup Obsidian for ${workerId}:`, setupError.message);
+
+    // Try to capture any available debug information
+    try {
+      // If we have a partial setup, try to capture what we can
+      if (setupError.electronApp) {
+        const tempContext = {
+          electronApp: setupError.electronApp,
+          page: setupError.page,
+          testId,
+          vaultPath,
+          dataPath,
+          workerId
+        };
+        await captureFullDebugInfo(tempContext, `setup-failure-${workerId}`);
+      }
+    } catch (debugError) {
+      console.warn(`⚠️ Could not capture debug info for setup failure: ${debugError.message}`);
+    }
+
+    throw setupError;
+  }
 
   const context: SharedTestContext = {
     electronApp,
@@ -172,7 +200,7 @@ export async function cleanupAllWorkerContexts(): Promise<void> {
 }
 
 /**
- * Capture a screenshot for debugging purposes
+ * Capture a screenshot for debugging purposes using Playwright Electron support
  */
 export async function captureScreenshotOnFailure(context: SharedTestContext, name: string): Promise<void> {
   try {
@@ -183,15 +211,114 @@ export async function captureScreenshotOnFailure(context: SharedTestContext, nam
     const filename = `${name}-${timestamp}-${context.workerId}.png`;
     const screenshotPath = path.join(screenshotsDir, filename);
 
-    await context.page.screenshot({
-      path: screenshotPath,
-      fullPage: true,
-      type: 'png'
-    });
+    // Try to capture page screenshot first (most detailed)
+    try {
+      await context.page.screenshot({
+        path: screenshotPath,
+        fullPage: true,
+        type: 'png',
+        timeout: 5000
+      });
+      console.log(`📸 Page screenshot captured: ${screenshotPath}`);
+    } catch (pageError) {
+      console.warn(`⚠️ Page screenshot failed: ${pageError.message}`);
 
-    console.log(`📸 Screenshot captured: ${screenshotPath}`);
+      // Fallback: try to get all windows and screenshot them
+      try {
+        const windows = context.electronApp.windows();
+        if (windows.length > 0) {
+          const appScreenshotPath = screenshotPath.replace('.png', '-app.png');
+          await windows[0].screenshot({
+            path: appScreenshotPath,
+            type: 'png',
+            timeout: 5000
+          });
+          console.log(`📸 Electron window screenshot captured: ${appScreenshotPath}`);
+        } else {
+          console.warn(`⚠️ No Electron windows available for screenshot`);
+        }
+      } catch (appError) {
+        console.warn(`⚠️ Electron window screenshot also failed: ${appError.message}`);
+
+        // Last resort: capture basic info about the state
+        try {
+          const debugInfo = await context.page.evaluate(() => ({
+            url: window.location.href,
+            title: document.title,
+            readyState: document.readyState,
+            hasApp: typeof (window as any).app !== 'undefined',
+            timestamp: new Date().toISOString()
+          }));
+
+          const debugPath = screenshotPath.replace('.png', '-debug.json');
+          await fs.promises.writeFile(debugPath, JSON.stringify(debugInfo, null, 2));
+          console.log(`📝 Debug info captured: ${debugPath}`);
+        } catch (debugError) {
+          console.warn(`⚠️ Debug info capture failed: ${debugError.message}`);
+        }
+      }
+    }
   } catch (error) {
-    console.warn(`⚠️ Failed to capture screenshot: ${error.message}`);
+    console.warn(`⚠️ Screenshot capture completely failed: ${error.message}`);
+  }
+}
+
+/**
+ * Capture a full debugging package including screenshot, console logs, and app state
+ */
+export async function captureFullDebugInfo(context: SharedTestContext, name: string): Promise<void> {
+  try {
+    const debugDir = path.join(process.cwd(), 'e2e', 'debug', name);
+    await fs.promises.mkdir(debugDir, { recursive: true });
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+
+    // Capture screenshot
+    await captureScreenshotOnFailure(context, name);
+
+    // Capture console logs if available
+    try {
+      const logs = await context.page.evaluate(() => {
+        // Get console history if available
+        return (window as any).console?.history || [];
+      });
+
+      const logsPath = path.join(debugDir, `console-logs-${timestamp}.json`);
+      await fs.promises.writeFile(logsPath, JSON.stringify(logs, null, 2));
+      console.log(`📝 Console logs captured: ${logsPath}`);
+    } catch (error) {
+      console.warn(`⚠️ Console logs capture failed: ${error.message}`);
+    }
+
+    // Capture Obsidian app state
+    try {
+      const appState = await context.page.evaluate(() => {
+        const app = (window as any).app;
+        return {
+          hasApp: typeof app !== 'undefined',
+          hasWorkspace: app && typeof app.workspace !== 'undefined',
+          layoutReady: app && app.workspace && app.workspace.layoutReady,
+          plugins: app && app.plugins ? Object.keys(app.plugins.plugins || {}) : [],
+          activeLeaf: app && app.workspace && app.workspace.activeLeaf ? {
+            type: app.workspace.activeLeaf.view?.getViewType?.(),
+            title: app.workspace.activeLeaf.view?.getDisplayText?.()
+          } : null,
+          vault: app && app.vault ? {
+            name: app.vault.getName?.(),
+            path: app.vault.adapter?.path
+          } : null
+        };
+      });
+
+      const statePath = path.join(debugDir, `app-state-${timestamp}.json`);
+      await fs.promises.writeFile(statePath, JSON.stringify(appState, null, 2));
+      console.log(`📝 App state captured: ${statePath}`);
+    } catch (error) {
+      console.warn(`⚠️ App state capture failed: ${error.message}`);
+    }
+
+  } catch (error) {
+    console.warn(`⚠️ Full debug info capture failed: ${error.message}`);
   }
 }
 
