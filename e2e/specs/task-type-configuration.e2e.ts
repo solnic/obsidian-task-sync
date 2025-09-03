@@ -8,7 +8,8 @@ import {
   createTestFolders,
   openTaskSyncSettings,
   closeSettings,
-  scrollToSettingsSection
+  scrollToSettingsSection,
+  waitForTaskSyncPlugin
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
 
@@ -204,6 +205,9 @@ describe('Task Type Configuration', () => {
   test('should trigger base sync when task type is added', { timeout: 30000 }, async () => {
     await createTestFolders(context.page);
 
+    // Wait for plugin to be ready
+    await waitForTaskSyncPlugin(context.page);
+
     // Create an area to test base sync
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -228,10 +232,8 @@ Test area for sync testing.
       }
     });
 
-    // Wait for plugin to be ready
-    await context.page.waitForFunction(() => {
-      return typeof (window as any).app?.plugins?.plugins?.['obsidian-task-sync'] !== 'undefined';
-    }, { timeout: 5000 });
+    // Wait for base generation to complete
+    await context.page.waitForTimeout(3000);
 
     await openTaskSyncSettingsWrapper();
     await scrollToTaskTypesSection();
@@ -270,6 +272,9 @@ Test area for sync testing.
   test('should trigger base sync when task type is removed', { timeout: 20000 }, async () => {
     await createTestFolders(context.page);
 
+    // Wait for plugin to be ready
+    await waitForTaskSyncPlugin(context.page);
+
     // Create an area to test base sync
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -294,10 +299,8 @@ Area for testing sync functionality.
       }
     });
 
-    // Wait for plugin to be ready
-    await context.page.waitForFunction(() => {
-      return typeof (window as any).app?.plugins?.plugins?.['obsidian-task-sync'] !== 'undefined';
-    }, { timeout: 5000 });
+    // Wait for base generation to complete
+    await context.page.waitForTimeout(3000);
 
     await openTaskSyncSettingsWrapper();
     await scrollToTaskTypesSection();
