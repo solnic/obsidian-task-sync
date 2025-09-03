@@ -1,4 +1,5 @@
 import type { Page, ElectronApplication } from 'playwright';
+import { executeCommand, type SharedTestContext } from './shared-context';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -278,6 +279,7 @@ export async function setupObsidianElectron(
 
 /**
  * Wait for async operations to complete
+ * @deprecated Use proper Playwright waiting instead of fixed timeouts
  */
 export async function waitForAsyncOperation(timeout: number = 1000): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, timeout));
@@ -453,4 +455,107 @@ export async function elementHasClass(page: Page, selector: string, className: s
  */
 export async function waitForElementVisible(page: Page, selector: string, timeout = 5000): Promise<void> {
   await page.waitForSelector(selector, { state: 'visible', timeout });
+}
+
+/**
+ * Settings helpers for Task Sync e2e tests
+ * Based on the ghost-sync settings helper pattern
+ */
+
+/**
+ * Wait for settings modal to be fully loaded
+ */
+async function waitForSettingsModal(page: Page): Promise<void> {
+  await page.waitForSelector('.modal-container', { timeout: 10000 });
+
+  const possibleNavSelectors = [
+    '.vertical-tab-nav',
+    '.setting-nav',
+    '.nav-buttons-container',
+    '.modal-setting-nav',
+    '.setting-tab-nav',
+    '.settings-nav'
+  ];
+
+  for (const selector of possibleNavSelectors) {
+    try {
+      await page.waitForSelector(selector, { timeout: 1000 });
+      break;
+    } catch (error) {
+      continue;
+    }
+  }
+
+  // Wait for the navigation to be stable (no more DOM changes)
+  await page.waitForLoadState('networkidle');
+}
+
+/**
+ * Open Task Sync plugin settings
+ */
+export async function openTaskSyncSettings(context: SharedTestContext): Promise<void> {
+  await executeCommand(context, 'Open Settings');
+  await waitForSettingsModal(context.page);
+
+  const taskSyncSelectors = [
+    '.vertical-tab-nav-item:has-text("Task Sync")',
+    '.vertical-tab-nav .vertical-tab-nav-item[data-tab="task-sync"]',
+    '.vertical-tab-nav-item:text("Task Sync")',
+    '.vertical-tab-nav :text("Task Sync")'
+  ];
+
+  for (const selector of taskSyncSelectors) {
+    try {
+      const element = context.page.locator(selector);
+      const count = await element.count();
+
+      if (count > 0 && await element.first().isVisible()) {
+        await element.first().click();
+        // Wait for the Task Sync settings to load by looking for the settings container
+        await context.page.waitForSelector('.task-sync-settings', { timeout: 5000 });
+        // Also wait for the header to be visible
+        await context.page.waitForSelector('.task-sync-settings-header h2:has-text("Task Sync Settings")', { timeout: 5000 });
+        return;
+      }
+    } catch (error) {
+      continue;
+    }
+  }
+
+  throw new Error('Could not find Task Sync in settings modal');
+}
+
+/**
+ * Close settings modal
+ */
+export async function closeSettings(page: Page): Promise<void> {
+  const closeButton = page.locator('.modal-close-button, .modal-close, [aria-label="Close"]');
+  if (await closeButton.count() > 0) {
+    await closeButton.first().click();
+  } else {
+    await page.keyboard.press('Escape');
+  }
+
+  await page.waitForSelector('.modal-container', { state: 'detached', timeout: 3000 });
+}
+
+/**
+ * Fill a setting input field
+ */
+export async function fillSettingInput(page: Page, placeholder: string, value: string): Promise<void> {
+  const input = page.locator(`input[placeholder="${placeholder}"]`);
+  await input.waitFor({ timeout: 5000 });
+  await input.clear();
+  await input.fill(value);
+  await page.waitForTimeout(100);
+}
+
+/**
+ * Scroll to a specific settings section
+ */
+export async function scrollToSettingsSection(page: Page, sectionName: string): Promise<void> {
+  const section = page.locator('.task-sync-section-header').filter({ hasText: sectionName });
+  await section.scrollIntoViewIfNeeded();
+  // Wait for the section to be visible after scrolling
+  await section.waitFor({ state: 'visible', timeout: 5000 });
 }

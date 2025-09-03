@@ -564,21 +564,20 @@ export function setupE2ETestHooks(): SharedTestContext {
   });
 
   afterEach(async (testContext) => {
-    // Debug: Log test context to understand the structure
-    console.log('🔍 Test context meta:', JSON.stringify((testContext as any)?.meta, null, 2));
+    const context = await getSharedTestContext();
 
-    // Capture screenshot on test failure
+    // Only capture screenshots and debug info on actual test failures
     const testResult = (testContext as any)?.meta?.result;
     const testState = testResult?.state;
     const hasErrors = testResult?.errors?.length > 0;
 
-    console.log(`🔍 Test state: ${testState}, has errors: ${hasErrors}`);
-
+    // Only capture on explicit failures, not on timeouts or undefined states
     if (testState === 'fail' || hasErrors) {
       const testName = (testContext as any)?.meta?.name?.replace(/[^a-zA-Z0-9]/g, '-') || 'unknown-test';
       console.log(`📸 Capturing screenshot for failed test: ${testName}`);
       try {
         await captureScreenshotOnFailure(context, `test-failure-${testName}`);
+        await captureFullDebugInfo(context, `test-failure-${testName}`);
       } catch (error) {
         console.error(`❌ Failed to capture screenshot: ${error.message}`);
       }

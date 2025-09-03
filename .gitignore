@@ -6,6 +6,7 @@ main.js
 e2e/recordings/*
 e2e/test-environments/*
 e2e/screenshots/*
+e2e/debug/*
 
 tests/vault/Test/articles
 tests/vault/Test/.obsidian/workspace.json
