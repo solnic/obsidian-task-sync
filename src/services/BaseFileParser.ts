@@ -1,17 +1,22 @@
 /**
  * Base File Parser Service
  * Parses and creates .base files for Obsidian Bases plugin integration
+ * Uses gray-matter for frontmatter parsing and js-yaml for YAML parsing
  */
 
-import { BaseFile, BaseFileFilter, BaseFileSorting, BaseFileGrouping } from '../types';
+import { BaseFile } from '../types';
+import matter from 'gray-matter';
+import * as yaml from 'js-yaml';
 
 export class BaseFileParser {
-  
+
   /**
    * Parse a .base file content into a BaseFile object
    */
   parseBaseFile(content: string, filePath: string): BaseFile {
-    const lines = content.split('\n');
+    // Use gray-matter to parse frontmatter and content
+    const parsed = matter(content);
+
     const baseFile: Partial<BaseFile> = {
       id: this.generateId(),
       name: this.extractNameFromPath(filePath),
@@ -24,60 +29,11 @@ export class BaseFileParser {
       autoUpdate: false
     };
 
-    let currentSection = '';
-    let inCodeBlock = false;
-    let codeBlockContent = '';
+    // Parse frontmatter data
+    this.parseFrontmatterData(parsed.data, baseFile);
 
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-
-      // Handle code blocks
-      if (trimmedLine.startsWith('```')) {
-        if (inCodeBlock) {
-          // End of code block
-          this.parseCodeBlock(codeBlockContent, baseFile);
-          codeBlockContent = '';
-          inCodeBlock = false;
-        } else {
-          // Start of code block
-          inCodeBlock = true;
-          if (trimmedLine.includes('base')) {
-            currentSection = 'base';
-          }
-        }
-        continue;
-      }
-
-      if (inCodeBlock) {
-        codeBlockContent += line + '\n';
-        continue;
-      }
-
-      // Parse frontmatter
-      if (trimmedLine === '---') {
-        currentSection = currentSection === 'frontmatter' ? '' : 'frontmatter';
-        continue;
-      }
-
-      if (currentSection === 'frontmatter') {
-        this.parseFrontmatterLine(trimmedLine, baseFile);
-      }
-
-      // Parse inline properties
-      if (trimmedLine.startsWith('view:')) {
-        baseFile.viewType = this.parseViewType(trimmedLine);
-      } else if (trimmedLine.startsWith('type:')) {
-        baseFile.entityType = this.parseEntityType(trimmedLine);
-      } else if (trimmedLine.startsWith('filter:')) {
-        if (!baseFile.filters) baseFile.filters = [];
-        const filter = this.parseFilter(trimmedLine);
-        if (filter) baseFile.filters.push(filter);
-      } else if (trimmedLine.startsWith('sort:')) {
-        baseFile.sorting = this.parseSorting(trimmedLine);
-      } else if (trimmedLine.startsWith('group:')) {
-        baseFile.grouping = this.parseGrouping(trimmedLine);
-      }
-    }
+    // Parse markdown content for code blocks and inline properties
+    this.parseMarkdownContent(parsed.content, baseFile);
 
     // Set defaults
     baseFile.viewType = baseFile.viewType || 'kanban';
@@ -114,48 +70,58 @@ export class BaseFileParser {
       lines.push('');
     }
 
-    // Add base configuration
-    lines.push('```base');
-    lines.push(`view: ${baseFile.viewType}`);
-    lines.push(`type: ${baseFile.entityType}`);
+    // Build base configuration object
+    const config: Record<string, any> = {
+      view: baseFile.viewType,
+      type: baseFile.entityType
+    };
 
-    // Add filters
+    // Add filters if present
     if (baseFile.filters && baseFile.filters.length > 0) {
-      lines.push('filters:');
-      for (const filter of baseFile.filters) {
-        if (filter.enabled) {
-          lines.push(`  - field: ${filter.field}`);
-          lines.push(`    operator: ${filter.operator}`);
-          lines.push(`    value: ${this.formatFilterValue(filter.value)}`);
-        }
-      }
+      config.filters = baseFile.filters
+        .filter(filter => filter.enabled)
+        .map(filter => ({
+          field: filter.field,
+          operator: filter.operator,
+          value: filter.value
+        }));
     }
 
-    // Add sorting
+    // Add sorting if present
     if (baseFile.sorting) {
-      lines.push('sort:');
-      lines.push(`  field: ${baseFile.sorting.field}`);
-      lines.push(`  direction: ${baseFile.sorting.direction}`);
+      config.sort = {
+        field: baseFile.sorting.field,
+        direction: baseFile.sorting.direction
+      };
+
       if (baseFile.sorting.secondary) {
-        lines.push('  secondary:');
-        lines.push(`    field: ${baseFile.sorting.secondary.field}`);
-        lines.push(`    direction: ${baseFile.sorting.secondary.direction}`);
+        config.sort.secondary = {
+          field: baseFile.sorting.secondary.field,
+          direction: baseFile.sorting.secondary.direction
+        };
       }
     }
 
-    // Add grouping
+    // Add grouping if present
     if (baseFile.grouping) {
-      lines.push('group:');
-      lines.push(`  field: ${baseFile.grouping.field}`);
-      lines.push(`  showEmpty: ${baseFile.grouping.showEmpty}`);
+      config.group = {
+        field: baseFile.grouping.field,
+        showEmpty: baseFile.grouping.showEmpty
+      };
+
       if (baseFile.grouping.customOrder) {
-        lines.push('  customOrder:');
-        for (const order of baseFile.grouping.customOrder) {
-          lines.push(`    - ${order}`);
-        }
+        config.group.customOrder = baseFile.grouping.customOrder;
       }
     }
 
+    // Generate YAML for the base configuration
+    lines.push('```base');
+    const yamlContent = yaml.dump(config, {
+      indent: 2,
+      lineWidth: -1,
+      noRefs: true
+    });
+    lines.push(yamlContent.trim());
     lines.push('```');
     lines.push('');
 
@@ -185,7 +151,7 @@ export class BaseFileParser {
     }
 
     // Check for valid view type
-    const viewMatch = content.match(/view:\s*(\w+)/);
+    const viewMatch = content.match(/view:\s*([^\s\n]+)/);
     if (viewMatch) {
       const viewType = viewMatch[1];
       if (!['kanban', 'list', 'calendar', 'timeline'].includes(viewType)) {
@@ -194,7 +160,7 @@ export class BaseFileParser {
     }
 
     // Check for valid entity type
-    const typeMatch = content.match(/type:\s*(\w+)/);
+    const typeMatch = content.match(/type:\s*([^\s\n]+)/);
     if (typeMatch) {
       const entityType = typeMatch[1];
       if (!['task', 'project', 'area'].includes(entityType)) {
@@ -208,112 +174,117 @@ export class BaseFileParser {
     };
   }
 
-  private parseCodeBlock(content: string, baseFile: Partial<BaseFile>): void {
-    const lines = content.split('\n');
-    
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-      
-      if (trimmedLine.startsWith('view:')) {
-        baseFile.viewType = this.parseViewType(trimmedLine);
-      } else if (trimmedLine.startsWith('type:')) {
-        baseFile.entityType = this.parseEntityType(trimmedLine);
-      } else if (trimmedLine.startsWith('filters:')) {
-        // Parse filters section (would need more complex parsing)
-        baseFile.filters = [];
-      } else if (trimmedLine.startsWith('sort:')) {
-        // Parse sort section (would need more complex parsing)
-      } else if (trimmedLine.startsWith('group:')) {
-        // Parse group section (would need more complex parsing)
+  /**
+   * Parse frontmatter data object into BaseFile properties
+   */
+  private parseFrontmatterData(data: Record<string, any>, baseFile: Partial<BaseFile>): void {
+    if (data.title) {
+      baseFile.name = String(data.title);
+    }
+    if (data.view) {
+      baseFile.viewType = this.parseViewTypeValue(data.view);
+    }
+    if (data.type) {
+      baseFile.entityType = this.parseEntityTypeValue(data.type);
+    }
+    if (data['auto-generate'] !== undefined) {
+      baseFile.autoGenerate = Boolean(data['auto-generate']);
+    }
+    if (data['auto-update'] !== undefined) {
+      baseFile.autoUpdate = Boolean(data['auto-update']);
+    }
+    if (data.description) {
+      baseFile.description = String(data.description);
+    }
+  }
+
+  /**
+   * Parse markdown content for base configuration code blocks
+   */
+  private parseMarkdownContent(content: string, baseFile: Partial<BaseFile>): void {
+    // Extract base configuration from ```base code blocks
+    const baseCodeBlockRegex = /```base\s*\n([\s\S]*?)\n```/g;
+    let match;
+
+    while ((match = baseCodeBlockRegex.exec(content)) !== null) {
+      const yamlContent = match[1];
+      this.parseBaseConfiguration(yamlContent, baseFile);
+    }
+  }
+
+  /**
+   * Parse base configuration YAML content
+   */
+  private parseBaseConfiguration(yamlContent: string, baseFile: Partial<BaseFile>): void {
+    try {
+      const config = yaml.load(yamlContent) as Record<string, any>;
+
+      if (config.view) {
+        baseFile.viewType = this.parseViewTypeValue(config.view);
       }
+
+      if (config.type) {
+        baseFile.entityType = this.parseEntityTypeValue(config.type);
+      }
+
+      if (config.filters && Array.isArray(config.filters)) {
+        baseFile.filters = config.filters.map(filter => ({
+          field: String(filter.field || ''),
+          operator: filter.operator || 'equals',
+          value: filter.value,
+          enabled: filter.enabled !== false
+        }));
+      }
+
+      if (config.sort) {
+        baseFile.sorting = {
+          field: String(config.sort.field || 'name'),
+          direction: (config.sort.direction === 'desc') ? 'desc' : 'asc'
+        };
+
+        if (config.sort.secondary) {
+          baseFile.sorting.secondary = {
+            field: String(config.sort.secondary.field),
+            direction: (config.sort.secondary.direction === 'desc') ? 'desc' : 'asc'
+          };
+        }
+      }
+
+      if (config.group) {
+        baseFile.grouping = {
+          field: String(config.group.field),
+          showEmpty: config.group.showEmpty !== false,
+          customOrder: Array.isArray(config.group.customOrder)
+            ? config.group.customOrder.map(String)
+            : undefined
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to parse base configuration YAML:', error);
     }
   }
 
-  private parseFrontmatterLine(line: string, baseFile: Partial<BaseFile>): void {
-    const colonIndex = line.indexOf(':');
-    if (colonIndex === -1) return;
+  private parseViewTypeValue(value: any): 'kanban' | 'list' | 'calendar' | 'timeline' {
+    const viewType = String(value).toLowerCase();
 
-    const key = line.substring(0, colonIndex).trim();
-    const value = line.substring(colonIndex + 1).trim();
-
-    switch (key) {
-      case 'title':
-        baseFile.name = value.replace(/['"]/g, '');
-        break;
-      case 'view':
-        baseFile.viewType = this.parseViewType(`view: ${value}`);
-        break;
-      case 'type':
-        baseFile.entityType = this.parseEntityType(`type: ${value}`);
-        break;
-      case 'auto-generate':
-        baseFile.autoGenerate = value.toLowerCase() === 'true';
-        break;
-      case 'auto-update':
-        baseFile.autoUpdate = value.toLowerCase() === 'true';
-        break;
-    }
-  }
-
-  private parseViewType(line: string): 'kanban' | 'list' | 'calendar' | 'timeline' {
-    const match = line.match(/view:\s*(\w+)/);
-    const viewType = match?.[1]?.toLowerCase();
-    
     if (['kanban', 'list', 'calendar', 'timeline'].includes(viewType)) {
       return viewType as 'kanban' | 'list' | 'calendar' | 'timeline';
     }
-    
+
     return 'kanban'; // default
   }
 
-  private parseEntityType(line: string): 'task' | 'project' | 'area' {
-    const match = line.match(/type:\s*(\w+)/);
-    const entityType = match?.[1]?.toLowerCase();
-    
+  private parseEntityTypeValue(value: any): 'task' | 'project' | 'area' {
+    const entityType = String(value).toLowerCase();
+
     if (['task', 'project', 'area'].includes(entityType)) {
       return entityType as 'task' | 'project' | 'area';
     }
-    
+
     return 'task'; // default
   }
 
-  private parseFilter(line: string): BaseFileFilter | null {
-    // Simple filter parsing - in production this would be more sophisticated
-    const match = line.match(/filter:\s*(\w+)\s*(\w+)\s*(.+)/);
-    if (!match) return null;
 
-    return {
-      field: match[1],
-      operator: match[2] as any,
-      value: match[3].trim(),
-      enabled: true
-    };
-  }
-
-  private parseSorting(line: string): BaseFileSorting {
-    const match = line.match(/sort:\s*(\w+)\s*(asc|desc)?/);
-    return {
-      field: match?.[1] || 'name',
-      direction: (match?.[2] as 'asc' | 'desc') || 'asc'
-    };
-  }
-
-  private parseGrouping(line: string): BaseFileGrouping | undefined {
-    const match = line.match(/group:\s*(\w+)/);
-    if (!match) return undefined;
-
-    return {
-      field: match[1],
-      showEmpty: true
-    };
-  }
-
-  private formatFilterValue(value: any): string {
-    if (typeof value === 'string') {
-      return `"${value}"`;
-    }
-    return String(value);
-  }
 
   private extractNameFromPath(filePath: string): string {
     const fileName = filePath.split('/').pop() || '';
