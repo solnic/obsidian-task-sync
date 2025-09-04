@@ -30,6 +30,11 @@ describe('TaskSync Settings', () => {
           { name: 'High', color: 'orange' },
           { name: 'Urgent', color: 'red' }
         ],
+        taskStatuses: [
+          { name: 'Backlog', color: 'gray' },
+          { name: 'In Progress', color: 'blue' },
+          { name: 'Done', color: 'green' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -83,6 +88,11 @@ describe('TaskSync Settings', () => {
           { name: 'High', color: 'orange' },
           { name: 'Urgent', color: 'red' }
         ],
+        taskStatuses: [
+          { name: 'Backlog', color: 'gray' },
+          { name: 'In Progress', color: 'blue' },
+          { name: 'Done', color: 'green' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -119,6 +129,11 @@ describe('TaskSync Settings', () => {
           { name: 'High', color: 'orange' },
           { name: 'Urgent', color: 'red' }
         ],
+        taskStatuses: [
+          { name: 'Backlog', color: 'gray' },
+          { name: 'In Progress', color: 'blue' },
+          { name: 'Done', color: 'green' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -154,6 +169,11 @@ describe('TaskSync Settings', () => {
           { name: 'Medium', color: 'yellow' },
           { name: 'High', color: 'orange' },
           { name: 'Urgent', color: 'red' }
+        ],
+        taskStatuses: [
+          { name: 'Backlog', color: 'gray' },
+          { name: 'In Progress', color: 'blue' },
+          { name: 'Done', color: 'green' }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
@@ -197,6 +217,11 @@ describe('TaskSync Settings', () => {
           { name: 'Medium', color: 'yellow' },
           { name: 'High', color: 'orange' },
           { name: 'Urgent', color: 'red' }
+        ],
+        taskStatuses: [
+          { name: 'Backlog', color: 'gray' },
+          { name: 'In Progress', color: 'blue' },
+          { name: 'Done', color: 'green' }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
@@ -245,6 +270,11 @@ describe('TaskSync Settings', () => {
           { name: 'High', color: 'orange' },
           { name: 'Urgent', color: 'red' }
         ],
+        taskStatuses: [
+          { name: 'Backlog', color: 'gray' },
+          { name: 'In Progress', color: 'blue' },
+          { name: 'Done', color: 'green' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -279,6 +309,11 @@ describe('TaskSync Settings', () => {
           { name: 'Medium', color: 'yellow' },
           { name: 'High', color: 'orange' },
           { name: 'Urgent', color: 'red' }
+        ],
+        taskStatuses: [
+          { name: 'Backlog', color: 'gray' },
+          { name: 'In Progress', color: 'blue' },
+          { name: 'Done', color: 'green' }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,

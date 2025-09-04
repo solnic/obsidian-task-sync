@@ -275,4 +275,77 @@ Task with wrong Type property.`);
       log.includes('Skipping file with incorrect Type property') && log.includes('Wrong Type Task.md')
     )).toBe(true);
   });
+
+  test('should add Status field to task files during refresh', async () => {
+    await createTestFolders(context.page);
+    await waitForTaskSyncPlugin(context.page);
+
+    // Create task files without Status field
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Task with minimal front-matter (missing Status)
+      await app.vault.create('Tasks/Task Without Status.md', `---
+Title: Task Without Status
+Type: Task
+Done: false
+---
+
+This task is missing the Status field.`);
+
+      // Task with some fields but missing Status
+      await app.vault.create('Tasks/Another Task.md', `---
+Title: Another Task
+Type: Task
+Priority: High
+Done: false
+---
+
+Another task missing Status field.`);
+    });
+
+    // Execute refresh command
+    await executeCommand(context, 'Task Sync: Refresh');
+
+    // Wait for refresh to complete
+    await context.page.waitForTimeout(3000);
+
+    // Check that Status field was added to both files
+    const filesWithStatus = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const results: { filename: string; hasStatus: boolean; statusValue: string }[] = [];
+
+      const files = ['Tasks/Task Without Status.md', 'Tasks/Another Task.md'];
+
+      for (const filePath of files) {
+        const file = app.vault.getAbstractFileByPath(filePath);
+        if (file) {
+          const content = await app.vault.read(file);
+          const hasStatus = content.includes('Status:');
+
+          // Extract Status value if present
+          const statusMatch = content.match(/Status:\s*(.+)/);
+          const statusValue = statusMatch ? statusMatch[1].trim() : '';
+
+          results.push({
+            filename: filePath,
+            hasStatus,
+            statusValue
+          });
+        }
+      }
+
+      return results;
+    });
+
+    // Verify both files now have Status field
+    expect(filesWithStatus).toHaveLength(2);
+
+    for (const fileResult of filesWithStatus) {
+      expect(fileResult.hasStatus).toBe(true);
+      expect(fileResult.statusValue).toBe('Backlog'); // Should use default value
+    }
+
+    console.log('Files with Status after refresh:', filesWithStatus);
+  });
 });

@@ -46,6 +46,11 @@ const mockSettings: TaskSyncSettings = {
     { name: 'High', color: 'orange' },
     { name: 'Urgent', color: 'red' }
   ],
+  taskStatuses: [
+    { name: 'Backlog', color: 'gray' },
+    { name: 'In Progress', color: 'blue' },
+    { name: 'Done', color: 'green' }
+  ],
   areaBasesEnabled: true,
   projectBasesEnabled: true,
   autoSyncAreaProjectBases: true

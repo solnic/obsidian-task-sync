@@ -58,7 +58,7 @@ export class TaskCreateModal extends Modal {
       name: '',
       type: this.plugin.settings.taskTypes[0]?.name || 'Task', // Use first configured task type
       done: false,
-      status: 'Backlog',
+      status: this.plugin.settings.taskStatuses[0]?.name || 'Backlog', // Use first configured task status
       tags: []
     };
 
@@ -200,11 +200,12 @@ export class TaskCreateModal extends Modal {
       .setName('Status')
       .setDesc('Current status of the task')
       .addDropdown(dropdown => {
-        dropdown.addOption('Backlog', 'Backlog')
-          .addOption('Todo', 'Todo')
-          .addOption('In Progress', 'In Progress')
-          .addOption('Done', 'Done')
-          .setValue(this.formData.status || 'Backlog')
+        // Use configured task statuses from settings
+        this.plugin.settings.taskStatuses.forEach(taskStatus => {
+          dropdown.addOption(taskStatus.name, taskStatus.name);
+        });
+
+        dropdown.setValue(this.formData.status || this.plugin.settings.taskStatuses[0]?.name)
           .onChange(value => {
             this.formData.status = value;
           });
@@ -277,7 +278,7 @@ export class TaskCreateModal extends Modal {
       tags: this.formData.tags || [],
       project: this.formData.project || undefined,
       done: false,
-      status: this.formData.status || 'Backlog',
+      status: this.formData.status || this.plugin.settings.taskStatuses[0]?.name || 'Backlog',
       priority: this.formData.priority || undefined,
       description: this.formData.description || undefined
     };

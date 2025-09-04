@@ -13,7 +13,6 @@ import { AreaCreateData } from '../../components/modals/AreaCreateModal';
 // ============================================================================
 
 export interface FrontMatterField {
-  required: boolean;
   type: 'string' | 'boolean' | 'array' | 'number';
   default?: any;
 }
@@ -42,7 +41,7 @@ export function generateTaskFrontMatter(
   const fields = FRONTMATTER_FIELDS.task;
   const frontMatter: string[] = ['---'];
 
-  // Add required and provided fields
+  // Add all defined fields
   for (const [fieldName, fieldConfig] of Object.entries(fields)) {
     const value = getFieldValue(taskData, fieldName, fieldConfig);
     if (value !== undefined && value !== null) {
@@ -83,7 +82,7 @@ export function generateProjectFrontMatter(
   const fields = FRONTMATTER_FIELDS.project;
   const frontMatter: string[] = ['---'];
 
-  // Add required and provided fields
+  // Add all defined fields
   for (const [fieldName, fieldConfig] of Object.entries(fields)) {
     const value = getFieldValue(projectData, fieldName, fieldConfig);
     // Always include Areas field for projects, even if empty
@@ -133,7 +132,7 @@ export function generateAreaFrontMatter(
   const fields = FRONTMATTER_FIELDS.area;
   const frontMatter: string[] = ['---'];
 
-  // Add required and provided fields
+  // Add all defined fields
   for (const [fieldName, fieldConfig] of Object.entries(fields)) {
     const value = getFieldValue(areaData, fieldName, fieldConfig);
     if (value !== undefined && value !== null) {
@@ -270,15 +269,9 @@ export function validateFrontMatterData(
   const fields = FRONTMATTER_FIELDS[type];
   const errors: string[] = [];
 
-  // Check required fields
-  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
-    if (fieldConfig.required) {
-      const value = getFieldValue(data, fieldName, fieldConfig);
-      if (value === undefined || value === null || value === '') {
-        errors.push(`${fieldName} is required`);
-      }
-    }
-  }
+  // Basic validation - check for valid data types if needed
+  // For now, we consider all front-matter valid since all fields are optional
+  // This function can be extended later for specific validation rules
 
   return {
     isValid: errors.length === 0,

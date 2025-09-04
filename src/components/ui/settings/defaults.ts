@@ -33,6 +33,12 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
     { name: 'High', color: 'orange' },
     { name: 'Urgent', color: 'red' }
   ],
+  // Task statuses defaults
+  taskStatuses: [
+    { name: 'Backlog', color: 'gray' },
+    { name: 'In Progress', color: 'blue' },
+    { name: 'Done', color: 'green' }
+  ],
   // Individual area/project bases defaults
   areaBasesEnabled: true,
   projectBasesEnabled: true,

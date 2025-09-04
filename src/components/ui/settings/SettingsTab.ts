@@ -4,12 +4,13 @@
 
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import TaskSyncPlugin from '../../../main';
-import { TaskSyncSettings, ValidationResult, SettingsSection, TaskType, TASK_TYPE_COLORS, TaskTypeColor, TaskPriority, TASK_PRIORITY_COLORS, TaskPriorityColor } from './types';
+import { TaskSyncSettings, ValidationResult, SettingsSection, TaskType, TASK_TYPE_COLORS, TaskTypeColor, TaskPriority, TASK_PRIORITY_COLORS, TaskPriorityColor, TaskStatus, TASK_STATUS_COLORS, TaskStatusColor } from './types';
 import { DEFAULT_SETTINGS } from './defaults';
 import { validateFolderPath, validateFileName, validateBaseFileName, validateTemplateFileName } from './validation';
 import { FolderSuggestComponent, FileSuggestComponent } from './suggest';
 import { createTypeBadge } from '../TypeBadge';
 import { createPriorityBadge } from '../PriorityBadge';
+import { createStatusBadge } from '../StatusBadge';
 
 export class TaskSyncSettingTab extends PluginSettingTab {
   plugin: TaskSyncPlugin;
@@ -166,6 +167,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     this.createBasesSection(sectionsContainer);
     this.createTaskTypesSection(sectionsContainer);
     this.createTaskPrioritiesSection(sectionsContainer);
+    this.createTaskStatusesSection(sectionsContainer);
   }
 
   private createGeneralSection(container: HTMLElement): void {
@@ -715,6 +717,229 @@ export class TaskSyncSettingTab extends PluginSettingTab {
               if (taskPrioritiesSection) {
                 taskPrioritiesSection.empty();
                 this.recreateTaskPrioritiesSection(taskPrioritiesSection as HTMLElement);
+              }
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            }
+          });
+      });
+  }
+
+  private createTaskStatusesSection(container: HTMLElement): void {
+    const section = container.createDiv('task-sync-settings-section');
+
+    // Section header
+    section.createEl('h2', { text: 'Task Statuses', cls: 'task-sync-section-header' });
+    section.createEl('p', {
+      text: 'Configure the available task statuses and their colors.',
+      cls: 'task-sync-settings-section-desc'
+    });
+
+    // Create a setting for each task status
+    this.plugin.settings.taskStatuses.forEach((taskStatus, index) => {
+      const setting = new Setting(section)
+        .setName(taskStatus.name)
+        .setDesc(`Configure the "${taskStatus.name}" task status`);
+
+      // Add status badge preview
+      const badgeContainer = setting.controlEl.createDiv('task-status-preview');
+      const badge = createStatusBadge(taskStatus);
+      badgeContainer.appendChild(badge);
+
+      // Add name input
+      setting.addText(text => {
+        text.setValue(taskStatus.name)
+          .setPlaceholder('Status name')
+          .onChange(async (value) => {
+            if (value.trim()) {
+              this.plugin.settings.taskStatuses[index].name = value.trim();
+              await this.plugin.saveSettings();
+
+              // Update the setting name and badge
+              setting.setName(value.trim());
+              badge.textContent = value.trim();
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            }
+          });
+      });
+
+      // Add color dropdown
+      setting.addDropdown(dropdown => {
+        TASK_STATUS_COLORS.forEach(color => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+
+        dropdown.setValue(taskStatus.color)
+          .onChange(async (value: TaskStatusColor) => {
+            this.plugin.settings.taskStatuses[index].color = value;
+            await this.plugin.saveSettings();
+
+            // Update badge color
+            badge.className = `task-status-badge task-status-${value}`;
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+      });
+
+      // Add delete button (don't allow deleting if it's the last status)
+      if (this.plugin.settings.taskStatuses.length > 1) {
+        setting.addButton(button => {
+          button.setButtonText('Delete')
+            .setWarning()
+            .onClick(async () => {
+              this.plugin.settings.taskStatuses.splice(index, 1);
+              await this.plugin.saveSettings();
+
+              // Refresh only the task statuses section, not the entire container
+              section.empty();
+              this.recreateTaskStatusesSection(section);
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            });
+        });
+      }
+    });
+
+    // Add new task status section
+    this.createAddTaskStatusSection(section);
+  }
+
+  private recreateTaskStatusesSection(section: HTMLElement): void {
+    // Section header
+    section.createEl('h2', { text: 'Task Statuses', cls: 'task-sync-section-header' });
+    section.createEl('p', {
+      text: 'Configure the available task statuses and their colors.',
+      cls: 'task-sync-settings-section-desc'
+    });
+
+    // Create a setting for each task status
+    this.plugin.settings.taskStatuses.forEach((taskStatus, index) => {
+      const setting = new Setting(section)
+        .setName(taskStatus.name)
+        .setDesc(`Configure the "${taskStatus.name}" task status`);
+
+      // Add status badge preview
+      const badgeContainer = setting.controlEl.createDiv('task-status-preview');
+      const badge = createStatusBadge(taskStatus);
+      badgeContainer.appendChild(badge);
+
+      // Add name input
+      setting.addText(text => {
+        text.setValue(taskStatus.name)
+          .setPlaceholder('Status name')
+          .onChange(async (value) => {
+            if (value.trim()) {
+              this.plugin.settings.taskStatuses[index].name = value.trim();
+              await this.plugin.saveSettings();
+
+              // Update the setting name and badge
+              setting.setName(value.trim());
+              badge.textContent = value.trim();
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            }
+          });
+      });
+
+      // Add color dropdown
+      setting.addDropdown(dropdown => {
+        TASK_STATUS_COLORS.forEach(color => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+
+        dropdown.setValue(taskStatus.color)
+          .onChange(async (value: TaskStatusColor) => {
+            this.plugin.settings.taskStatuses[index].color = value;
+            await this.plugin.saveSettings();
+
+            // Update badge color
+            badge.className = `task-status-badge task-status-${value}`;
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+      });
+
+      // Add delete button (don't allow deleting if it's the last status)
+      if (this.plugin.settings.taskStatuses.length > 1) {
+        setting.addButton(button => {
+          button.setButtonText('Delete')
+            .setWarning()
+            .onClick(async () => {
+              this.plugin.settings.taskStatuses.splice(index, 1);
+              await this.plugin.saveSettings();
+
+              // Refresh only the task statuses section, not the entire container
+              section.empty();
+              this.recreateTaskStatusesSection(section);
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            });
+        });
+      }
+    });
+
+    // Add new task status section
+    this.createAddTaskStatusSection(section);
+  }
+
+  private createAddTaskStatusSection(container: HTMLElement): void {
+    let newStatusName = '';
+    let newStatusColor: TaskStatusColor = 'blue';
+
+    new Setting(container)
+      .setName('Add New Task Status')
+      .setDesc('Create a new task status for your workflow')
+      .addText(text => {
+        text.setPlaceholder('e.g., Review, Testing, Blocked')
+          .onChange((value) => {
+            newStatusName = value.trim();
+          });
+      })
+      .addDropdown(dropdown => {
+        TASK_STATUS_COLORS.forEach(color => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+
+        dropdown.setValue(newStatusColor)
+          .onChange((value: TaskStatusColor) => {
+            newStatusColor = value;
+          });
+      })
+      .addButton(button => {
+        button.setButtonText('Add Status')
+          .setCta()
+          .onClick(async () => {
+            if (newStatusName && !this.plugin.settings.taskStatuses.some(s => s.name === newStatusName)) {
+              this.plugin.settings.taskStatuses.push({ name: newStatusName, color: newStatusColor });
+              await this.plugin.saveSettings();
+
+              // Find the task statuses section and refresh it
+              const taskStatusesSection = container.closest('.task-sync-settings-section');
+              if (taskStatusesSection) {
+                taskStatusesSection.empty();
+                this.recreateTaskStatusesSection(taskStatusesSection as HTMLElement);
               }
 
               // Trigger base sync if enabled

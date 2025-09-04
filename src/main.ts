@@ -744,16 +744,23 @@ export default class TaskSyncPlugin extends Plugin {
       }
 
       // Check if file has correct Type property for its expected type
-      const expectedType = type === 'task' ? 'Task' : type === 'project' ? 'Project' : 'Area';
-      if (type !== 'task' && existingFrontMatter.Type !== expectedType) {
-        // For projects and areas, Type property is required and must match
-        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: ${expectedType}, found: ${existingFrontMatter.Type})`);
+      if (type === 'project' && existingFrontMatter.Type !== 'Project') {
+        // For projects, Type property must be 'Project'
+        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Project, found: ${existingFrontMatter.Type})`);
         return;
       }
-      if (type === 'task' && existingFrontMatter.Type && existingFrontMatter.Type !== expectedType) {
-        // For tasks, Type property is optional, but if present, it should be 'Task'
-        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: ${expectedType}, found: ${existingFrontMatter.Type})`);
+      if (type === 'area' && existingFrontMatter.Type !== 'Area') {
+        // For areas, Type property must be 'Area'
+        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Area, found: ${existingFrontMatter.Type})`);
         return;
+      }
+      if (type === 'task' && existingFrontMatter.Type) {
+        // For tasks, check if Type is one of the configured task types
+        const validTaskTypes = this.settings.taskTypes.map(t => t.name);
+        if (!validTaskTypes.includes(existingFrontMatter.Type)) {
+          console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected one of: ${validTaskTypes.join(', ')}, found: ${existingFrontMatter.Type})`);
+          return;
+        }
       }
 
       // Get current schema for this file type
@@ -769,11 +776,12 @@ export default class TaskSyncPlugin extends Plugin {
       // Create updated front-matter object
       const updatedFrontMatter = { ...existingFrontMatter };
 
-      // Add missing required fields with defaults
+      // Add all missing fields from schema
       for (const [fieldName, fieldConfig] of Object.entries(currentSchema)) {
         try {
-          const config = fieldConfig as { required: boolean; default?: any };
-          if (config && config.required && !(fieldName in updatedFrontMatter)) {
+          const config = fieldConfig as { default?: any };
+          if (config && !(fieldName in updatedFrontMatter)) {
+            // Add any field that's defined in the schema
             updatedFrontMatter[fieldName] = config.default || '';
             hasChanges = true;
             propertiesChanged++;
@@ -802,9 +810,20 @@ export default class TaskSyncPlugin extends Plugin {
       if (hasChanges) {
         // Regenerate the front-matter section
         const frontMatterLines = ['---'];
-        for (const [key, value] of Object.entries(updatedFrontMatter)) {
-          frontMatterLines.push(`${key}: ${value}`);
+
+        // Include ALL fields from the schema, regardless of value
+        for (const [fieldName] of Object.entries(currentSchema)) {
+          const value = updatedFrontMatter[fieldName];
+          frontMatterLines.push(`${fieldName}: ${value}`);
         }
+
+        // Add any additional fields that aren't in the schema but exist in the file
+        for (const [key, value] of Object.entries(updatedFrontMatter)) {
+          if (!(key in currentSchema)) {
+            frontMatterLines.push(`${key}: ${value}`);
+          }
+        }
+
         frontMatterLines.push('---');
 
         // Extract body content (everything after front-matter)

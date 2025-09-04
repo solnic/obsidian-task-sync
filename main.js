@@ -3394,25 +3394,25 @@ var init_BaseConfigurations = __esm({
     };
     FRONTMATTER_FIELDS = {
       task: {
-        Title: { required: true, type: "string" },
-        Type: { required: false, type: "string", default: "Task" },
-        Areas: { required: false, type: "string" },
-        "Parent task": { required: false, type: "string" },
-        "Sub-tasks": { required: false, type: "string" },
-        tags: { required: false, type: "array" },
-        Project: { required: false, type: "string" },
-        Done: { required: false, type: "boolean", default: false },
-        Status: { required: false, type: "string", default: "Backlog" },
-        Priority: { required: false, type: "string" }
+        Title: { type: "string" },
+        Type: { type: "string", default: "Task" },
+        Areas: { type: "string" },
+        "Parent task": { type: "string" },
+        "Sub-tasks": { type: "string" },
+        tags: { type: "array" },
+        Project: { type: "string" },
+        Done: { type: "boolean", default: false },
+        Status: { type: "string", default: "Backlog" },
+        Priority: { type: "string" }
       },
       project: {
-        Name: { required: true, type: "string" },
-        Type: { required: true, type: "string", default: "Project" },
-        Areas: { required: false, type: "string" }
+        Name: { type: "string" },
+        Type: { type: "string", default: "Project" },
+        Areas: { type: "string" }
       },
       area: {
-        Name: { required: true, type: "string" },
-        Type: { required: true, type: "string", default: "Area" }
+        Name: { type: "string" },
+        Type: { type: "string", default: "Area" }
       }
     };
   }
@@ -3573,14 +3573,6 @@ function sanitizeFileName2(name) {
 function validateFrontMatterData(data, type2) {
   const fields = FRONTMATTER_FIELDS[type2];
   const errors = [];
-  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
-    if (fieldConfig.required) {
-      const value = getFieldValue(data, fieldName, fieldConfig);
-      if (value === void 0 || value === null || value === "") {
-        errors.push(`${fieldName} is required`);
-      }
-    }
-  }
   return {
     isValid: errors.length === 0,
     errors
@@ -4283,13 +4275,14 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
     }
   }
   initializeFormData() {
-    var _a;
+    var _a, _b;
     this.formData = {
       name: "",
       type: ((_a = this.plugin.settings.taskTypes[0]) == null ? void 0 : _a.name) || "Task",
       // Use first configured task type
       done: false,
-      status: "Backlog",
+      status: ((_b = this.plugin.settings.taskStatuses[0]) == null ? void 0 : _b.name) || "Backlog",
+      // Use first configured task status
       tags: []
     };
     if (this.context.type === "project" && this.context.name) {
@@ -4364,7 +4357,11 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
       });
     });
     new import_obsidian3.Setting(container).setName("Status").setDesc("Current status of the task").addDropdown((dropdown) => {
-      dropdown.addOption("Backlog", "Backlog").addOption("Todo", "Todo").addOption("In Progress", "In Progress").addOption("Done", "Done").setValue(this.formData.status || "Backlog").onChange((value) => {
+      var _a;
+      this.plugin.settings.taskStatuses.forEach((taskStatus) => {
+        dropdown.addOption(taskStatus.name, taskStatus.name);
+      });
+      dropdown.setValue(this.formData.status || ((_a = this.plugin.settings.taskStatuses[0]) == null ? void 0 : _a.name)).onChange((value) => {
         this.formData.status = value;
       });
     });
@@ -4400,7 +4397,7 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
     submitButton.addEventListener("click", () => this.handleSubmit());
   }
   async handleSubmit() {
-    var _a;
+    var _a, _b;
     if (!((_a = this.formData.name) == null ? void 0 : _a.trim())) {
       this.showError("Task name is required");
       return;
@@ -4414,7 +4411,7 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
       tags: this.formData.tags || [],
       project: this.formData.project || void 0,
       done: false,
-      status: this.formData.status || "Backlog",
+      status: this.formData.status || ((_b = this.plugin.settings.taskStatuses[0]) == null ? void 0 : _b.name) || "Backlog",
       priority: this.formData.priority || void 0,
       description: this.formData.description || void 0
     };
@@ -4695,6 +4692,18 @@ var TASK_PRIORITY_COLORS = [
   "teal",
   "indigo"
 ];
+var TASK_STATUS_COLORS = [
+  "blue",
+  "red",
+  "green",
+  "yellow",
+  "purple",
+  "orange",
+  "pink",
+  "gray",
+  "teal",
+  "indigo"
+];
 
 // src/components/ui/settings/defaults.ts
 var DEFAULT_SETTINGS = {
@@ -4725,6 +4734,12 @@ var DEFAULT_SETTINGS = {
     { name: "Medium", color: "yellow" },
     { name: "High", color: "orange" },
     { name: "Urgent", color: "red" }
+  ],
+  // Task statuses defaults
+  taskStatuses: [
+    { name: "Backlog", color: "gray" },
+    { name: "In Progress", color: "blue" },
+    { name: "Done", color: "green" }
   ],
   // Individual area/project bases defaults
   areaBasesEnabled: true,
@@ -5189,6 +5204,17 @@ function createPriorityBadge(taskPriority, className) {
   return badge;
 }
 
+// src/components/ui/StatusBadge.ts
+function createStatusBadge(taskStatus, className) {
+  const badge = document.createElement("span");
+  badge.className = `task-status-badge task-status-${taskStatus.color}`;
+  if (className) {
+    badge.className += ` ${className}`;
+  }
+  badge.textContent = taskStatus.name;
+  return badge;
+}
+
 // src/components/ui/settings/SettingsTab.ts
 var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
   constructor(app, plugin) {
@@ -5331,6 +5357,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
     this.createBasesSection(sectionsContainer);
     this.createTaskTypesSection(sectionsContainer);
     this.createTaskPrioritiesSection(sectionsContainer);
+    this.createTaskStatusesSection(sectionsContainer);
   }
   createGeneralSection(container) {
     const section = container.createDiv("task-sync-settings-section");
@@ -5695,6 +5722,144 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
           if (taskPrioritiesSection) {
             taskPrioritiesSection.empty();
             this.recreateTaskPrioritiesSection(taskPrioritiesSection);
+          }
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
+        }
+      });
+    });
+  }
+  createTaskStatusesSection(container) {
+    const section = container.createDiv("task-sync-settings-section");
+    section.createEl("h2", { text: "Task Statuses", cls: "task-sync-section-header" });
+    section.createEl("p", {
+      text: "Configure the available task statuses and their colors.",
+      cls: "task-sync-settings-section-desc"
+    });
+    this.plugin.settings.taskStatuses.forEach((taskStatus, index) => {
+      const setting = new import_obsidian7.Setting(section).setName(taskStatus.name).setDesc(`Configure the "${taskStatus.name}" task status`);
+      const badgeContainer = setting.controlEl.createDiv("task-status-preview");
+      const badge = createStatusBadge(taskStatus);
+      badgeContainer.appendChild(badge);
+      setting.addText((text) => {
+        text.setValue(taskStatus.name).setPlaceholder("Status name").onChange(async (value) => {
+          if (value.trim()) {
+            this.plugin.settings.taskStatuses[index].name = value.trim();
+            await this.plugin.saveSettings();
+            setting.setName(value.trim());
+            badge.textContent = value.trim();
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          }
+        });
+      });
+      setting.addDropdown((dropdown) => {
+        TASK_STATUS_COLORS.forEach((color) => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+        dropdown.setValue(taskStatus.color).onChange(async (value) => {
+          this.plugin.settings.taskStatuses[index].color = value;
+          await this.plugin.saveSettings();
+          badge.className = `task-status-badge task-status-${value}`;
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
+        });
+      });
+      if (this.plugin.settings.taskStatuses.length > 1) {
+        setting.addButton((button) => {
+          button.setButtonText("Delete").setWarning().onClick(async () => {
+            this.plugin.settings.taskStatuses.splice(index, 1);
+            await this.plugin.saveSettings();
+            section.empty();
+            this.recreateTaskStatusesSection(section);
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+        });
+      }
+    });
+    this.createAddTaskStatusSection(section);
+  }
+  recreateTaskStatusesSection(section) {
+    section.createEl("h2", { text: "Task Statuses", cls: "task-sync-section-header" });
+    section.createEl("p", {
+      text: "Configure the available task statuses and their colors.",
+      cls: "task-sync-settings-section-desc"
+    });
+    this.plugin.settings.taskStatuses.forEach((taskStatus, index) => {
+      const setting = new import_obsidian7.Setting(section).setName(taskStatus.name).setDesc(`Configure the "${taskStatus.name}" task status`);
+      const badgeContainer = setting.controlEl.createDiv("task-status-preview");
+      const badge = createStatusBadge(taskStatus);
+      badgeContainer.appendChild(badge);
+      setting.addText((text) => {
+        text.setValue(taskStatus.name).setPlaceholder("Status name").onChange(async (value) => {
+          if (value.trim()) {
+            this.plugin.settings.taskStatuses[index].name = value.trim();
+            await this.plugin.saveSettings();
+            setting.setName(value.trim());
+            badge.textContent = value.trim();
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          }
+        });
+      });
+      setting.addDropdown((dropdown) => {
+        TASK_STATUS_COLORS.forEach((color) => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+        dropdown.setValue(taskStatus.color).onChange(async (value) => {
+          this.plugin.settings.taskStatuses[index].color = value;
+          await this.plugin.saveSettings();
+          badge.className = `task-status-badge task-status-${value}`;
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
+        });
+      });
+      if (this.plugin.settings.taskStatuses.length > 1) {
+        setting.addButton((button) => {
+          button.setButtonText("Delete").setWarning().onClick(async () => {
+            this.plugin.settings.taskStatuses.splice(index, 1);
+            await this.plugin.saveSettings();
+            section.empty();
+            this.recreateTaskStatusesSection(section);
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+        });
+      }
+    });
+    this.createAddTaskStatusSection(section);
+  }
+  createAddTaskStatusSection(container) {
+    let newStatusName = "";
+    let newStatusColor = "blue";
+    new import_obsidian7.Setting(container).setName("Add New Task Status").setDesc("Create a new task status for your workflow").addText((text) => {
+      text.setPlaceholder("e.g., Review, Testing, Blocked").onChange((value) => {
+        newStatusName = value.trim();
+      });
+    }).addDropdown((dropdown) => {
+      TASK_STATUS_COLORS.forEach((color) => {
+        dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      });
+      dropdown.setValue(newStatusColor).onChange((value) => {
+        newStatusColor = value;
+      });
+    }).addButton((button) => {
+      button.setButtonText("Add Status").setCta().onClick(async () => {
+        if (newStatusName && !this.plugin.settings.taskStatuses.some((s) => s.name === newStatusName)) {
+          this.plugin.settings.taskStatuses.push({ name: newStatusName, color: newStatusColor });
+          await this.plugin.saveSettings();
+          const taskStatusesSection = container.closest(".task-sync-settings-section");
+          if (taskStatusesSection) {
+            taskStatusesSection.empty();
+            this.recreateTaskStatusesSection(taskStatusesSection);
           }
           if (this.plugin.settings.autoSyncAreaProjectBases) {
             await this.plugin.syncAreaProjectBases();
@@ -6372,14 +6537,20 @@ ${expectedBaseEmbed}`;
         console.log(`Task Sync: Skipping file without front-matter: ${filePath}`);
         return;
       }
-      const expectedType = type2 === "task" ? "Task" : type2 === "project" ? "Project" : "Area";
-      if (type2 !== "task" && existingFrontMatter.Type !== expectedType) {
-        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: ${expectedType}, found: ${existingFrontMatter.Type})`);
+      if (type2 === "project" && existingFrontMatter.Type !== "Project") {
+        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Project, found: ${existingFrontMatter.Type})`);
         return;
       }
-      if (type2 === "task" && existingFrontMatter.Type && existingFrontMatter.Type !== expectedType) {
-        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: ${expectedType}, found: ${existingFrontMatter.Type})`);
+      if (type2 === "area" && existingFrontMatter.Type !== "Area") {
+        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Area, found: ${existingFrontMatter.Type})`);
         return;
+      }
+      if (type2 === "task" && existingFrontMatter.Type) {
+        const validTaskTypes = this.settings.taskTypes.map((t) => t.name);
+        if (!validTaskTypes.includes(existingFrontMatter.Type)) {
+          console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected one of: ${validTaskTypes.join(", ")}, found: ${existingFrontMatter.Type})`);
+          return;
+        }
       }
       const currentSchema = this.getFrontMatterSchema(type2);
       if (!currentSchema) {
@@ -6392,7 +6563,7 @@ ${expectedBaseEmbed}`;
       for (const [fieldName, fieldConfig] of Object.entries(currentSchema)) {
         try {
           const config = fieldConfig;
-          if (config && config.required && !(fieldName in updatedFrontMatter)) {
+          if (config && !(fieldName in updatedFrontMatter)) {
             updatedFrontMatter[fieldName] = config.default || "";
             hasChanges = true;
             propertiesChanged++;
@@ -6414,8 +6585,14 @@ ${expectedBaseEmbed}`;
       }
       if (hasChanges) {
         const frontMatterLines = ["---"];
+        for (const [fieldName] of Object.entries(currentSchema)) {
+          const value = updatedFrontMatter[fieldName];
+          frontMatterLines.push(`${fieldName}: ${value}`);
+        }
         for (const [key, value] of Object.entries(updatedFrontMatter)) {
-          frontMatterLines.push(`${key}: ${value}`);
+          if (!(key in currentSchema)) {
+            frontMatterLines.push(`${key}: ${value}`);
+          }
         }
         frontMatterLines.push("---");
         const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);

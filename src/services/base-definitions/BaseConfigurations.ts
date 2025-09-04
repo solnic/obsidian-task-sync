@@ -270,27 +270,27 @@ export const FILTER_GENERATORS = {
 
 export const FRONTMATTER_FIELDS = {
   task: {
-    Title: { required: true, type: 'string' },
-    Type: { required: false, type: 'string', default: 'Task' },
-    Areas: { required: false, type: 'string' },
-    'Parent task': { required: false, type: 'string' },
-    'Sub-tasks': { required: false, type: 'string' },
-    tags: { required: false, type: 'array' },
-    Project: { required: false, type: 'string' },
-    Done: { required: false, type: 'boolean', default: false },
-    Status: { required: false, type: 'string', default: 'Backlog' },
-    Priority: { required: false, type: 'string' }
+    Title: { type: 'string' },
+    Type: { type: 'string', default: 'Task' },
+    Areas: { type: 'string' },
+    'Parent task': { type: 'string' },
+    'Sub-tasks': { type: 'string' },
+    tags: { type: 'array' },
+    Project: { type: 'string' },
+    Done: { type: 'boolean', default: false },
+    Status: { type: 'string', default: 'Backlog' },
+    Priority: { type: 'string' }
   },
 
   project: {
-    Name: { required: true, type: 'string' },
-    Type: { required: true, type: 'string', default: 'Project' },
-    Areas: { required: false, type: 'string' }
+    Name: { type: 'string' },
+    Type: { type: 'string', default: 'Project' },
+    Areas: { type: 'string' }
   },
 
   area: {
-    Name: { required: true, type: 'string' },
-    Type: { required: true, type: 'string', default: 'Area' }
+    Name: { type: 'string' },
+    Type: { type: 'string', default: 'Area' }
   }
 } as const;
 

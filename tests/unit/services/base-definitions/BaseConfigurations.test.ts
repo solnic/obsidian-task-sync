@@ -32,6 +32,11 @@ describe('BaseConfigurations', () => {
       { name: 'High', color: 'orange' },
       { name: 'Urgent', color: 'red' }
     ],
+    taskStatuses: [
+      { name: 'Backlog', color: 'gray' },
+      { name: 'In Progress', color: 'blue' },
+      { name: 'Done', color: 'green' }
+    ],
     projectBasesEnabled: true,
     areaBasesEnabled: true,
     autoSyncAreaProjectBases: true,
