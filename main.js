@@ -3010,10 +3010,10 @@ function generateTasksBase(settings, projectsAndAreas) {
         order: [...VIEW_ORDERS.tasks.main],
         sort: [...SORT_CONFIGS.main]
       },
-      // Type-specific views
+      // Type-specific views (renamed to "All X")
       ...settings.taskTypes.filter((taskType) => taskType.name !== "Task").map((taskType) => ({
         type: "table",
-        name: (0, import_pluralize.default)(taskType.name),
+        name: `All ${(0, import_pluralize.default)(taskType.name)}`,
         filters: {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
@@ -3023,6 +3023,22 @@ function generateTasksBase(settings, projectsAndAreas) {
         order: [...VIEW_ORDERS.tasks.type],
         sort: [...SORT_CONFIGS.main]
       })),
+      // Priority-based views for each type
+      ...settings.taskTypes.filter((taskType) => taskType.name !== "Task").flatMap(
+        (taskType) => settings.taskPriorities.map((priority) => ({
+          type: "table",
+          name: `${(0, import_pluralize.default)(taskType.name)} \u2022 ${priority.name} priority`,
+          filters: {
+            and: [
+              `file.folder == "${settings.tasksFolder}"`,
+              `Type == "${taskType.name}"`,
+              `Priority == "${priority.name}"`
+            ]
+          },
+          order: [...VIEW_ORDERS.tasks.type],
+          sort: [...SORT_CONFIGS.main]
+        }))
+      ),
       // Area views
       ...projectsAndAreas.filter((item) => item.type === "area").map((area) => ({
         type: "table",
@@ -3104,10 +3120,10 @@ function generateAreaBase(settings, area) {
           "file.ctime": 183
         }
       },
-      // Type-specific views
+      // Type-specific views (renamed to "All X")
       ...settings.taskTypes.filter((taskType) => taskType.name !== "Task").map((taskType) => ({
         type: "table",
-        name: (0, import_pluralize.default)(taskType.name),
+        name: `All ${(0, import_pluralize.default)(taskType.name)}`,
         filters: {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
@@ -3117,7 +3133,24 @@ function generateAreaBase(settings, area) {
         },
         order: [...VIEW_ORDERS.area.type],
         sort: [...SORT_CONFIGS.main]
-      }))
+      })),
+      // Priority-based views for each type
+      ...settings.taskTypes.filter((taskType) => taskType.name !== "Task").flatMap(
+        (taskType) => settings.taskPriorities.map((priority) => ({
+          type: "table",
+          name: `${(0, import_pluralize.default)(taskType.name)} \u2022 ${priority.name} priority`,
+          filters: {
+            and: [
+              `file.folder == "${settings.tasksFolder}"`,
+              `Areas.contains(link("${area.name}"))`,
+              `Type == "${taskType.name}"`,
+              `Priority == "${priority.name}"`
+            ]
+          },
+          order: [...VIEW_ORDERS.area.type],
+          sort: [...SORT_CONFIGS.main]
+        }))
+      )
     ]
   };
   return dump(config, {
@@ -3145,10 +3178,10 @@ function generateProjectBase(settings, project) {
         order: [...VIEW_ORDERS.project.main],
         sort: [...SORT_CONFIGS.main]
       },
-      // Type-specific views
+      // Type-specific views (renamed to "All X")
       ...settings.taskTypes.filter((taskType) => taskType.name !== "Task").map((taskType) => ({
         type: "table",
-        name: (0, import_pluralize.default)(taskType.name),
+        name: `All ${(0, import_pluralize.default)(taskType.name)}`,
         filters: {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
@@ -3158,7 +3191,24 @@ function generateProjectBase(settings, project) {
         },
         order: [...VIEW_ORDERS.project.type],
         sort: [...SORT_CONFIGS.main]
-      }))
+      })),
+      // Priority-based views for each type
+      ...settings.taskTypes.filter((taskType) => taskType.name !== "Task").flatMap(
+        (taskType) => settings.taskPriorities.map((priority) => ({
+          type: "table",
+          name: `${(0, import_pluralize.default)(taskType.name)} \u2022 ${priority.name} priority`,
+          filters: {
+            and: [
+              `file.folder == "${settings.tasksFolder}"`,
+              `Project.contains(link("${project.name}"))`,
+              `Type == "${taskType.name}"`,
+              `Priority == "${priority.name}"`
+            ]
+          },
+          order: [...VIEW_ORDERS.project.type],
+          sort: [...SORT_CONFIGS.main]
+        }))
+      )
     ]
   };
   return dump(config, {

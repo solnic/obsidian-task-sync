@@ -185,7 +185,9 @@ Website redesign project for the company.
     // Check that type formula is correct (using formulas section)
     const baseContent = await getFileContent(context.page, 'Bases/Tasks.base');
     expect(baseContent).toContain('formulas:');
-    expect(baseContent).toContain('Type: Type');
+    expect(baseContent).toContain('Title: link(file.name, Title)');
+    expect(baseContent).toContain('note.Type:');
+    expect(baseContent).toContain('displayName: Type');
 
     // Should use simple Type display without complex formatting
     expect(baseContent).not.toContain('if(Type ==');
@@ -193,7 +195,7 @@ Website redesign project for the company.
     expect(baseContent).not.toContain('BLUE:');
 
     // Should use formula.Type in views instead of Type
-    expect(baseContent).toContain('formula.Type');
+    expect(baseContent).toContain('note.Type');
 
     // Should NOT contain HTML spans or old Type Badge property
     expect(baseContent).not.toContain('<span');

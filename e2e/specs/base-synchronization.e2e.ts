@@ -92,7 +92,7 @@ Areas: Health
 
     // Check initial content doesn't have "Epic" view
     let healthBaseContent = await getFileContent(context.page, 'Bases/Health.base');
-    expect(healthBaseContent).not.toContain('name: Epics');
+    expect(healthBaseContent).not.toContain('name: All Epics');
 
     // Add a new task type through the plugin
     await context.page.evaluate(async () => {
@@ -110,11 +110,11 @@ Areas: Health
 
     // Check that bases were updated with new task type
     healthBaseContent = await getFileContent(context.page, 'Bases/Health.base');
-    expect(healthBaseContent).toContain('name: Epics');
+    expect(healthBaseContent).toContain('name: All Epics');
     expect(healthBaseContent).toContain('Type == "Epic"');
 
     const fitnessBaseContent = await getFileContent(context.page, 'Bases/Fitness Plan.base');
-    expect(fitnessBaseContent).toContain('name: Epics');
+    expect(fitnessBaseContent).toContain('name: All Epics');
     expect(fitnessBaseContent).toContain('Type == "Epic"');
   });
 
@@ -252,7 +252,7 @@ Learning and development area.
 
     // Check that base was NOT updated (auto-sync disabled)
     learningBaseContent = await getFileContent(context.page, 'Bases/Learning.base');
-    expect(learningBaseContent).not.toContain('name: Stories');
+    expect(learningBaseContent).not.toContain('name: All Stories');
 
     // Now manually trigger sync
     await context.page.evaluate(async () => {
@@ -267,7 +267,7 @@ Learning and development area.
 
     // Check that base was updated after manual sync
     learningBaseContent = await getFileContent(context.page, 'Bases/Learning.base');
-    expect(learningBaseContent).toContain('name: Stories');
+    expect(learningBaseContent).toContain('name: All Stories');
     expect(learningBaseContent).toContain('Type == "Story"');
   });
 
@@ -482,9 +482,9 @@ Documentation improvement project.
     expect(docBaseContent).toContain('and:');
 
     // Verify new views were added
-    expect(docBaseContent).toContain('name: Documentations'); // Documentation pluralizes to Documentations
-    expect(docBaseContent).toContain('name: Reviews');
-    expect(docBaseContent).toContain('name: Testings'); // Testing pluralizes to Testings
+    expect(docBaseContent).toContain('name: All Documentations'); // Documentation pluralizes to Documentations
+    expect(docBaseContent).toContain('name: All Reviews');
+    expect(docBaseContent).toContain('name: All Testings'); // Testing pluralizes to Testings
 
     // Verify filtering is correct
     expect(docBaseContent).toContain('Project.contains(link("Documentation"))');

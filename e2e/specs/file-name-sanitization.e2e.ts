@@ -95,9 +95,10 @@ describe('File Name Sanitization and Base Formulas', () => {
     // Verify the base file contains the new formula structure
     const baseContent = await getFileContent(context.page, 'Bases/Development- Frontend-Backend.base');
     expect(baseContent).toContain('formulas:');
-    expect(baseContent).toContain('Type: Type');
     expect(baseContent).toContain('Title: link(file.name, Title)');
     expect(baseContent).toContain('formula.Title');
+    expect(baseContent).toContain('note.Type:');
+    expect(baseContent).toContain('displayName: Type');
   });
 
   test('should handle basic file name sanitization', async () => {

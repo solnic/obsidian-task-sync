@@ -94,8 +94,21 @@ describe('BaseConfigurations', () => {
 
       expect(result).toContain('name: Tasks');
       expect(result).toContain('name: All');
-      expect(result).toContain('name: Bugs');
-      expect(result).toContain('name: Features');
+      expect(result).toContain('name: All Bugs');
+      expect(result).toContain('name: All Features');
+    });
+
+    it('should include priority-based views', () => {
+      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
+
+      expect(result).toContain('name: Bugs • Low priority');
+      expect(result).toContain('name: Bugs • Medium priority');
+      expect(result).toContain('name: Bugs • High priority');
+      expect(result).toContain('name: Bugs • Urgent priority');
+      expect(result).toContain('name: Features • Low priority');
+      expect(result).toContain('name: Features • Medium priority');
+      expect(result).toContain('name: Features • High priority');
+      expect(result).toContain('name: Features • Urgent priority');
     });
 
     it('should include area and project views', () => {

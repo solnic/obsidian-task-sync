@@ -68,17 +68,19 @@ This is a health area for tracking fitness and wellness.
     expect(baseContent).toContain('note.Done:');
     expect(baseContent).toContain('displayName: Done');
     expect(baseContent).toContain('formulas:');
-    expect(baseContent).toContain('Type: Type');
+    expect(baseContent).toContain('Title: link(file.name, Title)');
+    expect(baseContent).toContain('note.Type:');
+    expect(baseContent).toContain('displayName: Type');
     expect(baseContent).toContain('note.Project:');
     expect(baseContent).toContain('displayName: Project');
 
     // Check views
     expect(baseContent).toContain('views:');
     expect(baseContent).toContain('name: Tasks');
-    expect(baseContent).toContain('name: Bugs');
-    expect(baseContent).toContain('name: Features');
-    expect(baseContent).toContain('name: Improvements');
-    expect(baseContent).toContain('name: Chores');
+    expect(baseContent).toContain('name: All Bugs');
+    expect(baseContent).toContain('name: All Features');
+    expect(baseContent).toContain('name: All Improvements');
+    expect(baseContent).toContain('name: All Chores');
 
     // Check filtering
     expect(baseContent).toContain('Areas.contains(link("Health"))');
@@ -137,17 +139,19 @@ This is a website redesign project.
     expect(baseContent).toContain('note.Done:');
     expect(baseContent).toContain('displayName: Done');
     expect(baseContent).toContain('formulas:');
-    expect(baseContent).toContain('Type:');
+    expect(baseContent).toContain('Title: link(file.name, Title)');
+    expect(baseContent).toContain('note.Type:');
+    expect(baseContent).toContain('displayName: Type');
     expect(baseContent).toContain('note.Areas:');
     expect(baseContent).toContain('displayName: Areas');
 
     // Check views
     expect(baseContent).toContain('views:');
     expect(baseContent).toContain('name: Tasks');
-    expect(baseContent).toContain('name: Bugs');
-    expect(baseContent).toContain('name: Features');
-    expect(baseContent).toContain('name: Improvements');
-    expect(baseContent).toContain('name: Chores');
+    expect(baseContent).toContain('name: All Bugs');
+    expect(baseContent).toContain('name: All Features');
+    expect(baseContent).toContain('name: All Improvements');
+    expect(baseContent).toContain('name: All Chores');
 
     // Check filtering
     expect(baseContent).toContain('Project.contains(link("Website Redesign"))');

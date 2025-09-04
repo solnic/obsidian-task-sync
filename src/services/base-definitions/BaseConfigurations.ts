@@ -328,12 +328,12 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
         order: [...VIEW_ORDERS.tasks.main],
         sort: [...SORT_CONFIGS.main]
       },
-      // Type-specific views
+      // Type-specific views (renamed to "All X")
       ...settings.taskTypes
         .filter(taskType => taskType.name !== 'Task')
         .map(taskType => ({
           type: 'table' as const,
-          name: pluralize(taskType.name),
+          name: `All ${pluralize(taskType.name)}`,
           filters: {
             and: [
               `file.folder == "${settings.tasksFolder}"`,
@@ -343,6 +343,24 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
           order: [...VIEW_ORDERS.tasks.type],
           sort: [...SORT_CONFIGS.main]
         })),
+      // Priority-based views for each type
+      ...settings.taskTypes
+        .filter(taskType => taskType.name !== 'Task')
+        .flatMap(taskType =>
+          settings.taskPriorities.map(priority => ({
+            type: 'table' as const,
+            name: `${pluralize(taskType.name)} • ${priority.name} priority`,
+            filters: {
+              and: [
+                `file.folder == "${settings.tasksFolder}"`,
+                `Type == "${taskType.name}"`,
+                `Priority == "${priority.name}"`
+              ]
+            },
+            order: [...VIEW_ORDERS.tasks.type],
+            sort: [...SORT_CONFIGS.main]
+          }))
+        ),
       // Area views
       ...projectsAndAreas
         .filter(item => item.type === 'area')
@@ -433,12 +451,12 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
           'file.ctime': 183
         }
       },
-      // Type-specific views
+      // Type-specific views (renamed to "All X")
       ...settings.taskTypes
         .filter(taskType => taskType.name !== 'Task')
         .map(taskType => ({
           type: 'table' as const,
-          name: pluralize(taskType.name),
+          name: `All ${pluralize(taskType.name)}`,
           filters: {
             and: [
               `file.folder == "${settings.tasksFolder}"`,
@@ -448,7 +466,26 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
           },
           order: [...VIEW_ORDERS.area.type],
           sort: [...SORT_CONFIGS.main]
-        }))
+        })),
+      // Priority-based views for each type
+      ...settings.taskTypes
+        .filter(taskType => taskType.name !== 'Task')
+        .flatMap(taskType =>
+          settings.taskPriorities.map(priority => ({
+            type: 'table' as const,
+            name: `${pluralize(taskType.name)} • ${priority.name} priority`,
+            filters: {
+              and: [
+                `file.folder == "${settings.tasksFolder}"`,
+                `Areas.contains(link("${area.name}"))`,
+                `Type == "${taskType.name}"`,
+                `Priority == "${priority.name}"`
+              ]
+            },
+            order: [...VIEW_ORDERS.area.type],
+            sort: [...SORT_CONFIGS.main]
+          }))
+        )
     ]
   };
 
@@ -481,12 +518,12 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
         order: [...VIEW_ORDERS.project.main],
         sort: [...SORT_CONFIGS.main]
       },
-      // Type-specific views
+      // Type-specific views (renamed to "All X")
       ...settings.taskTypes
         .filter(taskType => taskType.name !== 'Task')
         .map(taskType => ({
           type: 'table' as const,
-          name: pluralize(taskType.name),
+          name: `All ${pluralize(taskType.name)}`,
           filters: {
             and: [
               `file.folder == "${settings.tasksFolder}"`,
@@ -496,7 +533,26 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
           },
           order: [...VIEW_ORDERS.project.type],
           sort: [...SORT_CONFIGS.main]
-        }))
+        })),
+      // Priority-based views for each type
+      ...settings.taskTypes
+        .filter(taskType => taskType.name !== 'Task')
+        .flatMap(taskType =>
+          settings.taskPriorities.map(priority => ({
+            type: 'table' as const,
+            name: `${pluralize(taskType.name)} • ${priority.name} priority`,
+            filters: {
+              and: [
+                `file.folder == "${settings.tasksFolder}"`,
+                `Project.contains(link("${project.name}"))`,
+                `Type == "${taskType.name}"`,
+                `Priority == "${priority.name}"`
+              ]
+            },
+            order: [...VIEW_ORDERS.project.type],
+            sort: [...SORT_CONFIGS.main]
+          }))
+        )
     ]
   };
 
