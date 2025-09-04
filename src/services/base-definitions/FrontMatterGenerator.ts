@@ -3,7 +3,7 @@
  * Generates front-matter for tasks, areas, and projects using base definitions
  */
 
-import { FRONTMATTER_FIELDS } from './BaseConfigurations';
+import { FRONTMATTER_FIELDS, PROPERTY_DEFINITIONS } from './BaseConfigurations';
 import { TaskCreateData } from '../../components/modals/TaskCreateModal';
 import { ProjectCreateData } from '../../components/modals/ProjectCreateModal';
 import { AreaCreateData } from '../../components/modals/AreaCreateModal';
@@ -38,14 +38,26 @@ export function generateTaskFrontMatter(
   taskData: TaskCreateData,
   options: FrontMatterOptions = {}
 ): string {
-  const fields = FRONTMATTER_FIELDS.task;
+  const properties = PROPERTY_DEFINITIONS.task;
   const frontMatter: string[] = ['---'];
 
-  // Add all defined fields
-  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
-    const value = getFieldValue(taskData, fieldName, fieldConfig);
+  // Add all defined fields in the correct order
+  for (const prop of properties) {
+    // Map checkbox type to boolean for front-matter compatibility
+    const frontMatterType = prop.type === 'checkbox' ? 'boolean' : prop.type as 'string' | 'boolean' | 'array';
+    const fieldConfig: FrontMatterField = {
+      type: frontMatterType,
+      ...(prop.default !== undefined && { default: prop.default })
+    };
+
+    // For Type field, use the default value if not provided
+    if (prop.name === 'Type') {
+      fieldConfig.default = 'Task';
+    }
+
+    const value = getFieldValue(taskData, prop.name, fieldConfig);
     if (value !== undefined && value !== null) {
-      frontMatter.push(formatFrontMatterField(fieldName, value, fieldConfig));
+      frontMatter.push(formatFrontMatterField(prop.name, value, fieldConfig));
     }
   }
 
@@ -79,17 +91,31 @@ export function generateProjectFrontMatter(
   projectData: ProjectCreateData,
   options: FrontMatterOptions = {}
 ): string {
-  const fields = FRONTMATTER_FIELDS.project;
+  const properties = PROPERTY_DEFINITIONS.project;
   const frontMatter: string[] = ['---'];
 
-  // Add all defined fields
-  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
-    const value = getFieldValue(projectData, fieldName, fieldConfig);
+  // Add all defined fields in the correct order
+  for (const prop of properties) {
+    // Map checkbox type to boolean for front-matter compatibility
+    const frontMatterType = prop.type === 'checkbox' ? 'boolean' : prop.type as 'string' | 'boolean' | 'array';
+    const fieldConfig: FrontMatterField = {
+      type: frontMatterType,
+      ...(prop.default !== undefined && { default: prop.default })
+    };
+
+    const value = getFieldValue(projectData, prop.name, fieldConfig);
     // Always include Areas field for projects, even if empty
-    if (value !== undefined && value !== null || fieldName === 'Areas') {
+    if (value !== undefined && value !== null || prop.name === 'Areas') {
       const displayValue = value !== undefined && value !== null ? value : '';
-      frontMatter.push(formatFrontMatterField(fieldName, displayValue, fieldConfig));
+      frontMatter.push(formatFrontMatterField(prop.name, displayValue, fieldConfig));
     }
+  }
+
+  // Add Type field with default
+  const typeConfig: FrontMatterField = { type: 'string' as const, default: 'Project' };
+  const typeValue = getFieldValue(projectData, 'Type', typeConfig);
+  if (typeValue !== undefined && typeValue !== null) {
+    frontMatter.push(formatFrontMatterField('Type', typeValue, typeConfig));
   }
 
   // Add custom fields
@@ -129,15 +155,29 @@ export function generateAreaFrontMatter(
   areaData: AreaCreateData,
   options: FrontMatterOptions = {}
 ): string {
-  const fields = FRONTMATTER_FIELDS.area;
+  const properties = PROPERTY_DEFINITIONS.area;
   const frontMatter: string[] = ['---'];
 
-  // Add all defined fields
-  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
-    const value = getFieldValue(areaData, fieldName, fieldConfig);
+  // Add all defined fields in the correct order
+  for (const prop of properties) {
+    // Map checkbox type to boolean for front-matter compatibility
+    const frontMatterType = prop.type === 'checkbox' ? 'boolean' : prop.type as 'string' | 'boolean' | 'array';
+    const fieldConfig: FrontMatterField = {
+      type: frontMatterType,
+      ...(prop.default !== undefined && { default: prop.default })
+    };
+
+    const value = getFieldValue(areaData, prop.name, fieldConfig);
     if (value !== undefined && value !== null) {
-      frontMatter.push(formatFrontMatterField(fieldName, value, fieldConfig));
+      frontMatter.push(formatFrontMatterField(prop.name, value, fieldConfig));
     }
+  }
+
+  // Add Type field with default
+  const typeConfig: FrontMatterField = { type: 'string' as const, default: 'Area' };
+  const typeValue = getFieldValue(areaData, 'Type', typeConfig);
+  if (typeValue !== undefined && typeValue !== null) {
+    frontMatter.push(formatFrontMatterField('Type', typeValue, typeConfig));
   }
 
   // Add custom fields

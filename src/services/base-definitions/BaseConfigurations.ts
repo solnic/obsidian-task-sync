@@ -140,41 +140,41 @@ export namespace Properties {
 export const PROPERTY_DEFINITIONS = {
   task: [
     Properties.TITLE,
-    Properties.AREAS,
-    Properties.PROJECT,
     Properties.TYPE,
-    Properties.PRIORITY,
-    Properties.DONE,
-    Properties.STATUS,
+    Properties.AREAS,
     Properties.PARENT_TASK,
     Properties.SUB_TASKS,
-    Properties.TAGS
+    Properties.TAGS,
+    Properties.PROJECT,
+    Properties.DONE,
+    Properties.STATUS,
+    Properties.PRIORITY
   ],
 
   // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
   areaBase: [
     Properties.TITLE,
-    Properties.PROJECT,
     Properties.TYPE,
-    Properties.PRIORITY,
-    Properties.DONE,
-    Properties.STATUS,
     Properties.PARENT_TASK,
     Properties.SUB_TASKS,
-    Properties.TAGS
+    Properties.TAGS,
+    Properties.PROJECT,
+    Properties.DONE,
+    Properties.STATUS,
+    Properties.PRIORITY
   ],
 
   // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
   projectBase: [
     Properties.TITLE,
-    Properties.AREAS,
     Properties.TYPE,
-    Properties.PRIORITY,
-    Properties.DONE,
-    Properties.STATUS,
+    Properties.AREAS,
     Properties.PARENT_TASK,
     Properties.SUB_TASKS,
-    Properties.TAGS
+    Properties.TAGS,
+    Properties.DONE,
+    Properties.STATUS,
+    Properties.PRIORITY
   ],
 
   // Properties for area/project files themselves (not for bases showing tasks)

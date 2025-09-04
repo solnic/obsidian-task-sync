@@ -71,15 +71,15 @@ describe('BaseConfigurations', () => {
     it('should have task-specific properties in correct order', () => {
       const taskProperties = PROPERTY_DEFINITIONS.task;
       expect(taskProperties[0].name).toBe('Title');
-      expect(taskProperties[1].name).toBe('Areas');
-      expect(taskProperties[2].name).toBe('Project');
-      expect(taskProperties[3].name).toBe('Type');
-      expect(taskProperties[4].name).toBe('Priority');
-      expect(taskProperties[5].name).toBe('Done');
-      expect(taskProperties[6].name).toBe('Status');
-      expect(taskProperties[7].name).toBe('Parent task');
-      expect(taskProperties[8].name).toBe('Sub-tasks');
-      expect(taskProperties[9].name).toBe('tags');
+      expect(taskProperties[1].name).toBe('Type');
+      expect(taskProperties[2].name).toBe('Areas');
+      expect(taskProperties[3].name).toBe('Parent task');
+      expect(taskProperties[4].name).toBe('Sub-tasks');
+      expect(taskProperties[5].name).toBe('tags');
+      expect(taskProperties[6].name).toBe('Project');
+      expect(taskProperties[7].name).toBe('Done');
+      expect(taskProperties[8].name).toBe('Status');
+      expect(taskProperties[9].name).toBe('Priority');
     });
 
     it('should have link properties correctly marked', () => {
