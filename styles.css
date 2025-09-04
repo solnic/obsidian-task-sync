@@ -888,6 +888,19 @@ Provides consistent styling for all UI components
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
+/* Task Priority Badge Styles */
+.task-priority-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
 .task-type-blue {
   background-color: #3b82f6;
 }
@@ -925,6 +938,47 @@ Provides consistent styling for all UI components
 }
 
 .task-type-indigo {
+  background-color: #6366f1;
+}
+
+/* Task Priority Colors */
+.task-priority-blue {
+  background-color: #3b82f6;
+}
+
+.task-priority-red {
+  background-color: #ef4444;
+}
+
+.task-priority-green {
+  background-color: #10b981;
+}
+
+.task-priority-yellow {
+  background-color: #f59e0b;
+}
+
+.task-priority-purple {
+  background-color: #8b5cf6;
+}
+
+.task-priority-orange {
+  background-color: #f97316;
+}
+
+.task-priority-pink {
+  background-color: #ec4899;
+}
+
+.task-priority-gray {
+  background-color: #6b7280;
+}
+
+.task-priority-teal {
+  background-color: #14b8a6;
+}
+
+.task-priority-indigo {
   background-color: #6366f1;
 }
 
@@ -969,8 +1023,56 @@ Provides consistent styling for all UI components
   background-color: #4f46e5;
 }
 
+/* Dark theme adjustments for priority badges */
+.theme-dark .task-priority-blue {
+  background-color: #2563eb;
+}
+
+.theme-dark .task-priority-red {
+  background-color: #dc2626;
+}
+
+.theme-dark .task-priority-green {
+  background-color: #059669;
+}
+
+.theme-dark .task-priority-yellow {
+  background-color: #d97706;
+}
+
+.theme-dark .task-priority-purple {
+  background-color: #7c3aed;
+}
+
+.theme-dark .task-priority-orange {
+  background-color: #ea580c;
+}
+
+.theme-dark .task-priority-pink {
+  background-color: #db2777;
+}
+
+.theme-dark .task-priority-gray {
+  background-color: #4b5563;
+}
+
+.theme-dark .task-priority-teal {
+  background-color: #0d9488;
+}
+
+.theme-dark .task-priority-indigo {
+  background-color: #4f46e5;
+}
+
 /* Task Type Settings Styles */
 .task-type-preview {
+  margin-left: 10px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Task Priority Settings Styles */
+.task-priority-preview {
   margin-left: 10px;
   display: inline-flex;
   align-items: center;

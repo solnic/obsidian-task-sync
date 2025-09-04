@@ -26,6 +26,13 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
     { name: 'Improvement', color: 'purple' },
     { name: 'Chore', color: 'gray' }
   ],
+  // Task priorities defaults
+  taskPriorities: [
+    { name: 'Low', color: 'green' },
+    { name: 'Medium', color: 'yellow' },
+    { name: 'High', color: 'orange' },
+    { name: 'Urgent', color: 'red' }
+  ],
   // Individual area/project bases defaults
   areaBasesEnabled: true,
   projectBasesEnabled: true,
@@ -37,7 +44,7 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
  */
 export const DEFAULT_FOLDER_PATHS = {
   tasks: 'Tasks',
-  projects: 'Projects', 
+  projects: 'Projects',
   areas: 'Areas',
   templates: 'Templates',
   bases: 'Bases'

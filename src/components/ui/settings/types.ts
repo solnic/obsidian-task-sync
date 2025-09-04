@@ -15,6 +15,19 @@ export const TASK_TYPE_COLORS = [
 
 export type TaskTypeColor = typeof TASK_TYPE_COLORS[number];
 
+// Task priority interface with color support
+export interface TaskPriority {
+  name: string;
+  color: string;
+}
+
+// Available colors for task priorities
+export const TASK_PRIORITY_COLORS = [
+  'blue', 'red', 'green', 'yellow', 'purple', 'orange', 'pink', 'gray', 'teal', 'indigo'
+] as const;
+
+export type TaskPriorityColor = typeof TASK_PRIORITY_COLORS[number];
+
 export interface TaskSyncSettings {
   tasksFolder: string;
   projectsFolder: string;
@@ -31,6 +44,8 @@ export interface TaskSyncSettings {
   autoUpdateBaseViews: boolean;
   // Task types configuration
   taskTypes: TaskType[];
+  // Task priorities configuration
+  taskPriorities: TaskPriority[];
   // Individual area/project bases
   areaBasesEnabled: boolean;
   projectBasesEnabled: boolean;

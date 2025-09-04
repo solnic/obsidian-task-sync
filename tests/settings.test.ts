@@ -24,6 +24,12 @@ describe('TaskSync Settings', () => {
           { name: 'Improvement', color: 'purple' },
           { name: 'Chore', color: 'gray' }
         ],
+        taskPriorities: [
+          { name: 'Low', color: 'green' },
+          { name: 'Medium', color: 'yellow' },
+          { name: 'High', color: 'orange' },
+          { name: 'Urgent', color: 'red' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -71,6 +77,12 @@ describe('TaskSync Settings', () => {
           { name: 'Improvement', color: 'purple' },
           { name: 'Chore', color: 'gray' }
         ],
+        taskPriorities: [
+          { name: 'Low', color: 'green' },
+          { name: 'Medium', color: 'yellow' },
+          { name: 'High', color: 'orange' },
+          { name: 'Urgent', color: 'red' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -101,6 +113,12 @@ describe('TaskSync Settings', () => {
           { name: 'Improvement', color: 'purple' },
           { name: 'Chore', color: 'gray' }
         ],
+        taskPriorities: [
+          { name: 'Low', color: 'green' },
+          { name: 'Medium', color: 'yellow' },
+          { name: 'High', color: 'orange' },
+          { name: 'Urgent', color: 'red' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -130,6 +148,12 @@ describe('TaskSync Settings', () => {
           { name: 'Feature', color: 'green' },
           { name: 'Improvement', color: 'purple' },
           { name: 'Chore', color: 'gray' }
+        ],
+        taskPriorities: [
+          { name: 'Low', color: 'green' },
+          { name: 'Medium', color: 'yellow' },
+          { name: 'High', color: 'orange' },
+          { name: 'Urgent', color: 'red' }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
@@ -167,6 +191,12 @@ describe('TaskSync Settings', () => {
           { name: 'Feature', color: 'green' },
           { name: 'Improvement', color: 'purple' },
           { name: 'Chore', color: 'gray' }
+        ],
+        taskPriorities: [
+          { name: 'Low', color: 'green' },
+          { name: 'Medium', color: 'yellow' },
+          { name: 'High', color: 'orange' },
+          { name: 'Urgent', color: 'red' }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
@@ -209,6 +239,12 @@ describe('TaskSync Settings', () => {
           { name: 'Improvement', color: 'purple' },
           { name: 'Chore', color: 'gray' }
         ],
+        taskPriorities: [
+          { name: 'Low', color: 'green' },
+          { name: 'Medium', color: 'yellow' },
+          { name: 'High', color: 'orange' },
+          { name: 'Urgent', color: 'red' }
+        ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
         autoSyncAreaProjectBases: true
@@ -237,6 +273,12 @@ describe('TaskSync Settings', () => {
           { name: 'Feature', color: 'green' },
           { name: 'Improvement', color: 'purple' },
           { name: 'Chore', color: 'gray' }
+        ],
+        taskPriorities: [
+          { name: 'Low', color: 'green' },
+          { name: 'Medium', color: 'yellow' },
+          { name: 'High', color: 'orange' },
+          { name: 'Urgent', color: 'red' }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,

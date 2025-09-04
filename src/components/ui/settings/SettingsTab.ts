@@ -4,11 +4,12 @@
 
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import TaskSyncPlugin from '../../../main';
-import { TaskSyncSettings, ValidationResult, SettingsSection, TaskType, TASK_TYPE_COLORS, TaskTypeColor } from './types';
+import { TaskSyncSettings, ValidationResult, SettingsSection, TaskType, TASK_TYPE_COLORS, TaskTypeColor, TaskPriority, TASK_PRIORITY_COLORS, TaskPriorityColor } from './types';
 import { DEFAULT_SETTINGS } from './defaults';
 import { validateFolderPath, validateFileName, validateBaseFileName, validateTemplateFileName } from './validation';
 import { FolderSuggestComponent, FileSuggestComponent } from './suggest';
 import { createTypeBadge } from '../TypeBadge';
+import { createPriorityBadge } from '../PriorityBadge';
 
 export class TaskSyncSettingTab extends PluginSettingTab {
   plugin: TaskSyncPlugin;
@@ -164,6 +165,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     this.createTemplatesSection(sectionsContainer);
     this.createBasesSection(sectionsContainer);
     this.createTaskTypesSection(sectionsContainer);
+    this.createTaskPrioritiesSection(sectionsContainer);
   }
 
   private createGeneralSection(container: HTMLElement): void {
@@ -350,9 +352,96 @@ export class TaskSyncSettingTab extends PluginSettingTab {
               this.plugin.settings.taskTypes.splice(index, 1);
               await this.plugin.saveSettings();
 
-              // Refresh the entire section
-              container.empty();
-              this.createTaskTypesSection(container);
+              // Refresh only the task types section, not the entire container
+              section.empty();
+              this.recreateTaskTypesSection(section);
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            });
+        });
+      }
+    });
+
+    // Add new task type section
+    this.createAddTaskTypeSection(section);
+  }
+
+  private recreateTaskTypesSection(section: HTMLElement): void {
+    // Section header
+    section.createEl('h2', { text: 'Task Types', cls: 'task-sync-section-header' });
+    section.createEl('p', {
+      text: 'Configure the available task types and their colors.',
+      cls: 'task-sync-settings-section-desc'
+    });
+
+    // Create a setting for each task type
+    this.plugin.settings.taskTypes.forEach((taskType, index) => {
+      const setting = new Setting(section)
+        .setName(taskType.name)
+        .setDesc(`Configure the "${taskType.name}" task type`);
+
+      // Add type badge preview
+      const badgeContainer = setting.controlEl.createDiv('task-type-preview');
+      const badge = createTypeBadge(taskType);
+      badgeContainer.appendChild(badge);
+
+      // Add name input
+      setting.addText(text => {
+        text.setValue(taskType.name)
+          .setPlaceholder('Task type name')
+          .onChange(async (value) => {
+            if (value.trim()) {
+              this.plugin.settings.taskTypes[index].name = value.trim();
+              await this.plugin.saveSettings();
+
+              // Update the setting name and badge
+              setting.setName(value.trim());
+              badge.textContent = value.trim();
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            }
+          });
+      });
+
+      // Add color dropdown
+      setting.addDropdown(dropdown => {
+        TASK_TYPE_COLORS.forEach(color => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+
+        dropdown.setValue(taskType.color)
+          .onChange(async (value: TaskTypeColor) => {
+            this.plugin.settings.taskTypes[index].color = value;
+            await this.plugin.saveSettings();
+
+            // Update badge color
+            badge.className = `task-type-badge task-type-${value}`;
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+      });
+
+      // Add delete button (don't allow deleting if it's the last type)
+      if (this.plugin.settings.taskTypes.length > 1) {
+        setting.addButton(button => {
+          button.setButtonText('Delete')
+            .setWarning()
+            .onClick(async () => {
+              this.plugin.settings.taskTypes.splice(index, 1);
+              await this.plugin.saveSettings();
+
+              // Refresh only the task types section, not the entire container
+              section.empty();
+              this.recreateTaskTypesSection(section);
 
               // Trigger base sync if enabled
               if (this.plugin.settings.autoSyncAreaProjectBases) {
@@ -371,7 +460,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     let newTypeName = '';
     let newTypeColor: TaskTypeColor = 'blue';
 
-    const addSetting = new Setting(container)
+    new Setting(container)
       .setName('Add New Task Type')
       .setDesc('Create a new task type for your workflow')
       .addText(text => {
@@ -398,9 +487,235 @@ export class TaskSyncSettingTab extends PluginSettingTab {
               this.plugin.settings.taskTypes.push({ name: newTypeName, color: newTypeColor });
               await this.plugin.saveSettings();
 
-              // Refresh the entire section
-              container.empty();
-              this.createTaskTypesSection(container);
+              // Find the task types section and refresh it
+              const taskTypesSection = container.closest('.task-sync-settings-section');
+              if (taskTypesSection) {
+                taskTypesSection.empty();
+                this.recreateTaskTypesSection(taskTypesSection as HTMLElement);
+              }
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            }
+          });
+      });
+  }
+
+  private createTaskPrioritiesSection(container: HTMLElement): void {
+    const section = container.createDiv('task-sync-settings-section');
+
+    // Section header
+    section.createEl('h2', { text: 'Task Priorities', cls: 'task-sync-section-header' });
+    section.createEl('p', {
+      text: 'Configure the available task priorities and their colors.',
+      cls: 'task-sync-settings-section-desc'
+    });
+
+    // Create a setting for each task priority
+    this.plugin.settings.taskPriorities.forEach((taskPriority, index) => {
+      const setting = new Setting(section)
+        .setName(taskPriority.name)
+        .setDesc(`Configure the "${taskPriority.name}" task priority`);
+
+      // Add priority badge preview
+      const badgeContainer = setting.controlEl.createDiv('task-priority-preview');
+      const badge = createPriorityBadge(taskPriority);
+      badgeContainer.appendChild(badge);
+
+      // Add name input
+      setting.addText(text => {
+        text.setValue(taskPriority.name)
+          .setPlaceholder('Priority name')
+          .onChange(async (value) => {
+            if (value.trim()) {
+              this.plugin.settings.taskPriorities[index].name = value.trim();
+              await this.plugin.saveSettings();
+
+              // Update the setting name and badge
+              setting.setName(value.trim());
+              badge.textContent = value.trim();
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            }
+          });
+      });
+
+      // Add color dropdown
+      setting.addDropdown(dropdown => {
+        TASK_PRIORITY_COLORS.forEach(color => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+
+        dropdown.setValue(taskPriority.color)
+          .onChange(async (value: TaskPriorityColor) => {
+            this.plugin.settings.taskPriorities[index].color = value;
+            await this.plugin.saveSettings();
+
+            // Update badge color
+            badge.className = `task-priority-badge task-priority-${value}`;
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+      });
+
+      // Add delete button (don't allow deleting if it's the last priority)
+      if (this.plugin.settings.taskPriorities.length > 1) {
+        setting.addButton(button => {
+          button.setButtonText('Delete')
+            .setWarning()
+            .onClick(async () => {
+              this.plugin.settings.taskPriorities.splice(index, 1);
+              await this.plugin.saveSettings();
+
+              // Refresh only the task priorities section, not the entire container
+              section.empty();
+              this.recreateTaskPrioritiesSection(section);
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            });
+        });
+      }
+    });
+
+    // Add new task priority section
+    this.createAddTaskPrioritySection(section);
+  }
+
+  private recreateTaskPrioritiesSection(section: HTMLElement): void {
+    // Section header
+    section.createEl('h2', { text: 'Task Priorities', cls: 'task-sync-section-header' });
+    section.createEl('p', {
+      text: 'Configure the available task priorities and their colors.',
+      cls: 'task-sync-settings-section-desc'
+    });
+
+    // Create a setting for each task priority
+    this.plugin.settings.taskPriorities.forEach((taskPriority, index) => {
+      const setting = new Setting(section)
+        .setName(taskPriority.name)
+        .setDesc(`Configure the "${taskPriority.name}" task priority`);
+
+      // Add priority badge preview
+      const badgeContainer = setting.controlEl.createDiv('task-priority-preview');
+      const badge = createPriorityBadge(taskPriority);
+      badgeContainer.appendChild(badge);
+
+      // Add name input
+      setting.addText(text => {
+        text.setValue(taskPriority.name)
+          .setPlaceholder('Priority name')
+          .onChange(async (value) => {
+            if (value.trim()) {
+              this.plugin.settings.taskPriorities[index].name = value.trim();
+              await this.plugin.saveSettings();
+
+              // Update the setting name and badge
+              setting.setName(value.trim());
+              badge.textContent = value.trim();
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            }
+          });
+      });
+
+      // Add color dropdown
+      setting.addDropdown(dropdown => {
+        TASK_PRIORITY_COLORS.forEach(color => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+
+        dropdown.setValue(taskPriority.color)
+          .onChange(async (value: TaskPriorityColor) => {
+            this.plugin.settings.taskPriorities[index].color = value;
+            await this.plugin.saveSettings();
+
+            // Update badge color
+            badge.className = `task-priority-badge task-priority-${value}`;
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+      });
+
+      // Add delete button (don't allow deleting if it's the last priority)
+      if (this.plugin.settings.taskPriorities.length > 1) {
+        setting.addButton(button => {
+          button.setButtonText('Delete')
+            .setWarning()
+            .onClick(async () => {
+              this.plugin.settings.taskPriorities.splice(index, 1);
+              await this.plugin.saveSettings();
+
+              // Refresh only the task priorities section, not the entire container
+              section.empty();
+              this.recreateTaskPrioritiesSection(section);
+
+              // Trigger base sync if enabled
+              if (this.plugin.settings.autoSyncAreaProjectBases) {
+                await this.plugin.syncAreaProjectBases();
+              }
+            });
+        });
+      }
+    });
+
+    // Add new task priority section
+    this.createAddTaskPrioritySection(section);
+  }
+
+  private createAddTaskPrioritySection(container: HTMLElement): void {
+    let newPriorityName = '';
+    let newPriorityColor: TaskPriorityColor = 'blue';
+
+    new Setting(container)
+      .setName('Add New Task Priority')
+      .setDesc('Create a new task priority for your workflow')
+      .addText(text => {
+        text.setPlaceholder('e.g., Critical, Normal, Minor')
+          .onChange((value) => {
+            newPriorityName = value.trim();
+          });
+      })
+      .addDropdown(dropdown => {
+        TASK_PRIORITY_COLORS.forEach(color => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+
+        dropdown.setValue(newPriorityColor)
+          .onChange((value: TaskPriorityColor) => {
+            newPriorityColor = value;
+          });
+      })
+      .addButton(button => {
+        button.setButtonText('Add Priority')
+          .setCta()
+          .onClick(async () => {
+            if (newPriorityName && !this.plugin.settings.taskPriorities.some(p => p.name === newPriorityName)) {
+              this.plugin.settings.taskPriorities.push({ name: newPriorityName, color: newPriorityColor });
+              await this.plugin.saveSettings();
+
+              // Find the task priorities section and refresh it
+              const taskPrioritiesSection = container.closest('.task-sync-settings-section');
+              if (taskPrioritiesSection) {
+                taskPrioritiesSection.empty();
+                this.recreateTaskPrioritiesSection(taskPrioritiesSection as HTMLElement);
+              }
 
               // Trigger base sync if enabled
               if (this.plugin.settings.autoSyncAreaProjectBases) {

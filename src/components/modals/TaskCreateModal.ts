@@ -215,12 +215,14 @@ export class TaskCreateModal extends Modal {
       .setName('Priority')
       .setDesc('Task priority level')
       .addDropdown(dropdown => {
-        dropdown.addOption('', 'Select priority...')
-          .addOption('Low', 'Low')
-          .addOption('Medium', 'Medium')
-          .addOption('High', 'High')
-          .addOption('Urgent', 'Urgent')
-          .setValue(this.formData.priority || '')
+        dropdown.addOption('', 'Select priority...');
+
+        // Add priorities from settings
+        this.plugin.settings.taskPriorities.forEach(priority => {
+          dropdown.addOption(priority.name, priority.name);
+        });
+
+        dropdown.setValue(this.formData.priority || '')
           .onChange(value => {
             this.formData.priority = value;
           });

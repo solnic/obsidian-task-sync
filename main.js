@@ -4319,7 +4319,11 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
       });
     });
     new import_obsidian3.Setting(container).setName("Priority").setDesc("Task priority level").addDropdown((dropdown) => {
-      dropdown.addOption("", "Select priority...").addOption("Low", "Low").addOption("Medium", "Medium").addOption("High", "High").addOption("Urgent", "Urgent").setValue(this.formData.priority || "").onChange((value) => {
+      dropdown.addOption("", "Select priority...");
+      this.plugin.settings.taskPriorities.forEach((priority) => {
+        dropdown.addOption(priority.name, priority.name);
+      });
+      dropdown.setValue(this.formData.priority || "").onChange((value) => {
         this.formData.priority = value;
       });
     });
@@ -4629,6 +4633,18 @@ var TASK_TYPE_COLORS = [
   "teal",
   "indigo"
 ];
+var TASK_PRIORITY_COLORS = [
+  "blue",
+  "red",
+  "green",
+  "yellow",
+  "purple",
+  "orange",
+  "pink",
+  "gray",
+  "teal",
+  "indigo"
+];
 
 // src/components/ui/settings/defaults.ts
 var DEFAULT_SETTINGS = {
@@ -4652,6 +4668,13 @@ var DEFAULT_SETTINGS = {
     { name: "Feature", color: "green" },
     { name: "Improvement", color: "purple" },
     { name: "Chore", color: "gray" }
+  ],
+  // Task priorities defaults
+  taskPriorities: [
+    { name: "Low", color: "green" },
+    { name: "Medium", color: "yellow" },
+    { name: "High", color: "orange" },
+    { name: "Urgent", color: "red" }
   ],
   // Individual area/project bases defaults
   areaBasesEnabled: true,
@@ -5105,6 +5128,17 @@ function createTypeBadge(taskType, className) {
   return badge;
 }
 
+// src/components/ui/PriorityBadge.ts
+function createPriorityBadge(taskPriority, className) {
+  const badge = document.createElement("span");
+  badge.className = `task-priority-badge task-priority-${taskPriority.color}`;
+  if (className) {
+    badge.className += ` ${className}`;
+  }
+  badge.textContent = taskPriority.name;
+  return badge;
+}
+
 // src/components/ui/settings/SettingsTab.ts
 var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
   constructor(app, plugin) {
@@ -5246,6 +5280,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
     this.createTemplatesSection(sectionsContainer);
     this.createBasesSection(sectionsContainer);
     this.createTaskTypesSection(sectionsContainer);
+    this.createTaskPrioritiesSection(sectionsContainer);
   }
   createGeneralSection(container) {
     const section = container.createDiv("task-sync-settings-section");
@@ -5385,8 +5420,61 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
           button.setButtonText("Delete").setWarning().onClick(async () => {
             this.plugin.settings.taskTypes.splice(index, 1);
             await this.plugin.saveSettings();
-            container.empty();
-            this.createTaskTypesSection(container);
+            section.empty();
+            this.recreateTaskTypesSection(section);
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+        });
+      }
+    });
+    this.createAddTaskTypeSection(section);
+  }
+  recreateTaskTypesSection(section) {
+    section.createEl("h2", { text: "Task Types", cls: "task-sync-section-header" });
+    section.createEl("p", {
+      text: "Configure the available task types and their colors.",
+      cls: "task-sync-settings-section-desc"
+    });
+    this.plugin.settings.taskTypes.forEach((taskType, index) => {
+      const setting = new import_obsidian7.Setting(section).setName(taskType.name).setDesc(`Configure the "${taskType.name}" task type`);
+      const badgeContainer = setting.controlEl.createDiv("task-type-preview");
+      const badge = createTypeBadge(taskType);
+      badgeContainer.appendChild(badge);
+      setting.addText((text) => {
+        text.setValue(taskType.name).setPlaceholder("Task type name").onChange(async (value) => {
+          if (value.trim()) {
+            this.plugin.settings.taskTypes[index].name = value.trim();
+            await this.plugin.saveSettings();
+            setting.setName(value.trim());
+            badge.textContent = value.trim();
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          }
+        });
+      });
+      setting.addDropdown((dropdown) => {
+        TASK_TYPE_COLORS.forEach((color) => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+        dropdown.setValue(taskType.color).onChange(async (value) => {
+          this.plugin.settings.taskTypes[index].color = value;
+          await this.plugin.saveSettings();
+          badge.className = `task-type-badge task-type-${value}`;
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
+        });
+      });
+      if (this.plugin.settings.taskTypes.length > 1) {
+        setting.addButton((button) => {
+          button.setButtonText("Delete").setWarning().onClick(async () => {
+            this.plugin.settings.taskTypes.splice(index, 1);
+            await this.plugin.saveSettings();
+            section.empty();
+            this.recreateTaskTypesSection(section);
             if (this.plugin.settings.autoSyncAreaProjectBases) {
               await this.plugin.syncAreaProjectBases();
             }
@@ -5399,7 +5487,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
   createAddTaskTypeSection(container) {
     let newTypeName = "";
     let newTypeColor = "blue";
-    const addSetting = new import_obsidian7.Setting(container).setName("Add New Task Type").setDesc("Create a new task type for your workflow").addText((text) => {
+    new import_obsidian7.Setting(container).setName("Add New Task Type").setDesc("Create a new task type for your workflow").addText((text) => {
       text.setPlaceholder("e.g., Epic, Story, Research").onChange((value) => {
         newTypeName = value.trim();
       });
@@ -5415,8 +5503,149 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
         if (newTypeName && !this.plugin.settings.taskTypes.some((t) => t.name === newTypeName)) {
           this.plugin.settings.taskTypes.push({ name: newTypeName, color: newTypeColor });
           await this.plugin.saveSettings();
-          container.empty();
-          this.createTaskTypesSection(container);
+          const taskTypesSection = container.closest(".task-sync-settings-section");
+          if (taskTypesSection) {
+            taskTypesSection.empty();
+            this.recreateTaskTypesSection(taskTypesSection);
+          }
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
+        }
+      });
+    });
+  }
+  createTaskPrioritiesSection(container) {
+    const section = container.createDiv("task-sync-settings-section");
+    section.createEl("h2", { text: "Task Priorities", cls: "task-sync-section-header" });
+    section.createEl("p", {
+      text: "Configure the available task priorities and their colors.",
+      cls: "task-sync-settings-section-desc"
+    });
+    this.plugin.settings.taskPriorities.forEach((taskPriority, index) => {
+      const setting = new import_obsidian7.Setting(section).setName(taskPriority.name).setDesc(`Configure the "${taskPriority.name}" task priority`);
+      const badgeContainer = setting.controlEl.createDiv("task-priority-preview");
+      const badge = createPriorityBadge(taskPriority);
+      badgeContainer.appendChild(badge);
+      setting.addText((text) => {
+        text.setValue(taskPriority.name).setPlaceholder("Priority name").onChange(async (value) => {
+          if (value.trim()) {
+            this.plugin.settings.taskPriorities[index].name = value.trim();
+            await this.plugin.saveSettings();
+            setting.setName(value.trim());
+            badge.textContent = value.trim();
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          }
+        });
+      });
+      setting.addDropdown((dropdown) => {
+        TASK_PRIORITY_COLORS.forEach((color) => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+        dropdown.setValue(taskPriority.color).onChange(async (value) => {
+          this.plugin.settings.taskPriorities[index].color = value;
+          await this.plugin.saveSettings();
+          badge.className = `task-priority-badge task-priority-${value}`;
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
+        });
+      });
+      if (this.plugin.settings.taskPriorities.length > 1) {
+        setting.addButton((button) => {
+          button.setButtonText("Delete").setWarning().onClick(async () => {
+            this.plugin.settings.taskPriorities.splice(index, 1);
+            await this.plugin.saveSettings();
+            section.empty();
+            this.recreateTaskPrioritiesSection(section);
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+        });
+      }
+    });
+    this.createAddTaskPrioritySection(section);
+  }
+  recreateTaskPrioritiesSection(section) {
+    section.createEl("h2", { text: "Task Priorities", cls: "task-sync-section-header" });
+    section.createEl("p", {
+      text: "Configure the available task priorities and their colors.",
+      cls: "task-sync-settings-section-desc"
+    });
+    this.plugin.settings.taskPriorities.forEach((taskPriority, index) => {
+      const setting = new import_obsidian7.Setting(section).setName(taskPriority.name).setDesc(`Configure the "${taskPriority.name}" task priority`);
+      const badgeContainer = setting.controlEl.createDiv("task-priority-preview");
+      const badge = createPriorityBadge(taskPriority);
+      badgeContainer.appendChild(badge);
+      setting.addText((text) => {
+        text.setValue(taskPriority.name).setPlaceholder("Priority name").onChange(async (value) => {
+          if (value.trim()) {
+            this.plugin.settings.taskPriorities[index].name = value.trim();
+            await this.plugin.saveSettings();
+            setting.setName(value.trim());
+            badge.textContent = value.trim();
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          }
+        });
+      });
+      setting.addDropdown((dropdown) => {
+        TASK_PRIORITY_COLORS.forEach((color) => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+        dropdown.setValue(taskPriority.color).onChange(async (value) => {
+          this.plugin.settings.taskPriorities[index].color = value;
+          await this.plugin.saveSettings();
+          badge.className = `task-priority-badge task-priority-${value}`;
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
+        });
+      });
+      if (this.plugin.settings.taskPriorities.length > 1) {
+        setting.addButton((button) => {
+          button.setButtonText("Delete").setWarning().onClick(async () => {
+            this.plugin.settings.taskPriorities.splice(index, 1);
+            await this.plugin.saveSettings();
+            section.empty();
+            this.recreateTaskPrioritiesSection(section);
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+        });
+      }
+    });
+    this.createAddTaskPrioritySection(section);
+  }
+  createAddTaskPrioritySection(container) {
+    let newPriorityName = "";
+    let newPriorityColor = "blue";
+    new import_obsidian7.Setting(container).setName("Add New Task Priority").setDesc("Create a new task priority for your workflow").addText((text) => {
+      text.setPlaceholder("e.g., Critical, Normal, Minor").onChange((value) => {
+        newPriorityName = value.trim();
+      });
+    }).addDropdown((dropdown) => {
+      TASK_PRIORITY_COLORS.forEach((color) => {
+        dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      });
+      dropdown.setValue(newPriorityColor).onChange((value) => {
+        newPriorityColor = value;
+      });
+    }).addButton((button) => {
+      button.setButtonText("Add Priority").setCta().onClick(async () => {
+        if (newPriorityName && !this.plugin.settings.taskPriorities.some((p) => p.name === newPriorityName)) {
+          this.plugin.settings.taskPriorities.push({ name: newPriorityName, color: newPriorityColor });
+          await this.plugin.saveSettings();
+          const taskPrioritiesSection = container.closest(".task-sync-settings-section");
+          if (taskPrioritiesSection) {
+            taskPrioritiesSection.empty();
+            this.recreateTaskPrioritiesSection(taskPrioritiesSection);
+          }
           if (this.plugin.settings.autoSyncAreaProjectBases) {
             await this.plugin.syncAreaProjectBases();
           }

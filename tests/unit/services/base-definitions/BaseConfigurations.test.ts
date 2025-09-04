@@ -26,6 +26,12 @@ describe('BaseConfigurations', () => {
       { name: 'Bug', color: '#ef4444' },
       { name: 'Feature', color: '#10b981' }
     ],
+    taskPriorities: [
+      { name: 'Low', color: 'green' },
+      { name: 'Medium', color: 'yellow' },
+      { name: 'High', color: 'orange' },
+      { name: 'Urgent', color: 'red' }
+    ],
     projectBasesEnabled: true,
     areaBasesEnabled: true,
     autoSyncAreaProjectBases: true,
