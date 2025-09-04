@@ -114,9 +114,9 @@ describe('Todo Promotion E2E', () => {
     const taskExists = await fileExists(context.page, 'Tasks/Nested todo item.md');
     expect(taskExists).toBe(true);
 
-    // Verify the original file preserves indentation
+    // Verify the original file preserves indentation and checkbox format
     const updatedContent = await getFileContent(context.page, 'Areas/Work.md');
-    expect(updatedContent).toContain('  - [[Nested todo item]]');
+    expect(updatedContent).toContain('  - [ ] [[Nested todo item]]');
     expect(updatedContent).not.toContain('  - [ ] Nested todo item');
   });
 
@@ -180,7 +180,7 @@ describe('Todo Promotion E2E', () => {
     expect(taskExists).toBe(true);
 
     const updatedContent = await getFileContent(context.page, 'Areas/Mixed.md');
-    expect(updatedContent).toContain('* [[Asterisk todo item]]');
+    expect(updatedContent).toContain('* [ ] [[Asterisk todo item]]');
     expect(updatedContent).not.toContain('* [ ] Asterisk todo item');
   });
 });

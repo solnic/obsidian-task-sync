@@ -1,6 +1,7 @@
 import { Plugin, TFile, MarkdownView, Notice } from 'obsidian';
 import { VaultScanner } from './services/VaultScannerService';
 import { BaseManager } from './services/BaseManager';
+import { PluginStorageService } from './services/PluginStorageService';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
 import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
 import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
@@ -31,12 +32,18 @@ export interface TodoItem {
   lineNumber: number;
 }
 
+// Extended todo item with parent information
+export interface TodoItemWithParent extends TodoItem {
+  parentTodo?: TodoItem;
+}
+
 
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
   vaultScanner: VaultScanner;
   baseManager: BaseManager;
+  storageService: PluginStorageService;
 
   async onload() {
     console.log('Loading Task Sync Plugin');
@@ -47,6 +54,10 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize services
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
+    this.storageService = new PluginStorageService(this.app, this);
+
+    // Initialize storage service
+    await this.storageService.initialize();
 
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
@@ -100,6 +111,14 @@ export default class TaskSyncPlugin extends Plugin {
       name: 'Promote Todo to Task',
       callback: async () => {
         await this.promoteTodoToTask();
+      }
+    });
+
+    this.addCommand({
+      id: 'revert-promoted-todo',
+      name: 'Revert Promoted Todo',
+      callback: async () => {
+        await this.revertPromotedTodo();
       }
     });
   }
@@ -274,13 +293,129 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
+   * Detect todo item with parent information
+   */
+  private detectTodoWithParent(): TodoItemWithParent | null {
+    const currentTodo = this.detectTodoUnderCursor();
+    if (!currentTodo) {
+      return null;
+    }
+
+    const parentTodo = this.findParentTodo(currentTodo);
+
+    return {
+      ...currentTodo,
+      parentTodo
+    };
+  }
+
+  /**
+   * Find parent todo by looking at lines above the current todo
+   * Only supports 1 level of nesting for simplicity
+   */
+  private findParentTodo(currentTodo: TodoItem): TodoItem | null {
+    const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!markdownView) {
+      return null;
+    }
+
+    const editor = markdownView.editor;
+    const currentIndentLevel = currentTodo.indentation.length;
+
+    // If current todo has no indentation, it can't have a parent
+    if (currentIndentLevel === 0) {
+      return null;
+    }
+
+    // Look backwards from current line to find a todo with less indentation
+    for (let lineNum = currentTodo.lineNumber - 1; lineNum >= 0; lineNum--) {
+      const line = editor.getLine(lineNum);
+      const todoRegex = /^(\s*)([-*])\s*\[([xX\s])\]\s*(.+)$/;
+      const match = line.match(todoRegex);
+
+      if (match) {
+        const [, indentation, listMarker, checkboxState, text] = match;
+        const indentLevel = indentation.length;
+
+        // Found a potential parent (less indented)
+        if (indentLevel < currentIndentLevel) {
+          return {
+            text: text.trim(),
+            completed: checkboxState.toLowerCase() === 'x',
+            indentation,
+            listMarker,
+            lineNumber: lineNum
+          };
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Update parent task's sub-tasks field to include the new child task
+   */
+  private async updateParentTaskSubTasks(parentTaskName: string, childTaskName: string): Promise<void> {
+    try {
+      const parentTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(parentTaskName)}`;
+      const parentFile = this.app.vault.getAbstractFileByPath(parentTaskPath);
+
+      if (parentFile instanceof TFile) {
+        const content = await this.app.vault.read(parentFile);
+
+        // Parse front-matter to get current sub-tasks
+        const frontMatterRegex = /^---\n([\s\S]*?)\n---/;
+        const match = content.match(frontMatterRegex);
+
+        if (match) {
+          const frontMatter = match[1];
+          const subTasksMatch = frontMatter.match(/^Sub-tasks:\s*(.*)$/m);
+
+          let currentSubTasks: string[] = [];
+          if (subTasksMatch && subTasksMatch[1].trim()) {
+            // Parse existing sub-tasks (could be comma-separated or array format)
+            const subTasksValue = subTasksMatch[1].trim();
+            if (subTasksValue.startsWith('[') && subTasksValue.endsWith(']')) {
+              // Array format: [task1, task2]
+              currentSubTasks = subTasksValue.slice(1, -1).split(',').map(t => t.trim().replace(/['"]/g, ''));
+            } else {
+              // Comma-separated format: task1, task2
+              currentSubTasks = subTasksValue.split(',').map(t => t.trim());
+            }
+          }
+
+          // Add new child task if not already present
+          if (!currentSubTasks.includes(childTaskName)) {
+            currentSubTasks.push(childTaskName);
+
+            // Update the sub-tasks field
+            const updatedSubTasks = currentSubTasks.filter(t => t).join(', ');
+            const updatedFrontMatter = frontMatter.replace(
+              /^Sub-tasks:\s*.*$/m,
+              `Sub-tasks: ${updatedSubTasks}`
+            );
+
+            const updatedContent = content.replace(frontMatterRegex, `---\n${updatedFrontMatter}\n---`);
+            await this.app.vault.modify(parentFile, updatedContent);
+
+            console.log(`Updated parent task ${parentTaskName} with sub-task: ${childTaskName}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to update parent task sub-tasks: ${error}`);
+    }
+  }
+
+  /**
    * Promote a todo item under cursor to a task
    */
   private async promoteTodoToTask(): Promise<void> {
     try {
-      const todoItem = this.detectTodoUnderCursor();
+      const todoWithParent = this.detectTodoWithParent();
 
-      if (!todoItem) {
+      if (!todoWithParent) {
         new Notice('No todo item found under cursor');
         return;
       }
@@ -288,19 +423,53 @@ export default class TaskSyncPlugin extends Plugin {
       // Get current file context
       const context = this.detectCurrentFileContext();
 
-      // Prepare task data
+      let parentTaskName: string | undefined;
+
+      // If this todo has a parent, create the parent task first
+      if (todoWithParent.parentTodo) {
+        const parentTaskData = {
+          name: todoWithParent.parentTodo.text,
+          type: this.settings.taskTypes[0]?.name || 'Task',
+          done: todoWithParent.parentTodo.completed,
+          status: todoWithParent.parentTodo.completed ? 'Done' : 'Backlog',
+          tags: [] as string[],
+          // Include the child task in sub-tasks field from the start
+          subTasks: todoWithParent.text,
+          // Set context-specific fields
+          ...(context.type === 'project' && context.name ? { project: context.name } : {}),
+          ...(context.type === 'area' && context.name ? { areas: context.name } : {})
+        };
+
+        // Check if parent task already exists
+        const parentTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(todoWithParent.parentTodo.text)}`;
+        const parentExists = await this.app.vault.adapter.exists(parentTaskPath);
+
+        if (!parentExists) {
+          await this.createTask(parentTaskData);
+          console.log(`Created parent task: ${todoWithParent.parentTodo.text}`);
+        } else {
+          // If parent exists, update its sub-tasks field
+          await this.updateParentTaskSubTasks(todoWithParent.parentTodo.text, todoWithParent.text);
+        }
+
+        parentTaskName = todoWithParent.parentTodo.text;
+      }
+
+      // Prepare child task data
       const taskData = {
-        name: todoItem.text,
+        name: todoWithParent.text,
         type: this.settings.taskTypes[0]?.name || 'Task',
-        done: todoItem.completed,
-        status: todoItem.completed ? 'Done' : 'Backlog',
+        done: todoWithParent.completed,
+        status: todoWithParent.completed ? 'Done' : 'Backlog',
         tags: [] as string[],
+        // Set parent task as a link if exists
+        ...(parentTaskName ? { parentTask: `[[${parentTaskName}]]` } : {}),
         // Set context-specific fields
         ...(context.type === 'project' && context.name ? { project: context.name } : {}),
         ...(context.type === 'area' && context.name ? { areas: context.name } : {})
       };
 
-      // Create the task
+      // Create the child task
       await this.createTask(taskData);
 
       // Replace the todo line with a link to the created task
@@ -310,18 +479,74 @@ export default class TaskSyncPlugin extends Plugin {
       }
       const editor = markdownView.editor;
 
-      let replacementLine: string;
-      if (todoItem.completed) {
-        // Keep the completed checkbox and add the link
-        replacementLine = `${todoItem.indentation}${todoItem.listMarker} [x] [[${todoItem.text}]]`;
-      } else {
-        // Replace with a simple link
-        replacementLine = `${todoItem.indentation}${todoItem.listMarker} [[${todoItem.text}]]`;
+      // Get current file path for tracking
+      const activeFile = markdownView.file;
+      if (!activeFile) {
+        throw new Error('No active file found');
       }
 
-      editor.setLine(todoItem.lineNumber, replacementLine);
+      // Store original line content for tracking
+      const originalLine = editor.getLine(todoWithParent.lineNumber);
 
-      new Notice(`Todo promoted to task: ${todoItem.text}`);
+      // Keep the todo format but link to the task to indicate promotion
+      let replacementLine: string;
+      if (todoWithParent.completed) {
+        // Keep the completed checkbox and add the link
+        replacementLine = `${todoWithParent.indentation}${todoWithParent.listMarker} [x] [[${todoWithParent.text}]]`;
+      } else {
+        // Keep the uncompleted checkbox and add the link
+        replacementLine = `${todoWithParent.indentation}${todoWithParent.listMarker} [ ] [[${todoWithParent.text}]]`;
+      }
+
+      editor.setLine(todoWithParent.lineNumber, replacementLine);
+
+      // Track the promoted todo
+      const taskPath = `${this.settings.tasksFolder}/${createSafeFileName(todoWithParent.text)}`;
+      await this.storageService.trackPromotedTodo(
+        todoWithParent.text,
+        originalLine,
+        activeFile.path,
+        todoWithParent.lineNumber,
+        todoWithParent.text,
+        taskPath,
+        todoWithParent.parentTodo ? {
+          text: todoWithParent.parentTodo.text,
+          lineNumber: todoWithParent.parentTodo.lineNumber,
+          taskName: todoWithParent.parentTodo.text
+        } : undefined
+      );
+
+      // Also replace parent todo line if it exists and wasn't already promoted
+      if (todoWithParent.parentTodo) {
+        const parentLine = editor.getLine(todoWithParent.parentTodo.lineNumber);
+        // Only replace if it's still a todo (not already a link)
+        if (parentLine.includes('[ ]') || parentLine.includes('[x]') || parentLine.includes('[X]')) {
+          const originalParentLine = parentLine;
+          let parentReplacementLine: string;
+          if (todoWithParent.parentTodo.completed) {
+            parentReplacementLine = `${todoWithParent.parentTodo.indentation}${todoWithParent.parentTodo.listMarker} [x] [[${todoWithParent.parentTodo.text}]]`;
+          } else {
+            parentReplacementLine = `${todoWithParent.parentTodo.indentation}${todoWithParent.parentTodo.listMarker} [ ] [[${todoWithParent.parentTodo.text}]]`;
+          }
+          editor.setLine(todoWithParent.parentTodo.lineNumber, parentReplacementLine);
+
+          // Track the parent todo promotion as well
+          const parentTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(todoWithParent.parentTodo.text)}`;
+          await this.storageService.trackPromotedTodo(
+            todoWithParent.parentTodo.text,
+            originalParentLine,
+            activeFile.path,
+            todoWithParent.parentTodo.lineNumber,
+            todoWithParent.parentTodo.text,
+            parentTaskPath
+          );
+        }
+      }
+
+      const message = parentTaskName
+        ? `Todo promoted to task with parent: ${todoWithParent.text} (parent: ${parentTaskName})`
+        : `Todo promoted to task: ${todoWithParent.text}`;
+      new Notice(message);
 
       // Refresh base views if auto-update is enabled
       if (this.settings.autoUpdateBaseViews) {
@@ -331,6 +556,43 @@ export default class TaskSyncPlugin extends Plugin {
     } catch (error) {
       console.error('Failed to promote todo to task:', error);
       new Notice('Failed to promote todo to task');
+    }
+  }
+
+  /**
+   * Revert a promoted todo back to its original format
+   */
+  private async revertPromotedTodo(): Promise<void> {
+    try {
+      const activeFile = this.app.workspace.getActiveFile();
+      if (!activeFile) {
+        new Notice('No active file found');
+        return;
+      }
+
+      // Get promoted todos for the current file
+      const promotedTodos = this.storageService.getPromotedTodosForFile(activeFile.path);
+
+      if (promotedTodos.length === 0) {
+        new Notice('No promoted todos found in this file');
+        return;
+      }
+
+      // For now, revert the most recent promoted todo
+      // TODO: In the future, we could show a modal to let user choose which one to revert
+      const mostRecent = promotedTodos[promotedTodos.length - 1];
+
+      const success = await this.storageService.revertPromotedTodo(mostRecent.id);
+
+      if (success) {
+        new Notice(`Reverted promoted todo: ${mostRecent.originalText}`);
+      } else {
+        new Notice('Failed to revert promoted todo');
+      }
+
+    } catch (error) {
+      console.error('Failed to revert promoted todo:', error);
+      new Notice('Failed to revert promoted todo');
     }
   }
 

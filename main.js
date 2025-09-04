@@ -3696,7 +3696,7 @@ __export(main_exports, {
   default: () => TaskSyncPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian8 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/services/VaultScannerService.ts
 var import_obsidian = require("obsidian");
@@ -4335,9 +4335,242 @@ var BaseManager = class {
   }
 };
 
-// src/components/modals/TaskCreateModal.ts
+// src/services/PluginStorageService.ts
 var import_obsidian3 = require("obsidian");
-var TaskCreateModal = class extends import_obsidian3.Modal {
+var PluginStorageService = class {
+  constructor(app, plugin) {
+    this.app = app;
+    this.plugin = plugin;
+    this.STORAGE_VERSION = "1.0.0";
+    this.data = this.getDefaultData();
+  }
+  /**
+   * Initialize storage service and load existing data
+   */
+  async initialize() {
+    await this.loadData();
+  }
+  /**
+   * Get default storage data structure
+   */
+  getDefaultData() {
+    return {
+      version: this.STORAGE_VERSION,
+      promotedTodos: [],
+      cachedTasks: [],
+      cachedProjects: [],
+      cachedAreas: [],
+      lastSync: /* @__PURE__ */ new Date()
+    };
+  }
+  /**
+   * Load data from Obsidian's data storage
+   */
+  async loadData() {
+    try {
+      const loadedData = await this.plugin.loadData();
+      if (loadedData && loadedData.pluginStorage) {
+        this.data = {
+          ...this.getDefaultData(),
+          ...loadedData.pluginStorage,
+          // Convert date strings back to Date objects
+          lastSync: new Date(loadedData.pluginStorage.lastSync || /* @__PURE__ */ new Date()),
+          promotedTodos: (loadedData.pluginStorage.promotedTodos || []).map((todo) => ({
+            ...todo,
+            promotedAt: new Date(todo.promotedAt)
+          }))
+        };
+      }
+    } catch (error) {
+      console.error("Failed to load plugin storage data:", error);
+      this.data = this.getDefaultData();
+    }
+  }
+  /**
+   * Save data to Obsidian's data storage
+   */
+  async saveData() {
+    try {
+      const existingData = await this.plugin.loadData() || {};
+      const updatedData = {
+        ...existingData,
+        pluginStorage: this.data
+      };
+      await this.plugin.saveData(updatedData);
+    } catch (error) {
+      console.error("Failed to save plugin storage data:", error);
+    }
+  }
+  // ============================================================================
+  // PROMOTED TODO TRACKING
+  // ============================================================================
+  /**
+   * Track a promoted todo item
+   */
+  async trackPromotedTodo(originalText, originalLine, filePath, lineNumber, taskName, taskPath, parentTodo) {
+    const id = this.generateId();
+    const promotedTodo = {
+      id,
+      originalText,
+      originalLine,
+      filePath,
+      lineNumber,
+      taskName,
+      taskPath,
+      promotedAt: /* @__PURE__ */ new Date(),
+      parentTodo
+    };
+    this.data.promotedTodos.push(promotedTodo);
+    await this.saveData();
+    return id;
+  }
+  /**
+   * Get all promoted todos
+   */
+  getPromotedTodos() {
+    return [...this.data.promotedTodos];
+  }
+  /**
+   * Get promoted todos for a specific file
+   */
+  getPromotedTodosForFile(filePath) {
+    return this.data.promotedTodos.filter((todo) => todo.filePath === filePath);
+  }
+  /**
+   * Remove a promoted todo from tracking
+   */
+  async removePromotedTodo(id) {
+    const index = this.data.promotedTodos.findIndex((todo) => todo.id === id);
+    if (index !== -1) {
+      this.data.promotedTodos.splice(index, 1);
+      await this.saveData();
+      return true;
+    }
+    return false;
+  }
+  /**
+   * Revert a promoted todo back to its original format and delete the task file
+   */
+  async revertPromotedTodo(id) {
+    const promotedTodo = this.data.promotedTodos.find((todo) => todo.id === id);
+    if (!promotedTodo) {
+      return false;
+    }
+    try {
+      const taskFile = this.app.vault.getAbstractFileByPath(promotedTodo.taskPath);
+      if (taskFile instanceof import_obsidian3.TFile) {
+        await this.app.vault.delete(taskFile);
+        console.log(`Deleted task file: ${promotedTodo.taskPath}`);
+      }
+      const file = this.app.vault.getAbstractFileByPath(promotedTodo.filePath);
+      if (file instanceof import_obsidian3.TFile) {
+        const content = await this.app.vault.read(file);
+        const lines = content.split("\n");
+        if (lines[promotedTodo.lineNumber]) {
+          lines[promotedTodo.lineNumber] = promotedTodo.originalLine;
+          const updatedContent = lines.join("\n");
+          await this.app.vault.modify(file, updatedContent);
+          await this.removePromotedTodo(id);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error("Failed to revert promoted todo:", error);
+    }
+    return false;
+  }
+  // ============================================================================
+  // ENTITY CACHING
+  // ============================================================================
+  /**
+   * Cache a task entity
+   */
+  async cacheTask(task) {
+    const existingIndex = this.data.cachedTasks.findIndex((t) => t.id === task.id);
+    if (existingIndex !== -1) {
+      this.data.cachedTasks[existingIndex] = task;
+    } else {
+      this.data.cachedTasks.push(task);
+    }
+    await this.saveData();
+  }
+  /**
+   * Get cached tasks
+   */
+  getCachedTasks() {
+    return [...this.data.cachedTasks];
+  }
+  /**
+   * Cache a project entity
+   */
+  async cacheProject(project) {
+    const existingIndex = this.data.cachedProjects.findIndex((p) => p.id === project.id);
+    if (existingIndex !== -1) {
+      this.data.cachedProjects[existingIndex] = project;
+    } else {
+      this.data.cachedProjects.push(project);
+    }
+    await this.saveData();
+  }
+  /**
+   * Get cached projects
+   */
+  getCachedProjects() {
+    return [...this.data.cachedProjects];
+  }
+  /**
+   * Cache an area entity
+   */
+  async cacheArea(area) {
+    const existingIndex = this.data.cachedAreas.findIndex((a) => a.id === area.id);
+    if (existingIndex !== -1) {
+      this.data.cachedAreas[existingIndex] = area;
+    } else {
+      this.data.cachedAreas.push(area);
+    }
+    await this.saveData();
+  }
+  /**
+   * Get cached areas
+   */
+  getCachedAreas() {
+    return [...this.data.cachedAreas];
+  }
+  // ============================================================================
+  // UTILITY METHODS
+  // ============================================================================
+  /**
+   * Generate a unique ID
+   */
+  generateId() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  }
+  /**
+   * Clear all cached data
+   */
+  async clearCache() {
+    this.data.cachedTasks = [];
+    this.data.cachedProjects = [];
+    this.data.cachedAreas = [];
+    await this.saveData();
+  }
+  /**
+   * Get storage statistics
+   */
+  getStorageStats() {
+    return {
+      promotedTodos: this.data.promotedTodos.length,
+      cachedTasks: this.data.cachedTasks.length,
+      cachedProjects: this.data.cachedProjects.length,
+      cachedAreas: this.data.cachedAreas.length,
+      lastSync: this.data.lastSync
+    };
+  }
+};
+
+// src/components/modals/TaskCreateModal.ts
+var import_obsidian4 = require("obsidian");
+var TaskCreateModal = class extends import_obsidian4.Modal {
   constructor(app, plugin, context = { type: "none" }) {
     super(app);
     this.formData = {};
@@ -4397,13 +4630,13 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
     });
   }
   createFormFields(container) {
-    new import_obsidian3.Setting(container).setName("Task Name").setDesc("Enter a descriptive name for the task").addText((text) => {
+    new import_obsidian4.Setting(container).setName("Task Name").setDesc("Enter a descriptive name for the task").addText((text) => {
       text.setPlaceholder("Enter task name...").setValue(this.formData.name || "").onChange((value) => {
         this.formData.name = value;
       });
       text.inputEl.addClass("task-sync-required-field");
     });
-    new import_obsidian3.Setting(container).setName("Type").setDesc("Specify the type of task").addDropdown((dropdown) => {
+    new import_obsidian4.Setting(container).setName("Type").setDesc("Specify the type of task").addDropdown((dropdown) => {
       var _a;
       this.plugin.settings.taskTypes.forEach((taskType) => {
         dropdown.addOption(taskType.name, taskType.name);
@@ -4412,7 +4645,7 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
         this.formData.type = value;
       });
     });
-    new import_obsidian3.Setting(container).setName("Project").setDesc("Related project for this task").addText((text) => {
+    new import_obsidian4.Setting(container).setName("Project").setDesc("Related project for this task").addText((text) => {
       text.setPlaceholder("Project name (optional)").setValue(this.formData.project || "").onChange((value) => {
         this.formData.project = value;
       });
@@ -4420,7 +4653,7 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
         text.setDisabled(true);
       }
     });
-    new import_obsidian3.Setting(container).setName("Areas").setDesc("Related areas for this task").addText((text) => {
+    new import_obsidian4.Setting(container).setName("Areas").setDesc("Related areas for this task").addText((text) => {
       text.setPlaceholder("Area names (optional)").setValue(this.formData.areas || "").onChange((value) => {
         this.formData.areas = value;
       });
@@ -4428,23 +4661,23 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
         text.setDisabled(true);
       }
     });
-    new import_obsidian3.Setting(container).setName("Parent Task").setDesc("Parent task if this is a subtask").addText((text) => {
+    new import_obsidian4.Setting(container).setName("Parent Task").setDesc("Parent task if this is a subtask").addText((text) => {
       text.setPlaceholder("Parent task name (optional)").setValue(this.formData.parentTask || "").onChange((value) => {
         this.formData.parentTask = value;
       });
     });
-    new import_obsidian3.Setting(container).setName("Sub-tasks").setDesc("Comma-separated list of subtasks").addText((text) => {
+    new import_obsidian4.Setting(container).setName("Sub-tasks").setDesc("Comma-separated list of subtasks").addText((text) => {
       text.setPlaceholder("Subtask names (optional)").setValue(this.formData.subTasks || "").onChange((value) => {
         this.formData.subTasks = value;
       });
     });
-    new import_obsidian3.Setting(container).setName("Tags").setDesc("Comma-separated tags for organization").addText((text) => {
+    new import_obsidian4.Setting(container).setName("Tags").setDesc("Comma-separated tags for organization").addText((text) => {
       var _a;
       text.setPlaceholder("tag1, tag2, tag3").setValue(((_a = this.formData.tags) == null ? void 0 : _a.join(", ")) || "").onChange((value) => {
         this.formData.tags = this.parseTags(value);
       });
     });
-    new import_obsidian3.Setting(container).setName("Status").setDesc("Current status of the task").addDropdown((dropdown) => {
+    new import_obsidian4.Setting(container).setName("Status").setDesc("Current status of the task").addDropdown((dropdown) => {
       var _a;
       this.plugin.settings.taskStatuses.forEach((taskStatus) => {
         dropdown.addOption(taskStatus.name, taskStatus.name);
@@ -4453,7 +4686,7 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
         this.formData.status = value;
       });
     });
-    new import_obsidian3.Setting(container).setName("Priority").setDesc("Task priority level").addDropdown((dropdown) => {
+    new import_obsidian4.Setting(container).setName("Priority").setDesc("Task priority level").addDropdown((dropdown) => {
       dropdown.addOption("", "Select priority...");
       this.plugin.settings.taskPriorities.forEach((priority) => {
         dropdown.addOption(priority.name, priority.name);
@@ -4462,7 +4695,7 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
         this.formData.priority = value;
       });
     });
-    new import_obsidian3.Setting(container).setName("Description").setDesc("Detailed description of the task").addTextArea((text) => {
+    new import_obsidian4.Setting(container).setName("Description").setDesc("Detailed description of the task").addTextArea((text) => {
       text.setPlaceholder("Task description...").setValue(this.formData.description || "").onChange((value) => {
         this.formData.description = value;
       });
@@ -4541,8 +4774,8 @@ var TaskCreateModal = class extends import_obsidian3.Modal {
 };
 
 // src/components/modals/AreaCreateModal.ts
-var import_obsidian4 = require("obsidian");
-var AreaCreateModal = class extends import_obsidian4.Modal {
+var import_obsidian5 = require("obsidian");
+var AreaCreateModal = class extends import_obsidian5.Modal {
   constructor(app, plugin) {
     super(app);
     this.formData = {};
@@ -4570,14 +4803,14 @@ var AreaCreateModal = class extends import_obsidian4.Modal {
     this.createActionButtons(container);
   }
   createFormFields(container) {
-    new import_obsidian4.Setting(container).setName("Area Name").setDesc("Enter a descriptive name for the area").addText((text) => {
+    new import_obsidian5.Setting(container).setName("Area Name").setDesc("Enter a descriptive name for the area").addText((text) => {
       text.setPlaceholder("e.g., Health, Finance, Learning").setValue(this.formData.name || "").onChange((value) => {
         this.formData.name = value;
       });
       text.inputEl.addClass("task-sync-required-field");
       setTimeout(() => text.inputEl.focus(), 100);
     });
-    new import_obsidian4.Setting(container).setName("Description").setDesc("Optional description for the area").addTextArea((text) => {
+    new import_obsidian5.Setting(container).setName("Description").setDesc("Optional description for the area").addTextArea((text) => {
       text.setPlaceholder("Brief description of this area...").setValue(this.formData.description || "").onChange((value) => {
         this.formData.description = value;
       });
@@ -4644,8 +4877,8 @@ var AreaCreateModal = class extends import_obsidian4.Modal {
 };
 
 // src/components/modals/ProjectCreateModal.ts
-var import_obsidian5 = require("obsidian");
-var ProjectCreateModal = class extends import_obsidian5.Modal {
+var import_obsidian6 = require("obsidian");
+var ProjectCreateModal = class extends import_obsidian6.Modal {
   constructor(app, plugin) {
     super(app);
     this.formData = {};
@@ -4673,19 +4906,19 @@ var ProjectCreateModal = class extends import_obsidian5.Modal {
     this.createActionButtons(container);
   }
   createFormFields(container) {
-    new import_obsidian5.Setting(container).setName("Project Name").setDesc("Enter a descriptive name for the project").addText((text) => {
+    new import_obsidian6.Setting(container).setName("Project Name").setDesc("Enter a descriptive name for the project").addText((text) => {
       text.setPlaceholder("e.g., Website Redesign, Learn Spanish").setValue(this.formData.name || "").onChange((value) => {
         this.formData.name = value;
       });
       text.inputEl.addClass("task-sync-required-field");
       setTimeout(() => text.inputEl.focus(), 100);
     });
-    new import_obsidian5.Setting(container).setName("Related Areas").setDesc("Areas this project belongs to (comma-separated)").addText((text) => {
+    new import_obsidian6.Setting(container).setName("Related Areas").setDesc("Areas this project belongs to (comma-separated)").addText((text) => {
       text.setPlaceholder("e.g., Work, Learning").setValue(this.formData.areas || "").onChange((value) => {
         this.formData.areas = value;
       });
     });
-    new import_obsidian5.Setting(container).setName("Description").setDesc("Optional description for the project").addTextArea((text) => {
+    new import_obsidian6.Setting(container).setName("Description").setDesc("Optional description for the project").addTextArea((text) => {
       text.setPlaceholder("Brief description of this project...").setValue(this.formData.description || "").onChange((value) => {
         this.formData.description = value;
       });
@@ -4753,7 +4986,7 @@ var ProjectCreateModal = class extends import_obsidian5.Modal {
 };
 
 // src/components/ui/settings/SettingsTab.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/components/ui/settings/types.ts
 var TASK_TYPE_COLORS = [
@@ -4910,7 +5143,7 @@ function validateTemplateFileName(fileName) {
 }
 
 // src/components/ui/settings/suggest.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 var FolderSuggestComponent = class {
   constructor(app, inputEl, options = {}) {
     this.suggestEl = null;
@@ -4972,7 +5205,7 @@ var FolderSuggestComponent = class {
     this.isOpen = true;
   }
   getFolderSuggestions(query) {
-    const allFolders = this.app.vault.getAllLoadedFiles().filter((file) => file instanceof import_obsidian6.TFolder).map((folder) => folder.path).sort();
+    const allFolders = this.app.vault.getAllLoadedFiles().filter((file) => file instanceof import_obsidian7.TFolder).map((folder) => folder.path).sort();
     if (!query.trim()) {
       return allFolders.slice(0, 10);
     }
@@ -5148,7 +5381,7 @@ var FileSuggestComponent = class {
     this.isOpen = true;
   }
   getFileSuggestions(query) {
-    let allFiles = this.app.vault.getAllLoadedFiles().filter((file) => file instanceof import_obsidian6.TFile);
+    let allFiles = this.app.vault.getAllLoadedFiles().filter((file) => file instanceof import_obsidian7.TFile);
     if (this.options.folderPath !== void 0) {
       const folderPath = this.options.folderPath;
       allFiles = allFiles.filter((file) => {
@@ -5315,7 +5548,7 @@ function createStatusBadge(taskStatus, className) {
 }
 
 // src/components/ui/settings/SettingsTab.ts
-var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
+var TaskSyncSettingTab = class extends import_obsidian8.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.validationErrors = /* @__PURE__ */ new Map();
@@ -5489,7 +5722,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
       "Template Folder",
       "Folder where templates are stored"
     );
-    new import_obsidian7.Setting(section).setName("Use Templater Plugin").setDesc("Enable integration with Templater plugin for advanced templates").addToggle((toggle) => toggle.setValue(this.plugin.settings.useTemplater).onChange(async (value) => {
+    new import_obsidian8.Setting(section).setName("Use Templater Plugin").setDesc("Enable integration with Templater plugin for advanced templates").addToggle((toggle) => toggle.setValue(this.plugin.settings.useTemplater).onChange(async (value) => {
       this.plugin.settings.useTemplater = value;
       await this.plugin.saveSettings();
     }));
@@ -5531,23 +5764,23 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
       "Name of the main tasks base file",
       [".base"]
     );
-    new import_obsidian7.Setting(section).setName("Auto Generate Bases").setDesc("Automatically generate base files when needed").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoGenerateBases).onChange(async (value) => {
+    new import_obsidian8.Setting(section).setName("Auto Generate Bases").setDesc("Automatically generate base files when needed").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoGenerateBases).onChange(async (value) => {
       this.plugin.settings.autoGenerateBases = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(section).setName("Auto Update Base Views").setDesc("Automatically update base views when tasks change").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoUpdateBaseViews).onChange(async (value) => {
+    new import_obsidian8.Setting(section).setName("Auto Update Base Views").setDesc("Automatically update base views when tasks change").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoUpdateBaseViews).onChange(async (value) => {
       this.plugin.settings.autoUpdateBaseViews = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(section).setName("Enable Area Bases").setDesc("Create individual base files for each area with filtered views").addToggle((toggle) => toggle.setValue(this.plugin.settings.areaBasesEnabled).onChange(async (value) => {
+    new import_obsidian8.Setting(section).setName("Enable Area Bases").setDesc("Create individual base files for each area with filtered views").addToggle((toggle) => toggle.setValue(this.plugin.settings.areaBasesEnabled).onChange(async (value) => {
       this.plugin.settings.areaBasesEnabled = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(section).setName("Enable Project Bases").setDesc("Create individual base files for each project with filtered views").addToggle((toggle) => toggle.setValue(this.plugin.settings.projectBasesEnabled).onChange(async (value) => {
+    new import_obsidian8.Setting(section).setName("Enable Project Bases").setDesc("Create individual base files for each project with filtered views").addToggle((toggle) => toggle.setValue(this.plugin.settings.projectBasesEnabled).onChange(async (value) => {
       this.plugin.settings.projectBasesEnabled = value;
       await this.plugin.saveSettings();
     }));
-    new import_obsidian7.Setting(section).setName("Auto-Sync Area/Project Bases").setDesc("Automatically update area and project bases when settings change").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoSyncAreaProjectBases).onChange(async (value) => {
+    new import_obsidian8.Setting(section).setName("Auto-Sync Area/Project Bases").setDesc("Automatically update area and project bases when settings change").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoSyncAreaProjectBases).onChange(async (value) => {
       this.plugin.settings.autoSyncAreaProjectBases = value;
       await this.plugin.saveSettings();
     }));
@@ -5561,7 +5794,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
       cls: "task-sync-settings-section-desc"
     });
     this.plugin.settings.taskTypes.forEach((taskType, index) => {
-      const setting = new import_obsidian7.Setting(section).setName(taskType.name).setDesc(`Configure the "${taskType.name}" task type`);
+      const setting = new import_obsidian8.Setting(section).setName(taskType.name).setDesc(`Configure the "${taskType.name}" task type`);
       const badgeContainer = setting.controlEl.createDiv("task-type-preview");
       const badge = createTypeBadge(taskType);
       badgeContainer.appendChild(badge);
@@ -5614,7 +5847,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
       cls: "task-sync-settings-section-desc"
     });
     this.plugin.settings.taskTypes.forEach((taskType, index) => {
-      const setting = new import_obsidian7.Setting(section).setName(taskType.name).setDesc(`Configure the "${taskType.name}" task type`);
+      const setting = new import_obsidian8.Setting(section).setName(taskType.name).setDesc(`Configure the "${taskType.name}" task type`);
       const badgeContainer = setting.controlEl.createDiv("task-type-preview");
       const badge = createTypeBadge(taskType);
       badgeContainer.appendChild(badge);
@@ -5663,7 +5896,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
   createAddTaskTypeSection(container) {
     let newTypeName = "";
     let newTypeColor = "blue";
-    new import_obsidian7.Setting(container).setName("Add New Task Type").setDesc("Create a new task type for your workflow").addText((text) => {
+    new import_obsidian8.Setting(container).setName("Add New Task Type").setDesc("Create a new task type for your workflow").addText((text) => {
       text.setPlaceholder("e.g., Epic, Story, Research").onChange((value) => {
         newTypeName = value.trim();
       });
@@ -5699,7 +5932,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
       cls: "task-sync-settings-section-desc"
     });
     this.plugin.settings.taskPriorities.forEach((taskPriority, index) => {
-      const setting = new import_obsidian7.Setting(section).setName(taskPriority.name).setDesc(`Configure the "${taskPriority.name}" task priority`);
+      const setting = new import_obsidian8.Setting(section).setName(taskPriority.name).setDesc(`Configure the "${taskPriority.name}" task priority`);
       const badgeContainer = setting.controlEl.createDiv("task-priority-preview");
       const badge = createPriorityBadge(taskPriority);
       badgeContainer.appendChild(badge);
@@ -5752,7 +5985,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
       cls: "task-sync-settings-section-desc"
     });
     this.plugin.settings.taskPriorities.forEach((taskPriority, index) => {
-      const setting = new import_obsidian7.Setting(section).setName(taskPriority.name).setDesc(`Configure the "${taskPriority.name}" task priority`);
+      const setting = new import_obsidian8.Setting(section).setName(taskPriority.name).setDesc(`Configure the "${taskPriority.name}" task priority`);
       const badgeContainer = setting.controlEl.createDiv("task-priority-preview");
       const badge = createPriorityBadge(taskPriority);
       badgeContainer.appendChild(badge);
@@ -5801,7 +6034,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
   createAddTaskPrioritySection(container) {
     let newPriorityName = "";
     let newPriorityColor = "blue";
-    new import_obsidian7.Setting(container).setName("Add New Task Priority").setDesc("Create a new task priority for your workflow").addText((text) => {
+    new import_obsidian8.Setting(container).setName("Add New Task Priority").setDesc("Create a new task priority for your workflow").addText((text) => {
       text.setPlaceholder("e.g., Critical, Normal, Minor").onChange((value) => {
         newPriorityName = value.trim();
       });
@@ -5837,7 +6070,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
       cls: "task-sync-settings-section-desc"
     });
     this.plugin.settings.taskStatuses.forEach((taskStatus, index) => {
-      const setting = new import_obsidian7.Setting(section).setName(taskStatus.name).setDesc(`Configure the "${taskStatus.name}" task status`);
+      const setting = new import_obsidian8.Setting(section).setName(taskStatus.name).setDesc(`Configure the "${taskStatus.name}" task status`);
       const badgeContainer = setting.controlEl.createDiv("task-status-preview");
       const badge = createStatusBadge(taskStatus);
       badgeContainer.appendChild(badge);
@@ -5890,7 +6123,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
       cls: "task-sync-settings-section-desc"
     });
     this.plugin.settings.taskStatuses.forEach((taskStatus, index) => {
-      const setting = new import_obsidian7.Setting(section).setName(taskStatus.name).setDesc(`Configure the "${taskStatus.name}" task status`);
+      const setting = new import_obsidian8.Setting(section).setName(taskStatus.name).setDesc(`Configure the "${taskStatus.name}" task status`);
       const badgeContainer = setting.controlEl.createDiv("task-status-preview");
       const badge = createStatusBadge(taskStatus);
       badgeContainer.appendChild(badge);
@@ -5939,7 +6172,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
   createAddTaskStatusSection(container) {
     let newStatusName = "";
     let newStatusColor = "blue";
-    new import_obsidian7.Setting(container).setName("Add New Task Status").setDesc("Create a new task status for your workflow").addText((text) => {
+    new import_obsidian8.Setting(container).setName("Add New Task Status").setDesc("Create a new task status for your workflow").addText((text) => {
       text.setPlaceholder("e.g., Review, Testing, Blocked").onChange((value) => {
         newStatusName = value.trim();
       });
@@ -5994,7 +6227,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
     });
   }
   createFolderSetting(container, key, name, desc) {
-    const setting = new import_obsidian7.Setting(container).setName(name).setDesc(desc).addText((text) => {
+    const setting = new import_obsidian8.Setting(container).setName(name).setDesc(desc).addText((text) => {
       const defaultValue = DEFAULT_SETTINGS[key];
       text.setPlaceholder(defaultValue).setValue(this.plugin.settings[key]).onChange(async (value) => {
         const validation = validateFolderPath(value);
@@ -6024,7 +6257,7 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
     this.updateSettingValidation(setting, key);
   }
   createFileSetting(container, key, name, desc, extensions) {
-    const setting = new import_obsidian7.Setting(container).setName(name).setDesc(desc).addText((text) => {
+    const setting = new import_obsidian8.Setting(container).setName(name).setDesc(desc).addText((text) => {
       const defaultValue = DEFAULT_SETTINGS[key];
       text.setPlaceholder(defaultValue).setValue(this.plugin.settings[key]).onChange(async (value) => {
         let validation;
@@ -6100,12 +6333,14 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
 };
 
 // src/main.ts
-var TaskSyncPlugin = class extends import_obsidian8.Plugin {
+var TaskSyncPlugin = class extends import_obsidian9.Plugin {
   async onload() {
     console.log("Loading Task Sync Plugin");
     await this.loadSettings();
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
+    this.storageService = new PluginStorageService(this.app, this);
+    await this.storageService.initialize();
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
     await this.baseManager.ensureBasesFolder();
     this.addCommand({
@@ -6148,6 +6383,13 @@ var TaskSyncPlugin = class extends import_obsidian8.Plugin {
       name: "Promote Todo to Task",
       callback: async () => {
         await this.promoteTodoToTask();
+      }
+    });
+    this.addCommand({
+      id: "revert-promoted-todo",
+      name: "Revert Promoted Todo",
+      callback: async () => {
+        await this.revertPromotedTodo();
       }
     });
   }
@@ -6261,7 +6503,7 @@ var TaskSyncPlugin = class extends import_obsidian8.Plugin {
    * Detect todo item under cursor in the active editor
    */
   detectTodoUnderCursor() {
-    const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
+    const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian9.MarkdownView);
     if (!markdownView) {
       return null;
     }
@@ -6286,47 +6528,232 @@ var TaskSyncPlugin = class extends import_obsidian8.Plugin {
     };
   }
   /**
+   * Detect todo item with parent information
+   */
+  detectTodoWithParent() {
+    const currentTodo = this.detectTodoUnderCursor();
+    if (!currentTodo) {
+      return null;
+    }
+    const parentTodo = this.findParentTodo(currentTodo);
+    return {
+      ...currentTodo,
+      parentTodo
+    };
+  }
+  /**
+   * Find parent todo by looking at lines above the current todo
+   * Only supports 1 level of nesting for simplicity
+   */
+  findParentTodo(currentTodo) {
+    const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian9.MarkdownView);
+    if (!markdownView) {
+      return null;
+    }
+    const editor = markdownView.editor;
+    const currentIndentLevel = currentTodo.indentation.length;
+    if (currentIndentLevel === 0) {
+      return null;
+    }
+    for (let lineNum = currentTodo.lineNumber - 1; lineNum >= 0; lineNum--) {
+      const line = editor.getLine(lineNum);
+      const todoRegex = /^(\s*)([-*])\s*\[([xX\s])\]\s*(.+)$/;
+      const match = line.match(todoRegex);
+      if (match) {
+        const [, indentation, listMarker, checkboxState, text] = match;
+        const indentLevel = indentation.length;
+        if (indentLevel < currentIndentLevel) {
+          return {
+            text: text.trim(),
+            completed: checkboxState.toLowerCase() === "x",
+            indentation,
+            listMarker,
+            lineNumber: lineNum
+          };
+        }
+      }
+    }
+    return null;
+  }
+  /**
+   * Update parent task's sub-tasks field to include the new child task
+   */
+  async updateParentTaskSubTasks(parentTaskName, childTaskName) {
+    try {
+      const parentTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(parentTaskName)}`;
+      const parentFile = this.app.vault.getAbstractFileByPath(parentTaskPath);
+      if (parentFile instanceof import_obsidian9.TFile) {
+        const content = await this.app.vault.read(parentFile);
+        const frontMatterRegex = /^---\n([\s\S]*?)\n---/;
+        const match = content.match(frontMatterRegex);
+        if (match) {
+          const frontMatter = match[1];
+          const subTasksMatch = frontMatter.match(/^Sub-tasks:\s*(.*)$/m);
+          let currentSubTasks = [];
+          if (subTasksMatch && subTasksMatch[1].trim()) {
+            const subTasksValue = subTasksMatch[1].trim();
+            if (subTasksValue.startsWith("[") && subTasksValue.endsWith("]")) {
+              currentSubTasks = subTasksValue.slice(1, -1).split(",").map((t) => t.trim().replace(/['"]/g, ""));
+            } else {
+              currentSubTasks = subTasksValue.split(",").map((t) => t.trim());
+            }
+          }
+          if (!currentSubTasks.includes(childTaskName)) {
+            currentSubTasks.push(childTaskName);
+            const updatedSubTasks = currentSubTasks.filter((t) => t).join(", ");
+            const updatedFrontMatter = frontMatter.replace(
+              /^Sub-tasks:\s*.*$/m,
+              `Sub-tasks: ${updatedSubTasks}`
+            );
+            const updatedContent = content.replace(frontMatterRegex, `---
+${updatedFrontMatter}
+---`);
+            await this.app.vault.modify(parentFile, updatedContent);
+            console.log(`Updated parent task ${parentTaskName} with sub-task: ${childTaskName}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to update parent task sub-tasks: ${error}`);
+    }
+  }
+  /**
    * Promote a todo item under cursor to a task
    */
   async promoteTodoToTask() {
-    var _a;
+    var _a, _b;
     try {
-      const todoItem = this.detectTodoUnderCursor();
-      if (!todoItem) {
-        new import_obsidian8.Notice("No todo item found under cursor");
+      const todoWithParent = this.detectTodoWithParent();
+      if (!todoWithParent) {
+        new import_obsidian9.Notice("No todo item found under cursor");
         return;
       }
       const context = this.detectCurrentFileContext();
+      let parentTaskName;
+      if (todoWithParent.parentTodo) {
+        const parentTaskData = {
+          name: todoWithParent.parentTodo.text,
+          type: ((_a = this.settings.taskTypes[0]) == null ? void 0 : _a.name) || "Task",
+          done: todoWithParent.parentTodo.completed,
+          status: todoWithParent.parentTodo.completed ? "Done" : "Backlog",
+          tags: [],
+          // Include the child task in sub-tasks field from the start
+          subTasks: todoWithParent.text,
+          // Set context-specific fields
+          ...context.type === "project" && context.name ? { project: context.name } : {},
+          ...context.type === "area" && context.name ? { areas: context.name } : {}
+        };
+        const parentTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(todoWithParent.parentTodo.text)}`;
+        const parentExists = await this.app.vault.adapter.exists(parentTaskPath);
+        if (!parentExists) {
+          await this.createTask(parentTaskData);
+          console.log(`Created parent task: ${todoWithParent.parentTodo.text}`);
+        } else {
+          await this.updateParentTaskSubTasks(todoWithParent.parentTodo.text, todoWithParent.text);
+        }
+        parentTaskName = todoWithParent.parentTodo.text;
+      }
       const taskData = {
-        name: todoItem.text,
-        type: ((_a = this.settings.taskTypes[0]) == null ? void 0 : _a.name) || "Task",
-        done: todoItem.completed,
-        status: todoItem.completed ? "Done" : "Backlog",
+        name: todoWithParent.text,
+        type: ((_b = this.settings.taskTypes[0]) == null ? void 0 : _b.name) || "Task",
+        done: todoWithParent.completed,
+        status: todoWithParent.completed ? "Done" : "Backlog",
         tags: [],
+        // Set parent task as a link if exists
+        ...parentTaskName ? { parentTask: `[[${parentTaskName}]]` } : {},
         // Set context-specific fields
         ...context.type === "project" && context.name ? { project: context.name } : {},
         ...context.type === "area" && context.name ? { areas: context.name } : {}
       };
       await this.createTask(taskData);
-      const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
+      const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian9.MarkdownView);
       if (!markdownView) {
         throw new Error("No active markdown view found");
       }
       const editor = markdownView.editor;
-      let replacementLine;
-      if (todoItem.completed) {
-        replacementLine = `${todoItem.indentation}${todoItem.listMarker} [x] [[${todoItem.text}]]`;
-      } else {
-        replacementLine = `${todoItem.indentation}${todoItem.listMarker} [[${todoItem.text}]]`;
+      const activeFile = markdownView.file;
+      if (!activeFile) {
+        throw new Error("No active file found");
       }
-      editor.setLine(todoItem.lineNumber, replacementLine);
-      new import_obsidian8.Notice(`Todo promoted to task: ${todoItem.text}`);
+      const originalLine = editor.getLine(todoWithParent.lineNumber);
+      let replacementLine;
+      if (todoWithParent.completed) {
+        replacementLine = `${todoWithParent.indentation}${todoWithParent.listMarker} [x] [[${todoWithParent.text}]]`;
+      } else {
+        replacementLine = `${todoWithParent.indentation}${todoWithParent.listMarker} [ ] [[${todoWithParent.text}]]`;
+      }
+      editor.setLine(todoWithParent.lineNumber, replacementLine);
+      const taskPath = `${this.settings.tasksFolder}/${createSafeFileName(todoWithParent.text)}`;
+      await this.storageService.trackPromotedTodo(
+        todoWithParent.text,
+        originalLine,
+        activeFile.path,
+        todoWithParent.lineNumber,
+        todoWithParent.text,
+        taskPath,
+        todoWithParent.parentTodo ? {
+          text: todoWithParent.parentTodo.text,
+          lineNumber: todoWithParent.parentTodo.lineNumber,
+          taskName: todoWithParent.parentTodo.text
+        } : void 0
+      );
+      if (todoWithParent.parentTodo) {
+        const parentLine = editor.getLine(todoWithParent.parentTodo.lineNumber);
+        if (parentLine.includes("[ ]") || parentLine.includes("[x]") || parentLine.includes("[X]")) {
+          const originalParentLine = parentLine;
+          let parentReplacementLine;
+          if (todoWithParent.parentTodo.completed) {
+            parentReplacementLine = `${todoWithParent.parentTodo.indentation}${todoWithParent.parentTodo.listMarker} [x] [[${todoWithParent.parentTodo.text}]]`;
+          } else {
+            parentReplacementLine = `${todoWithParent.parentTodo.indentation}${todoWithParent.parentTodo.listMarker} [ ] [[${todoWithParent.parentTodo.text}]]`;
+          }
+          editor.setLine(todoWithParent.parentTodo.lineNumber, parentReplacementLine);
+          const parentTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(todoWithParent.parentTodo.text)}`;
+          await this.storageService.trackPromotedTodo(
+            todoWithParent.parentTodo.text,
+            originalParentLine,
+            activeFile.path,
+            todoWithParent.parentTodo.lineNumber,
+            todoWithParent.parentTodo.text,
+            parentTaskPath
+          );
+        }
+      }
+      const message = parentTaskName ? `Todo promoted to task with parent: ${todoWithParent.text} (parent: ${parentTaskName})` : `Todo promoted to task: ${todoWithParent.text}`;
+      new import_obsidian9.Notice(message);
       if (this.settings.autoUpdateBaseViews) {
         await this.refreshBaseViews();
       }
     } catch (error) {
       console.error("Failed to promote todo to task:", error);
-      new import_obsidian8.Notice("Failed to promote todo to task");
+      new import_obsidian9.Notice("Failed to promote todo to task");
+    }
+  }
+  /**
+   * Revert a promoted todo back to its original format
+   */
+  async revertPromotedTodo() {
+    try {
+      const activeFile = this.app.workspace.getActiveFile();
+      if (!activeFile) {
+        new import_obsidian9.Notice("No active file found");
+        return;
+      }
+      const promotedTodos = this.storageService.getPromotedTodosForFile(activeFile.path);
+      if (promotedTodos.length === 0) {
+        new import_obsidian9.Notice("No promoted todos found in this file");
+        return;
+      }
+      const mostRecent = promotedTodos[promotedTodos.length - 1];
+      const success = await this.storageService.revertPromotedTodo(mostRecent.id);
+      if (success) {
+        new import_obsidian9.Notice(`Reverted promoted todo: ${mostRecent.originalText}`);
+      } else {
+        new import_obsidian9.Notice("Failed to revert promoted todo");
+      }
+    } catch (error) {
+      console.error("Failed to revert promoted todo:", error);
+      new import_obsidian9.Notice("Failed to revert promoted todo");
     }
   }
   // Task creation logic
@@ -6423,7 +6850,7 @@ var TaskSyncPlugin = class extends import_obsidian8.Plugin {
     try {
       const templatePath = `${this.settings.templateFolder}/${templateName}`;
       const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
-      if (!templateFile || !(templateFile instanceof import_obsidian8.TFile)) {
+      if (!templateFile || !(templateFile instanceof import_obsidian9.TFile)) {
         console.warn(`Template not found: ${templatePath}, using default content`);
         if (data.hasOwnProperty("areas")) {
           return this.generateProjectContent(data);
@@ -6663,7 +7090,7 @@ ${expectedBaseEmbed}`;
   async updateSingleFile(filePath, type2, results) {
     try {
       const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (!file || !(file instanceof import_obsidian8.TFile)) {
+      if (!file || !(file instanceof import_obsidian9.TFile)) {
         console.log(`Task Sync: Skipping non-file: ${filePath}`);
         return;
       }
@@ -6772,7 +7199,7 @@ Errors encountered:
 `;
       });
     }
-    new import_obsidian8.Notice(message, 5e3);
+    new import_obsidian9.Notice(message, 5e3);
     console.log("Task Sync: Refresh results:", results);
   }
   /**
