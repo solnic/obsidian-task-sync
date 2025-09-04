@@ -2976,6 +2976,19 @@ var require_pluralize = __commonJS({
 });
 
 // src/services/base-definitions/BaseConfigurations.ts
+var BaseConfigurations_exports = {};
+__export(BaseConfigurations_exports, {
+  FILTER_GENERATORS: () => FILTER_GENERATORS,
+  FORMULAS: () => FORMULAS,
+  FRONTMATTER_FIELDS: () => FRONTMATTER_FIELDS,
+  PROPERTIES: () => PROPERTIES,
+  SORT_CONFIGS: () => SORT_CONFIGS,
+  VIEW_ORDERS: () => VIEW_ORDERS,
+  VIEW_TEMPLATES: () => VIEW_TEMPLATES,
+  generateAreaBase: () => generateAreaBase,
+  generateProjectBase: () => generateProjectBase,
+  generateTasksBase: () => generateTasksBase
+});
 function generateTasksBase(settings, projectsAndAreas) {
   const config = {
     formulas: FORMULAS.common,
@@ -3070,7 +3083,7 @@ function generateTasksBase(settings, projectsAndAreas) {
 function generateAreaBase(settings, area) {
   const config = {
     formulas: FORMULAS.common,
-    properties: { ...PROPERTIES.common, ...PROPERTIES.area },
+    properties: { ...PROPERTIES.common, ...PROPERTIES.areaBase },
     views: [
       // Main Tasks view
       {
@@ -3117,7 +3130,7 @@ function generateAreaBase(settings, area) {
 function generateProjectBase(settings, project) {
   const config = {
     formulas: FORMULAS.common,
-    properties: { ...PROPERTIES.common, ...PROPERTIES.project },
+    properties: { ...PROPERTIES.common, ...PROPERTIES.projectBase },
     views: [
       // Main Tasks view
       {
@@ -3155,7 +3168,7 @@ function generateProjectBase(settings, project) {
     sortKeys: false
   });
 }
-var import_pluralize, FORMULAS, PROPERTIES, VIEW_ORDERS, SORT_CONFIGS, VIEW_TEMPLATES, FRONTMATTER_FIELDS;
+var import_pluralize, FORMULAS, PROPERTIES, VIEW_ORDERS, SORT_CONFIGS, VIEW_TEMPLATES, FILTER_GENERATORS, FRONTMATTER_FIELDS;
 var init_BaseConfigurations = __esm({
   "src/services/base-definitions/BaseConfigurations.ts"() {
     init_js_yaml();
@@ -3164,6 +3177,12 @@ var init_BaseConfigurations = __esm({
       common: {
         Type: "Type",
         Title: "link(file.name, Title)"
+      },
+      area: {
+        Name: "link(file.name, Name)"
+      },
+      project: {
+        Name: "link(file.name, Name)"
       }
     };
     PROPERTIES = {
@@ -3182,10 +3201,31 @@ var init_BaseConfigurations = __esm({
         "note.Parent task": { displayName: "Parent task" },
         "note.Sub-tasks": { displayName: "Sub-tasks" }
       },
+      // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
+      areaBase: {
+        "note.Status": { displayName: "Done" },
+        "note.tags": { displayName: "Tags" },
+        "note.Project": { displayName: "Project" },
+        "note.Priority": { displayName: "Priority" },
+        "note.Parent task": { displayName: "Parent task" },
+        "note.Sub-tasks": { displayName: "Sub-tasks" }
+      },
+      // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
+      projectBase: {
+        "note.Status": { displayName: "Done" },
+        "note.tags": { displayName: "Tags" },
+        "note.Areas": { displayName: "Areas" },
+        "note.Priority": { displayName: "Priority" },
+        "note.Parent task": { displayName: "Parent task" },
+        "note.Sub-tasks": { displayName: "Sub-tasks" }
+      },
+      // Properties for area/project files themselves (not for bases showing tasks)
       area: {
+        "file.name": { displayName: "Name" },
         "note.Project": { displayName: "Project" }
       },
       project: {
+        "file.name": { displayName: "Name" },
         "note.Areas": { displayName: "Areas" }
       }
     };
@@ -3294,6 +3334,12 @@ var init_BaseConfigurations = __esm({
         }
       }
     };
+    FILTER_GENERATORS = {
+      tasksFolder: (settings) => `file.folder == "${settings.tasksFolder}"`,
+      area: (areaName) => `Areas.contains(link("${areaName}"))`,
+      project: (projectName) => `Project.contains(link("${projectName}"))`,
+      taskType: (typeName) => `Type == "${typeName}"`
+    };
     FRONTMATTER_FIELDS = {
       task: {
         Title: { required: true, type: "string" },
@@ -3308,13 +3354,11 @@ var init_BaseConfigurations = __esm({
         Priority: { required: false, type: "string" }
       },
       project: {
-        Title: { required: true, type: "string" },
         Name: { required: true, type: "string" },
         Type: { required: true, type: "string", default: "Project" },
         Areas: { required: false, type: "string" }
       },
       area: {
-        Title: { required: true, type: "string" },
         Name: { required: true, type: "string" },
         Type: { required: true, type: "string", default: "Area" }
       }
@@ -4010,12 +4054,16 @@ var BaseManager = class {
         for (const file of projectFiles) {
           const cache = this.app.metadataCache.getFileCache(file);
           const frontmatter = cache == null ? void 0 : cache.frontmatter;
+          console.log(`BaseManager: Checking project file ${file.path}, Type: ${frontmatter == null ? void 0 : frontmatter.Type}`);
           if ((frontmatter == null ? void 0 : frontmatter.Type) === "Project") {
+            console.log(`BaseManager: Including project file ${file.path}`);
             items.push({
               name: file.basename,
               path: file.path,
               type: "project"
             });
+          } else {
+            console.log(`BaseManager: Skipping project file ${file.path} (Type: ${frontmatter == null ? void 0 : frontmatter.Type})`);
           }
         }
       }
@@ -4031,12 +4079,16 @@ var BaseManager = class {
         for (const file of areaFiles) {
           const cache = this.app.metadataCache.getFileCache(file);
           const frontmatter = cache == null ? void 0 : cache.frontmatter;
+          console.log(`BaseManager: Checking area file ${file.path}, Type: ${frontmatter == null ? void 0 : frontmatter.Type}`);
           if ((frontmatter == null ? void 0 : frontmatter.Type) === "Area") {
+            console.log(`BaseManager: Including area file ${file.path}`);
             items.push({
               name: file.basename,
               path: file.path,
               type: "area"
             });
+          } else {
+            console.log(`BaseManager: Skipping area file ${file.path} (Type: ${frontmatter == null ? void 0 : frontmatter.Type})`);
           }
         }
       }
@@ -5100,32 +5152,8 @@ ${expectedBaseEmbed}`;
    * Get the current front-matter schema for a file type
    */
   getFrontMatterSchema(type2) {
-    const schemas = {
-      task: {
-        Title: { required: true, type: "string" },
-        Type: { required: false, type: "string", default: "Task" },
-        Areas: { required: false, type: "string" },
-        "Parent task": { required: false, type: "string" },
-        "Sub-tasks": { required: false, type: "string" },
-        tags: { required: false, type: "array" },
-        Project: { required: false, type: "string" },
-        Done: { required: false, type: "boolean", default: false },
-        Status: { required: false, type: "string", default: "Backlog" },
-        Priority: { required: false, type: "string" }
-      },
-      project: {
-        Title: { required: true, type: "string" },
-        Name: { required: true, type: "string" },
-        Type: { required: true, type: "string", default: "Project" },
-        Areas: { required: false, type: "string" }
-      },
-      area: {
-        Title: { required: true, type: "string" },
-        Name: { required: true, type: "string" },
-        Type: { required: true, type: "string", default: "Area" }
-      }
-    };
-    return schemas[type2];
+    const { FRONTMATTER_FIELDS: FRONTMATTER_FIELDS2 } = (init_BaseConfigurations(), __toCommonJS(BaseConfigurations_exports));
+    return FRONTMATTER_FIELDS2[type2];
   }
   /**
    * Extract front-matter data from file content
@@ -5161,6 +5189,15 @@ ${expectedBaseEmbed}`;
       const existingFrontMatter = this.extractFrontMatterData(content);
       if (!existingFrontMatter) {
         console.log(`Task Sync: Skipping file without front-matter: ${filePath}`);
+        return;
+      }
+      const expectedType = type2 === "task" ? "Task" : type2 === "project" ? "Project" : "Area";
+      if (type2 !== "task" && existingFrontMatter.Type !== expectedType) {
+        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: ${expectedType}, found: ${existingFrontMatter.Type})`);
+        return;
+      }
+      if (type2 === "task" && existingFrontMatter.Type && existingFrontMatter.Type !== expectedType) {
+        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: ${expectedType}, found: ${existingFrontMatter.Type})`);
         return;
       }
       const currentSchema = this.getFrontMatterSchema(type2);

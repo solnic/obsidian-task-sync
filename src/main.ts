@@ -748,32 +748,9 @@ export default class TaskSyncPlugin extends Plugin {
    * Get the current front-matter schema for a file type
    */
   private getFrontMatterSchema(type: 'task' | 'project' | 'area') {
-    const schemas = {
-      task: {
-        Title: { required: true, type: 'string' },
-        Type: { required: false, type: 'string', default: 'Task' },
-        Areas: { required: false, type: 'string' },
-        'Parent task': { required: false, type: 'string' },
-        'Sub-tasks': { required: false, type: 'string' },
-        tags: { required: false, type: 'array' },
-        Project: { required: false, type: 'string' },
-        Done: { required: false, type: 'boolean', default: false },
-        Status: { required: false, type: 'string', default: 'Backlog' },
-        Priority: { required: false, type: 'string' }
-      },
-      project: {
-        Title: { required: true, type: 'string' },
-        Name: { required: true, type: 'string' },
-        Type: { required: true, type: 'string', default: 'Project' },
-        Areas: { required: false, type: 'string' }
-      },
-      area: {
-        Title: { required: true, type: 'string' },
-        Name: { required: true, type: 'string' },
-        Type: { required: true, type: 'string', default: 'Area' }
-      }
-    };
-    return schemas[type];
+    // Import the centralized FRONTMATTER_FIELDS from base definitions
+    const { FRONTMATTER_FIELDS } = require('./services/base-definitions/BaseConfigurations');
+    return FRONTMATTER_FIELDS[type];
   }
 
   /**
@@ -819,6 +796,19 @@ export default class TaskSyncPlugin extends Plugin {
       if (!existingFrontMatter) {
         // No front-matter exists, skip this file
         console.log(`Task Sync: Skipping file without front-matter: ${filePath}`);
+        return;
+      }
+
+      // Check if file has correct Type property for its expected type
+      const expectedType = type === 'task' ? 'Task' : type === 'project' ? 'Project' : 'Area';
+      if (type !== 'task' && existingFrontMatter.Type !== expectedType) {
+        // For projects and areas, Type property is required and must match
+        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: ${expectedType}, found: ${existingFrontMatter.Type})`);
+        return;
+      }
+      if (type === 'task' && existingFrontMatter.Type && existingFrontMatter.Type !== expectedType) {
+        // For tasks, Type property is optional, but if present, it should be 'Task'
+        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: ${expectedType}, found: ${existingFrontMatter.Type})`);
         return;
       }
 

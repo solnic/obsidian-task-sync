@@ -198,13 +198,18 @@ export class BaseManager {
           const cache = this.app.metadataCache.getFileCache(file);
           const frontmatter = cache?.frontmatter;
 
+          console.log(`BaseManager: Checking project file ${file.path}, Type: ${frontmatter?.Type}`);
+
           // Only include files with Type: Project
           if (frontmatter?.Type === 'Project') {
+            console.log(`BaseManager: Including project file ${file.path}`);
             items.push({
               name: file.basename,
               path: file.path,
               type: 'project'
             });
+          } else {
+            console.log(`BaseManager: Skipping project file ${file.path} (Type: ${frontmatter?.Type})`);
           }
         }
       }
@@ -224,13 +229,18 @@ export class BaseManager {
           const cache = this.app.metadataCache.getFileCache(file);
           const frontmatter = cache?.frontmatter;
 
+          console.log(`BaseManager: Checking area file ${file.path}, Type: ${frontmatter?.Type}`);
+
           // Only include files with Type: Area
           if (frontmatter?.Type === 'Area') {
+            console.log(`BaseManager: Including area file ${file.path}`);
             items.push({
               name: file.basename,
               path: file.path,
               type: 'area'
             });
+          } else {
+            console.log(`BaseManager: Skipping area file ${file.path} (Type: ${frontmatter?.Type})`);
           }
         }
       }

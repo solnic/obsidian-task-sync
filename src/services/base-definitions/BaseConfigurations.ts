@@ -57,6 +57,14 @@ export const FORMULAS = {
   common: {
     Type: 'Type',
     Title: 'link(file.name, Title)'
+  },
+
+  area: {
+    Name: 'link(file.name, Name)'
+  },
+
+  project: {
+    Name: 'link(file.name, Name)'
   }
 } as const;
 
@@ -82,11 +90,34 @@ export const PROPERTIES = {
     'note.Sub-tasks': { displayName: 'Sub-tasks' }
   },
 
+  // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
+  areaBase: {
+    'note.Status': { displayName: 'Done' },
+    'note.tags': { displayName: 'Tags' },
+    'note.Project': { displayName: 'Project' },
+    'note.Priority': { displayName: 'Priority' },
+    'note.Parent task': { displayName: 'Parent task' },
+    'note.Sub-tasks': { displayName: 'Sub-tasks' }
+  },
+
+  // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
+  projectBase: {
+    'note.Status': { displayName: 'Done' },
+    'note.tags': { displayName: 'Tags' },
+    'note.Areas': { displayName: 'Areas' },
+    'note.Priority': { displayName: 'Priority' },
+    'note.Parent task': { displayName: 'Parent task' },
+    'note.Sub-tasks': { displayName: 'Sub-tasks' }
+  },
+
+  // Properties for area/project files themselves (not for bases showing tasks)
   area: {
+    'file.name': { displayName: 'Name' },
     'note.Project': { displayName: 'Project' }
   },
 
   project: {
+    'file.name': { displayName: 'Name' },
     'note.Areas': { displayName: 'Areas' }
   }
 } as const;
@@ -250,14 +281,12 @@ export const FRONTMATTER_FIELDS = {
   },
 
   project: {
-    Title: { required: true, type: 'string' },
     Name: { required: true, type: 'string' },
     Type: { required: true, type: 'string', default: 'Project' },
     Areas: { required: false, type: 'string' }
   },
 
   area: {
-    Title: { required: true, type: 'string' },
     Name: { required: true, type: 'string' },
     Type: { required: true, type: 'string', default: 'Area' }
   }
@@ -381,7 +410,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
 export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaInfo): string {
   const config: BaseConfig = {
     formulas: FORMULAS.common,
-    properties: { ...PROPERTIES.common, ...PROPERTIES.area },
+    properties: { ...PROPERTIES.common, ...PROPERTIES.areaBase },
     views: [
       // Main Tasks view
       {
@@ -435,7 +464,7 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
 export function generateProjectBase(settings: TaskSyncSettings, project: ProjectAreaInfo): string {
   const config: BaseConfig = {
     formulas: FORMULAS.common,
-    properties: { ...PROPERTIES.common, ...PROPERTIES.project },
+    properties: { ...PROPERTIES.common, ...PROPERTIES.projectBase },
     views: [
       // Main Tasks view
       {
