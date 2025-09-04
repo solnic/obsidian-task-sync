@@ -75,8 +75,8 @@ describe('BaseManager Formula Structure', () => {
 
       expect(result).toContain('formulas:');
       expect(result).toContain('Title: link(file.name, Title)');
-      expect(result).toContain('note.Type:');
-      expect(result).toContain('displayName: Type');
+      expect(result).toContain('- name: Type');
+      expect(result).toContain('type: string');
     });
 
     it('should use formula.Title in view order instead of file.name', async () => {
@@ -89,12 +89,12 @@ describe('BaseManager Formula Structure', () => {
       expect(result).not.toMatch(/order:[\s\S]*?file\.name/);
     });
 
-    it('should include note.Title property for frontmatter access', async () => {
+    it('should include Title property definition', async () => {
       const projectsAndAreas: ProjectAreaInfo[] = [];
       const result = await baseManager.generateTasksBase(projectsAndAreas);
 
-      expect(result).toContain('file.name:');
-      expect(result).toContain('displayName: Title');
+      expect(result).toContain('- name: Title');
+      expect(result).toContain('type: string');
     });
   });
 
@@ -110,8 +110,8 @@ describe('BaseManager Formula Structure', () => {
 
       expect(result).toContain('formulas:');
       expect(result).toContain('Title: link(file.name, Title)');
-      expect(result).toContain('note.Type:');
-      expect(result).toContain('displayName: Type');
+      expect(result).toContain('- name: Type');
+      expect(result).toContain('type: string');
     });
 
     it('should use formula.Title in view configurations', async () => {
@@ -142,8 +142,8 @@ describe('BaseManager Formula Structure', () => {
 
       expect(result).toContain('formulas:');
       expect(result).toContain('Title: link(file.name, Title)');
-      expect(result).toContain('note.Type:');
-      expect(result).toContain('displayName: Type');
+      expect(result).toContain('- name: Type');
+      expect(result).toContain('type: string');
     });
 
     it('should use formula.Title in view configurations', async () => {

@@ -13,12 +13,16 @@ import pluralize from 'pluralize';
 // CORE TYPES
 // ============================================================================
 
-export interface BaseFormulas {
-  [key: string]: string;
+export interface PropertyDefinition {
+  name: string;
+  type: 'string' | 'checkbox' | 'array' | 'boolean';
+  default?: any;
+  link?: boolean; // For internal usage, specifies that this property is used for linking with other notes
+  displayName?: string;
 }
 
-export interface BaseProperties {
-  [key: string]: BaseProperty;
+export interface BaseFormulas {
+  [key: string]: string;
 }
 
 export interface ViewTemplate {
@@ -38,7 +42,7 @@ export interface ViewTemplate {
 
 export interface BaseConfiguration {
   formulas: BaseFormulas;
-  properties: BaseProperties;
+  properties: readonly PropertyDefinition[];
   viewTemplates: ViewTemplate[];
 }
 
@@ -48,6 +52,142 @@ export interface ConfigurationContext {
   type?: 'project' | 'area';
   projectsAndAreas?: Array<{ name: string; path: string; type: 'project' | 'area' }>;
 }
+
+// ============================================================================
+// PROPERTY DEFINITIONS
+// ============================================================================
+
+export namespace Properties {
+  // Common properties
+  export const TITLE: PropertyDefinition = {
+    name: "Title",
+    type: "string"
+  };
+
+  export const DONE: PropertyDefinition = {
+    name: "Done",
+    type: "checkbox",
+    default: false
+  };
+
+  export const CREATED_AT: PropertyDefinition = {
+    name: "Created At",
+    type: "string"
+  };
+
+  export const UPDATED_AT: PropertyDefinition = {
+    name: "Updated At",
+    type: "string"
+  };
+
+  // Task-specific properties (in order from screenshot)
+  export const AREAS: PropertyDefinition = {
+    name: "Areas",
+    type: "string",
+    link: true
+  };
+
+  export const PROJECT: PropertyDefinition = {
+    name: "Project",
+    type: "string",
+    link: true
+  };
+
+  export const TYPE: PropertyDefinition = {
+    name: "Type",
+    type: "string"
+  };
+
+  export const PRIORITY: PropertyDefinition = {
+    name: "Priority",
+    type: "string"
+  };
+
+  export const STATUS: PropertyDefinition = {
+    name: "Status",
+    type: "string",
+    default: "Backlog"
+  };
+
+  export const PARENT_TASK: PropertyDefinition = {
+    name: "Parent task",
+    type: "string",
+    link: true
+  };
+
+  export const SUB_TASKS: PropertyDefinition = {
+    name: "Sub-tasks",
+    type: "string",
+    link: true
+  };
+
+  export const TAGS: PropertyDefinition = {
+    name: "tags",
+    type: "array"
+  };
+
+  // Area/Project specific properties
+  export const NAME: PropertyDefinition = {
+    name: "Name",
+    type: "string"
+  };
+}
+
+// ============================================================================
+// PROPERTY ARRAYS (defining order)
+// ============================================================================
+
+export const PROPERTY_DEFINITIONS = {
+  task: [
+    Properties.TITLE,
+    Properties.AREAS,
+    Properties.PROJECT,
+    Properties.TYPE,
+    Properties.PRIORITY,
+    Properties.DONE,
+    Properties.STATUS,
+    Properties.PARENT_TASK,
+    Properties.SUB_TASKS,
+    Properties.TAGS
+  ],
+
+  // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
+  areaBase: [
+    Properties.TITLE,
+    Properties.PROJECT,
+    Properties.TYPE,
+    Properties.PRIORITY,
+    Properties.DONE,
+    Properties.STATUS,
+    Properties.PARENT_TASK,
+    Properties.SUB_TASKS,
+    Properties.TAGS
+  ],
+
+  // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
+  projectBase: [
+    Properties.TITLE,
+    Properties.AREAS,
+    Properties.TYPE,
+    Properties.PRIORITY,
+    Properties.DONE,
+    Properties.STATUS,
+    Properties.PARENT_TASK,
+    Properties.SUB_TASKS,
+    Properties.TAGS
+  ],
+
+  // Properties for area/project files themselves (not for bases showing tasks)
+  area: [
+    Properties.NAME,
+    Properties.PROJECT
+  ],
+
+  project: [
+    Properties.NAME,
+    Properties.AREAS
+  ]
+} as const;
 
 // ============================================================================
 // STATIC FORMULAS
@@ -67,62 +207,7 @@ export const FORMULAS = {
   }
 } as const;
 
-// ============================================================================
-// STATIC PROPERTIES
-// ============================================================================
 
-export const PROPERTIES = {
-  common: {
-    'file.name': { displayName: 'Title' },
-    'note.Done': { displayName: 'Done' },
-    'file.ctime': { displayName: 'Created At' },
-    'file.mtime': { displayName: 'Updated At' }
-  },
-
-  task: {
-    'note.Type': { displayName: 'Type' },
-    'note.Status': { displayName: 'Done' },
-    'note.tags': { displayName: 'Tags' },
-    'note.Areas': { displayName: 'Areas' },
-    'note.Project': { displayName: 'Project' },
-    'note.Priority': { displayName: 'Priority' },
-    'note.Parent task': { displayName: 'Parent task' },
-    'note.Sub-tasks': { displayName: 'Sub-tasks' }
-  },
-
-  // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
-  areaBase: {
-    'note.Type': { displayName: 'Type' },
-    'note.Status': { displayName: 'Done' },
-    'note.tags': { displayName: 'Tags' },
-    'note.Project': { displayName: 'Project' },
-    'note.Priority': { displayName: 'Priority' },
-    'note.Parent task': { displayName: 'Parent task' },
-    'note.Sub-tasks': { displayName: 'Sub-tasks' }
-  },
-
-  // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
-  projectBase: {
-    'note.Type': { displayName: 'Type' },
-    'note.Status': { displayName: 'Done' },
-    'note.tags': { displayName: 'Tags' },
-    'note.Areas': { displayName: 'Areas' },
-    'note.Priority': { displayName: 'Priority' },
-    'note.Parent task': { displayName: 'Parent task' },
-    'note.Sub-tasks': { displayName: 'Sub-tasks' }
-  },
-
-  // Properties for area/project files themselves (not for bases showing tasks)
-  area: {
-    'file.name': { displayName: 'Name' },
-    'note.Project': { displayName: 'Project' }
-  },
-
-  project: {
-    'file.name': { displayName: 'Name' },
-    'note.Areas': { displayName: 'Areas' }
-  }
-} as const;
 
 // ============================================================================
 // VIEW ORDER CONFIGURATIONS
@@ -268,30 +353,31 @@ export const FILTER_GENERATORS = {
 // FRONT-MATTER FIELD DEFINITIONS
 // ============================================================================
 
-export const FRONTMATTER_FIELDS = {
-  task: {
-    Title: { type: 'string' },
-    Type: { type: 'string', default: 'Task' },
-    Areas: { type: 'string' },
-    'Parent task': { type: 'string' },
-    'Sub-tasks': { type: 'string' },
-    tags: { type: 'array' },
-    Project: { type: 'string' },
-    Done: { type: 'boolean', default: false },
-    Status: { type: 'string', default: 'Backlog' },
-    Priority: { type: 'string' }
-  },
+/**
+ * Convert property definitions array to front-matter field format
+ */
+function convertPropertiesToFrontMatterFormat(properties: readonly PropertyDefinition[], defaultType?: string): Record<string, any> {
+  const result: Record<string, any> = {};
 
-  project: {
-    Name: { type: 'string' },
-    Type: { type: 'string', default: 'Project' },
-    Areas: { type: 'string' }
-  },
+  properties.forEach(prop => {
+    result[prop.name] = {
+      type: prop.type,
+      ...(prop.default !== undefined && { default: prop.default })
+    };
+  });
 
-  area: {
-    Name: { type: 'string' },
-    Type: { type: 'string', default: 'Area' }
+  // Add Type field with default if specified
+  if (defaultType) {
+    result.Type = { type: 'string', default: defaultType };
   }
+
+  return result;
+}
+
+export const FRONTMATTER_FIELDS = {
+  task: convertPropertiesToFrontMatterFormat(PROPERTY_DEFINITIONS.task, 'Task'),
+  project: convertPropertiesToFrontMatterFormat(PROPERTY_DEFINITIONS.project, 'Project'),
+  area: convertPropertiesToFrontMatterFormat(PROPERTY_DEFINITIONS.area, 'Area')
 } as const;
 
 // ============================================================================
@@ -310,7 +396,7 @@ export interface ProjectAreaInfo {
 export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: ProjectAreaInfo[]): string {
   const config: BaseConfig = {
     formulas: FORMULAS.common,
-    properties: { ...PROPERTIES.common, ...PROPERTIES.task },
+    properties: PROPERTY_DEFINITIONS.task,
     views: [
       // Main Tasks view
       {
@@ -430,7 +516,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
 export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaInfo): string {
   const config: BaseConfig = {
     formulas: FORMULAS.common,
-    properties: { ...PROPERTIES.common, ...PROPERTIES.areaBase },
+    properties: PROPERTY_DEFINITIONS.areaBase,
     views: [
       // Main Tasks view
       {
@@ -503,7 +589,7 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
 export function generateProjectBase(settings: TaskSyncSettings, project: ProjectAreaInfo): string {
   const config: BaseConfig = {
     formulas: FORMULAS.common,
-    properties: { ...PROPERTIES.common, ...PROPERTIES.projectBase },
+    properties: PROPERTY_DEFINITIONS.projectBase,
     views: [
       // Main Tasks view
       {

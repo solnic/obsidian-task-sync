@@ -2981,7 +2981,8 @@ __export(BaseConfigurations_exports, {
   FILTER_GENERATORS: () => FILTER_GENERATORS,
   FORMULAS: () => FORMULAS,
   FRONTMATTER_FIELDS: () => FRONTMATTER_FIELDS,
-  PROPERTIES: () => PROPERTIES,
+  PROPERTY_DEFINITIONS: () => PROPERTY_DEFINITIONS,
+  Properties: () => Properties,
   SORT_CONFIGS: () => SORT_CONFIGS,
   VIEW_ORDERS: () => VIEW_ORDERS,
   VIEW_TEMPLATES: () => VIEW_TEMPLATES,
@@ -2989,10 +2990,23 @@ __export(BaseConfigurations_exports, {
   generateProjectBase: () => generateProjectBase,
   generateTasksBase: () => generateTasksBase
 });
+function convertPropertiesToFrontMatterFormat(properties, defaultType) {
+  const result = {};
+  properties.forEach((prop) => {
+    result[prop.name] = {
+      type: prop.type,
+      ...prop.default !== void 0 && { default: prop.default }
+    };
+  });
+  if (defaultType) {
+    result.Type = { type: "string", default: defaultType };
+  }
+  return result;
+}
 function generateTasksBase(settings, projectsAndAreas) {
   const config = {
     formulas: FORMULAS.common,
-    properties: { ...PROPERTIES.common, ...PROPERTIES.task },
+    properties: PROPERTY_DEFINITIONS.task,
     views: [
       // Main Tasks view
       {
@@ -3099,7 +3113,7 @@ function generateTasksBase(settings, projectsAndAreas) {
 function generateAreaBase(settings, area) {
   const config = {
     formulas: FORMULAS.common,
-    properties: { ...PROPERTIES.common, ...PROPERTIES.areaBase },
+    properties: PROPERTY_DEFINITIONS.areaBase,
     views: [
       // Main Tasks view
       {
@@ -3163,7 +3177,7 @@ function generateAreaBase(settings, area) {
 function generateProjectBase(settings, project) {
   const config = {
     formulas: FORMULAS.common,
-    properties: { ...PROPERTIES.common, ...PROPERTIES.projectBase },
+    properties: PROPERTY_DEFINITIONS.projectBase,
     views: [
       // Main Tasks view
       {
@@ -3218,11 +3232,118 @@ function generateProjectBase(settings, project) {
     sortKeys: false
   });
 }
-var import_pluralize, FORMULAS, PROPERTIES, VIEW_ORDERS, SORT_CONFIGS, VIEW_TEMPLATES, FILTER_GENERATORS, FRONTMATTER_FIELDS;
+var import_pluralize, Properties, PROPERTY_DEFINITIONS, FORMULAS, VIEW_ORDERS, SORT_CONFIGS, VIEW_TEMPLATES, FILTER_GENERATORS, FRONTMATTER_FIELDS;
 var init_BaseConfigurations = __esm({
   "src/services/base-definitions/BaseConfigurations.ts"() {
     init_js_yaml();
     import_pluralize = __toESM(require_pluralize());
+    ((Properties2) => {
+      Properties2.TITLE = {
+        name: "Title",
+        type: "string"
+      };
+      Properties2.DONE = {
+        name: "Done",
+        type: "checkbox",
+        default: false
+      };
+      Properties2.CREATED_AT = {
+        name: "Created At",
+        type: "string"
+      };
+      Properties2.UPDATED_AT = {
+        name: "Updated At",
+        type: "string"
+      };
+      Properties2.AREAS = {
+        name: "Areas",
+        type: "string",
+        link: true
+      };
+      Properties2.PROJECT = {
+        name: "Project",
+        type: "string",
+        link: true
+      };
+      Properties2.TYPE = {
+        name: "Type",
+        type: "string"
+      };
+      Properties2.PRIORITY = {
+        name: "Priority",
+        type: "string"
+      };
+      Properties2.STATUS = {
+        name: "Status",
+        type: "string",
+        default: "Backlog"
+      };
+      Properties2.PARENT_TASK = {
+        name: "Parent task",
+        type: "string",
+        link: true
+      };
+      Properties2.SUB_TASKS = {
+        name: "Sub-tasks",
+        type: "string",
+        link: true
+      };
+      Properties2.TAGS = {
+        name: "tags",
+        type: "array"
+      };
+      Properties2.NAME = {
+        name: "Name",
+        type: "string"
+      };
+    })(Properties || (Properties = {}));
+    PROPERTY_DEFINITIONS = {
+      task: [
+        Properties.TITLE,
+        Properties.AREAS,
+        Properties.PROJECT,
+        Properties.TYPE,
+        Properties.PRIORITY,
+        Properties.DONE,
+        Properties.STATUS,
+        Properties.PARENT_TASK,
+        Properties.SUB_TASKS,
+        Properties.TAGS
+      ],
+      // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
+      areaBase: [
+        Properties.TITLE,
+        Properties.PROJECT,
+        Properties.TYPE,
+        Properties.PRIORITY,
+        Properties.DONE,
+        Properties.STATUS,
+        Properties.PARENT_TASK,
+        Properties.SUB_TASKS,
+        Properties.TAGS
+      ],
+      // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
+      projectBase: [
+        Properties.TITLE,
+        Properties.AREAS,
+        Properties.TYPE,
+        Properties.PRIORITY,
+        Properties.DONE,
+        Properties.STATUS,
+        Properties.PARENT_TASK,
+        Properties.SUB_TASKS,
+        Properties.TAGS
+      ],
+      // Properties for area/project files themselves (not for bases showing tasks)
+      area: [
+        Properties.NAME,
+        Properties.PROJECT
+      ],
+      project: [
+        Properties.NAME,
+        Properties.AREAS
+      ]
+    };
     FORMULAS = {
       common: {
         Title: "link(file.name, Title)"
@@ -3232,53 +3353,6 @@ var init_BaseConfigurations = __esm({
       },
       project: {
         Name: "link(file.name, Name)"
-      }
-    };
-    PROPERTIES = {
-      common: {
-        "file.name": { displayName: "Title" },
-        "note.Done": { displayName: "Done" },
-        "file.ctime": { displayName: "Created At" },
-        "file.mtime": { displayName: "Updated At" }
-      },
-      task: {
-        "note.Type": { displayName: "Type" },
-        "note.Status": { displayName: "Done" },
-        "note.tags": { displayName: "Tags" },
-        "note.Areas": { displayName: "Areas" },
-        "note.Project": { displayName: "Project" },
-        "note.Priority": { displayName: "Priority" },
-        "note.Parent task": { displayName: "Parent task" },
-        "note.Sub-tasks": { displayName: "Sub-tasks" }
-      },
-      // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
-      areaBase: {
-        "note.Type": { displayName: "Type" },
-        "note.Status": { displayName: "Done" },
-        "note.tags": { displayName: "Tags" },
-        "note.Project": { displayName: "Project" },
-        "note.Priority": { displayName: "Priority" },
-        "note.Parent task": { displayName: "Parent task" },
-        "note.Sub-tasks": { displayName: "Sub-tasks" }
-      },
-      // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
-      projectBase: {
-        "note.Type": { displayName: "Type" },
-        "note.Status": { displayName: "Done" },
-        "note.tags": { displayName: "Tags" },
-        "note.Areas": { displayName: "Areas" },
-        "note.Priority": { displayName: "Priority" },
-        "note.Parent task": { displayName: "Parent task" },
-        "note.Sub-tasks": { displayName: "Sub-tasks" }
-      },
-      // Properties for area/project files themselves (not for bases showing tasks)
-      area: {
-        "file.name": { displayName: "Name" },
-        "note.Project": { displayName: "Project" }
-      },
-      project: {
-        "file.name": { displayName: "Name" },
-        "note.Areas": { displayName: "Areas" }
       }
     };
     VIEW_ORDERS = {
@@ -3393,27 +3467,9 @@ var init_BaseConfigurations = __esm({
       taskType: (typeName) => `Type == "${typeName}"`
     };
     FRONTMATTER_FIELDS = {
-      task: {
-        Title: { type: "string" },
-        Type: { type: "string", default: "Task" },
-        Areas: { type: "string" },
-        "Parent task": { type: "string" },
-        "Sub-tasks": { type: "string" },
-        tags: { type: "array" },
-        Project: { type: "string" },
-        Done: { type: "boolean", default: false },
-        Status: { type: "string", default: "Backlog" },
-        Priority: { type: "string" }
-      },
-      project: {
-        Name: { type: "string" },
-        Type: { type: "string", default: "Project" },
-        Areas: { type: "string" }
-      },
-      area: {
-        Name: { type: "string" },
-        Type: { type: "string", default: "Area" }
-      }
+      task: convertPropertiesToFrontMatterFormat(PROPERTY_DEFINITIONS.task, "Task"),
+      project: convertPropertiesToFrontMatterFormat(PROPERTY_DEFINITIONS.project, "Project"),
+      area: convertPropertiesToFrontMatterFormat(PROPERTY_DEFINITIONS.area, "Area")
     };
   }
 });

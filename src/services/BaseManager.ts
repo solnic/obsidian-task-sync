@@ -11,7 +11,8 @@ import { sanitizeFileName } from '../utils/fileNameSanitizer';
 import {
   generateTasksBase as generateTasksBaseConfig,
   generateAreaBase as generateAreaBaseConfig,
-  generateProjectBase as generateProjectBaseConfig
+  generateProjectBase as generateProjectBaseConfig,
+  PropertyDefinition
 } from './base-definitions';
 
 export interface BaseProperty {
@@ -37,7 +38,7 @@ export interface BaseView {
 
 export interface BaseConfig {
   formulas?: Record<string, string>;
-  properties: Record<string, BaseProperty>;
+  properties: readonly PropertyDefinition[];
   views: BaseView[];
 }
 

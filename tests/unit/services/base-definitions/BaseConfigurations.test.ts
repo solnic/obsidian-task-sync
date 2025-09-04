@@ -9,7 +9,8 @@ import {
   generateProjectBase,
   ProjectAreaInfo,
   FORMULAS,
-  PROPERTIES
+  Properties,
+  PROPERTY_DEFINITIONS
 } from '../../../../src/services/base-definitions/BaseConfigurations';
 import { TaskSyncSettings } from '../../../../src/main';
 import * as yaml from 'js-yaml';
@@ -59,15 +60,35 @@ describe('BaseConfigurations', () => {
       expect(FORMULAS.common.Title).toBe('link(file.name, Title)');
     });
 
-    it('should have correct common properties', () => {
-      expect(PROPERTIES.common['file.name'].displayName).toBe('Title');
-      expect(PROPERTIES.common['note.Done'].displayName).toBe('Done');
+    it('should have correct property definitions', () => {
+      expect(Properties.TITLE.name).toBe('Title');
+      expect(Properties.TITLE.type).toBe('string');
+      expect(Properties.DONE.name).toBe('Done');
+      expect(Properties.DONE.type).toBe('checkbox');
+      expect(Properties.DONE.default).toBe(false);
     });
 
-    it('should have task-specific properties', () => {
-      expect(PROPERTIES.task['note.Type'].displayName).toBe('Type');
-      expect(PROPERTIES.task['note.Status'].displayName).toBe('Done');
-      expect(PROPERTIES.task['note.Project'].displayName).toBe('Project');
+    it('should have task-specific properties in correct order', () => {
+      const taskProperties = PROPERTY_DEFINITIONS.task;
+      expect(taskProperties[0].name).toBe('Title');
+      expect(taskProperties[1].name).toBe('Areas');
+      expect(taskProperties[2].name).toBe('Project');
+      expect(taskProperties[3].name).toBe('Type');
+      expect(taskProperties[4].name).toBe('Priority');
+      expect(taskProperties[5].name).toBe('Done');
+      expect(taskProperties[6].name).toBe('Status');
+      expect(taskProperties[7].name).toBe('Parent task');
+      expect(taskProperties[8].name).toBe('Sub-tasks');
+      expect(taskProperties[9].name).toBe('tags');
+    });
+
+    it('should have link properties correctly marked', () => {
+      expect(Properties.AREAS.link).toBe(true);
+      expect(Properties.PROJECT.link).toBe(true);
+      expect(Properties.PARENT_TASK.link).toBe(true);
+      expect(Properties.SUB_TASKS.link).toBe(true);
+      expect(Properties.TYPE.link).toBeUndefined();
+      expect(Properties.PRIORITY.link).toBeUndefined();
     });
   });
 
@@ -86,12 +107,14 @@ describe('BaseConfigurations', () => {
       expect(result).toContain('views:');
     });
 
-    it('should include correct formulas', () => {
+    it('should include correct formulas and properties', () => {
       const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
 
       expect(result).toContain('Title: link(file.name, Title)');
-      expect(result).toContain('note.Type:');
-      expect(result).toContain('displayName: Type');
+      expect(result).toContain('- name: Type');
+      expect(result).toContain('type: string');
+      expect(result).toContain('- name: Project');
+      expect(result).toContain('link: true');
     });
 
     it('should include main views', () => {
@@ -155,8 +178,9 @@ describe('BaseConfigurations', () => {
     it('should include area properties', () => {
       const result = generateAreaBase(mockSettings, testArea);
 
-      expect(result).toContain('displayName: Project');
-      expect(result).not.toContain('note.Areas'); // Areas shouldn't be in area bases
+      expect(result).toContain('- name: Project');
+      expect(result).toContain('type: string');
+      expect(result).not.toContain('- name: Areas'); // Areas shouldn't be in area bases
     });
   });
 
@@ -182,8 +206,9 @@ describe('BaseConfigurations', () => {
     it('should include project properties', () => {
       const result = generateProjectBase(mockSettings, testProject);
 
-      expect(result).toContain('displayName: Areas');
-      expect(result).not.toContain('note.Project'); // Project shouldn't be in project bases
+      expect(result).toContain('- name: Areas');
+      expect(result).toContain('type: string');
+      expect(result).not.toContain('- name: Project'); // Project shouldn't be in project bases
     });
   });
 });

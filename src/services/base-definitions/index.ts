@@ -10,10 +10,12 @@ export {
   generateProjectBase,
   ProjectAreaInfo,
   FORMULAS,
-  PROPERTIES,
   VIEW_ORDERS,
   SORT_CONFIGS,
-  FRONTMATTER_FIELDS
+  FRONTMATTER_FIELDS,
+  Properties,
+  PROPERTY_DEFINITIONS,
+  PropertyDefinition
 } from './BaseConfigurations';
 
 export * from './FrontMatterGenerator';
