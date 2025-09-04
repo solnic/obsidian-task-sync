@@ -9,9 +9,9 @@ import { TaskSyncSettings } from '../main';
 import * as yaml from 'js-yaml';
 import { sanitizeFileName } from '../utils/fileNameSanitizer';
 import {
-  TasksBaseDefinition,
-  AreaBaseDefinition,
-  ProjectBaseDefinition
+  generateTasksBase as generateTasksBaseConfig,
+  generateAreaBase as generateAreaBaseConfig,
+  generateProjectBase as generateProjectBaseConfig
 } from './base-definitions';
 
 export interface BaseProperty {
@@ -60,11 +60,7 @@ export class BaseManager {
    * Generate the main Tasks.base file with all task properties and default views
    */
   async generateTasksBase(projectsAndAreas: ProjectAreaInfo[]): Promise<string> {
-    const definition = new TasksBaseDefinition({
-      settings: this.settings,
-      projectsAndAreas
-    });
-    return definition.generateYAML();
+    return generateTasksBaseConfig(this.settings, projectsAndAreas);
   }
 
 
@@ -317,22 +313,14 @@ export class BaseManager {
    * Generate base configuration for a specific area
    */
   async generateAreaBase(area: ProjectAreaInfo): Promise<string> {
-    const definition = new AreaBaseDefinition({
-      settings: this.settings,
-      area
-    });
-    return definition.generateYAML();
+    return generateAreaBaseConfig(this.settings, area);
   }
 
   /**
    * Generate base configuration for a specific project
    */
   async generateProjectBase(project: ProjectAreaInfo): Promise<string> {
-    const definition = new ProjectBaseDefinition({
-      settings: this.settings,
-      project
-    });
-    return definition.generateYAML();
+    return generateProjectBaseConfig(this.settings, project);
   }
 
   /**

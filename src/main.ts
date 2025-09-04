@@ -408,25 +408,12 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   private generateTaskContent(taskData: any): string {
-    const frontmatter = [
-      '---',
-      `Title: ${taskData.name}`,
-      `Type: ${taskData.type || 'Task'}`,
-      `Areas: ${taskData.areas || ''}`,
-      `Parent task: ${taskData.parentTask || ''}`,
-      `Sub-tasks: ${taskData.subTasks || ''}`,
-      `tags: ${taskData.tags ? taskData.tags.join(', ') : ''}`,
-      `Project: ${taskData.project || ''}`,
-      `Done: ${taskData.done || false}`,
-      `Status: ${taskData.status || 'Backlog'}`,
-      `Priority: ${taskData.priority || ''}`,
-      '---',
-      '',
-      taskData.description || 'Task description...',
-      ''
-    ];
+    // Import the new front-matter generator
+    const { generateTaskFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
 
-    return frontmatter.join('\n');
+    return generateTaskFrontMatter(taskData, {
+      includeDescription: true
+    });
   }
 
   /**
@@ -499,51 +486,20 @@ export default class TaskSyncPlugin extends Plugin {
    * Generate default area content
    */
   private generateAreaContent(areaData: AreaCreateData): string {
-    const sanitizedName = sanitizeFileName(areaData.name);
-    const frontmatter = [
-      '---',
-      `Title: ${areaData.name}`,
-      `Name: ${areaData.name}`,
-      `Type: Area`,
-      '---',
-      '',
-      '## Notes',
-      '',
-      areaData.description || 'This is a cool area',
-      '',
-      '## Tasks',
-      '',
-      `![[${sanitizedName}.base]]`,
-      ''
-    ];
+    // Import the new front-matter generator
+    const { generateAreaFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
 
-    return frontmatter.join('\n');
+    return generateAreaFrontMatter(areaData);
   }
 
   /**
    * Generate default project content
    */
   private generateProjectContent(projectData: ProjectCreateData): string {
-    const sanitizedName = sanitizeFileName(projectData.name);
-    const frontmatter = [
-      '---',
-      `Title: ${projectData.name}`,
-      `Name: ${projectData.name}`,
-      `Type: Project`,
-      `Areas: ${projectData.areas || ''}`,
-      '---',
-      '',
-      '## Notes',
-      '',
-      projectData.description || 'This is a cool project',
-      '',
-      '## Tasks',
-      '',
-      `![[${sanitizedName}.base]]`,
-      ''
-    ];
+    // Import the new front-matter generator
+    const { generateProjectFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
 
-    return frontmatter.join('\n');
+    return generateProjectFrontMatter(projectData);
   }
 
   /**

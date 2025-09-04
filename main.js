@@ -9,6 +9,9 @@ var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __esm = (fn, res) => function __init() {
+  return fn && (res = (0, fn[__getOwnPropNames(fn)[0]])(fn = 0)), res;
+};
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
@@ -33,675 +36,6 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
   mod
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-// node_modules/pluralize/pluralize.js
-var require_pluralize = __commonJS({
-  "node_modules/pluralize/pluralize.js"(exports, module2) {
-    (function(root, pluralize2) {
-      if (typeof require === "function" && typeof exports === "object" && typeof module2 === "object") {
-        module2.exports = pluralize2();
-      } else if (typeof define === "function" && define.amd) {
-        define(function() {
-          return pluralize2();
-        });
-      } else {
-        root.pluralize = pluralize2();
-      }
-    })(exports, function() {
-      var pluralRules = [];
-      var singularRules = [];
-      var uncountables = {};
-      var irregularPlurals = {};
-      var irregularSingles = {};
-      function sanitizeRule(rule) {
-        if (typeof rule === "string") {
-          return new RegExp("^" + rule + "$", "i");
-        }
-        return rule;
-      }
-      function restoreCase(word, token) {
-        if (word === token) return token;
-        if (word === word.toLowerCase()) return token.toLowerCase();
-        if (word === word.toUpperCase()) return token.toUpperCase();
-        if (word[0] === word[0].toUpperCase()) {
-          return token.charAt(0).toUpperCase() + token.substr(1).toLowerCase();
-        }
-        return token.toLowerCase();
-      }
-      function interpolate(str2, args) {
-        return str2.replace(/\$(\d{1,2})/g, function(match, index) {
-          return args[index] || "";
-        });
-      }
-      function replace(word, rule) {
-        return word.replace(rule[0], function(match, index) {
-          var result = interpolate(rule[1], arguments);
-          if (match === "") {
-            return restoreCase(word[index - 1], result);
-          }
-          return restoreCase(match, result);
-        });
-      }
-      function sanitizeWord(token, word, rules) {
-        if (!token.length || uncountables.hasOwnProperty(token)) {
-          return word;
-        }
-        var len = rules.length;
-        while (len--) {
-          var rule = rules[len];
-          if (rule[0].test(word)) return replace(word, rule);
-        }
-        return word;
-      }
-      function replaceWord(replaceMap, keepMap, rules) {
-        return function(word) {
-          var token = word.toLowerCase();
-          if (keepMap.hasOwnProperty(token)) {
-            return restoreCase(word, token);
-          }
-          if (replaceMap.hasOwnProperty(token)) {
-            return restoreCase(word, replaceMap[token]);
-          }
-          return sanitizeWord(token, word, rules);
-        };
-      }
-      function checkWord(replaceMap, keepMap, rules, bool2) {
-        return function(word) {
-          var token = word.toLowerCase();
-          if (keepMap.hasOwnProperty(token)) return true;
-          if (replaceMap.hasOwnProperty(token)) return false;
-          return sanitizeWord(token, token, rules) === token;
-        };
-      }
-      function pluralize2(word, count, inclusive) {
-        var pluralized = count === 1 ? pluralize2.singular(word) : pluralize2.plural(word);
-        return (inclusive ? count + " " : "") + pluralized;
-      }
-      pluralize2.plural = replaceWord(
-        irregularSingles,
-        irregularPlurals,
-        pluralRules
-      );
-      pluralize2.isPlural = checkWord(
-        irregularSingles,
-        irregularPlurals,
-        pluralRules
-      );
-      pluralize2.singular = replaceWord(
-        irregularPlurals,
-        irregularSingles,
-        singularRules
-      );
-      pluralize2.isSingular = checkWord(
-        irregularPlurals,
-        irregularSingles,
-        singularRules
-      );
-      pluralize2.addPluralRule = function(rule, replacement) {
-        pluralRules.push([sanitizeRule(rule), replacement]);
-      };
-      pluralize2.addSingularRule = function(rule, replacement) {
-        singularRules.push([sanitizeRule(rule), replacement]);
-      };
-      pluralize2.addUncountableRule = function(word) {
-        if (typeof word === "string") {
-          uncountables[word.toLowerCase()] = true;
-          return;
-        }
-        pluralize2.addPluralRule(word, "$0");
-        pluralize2.addSingularRule(word, "$0");
-      };
-      pluralize2.addIrregularRule = function(single, plural) {
-        plural = plural.toLowerCase();
-        single = single.toLowerCase();
-        irregularSingles[single] = plural;
-        irregularPlurals[plural] = single;
-      };
-      [
-        // Pronouns.
-        ["I", "we"],
-        ["me", "us"],
-        ["he", "they"],
-        ["she", "they"],
-        ["them", "them"],
-        ["myself", "ourselves"],
-        ["yourself", "yourselves"],
-        ["itself", "themselves"],
-        ["herself", "themselves"],
-        ["himself", "themselves"],
-        ["themself", "themselves"],
-        ["is", "are"],
-        ["was", "were"],
-        ["has", "have"],
-        ["this", "these"],
-        ["that", "those"],
-        // Words ending in with a consonant and `o`.
-        ["echo", "echoes"],
-        ["dingo", "dingoes"],
-        ["volcano", "volcanoes"],
-        ["tornado", "tornadoes"],
-        ["torpedo", "torpedoes"],
-        // Ends with `us`.
-        ["genus", "genera"],
-        ["viscus", "viscera"],
-        // Ends with `ma`.
-        ["stigma", "stigmata"],
-        ["stoma", "stomata"],
-        ["dogma", "dogmata"],
-        ["lemma", "lemmata"],
-        ["schema", "schemata"],
-        ["anathema", "anathemata"],
-        // Other irregular rules.
-        ["ox", "oxen"],
-        ["axe", "axes"],
-        ["die", "dice"],
-        ["yes", "yeses"],
-        ["foot", "feet"],
-        ["eave", "eaves"],
-        ["goose", "geese"],
-        ["tooth", "teeth"],
-        ["quiz", "quizzes"],
-        ["human", "humans"],
-        ["proof", "proofs"],
-        ["carve", "carves"],
-        ["valve", "valves"],
-        ["looey", "looies"],
-        ["thief", "thieves"],
-        ["groove", "grooves"],
-        ["pickaxe", "pickaxes"],
-        ["passerby", "passersby"]
-      ].forEach(function(rule) {
-        return pluralize2.addIrregularRule(rule[0], rule[1]);
-      });
-      [
-        [/s?$/i, "s"],
-        [/[^\u0000-\u007F]$/i, "$0"],
-        [/([^aeiou]ese)$/i, "$1"],
-        [/(ax|test)is$/i, "$1es"],
-        [/(alias|[^aou]us|t[lm]as|gas|ris)$/i, "$1es"],
-        [/(e[mn]u)s?$/i, "$1s"],
-        [/([^l]ias|[aeiou]las|[ejzr]as|[iu]am)$/i, "$1"],
-        [/(alumn|syllab|vir|radi|nucle|fung|cact|stimul|termin|bacill|foc|uter|loc|strat)(?:us|i)$/i, "$1i"],
-        [/(alumn|alg|vertebr)(?:a|ae)$/i, "$1ae"],
-        [/(seraph|cherub)(?:im)?$/i, "$1im"],
-        [/(her|at|gr)o$/i, "$1oes"],
-        [/(agend|addend|millenni|dat|extrem|bacteri|desiderat|strat|candelabr|errat|ov|symposi|curricul|automat|quor)(?:a|um)$/i, "$1a"],
-        [/(apheli|hyperbat|periheli|asyndet|noumen|phenomen|criteri|organ|prolegomen|hedr|automat)(?:a|on)$/i, "$1a"],
-        [/sis$/i, "ses"],
-        [/(?:(kni|wi|li)fe|(ar|l|ea|eo|oa|hoo)f)$/i, "$1$2ves"],
-        [/([^aeiouy]|qu)y$/i, "$1ies"],
-        [/([^ch][ieo][ln])ey$/i, "$1ies"],
-        [/(x|ch|ss|sh|zz)$/i, "$1es"],
-        [/(matr|cod|mur|sil|vert|ind|append)(?:ix|ex)$/i, "$1ices"],
-        [/\b((?:tit)?m|l)(?:ice|ouse)$/i, "$1ice"],
-        [/(pe)(?:rson|ople)$/i, "$1ople"],
-        [/(child)(?:ren)?$/i, "$1ren"],
-        [/eaux$/i, "$0"],
-        [/m[ae]n$/i, "men"],
-        ["thou", "you"]
-      ].forEach(function(rule) {
-        return pluralize2.addPluralRule(rule[0], rule[1]);
-      });
-      [
-        [/s$/i, ""],
-        [/(ss)$/i, "$1"],
-        [/(wi|kni|(?:after|half|high|low|mid|non|night|[^\w]|^)li)ves$/i, "$1fe"],
-        [/(ar|(?:wo|[ae])l|[eo][ao])ves$/i, "$1f"],
-        [/ies$/i, "y"],
-        [/\b([pl]|zomb|(?:neck|cross)?t|coll|faer|food|gen|goon|group|lass|talk|goal|cut)ies$/i, "$1ie"],
-        [/\b(mon|smil)ies$/i, "$1ey"],
-        [/\b((?:tit)?m|l)ice$/i, "$1ouse"],
-        [/(seraph|cherub)im$/i, "$1"],
-        [/(x|ch|ss|sh|zz|tto|go|cho|alias|[^aou]us|t[lm]as|gas|(?:her|at|gr)o|[aeiou]ris)(?:es)?$/i, "$1"],
-        [/(analy|diagno|parenthe|progno|synop|the|empha|cri|ne)(?:sis|ses)$/i, "$1sis"],
-        [/(movie|twelve|abuse|e[mn]u)s$/i, "$1"],
-        [/(test)(?:is|es)$/i, "$1is"],
-        [/(alumn|syllab|vir|radi|nucle|fung|cact|stimul|termin|bacill|foc|uter|loc|strat)(?:us|i)$/i, "$1us"],
-        [/(agend|addend|millenni|dat|extrem|bacteri|desiderat|strat|candelabr|errat|ov|symposi|curricul|quor)a$/i, "$1um"],
-        [/(apheli|hyperbat|periheli|asyndet|noumen|phenomen|criteri|organ|prolegomen|hedr|automat)a$/i, "$1on"],
-        [/(alumn|alg|vertebr)ae$/i, "$1a"],
-        [/(cod|mur|sil|vert|ind)ices$/i, "$1ex"],
-        [/(matr|append)ices$/i, "$1ix"],
-        [/(pe)(rson|ople)$/i, "$1rson"],
-        [/(child)ren$/i, "$1"],
-        [/(eau)x?$/i, "$1"],
-        [/men$/i, "man"]
-      ].forEach(function(rule) {
-        return pluralize2.addSingularRule(rule[0], rule[1]);
-      });
-      [
-        // Singular words with no plurals.
-        "adulthood",
-        "advice",
-        "agenda",
-        "aid",
-        "aircraft",
-        "alcohol",
-        "ammo",
-        "analytics",
-        "anime",
-        "athletics",
-        "audio",
-        "bison",
-        "blood",
-        "bream",
-        "buffalo",
-        "butter",
-        "carp",
-        "cash",
-        "chassis",
-        "chess",
-        "clothing",
-        "cod",
-        "commerce",
-        "cooperation",
-        "corps",
-        "debris",
-        "diabetes",
-        "digestion",
-        "elk",
-        "energy",
-        "equipment",
-        "excretion",
-        "expertise",
-        "firmware",
-        "flounder",
-        "fun",
-        "gallows",
-        "garbage",
-        "graffiti",
-        "hardware",
-        "headquarters",
-        "health",
-        "herpes",
-        "highjinks",
-        "homework",
-        "housework",
-        "information",
-        "jeans",
-        "justice",
-        "kudos",
-        "labour",
-        "literature",
-        "machinery",
-        "mackerel",
-        "mail",
-        "media",
-        "mews",
-        "moose",
-        "music",
-        "mud",
-        "manga",
-        "news",
-        "only",
-        "personnel",
-        "pike",
-        "plankton",
-        "pliers",
-        "police",
-        "pollution",
-        "premises",
-        "rain",
-        "research",
-        "rice",
-        "salmon",
-        "scissors",
-        "series",
-        "sewage",
-        "shambles",
-        "shrimp",
-        "software",
-        "species",
-        "staff",
-        "swine",
-        "tennis",
-        "traffic",
-        "transportation",
-        "trout",
-        "tuna",
-        "wealth",
-        "welfare",
-        "whiting",
-        "wildebeest",
-        "wildlife",
-        "you",
-        /pok[eé]mon$/i,
-        // Regexes.
-        /[^aeiou]ese$/i,
-        // "chinese", "japanese"
-        /deer$/i,
-        // "deer", "reindeer"
-        /fish$/i,
-        // "fish", "blowfish", "angelfish"
-        /measles$/i,
-        /o[iu]s$/i,
-        // "carnivorous"
-        /pox$/i,
-        // "chickpox", "smallpox"
-        /sheep$/i
-      ].forEach(pluralize2.addUncountableRule);
-      return pluralize2;
-    });
-  }
-});
-
-// src/main.ts
-var main_exports = {};
-__export(main_exports, {
-  TASK_TYPE_COLORS: () => TASK_TYPE_COLORS,
-  default: () => TaskSyncPlugin
-});
-module.exports = __toCommonJS(main_exports);
-var import_obsidian6 = require("obsidian");
-
-// src/services/VaultScannerService.ts
-var import_obsidian = require("obsidian");
-var VaultScanner = class {
-  constructor(vault, settings) {
-    this.vault = vault;
-    this.settings = settings;
-  }
-  async scanTasksFolder() {
-    return this.scanFolder(this.settings.tasksFolder);
-  }
-  async scanProjectsFolder() {
-    return this.scanFolder(this.settings.projectsFolder);
-  }
-  async scanAreasFolder() {
-    return this.scanFolder(this.settings.areasFolder);
-  }
-  async scanTemplatesFolder() {
-    return this.scanFolder(this.settings.templateFolder);
-  }
-  async scanFolder(folderPath) {
-    if (!folderPath) return [];
-    try {
-      const folder = this.vault.getAbstractFileByPath(folderPath);
-      if (!folder || !this.isFolder(folder)) {
-        return [];
-      }
-      const files = [];
-      this.collectMarkdownFiles(folder, files);
-      return files;
-    } catch (error) {
-      console.error(`Failed to scan folder ${folderPath}:`, error);
-      return [];
-    }
-  }
-  collectMarkdownFiles(folder, files) {
-    for (const child of folder.children) {
-      if (this.isFile(child) && child.extension === "md") {
-        files.push(child.path);
-      } else if (this.isFolder(child)) {
-        this.collectMarkdownFiles(child, files);
-      }
-    }
-  }
-  isFolder(obj) {
-    var _a;
-    return obj && (obj instanceof import_obsidian.TFolder || ((_a = obj.constructor) == null ? void 0 : _a.name) === "TFolder" || obj.children !== void 0);
-  }
-  isFile(obj) {
-    var _a;
-    return obj && (obj instanceof import_obsidian.TFile || ((_a = obj.constructor) == null ? void 0 : _a.name) === "TFile" || obj.extension !== void 0);
-  }
-  async findTaskFiles() {
-    const taskPaths = await this.scanTasksFolder();
-    const taskFiles = [];
-    for (const path of taskPaths) {
-      try {
-        const fileInfo = await this.getFileInfo(path);
-        if (fileInfo) {
-          taskFiles.push(fileInfo);
-        }
-      } catch (error) {
-        console.error(`Failed to process task file ${path}:`, error);
-      }
-    }
-    return taskFiles;
-  }
-  async findProjectFiles() {
-    const projectPaths = await this.scanProjectsFolder();
-    const projectFiles = [];
-    for (const path of projectPaths) {
-      try {
-        const fileInfo = await this.getFileInfo(path);
-        if (fileInfo) {
-          const projectFile = {
-            ...fileInfo,
-            taskFiles: await this.findRelatedTaskFiles(path)
-          };
-          projectFiles.push(projectFile);
-        }
-      } catch (error) {
-        console.error(`Failed to process project file ${path}:`, error);
-      }
-    }
-    return projectFiles;
-  }
-  async findAreaFiles() {
-    const areaPaths = await this.scanAreasFolder();
-    const areaFiles = [];
-    for (const path of areaPaths) {
-      try {
-        const fileInfo = await this.getFileInfo(path);
-        if (fileInfo) {
-          const areaFile = {
-            ...fileInfo,
-            projectFiles: await this.findRelatedProjectFiles(path)
-          };
-          areaFiles.push(areaFile);
-        }
-      } catch (error) {
-        console.error(`Failed to process area file ${path}:`, error);
-      }
-    }
-    return areaFiles;
-  }
-  async findTemplateFiles() {
-    const templatePaths = await this.scanTemplatesFolder();
-    const templateFiles = [];
-    for (const path of templatePaths) {
-      try {
-        const fileInfo = await this.getFileInfo(path);
-        if (fileInfo) {
-          const templateFile = {
-            ...fileInfo,
-            templateType: this.detectTemplateType(path, fileInfo.content || ""),
-            variables: this.extractTemplateVariables(fileInfo.content || "")
-          };
-          templateFiles.push(templateFile);
-        }
-      } catch (error) {
-        console.error(`Failed to process template file ${path}:`, error);
-      }
-    }
-    return templateFiles;
-  }
-  async findBaseFiles() {
-    const allFiles = this.vault.getMarkdownFiles();
-    const baseFiles = [];
-    for (const file of allFiles) {
-      if (file.extension === "base" || file.name.endsWith(".base.md")) {
-        try {
-          const content = await this.vault.read(file);
-          const baseFile = {
-            path: file.path,
-            name: file.name,
-            exists: true,
-            lastModified: new Date(file.stat.mtime),
-            size: file.stat.size,
-            content,
-            frontmatter: this.extractFrontmatter(content),
-            viewType: this.detectBaseViewType(content),
-            entityType: this.detectBaseEntityType(content),
-            isValid: this.validateBaseFile(content),
-            errors: this.getBaseFileErrors(content)
-          };
-          baseFiles.push(baseFile);
-        } catch (error) {
-          console.error(`Failed to process base file ${file.path}:`, error);
-        }
-      }
-    }
-    return baseFiles;
-  }
-  async validateFolderStructure() {
-    const result = {
-      isValid: true,
-      errors: [],
-      warnings: [],
-      missingFolders: [],
-      suggestions: []
-    };
-    const foldersToCheck = [
-      { path: this.settings.tasksFolder, name: "Tasks" },
-      { path: this.settings.projectsFolder, name: "Projects" },
-      { path: this.settings.areasFolder, name: "Areas" },
-      { path: this.settings.templateFolder, name: "Templates" }
-    ];
-    for (const folder of foldersToCheck) {
-      if (!folder.path) {
-        result.warnings.push(`${folder.name} folder path is not configured`);
-        continue;
-      }
-      const exists = await this.folderExists(folder.path);
-      if (!exists) {
-        result.missingFolders.push(folder.path);
-        result.errors.push(`${folder.name} folder does not exist: ${folder.path}`);
-        result.isValid = false;
-      }
-    }
-    const paths = foldersToCheck.map((f) => f.path).filter(Boolean);
-    const duplicates = paths.filter((path, index) => paths.indexOf(path) !== index);
-    if (duplicates.length > 0) {
-      result.errors.push(`Duplicate folder paths detected: ${duplicates.join(", ")}`);
-      result.isValid = false;
-    }
-    if (result.missingFolders.length > 0) {
-      result.suggestions.push('Use the "Create Missing Folders" command to automatically create missing folders');
-    }
-    return result;
-  }
-  async createMissingFolders() {
-    const foldersToCreate = [
-      this.settings.tasksFolder,
-      this.settings.projectsFolder,
-      this.settings.areasFolder,
-      this.settings.templateFolder
-    ].filter(Boolean);
-    for (const folderPath of foldersToCreate) {
-      try {
-        const exists = await this.folderExists(folderPath);
-        if (!exists) {
-          await this.vault.createFolder(folderPath);
-          console.log(`Created folder: ${folderPath}`);
-        }
-      } catch (error) {
-        console.error(`Failed to create folder ${folderPath}:`, error);
-      }
-    }
-  }
-  async getFileInfo(path) {
-    try {
-      const file = this.vault.getAbstractFileByPath(path);
-      if (!file || !this.isFile(file)) {
-        return null;
-      }
-      const tfile = file;
-      const content = await this.vault.read(tfile);
-      return {
-        path: tfile.path,
-        name: tfile.name,
-        exists: true,
-        lastModified: new Date(tfile.stat.mtime),
-        size: tfile.stat.size,
-        content,
-        frontmatter: this.extractFrontmatter(content)
-      };
-    } catch (error) {
-      console.error(`Failed to get file info for ${path}:`, error);
-      return null;
-    }
-  }
-  async findRelatedTaskFiles(projectPath) {
-    return [];
-  }
-  async findRelatedProjectFiles(areaPath) {
-    return [];
-  }
-  detectTemplateType(path, content) {
-    const pathLower = path.toLowerCase();
-    if (pathLower.includes("task")) return "task";
-    if (pathLower.includes("project")) return "project";
-    if (pathLower.includes("area")) return "area";
-    const contentLower = content.toLowerCase();
-    if (contentLower.includes("deadline") || contentLower.includes("status")) return "task";
-    if (contentLower.includes("objectives") || contentLower.includes("milestones")) return "project";
-    return "task";
-  }
-  extractTemplateVariables(content) {
-    const variables = [];
-    const variableRegex = /\{\{([^}]+)\}\}/g;
-    let match;
-    while ((match = variableRegex.exec(content)) !== null) {
-      const variable = match[1].trim();
-      if (!variables.includes(variable)) {
-        variables.push(variable);
-      }
-    }
-    return variables;
-  }
-  detectBaseViewType(content) {
-    return "kanban";
-  }
-  detectBaseEntityType(content) {
-    return "task";
-  }
-  validateBaseFile(content) {
-    return content.includes("```base") || content.includes("view:");
-  }
-  getBaseFileErrors(content) {
-    const errors = [];
-    if (!this.validateBaseFile(content)) {
-      errors.push("Invalid base file format");
-    }
-    return errors;
-  }
-  extractFrontmatter(content) {
-    const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
-    const match = content.match(frontmatterRegex);
-    if (!match) return {};
-    try {
-      const frontmatterText = match[1];
-      const lines = frontmatterText.split("\n");
-      const result = {};
-      for (const line of lines) {
-        const colonIndex = line.indexOf(":");
-        if (colonIndex > 0) {
-          const key = line.substring(0, colonIndex).trim();
-          const value = line.substring(colonIndex + 1).trim();
-          result[key] = value;
-        }
-      }
-      return result;
-    } catch (error) {
-      console.error("Failed to parse frontmatter:", error);
-      return {};
-    }
-  }
-  async folderExists(path) {
-    try {
-      const folder = this.vault.getAbstractFileByPath(path);
-      return this.isFolder(folder);
-    } catch (e) {
-      return false;
-    }
-  }
-};
-
-// src/services/BaseManager.ts
-var import_obsidian2 = require("obsidian");
 
 // node_modules/js-yaml/dist/js-yaml.mjs
 function isNothing(subject) {
@@ -736,20 +70,6 @@ function repeat(string, count) {
 function isNegativeZero(number) {
   return number === 0 && Number.NEGATIVE_INFINITY === 1 / number;
 }
-var isNothing_1 = isNothing;
-var isObject_1 = isObject;
-var toArray_1 = toArray;
-var repeat_1 = repeat;
-var isNegativeZero_1 = isNegativeZero;
-var extend_1 = extend;
-var common = {
-  isNothing: isNothing_1,
-  isObject: isObject_1,
-  toArray: toArray_1,
-  repeat: repeat_1,
-  isNegativeZero: isNegativeZero_1,
-  extend: extend_1
-};
 function formatError(exception2, compact) {
   var where = "", message = exception2.reason || "(unknown reason)";
   if (!exception2.mark) return message;
@@ -774,12 +94,6 @@ function YAMLException$1(reason, mark) {
     this.stack = new Error().stack || "";
   }
 }
-YAMLException$1.prototype = Object.create(Error.prototype);
-YAMLException$1.prototype.constructor = YAMLException$1;
-YAMLException$1.prototype.toString = function toString(compact) {
-  return this.name + ": " + formatError(this, compact);
-};
-var exception = YAMLException$1;
 function getLine(buffer, lineStart, lineEnd, position, maxLineLength) {
   var head = "";
   var tail = "";
@@ -851,24 +165,6 @@ function makeSnippet(mark, options) {
   }
   return result.replace(/\n$/, "");
 }
-var snippet = makeSnippet;
-var TYPE_CONSTRUCTOR_OPTIONS = [
-  "kind",
-  "multi",
-  "resolve",
-  "construct",
-  "instanceOf",
-  "predicate",
-  "represent",
-  "representName",
-  "defaultStyle",
-  "styleAliases"
-];
-var YAML_NODE_KINDS = [
-  "scalar",
-  "sequence",
-  "mapping"
-];
 function compileStyleAliases(map2) {
   var result = {};
   if (map2 !== null) {
@@ -907,7 +203,6 @@ function Type$1(tag, options) {
     throw new exception('Unknown kind "' + this.kind + '" is specified for "' + tag + '" YAML type.');
   }
 }
-var type = Type$1;
 function compileList(schema2, name) {
   var result = [];
   schema2[name].forEach(function(currentType) {
@@ -950,69 +245,6 @@ function compileMap() {
 function Schema$1(definition) {
   return this.extend(definition);
 }
-Schema$1.prototype.extend = function extend2(definition) {
-  var implicit = [];
-  var explicit = [];
-  if (definition instanceof type) {
-    explicit.push(definition);
-  } else if (Array.isArray(definition)) {
-    explicit = explicit.concat(definition);
-  } else if (definition && (Array.isArray(definition.implicit) || Array.isArray(definition.explicit))) {
-    if (definition.implicit) implicit = implicit.concat(definition.implicit);
-    if (definition.explicit) explicit = explicit.concat(definition.explicit);
-  } else {
-    throw new exception("Schema.extend argument should be a Type, [ Type ], or a schema definition ({ implicit: [...], explicit: [...] })");
-  }
-  implicit.forEach(function(type$1) {
-    if (!(type$1 instanceof type)) {
-      throw new exception("Specified list of YAML types (or a single Type object) contains a non-Type object.");
-    }
-    if (type$1.loadKind && type$1.loadKind !== "scalar") {
-      throw new exception("There is a non-scalar type in the implicit list of a schema. Implicit resolving of such types is not supported.");
-    }
-    if (type$1.multi) {
-      throw new exception("There is a multi type in the implicit list of a schema. Multi tags can only be listed as explicit.");
-    }
-  });
-  explicit.forEach(function(type$1) {
-    if (!(type$1 instanceof type)) {
-      throw new exception("Specified list of YAML types (or a single Type object) contains a non-Type object.");
-    }
-  });
-  var result = Object.create(Schema$1.prototype);
-  result.implicit = (this.implicit || []).concat(implicit);
-  result.explicit = (this.explicit || []).concat(explicit);
-  result.compiledImplicit = compileList(result, "implicit");
-  result.compiledExplicit = compileList(result, "explicit");
-  result.compiledTypeMap = compileMap(result.compiledImplicit, result.compiledExplicit);
-  return result;
-};
-var schema = Schema$1;
-var str = new type("tag:yaml.org,2002:str", {
-  kind: "scalar",
-  construct: function(data) {
-    return data !== null ? data : "";
-  }
-});
-var seq = new type("tag:yaml.org,2002:seq", {
-  kind: "sequence",
-  construct: function(data) {
-    return data !== null ? data : [];
-  }
-});
-var map = new type("tag:yaml.org,2002:map", {
-  kind: "mapping",
-  construct: function(data) {
-    return data !== null ? data : {};
-  }
-});
-var failsafe = new schema({
-  explicit: [
-    str,
-    seq,
-    map
-  ]
-});
 function resolveYamlNull(data) {
   if (data === null) return true;
   var max = data.length;
@@ -1024,30 +256,6 @@ function constructYamlNull() {
 function isNull(object) {
   return object === null;
 }
-var _null = new type("tag:yaml.org,2002:null", {
-  kind: "scalar",
-  resolve: resolveYamlNull,
-  construct: constructYamlNull,
-  predicate: isNull,
-  represent: {
-    canonical: function() {
-      return "~";
-    },
-    lowercase: function() {
-      return "null";
-    },
-    uppercase: function() {
-      return "NULL";
-    },
-    camelcase: function() {
-      return "Null";
-    },
-    empty: function() {
-      return "";
-    }
-  },
-  defaultStyle: "lowercase"
-});
 function resolveYamlBoolean(data) {
   if (data === null) return false;
   var max = data.length;
@@ -1059,24 +267,6 @@ function constructYamlBoolean(data) {
 function isBoolean(object) {
   return Object.prototype.toString.call(object) === "[object Boolean]";
 }
-var bool = new type("tag:yaml.org,2002:bool", {
-  kind: "scalar",
-  resolve: resolveYamlBoolean,
-  construct: constructYamlBoolean,
-  predicate: isBoolean,
-  represent: {
-    lowercase: function(object) {
-      return object ? "true" : "false";
-    },
-    uppercase: function(object) {
-      return object ? "TRUE" : "FALSE";
-    },
-    camelcase: function(object) {
-      return object ? "True" : "False";
-    }
-  },
-  defaultStyle: "lowercase"
-});
 function isHexCode(c) {
   return 48 <= c && c <= 57 || 65 <= c && c <= 70 || 97 <= c && c <= 102;
 }
@@ -1162,38 +352,6 @@ function constructYamlInteger(data) {
 function isInteger(object) {
   return Object.prototype.toString.call(object) === "[object Number]" && (object % 1 === 0 && !common.isNegativeZero(object));
 }
-var int = new type("tag:yaml.org,2002:int", {
-  kind: "scalar",
-  resolve: resolveYamlInteger,
-  construct: constructYamlInteger,
-  predicate: isInteger,
-  represent: {
-    binary: function(obj) {
-      return obj >= 0 ? "0b" + obj.toString(2) : "-0b" + obj.toString(2).slice(1);
-    },
-    octal: function(obj) {
-      return obj >= 0 ? "0o" + obj.toString(8) : "-0o" + obj.toString(8).slice(1);
-    },
-    decimal: function(obj) {
-      return obj.toString(10);
-    },
-    /* eslint-disable max-len */
-    hexadecimal: function(obj) {
-      return obj >= 0 ? "0x" + obj.toString(16).toUpperCase() : "-0x" + obj.toString(16).toUpperCase().slice(1);
-    }
-  },
-  defaultStyle: "decimal",
-  styleAliases: {
-    binary: [2, "bin"],
-    octal: [8, "oct"],
-    decimal: [10, "dec"],
-    hexadecimal: [16, "hex"]
-  }
-});
-var YAML_FLOAT_PATTERN = new RegExp(
-  // 2.5e4, 2.5 and integers
-  "^(?:[-+]?(?:[0-9][0-9_]*)(?:\\.[0-9_]*)?(?:[eE][-+]?[0-9]+)?|\\.[0-9_]+(?:[eE][-+]?[0-9]+)?|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$"
-);
 function resolveYamlFloat(data) {
   if (data === null) return false;
   if (!YAML_FLOAT_PATTERN.test(data) || // Quick hack to not allow integers end with `_`
@@ -1217,7 +375,6 @@ function constructYamlFloat(data) {
   }
   return sign * parseFloat(value, 10);
 }
-var SCIENTIFIC_WITHOUT_DOT = /^[-+]?[0-9]+e/;
 function representYamlFloat(object, style) {
   var res;
   if (isNaN(object)) {
@@ -1256,29 +413,6 @@ function representYamlFloat(object, style) {
 function isFloat(object) {
   return Object.prototype.toString.call(object) === "[object Number]" && (object % 1 !== 0 || common.isNegativeZero(object));
 }
-var float = new type("tag:yaml.org,2002:float", {
-  kind: "scalar",
-  resolve: resolveYamlFloat,
-  construct: constructYamlFloat,
-  predicate: isFloat,
-  represent: representYamlFloat,
-  defaultStyle: "lowercase"
-});
-var json = failsafe.extend({
-  implicit: [
-    _null,
-    bool,
-    int,
-    float
-  ]
-});
-var core = json;
-var YAML_DATE_REGEXP = new RegExp(
-  "^([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9])$"
-);
-var YAML_TIMESTAMP_REGEXP = new RegExp(
-  "^([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)(?:[Tt]|[ \\t]+)([0-9][0-9]?):([0-9][0-9]):([0-9][0-9])(?:\\.([0-9]*))?(?:[ \\t]*(Z|([-+])([0-9][0-9]?)(?::([0-9][0-9]))?))?$"
-);
 function resolveYamlTimestamp(data) {
   if (data === null) return false;
   if (YAML_DATE_REGEXP.exec(data) !== null) return true;
@@ -1319,21 +453,9 @@ function constructYamlTimestamp(data) {
 function representYamlTimestamp(object) {
   return object.toISOString();
 }
-var timestamp = new type("tag:yaml.org,2002:timestamp", {
-  kind: "scalar",
-  resolve: resolveYamlTimestamp,
-  construct: constructYamlTimestamp,
-  instanceOf: Date,
-  represent: representYamlTimestamp
-});
 function resolveYamlMerge(data) {
   return data === "<<" || data === null;
 }
-var merge = new type("tag:yaml.org,2002:merge", {
-  kind: "scalar",
-  resolve: resolveYamlMerge
-});
-var BASE64_MAP = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\n\r";
 function resolveYamlBinary(data) {
   if (data === null) return false;
   var code, idx, bitlen = 0, max = data.length, map2 = BASE64_MAP;
@@ -1401,15 +523,6 @@ function representYamlBinary(object) {
 function isBinary(obj) {
   return Object.prototype.toString.call(obj) === "[object Uint8Array]";
 }
-var binary = new type("tag:yaml.org,2002:binary", {
-  kind: "scalar",
-  resolve: resolveYamlBinary,
-  construct: constructYamlBinary,
-  predicate: isBinary,
-  represent: representYamlBinary
-});
-var _hasOwnProperty$3 = Object.prototype.hasOwnProperty;
-var _toString$2 = Object.prototype.toString;
 function resolveYamlOmap(data) {
   if (data === null) return true;
   var objectKeys = [], index, length, pair, pairKey, pairHasKey, object = data;
@@ -1432,12 +545,6 @@ function resolveYamlOmap(data) {
 function constructYamlOmap(data) {
   return data !== null ? data : [];
 }
-var omap = new type("tag:yaml.org,2002:omap", {
-  kind: "sequence",
-  resolve: resolveYamlOmap,
-  construct: constructYamlOmap
-});
-var _toString$1 = Object.prototype.toString;
 function resolveYamlPairs(data) {
   if (data === null) return true;
   var index, length, pair, keys, result, object = data;
@@ -1462,12 +569,6 @@ function constructYamlPairs(data) {
   }
   return result;
 }
-var pairs = new type("tag:yaml.org,2002:pairs", {
-  kind: "sequence",
-  resolve: resolveYamlPairs,
-  construct: constructYamlPairs
-});
-var _hasOwnProperty$2 = Object.prototype.hasOwnProperty;
 function resolveYamlSet(data) {
   if (data === null) return true;
   var key, object = data;
@@ -1481,36 +582,6 @@ function resolveYamlSet(data) {
 function constructYamlSet(data) {
   return data !== null ? data : {};
 }
-var set = new type("tag:yaml.org,2002:set", {
-  kind: "mapping",
-  resolve: resolveYamlSet,
-  construct: constructYamlSet
-});
-var _default = core.extend({
-  implicit: [
-    timestamp,
-    merge
-  ],
-  explicit: [
-    binary,
-    omap,
-    pairs,
-    set
-  ]
-});
-var _hasOwnProperty$1 = Object.prototype.hasOwnProperty;
-var CONTEXT_FLOW_IN = 1;
-var CONTEXT_FLOW_OUT = 2;
-var CONTEXT_BLOCK_IN = 3;
-var CONTEXT_BLOCK_OUT = 4;
-var CHOMPING_CLIP = 1;
-var CHOMPING_STRIP = 2;
-var CHOMPING_KEEP = 3;
-var PATTERN_NON_PRINTABLE = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x84\x86-\x9F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/;
-var PATTERN_NON_ASCII_LINE_BREAKS = /[\x85\u2028\u2029]/;
-var PATTERN_FLOW_INDICATORS = /[,\[\]\{\}]/;
-var PATTERN_TAG_HANDLE = /^(?:!|!!|![a-z\-]+!)$/i;
-var PATTERN_TAG_URI = /^(?:!|[^,\[\]\{\}])(?:%[0-9a-f]{2}|[0-9a-z\-#;\/\?:@&=\+\$,_\.!~\*'\(\)\[\]])*$/i;
 function _class(obj) {
   return Object.prototype.toString.call(obj);
 }
@@ -1567,13 +638,6 @@ function charFromCodepoint(c) {
     (c - 65536 & 1023) + 56320
   );
 }
-var simpleEscapeCheck = new Array(256);
-var simpleEscapeMap = new Array(256);
-for (i = 0; i < 256; i++) {
-  simpleEscapeCheck[i] = simpleEscapeSequence(i) ? 1 : 0;
-  simpleEscapeMap[i] = simpleEscapeSequence(i);
-}
-var i;
 function State$1(input, options) {
   this.input = input;
   this.filename = options["filename"] || null;
@@ -1612,54 +676,6 @@ function throwWarning(state, message) {
     state.onWarning.call(null, generateError(state, message));
   }
 }
-var directiveHandlers = {
-  YAML: function handleYamlDirective(state, name, args) {
-    var match, major, minor;
-    if (state.version !== null) {
-      throwError(state, "duplication of %YAML directive");
-    }
-    if (args.length !== 1) {
-      throwError(state, "YAML directive accepts exactly one argument");
-    }
-    match = /^([0-9]+)\.([0-9]+)$/.exec(args[0]);
-    if (match === null) {
-      throwError(state, "ill-formed argument of the YAML directive");
-    }
-    major = parseInt(match[1], 10);
-    minor = parseInt(match[2], 10);
-    if (major !== 1) {
-      throwError(state, "unacceptable YAML version of the document");
-    }
-    state.version = args[0];
-    state.checkLineBreaks = minor < 2;
-    if (minor !== 1 && minor !== 2) {
-      throwWarning(state, "unsupported YAML version of the document");
-    }
-  },
-  TAG: function handleTagDirective(state, name, args) {
-    var handle, prefix;
-    if (args.length !== 2) {
-      throwError(state, "TAG directive accepts exactly two arguments");
-    }
-    handle = args[0];
-    prefix = args[1];
-    if (!PATTERN_TAG_HANDLE.test(handle)) {
-      throwError(state, "ill-formed tag handle (first argument) of the TAG directive");
-    }
-    if (_hasOwnProperty$1.call(state.tagMap, handle)) {
-      throwError(state, 'there is a previously declared suffix for "' + handle + '" tag handle');
-    }
-    if (!PATTERN_TAG_URI.test(prefix)) {
-      throwError(state, "ill-formed tag prefix (second argument) of the TAG directive");
-    }
-    try {
-      prefix = decodeURIComponent(prefix);
-    } catch (err) {
-      throwError(state, "tag prefix is malformed: " + prefix);
-    }
-    state.tagMap[handle] = prefix;
-  }
-};
 function captureSegment(state, start, end, checkJson) {
   var _position, _length, _character, _result;
   if (start < end) {
@@ -2646,74 +1662,6 @@ function load$1(input, options) {
   }
   throw new exception("expected a single document in the stream, but found more");
 }
-var loadAll_1 = loadAll$1;
-var load_1 = load$1;
-var loader = {
-  loadAll: loadAll_1,
-  load: load_1
-};
-var _toString = Object.prototype.toString;
-var _hasOwnProperty = Object.prototype.hasOwnProperty;
-var CHAR_BOM = 65279;
-var CHAR_TAB = 9;
-var CHAR_LINE_FEED = 10;
-var CHAR_CARRIAGE_RETURN = 13;
-var CHAR_SPACE = 32;
-var CHAR_EXCLAMATION = 33;
-var CHAR_DOUBLE_QUOTE = 34;
-var CHAR_SHARP = 35;
-var CHAR_PERCENT = 37;
-var CHAR_AMPERSAND = 38;
-var CHAR_SINGLE_QUOTE = 39;
-var CHAR_ASTERISK = 42;
-var CHAR_COMMA = 44;
-var CHAR_MINUS = 45;
-var CHAR_COLON = 58;
-var CHAR_EQUALS = 61;
-var CHAR_GREATER_THAN = 62;
-var CHAR_QUESTION = 63;
-var CHAR_COMMERCIAL_AT = 64;
-var CHAR_LEFT_SQUARE_BRACKET = 91;
-var CHAR_RIGHT_SQUARE_BRACKET = 93;
-var CHAR_GRAVE_ACCENT = 96;
-var CHAR_LEFT_CURLY_BRACKET = 123;
-var CHAR_VERTICAL_LINE = 124;
-var CHAR_RIGHT_CURLY_BRACKET = 125;
-var ESCAPE_SEQUENCES = {};
-ESCAPE_SEQUENCES[0] = "\\0";
-ESCAPE_SEQUENCES[7] = "\\a";
-ESCAPE_SEQUENCES[8] = "\\b";
-ESCAPE_SEQUENCES[9] = "\\t";
-ESCAPE_SEQUENCES[10] = "\\n";
-ESCAPE_SEQUENCES[11] = "\\v";
-ESCAPE_SEQUENCES[12] = "\\f";
-ESCAPE_SEQUENCES[13] = "\\r";
-ESCAPE_SEQUENCES[27] = "\\e";
-ESCAPE_SEQUENCES[34] = '\\"';
-ESCAPE_SEQUENCES[92] = "\\\\";
-ESCAPE_SEQUENCES[133] = "\\N";
-ESCAPE_SEQUENCES[160] = "\\_";
-ESCAPE_SEQUENCES[8232] = "\\L";
-ESCAPE_SEQUENCES[8233] = "\\P";
-var DEPRECATED_BOOLEANS_SYNTAX = [
-  "y",
-  "Y",
-  "yes",
-  "Yes",
-  "YES",
-  "on",
-  "On",
-  "ON",
-  "n",
-  "N",
-  "no",
-  "No",
-  "NO",
-  "off",
-  "Off",
-  "OFF"
-];
-var DEPRECATED_BASE60_SYNTAX = /^[-+]?[0-9_]+(?::[0-9_]+)+(?:\.[0-9_]*)?$/;
 function compileStyleMap(schema2, map2) {
   var result, keys, index, length, tag, style, type2;
   if (map2 === null) return {};
@@ -2750,8 +1698,6 @@ function encodeHex(character) {
   }
   return "\\" + handle + common.repeat("0", length - string.length) + string;
 }
-var QUOTING_TYPE_SINGLE = 1;
-var QUOTING_TYPE_DOUBLE = 2;
 function State(options) {
   this.schema = options["schema"] || _default;
   this.indent = Math.max(1, options["indent"] || 2);
@@ -2843,11 +1789,6 @@ function needIndentIndicator(string) {
   var leadingSpaceRe = /^\n* /;
   return leadingSpaceRe.test(string);
 }
-var STYLE_PLAIN = 1;
-var STYLE_SINGLE = 2;
-var STYLE_LITERAL = 3;
-var STYLE_FOLDED = 4;
-var STYLE_DOUBLE = 5;
 function chooseScalarStyle(string, singleLineOnly, indentPerLevel, lineWidth, testAmbiguousType, quotingType, forceQuotes, inblock) {
   var i;
   var char = 0;
@@ -3270,21 +2211,1626 @@ function dump$1(input, options) {
   if (writeNode(state, 0, value, true, true)) return state.dump + "\n";
   return "";
 }
-var dump_1 = dump$1;
-var dumper = {
-  dump: dump_1
-};
 function renamed(from, to) {
   return function() {
     throw new Error("Function yaml." + from + " is removed in js-yaml 4. Use yaml." + to + " instead, which is now safe by default.");
   };
 }
-var load = loader.load;
-var loadAll = loader.loadAll;
-var dump = dumper.dump;
-var safeLoad = renamed("safeLoad", "load");
-var safeLoadAll = renamed("safeLoadAll", "loadAll");
-var safeDump = renamed("safeDump", "dump");
+var isNothing_1, isObject_1, toArray_1, repeat_1, isNegativeZero_1, extend_1, common, exception, snippet, TYPE_CONSTRUCTOR_OPTIONS, YAML_NODE_KINDS, type, schema, str, seq, map, failsafe, _null, bool, int, YAML_FLOAT_PATTERN, SCIENTIFIC_WITHOUT_DOT, float, json, core, YAML_DATE_REGEXP, YAML_TIMESTAMP_REGEXP, timestamp, merge, BASE64_MAP, binary, _hasOwnProperty$3, _toString$2, omap, _toString$1, pairs, _hasOwnProperty$2, set, _default, _hasOwnProperty$1, CONTEXT_FLOW_IN, CONTEXT_FLOW_OUT, CONTEXT_BLOCK_IN, CONTEXT_BLOCK_OUT, CHOMPING_CLIP, CHOMPING_STRIP, CHOMPING_KEEP, PATTERN_NON_PRINTABLE, PATTERN_NON_ASCII_LINE_BREAKS, PATTERN_FLOW_INDICATORS, PATTERN_TAG_HANDLE, PATTERN_TAG_URI, simpleEscapeCheck, simpleEscapeMap, i, directiveHandlers, loadAll_1, load_1, loader, _toString, _hasOwnProperty, CHAR_BOM, CHAR_TAB, CHAR_LINE_FEED, CHAR_CARRIAGE_RETURN, CHAR_SPACE, CHAR_EXCLAMATION, CHAR_DOUBLE_QUOTE, CHAR_SHARP, CHAR_PERCENT, CHAR_AMPERSAND, CHAR_SINGLE_QUOTE, CHAR_ASTERISK, CHAR_COMMA, CHAR_MINUS, CHAR_COLON, CHAR_EQUALS, CHAR_GREATER_THAN, CHAR_QUESTION, CHAR_COMMERCIAL_AT, CHAR_LEFT_SQUARE_BRACKET, CHAR_RIGHT_SQUARE_BRACKET, CHAR_GRAVE_ACCENT, CHAR_LEFT_CURLY_BRACKET, CHAR_VERTICAL_LINE, CHAR_RIGHT_CURLY_BRACKET, ESCAPE_SEQUENCES, DEPRECATED_BOOLEANS_SYNTAX, DEPRECATED_BASE60_SYNTAX, QUOTING_TYPE_SINGLE, QUOTING_TYPE_DOUBLE, STYLE_PLAIN, STYLE_SINGLE, STYLE_LITERAL, STYLE_FOLDED, STYLE_DOUBLE, dump_1, dumper, load, loadAll, dump, safeLoad, safeLoadAll, safeDump;
+var init_js_yaml = __esm({
+  "node_modules/js-yaml/dist/js-yaml.mjs"() {
+    isNothing_1 = isNothing;
+    isObject_1 = isObject;
+    toArray_1 = toArray;
+    repeat_1 = repeat;
+    isNegativeZero_1 = isNegativeZero;
+    extend_1 = extend;
+    common = {
+      isNothing: isNothing_1,
+      isObject: isObject_1,
+      toArray: toArray_1,
+      repeat: repeat_1,
+      isNegativeZero: isNegativeZero_1,
+      extend: extend_1
+    };
+    YAMLException$1.prototype = Object.create(Error.prototype);
+    YAMLException$1.prototype.constructor = YAMLException$1;
+    YAMLException$1.prototype.toString = function toString(compact) {
+      return this.name + ": " + formatError(this, compact);
+    };
+    exception = YAMLException$1;
+    snippet = makeSnippet;
+    TYPE_CONSTRUCTOR_OPTIONS = [
+      "kind",
+      "multi",
+      "resolve",
+      "construct",
+      "instanceOf",
+      "predicate",
+      "represent",
+      "representName",
+      "defaultStyle",
+      "styleAliases"
+    ];
+    YAML_NODE_KINDS = [
+      "scalar",
+      "sequence",
+      "mapping"
+    ];
+    type = Type$1;
+    Schema$1.prototype.extend = function extend2(definition) {
+      var implicit = [];
+      var explicit = [];
+      if (definition instanceof type) {
+        explicit.push(definition);
+      } else if (Array.isArray(definition)) {
+        explicit = explicit.concat(definition);
+      } else if (definition && (Array.isArray(definition.implicit) || Array.isArray(definition.explicit))) {
+        if (definition.implicit) implicit = implicit.concat(definition.implicit);
+        if (definition.explicit) explicit = explicit.concat(definition.explicit);
+      } else {
+        throw new exception("Schema.extend argument should be a Type, [ Type ], or a schema definition ({ implicit: [...], explicit: [...] })");
+      }
+      implicit.forEach(function(type$1) {
+        if (!(type$1 instanceof type)) {
+          throw new exception("Specified list of YAML types (or a single Type object) contains a non-Type object.");
+        }
+        if (type$1.loadKind && type$1.loadKind !== "scalar") {
+          throw new exception("There is a non-scalar type in the implicit list of a schema. Implicit resolving of such types is not supported.");
+        }
+        if (type$1.multi) {
+          throw new exception("There is a multi type in the implicit list of a schema. Multi tags can only be listed as explicit.");
+        }
+      });
+      explicit.forEach(function(type$1) {
+        if (!(type$1 instanceof type)) {
+          throw new exception("Specified list of YAML types (or a single Type object) contains a non-Type object.");
+        }
+      });
+      var result = Object.create(Schema$1.prototype);
+      result.implicit = (this.implicit || []).concat(implicit);
+      result.explicit = (this.explicit || []).concat(explicit);
+      result.compiledImplicit = compileList(result, "implicit");
+      result.compiledExplicit = compileList(result, "explicit");
+      result.compiledTypeMap = compileMap(result.compiledImplicit, result.compiledExplicit);
+      return result;
+    };
+    schema = Schema$1;
+    str = new type("tag:yaml.org,2002:str", {
+      kind: "scalar",
+      construct: function(data) {
+        return data !== null ? data : "";
+      }
+    });
+    seq = new type("tag:yaml.org,2002:seq", {
+      kind: "sequence",
+      construct: function(data) {
+        return data !== null ? data : [];
+      }
+    });
+    map = new type("tag:yaml.org,2002:map", {
+      kind: "mapping",
+      construct: function(data) {
+        return data !== null ? data : {};
+      }
+    });
+    failsafe = new schema({
+      explicit: [
+        str,
+        seq,
+        map
+      ]
+    });
+    _null = new type("tag:yaml.org,2002:null", {
+      kind: "scalar",
+      resolve: resolveYamlNull,
+      construct: constructYamlNull,
+      predicate: isNull,
+      represent: {
+        canonical: function() {
+          return "~";
+        },
+        lowercase: function() {
+          return "null";
+        },
+        uppercase: function() {
+          return "NULL";
+        },
+        camelcase: function() {
+          return "Null";
+        },
+        empty: function() {
+          return "";
+        }
+      },
+      defaultStyle: "lowercase"
+    });
+    bool = new type("tag:yaml.org,2002:bool", {
+      kind: "scalar",
+      resolve: resolveYamlBoolean,
+      construct: constructYamlBoolean,
+      predicate: isBoolean,
+      represent: {
+        lowercase: function(object) {
+          return object ? "true" : "false";
+        },
+        uppercase: function(object) {
+          return object ? "TRUE" : "FALSE";
+        },
+        camelcase: function(object) {
+          return object ? "True" : "False";
+        }
+      },
+      defaultStyle: "lowercase"
+    });
+    int = new type("tag:yaml.org,2002:int", {
+      kind: "scalar",
+      resolve: resolveYamlInteger,
+      construct: constructYamlInteger,
+      predicate: isInteger,
+      represent: {
+        binary: function(obj) {
+          return obj >= 0 ? "0b" + obj.toString(2) : "-0b" + obj.toString(2).slice(1);
+        },
+        octal: function(obj) {
+          return obj >= 0 ? "0o" + obj.toString(8) : "-0o" + obj.toString(8).slice(1);
+        },
+        decimal: function(obj) {
+          return obj.toString(10);
+        },
+        /* eslint-disable max-len */
+        hexadecimal: function(obj) {
+          return obj >= 0 ? "0x" + obj.toString(16).toUpperCase() : "-0x" + obj.toString(16).toUpperCase().slice(1);
+        }
+      },
+      defaultStyle: "decimal",
+      styleAliases: {
+        binary: [2, "bin"],
+        octal: [8, "oct"],
+        decimal: [10, "dec"],
+        hexadecimal: [16, "hex"]
+      }
+    });
+    YAML_FLOAT_PATTERN = new RegExp(
+      // 2.5e4, 2.5 and integers
+      "^(?:[-+]?(?:[0-9][0-9_]*)(?:\\.[0-9_]*)?(?:[eE][-+]?[0-9]+)?|\\.[0-9_]+(?:[eE][-+]?[0-9]+)?|[-+]?\\.(?:inf|Inf|INF)|\\.(?:nan|NaN|NAN))$"
+    );
+    SCIENTIFIC_WITHOUT_DOT = /^[-+]?[0-9]+e/;
+    float = new type("tag:yaml.org,2002:float", {
+      kind: "scalar",
+      resolve: resolveYamlFloat,
+      construct: constructYamlFloat,
+      predicate: isFloat,
+      represent: representYamlFloat,
+      defaultStyle: "lowercase"
+    });
+    json = failsafe.extend({
+      implicit: [
+        _null,
+        bool,
+        int,
+        float
+      ]
+    });
+    core = json;
+    YAML_DATE_REGEXP = new RegExp(
+      "^([0-9][0-9][0-9][0-9])-([0-9][0-9])-([0-9][0-9])$"
+    );
+    YAML_TIMESTAMP_REGEXP = new RegExp(
+      "^([0-9][0-9][0-9][0-9])-([0-9][0-9]?)-([0-9][0-9]?)(?:[Tt]|[ \\t]+)([0-9][0-9]?):([0-9][0-9]):([0-9][0-9])(?:\\.([0-9]*))?(?:[ \\t]*(Z|([-+])([0-9][0-9]?)(?::([0-9][0-9]))?))?$"
+    );
+    timestamp = new type("tag:yaml.org,2002:timestamp", {
+      kind: "scalar",
+      resolve: resolveYamlTimestamp,
+      construct: constructYamlTimestamp,
+      instanceOf: Date,
+      represent: representYamlTimestamp
+    });
+    merge = new type("tag:yaml.org,2002:merge", {
+      kind: "scalar",
+      resolve: resolveYamlMerge
+    });
+    BASE64_MAP = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=\n\r";
+    binary = new type("tag:yaml.org,2002:binary", {
+      kind: "scalar",
+      resolve: resolveYamlBinary,
+      construct: constructYamlBinary,
+      predicate: isBinary,
+      represent: representYamlBinary
+    });
+    _hasOwnProperty$3 = Object.prototype.hasOwnProperty;
+    _toString$2 = Object.prototype.toString;
+    omap = new type("tag:yaml.org,2002:omap", {
+      kind: "sequence",
+      resolve: resolveYamlOmap,
+      construct: constructYamlOmap
+    });
+    _toString$1 = Object.prototype.toString;
+    pairs = new type("tag:yaml.org,2002:pairs", {
+      kind: "sequence",
+      resolve: resolveYamlPairs,
+      construct: constructYamlPairs
+    });
+    _hasOwnProperty$2 = Object.prototype.hasOwnProperty;
+    set = new type("tag:yaml.org,2002:set", {
+      kind: "mapping",
+      resolve: resolveYamlSet,
+      construct: constructYamlSet
+    });
+    _default = core.extend({
+      implicit: [
+        timestamp,
+        merge
+      ],
+      explicit: [
+        binary,
+        omap,
+        pairs,
+        set
+      ]
+    });
+    _hasOwnProperty$1 = Object.prototype.hasOwnProperty;
+    CONTEXT_FLOW_IN = 1;
+    CONTEXT_FLOW_OUT = 2;
+    CONTEXT_BLOCK_IN = 3;
+    CONTEXT_BLOCK_OUT = 4;
+    CHOMPING_CLIP = 1;
+    CHOMPING_STRIP = 2;
+    CHOMPING_KEEP = 3;
+    PATTERN_NON_PRINTABLE = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x84\x86-\x9F\uFFFE\uFFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/;
+    PATTERN_NON_ASCII_LINE_BREAKS = /[\x85\u2028\u2029]/;
+    PATTERN_FLOW_INDICATORS = /[,\[\]\{\}]/;
+    PATTERN_TAG_HANDLE = /^(?:!|!!|![a-z\-]+!)$/i;
+    PATTERN_TAG_URI = /^(?:!|[^,\[\]\{\}])(?:%[0-9a-f]{2}|[0-9a-z\-#;\/\?:@&=\+\$,_\.!~\*'\(\)\[\]])*$/i;
+    simpleEscapeCheck = new Array(256);
+    simpleEscapeMap = new Array(256);
+    for (i = 0; i < 256; i++) {
+      simpleEscapeCheck[i] = simpleEscapeSequence(i) ? 1 : 0;
+      simpleEscapeMap[i] = simpleEscapeSequence(i);
+    }
+    directiveHandlers = {
+      YAML: function handleYamlDirective(state, name, args) {
+        var match, major, minor;
+        if (state.version !== null) {
+          throwError(state, "duplication of %YAML directive");
+        }
+        if (args.length !== 1) {
+          throwError(state, "YAML directive accepts exactly one argument");
+        }
+        match = /^([0-9]+)\.([0-9]+)$/.exec(args[0]);
+        if (match === null) {
+          throwError(state, "ill-formed argument of the YAML directive");
+        }
+        major = parseInt(match[1], 10);
+        minor = parseInt(match[2], 10);
+        if (major !== 1) {
+          throwError(state, "unacceptable YAML version of the document");
+        }
+        state.version = args[0];
+        state.checkLineBreaks = minor < 2;
+        if (minor !== 1 && minor !== 2) {
+          throwWarning(state, "unsupported YAML version of the document");
+        }
+      },
+      TAG: function handleTagDirective(state, name, args) {
+        var handle, prefix;
+        if (args.length !== 2) {
+          throwError(state, "TAG directive accepts exactly two arguments");
+        }
+        handle = args[0];
+        prefix = args[1];
+        if (!PATTERN_TAG_HANDLE.test(handle)) {
+          throwError(state, "ill-formed tag handle (first argument) of the TAG directive");
+        }
+        if (_hasOwnProperty$1.call(state.tagMap, handle)) {
+          throwError(state, 'there is a previously declared suffix for "' + handle + '" tag handle');
+        }
+        if (!PATTERN_TAG_URI.test(prefix)) {
+          throwError(state, "ill-formed tag prefix (second argument) of the TAG directive");
+        }
+        try {
+          prefix = decodeURIComponent(prefix);
+        } catch (err) {
+          throwError(state, "tag prefix is malformed: " + prefix);
+        }
+        state.tagMap[handle] = prefix;
+      }
+    };
+    loadAll_1 = loadAll$1;
+    load_1 = load$1;
+    loader = {
+      loadAll: loadAll_1,
+      load: load_1
+    };
+    _toString = Object.prototype.toString;
+    _hasOwnProperty = Object.prototype.hasOwnProperty;
+    CHAR_BOM = 65279;
+    CHAR_TAB = 9;
+    CHAR_LINE_FEED = 10;
+    CHAR_CARRIAGE_RETURN = 13;
+    CHAR_SPACE = 32;
+    CHAR_EXCLAMATION = 33;
+    CHAR_DOUBLE_QUOTE = 34;
+    CHAR_SHARP = 35;
+    CHAR_PERCENT = 37;
+    CHAR_AMPERSAND = 38;
+    CHAR_SINGLE_QUOTE = 39;
+    CHAR_ASTERISK = 42;
+    CHAR_COMMA = 44;
+    CHAR_MINUS = 45;
+    CHAR_COLON = 58;
+    CHAR_EQUALS = 61;
+    CHAR_GREATER_THAN = 62;
+    CHAR_QUESTION = 63;
+    CHAR_COMMERCIAL_AT = 64;
+    CHAR_LEFT_SQUARE_BRACKET = 91;
+    CHAR_RIGHT_SQUARE_BRACKET = 93;
+    CHAR_GRAVE_ACCENT = 96;
+    CHAR_LEFT_CURLY_BRACKET = 123;
+    CHAR_VERTICAL_LINE = 124;
+    CHAR_RIGHT_CURLY_BRACKET = 125;
+    ESCAPE_SEQUENCES = {};
+    ESCAPE_SEQUENCES[0] = "\\0";
+    ESCAPE_SEQUENCES[7] = "\\a";
+    ESCAPE_SEQUENCES[8] = "\\b";
+    ESCAPE_SEQUENCES[9] = "\\t";
+    ESCAPE_SEQUENCES[10] = "\\n";
+    ESCAPE_SEQUENCES[11] = "\\v";
+    ESCAPE_SEQUENCES[12] = "\\f";
+    ESCAPE_SEQUENCES[13] = "\\r";
+    ESCAPE_SEQUENCES[27] = "\\e";
+    ESCAPE_SEQUENCES[34] = '\\"';
+    ESCAPE_SEQUENCES[92] = "\\\\";
+    ESCAPE_SEQUENCES[133] = "\\N";
+    ESCAPE_SEQUENCES[160] = "\\_";
+    ESCAPE_SEQUENCES[8232] = "\\L";
+    ESCAPE_SEQUENCES[8233] = "\\P";
+    DEPRECATED_BOOLEANS_SYNTAX = [
+      "y",
+      "Y",
+      "yes",
+      "Yes",
+      "YES",
+      "on",
+      "On",
+      "ON",
+      "n",
+      "N",
+      "no",
+      "No",
+      "NO",
+      "off",
+      "Off",
+      "OFF"
+    ];
+    DEPRECATED_BASE60_SYNTAX = /^[-+]?[0-9_]+(?::[0-9_]+)+(?:\.[0-9_]*)?$/;
+    QUOTING_TYPE_SINGLE = 1;
+    QUOTING_TYPE_DOUBLE = 2;
+    STYLE_PLAIN = 1;
+    STYLE_SINGLE = 2;
+    STYLE_LITERAL = 3;
+    STYLE_FOLDED = 4;
+    STYLE_DOUBLE = 5;
+    dump_1 = dump$1;
+    dumper = {
+      dump: dump_1
+    };
+    load = loader.load;
+    loadAll = loader.loadAll;
+    dump = dumper.dump;
+    safeLoad = renamed("safeLoad", "load");
+    safeLoadAll = renamed("safeLoadAll", "loadAll");
+    safeDump = renamed("safeDump", "dump");
+  }
+});
+
+// node_modules/pluralize/pluralize.js
+var require_pluralize = __commonJS({
+  "node_modules/pluralize/pluralize.js"(exports, module2) {
+    (function(root, pluralize2) {
+      if (typeof require === "function" && typeof exports === "object" && typeof module2 === "object") {
+        module2.exports = pluralize2();
+      } else if (typeof define === "function" && define.amd) {
+        define(function() {
+          return pluralize2();
+        });
+      } else {
+        root.pluralize = pluralize2();
+      }
+    })(exports, function() {
+      var pluralRules = [];
+      var singularRules = [];
+      var uncountables = {};
+      var irregularPlurals = {};
+      var irregularSingles = {};
+      function sanitizeRule(rule) {
+        if (typeof rule === "string") {
+          return new RegExp("^" + rule + "$", "i");
+        }
+        return rule;
+      }
+      function restoreCase(word, token) {
+        if (word === token) return token;
+        if (word === word.toLowerCase()) return token.toLowerCase();
+        if (word === word.toUpperCase()) return token.toUpperCase();
+        if (word[0] === word[0].toUpperCase()) {
+          return token.charAt(0).toUpperCase() + token.substr(1).toLowerCase();
+        }
+        return token.toLowerCase();
+      }
+      function interpolate(str2, args) {
+        return str2.replace(/\$(\d{1,2})/g, function(match, index) {
+          return args[index] || "";
+        });
+      }
+      function replace(word, rule) {
+        return word.replace(rule[0], function(match, index) {
+          var result = interpolate(rule[1], arguments);
+          if (match === "") {
+            return restoreCase(word[index - 1], result);
+          }
+          return restoreCase(match, result);
+        });
+      }
+      function sanitizeWord(token, word, rules) {
+        if (!token.length || uncountables.hasOwnProperty(token)) {
+          return word;
+        }
+        var len = rules.length;
+        while (len--) {
+          var rule = rules[len];
+          if (rule[0].test(word)) return replace(word, rule);
+        }
+        return word;
+      }
+      function replaceWord(replaceMap, keepMap, rules) {
+        return function(word) {
+          var token = word.toLowerCase();
+          if (keepMap.hasOwnProperty(token)) {
+            return restoreCase(word, token);
+          }
+          if (replaceMap.hasOwnProperty(token)) {
+            return restoreCase(word, replaceMap[token]);
+          }
+          return sanitizeWord(token, word, rules);
+        };
+      }
+      function checkWord(replaceMap, keepMap, rules, bool2) {
+        return function(word) {
+          var token = word.toLowerCase();
+          if (keepMap.hasOwnProperty(token)) return true;
+          if (replaceMap.hasOwnProperty(token)) return false;
+          return sanitizeWord(token, token, rules) === token;
+        };
+      }
+      function pluralize2(word, count, inclusive) {
+        var pluralized = count === 1 ? pluralize2.singular(word) : pluralize2.plural(word);
+        return (inclusive ? count + " " : "") + pluralized;
+      }
+      pluralize2.plural = replaceWord(
+        irregularSingles,
+        irregularPlurals,
+        pluralRules
+      );
+      pluralize2.isPlural = checkWord(
+        irregularSingles,
+        irregularPlurals,
+        pluralRules
+      );
+      pluralize2.singular = replaceWord(
+        irregularPlurals,
+        irregularSingles,
+        singularRules
+      );
+      pluralize2.isSingular = checkWord(
+        irregularPlurals,
+        irregularSingles,
+        singularRules
+      );
+      pluralize2.addPluralRule = function(rule, replacement) {
+        pluralRules.push([sanitizeRule(rule), replacement]);
+      };
+      pluralize2.addSingularRule = function(rule, replacement) {
+        singularRules.push([sanitizeRule(rule), replacement]);
+      };
+      pluralize2.addUncountableRule = function(word) {
+        if (typeof word === "string") {
+          uncountables[word.toLowerCase()] = true;
+          return;
+        }
+        pluralize2.addPluralRule(word, "$0");
+        pluralize2.addSingularRule(word, "$0");
+      };
+      pluralize2.addIrregularRule = function(single, plural) {
+        plural = plural.toLowerCase();
+        single = single.toLowerCase();
+        irregularSingles[single] = plural;
+        irregularPlurals[plural] = single;
+      };
+      [
+        // Pronouns.
+        ["I", "we"],
+        ["me", "us"],
+        ["he", "they"],
+        ["she", "they"],
+        ["them", "them"],
+        ["myself", "ourselves"],
+        ["yourself", "yourselves"],
+        ["itself", "themselves"],
+        ["herself", "themselves"],
+        ["himself", "themselves"],
+        ["themself", "themselves"],
+        ["is", "are"],
+        ["was", "were"],
+        ["has", "have"],
+        ["this", "these"],
+        ["that", "those"],
+        // Words ending in with a consonant and `o`.
+        ["echo", "echoes"],
+        ["dingo", "dingoes"],
+        ["volcano", "volcanoes"],
+        ["tornado", "tornadoes"],
+        ["torpedo", "torpedoes"],
+        // Ends with `us`.
+        ["genus", "genera"],
+        ["viscus", "viscera"],
+        // Ends with `ma`.
+        ["stigma", "stigmata"],
+        ["stoma", "stomata"],
+        ["dogma", "dogmata"],
+        ["lemma", "lemmata"],
+        ["schema", "schemata"],
+        ["anathema", "anathemata"],
+        // Other irregular rules.
+        ["ox", "oxen"],
+        ["axe", "axes"],
+        ["die", "dice"],
+        ["yes", "yeses"],
+        ["foot", "feet"],
+        ["eave", "eaves"],
+        ["goose", "geese"],
+        ["tooth", "teeth"],
+        ["quiz", "quizzes"],
+        ["human", "humans"],
+        ["proof", "proofs"],
+        ["carve", "carves"],
+        ["valve", "valves"],
+        ["looey", "looies"],
+        ["thief", "thieves"],
+        ["groove", "grooves"],
+        ["pickaxe", "pickaxes"],
+        ["passerby", "passersby"]
+      ].forEach(function(rule) {
+        return pluralize2.addIrregularRule(rule[0], rule[1]);
+      });
+      [
+        [/s?$/i, "s"],
+        [/[^\u0000-\u007F]$/i, "$0"],
+        [/([^aeiou]ese)$/i, "$1"],
+        [/(ax|test)is$/i, "$1es"],
+        [/(alias|[^aou]us|t[lm]as|gas|ris)$/i, "$1es"],
+        [/(e[mn]u)s?$/i, "$1s"],
+        [/([^l]ias|[aeiou]las|[ejzr]as|[iu]am)$/i, "$1"],
+        [/(alumn|syllab|vir|radi|nucle|fung|cact|stimul|termin|bacill|foc|uter|loc|strat)(?:us|i)$/i, "$1i"],
+        [/(alumn|alg|vertebr)(?:a|ae)$/i, "$1ae"],
+        [/(seraph|cherub)(?:im)?$/i, "$1im"],
+        [/(her|at|gr)o$/i, "$1oes"],
+        [/(agend|addend|millenni|dat|extrem|bacteri|desiderat|strat|candelabr|errat|ov|symposi|curricul|automat|quor)(?:a|um)$/i, "$1a"],
+        [/(apheli|hyperbat|periheli|asyndet|noumen|phenomen|criteri|organ|prolegomen|hedr|automat)(?:a|on)$/i, "$1a"],
+        [/sis$/i, "ses"],
+        [/(?:(kni|wi|li)fe|(ar|l|ea|eo|oa|hoo)f)$/i, "$1$2ves"],
+        [/([^aeiouy]|qu)y$/i, "$1ies"],
+        [/([^ch][ieo][ln])ey$/i, "$1ies"],
+        [/(x|ch|ss|sh|zz)$/i, "$1es"],
+        [/(matr|cod|mur|sil|vert|ind|append)(?:ix|ex)$/i, "$1ices"],
+        [/\b((?:tit)?m|l)(?:ice|ouse)$/i, "$1ice"],
+        [/(pe)(?:rson|ople)$/i, "$1ople"],
+        [/(child)(?:ren)?$/i, "$1ren"],
+        [/eaux$/i, "$0"],
+        [/m[ae]n$/i, "men"],
+        ["thou", "you"]
+      ].forEach(function(rule) {
+        return pluralize2.addPluralRule(rule[0], rule[1]);
+      });
+      [
+        [/s$/i, ""],
+        [/(ss)$/i, "$1"],
+        [/(wi|kni|(?:after|half|high|low|mid|non|night|[^\w]|^)li)ves$/i, "$1fe"],
+        [/(ar|(?:wo|[ae])l|[eo][ao])ves$/i, "$1f"],
+        [/ies$/i, "y"],
+        [/\b([pl]|zomb|(?:neck|cross)?t|coll|faer|food|gen|goon|group|lass|talk|goal|cut)ies$/i, "$1ie"],
+        [/\b(mon|smil)ies$/i, "$1ey"],
+        [/\b((?:tit)?m|l)ice$/i, "$1ouse"],
+        [/(seraph|cherub)im$/i, "$1"],
+        [/(x|ch|ss|sh|zz|tto|go|cho|alias|[^aou]us|t[lm]as|gas|(?:her|at|gr)o|[aeiou]ris)(?:es)?$/i, "$1"],
+        [/(analy|diagno|parenthe|progno|synop|the|empha|cri|ne)(?:sis|ses)$/i, "$1sis"],
+        [/(movie|twelve|abuse|e[mn]u)s$/i, "$1"],
+        [/(test)(?:is|es)$/i, "$1is"],
+        [/(alumn|syllab|vir|radi|nucle|fung|cact|stimul|termin|bacill|foc|uter|loc|strat)(?:us|i)$/i, "$1us"],
+        [/(agend|addend|millenni|dat|extrem|bacteri|desiderat|strat|candelabr|errat|ov|symposi|curricul|quor)a$/i, "$1um"],
+        [/(apheli|hyperbat|periheli|asyndet|noumen|phenomen|criteri|organ|prolegomen|hedr|automat)a$/i, "$1on"],
+        [/(alumn|alg|vertebr)ae$/i, "$1a"],
+        [/(cod|mur|sil|vert|ind)ices$/i, "$1ex"],
+        [/(matr|append)ices$/i, "$1ix"],
+        [/(pe)(rson|ople)$/i, "$1rson"],
+        [/(child)ren$/i, "$1"],
+        [/(eau)x?$/i, "$1"],
+        [/men$/i, "man"]
+      ].forEach(function(rule) {
+        return pluralize2.addSingularRule(rule[0], rule[1]);
+      });
+      [
+        // Singular words with no plurals.
+        "adulthood",
+        "advice",
+        "agenda",
+        "aid",
+        "aircraft",
+        "alcohol",
+        "ammo",
+        "analytics",
+        "anime",
+        "athletics",
+        "audio",
+        "bison",
+        "blood",
+        "bream",
+        "buffalo",
+        "butter",
+        "carp",
+        "cash",
+        "chassis",
+        "chess",
+        "clothing",
+        "cod",
+        "commerce",
+        "cooperation",
+        "corps",
+        "debris",
+        "diabetes",
+        "digestion",
+        "elk",
+        "energy",
+        "equipment",
+        "excretion",
+        "expertise",
+        "firmware",
+        "flounder",
+        "fun",
+        "gallows",
+        "garbage",
+        "graffiti",
+        "hardware",
+        "headquarters",
+        "health",
+        "herpes",
+        "highjinks",
+        "homework",
+        "housework",
+        "information",
+        "jeans",
+        "justice",
+        "kudos",
+        "labour",
+        "literature",
+        "machinery",
+        "mackerel",
+        "mail",
+        "media",
+        "mews",
+        "moose",
+        "music",
+        "mud",
+        "manga",
+        "news",
+        "only",
+        "personnel",
+        "pike",
+        "plankton",
+        "pliers",
+        "police",
+        "pollution",
+        "premises",
+        "rain",
+        "research",
+        "rice",
+        "salmon",
+        "scissors",
+        "series",
+        "sewage",
+        "shambles",
+        "shrimp",
+        "software",
+        "species",
+        "staff",
+        "swine",
+        "tennis",
+        "traffic",
+        "transportation",
+        "trout",
+        "tuna",
+        "wealth",
+        "welfare",
+        "whiting",
+        "wildebeest",
+        "wildlife",
+        "you",
+        /pok[eé]mon$/i,
+        // Regexes.
+        /[^aeiou]ese$/i,
+        // "chinese", "japanese"
+        /deer$/i,
+        // "deer", "reindeer"
+        /fish$/i,
+        // "fish", "blowfish", "angelfish"
+        /measles$/i,
+        /o[iu]s$/i,
+        // "carnivorous"
+        /pox$/i,
+        // "chickpox", "smallpox"
+        /sheep$/i
+      ].forEach(pluralize2.addUncountableRule);
+      return pluralize2;
+    });
+  }
+});
+
+// src/services/base-definitions/BaseConfigurations.ts
+function generateTasksBase(settings, projectsAndAreas) {
+  const config = {
+    formulas: FORMULAS.common,
+    properties: { ...PROPERTIES.common, ...PROPERTIES.task },
+    views: [
+      // Main Tasks view
+      {
+        type: "table",
+        name: "Tasks",
+        filters: { and: [`file.folder == "${settings.tasksFolder}"`] },
+        order: [...VIEW_ORDERS.tasks.main],
+        sort: [...SORT_CONFIGS.main]
+      },
+      // All view
+      {
+        type: "table",
+        name: "All",
+        filters: { and: [`file.folder == "${settings.tasksFolder}"`] },
+        order: [...VIEW_ORDERS.tasks.main],
+        sort: [...SORT_CONFIGS.main]
+      },
+      // Type-specific views
+      ...settings.taskTypes.filter((taskType) => taskType.name !== "Task").map((taskType) => ({
+        type: "table",
+        name: (0, import_pluralize.default)(taskType.name),
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `Type == "${taskType.name}"`
+          ]
+        },
+        order: [...VIEW_ORDERS.tasks.type],
+        sort: [...SORT_CONFIGS.main]
+      })),
+      // Area views
+      ...projectsAndAreas.filter((item) => item.type === "area").map((area) => ({
+        type: "table",
+        name: area.name,
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `Areas.contains(link("${area.name}"))`
+          ]
+        },
+        order: [
+          "Status",
+          "formula.Title",
+          "formula.Type",
+          "tags",
+          "file.mtime",
+          "file.ctime",
+          "Project"
+        ],
+        sort: [...SORT_CONFIGS.area],
+        columnSize: {
+          "formula.Title": 382,
+          "note.tags": 134,
+          "file.mtime": 165,
+          "file.ctime": 183
+        }
+      })),
+      // Project views
+      ...projectsAndAreas.filter((item) => item.type === "project").map((project) => ({
+        type: "table",
+        name: project.name,
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `Project.contains(link("${project.name}"))`
+          ]
+        },
+        order: [
+          "Status",
+          "formula.Title",
+          "formula.Type",
+          "tags",
+          "file.mtime",
+          "file.ctime",
+          "Areas"
+        ],
+        sort: [...SORT_CONFIGS.area]
+      }))
+    ]
+  };
+  return dump(config, {
+    indent: 2,
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false
+  });
+}
+function generateAreaBase(settings, area) {
+  const config = {
+    formulas: FORMULAS.common,
+    properties: { ...PROPERTIES.common, ...PROPERTIES.area },
+    views: [
+      // Main Tasks view
+      {
+        type: "table",
+        name: "Tasks",
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `Areas.contains(link("${area.name}"))`
+          ]
+        },
+        order: [...VIEW_ORDERS.area.main],
+        sort: [...SORT_CONFIGS.area],
+        columnSize: {
+          "formula.Title": 382,
+          "note.tags": 134,
+          "file.mtime": 165,
+          "file.ctime": 183
+        }
+      },
+      // Type-specific views
+      ...settings.taskTypes.filter((taskType) => taskType.name !== "Task").map((taskType) => ({
+        type: "table",
+        name: (0, import_pluralize.default)(taskType.name),
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `Areas.contains(link("${area.name}"))`,
+            `Type == "${taskType.name}"`
+          ]
+        },
+        order: [...VIEW_ORDERS.area.type],
+        sort: [...SORT_CONFIGS.main]
+      }))
+    ]
+  };
+  return dump(config, {
+    indent: 2,
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false
+  });
+}
+function generateProjectBase(settings, project) {
+  const config = {
+    formulas: FORMULAS.common,
+    properties: { ...PROPERTIES.common, ...PROPERTIES.project },
+    views: [
+      // Main Tasks view
+      {
+        type: "table",
+        name: "Tasks",
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `Project.contains(link("${project.name}"))`
+          ]
+        },
+        order: [...VIEW_ORDERS.project.main],
+        sort: [...SORT_CONFIGS.main]
+      },
+      // Type-specific views
+      ...settings.taskTypes.filter((taskType) => taskType.name !== "Task").map((taskType) => ({
+        type: "table",
+        name: (0, import_pluralize.default)(taskType.name),
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `Project.contains(link("${project.name}"))`,
+            `Type == "${taskType.name}"`
+          ]
+        },
+        order: [...VIEW_ORDERS.project.type],
+        sort: [...SORT_CONFIGS.main]
+      }))
+    ]
+  };
+  return dump(config, {
+    indent: 2,
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false
+  });
+}
+var import_pluralize, FORMULAS, PROPERTIES, VIEW_ORDERS, SORT_CONFIGS, VIEW_TEMPLATES, FRONTMATTER_FIELDS;
+var init_BaseConfigurations = __esm({
+  "src/services/base-definitions/BaseConfigurations.ts"() {
+    init_js_yaml();
+    import_pluralize = __toESM(require_pluralize());
+    FORMULAS = {
+      common: {
+        Type: "Type",
+        Title: "link(file.name, Title)"
+      }
+    };
+    PROPERTIES = {
+      common: {
+        "file.name": { displayName: "Title" },
+        "note.Done": { displayName: "Done" },
+        "file.ctime": { displayName: "Created At" },
+        "file.mtime": { displayName: "Updated At" }
+      },
+      task: {
+        "note.Status": { displayName: "Done" },
+        "note.tags": { displayName: "Tags" },
+        "note.Areas": { displayName: "Areas" },
+        "note.Project": { displayName: "Project" },
+        "note.Priority": { displayName: "Priority" },
+        "note.Parent task": { displayName: "Parent task" },
+        "note.Sub-tasks": { displayName: "Sub-tasks" }
+      },
+      area: {
+        "note.Project": { displayName: "Project" }
+      },
+      project: {
+        "note.Areas": { displayName: "Areas" }
+      }
+    };
+    VIEW_ORDERS = {
+      tasks: {
+        main: [
+          "Status",
+          "formula.Title",
+          "formula.Type",
+          "tags",
+          "file.mtime",
+          "file.ctime",
+          "Areas",
+          "Project"
+        ],
+        type: [
+          "Status",
+          "formula.Title",
+          "tags",
+          "file.mtime",
+          "file.ctime",
+          "Areas",
+          "Project"
+        ]
+      },
+      area: {
+        main: [
+          "Done",
+          "formula.Title",
+          "Project",
+          "formula.Type",
+          "file.ctime",
+          "file.mtime"
+        ],
+        type: [
+          "Done",
+          "formula.Title",
+          "Project",
+          "file.ctime",
+          "file.mtime"
+        ]
+      },
+      project: {
+        main: [
+          "Done",
+          "formula.Title",
+          "Areas",
+          "formula.Type",
+          "file.ctime",
+          "file.mtime"
+        ],
+        type: [
+          "Done",
+          "formula.Title",
+          "Areas",
+          "file.ctime",
+          "file.mtime"
+        ]
+      }
+    };
+    SORT_CONFIGS = {
+      main: [
+        { property: "file.mtime", direction: "DESC" },
+        { property: "formula.Title", direction: "ASC" }
+      ],
+      area: [
+        { property: "file.mtime", direction: "ASC" },
+        { property: "formula.Title", direction: "ASC" }
+      ]
+    };
+    VIEW_TEMPLATES = {
+      tasks: {
+        main: {
+          type: "table",
+          name: "Tasks",
+          order: VIEW_ORDERS.tasks.main,
+          sort: SORT_CONFIGS.main
+        },
+        all: {
+          type: "table",
+          name: "All",
+          order: VIEW_ORDERS.tasks.main,
+          sort: SORT_CONFIGS.main
+        }
+      },
+      area: {
+        main: {
+          type: "table",
+          name: "Tasks",
+          order: VIEW_ORDERS.area.main,
+          sort: SORT_CONFIGS.area,
+          columnSize: {
+            "formula.Title": 382,
+            "note.tags": 134,
+            "file.mtime": 165,
+            "file.ctime": 183
+          }
+        }
+      },
+      project: {
+        main: {
+          type: "table",
+          name: "Tasks",
+          order: VIEW_ORDERS.project.main,
+          sort: SORT_CONFIGS.main
+        }
+      }
+    };
+    FRONTMATTER_FIELDS = {
+      task: {
+        Title: { required: true, type: "string" },
+        Type: { required: false, type: "string", default: "Task" },
+        Areas: { required: false, type: "string" },
+        "Parent task": { required: false, type: "string" },
+        "Sub-tasks": { required: false, type: "string" },
+        tags: { required: false, type: "array" },
+        Project: { required: false, type: "string" },
+        Done: { required: false, type: "boolean", default: false },
+        Status: { required: false, type: "string", default: "Backlog" },
+        Priority: { required: false, type: "string" }
+      },
+      project: {
+        Title: { required: true, type: "string" },
+        Name: { required: true, type: "string" },
+        Type: { required: true, type: "string", default: "Project" },
+        Areas: { required: false, type: "string" }
+      },
+      area: {
+        Title: { required: true, type: "string" },
+        Name: { required: true, type: "string" },
+        Type: { required: true, type: "string", default: "Area" }
+      }
+    };
+  }
+});
+
+// src/services/base-definitions/FrontMatterGenerator.ts
+var FrontMatterGenerator_exports = {};
+__export(FrontMatterGenerator_exports, {
+  extractFrontMatterData: () => extractFrontMatterData,
+  generateAreaFrontMatter: () => generateAreaFrontMatter,
+  generateProjectFrontMatter: () => generateProjectFrontMatter,
+  generateTaskFrontMatter: () => generateTaskFrontMatter,
+  validateFrontMatterData: () => validateFrontMatterData
+});
+function generateTaskFrontMatter(taskData, options = {}) {
+  const fields = FRONTMATTER_FIELDS.task;
+  const frontMatter = ["---"];
+  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
+    const value = getFieldValue(taskData, fieldName, fieldConfig);
+    if (value !== void 0 && value !== null) {
+      frontMatter.push(formatFrontMatterField(fieldName, value, fieldConfig));
+    }
+  }
+  if (options.customFields) {
+    for (const [key, value] of Object.entries(options.customFields)) {
+      if (value !== void 0 && value !== null) {
+        frontMatter.push(`${key}: ${formatValue(value)}`);
+      }
+    }
+  }
+  frontMatter.push("---", "");
+  if (options.includeDescription && taskData.description) {
+    frontMatter.push(taskData.description, "");
+  } else if (options.templateContent) {
+    frontMatter.push(options.templateContent, "");
+  } else {
+    frontMatter.push("Task description...", "");
+  }
+  return frontMatter.join("\n");
+}
+function generateProjectFrontMatter(projectData, options = {}) {
+  const fields = FRONTMATTER_FIELDS.project;
+  const frontMatter = ["---"];
+  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
+    const value = getFieldValue(projectData, fieldName, fieldConfig);
+    if (value !== void 0 && value !== null || fieldName === "Areas") {
+      const displayValue = value !== void 0 && value !== null ? value : "";
+      frontMatter.push(formatFrontMatterField(fieldName, displayValue, fieldConfig));
+    }
+  }
+  if (options.customFields) {
+    for (const [key, value] of Object.entries(options.customFields)) {
+      if (value !== void 0 && value !== null) {
+        frontMatter.push(`${key}: ${formatValue(value)}`);
+      }
+    }
+  }
+  frontMatter.push("---", "");
+  if (options.templateContent) {
+    frontMatter.push(options.templateContent);
+  } else {
+    frontMatter.push(
+      "## Notes",
+      "",
+      projectData.description || "This is a cool project",
+      "",
+      "## Tasks",
+      "",
+      `![[${sanitizeFileName2(projectData.name)}.base]]`,
+      ""
+    );
+  }
+  return frontMatter.join("\n");
+}
+function generateAreaFrontMatter(areaData, options = {}) {
+  const fields = FRONTMATTER_FIELDS.area;
+  const frontMatter = ["---"];
+  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
+    const value = getFieldValue(areaData, fieldName, fieldConfig);
+    if (value !== void 0 && value !== null) {
+      frontMatter.push(formatFrontMatterField(fieldName, value, fieldConfig));
+    }
+  }
+  if (options.customFields) {
+    for (const [key, value] of Object.entries(options.customFields)) {
+      if (value !== void 0 && value !== null) {
+        frontMatter.push(`${key}: ${formatValue(value)}`);
+      }
+    }
+  }
+  frontMatter.push("---", "");
+  if (options.templateContent) {
+    frontMatter.push(options.templateContent);
+  } else {
+    frontMatter.push(
+      "## Notes",
+      "",
+      areaData.description || "This is an important area of responsibility",
+      "",
+      "## Tasks",
+      "",
+      `![[${sanitizeFileName2(areaData.name)}.base]]`,
+      ""
+    );
+  }
+  return frontMatter.join("\n");
+}
+function getFieldValue(data, fieldName, fieldConfig) {
+  const fieldMap = {
+    "Title": "name",
+    "Name": "name",
+    "Type": "type",
+    "Areas": "areas",
+    "Parent task": "parentTask",
+    "Sub-tasks": "subTasks",
+    "tags": "tags",
+    "Project": "project",
+    "Done": "done",
+    "Status": "status",
+    "Priority": "priority"
+  };
+  const dataKey = fieldMap[fieldName] || fieldName.toLowerCase();
+  let value = data[dataKey];
+  if ((value === void 0 || value === null) && fieldConfig.default !== void 0) {
+    value = fieldConfig.default;
+  }
+  if (fieldName === "Name" && !value && data.name) {
+    value = data.name;
+  }
+  return value;
+}
+function formatFrontMatterField(fieldName, value, fieldConfig) {
+  const formattedValue = formatValue(value, fieldConfig.type);
+  return `${fieldName}: ${formattedValue}`;
+}
+function formatValue(value, type2) {
+  if (value === null || value === void 0) {
+    return "";
+  }
+  switch (type2) {
+    case "array":
+      if (Array.isArray(value)) {
+        return value.length > 0 ? value.join(", ") : "";
+      }
+      return String(value);
+    case "boolean":
+      return String(Boolean(value));
+    case "number":
+      return String(Number(value));
+    case "string":
+    default:
+      return String(value);
+  }
+}
+function sanitizeFileName2(name) {
+  return name.replace(/[<>:"/\\|?*]/g, "-").replace(/\s+/g, " ").trim();
+}
+function validateFrontMatterData(data, type2) {
+  const fields = FRONTMATTER_FIELDS[type2];
+  const errors = [];
+  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
+    if (fieldConfig.required) {
+      const value = getFieldValue(data, fieldName, fieldConfig);
+      if (value === void 0 || value === null || value === "") {
+        errors.push(`${fieldName} is required`);
+      }
+    }
+  }
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+}
+function extractFrontMatterData(content) {
+  const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!frontMatterMatch) {
+    return null;
+  }
+  const frontMatterText = frontMatterMatch[1];
+  const data = {};
+  const lines = frontMatterText.split("\n");
+  for (const line of lines) {
+    const match = line.match(/^([^:]+):\s*(.*)$/);
+    if (match) {
+      const [, key, value] = match;
+      data[key.trim()] = value.trim();
+    }
+  }
+  return data;
+}
+var init_FrontMatterGenerator = __esm({
+  "src/services/base-definitions/FrontMatterGenerator.ts"() {
+    init_BaseConfigurations();
+  }
+});
+
+// src/main.ts
+var main_exports = {};
+__export(main_exports, {
+  TASK_TYPE_COLORS: () => TASK_TYPE_COLORS,
+  default: () => TaskSyncPlugin
+});
+module.exports = __toCommonJS(main_exports);
+var import_obsidian6 = require("obsidian");
+
+// src/services/VaultScannerService.ts
+var import_obsidian = require("obsidian");
+var VaultScanner = class {
+  constructor(vault, settings) {
+    this.vault = vault;
+    this.settings = settings;
+  }
+  async scanTasksFolder() {
+    return this.scanFolder(this.settings.tasksFolder);
+  }
+  async scanProjectsFolder() {
+    return this.scanFolder(this.settings.projectsFolder);
+  }
+  async scanAreasFolder() {
+    return this.scanFolder(this.settings.areasFolder);
+  }
+  async scanTemplatesFolder() {
+    return this.scanFolder(this.settings.templateFolder);
+  }
+  async scanFolder(folderPath) {
+    if (!folderPath) return [];
+    try {
+      const folder = this.vault.getAbstractFileByPath(folderPath);
+      if (!folder || !this.isFolder(folder)) {
+        return [];
+      }
+      const files = [];
+      this.collectMarkdownFiles(folder, files);
+      return files;
+    } catch (error) {
+      console.error(`Failed to scan folder ${folderPath}:`, error);
+      return [];
+    }
+  }
+  collectMarkdownFiles(folder, files) {
+    for (const child of folder.children) {
+      if (this.isFile(child) && child.extension === "md") {
+        files.push(child.path);
+      } else if (this.isFolder(child)) {
+        this.collectMarkdownFiles(child, files);
+      }
+    }
+  }
+  isFolder(obj) {
+    var _a;
+    return obj && (obj instanceof import_obsidian.TFolder || ((_a = obj.constructor) == null ? void 0 : _a.name) === "TFolder" || obj.children !== void 0);
+  }
+  isFile(obj) {
+    var _a;
+    return obj && (obj instanceof import_obsidian.TFile || ((_a = obj.constructor) == null ? void 0 : _a.name) === "TFile" || obj.extension !== void 0);
+  }
+  async findTaskFiles() {
+    const taskPaths = await this.scanTasksFolder();
+    const taskFiles = [];
+    for (const path of taskPaths) {
+      try {
+        const fileInfo = await this.getFileInfo(path);
+        if (fileInfo) {
+          taskFiles.push(fileInfo);
+        }
+      } catch (error) {
+        console.error(`Failed to process task file ${path}:`, error);
+      }
+    }
+    return taskFiles;
+  }
+  async findProjectFiles() {
+    const projectPaths = await this.scanProjectsFolder();
+    const projectFiles = [];
+    for (const path of projectPaths) {
+      try {
+        const fileInfo = await this.getFileInfo(path);
+        if (fileInfo) {
+          const projectFile = {
+            ...fileInfo,
+            taskFiles: await this.findRelatedTaskFiles(path)
+          };
+          projectFiles.push(projectFile);
+        }
+      } catch (error) {
+        console.error(`Failed to process project file ${path}:`, error);
+      }
+    }
+    return projectFiles;
+  }
+  async findAreaFiles() {
+    const areaPaths = await this.scanAreasFolder();
+    const areaFiles = [];
+    for (const path of areaPaths) {
+      try {
+        const fileInfo = await this.getFileInfo(path);
+        if (fileInfo) {
+          const areaFile = {
+            ...fileInfo,
+            projectFiles: await this.findRelatedProjectFiles(path)
+          };
+          areaFiles.push(areaFile);
+        }
+      } catch (error) {
+        console.error(`Failed to process area file ${path}:`, error);
+      }
+    }
+    return areaFiles;
+  }
+  async findTemplateFiles() {
+    const templatePaths = await this.scanTemplatesFolder();
+    const templateFiles = [];
+    for (const path of templatePaths) {
+      try {
+        const fileInfo = await this.getFileInfo(path);
+        if (fileInfo) {
+          const templateFile = {
+            ...fileInfo,
+            templateType: this.detectTemplateType(path, fileInfo.content || ""),
+            variables: this.extractTemplateVariables(fileInfo.content || "")
+          };
+          templateFiles.push(templateFile);
+        }
+      } catch (error) {
+        console.error(`Failed to process template file ${path}:`, error);
+      }
+    }
+    return templateFiles;
+  }
+  async findBaseFiles() {
+    const allFiles = this.vault.getMarkdownFiles();
+    const baseFiles = [];
+    for (const file of allFiles) {
+      if (file.extension === "base" || file.name.endsWith(".base.md")) {
+        try {
+          const content = await this.vault.read(file);
+          const baseFile = {
+            path: file.path,
+            name: file.name,
+            exists: true,
+            lastModified: new Date(file.stat.mtime),
+            size: file.stat.size,
+            content,
+            frontmatter: this.extractFrontmatter(content),
+            viewType: this.detectBaseViewType(content),
+            entityType: this.detectBaseEntityType(content),
+            isValid: this.validateBaseFile(content),
+            errors: this.getBaseFileErrors(content)
+          };
+          baseFiles.push(baseFile);
+        } catch (error) {
+          console.error(`Failed to process base file ${file.path}:`, error);
+        }
+      }
+    }
+    return baseFiles;
+  }
+  async validateFolderStructure() {
+    const result = {
+      isValid: true,
+      errors: [],
+      warnings: [],
+      missingFolders: [],
+      suggestions: []
+    };
+    const foldersToCheck = [
+      { path: this.settings.tasksFolder, name: "Tasks" },
+      { path: this.settings.projectsFolder, name: "Projects" },
+      { path: this.settings.areasFolder, name: "Areas" },
+      { path: this.settings.templateFolder, name: "Templates" }
+    ];
+    for (const folder of foldersToCheck) {
+      if (!folder.path) {
+        result.warnings.push(`${folder.name} folder path is not configured`);
+        continue;
+      }
+      const exists = await this.folderExists(folder.path);
+      if (!exists) {
+        result.missingFolders.push(folder.path);
+        result.errors.push(`${folder.name} folder does not exist: ${folder.path}`);
+        result.isValid = false;
+      }
+    }
+    const paths = foldersToCheck.map((f) => f.path).filter(Boolean);
+    const duplicates = paths.filter((path, index) => paths.indexOf(path) !== index);
+    if (duplicates.length > 0) {
+      result.errors.push(`Duplicate folder paths detected: ${duplicates.join(", ")}`);
+      result.isValid = false;
+    }
+    if (result.missingFolders.length > 0) {
+      result.suggestions.push('Use the "Create Missing Folders" command to automatically create missing folders');
+    }
+    return result;
+  }
+  async createMissingFolders() {
+    const foldersToCreate = [
+      this.settings.tasksFolder,
+      this.settings.projectsFolder,
+      this.settings.areasFolder,
+      this.settings.templateFolder
+    ].filter(Boolean);
+    for (const folderPath of foldersToCreate) {
+      try {
+        const exists = await this.folderExists(folderPath);
+        if (!exists) {
+          await this.vault.createFolder(folderPath);
+          console.log(`Created folder: ${folderPath}`);
+        }
+      } catch (error) {
+        console.error(`Failed to create folder ${folderPath}:`, error);
+      }
+    }
+  }
+  async getFileInfo(path) {
+    try {
+      const file = this.vault.getAbstractFileByPath(path);
+      if (!file || !this.isFile(file)) {
+        return null;
+      }
+      const tfile = file;
+      const content = await this.vault.read(tfile);
+      return {
+        path: tfile.path,
+        name: tfile.name,
+        exists: true,
+        lastModified: new Date(tfile.stat.mtime),
+        size: tfile.stat.size,
+        content,
+        frontmatter: this.extractFrontmatter(content)
+      };
+    } catch (error) {
+      console.error(`Failed to get file info for ${path}:`, error);
+      return null;
+    }
+  }
+  async findRelatedTaskFiles(projectPath) {
+    return [];
+  }
+  async findRelatedProjectFiles(areaPath) {
+    return [];
+  }
+  detectTemplateType(path, content) {
+    const pathLower = path.toLowerCase();
+    if (pathLower.includes("task")) return "task";
+    if (pathLower.includes("project")) return "project";
+    if (pathLower.includes("area")) return "area";
+    const contentLower = content.toLowerCase();
+    if (contentLower.includes("deadline") || contentLower.includes("status")) return "task";
+    if (contentLower.includes("objectives") || contentLower.includes("milestones")) return "project";
+    return "task";
+  }
+  extractTemplateVariables(content) {
+    const variables = [];
+    const variableRegex = /\{\{([^}]+)\}\}/g;
+    let match;
+    while ((match = variableRegex.exec(content)) !== null) {
+      const variable = match[1].trim();
+      if (!variables.includes(variable)) {
+        variables.push(variable);
+      }
+    }
+    return variables;
+  }
+  detectBaseViewType(content) {
+    return "kanban";
+  }
+  detectBaseEntityType(content) {
+    return "task";
+  }
+  validateBaseFile(content) {
+    return content.includes("```base") || content.includes("view:");
+  }
+  getBaseFileErrors(content) {
+    const errors = [];
+    if (!this.validateBaseFile(content)) {
+      errors.push("Invalid base file format");
+    }
+    return errors;
+  }
+  extractFrontmatter(content) {
+    const frontmatterRegex = /^---\n([\s\S]*?)\n---/;
+    const match = content.match(frontmatterRegex);
+    if (!match) return {};
+    try {
+      const frontmatterText = match[1];
+      const lines = frontmatterText.split("\n");
+      const result = {};
+      for (const line of lines) {
+        const colonIndex = line.indexOf(":");
+        if (colonIndex > 0) {
+          const key = line.substring(0, colonIndex).trim();
+          const value = line.substring(colonIndex + 1).trim();
+          result[key] = value;
+        }
+      }
+      return result;
+    } catch (error) {
+      console.error("Failed to parse frontmatter:", error);
+      return {};
+    }
+  }
+  async folderExists(path) {
+    try {
+      const folder = this.vault.getAbstractFileByPath(path);
+      return this.isFolder(folder);
+    } catch (e) {
+      return false;
+    }
+  }
+};
+
+// src/services/BaseManager.ts
+var import_obsidian2 = require("obsidian");
+init_js_yaml();
 
 // src/utils/fileNameSanitizer.ts
 var INVALID_CHARACTERS = /[*"\\/<>:|?]/g;
@@ -3332,469 +3878,9 @@ function createSafeFileName(baseName, extension = "md", options = {}) {
   return `${sanitizedBase}${cleanExtension}`;
 }
 
-// src/services/base-definitions/BaseDefinition.ts
-var import_pluralize = __toESM(require_pluralize());
-var BaseDefinition = class {
-  constructor(context) {
-    this.settings = context.settings;
-    this.context = context;
-  }
-  /**
-   * Generate the complete YAML configuration for this base
-   */
-  generateYAML() {
-    const config = this.generateBaseConfig();
-    return this.serializeBaseConfig(config);
-  }
-  /**
-   * Get common formulas used across all base types
-   */
-  getCommonFormulas() {
-    return {
-      "Type": this.generateTypeFormula(),
-      "Title": "link(file.name, Title)"
-    };
-  }
-  /**
-   * Get common properties used across all base types
-   */
-  getCommonProperties() {
-    return {
-      "file.name": {
-        displayName: "Title"
-      },
-      "note.Done": {
-        displayName: "Done"
-      },
-      "file.ctime": {
-        displayName: "Created At"
-      },
-      "file.mtime": {
-        displayName: "Updated At"
-      }
-    };
-  }
-  /**
-   * Generate type formula based on task types configuration
-   * Returns simple Type property since Bases don't support HTML in formulas
-   */
-  generateTypeFormula() {
-    return "Type";
-  }
-  /**
-   * Generate main tasks view with context-specific filters
-   */
-  generateMainTasksView() {
-    return {
-      type: "table",
-      name: "Tasks",
-      filters: {
-        and: this.getMainViewFilters()
-      },
-      order: this.getMainViewOrder(),
-      sort: this.getMainViewSort()
-    };
-  }
-  /**
-   * Generate type-specific views for each task type
-   */
-  generateTypeSpecificViews() {
-    const views = [];
-    for (const taskType of this.settings.taskTypes) {
-      if (taskType.name !== "Task") {
-        views.push({
-          type: "table",
-          name: (0, import_pluralize.default)(taskType.name),
-          filters: {
-            and: [
-              ...this.getMainViewFilters(),
-              `Type == "${taskType.name}"`
-            ]
-          },
-          order: this.getTypeViewOrder(),
-          sort: this.getTypeViewSort()
-        });
-      }
-    }
-    return views;
-  }
-  /**
-   * Get column order for main view - can be overridden by subclasses
-   */
-  getMainViewOrder() {
-    return [
-      "Done",
-      "formula.Title",
-      "formula.Type",
-      "file.ctime",
-      "file.mtime"
-    ];
-  }
-  /**
-   * Get column order for type-specific views - can be overridden by subclasses
-   */
-  getTypeViewOrder() {
-    return [
-      "Done",
-      "formula.Title",
-      "file.ctime",
-      "file.mtime"
-    ];
-  }
-  /**
-   * Get sort configuration for main view
-   */
-  getMainViewSort() {
-    return [
-      { property: "file.mtime", direction: "DESC" },
-      { property: "formula.Title", direction: "ASC" }
-    ];
-  }
-  /**
-   * Get sort configuration for type-specific views
-   */
-  getTypeViewSort() {
-    return [
-      { property: "file.mtime", direction: "DESC" },
-      { property: "formula.Title", direction: "ASC" }
-    ];
-  }
-  /**
-   * Serialize base configuration to YAML format
-   */
-  serializeBaseConfig(config) {
-    return dump(config, {
-      indent: 2,
-      lineWidth: -1,
-      noRefs: true,
-      sortKeys: false
-    });
-  }
-};
-
-// src/services/base-definitions/TasksBaseDefinition.ts
-var TasksBaseDefinition = class extends BaseDefinition {
-  constructor(context) {
-    super(context);
-    this.projectsAndAreas = context.projectsAndAreas;
-  }
-  generateBaseConfig() {
-    return {
-      formulas: this.getCommonFormulas(),
-      properties: this.getTasksProperties(),
-      views: this.generateAllViews()
-    };
-  }
-  /**
-   * Get properties specific to the main Tasks base
-   */
-  getTasksProperties() {
-    return {
-      ...this.getCommonProperties(),
-      "note.Status": {
-        displayName: "Done"
-      },
-      "note.tags": {
-        displayName: "Tags"
-      },
-      "note.Areas": {
-        displayName: "Areas"
-      },
-      "note.Project": {
-        displayName: "Project"
-      },
-      "note.Priority": {
-        displayName: "Priority"
-      },
-      "note.Parent task": {
-        displayName: "Parent task"
-      },
-      "note.Sub-tasks": {
-        displayName: "Sub-tasks"
-      }
-    };
-  }
-  /**
-   * Generate all views for the Tasks base
-   */
-  generateAllViews() {
-    const views = [];
-    views.push(this.generateMainTasksView());
-    views.push(this.generateAllTasksView());
-    views.push(...this.generateTypeSpecificViews());
-    views.push(...this.generateAreaViews());
-    views.push(...this.generateProjectViews());
-    return views;
-  }
-  /**
-   * Generate "All" view that shows all tasks without any filtering
-   */
-  generateAllTasksView() {
-    return {
-      type: "table",
-      name: "All",
-      filters: {
-        and: [`file.folder == "${this.settings.tasksFolder}"`]
-      },
-      order: this.getMainViewOrder(),
-      sort: this.getMainViewSort()
-    };
-  }
-  /**
-   * Generate area-specific views
-   */
-  generateAreaViews() {
-    return this.projectsAndAreas.filter((item) => item.type === "area").map((area) => this.createAreaView(area));
-  }
-  /**
-   * Generate project-specific views
-   */
-  generateProjectViews() {
-    return this.projectsAndAreas.filter((item) => item.type === "project").map((project) => this.createProjectView(project));
-  }
-  /**
-   * Create a filtered view for a specific area
-   */
-  createAreaView(area) {
-    return {
-      type: "table",
-      name: area.name,
-      filters: {
-        and: [
-          `file.folder == "${this.settings.tasksFolder}"`,
-          this.createAreaFilter(area)
-        ]
-      },
-      order: [
-        "Status",
-        "formula.Title",
-        "formula.Type",
-        "tags",
-        "file.mtime",
-        "file.ctime",
-        "Project"
-      ],
-      sort: [
-        { property: "file.mtime", direction: "ASC" },
-        { property: "formula.Title", direction: "ASC" }
-      ],
-      columnSize: {
-        "formula.Title": 382,
-        "note.tags": 134,
-        "file.mtime": 165,
-        "file.ctime": 183
-      }
-    };
-  }
-  /**
-   * Create a filtered view for a specific project
-   */
-  createProjectView(project) {
-    return {
-      type: "table",
-      name: project.name,
-      filters: {
-        and: [
-          `file.folder == "${this.settings.tasksFolder}"`,
-          this.createProjectFilter(project)
-        ]
-      },
-      order: [
-        "Status",
-        "formula.Title",
-        "formula.Type",
-        "tags",
-        "file.mtime",
-        "file.ctime",
-        "Areas"
-      ],
-      sort: [
-        { property: "file.mtime", direction: "ASC" },
-        { property: "formula.Title", direction: "ASC" }
-      ],
-      columnSize: {
-        "formula.Title": 382,
-        "note.tags": 134,
-        "file.mtime": 165,
-        "file.ctime": 183
-      }
-    };
-  }
-  /**
-   * Generate a filter expression for areas
-   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
-   */
-  createAreaFilter(area) {
-    return `Areas.contains(link("${area.name}"))`;
-  }
-  /**
-   * Generate a filter expression for projects
-   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
-   */
-  createProjectFilter(project) {
-    return `Project.contains(link("${project.name}"))`;
-  }
-  getMainViewFilters() {
-    return [`file.folder == "${this.settings.tasksFolder}"`];
-  }
-  getMainViewOrder() {
-    return [
-      "Status",
-      "formula.Title",
-      "formula.Type",
-      "tags",
-      "file.mtime",
-      "file.ctime",
-      "Areas",
-      "Project"
-    ];
-  }
-  getTypeViewOrder() {
-    return [
-      "Status",
-      "formula.Title",
-      "tags",
-      "file.mtime",
-      "file.ctime",
-      "Areas",
-      "Project"
-    ];
-  }
-};
-
-// src/services/base-definitions/AreaBaseDefinition.ts
-var AreaBaseDefinition = class extends BaseDefinition {
-  constructor(context) {
-    super(context);
-    this.area = context.area;
-  }
-  generateBaseConfig() {
-    return {
-      formulas: this.getCommonFormulas(),
-      properties: this.getAreaProperties(),
-      views: this.generateAllViews()
-    };
-  }
-  /**
-   * Get properties specific to area bases
-   */
-  getAreaProperties() {
-    return {
-      ...this.getCommonProperties(),
-      "note.Project": {
-        displayName: "Project"
-      }
-    };
-  }
-  /**
-   * Generate all views for the area base
-   */
-  generateAllViews() {
-    const views = [];
-    views.push(this.generateMainTasksView());
-    views.push(...this.generateTypeSpecificViews());
-    return views;
-  }
-  /**
-   * Generate a filter expression for this specific area
-   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
-   */
-  createAreaFilter() {
-    return `Areas.contains(link("${this.area.name}"))`;
-  }
-  getMainViewFilters() {
-    return [
-      `file.folder == "${this.settings.tasksFolder}"`,
-      this.createAreaFilter()
-    ];
-  }
-  getMainViewOrder() {
-    return [
-      "Done",
-      "formula.Title",
-      "Project",
-      "formula.Type",
-      "file.ctime",
-      "file.mtime"
-    ];
-  }
-  getTypeViewOrder() {
-    return [
-      "Done",
-      "formula.Title",
-      "Project",
-      "file.ctime",
-      "file.mtime"
-    ];
-  }
-};
-
-// src/services/base-definitions/ProjectBaseDefinition.ts
-var ProjectBaseDefinition = class extends BaseDefinition {
-  constructor(context) {
-    super(context);
-    this.project = context.project;
-  }
-  generateBaseConfig() {
-    return {
-      formulas: this.getCommonFormulas(),
-      properties: this.getProjectProperties(),
-      views: this.generateAllViews()
-    };
-  }
-  /**
-   * Get properties specific to project bases
-   */
-  getProjectProperties() {
-    return {
-      ...this.getCommonProperties(),
-      "note.Areas": {
-        displayName: "Areas"
-      }
-    };
-  }
-  /**
-   * Generate all views for the project base
-   */
-  generateAllViews() {
-    const views = [];
-    views.push(this.generateMainTasksView());
-    views.push(...this.generateTypeSpecificViews());
-    return views;
-  }
-  /**
-   * Generate a filter expression for this specific project
-   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
-   */
-  createProjectFilter() {
-    return `Project.contains(link("${this.project.name}"))`;
-  }
-  getMainViewFilters() {
-    return [
-      `file.folder == "${this.settings.tasksFolder}"`,
-      this.createProjectFilter()
-    ];
-  }
-  getMainViewOrder() {
-    return [
-      "Done",
-      "formula.Title",
-      "Areas",
-      "formula.Type",
-      "file.ctime",
-      "file.mtime"
-    ];
-  }
-  getTypeViewOrder() {
-    return [
-      "Done",
-      "formula.Title",
-      "Areas",
-      "file.ctime",
-      "file.mtime"
-    ];
-  }
-};
+// src/services/base-definitions/index.ts
+init_BaseConfigurations();
+init_FrontMatterGenerator();
 
 // src/services/BaseManager.ts
 var BaseManager = class {
@@ -3807,11 +3893,7 @@ var BaseManager = class {
    * Generate the main Tasks.base file with all task properties and default views
    */
   async generateTasksBase(projectsAndAreas) {
-    const definition = new TasksBaseDefinition({
-      settings: this.settings,
-      projectsAndAreas
-    });
-    return definition.generateYAML();
+    return generateTasksBase(this.settings, projectsAndAreas);
   }
   /**
    * Parse existing base file content
@@ -4022,21 +4104,13 @@ var BaseManager = class {
    * Generate base configuration for a specific area
    */
   async generateAreaBase(area) {
-    const definition = new AreaBaseDefinition({
-      settings: this.settings,
-      area
-    });
-    return definition.generateYAML();
+    return generateAreaBase(this.settings, area);
   }
   /**
    * Generate base configuration for a specific project
    */
   async generateProjectBase(project) {
-    const definition = new ProjectBaseDefinition({
-      settings: this.settings,
-      project
-    });
-    return definition.generateYAML();
+    return generateProjectBase(this.settings, project);
   }
   /**
    * Ensure specific base embedding in area/project files
@@ -4768,24 +4842,10 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
     }
   }
   generateTaskContent(taskData) {
-    const frontmatter = [
-      "---",
-      `Title: ${taskData.name}`,
-      `Type: ${taskData.type || "Task"}`,
-      `Areas: ${taskData.areas || ""}`,
-      `Parent task: ${taskData.parentTask || ""}`,
-      `Sub-tasks: ${taskData.subTasks || ""}`,
-      `tags: ${taskData.tags ? taskData.tags.join(", ") : ""}`,
-      `Project: ${taskData.project || ""}`,
-      `Done: ${taskData.done || false}`,
-      `Status: ${taskData.status || "Backlog"}`,
-      `Priority: ${taskData.priority || ""}`,
-      "---",
-      "",
-      taskData.description || "Task description...",
-      ""
-    ];
-    return frontmatter.join("\n");
+    const { generateTaskFrontMatter: generateTaskFrontMatter2 } = (init_FrontMatterGenerator(), __toCommonJS(FrontMatterGenerator_exports));
+    return generateTaskFrontMatter2(taskData, {
+      includeDescription: true
+    });
   }
   /**
    * Create a new area
@@ -4845,48 +4905,15 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
    * Generate default area content
    */
   generateAreaContent(areaData) {
-    const sanitizedName = sanitizeFileName(areaData.name);
-    const frontmatter = [
-      "---",
-      `Title: ${areaData.name}`,
-      `Name: ${areaData.name}`,
-      `Type: Area`,
-      "---",
-      "",
-      "## Notes",
-      "",
-      areaData.description || "This is a cool area",
-      "",
-      "## Tasks",
-      "",
-      `![[${sanitizedName}.base]]`,
-      ""
-    ];
-    return frontmatter.join("\n");
+    const { generateAreaFrontMatter: generateAreaFrontMatter2 } = (init_FrontMatterGenerator(), __toCommonJS(FrontMatterGenerator_exports));
+    return generateAreaFrontMatter2(areaData);
   }
   /**
    * Generate default project content
    */
   generateProjectContent(projectData) {
-    const sanitizedName = sanitizeFileName(projectData.name);
-    const frontmatter = [
-      "---",
-      `Title: ${projectData.name}`,
-      `Name: ${projectData.name}`,
-      `Type: Project`,
-      `Areas: ${projectData.areas || ""}`,
-      "---",
-      "",
-      "## Notes",
-      "",
-      projectData.description || "This is a cool project",
-      "",
-      "## Tasks",
-      "",
-      `![[${sanitizedName}.base]]`,
-      ""
-    ];
-    return frontmatter.join("\n");
+    const { generateProjectFrontMatter: generateProjectFrontMatter2 } = (init_FrontMatterGenerator(), __toCommonJS(FrontMatterGenerator_exports));
+    return generateProjectFrontMatter2(projectData);
   }
   /**
    * Generate content from template with proper base embedding
