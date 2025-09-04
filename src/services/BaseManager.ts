@@ -7,8 +7,12 @@
 import { App, Vault, TFile } from 'obsidian';
 import { TaskSyncSettings } from '../main';
 import * as yaml from 'js-yaml';
-import pluralize from 'pluralize';
 import { sanitizeFileName } from '../utils/fileNameSanitizer';
+import {
+  TasksBaseDefinition,
+  AreaBaseDefinition,
+  ProjectBaseDefinition
+} from './base-definitions';
 
 export interface BaseProperty {
   displayName: string;
@@ -50,205 +54,20 @@ export class BaseManager {
     private settings: TaskSyncSettings
   ) { }
 
-  /**
-   * Generate a filter expression for areas
-   *
-   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
-   * Using full paths or adding display names will break the filter.
-   *
-   * Correct: link("Task Sync")
-   * Wrong: link("Areas/Task Sync.md") or link("Areas/Task Sync.md", "Task Sync")
-   */
-  private createAreaFilter(area: ProjectAreaInfo): string {
-    return `Areas.contains(link("${area.name}"))`;
-  }
 
-  /**
-   * Generate a filter expression for projects
-   *
-   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
-   * Using full paths or adding display names will break the filter.
-   *
-   * Correct: link("Website Redesign")
-   * Wrong: link("Projects/Website Redesign.md") or link("Projects/Website Redesign.md", "Website Redesign")
-   */
-  private createProjectFilter(project: ProjectAreaInfo): string {
-    return `Project.contains(link("${project.name}"))`;
-  }
-
-  /**
-   * Generate a formula for displaying task types
-   * Simply returns the Type property as-is for clean display
-   */
-  private generateTypeFormula(): string {
-    return 'Type';
-  }
 
   /**
    * Generate the main Tasks.base file with all task properties and default views
    */
   async generateTasksBase(projectsAndAreas: ProjectAreaInfo[]): Promise<string> {
-    const baseConfig: BaseConfig = {
-      formulas: {
-        'Type': this.generateTypeFormula(),
-        'Title': 'link(file.name, Title)'
-      },
-      properties: {
-        'note.Status': {
-          displayName: 'Done'
-        },
-        'file.ctime': {
-          displayName: 'Created At'
-        },
-        'file.mtime': {
-          displayName: 'Updated At'
-        },
-        'note.tags': {
-          displayName: 'Tags'
-        },
-        'note.Title': {
-          displayName: 'Title'
-        },
-        'note.Areas': {
-          displayName: 'Areas'
-        },
-        'note.Project': {
-          displayName: 'Project'
-        },
-        'note.Priority': {
-          displayName: 'Priority'
-        },
-        'note.Parent task': {
-          displayName: 'Parent task'
-        },
-        'note.Sub-tasks': {
-          displayName: 'Sub-tasks'
-        }
-      },
-      views: []
-    };
-
-    // Add default "All" view
-    baseConfig.views.push({
-      type: 'table',
-      name: 'All',
-      filters: {
-        and: [`file.folder == "${this.settings.tasksFolder}"`]
-      },
-      order: [
-        'Done',
-        'formula.Title',
-        'Areas',
-        'Project',
-        'Parent task',
-        'Sub-tasks',
-        'formula.Type',
-        'tags',
-        'file.ctime',
-        'file.mtime'
-      ],
-      sort: [
-        { property: 'tags', direction: 'ASC' },
-        { property: 'formula.Title', direction: 'DESC' }
-      ],
-      columnSize: {
-        'formula.Type': 103,
-        'note.tags': 259,
-        'file.ctime': 183
-      }
+    const definition = new TasksBaseDefinition({
+      settings: this.settings,
+      projectsAndAreas
     });
-
-    // Add views for each project and area
-    for (const item of projectsAndAreas) {
-      if (item.type === 'project') {
-        baseConfig.views.push(this.createProjectView(item));
-      } else if (item.type === 'area') {
-        baseConfig.views.push(this.createAreaView(item));
-      }
-    }
-
-    return this.serializeBaseConfig(baseConfig);
+    return definition.generateYAML();
   }
 
-  /**
-   * Create a filtered view for a specific project
-   */
-  private createProjectView(project: ProjectAreaInfo): BaseView {
-    return {
-      type: 'table',
-      name: project.name,
-      filters: {
-        and: [
-          `file.folder == "${this.settings.tasksFolder}"`,
-          this.createProjectFilter(project)
-        ]
-      },
-      order: [
-        'Done',
-        'formula.Title',
-        'formula.Type',
-        'tags',
-        'file.mtime',
-        'file.ctime'
-      ],
-      sort: [
-        { property: 'file.ctime', direction: 'DESC' },
-        { property: 'formula.Title', direction: 'ASC' }
-      ],
-      columnSize: {
-        'formula.Title': 440,
-        'formula.Type': 103,
-        'note.tags': 338,
-        'file.ctime': 183
-      }
-    };
-  }
 
-  /**
-   * Create a filtered view for a specific area
-   */
-  private createAreaView(area: ProjectAreaInfo): BaseView {
-    return {
-      type: 'table',
-      name: area.name,
-      filters: {
-        and: [
-          `file.folder == "${this.settings.tasksFolder}"`,
-          this.createAreaFilter(area)
-        ]
-      },
-      order: [
-        'Status',
-        'formula.Title',
-        'tags',
-        'file.mtime',
-        'file.ctime',
-        'Project'
-      ],
-      sort: [
-        { property: 'file.mtime', direction: 'ASC' },
-        { property: 'formula.Title', direction: 'ASC' }
-      ],
-      columnSize: {
-        'formula.Title': 382,
-        'note.tags': 134,
-        'file.mtime': 165,
-        'file.ctime': 183
-      }
-    };
-  }
-
-  /**
-   * Serialize base configuration to YAML format
-   */
-  private serializeBaseConfig(config: BaseConfig): string {
-    return yaml.dump(config, {
-      indent: 2,
-      lineWidth: -1,
-      noRefs: true,
-      sortKeys: false
-    });
-  }
 
   /**
    * Parse existing base file content
@@ -498,168 +317,22 @@ export class BaseManager {
    * Generate base configuration for a specific area
    */
   async generateAreaBase(area: ProjectAreaInfo): Promise<string> {
-    const baseConfig: BaseConfig = {
-      formulas: {
-        'Type': this.generateTypeFormula(),
-        'Title': 'link(file.name, Title)'
-      },
-      properties: {
-        'note.Title': {
-          displayName: 'Title'
-        },
-        'note.Done': {
-          displayName: 'Done'
-        },
-        'note.Project': {
-          displayName: 'Project'
-        },
-        'file.ctime': {
-          displayName: 'Created At'
-        },
-        'file.mtime': {
-          displayName: 'Updated At'
-        }
-      },
-      views: []
-    };
-
-    // Add main Tasks view
-    baseConfig.views.push({
-      type: 'table',
-      name: 'Tasks',
-      filters: {
-        and: [
-          `file.folder == "${this.settings.tasksFolder}"`,
-          this.createAreaFilter(area)
-        ]
-      },
-      order: [
-        'Done',
-        'formula.Title',
-        'Project',
-        'formula.Type',
-        'file.ctime',
-        'file.mtime'
-      ],
-      sort: [
-        { property: 'file.mtime', direction: 'DESC' },
-        { property: 'formula.Title', direction: 'ASC' }
-      ]
+    const definition = new AreaBaseDefinition({
+      settings: this.settings,
+      area
     });
-
-    // Add type-specific views
-    for (const taskType of this.settings.taskTypes) {
-      if (taskType.name !== 'Task') { // Skip generic 'Task' type for specific views
-        baseConfig.views.push({
-          type: 'table',
-          name: pluralize(taskType.name),
-          filters: {
-            and: [
-              `file.folder == "${this.settings.tasksFolder}"`,
-              this.createAreaFilter(area),
-              `Type == "${taskType.name}"`
-            ]
-          },
-          order: [
-            'Done',
-            'formula.Title',
-            'Project',
-            'file.ctime',
-            'file.mtime'
-          ],
-          sort: [
-            { property: 'file.mtime', direction: 'DESC' },
-            { property: 'formula.Title', direction: 'ASC' }
-          ]
-        });
-      }
-    }
-
-    return this.serializeBaseConfig(baseConfig);
+    return definition.generateYAML();
   }
 
   /**
    * Generate base configuration for a specific project
    */
   async generateProjectBase(project: ProjectAreaInfo): Promise<string> {
-    const baseConfig: BaseConfig = {
-      formulas: {
-        'Type': this.generateTypeFormula(),
-        'Title': 'link(file.name, Title)'
-      },
-      properties: {
-        'note.Title': {
-          displayName: 'Title'
-        },
-        'note.Done': {
-          displayName: 'Done'
-        },
-        'note.Areas': {
-          displayName: 'Areas'
-        },
-        'file.ctime': {
-          displayName: 'Created At'
-        },
-        'file.mtime': {
-          displayName: 'Updated At'
-        }
-      },
-      views: []
-    };
-
-    // Add main Tasks view
-    baseConfig.views.push({
-      type: 'table',
-      name: 'Tasks',
-      filters: {
-        and: [
-          `file.folder == "${this.settings.tasksFolder}"`,
-          this.createProjectFilter(project)
-        ]
-      },
-      order: [
-        'Done',
-        'formula.Title',
-        'Areas',
-        'formula.Type',
-        'file.ctime',
-        'file.mtime'
-      ],
-      sort: [
-        { property: 'file.mtime', direction: 'DESC' },
-        { property: 'formula.Title', direction: 'ASC' }
-      ]
+    const definition = new ProjectBaseDefinition({
+      settings: this.settings,
+      project
     });
-
-    // Add type-specific views
-    for (const taskType of this.settings.taskTypes) {
-      if (taskType.name !== 'Task') { // Skip generic 'Task' type for specific views
-        baseConfig.views.push({
-          type: 'table',
-          name: pluralize(taskType.name),
-          filters: {
-            and: [
-              `file.folder == "${this.settings.tasksFolder}"`,
-              this.createProjectFilter(project),
-              `Type == "${taskType.name}"`
-            ]
-          },
-          order: [
-            'Done',
-            'formula.Title',
-            'Areas',
-            'file.ctime',
-            'file.mtime'
-          ],
-          sort: [
-            { property: 'file.mtime', direction: 'DESC' },
-            { property: 'formula.Title', direction: 'ASC' }
-          ]
-        });
-      }
-    }
-
-    return this.serializeBaseConfig(baseConfig);
+    return definition.generateYAML();
   }
 
   /**

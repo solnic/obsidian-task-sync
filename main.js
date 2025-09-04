@@ -3286,9 +3286,6 @@ var safeLoad = renamed("safeLoad", "load");
 var safeLoadAll = renamed("safeLoadAll", "loadAll");
 var safeDump = renamed("safeDump", "dump");
 
-// src/services/BaseManager.ts
-var import_pluralize = __toESM(require_pluralize());
-
 // src/utils/fileNameSanitizer.ts
 var INVALID_CHARACTERS = /[*"\\/<>:|?]/g;
 function sanitizeFileName(fileName, options = {}) {
@@ -3335,156 +3332,225 @@ function createSafeFileName(baseName, extension = "md", options = {}) {
   return `${sanitizedBase}${cleanExtension}`;
 }
 
-// src/services/BaseManager.ts
-var BaseManager = class {
-  constructor(app, vault, settings) {
-    this.app = app;
-    this.vault = vault;
-    this.settings = settings;
+// src/services/base-definitions/BaseDefinition.ts
+var import_pluralize = __toESM(require_pluralize());
+var BaseDefinition = class {
+  constructor(context) {
+    this.settings = context.settings;
+    this.context = context;
   }
   /**
-   * Generate a filter expression for areas
-   *
-   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
-   * Using full paths or adding display names will break the filter.
-   *
-   * Correct: link("Task Sync")
-   * Wrong: link("Areas/Task Sync.md") or link("Areas/Task Sync.md", "Task Sync")
+   * Generate the complete YAML configuration for this base
    */
-  createAreaFilter(area) {
-    return `Areas.contains(link("${area.name}"))`;
+  generateYAML() {
+    const config = this.generateBaseConfig();
+    return this.serializeBaseConfig(config);
   }
   /**
-   * Generate a filter expression for projects
-   *
-   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
-   * Using full paths or adding display names will break the filter.
-   *
-   * Correct: link("Website Redesign")
-   * Wrong: link("Projects/Website Redesign.md") or link("Projects/Website Redesign.md", "Website Redesign")
+   * Get common formulas used across all base types
    */
-  createProjectFilter(project) {
-    return `Project.contains(link("${project.name}"))`;
+  getCommonFormulas() {
+    return {
+      "Type": this.generateTypeFormula(),
+      "Title": "link(file.name, Title)"
+    };
   }
   /**
-   * Generate a formula for displaying task types
-   * Simply returns the Type property as-is for clean display
+   * Get common properties used across all base types
+   */
+  getCommonProperties() {
+    return {
+      "file.name": {
+        displayName: "Title"
+      },
+      "note.Done": {
+        displayName: "Done"
+      },
+      "file.ctime": {
+        displayName: "Created At"
+      },
+      "file.mtime": {
+        displayName: "Updated At"
+      }
+    };
+  }
+  /**
+   * Generate type formula based on task types configuration
+   * Returns simple Type property since Bases don't support HTML in formulas
    */
   generateTypeFormula() {
     return "Type";
   }
   /**
-   * Generate the main Tasks.base file with all task properties and default views
+   * Generate main tasks view with context-specific filters
    */
-  async generateTasksBase(projectsAndAreas) {
-    const baseConfig = {
-      formulas: {
-        "Type": this.generateTypeFormula(),
-        "Title": "link(file.name, Title)"
+  generateMainTasksView() {
+    return {
+      type: "table",
+      name: "Tasks",
+      filters: {
+        and: this.getMainViewFilters()
       },
-      properties: {
-        "note.Status": {
-          displayName: "Done"
-        },
-        "file.ctime": {
-          displayName: "Created At"
-        },
-        "file.mtime": {
-          displayName: "Updated At"
-        },
-        "note.tags": {
-          displayName: "Tags"
-        },
-        "note.Title": {
-          displayName: "Title"
-        },
-        "note.Areas": {
-          displayName: "Areas"
-        },
-        "note.Project": {
-          displayName: "Project"
-        },
-        "note.Priority": {
-          displayName: "Priority"
-        },
-        "note.Parent task": {
-          displayName: "Parent task"
-        },
-        "note.Sub-tasks": {
-          displayName: "Sub-tasks"
-        }
-      },
-      views: []
+      order: this.getMainViewOrder(),
+      sort: this.getMainViewSort()
     };
-    baseConfig.views.push({
+  }
+  /**
+   * Generate type-specific views for each task type
+   */
+  generateTypeSpecificViews() {
+    const views = [];
+    for (const taskType of this.settings.taskTypes) {
+      if (taskType.name !== "Task") {
+        views.push({
+          type: "table",
+          name: (0, import_pluralize.default)(taskType.name),
+          filters: {
+            and: [
+              ...this.getMainViewFilters(),
+              `Type == "${taskType.name}"`
+            ]
+          },
+          order: this.getTypeViewOrder(),
+          sort: this.getTypeViewSort()
+        });
+      }
+    }
+    return views;
+  }
+  /**
+   * Get column order for main view - can be overridden by subclasses
+   */
+  getMainViewOrder() {
+    return [
+      "Done",
+      "formula.Title",
+      "formula.Type",
+      "file.ctime",
+      "file.mtime"
+    ];
+  }
+  /**
+   * Get column order for type-specific views - can be overridden by subclasses
+   */
+  getTypeViewOrder() {
+    return [
+      "Done",
+      "formula.Title",
+      "file.ctime",
+      "file.mtime"
+    ];
+  }
+  /**
+   * Get sort configuration for main view
+   */
+  getMainViewSort() {
+    return [
+      { property: "file.mtime", direction: "DESC" },
+      { property: "formula.Title", direction: "ASC" }
+    ];
+  }
+  /**
+   * Get sort configuration for type-specific views
+   */
+  getTypeViewSort() {
+    return [
+      { property: "file.mtime", direction: "DESC" },
+      { property: "formula.Title", direction: "ASC" }
+    ];
+  }
+  /**
+   * Serialize base configuration to YAML format
+   */
+  serializeBaseConfig(config) {
+    return dump(config, {
+      indent: 2,
+      lineWidth: -1,
+      noRefs: true,
+      sortKeys: false
+    });
+  }
+};
+
+// src/services/base-definitions/TasksBaseDefinition.ts
+var TasksBaseDefinition = class extends BaseDefinition {
+  constructor(context) {
+    super(context);
+    this.projectsAndAreas = context.projectsAndAreas;
+  }
+  generateBaseConfig() {
+    return {
+      formulas: this.getCommonFormulas(),
+      properties: this.getTasksProperties(),
+      views: this.generateAllViews()
+    };
+  }
+  /**
+   * Get properties specific to the main Tasks base
+   */
+  getTasksProperties() {
+    return {
+      ...this.getCommonProperties(),
+      "note.Status": {
+        displayName: "Done"
+      },
+      "note.tags": {
+        displayName: "Tags"
+      },
+      "note.Areas": {
+        displayName: "Areas"
+      },
+      "note.Project": {
+        displayName: "Project"
+      },
+      "note.Priority": {
+        displayName: "Priority"
+      },
+      "note.Parent task": {
+        displayName: "Parent task"
+      },
+      "note.Sub-tasks": {
+        displayName: "Sub-tasks"
+      }
+    };
+  }
+  /**
+   * Generate all views for the Tasks base
+   */
+  generateAllViews() {
+    const views = [];
+    views.push(this.generateMainTasksView());
+    views.push(this.generateAllTasksView());
+    views.push(...this.generateTypeSpecificViews());
+    views.push(...this.generateAreaViews());
+    views.push(...this.generateProjectViews());
+    return views;
+  }
+  /**
+   * Generate "All" view that shows all tasks without any filtering
+   */
+  generateAllTasksView() {
+    return {
       type: "table",
       name: "All",
       filters: {
         and: [`file.folder == "${this.settings.tasksFolder}"`]
       },
-      order: [
-        "Done",
-        "formula.Title",
-        "Areas",
-        "Project",
-        "Parent task",
-        "Sub-tasks",
-        "formula.Type",
-        "tags",
-        "file.ctime",
-        "file.mtime"
-      ],
-      sort: [
-        { property: "tags", direction: "ASC" },
-        { property: "formula.Title", direction: "DESC" }
-      ],
-      columnSize: {
-        "formula.Type": 103,
-        "note.tags": 259,
-        "file.ctime": 183
-      }
-    });
-    for (const item of projectsAndAreas) {
-      if (item.type === "project") {
-        baseConfig.views.push(this.createProjectView(item));
-      } else if (item.type === "area") {
-        baseConfig.views.push(this.createAreaView(item));
-      }
-    }
-    return this.serializeBaseConfig(baseConfig);
+      order: this.getMainViewOrder(),
+      sort: this.getMainViewSort()
+    };
   }
   /**
-   * Create a filtered view for a specific project
+   * Generate area-specific views
    */
-  createProjectView(project) {
-    return {
-      type: "table",
-      name: project.name,
-      filters: {
-        and: [
-          `file.folder == "${this.settings.tasksFolder}"`,
-          this.createProjectFilter(project)
-        ]
-      },
-      order: [
-        "Done",
-        "formula.Title",
-        "formula.Type",
-        "tags",
-        "file.mtime",
-        "file.ctime"
-      ],
-      sort: [
-        { property: "file.ctime", direction: "DESC" },
-        { property: "formula.Title", direction: "ASC" }
-      ],
-      columnSize: {
-        "formula.Title": 440,
-        "formula.Type": 103,
-        "note.tags": 338,
-        "file.ctime": 183
-      }
-    };
+  generateAreaViews() {
+    return this.projectsAndAreas.filter((item) => item.type === "area").map((area) => this.createAreaView(area));
+  }
+  /**
+   * Generate project-specific views
+   */
+  generateProjectViews() {
+    return this.projectsAndAreas.filter((item) => item.type === "project").map((project) => this.createProjectView(project));
   }
   /**
    * Create a filtered view for a specific area
@@ -3502,6 +3568,7 @@ var BaseManager = class {
       order: [
         "Status",
         "formula.Title",
+        "formula.Type",
         "tags",
         "file.mtime",
         "file.ctime",
@@ -3520,15 +3587,231 @@ var BaseManager = class {
     };
   }
   /**
-   * Serialize base configuration to YAML format
+   * Create a filtered view for a specific project
    */
-  serializeBaseConfig(config) {
-    return dump(config, {
-      indent: 2,
-      lineWidth: -1,
-      noRefs: true,
-      sortKeys: false
+  createProjectView(project) {
+    return {
+      type: "table",
+      name: project.name,
+      filters: {
+        and: [
+          `file.folder == "${this.settings.tasksFolder}"`,
+          this.createProjectFilter(project)
+        ]
+      },
+      order: [
+        "Status",
+        "formula.Title",
+        "formula.Type",
+        "tags",
+        "file.mtime",
+        "file.ctime",
+        "Areas"
+      ],
+      sort: [
+        { property: "file.mtime", direction: "ASC" },
+        { property: "formula.Title", direction: "ASC" }
+      ],
+      columnSize: {
+        "formula.Title": 382,
+        "note.tags": 134,
+        "file.mtime": 165,
+        "file.ctime": 183
+      }
+    };
+  }
+  /**
+   * Generate a filter expression for areas
+   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
+   */
+  createAreaFilter(area) {
+    return `Areas.contains(link("${area.name}"))`;
+  }
+  /**
+   * Generate a filter expression for projects
+   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
+   */
+  createProjectFilter(project) {
+    return `Project.contains(link("${project.name}"))`;
+  }
+  getMainViewFilters() {
+    return [`file.folder == "${this.settings.tasksFolder}"`];
+  }
+  getMainViewOrder() {
+    return [
+      "Status",
+      "formula.Title",
+      "formula.Type",
+      "tags",
+      "file.mtime",
+      "file.ctime",
+      "Areas",
+      "Project"
+    ];
+  }
+  getTypeViewOrder() {
+    return [
+      "Status",
+      "formula.Title",
+      "tags",
+      "file.mtime",
+      "file.ctime",
+      "Areas",
+      "Project"
+    ];
+  }
+};
+
+// src/services/base-definitions/AreaBaseDefinition.ts
+var AreaBaseDefinition = class extends BaseDefinition {
+  constructor(context) {
+    super(context);
+    this.area = context.area;
+  }
+  generateBaseConfig() {
+    return {
+      formulas: this.getCommonFormulas(),
+      properties: this.getAreaProperties(),
+      views: this.generateAllViews()
+    };
+  }
+  /**
+   * Get properties specific to area bases
+   */
+  getAreaProperties() {
+    return {
+      ...this.getCommonProperties(),
+      "note.Project": {
+        displayName: "Project"
+      }
+    };
+  }
+  /**
+   * Generate all views for the area base
+   */
+  generateAllViews() {
+    const views = [];
+    views.push(this.generateMainTasksView());
+    views.push(...this.generateTypeSpecificViews());
+    return views;
+  }
+  /**
+   * Generate a filter expression for this specific area
+   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
+   */
+  createAreaFilter() {
+    return `Areas.contains(link("${this.area.name}"))`;
+  }
+  getMainViewFilters() {
+    return [
+      `file.folder == "${this.settings.tasksFolder}"`,
+      this.createAreaFilter()
+    ];
+  }
+  getMainViewOrder() {
+    return [
+      "Done",
+      "formula.Title",
+      "Project",
+      "formula.Type",
+      "file.ctime",
+      "file.mtime"
+    ];
+  }
+  getTypeViewOrder() {
+    return [
+      "Done",
+      "formula.Title",
+      "Project",
+      "file.ctime",
+      "file.mtime"
+    ];
+  }
+};
+
+// src/services/base-definitions/ProjectBaseDefinition.ts
+var ProjectBaseDefinition = class extends BaseDefinition {
+  constructor(context) {
+    super(context);
+    this.project = context.project;
+  }
+  generateBaseConfig() {
+    return {
+      formulas: this.getCommonFormulas(),
+      properties: this.getProjectProperties(),
+      views: this.generateAllViews()
+    };
+  }
+  /**
+   * Get properties specific to project bases
+   */
+  getProjectProperties() {
+    return {
+      ...this.getCommonProperties(),
+      "note.Areas": {
+        displayName: "Areas"
+      }
+    };
+  }
+  /**
+   * Generate all views for the project base
+   */
+  generateAllViews() {
+    const views = [];
+    views.push(this.generateMainTasksView());
+    views.push(...this.generateTypeSpecificViews());
+    return views;
+  }
+  /**
+   * Generate a filter expression for this specific project
+   * IMPORTANT: Obsidian Bases link() function requires ONLY the filename without extension.
+   */
+  createProjectFilter() {
+    return `Project.contains(link("${this.project.name}"))`;
+  }
+  getMainViewFilters() {
+    return [
+      `file.folder == "${this.settings.tasksFolder}"`,
+      this.createProjectFilter()
+    ];
+  }
+  getMainViewOrder() {
+    return [
+      "Done",
+      "formula.Title",
+      "Areas",
+      "formula.Type",
+      "file.ctime",
+      "file.mtime"
+    ];
+  }
+  getTypeViewOrder() {
+    return [
+      "Done",
+      "formula.Title",
+      "Areas",
+      "file.ctime",
+      "file.mtime"
+    ];
+  }
+};
+
+// src/services/BaseManager.ts
+var BaseManager = class {
+  constructor(app, vault, settings) {
+    this.app = app;
+    this.vault = vault;
+    this.settings = settings;
+  }
+  /**
+   * Generate the main Tasks.base file with all task properties and default views
+   */
+  async generateTasksBase(projectsAndAreas) {
+    const definition = new TasksBaseDefinition({
+      settings: this.settings,
+      projectsAndAreas
     });
+    return definition.generateYAML();
   }
   /**
    * Parse existing base file content
@@ -3739,157 +4022,21 @@ var BaseManager = class {
    * Generate base configuration for a specific area
    */
   async generateAreaBase(area) {
-    const baseConfig = {
-      formulas: {
-        "Type": this.generateTypeFormula(),
-        "Title": "link(file.name, Title)"
-      },
-      properties: {
-        "note.Title": {
-          displayName: "Title"
-        },
-        "note.Done": {
-          displayName: "Done"
-        },
-        "note.Project": {
-          displayName: "Project"
-        },
-        "file.ctime": {
-          displayName: "Created At"
-        },
-        "file.mtime": {
-          displayName: "Updated At"
-        }
-      },
-      views: []
-    };
-    baseConfig.views.push({
-      type: "table",
-      name: "Tasks",
-      filters: {
-        and: [
-          `file.folder == "${this.settings.tasksFolder}"`,
-          this.createAreaFilter(area)
-        ]
-      },
-      order: [
-        "Done",
-        "formula.Title",
-        "Project",
-        "formula.Type",
-        "file.ctime",
-        "file.mtime"
-      ],
-      sort: [
-        { property: "file.mtime", direction: "DESC" },
-        { property: "formula.Title", direction: "ASC" }
-      ]
+    const definition = new AreaBaseDefinition({
+      settings: this.settings,
+      area
     });
-    for (const taskType of this.settings.taskTypes) {
-      if (taskType.name !== "Task") {
-        baseConfig.views.push({
-          type: "table",
-          name: (0, import_pluralize.default)(taskType.name),
-          filters: {
-            and: [
-              `file.folder == "${this.settings.tasksFolder}"`,
-              this.createAreaFilter(area),
-              `Type == "${taskType.name}"`
-            ]
-          },
-          order: [
-            "Done",
-            "formula.Title",
-            "Project",
-            "file.ctime",
-            "file.mtime"
-          ],
-          sort: [
-            { property: "file.mtime", direction: "DESC" },
-            { property: "formula.Title", direction: "ASC" }
-          ]
-        });
-      }
-    }
-    return this.serializeBaseConfig(baseConfig);
+    return definition.generateYAML();
   }
   /**
    * Generate base configuration for a specific project
    */
   async generateProjectBase(project) {
-    const baseConfig = {
-      formulas: {
-        "Type": this.generateTypeFormula(),
-        "Title": "link(file.name, Title)"
-      },
-      properties: {
-        "note.Title": {
-          displayName: "Title"
-        },
-        "note.Done": {
-          displayName: "Done"
-        },
-        "note.Areas": {
-          displayName: "Areas"
-        },
-        "file.ctime": {
-          displayName: "Created At"
-        },
-        "file.mtime": {
-          displayName: "Updated At"
-        }
-      },
-      views: []
-    };
-    baseConfig.views.push({
-      type: "table",
-      name: "Tasks",
-      filters: {
-        and: [
-          `file.folder == "${this.settings.tasksFolder}"`,
-          this.createProjectFilter(project)
-        ]
-      },
-      order: [
-        "Done",
-        "formula.Title",
-        "Areas",
-        "formula.Type",
-        "file.ctime",
-        "file.mtime"
-      ],
-      sort: [
-        { property: "file.mtime", direction: "DESC" },
-        { property: "formula.Title", direction: "ASC" }
-      ]
+    const definition = new ProjectBaseDefinition({
+      settings: this.settings,
+      project
     });
-    for (const taskType of this.settings.taskTypes) {
-      if (taskType.name !== "Task") {
-        baseConfig.views.push({
-          type: "table",
-          name: (0, import_pluralize.default)(taskType.name),
-          filters: {
-            and: [
-              `file.folder == "${this.settings.tasksFolder}"`,
-              this.createProjectFilter(project),
-              `Type == "${taskType.name}"`
-            ]
-          },
-          order: [
-            "Done",
-            "formula.Title",
-            "Areas",
-            "file.ctime",
-            "file.mtime"
-          ],
-          sort: [
-            { property: "file.mtime", direction: "DESC" },
-            { property: "formula.Title", direction: "ASC" }
-          ]
-        });
-      }
-    }
-    return this.serializeBaseConfig(baseConfig);
+    return definition.generateYAML();
   }
   /**
    * Ensure specific base embedding in area/project files

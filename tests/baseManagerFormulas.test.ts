@@ -81,7 +81,7 @@ describe('BaseManager Formula Structure', () => {
       const projectsAndAreas: ProjectAreaInfo[] = [];
       const result = await baseManager.generateTasksBase(projectsAndAreas);
 
-      expect(result).toContain('note.Title:');
+      expect(result).toContain('file.name:');
       expect(result).toContain('displayName: Title');
     });
   });
