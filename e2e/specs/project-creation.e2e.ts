@@ -120,12 +120,15 @@ describe('Project Creation', () => {
     // Check base file content
     const baseContent = await getFileContent(context.page, 'Bases/Website Redesign.base');
     expect(baseContent).toContain('properties:');
-    expect(baseContent).toContain('file.name:');
-    expect(baseContent).toContain('displayName: Title');
+    expect(baseContent).toContain('name: Title');
+    expect(baseContent).toContain('name: Type');
+    expect(baseContent).toContain('name: Done');
+    expect(baseContent).toContain('formulas:');
+    expect(baseContent).toContain('Title: link(file.name, Title)');
     expect(baseContent).toContain('views:');
     expect(baseContent).toContain('name: Tasks');
-    expect(baseContent).toContain('name: Bugs');
-    expect(baseContent).toContain('name: Features');
+    expect(baseContent).toContain('name: All Bugs');
+    expect(baseContent).toContain('name: All Features');
     expect(baseContent).toContain('Project.contains(link("Website Redesign"))');
   });
 

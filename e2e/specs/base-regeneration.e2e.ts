@@ -186,8 +186,8 @@ Website redesign project for the company.
     const baseContent = await getFileContent(context.page, 'Bases/Tasks.base');
     expect(baseContent).toContain('formulas:');
     expect(baseContent).toContain('Title: link(file.name, Title)');
-    expect(baseContent).toContain('note.Type:');
-    expect(baseContent).toContain('displayName: Type');
+    expect(baseContent).toContain('name: Type');
+    expect(baseContent).toContain('type: string');
 
     // Should use simple Type display without complex formatting
     expect(baseContent).not.toContain('if(Type ==');

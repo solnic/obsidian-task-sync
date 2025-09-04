@@ -97,8 +97,8 @@ describe('File Name Sanitization and Base Formulas', () => {
     expect(baseContent).toContain('formulas:');
     expect(baseContent).toContain('Title: link(file.name, Title)');
     expect(baseContent).toContain('formula.Title');
-    expect(baseContent).toContain('note.Type:');
-    expect(baseContent).toContain('displayName: Type');
+    expect(baseContent).toContain('name: Type');
+    expect(baseContent).toContain('type: string');
   });
 
   test('should handle basic file name sanitization', async () => {

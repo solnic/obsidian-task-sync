@@ -91,8 +91,11 @@ This is a test area for bases integration.
     // Check if the file contains expected base structure
     const content = await getFileContent(context.page, 'Bases/Tasks.base');
     expect(content).toContain('properties:');
-    expect(content).toContain('file.name:');
-    expect(content).toContain('displayName: Title');
+    expect(content).toContain('name: Title');
+    expect(content).toContain('name: Type');
+    expect(content).toContain('name: Done');
+    expect(content).toContain('formulas:');
+    expect(content).toContain('Title: link(file.name, Title)');
     expect(content).toContain('views:');
     expect(content).toContain('type: table');
     expect(content).toContain('name: All');

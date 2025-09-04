@@ -61,18 +61,19 @@ This is a health area for tracking fitness and wellness.
     // Check base file content structure
     const baseContent = await getFileContent(context.page, 'Bases/Health.base');
 
-    // Check properties
+    // Check properties section
     expect(baseContent).toContain('properties:');
-    expect(baseContent).toContain('file.name:');
-    expect(baseContent).toContain('displayName: Title');
-    expect(baseContent).toContain('note.Done:');
-    expect(baseContent).toContain('displayName: Done');
+    expect(baseContent).toContain('name: Title');
+    expect(baseContent).toContain('name: Type');
+    expect(baseContent).toContain('name: Priority');
+    expect(baseContent).toContain('name: Project');
+    expect(baseContent).toContain('name: Done');
+    expect(baseContent).toContain('type: checkbox');
+    expect(baseContent).toContain('type: string');
+
+    // Check formulas section
     expect(baseContent).toContain('formulas:');
     expect(baseContent).toContain('Title: link(file.name, Title)');
-    expect(baseContent).toContain('note.Type:');
-    expect(baseContent).toContain('displayName: Type');
-    expect(baseContent).toContain('note.Project:');
-    expect(baseContent).toContain('displayName: Project');
 
     // Check views
     expect(baseContent).toContain('views:');
@@ -132,18 +133,20 @@ This is a website redesign project.
     // Check base file content structure
     const baseContent = await getFileContent(context.page, 'Bases/Website Redesign.base');
 
-    // Check properties
+    // Check properties section
     expect(baseContent).toContain('properties:');
-    expect(baseContent).toContain('file.name:');
-    expect(baseContent).toContain('displayName: Title');
-    expect(baseContent).toContain('note.Done:');
-    expect(baseContent).toContain('displayName: Done');
+    expect(baseContent).toContain('name: Title');
+    expect(baseContent).toContain('name: Type');
+    expect(baseContent).toContain('name: Priority');
+    expect(baseContent).toContain('name: Areas');
+    expect(baseContent).toContain('name: Done');
+    expect(baseContent).toContain('name: Status');
+    expect(baseContent).toContain('type: checkbox');
+    expect(baseContent).toContain('type: string');
+
+    // Check formulas section
     expect(baseContent).toContain('formulas:');
     expect(baseContent).toContain('Title: link(file.name, Title)');
-    expect(baseContent).toContain('note.Type:');
-    expect(baseContent).toContain('displayName: Type');
-    expect(baseContent).toContain('note.Areas:');
-    expect(baseContent).toContain('displayName: Areas');
 
     // Check views
     expect(baseContent).toContain('views:');
