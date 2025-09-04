@@ -277,13 +277,7 @@ export async function setupObsidianElectron(
   return { electronApp, page };
 }
 
-/**
- * Wait for async operations to complete
- * @deprecated Use proper Playwright waiting instead of fixed timeouts
- */
-export async function waitForAsyncOperation(timeout: number = 1000): Promise<void> {
-  await new Promise(resolve => setTimeout(resolve, timeout));
-}
+
 
 /**
  * Wait for the Task Sync plugin to be fully loaded and ready

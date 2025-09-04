@@ -2,8 +2,7 @@ import { test, expect, describe } from 'vitest';
 import {
   createTestFolders,
   getFileContent,
-  fileExists,
-  waitForAsyncOperation
+  fileExists
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
 
@@ -71,7 +70,7 @@ Additional project notes here.
       }
     });
 
-    await waitForAsyncOperation(1000);
+    await context.page.waitForTimeout(1000);
 
     // Check if project file was created
     const projectExists = await fileExists(context.page, 'Projects/Mobile App Development.md');
@@ -149,7 +148,7 @@ Links and resources for this area.
       }
     });
 
-    await waitForAsyncOperation(1000);
+    await context.page.waitForTimeout(1000);
 
     // Check if area file was created
     const areaExists = await fileExists(context.page, 'Areas/Health & Wellness.md');
@@ -210,7 +209,7 @@ Type: Project
       }
     });
 
-    await waitForAsyncOperation(1000);
+    await context.page.waitForTimeout(1000);
 
     // Regenerate bases to test for duplicates
     await context.page.evaluate(async () => {
@@ -221,7 +220,7 @@ Type: Project
       }
     });
 
-    await waitForAsyncOperation(1000);
+    await context.page.waitForTimeout(1000);
 
     // Check project file content
     const projectContent = await getFileContent(context.page, 'Projects/Test Project.md');
@@ -278,7 +277,7 @@ Type: Project
       }
     });
 
-    await waitForAsyncOperation(1000);
+    await context.page.waitForTimeout(1000);
 
     // Check project file content
     const projectContent = await getFileContent(context.page, 'Projects/Multi Tasks Project.md');

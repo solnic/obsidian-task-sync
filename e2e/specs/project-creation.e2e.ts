@@ -7,8 +7,7 @@ import { test, expect, describe } from 'vitest';
 import {
   createTestFolders,
   getFileContent,
-  fileExists,
-  waitForAsyncOperation
+  fileExists
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks, executeCommand } from '../helpers/shared-context';
 
@@ -33,7 +32,7 @@ describe('Project Creation', () => {
 
     // Execute the create project command
     await executeCommand(context, 'Task Sync: Create Project');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-project', { timeout: 5000 });
 
     // Check if modal is open
     const modalExists = await context.page.locator('.task-sync-create-project').isVisible();
@@ -45,7 +44,7 @@ describe('Project Creation', () => {
 
     // Close modal
     await context.page.keyboard.press('Escape');
-    await waitForAsyncOperation(500);
+    await context.page.waitForTimeout(500);
   });
 
   test('should create project with basic information', async () => {
@@ -53,7 +52,7 @@ describe('Project Creation', () => {
 
     // Execute the create project command
     await executeCommand(context, 'Task Sync: Create Project');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-project', { timeout: 5000 });
 
     // Fill in project name
     const nameInput = context.page.locator('input[placeholder*="Website Redesign, Learn Spanish"]');
@@ -69,7 +68,7 @@ describe('Project Creation', () => {
 
     // Click create button
     await context.page.locator('button:has-text("Create Project")').click();
-    await waitForAsyncOperation(2000);
+    await context.page.waitForTimeout(2000);
 
     // Check if project file was created
     const projectFileExists = await fileExists(context.page, 'Projects/Test Project.md');
@@ -100,7 +99,7 @@ describe('Project Creation', () => {
 
     // Execute the create project command
     await executeCommand(context, 'Task Sync: Create Project');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-project', { timeout: 5000 });
 
     // Fill in project name
     const nameInput = context.page.locator('input[placeholder*="Website Redesign, Learn Spanish"]');
@@ -112,7 +111,7 @@ describe('Project Creation', () => {
 
     // Click create button
     await context.page.locator('button:has-text("Create Project")').click();
-    await waitForAsyncOperation(3000);
+    await context.page.waitForTimeout(3000);
 
     // Check if individual project base was created
     const baseFileExists = await fileExists(context.page, 'Bases/Website Redesign.base');
@@ -135,11 +134,11 @@ describe('Project Creation', () => {
 
     // Execute the create project command
     await executeCommand(context, 'Task Sync: Create Project');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-project', { timeout: 5000 });
 
     // Try to create without name
     await context.page.locator('button:has-text("Create Project")').click();
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-error', { timeout: 5000 });
 
     // Check for error message
     const errorExists = await context.page.locator('.task-sync-error').isVisible();
@@ -150,7 +149,7 @@ describe('Project Creation', () => {
 
     // Close modal
     await context.page.keyboard.press('Escape');
-    await waitForAsyncOperation(500);
+    await context.page.waitForTimeout(500);
   });
 
   test('should handle special characters in project name', async () => {
@@ -158,7 +157,7 @@ describe('Project Creation', () => {
 
     // Execute the create project command
     await executeCommand(context, 'Task Sync: Create Project');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-project', { timeout: 5000 });
 
     // Fill in project name with special characters
     const nameInput = context.page.locator('input[placeholder*="Website Redesign, Learn Spanish"]');
@@ -166,7 +165,7 @@ describe('Project Creation', () => {
 
     // Click create button
     await context.page.locator('button:has-text("Create Project")').click();
-    await waitForAsyncOperation(2000);
+    await context.page.waitForTimeout(2000);
 
     // Check if project file was created with original name
     const projectFileExists = await fileExists(context.page, 'Projects/Mobile App (iOS & Android).md');
@@ -228,7 +227,7 @@ Status: Planning
 
     // Execute the create project command
     await executeCommand(context, 'Task Sync: Create Project');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-project', { timeout: 5000 });
 
     // Fill in project information
     const nameInput = context.page.locator('input[placeholder*="Website Redesign, Learn Spanish"]');
@@ -242,7 +241,7 @@ Status: Planning
 
     // Click create button
     await context.page.locator('button:has-text("Create Project")').click();
-    await waitForAsyncOperation(2000);
+    await context.page.waitForTimeout(2000);
 
     // Check if project file was created
     const projectFileExists = await fileExists(context.page, 'Projects/E-commerce Platform.md');
@@ -264,7 +263,7 @@ Status: Planning
 
     // Execute the create project command
     await executeCommand(context, 'Task Sync: Create Project');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-project', { timeout: 5000 });
 
     // Fill in only project name
     const nameInput = context.page.locator('input[placeholder*="Website Redesign, Learn Spanish"]');
@@ -272,7 +271,7 @@ Status: Planning
 
     // Click create button
     await context.page.locator('button:has-text("Create Project")').click();
-    await waitForAsyncOperation(2000);
+    await context.page.waitForTimeout(2000);
 
     // Check if project file was created
     const projectFileExists = await fileExists(context.page, 'Projects/Simple Project.md');

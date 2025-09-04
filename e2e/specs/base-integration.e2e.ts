@@ -8,7 +8,6 @@ import {
   createTestFolders,
   getFileContent,
   fileExists,
-  waitForAsyncOperation,
   waitForTaskSyncPlugin
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
@@ -133,7 +132,7 @@ Some project content.
     });
 
     // Wait for command to execute
-    await waitForAsyncOperation(2000);
+    await context.page.waitForTimeout(2000);
 
     // Check if base embedding was added to the project file
     const content = await getFileContent(context.page, 'Projects/Sample Project.md');

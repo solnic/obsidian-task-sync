@@ -6,7 +6,6 @@ import { test, expect, describe } from 'vitest';
 import {
   getFileContent,
   fileExists,
-  waitForAsyncOperation,
   createTestFolders
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks, executeCommand } from '../helpers/shared-context';
@@ -26,20 +25,20 @@ describe('Todo Promotion E2E', () => {
 
     // Open the file
     await context.page.keyboard.press('Control+O');
-    await waitForAsyncOperation(500);
+    await context.page.waitForSelector('.prompt-input', { timeout: 5000 });
 
     // Type the filename to search for it
     await context.page.keyboard.type('Personal.md');
     await context.page.keyboard.press('Enter');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForTimeout(1000);
 
     // Click on the editor to focus it and position cursor on the todo line
     await context.page.click('.cm-editor');
-    await waitForAsyncOperation(500);
+    await context.page.waitForTimeout(500);
 
     // Execute the promote todo command
     await executeCommand(context, 'Task Sync: Promote Todo to Task');
-    await waitForAsyncOperation(3000);
+    await context.page.waitForTimeout(3000);
 
     // Verify the task file was created
     const taskExists = await fileExists(context.page, 'Tasks/Buy groceries for the week.md');

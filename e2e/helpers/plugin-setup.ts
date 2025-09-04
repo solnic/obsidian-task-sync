@@ -1,11 +1,6 @@
 import type { Page } from 'playwright';
 
-/**
- * Wait for async operations to complete
- */
-export async function waitForAsyncOperation(timeout: number = 1000): Promise<void> {
-  await new Promise(resolve => setTimeout(resolve, timeout));
-}
+
 
 /**
  * Reset Obsidian UI state by closing modals and dialogs
@@ -86,7 +81,7 @@ export async function resetObsidianUI(page: Page): Promise<void> {
     // Don't throw error to prevent test hangs
   }
 
-  await waitForAsyncOperation(500); // Increased final wait time for headless mode
+  await page.waitForTimeout(500); // Increased final wait time for headless mode
 }
 
 /**

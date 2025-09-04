@@ -7,8 +7,7 @@ import { test, expect, describe } from 'vitest';
 import {
   createTestFolders,
   getFileContent,
-  fileExists,
-  waitForAsyncOperation
+  fileExists
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks, executeCommand } from '../helpers/shared-context';
 
@@ -33,7 +32,7 @@ describe('Area Creation', () => {
 
     // Execute the create area command
     await executeCommand(context, 'Task Sync: Create Area');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-area', { timeout: 5000 });
 
     // Check if modal is open
     const modalExists = await context.page.locator('.task-sync-create-area').isVisible();
@@ -45,7 +44,7 @@ describe('Area Creation', () => {
 
     // Close modal
     await context.page.keyboard.press('Escape');
-    await waitForAsyncOperation(500);
+    await context.page.waitForTimeout(500);
   });
 
   test('should create area with basic information', async () => {
@@ -53,7 +52,7 @@ describe('Area Creation', () => {
 
     // Execute the create area command
     await executeCommand(context, 'Task Sync: Create Area');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-area', { timeout: 5000 });
 
     // Fill in area name
     const nameInput = context.page.locator('input[placeholder*="Health, Finance, Learning"]');
@@ -65,7 +64,7 @@ describe('Area Creation', () => {
 
     // Click create button
     await context.page.locator('button:has-text("Create Area")').click();
-    await waitForAsyncOperation(2000);
+    await context.page.waitForTimeout(2000);
 
     // Check if area file was created
     const areaFileExists = await fileExists(context.page, 'Areas/Test Area.md');
@@ -95,7 +94,7 @@ describe('Area Creation', () => {
 
     // Execute the create area command
     await executeCommand(context, 'Task Sync: Create Area');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-area', { timeout: 5000 });
 
     // Fill in area name
     const nameInput = context.page.locator('input[placeholder*="Health, Finance, Learning"]');
@@ -103,7 +102,7 @@ describe('Area Creation', () => {
 
     // Click create button
     await context.page.locator('button:has-text("Create Area")').click();
-    await waitForAsyncOperation(3000);
+    await context.page.waitForTimeout(3000);
 
     // Check if individual area base was created
     const baseFileExists = await fileExists(context.page, 'Bases/Finance Area.base');
@@ -126,11 +125,11 @@ describe('Area Creation', () => {
 
     // Execute the create area command
     await executeCommand(context, 'Task Sync: Create Area');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-area', { timeout: 5000 });
 
     // Try to create without name
     await context.page.locator('button:has-text("Create Area")').click();
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-error', { timeout: 5000 });
 
     // Check for error message
     const errorExists = await context.page.locator('.task-sync-error').isVisible();
@@ -141,7 +140,7 @@ describe('Area Creation', () => {
 
     // Close modal
     await context.page.keyboard.press('Escape');
-    await waitForAsyncOperation(500);
+    await context.page.waitForTimeout(500);
   });
 
   test('should handle special characters in area name', async () => {
@@ -149,7 +148,7 @@ describe('Area Creation', () => {
 
     // Execute the create area command
     await executeCommand(context, 'Task Sync: Create Area');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-area', { timeout: 5000 });
 
     // Fill in area name with special characters
     const nameInput = context.page.locator('input[placeholder*="Health, Finance, Learning"]');
@@ -157,7 +156,7 @@ describe('Area Creation', () => {
 
     // Click create button
     await context.page.locator('button:has-text("Create Area")').click();
-    await waitForAsyncOperation(2000);
+    await context.page.waitForTimeout(2000);
 
     // Check if area file was created with original name
     const areaFileExists = await fileExists(context.page, 'Areas/Health & Fitness (2024).md');
@@ -213,7 +212,7 @@ Custom: true
 
     // Execute the create area command
     await executeCommand(context, 'Task Sync: Create Area');
-    await waitForAsyncOperation(1000);
+    await context.page.waitForSelector('.task-sync-create-area', { timeout: 5000 });
 
     // Fill in area information
     const nameInput = context.page.locator('input[placeholder*="Health, Finance, Learning"]');
@@ -224,7 +223,7 @@ Custom: true
 
     // Click create button
     await context.page.locator('button:has-text("Create Area")').click();
-    await waitForAsyncOperation(2000);
+    await context.page.waitForTimeout(2000);
 
     // Check if area file was created
     const areaFileExists = await fileExists(context.page, 'Areas/Learning Area.md');
