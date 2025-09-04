@@ -1,4 +1,4 @@
-import { Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+import { Plugin, PluginSettingTab, Setting, TFile, MarkdownView, Notice } from 'obsidian';
 import { VaultScanner } from './services/VaultScannerService';
 import { BaseManager } from './services/BaseManager';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
@@ -48,6 +48,15 @@ export interface FileContext {
   type: 'project' | 'area' | 'none';
   name?: string;
   path?: string;
+}
+
+// Todo item detection interface
+export interface TodoItem {
+  text: string;
+  completed: boolean;
+  indentation: string;
+  listMarker: string;
+  lineNumber: number;
 }
 
 // Default settings
@@ -138,6 +147,14 @@ export default class TaskSyncPlugin extends Plugin {
       name: 'Create Project',
       callback: () => {
         this.openProjectCreateModal();
+      }
+    });
+
+    this.addCommand({
+      id: 'promote-todo-to-task',
+      name: 'Promote Todo to Task',
+      callback: async () => {
+        await this.promoteTodoToTask();
       }
     });
   }
@@ -272,6 +289,104 @@ export default class TaskSyncPlugin extends Plugin {
     }
 
     return { type: 'none' };
+  }
+
+  /**
+   * Detect todo item under cursor in the active editor
+   */
+  private detectTodoUnderCursor(): TodoItem | null {
+    const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+
+    if (!markdownView) {
+      return null;
+    }
+    const editor = markdownView.editor;
+
+    if (!editor) {
+      return null;
+    }
+
+    const cursor = editor.getCursor();
+    const line = editor.getLine(cursor.line);
+
+    // Regex to match todo items: optional whitespace, list marker (- or *), checkbox, text
+    const todoRegex = /^(\s*)([-*])\s*\[([xX\s])\]\s*(.+)$/;
+    const match = line.match(todoRegex);
+
+    if (!match) {
+      return null;
+    }
+
+    const [, indentation, listMarker, checkboxState, text] = match;
+
+    return {
+      text: text.trim(),
+      completed: checkboxState.toLowerCase() === 'x',
+      indentation,
+      listMarker,
+      lineNumber: cursor.line
+    };
+  }
+
+  /**
+   * Promote a todo item under cursor to a task
+   */
+  private async promoteTodoToTask(): Promise<void> {
+    try {
+      const todoItem = this.detectTodoUnderCursor();
+
+      if (!todoItem) {
+        new Notice('No todo item found under cursor');
+        return;
+      }
+
+      // Get current file context
+      const context = this.detectCurrentFileContext();
+
+      // Prepare task data
+      const taskData = {
+        name: todoItem.text,
+        type: this.settings.taskTypes[0]?.name || 'Task',
+        done: todoItem.completed,
+        status: todoItem.completed ? 'Done' : 'Backlog',
+        tags: [] as string[],
+        // Set context-specific fields
+        ...(context.type === 'project' && context.name ? { project: context.name } : {}),
+        ...(context.type === 'area' && context.name ? { areas: context.name } : {})
+      };
+
+      // Create the task
+      await this.createTask(taskData);
+
+      // Replace the todo line with a link to the created task
+      const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+      if (!markdownView) {
+        throw new Error('No active markdown view found');
+      }
+      const editor = markdownView.editor;
+
+      let replacementLine: string;
+      if (todoItem.completed) {
+        // Keep the completed checkbox and add the link
+        replacementLine = `${todoItem.indentation}${todoItem.listMarker} [x] [[${todoItem.text}]]`;
+      } else {
+        // Replace with a simple link
+        replacementLine = `${todoItem.indentation}${todoItem.listMarker} [[${todoItem.text}]]`;
+      }
+
+      editor.setLine(todoItem.lineNumber, replacementLine);
+
+      new Notice(`Todo promoted to task: ${todoItem.text}`);
+
+      // Refresh base views if auto-update is enabled
+      if (this.settings.autoUpdateBaseViews) {
+        await this.refreshBaseViews();
+      }
+
+    } catch (error) {
+      console.error('Failed to promote todo to task:', error);
+      new Notice('Failed to promote todo to task');
+    }
   }
 
   // Task creation logic

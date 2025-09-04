@@ -4371,6 +4371,13 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
         this.openProjectCreateModal();
       }
     });
+    this.addCommand({
+      id: "promote-todo-to-task",
+      name: "Promote Todo to Task",
+      callback: async () => {
+        await this.promoteTodoToTask();
+      }
+    });
   }
   onunload() {
     console.log("Unloading Task Sync Plugin");
@@ -4477,6 +4484,78 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
       };
     }
     return { type: "none" };
+  }
+  /**
+   * Detect todo item under cursor in the active editor
+   */
+  detectTodoUnderCursor() {
+    const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView);
+    if (!markdownView) {
+      return null;
+    }
+    const editor = markdownView.editor;
+    if (!editor) {
+      return null;
+    }
+    const cursor = editor.getCursor();
+    const line = editor.getLine(cursor.line);
+    const todoRegex = /^(\s*)([-*])\s*\[([xX\s])\]\s*(.+)$/;
+    const match = line.match(todoRegex);
+    if (!match) {
+      return null;
+    }
+    const [, indentation, listMarker, checkboxState, text] = match;
+    return {
+      text: text.trim(),
+      completed: checkboxState.toLowerCase() === "x",
+      indentation,
+      listMarker,
+      lineNumber: cursor.line
+    };
+  }
+  /**
+   * Promote a todo item under cursor to a task
+   */
+  async promoteTodoToTask() {
+    var _a;
+    try {
+      const todoItem = this.detectTodoUnderCursor();
+      if (!todoItem) {
+        new import_obsidian6.Notice("No todo item found under cursor");
+        return;
+      }
+      const context = this.detectCurrentFileContext();
+      const taskData = {
+        name: todoItem.text,
+        type: ((_a = this.settings.taskTypes[0]) == null ? void 0 : _a.name) || "Task",
+        done: todoItem.completed,
+        status: todoItem.completed ? "Done" : "Backlog",
+        tags: [],
+        // Set context-specific fields
+        ...context.type === "project" && context.name ? { project: context.name } : {},
+        ...context.type === "area" && context.name ? { areas: context.name } : {}
+      };
+      await this.createTask(taskData);
+      const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView);
+      if (!markdownView) {
+        throw new Error("No active markdown view found");
+      }
+      const editor = markdownView.editor;
+      let replacementLine;
+      if (todoItem.completed) {
+        replacementLine = `${todoItem.indentation}${todoItem.listMarker} [x] [[${todoItem.text}]]`;
+      } else {
+        replacementLine = `${todoItem.indentation}${todoItem.listMarker} [[${todoItem.text}]]`;
+      }
+      editor.setLine(todoItem.lineNumber, replacementLine);
+      new import_obsidian6.Notice(`Todo promoted to task: ${todoItem.text}`);
+      if (this.settings.autoUpdateBaseViews) {
+        await this.refreshBaseViews();
+      }
+    } catch (error) {
+      console.error("Failed to promote todo to task:", error);
+      new import_obsidian6.Notice("Failed to promote todo to task");
+    }
   }
   // Task creation logic
   async createTask(taskData) {
