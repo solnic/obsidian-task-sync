@@ -19,21 +19,21 @@ describe('Bases Integration', () => {
     await createTestFolders(context.page);
 
     // Check if the plugin is loaded and has base management commands
-    const hasRegenerateCommand = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const commands = app.commands.commands;
-      return 'obsidian-task-sync:regenerate-bases' in commands;
-    });
-
-    expect(hasRegenerateCommand).toBe(true);
-
     const hasRefreshCommand = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const commands = app.commands.commands;
-      return 'obsidian-task-sync:refresh-base-views' in commands;
+      return 'obsidian-task-sync:refresh' in commands;
     });
 
     expect(hasRefreshCommand).toBe(true);
+
+    const hasAddTaskCommand = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const commands = app.commands.commands;
+      return 'obsidian-task-sync:add-task' in commands;
+    });
+
+    expect(hasAddTaskCommand).toBe(true);
   });
 
   test('should regenerate bases when command is executed', { timeout: 15000 }, async () => {

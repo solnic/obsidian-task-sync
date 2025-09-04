@@ -246,8 +246,8 @@ Marathon training project.
       }
     });
 
-    // Use the regenerate command
-    await executeCommand(context, 'Task Sync: Regenerate Bases');
+    // Use the refresh command
+    await executeCommand(context, 'Task Sync: Refresh');
 
     // Wait for bases regeneration to complete
     await waitForBasesRegeneration(context.page);

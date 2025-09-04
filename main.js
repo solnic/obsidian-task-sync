@@ -4615,10 +4615,10 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
       }
     });
     this.addCommand({
-      id: "regenerate-bases",
-      name: "Regenerate Task Bases",
+      id: "refresh",
+      name: "Refresh",
       callback: async () => {
-        await this.regenerateBases();
+        await this.refresh();
       }
     });
     this.addCommand({
@@ -5018,6 +5018,228 @@ ${expectedBaseEmbed}`;
   }
   // Base Management Methods
   /**
+   * Comprehensive refresh operation - updates file properties and regenerates bases
+   */
+  async refresh() {
+    try {
+      const results = {
+        filesUpdated: 0,
+        propertiesUpdated: 0,
+        basesRegenerated: 0,
+        errors: []
+      };
+      console.log("Task Sync: Starting comprehensive refresh...");
+      await this.updateFileProperties(results);
+      await this.regenerateBases();
+      results.basesRegenerated = 1;
+      this.showRefreshResults(results);
+      console.log("Task Sync: Refresh completed successfully");
+    } catch (error) {
+      console.error("Task Sync: Refresh failed:", error);
+      throw error;
+    }
+  }
+  /**
+   * Update properties in all task, project, and area files to match current schema
+   */
+  async updateFileProperties(results) {
+    try {
+      console.log("Task Sync: Starting file property updates...");
+      await this.updateTaskFiles(results);
+      await this.updateProjectFiles(results);
+      await this.updateAreaFiles(results);
+      console.log(`Task Sync: Updated properties in ${results.filesUpdated} files (${results.propertiesUpdated} properties changed)`);
+    } catch (error) {
+      console.error("Task Sync: Failed to update file properties:", error);
+      results.errors.push(`Failed to update file properties: ${error.message}`);
+    }
+  }
+  /**
+   * Update task files to match current schema
+   */
+  async updateTaskFiles(results) {
+    try {
+      const taskFiles = await this.vaultScanner.scanTasksFolder();
+      for (const filePath of taskFiles) {
+        await this.updateSingleFile(filePath, "task", results);
+      }
+    } catch (error) {
+      console.error("Task Sync: Failed to update task files:", error);
+      results.errors.push(`Failed to update task files: ${error.message}`);
+    }
+  }
+  /**
+   * Update project files to match current schema
+   */
+  async updateProjectFiles(results) {
+    try {
+      const projectFiles = await this.vaultScanner.scanProjectsFolder();
+      for (const filePath of projectFiles) {
+        await this.updateSingleFile(filePath, "project", results);
+      }
+    } catch (error) {
+      console.error("Task Sync: Failed to update project files:", error);
+      results.errors.push(`Failed to update project files: ${error.message}`);
+    }
+  }
+  /**
+   * Update area files to match current schema
+   */
+  async updateAreaFiles(results) {
+    try {
+      const areaFiles = await this.vaultScanner.scanAreasFolder();
+      for (const filePath of areaFiles) {
+        await this.updateSingleFile(filePath, "area", results);
+      }
+    } catch (error) {
+      console.error("Task Sync: Failed to update area files:", error);
+      results.errors.push(`Failed to update area files: ${error.message}`);
+    }
+  }
+  /**
+   * Get the current front-matter schema for a file type
+   */
+  getFrontMatterSchema(type2) {
+    const schemas = {
+      task: {
+        Title: { required: true, type: "string" },
+        Type: { required: false, type: "string", default: "Task" },
+        Areas: { required: false, type: "string" },
+        "Parent task": { required: false, type: "string" },
+        "Sub-tasks": { required: false, type: "string" },
+        tags: { required: false, type: "array" },
+        Project: { required: false, type: "string" },
+        Done: { required: false, type: "boolean", default: false },
+        Status: { required: false, type: "string", default: "Backlog" },
+        Priority: { required: false, type: "string" }
+      },
+      project: {
+        Title: { required: true, type: "string" },
+        Name: { required: true, type: "string" },
+        Type: { required: true, type: "string", default: "Project" },
+        Areas: { required: false, type: "string" }
+      },
+      area: {
+        Title: { required: true, type: "string" },
+        Name: { required: true, type: "string" },
+        Type: { required: true, type: "string", default: "Area" }
+      }
+    };
+    return schemas[type2];
+  }
+  /**
+   * Extract front-matter data from file content
+   */
+  extractFrontMatterData(content) {
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontMatterMatch) {
+      return null;
+    }
+    const frontMatterText = frontMatterMatch[1];
+    const data = {};
+    const lines = frontMatterText.split("\n");
+    for (const line of lines) {
+      const match = line.match(/^([^:]+):\s*(.*)$/);
+      if (match) {
+        const [, key, value] = match;
+        data[key.trim()] = value.trim();
+      }
+    }
+    return data;
+  }
+  /**
+   * Update a single file's properties to match current schema
+   */
+  async updateSingleFile(filePath, type2, results) {
+    try {
+      const file = this.app.vault.getAbstractFileByPath(filePath);
+      if (!file || !(file instanceof import_obsidian6.TFile)) {
+        console.log(`Task Sync: Skipping non-file: ${filePath}`);
+        return;
+      }
+      const content = await this.app.vault.read(file);
+      const existingFrontMatter = this.extractFrontMatterData(content);
+      if (!existingFrontMatter) {
+        console.log(`Task Sync: Skipping file without front-matter: ${filePath}`);
+        return;
+      }
+      const currentSchema = this.getFrontMatterSchema(type2);
+      if (!currentSchema) {
+        console.warn(`Task Sync: No schema found for file type: ${type2}`);
+        return;
+      }
+      let hasChanges = false;
+      let propertiesChanged = 0;
+      const updatedFrontMatter = { ...existingFrontMatter };
+      for (const [fieldName, fieldConfig] of Object.entries(currentSchema)) {
+        try {
+          const config = fieldConfig;
+          if (config && config.required && !(fieldName in updatedFrontMatter)) {
+            updatedFrontMatter[fieldName] = config.default || "";
+            hasChanges = true;
+            propertiesChanged++;
+            console.log(`Task Sync: Added missing field '${fieldName}' to ${filePath}`);
+          }
+        } catch (fieldError) {
+          console.warn(`Task Sync: Error processing field ${fieldName} in ${filePath}:`, fieldError);
+        }
+      }
+      const validFields = new Set(Object.keys(currentSchema));
+      for (const fieldName of Object.keys(updatedFrontMatter)) {
+        const commonFields = ["tags", "aliases", "cssclass", "publish"];
+        if (!validFields.has(fieldName) && !commonFields.includes(fieldName)) {
+          console.log(`Task Sync: Removing obsolete field '${fieldName}' from ${filePath}`);
+          delete updatedFrontMatter[fieldName];
+          hasChanges = true;
+          propertiesChanged++;
+        }
+      }
+      if (hasChanges) {
+        const frontMatterLines = ["---"];
+        for (const [key, value] of Object.entries(updatedFrontMatter)) {
+          frontMatterLines.push(`${key}: ${value}`);
+        }
+        frontMatterLines.push("---");
+        const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+        const bodyContent = frontMatterMatch ? frontMatterMatch[2] : content;
+        const updatedContent = frontMatterLines.join("\n") + "\n" + bodyContent;
+        await this.app.vault.modify(file, updatedContent);
+        results.filesUpdated++;
+        results.propertiesUpdated += propertiesChanged;
+        console.log(`Task Sync: Updated ${propertiesChanged} properties in ${filePath}`);
+      } else {
+        console.log(`Task Sync: No changes needed for ${filePath}`);
+      }
+    } catch (error) {
+      console.error(`Task Sync: Failed to update file ${filePath}:`, error);
+      results.errors.push(`Failed to update ${filePath}: ${error.message}`);
+    }
+  }
+  /**
+   * Show refresh results to the user
+   */
+  showRefreshResults(results) {
+    const { filesUpdated, propertiesUpdated, basesRegenerated, errors } = results;
+    let message = "Refresh completed!\n\n";
+    message += `\u2022 Files updated: ${filesUpdated}
+`;
+    message += `\u2022 Properties updated: ${propertiesUpdated}
+`;
+    message += `\u2022 Bases regenerated: ${basesRegenerated}
+`;
+    if (errors.length > 0) {
+      message += `
+Errors encountered:
+`;
+      errors.forEach((error) => {
+        message += `\u2022 ${error}
+`;
+      });
+    }
+    new import_obsidian6.Notice(message, 5e3);
+    console.log("Task Sync: Refresh results:", results);
+  }
+  /**
    * Regenerate all base files
    */
   async regenerateBases() {
@@ -5185,26 +5407,26 @@ var TaskSyncSettingTab = class extends import_obsidian6.PluginSettingTab {
       await this.plugin.saveSettings();
     }));
     const actionsContainer = section.createDiv("task-sync-settings-actions");
-    const regenerateButton = actionsContainer.createEl("button", {
-      text: "Regenerate Bases",
+    const refreshButton = actionsContainer.createEl("button", {
+      text: "Refresh",
       cls: "mod-cta"
     });
-    regenerateButton.addEventListener("click", async () => {
-      regenerateButton.disabled = true;
-      regenerateButton.setText("Regenerating...");
+    refreshButton.addEventListener("click", async () => {
+      refreshButton.disabled = true;
+      refreshButton.setText("Refreshing...");
       try {
-        await this.plugin.regenerateBases();
-        regenerateButton.setText("\u2713 Regenerated");
+        await this.plugin.refresh();
+        refreshButton.setText("\u2713 Refreshed");
         setTimeout(() => {
-          regenerateButton.disabled = false;
-          regenerateButton.setText("Regenerate Bases");
+          refreshButton.disabled = false;
+          refreshButton.setText("Refresh");
         }, 2e3);
       } catch (error) {
-        regenerateButton.setText("\u2717 Failed");
-        console.error("Failed to regenerate bases:", error);
+        refreshButton.setText("\u2717 Failed");
+        console.error("Failed to refresh:", error);
         setTimeout(() => {
-          regenerateButton.disabled = false;
-          regenerateButton.setText("Regenerate Bases");
+          refreshButton.disabled = false;
+          refreshButton.setText("Refresh");
         }, 2e3);
       }
     });

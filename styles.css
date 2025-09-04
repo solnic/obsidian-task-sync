@@ -976,6 +976,42 @@ Provides consistent styling for all UI components
   align-items: center;
 }
 
+/* Settings Actions Styles */
+.task-sync-settings-actions {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.task-sync-settings-actions button {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  min-width: 120px;
+}
+
+.task-sync-settings-actions .mod-cta {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.task-sync-settings-actions .mod-cta:hover:not(:disabled) {
+  background: var(--interactive-accent-hover);
+}
+
+.task-sync-settings-actions .mod-cta:disabled {
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
 .task-sync-empty-state .setting-item-info {
   opacity: 0.7;
 }
