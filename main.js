@@ -3288,6 +3288,54 @@ var safeDump = renamed("safeDump", "dump");
 
 // src/services/BaseManager.ts
 var import_pluralize = __toESM(require_pluralize());
+
+// src/utils/fileNameSanitizer.ts
+var INVALID_CHARACTERS = /[*"\\/<>:|?]/g;
+function sanitizeFileName(fileName, options = {}) {
+  const {
+    replacement = "-",
+    collapseReplacements = true,
+    trimWhitespace = true,
+    maxLength = 255
+  } = options;
+  if (!fileName || typeof fileName !== "string") {
+    throw new Error("File name must be a non-empty string");
+  }
+  let sanitized = fileName;
+  sanitized = sanitized.replace(INVALID_CHARACTERS, replacement);
+  if (collapseReplacements && replacement) {
+    const escapedReplacement = replacement.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const collapseRegex = new RegExp(`${escapedReplacement}{2,}`, "g");
+    sanitized = sanitized.replace(collapseRegex, replacement);
+  }
+  if (trimWhitespace) {
+    sanitized = sanitized.trim();
+  }
+  if (replacement) {
+    const escapedReplacement = replacement.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const trimRegex = new RegExp(`^${escapedReplacement}+|${escapedReplacement}+$`, "g");
+    sanitized = sanitized.replace(trimRegex, "");
+  }
+  if (!sanitized) {
+    sanitized = "untitled";
+  }
+  if (maxLength > 0 && sanitized.length > maxLength) {
+    sanitized = sanitized.substring(0, maxLength).trim();
+    if (replacement) {
+      const escapedReplacement = replacement.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const trailingRegex = new RegExp(`${escapedReplacement}+$`);
+      sanitized = sanitized.replace(trailingRegex, "");
+    }
+  }
+  return sanitized;
+}
+function createSafeFileName(baseName, extension = "md", options = {}) {
+  const sanitizedBase = sanitizeFileName(baseName, options);
+  const cleanExtension = extension.startsWith(".") ? extension : `.${extension}`;
+  return `${sanitizedBase}${cleanExtension}`;
+}
+
+// src/services/BaseManager.ts
 var BaseManager = class {
   constructor(app, vault, settings) {
     this.app = app;
@@ -3331,12 +3379,10 @@ var BaseManager = class {
   async generateTasksBase(projectsAndAreas) {
     const baseConfig = {
       formulas: {
-        "Type": this.generateTypeFormula()
+        "Type": this.generateTypeFormula(),
+        "Title": "link(file.name, Title)"
       },
       properties: {
-        "file.name": {
-          displayName: "Title"
-        },
         "note.Status": {
           displayName: "Done"
         },
@@ -3349,7 +3395,7 @@ var BaseManager = class {
         "note.tags": {
           displayName: "Tags"
         },
-        "note.title": {
+        "note.Title": {
           displayName: "Title"
         },
         "note.Areas": {
@@ -3378,7 +3424,7 @@ var BaseManager = class {
       },
       order: [
         "Done",
-        "file.name",
+        "formula.Title",
         "Areas",
         "Project",
         "Parent task",
@@ -3390,7 +3436,7 @@ var BaseManager = class {
       ],
       sort: [
         { property: "tags", direction: "ASC" },
-        { property: "file.name", direction: "DESC" }
+        { property: "formula.Title", direction: "DESC" }
       ],
       columnSize: {
         "formula.Type": 103,
@@ -3422,7 +3468,7 @@ var BaseManager = class {
       },
       order: [
         "Done",
-        "file.name",
+        "formula.Title",
         "formula.Type",
         "tags",
         "file.mtime",
@@ -3430,10 +3476,10 @@ var BaseManager = class {
       ],
       sort: [
         { property: "file.ctime", direction: "DESC" },
-        { property: "file.name", direction: "ASC" }
+        { property: "formula.Title", direction: "ASC" }
       ],
       columnSize: {
-        "file.name": 440,
+        "formula.Title": 440,
         "formula.Type": 103,
         "note.tags": 338,
         "file.ctime": 183
@@ -3455,7 +3501,7 @@ var BaseManager = class {
       },
       order: [
         "Status",
-        "file.name",
+        "formula.Title",
         "tags",
         "file.mtime",
         "file.ctime",
@@ -3463,10 +3509,10 @@ var BaseManager = class {
       ],
       sort: [
         { property: "file.mtime", direction: "ASC" },
-        { property: "file.name", direction: "ASC" }
+        { property: "formula.Title", direction: "ASC" }
       ],
       columnSize: {
-        "file.name": 382,
+        "formula.Title": 382,
         "note.tags": 134,
         "file.mtime": 165,
         "file.ctime": 183
@@ -3661,7 +3707,8 @@ var BaseManager = class {
    * Create or update an individual area base file
    */
   async createOrUpdateAreaBase(area) {
-    const baseFileName = `${area.name}.base`;
+    const sanitizedName = sanitizeFileName(area.name);
+    const baseFileName = `${sanitizedName}.base`;
     const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
     const content = await this.generateAreaBase(area);
     try {
@@ -3676,7 +3723,8 @@ var BaseManager = class {
    * Create or update an individual project base file
    */
   async createOrUpdateProjectBase(project) {
-    const baseFileName = `${project.name}.base`;
+    const sanitizedName = sanitizeFileName(project.name);
+    const baseFileName = `${sanitizedName}.base`;
     const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
     const content = await this.generateProjectBase(project);
     try {
@@ -3693,10 +3741,11 @@ var BaseManager = class {
   async generateAreaBase(area) {
     const baseConfig = {
       formulas: {
-        "Type": this.generateTypeFormula()
+        "Type": this.generateTypeFormula(),
+        "Title": "link(file.name, Title)"
       },
       properties: {
-        "file.name": {
+        "note.Title": {
           displayName: "Title"
         },
         "note.Done": {
@@ -3725,7 +3774,7 @@ var BaseManager = class {
       },
       order: [
         "Done",
-        "file.name",
+        "formula.Title",
         "Project",
         "formula.Type",
         "file.ctime",
@@ -3733,7 +3782,7 @@ var BaseManager = class {
       ],
       sort: [
         { property: "file.mtime", direction: "DESC" },
-        { property: "file.name", direction: "ASC" }
+        { property: "formula.Title", direction: "ASC" }
       ]
     });
     for (const taskType of this.settings.taskTypes) {
@@ -3750,14 +3799,14 @@ var BaseManager = class {
           },
           order: [
             "Done",
-            "file.name",
+            "formula.Title",
             "Project",
             "file.ctime",
             "file.mtime"
           ],
           sort: [
             { property: "file.mtime", direction: "DESC" },
-            { property: "file.name", direction: "ASC" }
+            { property: "formula.Title", direction: "ASC" }
           ]
         });
       }
@@ -3770,10 +3819,11 @@ var BaseManager = class {
   async generateProjectBase(project) {
     const baseConfig = {
       formulas: {
-        "Type": this.generateTypeFormula()
+        "Type": this.generateTypeFormula(),
+        "Title": "link(file.name, Title)"
       },
       properties: {
-        "file.name": {
+        "note.Title": {
           displayName: "Title"
         },
         "note.Done": {
@@ -3802,7 +3852,7 @@ var BaseManager = class {
       },
       order: [
         "Done",
-        "file.name",
+        "formula.Title",
         "Areas",
         "formula.Type",
         "file.ctime",
@@ -3810,7 +3860,7 @@ var BaseManager = class {
       ],
       sort: [
         { property: "file.mtime", direction: "DESC" },
-        { property: "file.name", direction: "ASC" }
+        { property: "formula.Title", direction: "ASC" }
       ]
     });
     for (const taskType of this.settings.taskTypes) {
@@ -3827,14 +3877,14 @@ var BaseManager = class {
           },
           order: [
             "Done",
-            "file.name",
+            "formula.Title",
             "Areas",
             "file.ctime",
             "file.mtime"
           ],
           sort: [
             { property: "file.mtime", direction: "DESC" },
-            { property: "file.name", direction: "ASC" }
+            { property: "formula.Title", direction: "ASC" }
           ]
         });
       }
@@ -4560,7 +4610,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
   // Task creation logic
   async createTask(taskData) {
     try {
-      const taskFileName = `${taskData.name}.md`;
+      const taskFileName = createSafeFileName(taskData.name);
       const taskPath = `${this.settings.tasksFolder}/${taskFileName}`;
       const taskContent = this.generateTaskContent(taskData);
       await this.app.vault.create(taskPath, taskContent);
@@ -4595,7 +4645,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
    */
   async createArea(areaData) {
     try {
-      const areaFileName = `${areaData.name}.md`;
+      const areaFileName = createSafeFileName(areaData.name);
       const areaPath = `${this.settings.areasFolder}/${areaFileName}`;
       let areaContent;
       if (this.settings.defaultAreaTemplate) {
@@ -4622,7 +4672,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
    */
   async createProject(projectData) {
     try {
-      const projectFileName = `${projectData.name}.md`;
+      const projectFileName = createSafeFileName(projectData.name);
       const projectPath = `${this.settings.projectsFolder}/${projectFileName}`;
       let projectContent;
       if (this.settings.defaultProjectTemplate) {
@@ -4648,8 +4698,10 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
    * Generate default area content
    */
   generateAreaContent(areaData) {
+    const sanitizedName = sanitizeFileName(areaData.name);
     const frontmatter = [
       "---",
+      `Title: ${areaData.name}`,
       `Name: ${areaData.name}`,
       `Type: Area`,
       "---",
@@ -4660,7 +4712,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
       "",
       "## Tasks",
       "",
-      `![[${areaData.name}.base]]`,
+      `![[${sanitizedName}.base]]`,
       ""
     ];
     return frontmatter.join("\n");
@@ -4669,8 +4721,10 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
    * Generate default project content
    */
   generateProjectContent(projectData) {
+    const sanitizedName = sanitizeFileName(projectData.name);
     const frontmatter = [
       "---",
+      `Title: ${projectData.name}`,
       `Name: ${projectData.name}`,
       `Type: Project`,
       `Areas: ${projectData.areas || ""}`,
@@ -4682,7 +4736,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
       "",
       "## Tasks",
       "",
-      `![[${projectData.name}.base]]`,
+      `![[${sanitizedName}.base]]`,
       ""
     ];
     return frontmatter.join("\n");

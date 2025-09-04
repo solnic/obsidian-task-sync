@@ -4,6 +4,7 @@ import { BaseManager } from './services/BaseManager';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
 import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
 import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
+import { sanitizeFileName, createSafeFileName } from './utils/fileNameSanitizer';
 
 import pluralize from 'pluralize';
 
@@ -392,7 +393,7 @@ export default class TaskSyncPlugin extends Plugin {
   // Task creation logic
   private async createTask(taskData: any): Promise<void> {
     try {
-      const taskFileName = `${taskData.name}.md`;
+      const taskFileName = createSafeFileName(taskData.name);
       const taskPath = `${this.settings.tasksFolder}/${taskFileName}`;
 
       // Create task content based on your template structure
@@ -433,7 +434,7 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async createArea(areaData: AreaCreateData): Promise<void> {
     try {
-      const areaFileName = `${areaData.name}.md`;
+      const areaFileName = createSafeFileName(areaData.name);
       const areaPath = `${this.settings.areasFolder}/${areaFileName}`;
 
       // Use template if configured, otherwise use default
@@ -466,7 +467,7 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async createProject(projectData: ProjectCreateData): Promise<void> {
     try {
-      const projectFileName = `${projectData.name}.md`;
+      const projectFileName = createSafeFileName(projectData.name);
       const projectPath = `${this.settings.projectsFolder}/${projectFileName}`;
 
       // Use template if configured, otherwise use default
@@ -498,8 +499,10 @@ export default class TaskSyncPlugin extends Plugin {
    * Generate default area content
    */
   private generateAreaContent(areaData: AreaCreateData): string {
+    const sanitizedName = sanitizeFileName(areaData.name);
     const frontmatter = [
       '---',
+      `Title: ${areaData.name}`,
       `Name: ${areaData.name}`,
       `Type: Area`,
       '---',
@@ -510,7 +513,7 @@ export default class TaskSyncPlugin extends Plugin {
       '',
       '## Tasks',
       '',
-      `![[${areaData.name}.base]]`,
+      `![[${sanitizedName}.base]]`,
       ''
     ];
 
@@ -521,8 +524,10 @@ export default class TaskSyncPlugin extends Plugin {
    * Generate default project content
    */
   private generateProjectContent(projectData: ProjectCreateData): string {
+    const sanitizedName = sanitizeFileName(projectData.name);
     const frontmatter = [
       '---',
+      `Title: ${projectData.name}`,
       `Name: ${projectData.name}`,
       `Type: Project`,
       `Areas: ${projectData.areas || ''}`,
@@ -534,7 +539,7 @@ export default class TaskSyncPlugin extends Plugin {
       '',
       '## Tasks',
       '',
-      `![[${projectData.name}.base]]`,
+      `![[${sanitizedName}.base]]`,
       ''
     ];
 

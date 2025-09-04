@@ -8,6 +8,7 @@ import { App, Vault, TFile } from 'obsidian';
 import { TaskSyncSettings } from '../main';
 import * as yaml from 'js-yaml';
 import pluralize from 'pluralize';
+import { sanitizeFileName } from '../utils/fileNameSanitizer';
 
 export interface BaseProperty {
   displayName: string;
@@ -89,12 +90,10 @@ export class BaseManager {
   async generateTasksBase(projectsAndAreas: ProjectAreaInfo[]): Promise<string> {
     const baseConfig: BaseConfig = {
       formulas: {
-        'Type': this.generateTypeFormula()
+        'Type': this.generateTypeFormula(),
+        'Title': 'link(file.name, Title)'
       },
       properties: {
-        'file.name': {
-          displayName: 'Title'
-        },
         'note.Status': {
           displayName: 'Done'
         },
@@ -107,7 +106,7 @@ export class BaseManager {
         'note.tags': {
           displayName: 'Tags'
         },
-        'note.title': {
+        'note.Title': {
           displayName: 'Title'
         },
         'note.Areas': {
@@ -138,7 +137,7 @@ export class BaseManager {
       },
       order: [
         'Done',
-        'file.name',
+        'formula.Title',
         'Areas',
         'Project',
         'Parent task',
@@ -150,7 +149,7 @@ export class BaseManager {
       ],
       sort: [
         { property: 'tags', direction: 'ASC' },
-        { property: 'file.name', direction: 'DESC' }
+        { property: 'formula.Title', direction: 'DESC' }
       ],
       columnSize: {
         'formula.Type': 103,
@@ -186,7 +185,7 @@ export class BaseManager {
       },
       order: [
         'Done',
-        'file.name',
+        'formula.Title',
         'formula.Type',
         'tags',
         'file.mtime',
@@ -194,10 +193,10 @@ export class BaseManager {
       ],
       sort: [
         { property: 'file.ctime', direction: 'DESC' },
-        { property: 'file.name', direction: 'ASC' }
+        { property: 'formula.Title', direction: 'ASC' }
       ],
       columnSize: {
-        'file.name': 440,
+        'formula.Title': 440,
         'formula.Type': 103,
         'note.tags': 338,
         'file.ctime': 183
@@ -220,7 +219,7 @@ export class BaseManager {
       },
       order: [
         'Status',
-        'file.name',
+        'formula.Title',
         'tags',
         'file.mtime',
         'file.ctime',
@@ -228,10 +227,10 @@ export class BaseManager {
       ],
       sort: [
         { property: 'file.mtime', direction: 'ASC' },
-        { property: 'file.name', direction: 'ASC' }
+        { property: 'formula.Title', direction: 'ASC' }
       ],
       columnSize: {
-        'file.name': 382,
+        'formula.Title': 382,
         'note.tags': 134,
         'file.mtime': 165,
         'file.ctime': 183
@@ -461,7 +460,8 @@ export class BaseManager {
    * Create or update an individual area base file
    */
   async createOrUpdateAreaBase(area: ProjectAreaInfo): Promise<void> {
-    const baseFileName = `${area.name}.base`;
+    const sanitizedName = sanitizeFileName(area.name);
+    const baseFileName = `${sanitizedName}.base`;
     const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
     const content = await this.generateAreaBase(area);
 
@@ -479,7 +479,8 @@ export class BaseManager {
    * Create or update an individual project base file
    */
   async createOrUpdateProjectBase(project: ProjectAreaInfo): Promise<void> {
-    const baseFileName = `${project.name}.base`;
+    const sanitizedName = sanitizeFileName(project.name);
+    const baseFileName = `${sanitizedName}.base`;
     const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
     const content = await this.generateProjectBase(project);
 
@@ -499,10 +500,11 @@ export class BaseManager {
   async generateAreaBase(area: ProjectAreaInfo): Promise<string> {
     const baseConfig: BaseConfig = {
       formulas: {
-        'Type': this.generateTypeFormula()
+        'Type': this.generateTypeFormula(),
+        'Title': 'link(file.name, Title)'
       },
       properties: {
-        'file.name': {
+        'note.Title': {
           displayName: 'Title'
         },
         'note.Done': {
@@ -533,7 +535,7 @@ export class BaseManager {
       },
       order: [
         'Done',
-        'file.name',
+        'formula.Title',
         'Project',
         'formula.Type',
         'file.ctime',
@@ -541,7 +543,7 @@ export class BaseManager {
       ],
       sort: [
         { property: 'file.mtime', direction: 'DESC' },
-        { property: 'file.name', direction: 'ASC' }
+        { property: 'formula.Title', direction: 'ASC' }
       ]
     });
 
@@ -560,14 +562,14 @@ export class BaseManager {
           },
           order: [
             'Done',
-            'file.name',
+            'formula.Title',
             'Project',
             'file.ctime',
             'file.mtime'
           ],
           sort: [
             { property: 'file.mtime', direction: 'DESC' },
-            { property: 'file.name', direction: 'ASC' }
+            { property: 'formula.Title', direction: 'ASC' }
           ]
         });
       }
@@ -582,10 +584,11 @@ export class BaseManager {
   async generateProjectBase(project: ProjectAreaInfo): Promise<string> {
     const baseConfig: BaseConfig = {
       formulas: {
-        'Type': this.generateTypeFormula()
+        'Type': this.generateTypeFormula(),
+        'Title': 'link(file.name, Title)'
       },
       properties: {
-        'file.name': {
+        'note.Title': {
           displayName: 'Title'
         },
         'note.Done': {
@@ -616,7 +619,7 @@ export class BaseManager {
       },
       order: [
         'Done',
-        'file.name',
+        'formula.Title',
         'Areas',
         'formula.Type',
         'file.ctime',
@@ -624,7 +627,7 @@ export class BaseManager {
       ],
       sort: [
         { property: 'file.mtime', direction: 'DESC' },
-        { property: 'file.name', direction: 'ASC' }
+        { property: 'formula.Title', direction: 'ASC' }
       ]
     });
 
@@ -643,14 +646,14 @@ export class BaseManager {
           },
           order: [
             'Done',
-            'file.name',
+            'formula.Title',
             'Areas',
             'file.ctime',
             'file.mtime'
           ],
           sort: [
             { property: 'file.mtime', direction: 'DESC' },
-            { property: 'file.name', direction: 'ASC' }
+            { property: 'formula.Title', direction: 'ASC' }
           ]
         });
       }
