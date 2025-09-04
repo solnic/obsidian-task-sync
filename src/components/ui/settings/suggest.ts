@@ -33,7 +33,7 @@ export class FolderSuggestComponent {
   private handleInput(): void {
     const value = this.inputEl.value;
     this.showSuggestions(value);
-    
+
     if (this.onChangeCallback) {
       this.onChangeCallback(value);
     }
@@ -72,7 +72,7 @@ export class FolderSuggestComponent {
 
   private showSuggestions(query: string): void {
     const folders = this.getFolderSuggestions(query);
-    
+
     if (folders.length === 0) {
       this.hideSuggestions();
       return;
@@ -104,7 +104,7 @@ export class FolderSuggestComponent {
   private createSuggestElement(): void {
     this.suggestEl = document.createElement('div');
     this.suggestEl.className = 'suggestion-container task-sync-folder-suggest';
-    
+
     // Position relative to input
     const rect = this.inputEl.getBoundingClientRect();
     this.suggestEl.style.position = 'absolute';
@@ -132,7 +132,7 @@ export class FolderSuggestComponent {
       item.textContent = folder || '(root)';
       item.style.padding = '8px 12px';
       item.style.cursor = 'pointer';
-      
+
       if (index === 0) {
         item.classList.add('is-selected');
         item.style.backgroundColor = 'var(--background-modifier-hover)';
@@ -158,10 +158,10 @@ export class FolderSuggestComponent {
 
   private selectNextSuggestion(): void {
     if (!this.suggestEl) return;
-    
+
     const items = this.suggestEl.querySelectorAll('.suggestion-item');
     const selected = this.suggestEl.querySelector('.is-selected');
-    
+
     if (!selected) {
       if (items.length > 0) {
         this.selectItem(items[0] as HTMLElement);
@@ -176,10 +176,10 @@ export class FolderSuggestComponent {
 
   private selectPreviousSuggestion(): void {
     if (!this.suggestEl) return;
-    
+
     const items = this.suggestEl.querySelectorAll('.suggestion-item');
     const selected = this.suggestEl.querySelector('.is-selected');
-    
+
     if (!selected) {
       if (items.length > 0) {
         this.selectItem(items[items.length - 1] as HTMLElement);
@@ -200,7 +200,7 @@ export class FolderSuggestComponent {
 
   private clearSelection(): void {
     if (!this.suggestEl) return;
-    
+
     this.suggestEl.querySelectorAll('.suggestion-item').forEach(item => {
       item.classList.remove('is-selected');
       (item as HTMLElement).style.backgroundColor = '';
@@ -209,7 +209,7 @@ export class FolderSuggestComponent {
 
   private acceptSelectedSuggestion(): void {
     if (!this.suggestEl) return;
-    
+
     const selected = this.suggestEl.querySelector('.is-selected');
     if (selected) {
       this.inputEl.value = selected.textContent || '';
@@ -265,7 +265,7 @@ export class FileSuggestComponent {
   private handleInput(): void {
     const value = this.inputEl.value;
     this.showSuggestions(value);
-    
+
     if (this.onChangeCallback) {
       this.onChangeCallback(value);
     }
@@ -304,7 +304,7 @@ export class FileSuggestComponent {
 
   private showSuggestions(query: string): void {
     const files = this.getFileSuggestions(query);
-    
+
     if (files.length === 0) {
       this.hideSuggestions();
       return;
@@ -320,23 +320,39 @@ export class FileSuggestComponent {
 
   private getFileSuggestions(query: string): string[] {
     let allFiles = this.app.vault.getAllLoadedFiles()
-      .filter(file => file instanceof TFile)
-      .map(file => file.name);
+      .filter(file => file instanceof TFile);
+
+    // Filter by folder path if specified
+    if (this.options.folderPath !== undefined) {
+      const folderPath = this.options.folderPath;
+      allFiles = allFiles.filter(file => {
+        // Check if file is in the specified folder or its subfolders
+        if (folderPath === '') {
+          // Empty string means root folder only (no subfolders)
+          return !file.path.includes('/');
+        } else {
+          // Non-empty folder path
+          return file.path.startsWith(folderPath + '/');
+        }
+      });
+    }
+
+    let fileNames = allFiles.map(file => file.name);
 
     // Filter by extensions if specified
     if (this.options.fileExtensions && this.options.fileExtensions.length > 0) {
-      allFiles = allFiles.filter(fileName => 
+      fileNames = fileNames.filter(fileName =>
         this.options.fileExtensions!.some(ext => fileName.endsWith(ext))
       );
     }
 
-    allFiles.sort();
+    fileNames.sort();
 
     if (!query.trim()) {
-      return allFiles.slice(0, 10); // Show first 10 files
+      return fileNames.slice(0, 10); // Show first 10 files
     }
 
-    return allFiles
+    return fileNames
       .filter(name => name.toLowerCase().includes(query.toLowerCase()))
       .slice(0, 10);
   }
@@ -344,7 +360,7 @@ export class FileSuggestComponent {
   private createSuggestElement(): void {
     this.suggestEl = document.createElement('div');
     this.suggestEl.className = 'suggestion-container task-sync-file-suggest';
-    
+
     // Position relative to input
     const rect = this.inputEl.getBoundingClientRect();
     this.suggestEl.style.position = 'absolute';
@@ -372,7 +388,7 @@ export class FileSuggestComponent {
       item.textContent = file;
       item.style.padding = '8px 12px';
       item.style.cursor = 'pointer';
-      
+
       if (index === 0) {
         item.classList.add('is-selected');
         item.style.backgroundColor = 'var(--background-modifier-hover)';
@@ -398,10 +414,10 @@ export class FileSuggestComponent {
 
   private selectNextSuggestion(): void {
     if (!this.suggestEl) return;
-    
+
     const items = this.suggestEl.querySelectorAll('.suggestion-item');
     const selected = this.suggestEl.querySelector('.is-selected');
-    
+
     if (!selected) {
       if (items.length > 0) {
         this.selectItem(items[0] as HTMLElement);
@@ -416,10 +432,10 @@ export class FileSuggestComponent {
 
   private selectPreviousSuggestion(): void {
     if (!this.suggestEl) return;
-    
+
     const items = this.suggestEl.querySelectorAll('.suggestion-item');
     const selected = this.suggestEl.querySelector('.is-selected');
-    
+
     if (!selected) {
       if (items.length > 0) {
         this.selectItem(items[items.length - 1] as HTMLElement);
@@ -440,7 +456,7 @@ export class FileSuggestComponent {
 
   private clearSelection(): void {
     if (!this.suggestEl) return;
-    
+
     this.suggestEl.querySelectorAll('.suggestion-item').forEach(item => {
       item.classList.remove('is-selected');
       (item as HTMLElement).style.backgroundColor = '';
@@ -449,7 +465,7 @@ export class FileSuggestComponent {
 
   private acceptSelectedSuggestion(): void {
     if (!this.suggestEl) return;
-    
+
     const selected = this.suggestEl.querySelector('.is-selected');
     if (selected) {
       this.inputEl.value = selected.textContent || '';

@@ -723,6 +723,49 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
+   * Extract property order from front-matter content
+   */
+  private extractPropertyOrder(content: string): string[] {
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontMatterMatch) {
+      return [];
+    }
+
+    const frontMatterText = frontMatterMatch[1];
+    const properties: string[] = [];
+
+    const lines = frontMatterText.split('\n');
+    for (const line of lines) {
+      const match = line.match(/^([^:]+):\s*/);
+      if (match) {
+        properties.push(match[1].trim());
+      }
+    }
+
+    return properties;
+  }
+
+  /**
+   * Check if property order matches the expected schema order
+   */
+  private isPropertyOrderCorrect(content: string, schema: Record<string, any>): boolean {
+    const currentOrder = this.extractPropertyOrder(content);
+    const expectedOrder = Object.keys(schema);
+
+    // Filter current order to only include properties that are in the schema
+    const currentSchemaProperties = currentOrder.filter(prop => prop in schema);
+
+    // Compare the order of schema properties
+    for (let i = 0; i < Math.min(currentSchemaProperties.length, expectedOrder.length); i++) {
+      if (currentSchemaProperties[i] !== expectedOrder[i]) {
+        return false;
+      }
+    }
+
+    return currentSchemaProperties.length === expectedOrder.length;
+  }
+
+  /**
    * Update a single file's properties to match current schema
    */
   private async updateSingleFile(filePath: string, type: 'task' | 'project' | 'area', results: any): Promise<void> {
@@ -804,6 +847,13 @@ export default class TaskSyncPlugin extends Plugin {
           hasChanges = true;
           propertiesChanged++;
         }
+      }
+
+      // Check if property order matches schema
+      if (!hasChanges && !this.isPropertyOrderCorrect(content, currentSchema)) {
+        console.log(`Task Sync: Property order needs updating in ${filePath}`);
+        hasChanges = true;
+        propertiesChanged++; // Count order change as one property change
       }
 
       // Only update the file if there are changes

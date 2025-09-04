@@ -3300,10 +3300,10 @@ var init_BaseConfigurations = __esm({
     PROPERTY_DEFINITIONS = {
       task: [
         Properties.TITLE,
-        Properties.AREAS,
-        Properties.PROJECT,
         Properties.TYPE,
         Properties.PRIORITY,
+        Properties.AREAS,
+        Properties.PROJECT,
         Properties.DONE,
         Properties.STATUS,
         Properties.PARENT_TASK,
@@ -3313,9 +3313,9 @@ var init_BaseConfigurations = __esm({
       // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
       areaBase: [
         Properties.TITLE,
-        Properties.PROJECT,
         Properties.TYPE,
         Properties.PRIORITY,
+        Properties.PROJECT,
         Properties.DONE,
         Properties.STATUS,
         Properties.PARENT_TASK,
@@ -3325,9 +3325,9 @@ var init_BaseConfigurations = __esm({
       // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
       projectBase: [
         Properties.TITLE,
-        Properties.AREAS,
         Properties.TYPE,
         Properties.PRIORITY,
+        Properties.AREAS,
         Properties.DONE,
         Properties.STATUS,
         Properties.PARENT_TASK,
@@ -3414,10 +3414,14 @@ var init_BaseConfigurations = __esm({
     };
     SORT_CONFIGS = {
       main: [
+        { property: "note.Done", direction: "ASC" },
+        // Uncompleted tasks first
         { property: "file.mtime", direction: "DESC" },
         { property: "formula.Title", direction: "ASC" }
       ],
       area: [
+        { property: "note.Done", direction: "ASC" },
+        // Uncompleted tasks first
         { property: "file.mtime", direction: "ASC" },
         { property: "formula.Title", direction: "ASC" }
       ]
@@ -3484,12 +3488,20 @@ __export(FrontMatterGenerator_exports, {
   validateFrontMatterData: () => validateFrontMatterData
 });
 function generateTaskFrontMatter(taskData, options = {}) {
-  const fields = FRONTMATTER_FIELDS.task;
+  const properties = PROPERTY_DEFINITIONS.task;
   const frontMatter = ["---"];
-  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
-    const value = getFieldValue(taskData, fieldName, fieldConfig);
+  for (const prop of properties) {
+    const frontMatterType = prop.type === "checkbox" ? "boolean" : prop.type;
+    const fieldConfig = {
+      type: frontMatterType,
+      ...prop.default !== void 0 && { default: prop.default }
+    };
+    if (prop.name === "Type") {
+      fieldConfig.default = "Task";
+    }
+    const value = getFieldValue(taskData, prop.name, fieldConfig);
     if (value !== void 0 && value !== null) {
-      frontMatter.push(formatFrontMatterField(fieldName, value, fieldConfig));
+      frontMatter.push(formatFrontMatterField(prop.name, value, fieldConfig));
     }
   }
   if (options.customFields) {
@@ -3510,14 +3522,24 @@ function generateTaskFrontMatter(taskData, options = {}) {
   return frontMatter.join("\n");
 }
 function generateProjectFrontMatter(projectData, options = {}) {
-  const fields = FRONTMATTER_FIELDS.project;
+  const properties = PROPERTY_DEFINITIONS.project;
   const frontMatter = ["---"];
-  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
-    const value = getFieldValue(projectData, fieldName, fieldConfig);
-    if (value !== void 0 && value !== null || fieldName === "Areas") {
+  for (const prop of properties) {
+    const frontMatterType = prop.type === "checkbox" ? "boolean" : prop.type;
+    const fieldConfig = {
+      type: frontMatterType,
+      ...prop.default !== void 0 && { default: prop.default }
+    };
+    const value = getFieldValue(projectData, prop.name, fieldConfig);
+    if (value !== void 0 && value !== null || prop.name === "Areas") {
       const displayValue = value !== void 0 && value !== null ? value : "";
-      frontMatter.push(formatFrontMatterField(fieldName, displayValue, fieldConfig));
+      frontMatter.push(formatFrontMatterField(prop.name, displayValue, fieldConfig));
     }
+  }
+  const typeConfig = { type: "string", default: "Project" };
+  const typeValue = getFieldValue(projectData, "Type", typeConfig);
+  if (typeValue !== void 0 && typeValue !== null) {
+    frontMatter.push(formatFrontMatterField("Type", typeValue, typeConfig));
   }
   if (options.customFields) {
     for (const [key, value] of Object.entries(options.customFields)) {
@@ -3544,13 +3566,23 @@ function generateProjectFrontMatter(projectData, options = {}) {
   return frontMatter.join("\n");
 }
 function generateAreaFrontMatter(areaData, options = {}) {
-  const fields = FRONTMATTER_FIELDS.area;
+  const properties = PROPERTY_DEFINITIONS.area;
   const frontMatter = ["---"];
-  for (const [fieldName, fieldConfig] of Object.entries(fields)) {
-    const value = getFieldValue(areaData, fieldName, fieldConfig);
+  for (const prop of properties) {
+    const frontMatterType = prop.type === "checkbox" ? "boolean" : prop.type;
+    const fieldConfig = {
+      type: frontMatterType,
+      ...prop.default !== void 0 && { default: prop.default }
+    };
+    const value = getFieldValue(areaData, prop.name, fieldConfig);
     if (value !== void 0 && value !== null) {
-      frontMatter.push(formatFrontMatterField(fieldName, value, fieldConfig));
+      frontMatter.push(formatFrontMatterField(prop.name, value, fieldConfig));
     }
+  }
+  const typeConfig = { type: "string", default: "Area" };
+  const typeValue = getFieldValue(areaData, "Type", typeConfig);
+  if (typeValue !== void 0 && typeValue !== null) {
+    frontMatter.push(formatFrontMatterField("Type", typeValue, typeConfig));
   }
   if (options.customFields) {
     for (const [key, value] of Object.entries(options.customFields)) {
@@ -5116,17 +5148,28 @@ var FileSuggestComponent = class {
     this.isOpen = true;
   }
   getFileSuggestions(query) {
-    let allFiles = this.app.vault.getAllLoadedFiles().filter((file) => file instanceof import_obsidian6.TFile).map((file) => file.name);
+    let allFiles = this.app.vault.getAllLoadedFiles().filter((file) => file instanceof import_obsidian6.TFile);
+    if (this.options.folderPath !== void 0) {
+      const folderPath = this.options.folderPath;
+      allFiles = allFiles.filter((file) => {
+        if (folderPath === "") {
+          return !file.path.includes("/");
+        } else {
+          return file.path.startsWith(folderPath + "/");
+        }
+      });
+    }
+    let fileNames = allFiles.map((file) => file.name);
     if (this.options.fileExtensions && this.options.fileExtensions.length > 0) {
-      allFiles = allFiles.filter(
+      fileNames = fileNames.filter(
         (fileName) => this.options.fileExtensions.some((ext) => fileName.endsWith(ext))
       );
     }
-    allFiles.sort();
+    fileNames.sort();
     if (!query.trim()) {
-      return allFiles.slice(0, 10);
+      return fileNames.slice(0, 10);
     }
-    return allFiles.filter((name) => name.toLowerCase().includes(query.toLowerCase())).slice(0, 10);
+    return fileNames.filter((name) => name.toLowerCase().includes(query.toLowerCase())).slice(0, 10);
   }
   createSuggestElement() {
     this.suggestEl = document.createElement("div");
@@ -6001,9 +6044,13 @@ var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
         }
         this.updateSettingValidation(setting, key);
       });
-      const fileSuggest = new FileSuggestComponent(this.app, text.inputEl, {
+      const fileSuggestOptions = {
         fileExtensions: extensions
-      });
+      };
+      if (key.includes("Template")) {
+        fileSuggestOptions.folderPath = this.plugin.settings.templateFolder;
+      }
+      const fileSuggest = new FileSuggestComponent(this.app, text.inputEl, fileSuggestOptions);
       fileSuggest.onChange(async (value) => {
         let validation;
         if (key === "tasksBaseFile") {
@@ -6578,6 +6625,39 @@ ${expectedBaseEmbed}`;
     return data;
   }
   /**
+   * Extract property order from front-matter content
+   */
+  extractPropertyOrder(content) {
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontMatterMatch) {
+      return [];
+    }
+    const frontMatterText = frontMatterMatch[1];
+    const properties = [];
+    const lines = frontMatterText.split("\n");
+    for (const line of lines) {
+      const match = line.match(/^([^:]+):\s*/);
+      if (match) {
+        properties.push(match[1].trim());
+      }
+    }
+    return properties;
+  }
+  /**
+   * Check if property order matches the expected schema order
+   */
+  isPropertyOrderCorrect(content, schema2) {
+    const currentOrder = this.extractPropertyOrder(content);
+    const expectedOrder = Object.keys(schema2);
+    const currentSchemaProperties = currentOrder.filter((prop) => prop in schema2);
+    for (let i = 0; i < Math.min(currentSchemaProperties.length, expectedOrder.length); i++) {
+      if (currentSchemaProperties[i] !== expectedOrder[i]) {
+        return false;
+      }
+    }
+    return currentSchemaProperties.length === expectedOrder.length;
+  }
+  /**
    * Update a single file's properties to match current schema
    */
   async updateSingleFile(filePath, type2, results) {
@@ -6638,6 +6718,11 @@ ${expectedBaseEmbed}`;
           hasChanges = true;
           propertiesChanged++;
         }
+      }
+      if (!hasChanges && !this.isPropertyOrderCorrect(content, currentSchema)) {
+        console.log(`Task Sync: Property order needs updating in ${filePath}`);
+        hasChanges = true;
+        propertiesChanged++;
       }
       if (hasChanges) {
         const frontMatterLines = ["---"];

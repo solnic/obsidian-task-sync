@@ -10,7 +10,8 @@ import {
   ProjectAreaInfo,
   FORMULAS,
   Properties,
-  PROPERTY_DEFINITIONS
+  PROPERTY_DEFINITIONS,
+  SORT_CONFIGS
 } from '../../../../src/services/base-definitions/BaseConfigurations';
 import { TaskSyncSettings } from '../../../../src/main';
 import * as yaml from 'js-yaml';
@@ -72,14 +73,14 @@ describe('BaseConfigurations', () => {
       const taskProperties = PROPERTY_DEFINITIONS.task;
       expect(taskProperties[0].name).toBe('Title');
       expect(taskProperties[1].name).toBe('Type');
-      expect(taskProperties[2].name).toBe('Areas');
-      expect(taskProperties[3].name).toBe('Parent task');
-      expect(taskProperties[4].name).toBe('Sub-tasks');
-      expect(taskProperties[5].name).toBe('tags');
-      expect(taskProperties[6].name).toBe('Project');
-      expect(taskProperties[7].name).toBe('Done');
-      expect(taskProperties[8].name).toBe('Status');
-      expect(taskProperties[9].name).toBe('Priority');
+      expect(taskProperties[2].name).toBe('Priority');
+      expect(taskProperties[3].name).toBe('Areas');
+      expect(taskProperties[4].name).toBe('Project');
+      expect(taskProperties[5].name).toBe('Done');
+      expect(taskProperties[6].name).toBe('Status');
+      expect(taskProperties[7].name).toBe('Parent task');
+      expect(taskProperties[8].name).toBe('Sub-tasks');
+      expect(taskProperties[9].name).toBe('tags');
     });
 
     it('should have link properties correctly marked', () => {
@@ -209,6 +210,56 @@ describe('BaseConfigurations', () => {
       expect(result).toContain('- name: Areas');
       expect(result).toContain('type: string');
       expect(result).not.toContain('- name: Project'); // Project shouldn't be in project bases
+    });
+  });
+
+  describe('Sort Configurations', () => {
+    it('should sort by Done first in main sort config', () => {
+      expect(SORT_CONFIGS.main[0]).toEqual({
+        property: 'note.Done',
+        direction: 'ASC'
+      });
+    });
+
+    it('should sort by Done first in area sort config', () => {
+      expect(SORT_CONFIGS.area[0]).toEqual({
+        property: 'note.Done',
+        direction: 'ASC'
+      });
+    });
+
+    it('should have secondary sorting by modification time and title', () => {
+      // Main config: Done -> mtime (DESC) -> Title (ASC)
+      expect(SORT_CONFIGS.main[1]).toEqual({
+        property: 'file.mtime',
+        direction: 'DESC'
+      });
+      expect(SORT_CONFIGS.main[2]).toEqual({
+        property: 'formula.Title',
+        direction: 'ASC'
+      });
+
+      // Area config: Done -> mtime (ASC) -> Title (ASC)
+      expect(SORT_CONFIGS.area[1]).toEqual({
+        property: 'file.mtime',
+        direction: 'ASC'
+      });
+      expect(SORT_CONFIGS.area[2]).toEqual({
+        property: 'formula.Title',
+        direction: 'ASC'
+      });
+    });
+
+    it('should generate bases with Done-first sorting', () => {
+      const tasksBase = generateTasksBase(mockSettings, mockProjectsAndAreas);
+      const parsedConfig = yaml.load(tasksBase) as any;
+
+      // Check that the main Tasks view has Done as first sort property
+      const mainView = parsedConfig.views.find((view: any) => view.name === 'Tasks');
+      expect(mainView.sort[0]).toEqual({
+        property: 'note.Done',
+        direction: 'ASC'
+      });
     });
   });
 });

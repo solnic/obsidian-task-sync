@@ -89,5 +89,6 @@ export interface FileSuggestOptions {
   placeholder?: string;
   allowEmpty?: boolean;
   fileExtensions?: string[];
+  folderPath?: string; // Limit suggestions to files in this folder
   validateFile?: (file: string) => ValidationResult;
 }

@@ -4,7 +4,7 @@
 
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import TaskSyncPlugin from '../../../main';
-import { TaskSyncSettings, ValidationResult, SettingsSection, TaskType, TASK_TYPE_COLORS, TaskTypeColor, TaskPriority, TASK_PRIORITY_COLORS, TaskPriorityColor, TaskStatus, TASK_STATUS_COLORS, TaskStatusColor } from './types';
+import { TaskSyncSettings, ValidationResult, SettingsSection, TaskType, TASK_TYPE_COLORS, TaskTypeColor, TaskPriority, TASK_PRIORITY_COLORS, TaskPriorityColor, TaskStatus, TASK_STATUS_COLORS, TaskStatusColor, FileSuggestOptions } from './types';
 import { DEFAULT_SETTINGS } from './defaults';
 import { validateFolderPath, validateFileName, validateBaseFileName, validateTemplateFileName } from './validation';
 import { FolderSuggestComponent, FileSuggestComponent } from './suggest';
@@ -1047,9 +1047,16 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           });
 
         // Add file suggestion
-        const fileSuggest = new FileSuggestComponent(this.app, text.inputEl, {
+        const fileSuggestOptions: FileSuggestOptions = {
           fileExtensions: extensions
-        });
+        };
+
+        // For template settings, limit suggestions to template folder
+        if (key.includes('Template')) {
+          fileSuggestOptions.folderPath = this.plugin.settings.templateFolder;
+        }
+
+        const fileSuggest = new FileSuggestComponent(this.app, text.inputEl, fileSuggestOptions);
         fileSuggest.onChange(async (value) => {
           let validation: ValidationResult;
           if (key === 'tasksBaseFile') {

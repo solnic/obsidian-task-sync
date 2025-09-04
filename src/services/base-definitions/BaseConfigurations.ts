@@ -141,40 +141,40 @@ export const PROPERTY_DEFINITIONS = {
   task: [
     Properties.TITLE,
     Properties.TYPE,
+    Properties.PRIORITY,
     Properties.AREAS,
-    Properties.PARENT_TASK,
-    Properties.SUB_TASKS,
-    Properties.TAGS,
     Properties.PROJECT,
     Properties.DONE,
     Properties.STATUS,
-    Properties.PRIORITY
+    Properties.PARENT_TASK,
+    Properties.SUB_TASKS,
+    Properties.TAGS
   ],
 
   // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
   areaBase: [
     Properties.TITLE,
     Properties.TYPE,
-    Properties.PARENT_TASK,
-    Properties.SUB_TASKS,
-    Properties.TAGS,
+    Properties.PRIORITY,
     Properties.PROJECT,
     Properties.DONE,
     Properties.STATUS,
-    Properties.PRIORITY
+    Properties.PARENT_TASK,
+    Properties.SUB_TASKS,
+    Properties.TAGS
   ],
 
   // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
   projectBase: [
     Properties.TITLE,
     Properties.TYPE,
+    Properties.PRIORITY,
     Properties.AREAS,
-    Properties.PARENT_TASK,
-    Properties.SUB_TASKS,
-    Properties.TAGS,
     Properties.DONE,
     Properties.STATUS,
-    Properties.PRIORITY
+    Properties.PARENT_TASK,
+    Properties.SUB_TASKS,
+    Properties.TAGS
   ],
 
   // Properties for area/project files themselves (not for bases showing tasks)
@@ -279,11 +279,13 @@ export const VIEW_ORDERS = {
 
 export const SORT_CONFIGS = {
   main: [
+    { property: 'note.Done', direction: 'ASC' as const }, // Uncompleted tasks first
     { property: 'file.mtime', direction: 'DESC' as const },
     { property: 'formula.Title', direction: 'ASC' as const }
   ],
 
   area: [
+    { property: 'note.Done', direction: 'ASC' as const }, // Uncompleted tasks first
     { property: 'file.mtime', direction: 'ASC' as const },
     { property: 'formula.Title', direction: 'ASC' as const }
   ]
