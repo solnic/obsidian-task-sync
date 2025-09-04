@@ -55,7 +55,6 @@ export interface ConfigurationContext {
 
 export const FORMULAS = {
   common: {
-    Type: 'Type',
     Title: 'link(file.name, Title)'
   },
 
@@ -81,6 +80,7 @@ export const PROPERTIES = {
   },
 
   task: {
+    'note.Type': { displayName: 'Type' },
     'note.Status': { displayName: 'Done' },
     'note.tags': { displayName: 'Tags' },
     'note.Areas': { displayName: 'Areas' },
@@ -92,6 +92,7 @@ export const PROPERTIES = {
 
   // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
   areaBase: {
+    'note.Type': { displayName: 'Type' },
     'note.Status': { displayName: 'Done' },
     'note.tags': { displayName: 'Tags' },
     'note.Project': { displayName: 'Project' },
@@ -102,6 +103,7 @@ export const PROPERTIES = {
 
   // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
   projectBase: {
+    'note.Type': { displayName: 'Type' },
     'note.Status': { displayName: 'Done' },
     'note.tags': { displayName: 'Tags' },
     'note.Areas': { displayName: 'Areas' },
@@ -131,7 +133,7 @@ export const VIEW_ORDERS = {
     main: [
       'Status',
       'formula.Title',
-      'formula.Type',
+      'note.Type',
       'tags',
       'file.mtime',
       'file.ctime',
@@ -154,7 +156,7 @@ export const VIEW_ORDERS = {
       'Done',
       'formula.Title',
       'Project',
-      'formula.Type',
+      'note.Type',
       'file.ctime',
       'file.mtime'
     ],
@@ -172,7 +174,7 @@ export const VIEW_ORDERS = {
       'Done',
       'formula.Title',
       'Areas',
-      'formula.Type',
+      'note.Type',
       'file.ctime',
       'file.mtime'
     ],
@@ -356,7 +358,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
           order: [
             'Status',
             'formula.Title',
-            'formula.Type',
+            'note.Type',
             'tags',
             'file.mtime',
             'file.ctime',
@@ -385,7 +387,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
           order: [
             'Status',
             'formula.Title',
-            'formula.Type',
+            'note.Type',
             'tags',
             'file.mtime',
             'file.ctime',

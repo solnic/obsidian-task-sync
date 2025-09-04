@@ -45,7 +45,6 @@ describe('BaseConfigurations', () => {
 
   describe('Static configurations', () => {
     it('should have correct formulas', () => {
-      expect(FORMULAS.common.Type).toBe('Type');
       expect(FORMULAS.common.Title).toBe('link(file.name, Title)');
     });
 
@@ -55,6 +54,7 @@ describe('BaseConfigurations', () => {
     });
 
     it('should have task-specific properties', () => {
+      expect(PROPERTIES.task['note.Type'].displayName).toBe('Type');
       expect(PROPERTIES.task['note.Status'].displayName).toBe('Done');
       expect(PROPERTIES.task['note.Project'].displayName).toBe('Project');
     });
@@ -78,8 +78,9 @@ describe('BaseConfigurations', () => {
     it('should include correct formulas', () => {
       const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
 
-      expect(result).toContain('Type: Type');
       expect(result).toContain('Title: link(file.name, Title)');
+      expect(result).toContain('note.Type:');
+      expect(result).toContain('displayName: Type');
     });
 
     it('should include main views', () => {

@@ -3036,7 +3036,7 @@ function generateTasksBase(settings, projectsAndAreas) {
         order: [
           "Status",
           "formula.Title",
-          "formula.Type",
+          "note.Type",
           "tags",
           "file.mtime",
           "file.ctime",
@@ -3063,7 +3063,7 @@ function generateTasksBase(settings, projectsAndAreas) {
         order: [
           "Status",
           "formula.Title",
-          "formula.Type",
+          "note.Type",
           "tags",
           "file.mtime",
           "file.ctime",
@@ -3175,7 +3175,6 @@ var init_BaseConfigurations = __esm({
     import_pluralize = __toESM(require_pluralize());
     FORMULAS = {
       common: {
-        Type: "Type",
         Title: "link(file.name, Title)"
       },
       area: {
@@ -3193,6 +3192,7 @@ var init_BaseConfigurations = __esm({
         "file.mtime": { displayName: "Updated At" }
       },
       task: {
+        "note.Type": { displayName: "Type" },
         "note.Status": { displayName: "Done" },
         "note.tags": { displayName: "Tags" },
         "note.Areas": { displayName: "Areas" },
@@ -3203,6 +3203,7 @@ var init_BaseConfigurations = __esm({
       },
       // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
       areaBase: {
+        "note.Type": { displayName: "Type" },
         "note.Status": { displayName: "Done" },
         "note.tags": { displayName: "Tags" },
         "note.Project": { displayName: "Project" },
@@ -3212,6 +3213,7 @@ var init_BaseConfigurations = __esm({
       },
       // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
       projectBase: {
+        "note.Type": { displayName: "Type" },
         "note.Status": { displayName: "Done" },
         "note.tags": { displayName: "Tags" },
         "note.Areas": { displayName: "Areas" },
@@ -3234,7 +3236,7 @@ var init_BaseConfigurations = __esm({
         main: [
           "Status",
           "formula.Title",
-          "formula.Type",
+          "note.Type",
           "tags",
           "file.mtime",
           "file.ctime",
@@ -3256,7 +3258,7 @@ var init_BaseConfigurations = __esm({
           "Done",
           "formula.Title",
           "Project",
-          "formula.Type",
+          "note.Type",
           "file.ctime",
           "file.mtime"
         ],
@@ -3273,7 +3275,7 @@ var init_BaseConfigurations = __esm({
           "Done",
           "formula.Title",
           "Areas",
-          "formula.Type",
+          "note.Type",
           "file.ctime",
           "file.mtime"
         ],
@@ -3564,7 +3566,7 @@ __export(main_exports, {
   default: () => TaskSyncPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian6 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/services/VaultScannerService.ts
 var import_obsidian = require("obsidian");
@@ -4611,7 +4613,10 @@ var ProjectCreateModal = class extends import_obsidian5.Modal {
   }
 };
 
-// src/main.ts
+// src/components/ui/settings/SettingsTab.ts
+var import_obsidian7 = require("obsidian");
+
+// src/components/ui/settings/types.ts
 var TASK_TYPE_COLORS = [
   "blue",
   "red",
@@ -4624,15 +4629,17 @@ var TASK_TYPE_COLORS = [
   "teal",
   "indigo"
 ];
+
+// src/components/ui/settings/defaults.ts
 var DEFAULT_SETTINGS = {
   tasksFolder: "Tasks",
   projectsFolder: "Projects",
   areasFolder: "Areas",
   templateFolder: "Templates",
   useTemplater: false,
-  defaultTaskTemplate: "",
-  defaultProjectTemplate: "",
-  defaultAreaTemplate: "",
+  defaultTaskTemplate: "task-template.md",
+  defaultProjectTemplate: "project-template.md",
+  defaultAreaTemplate: "area-template.md",
   // Base-related defaults
   basesFolder: "Bases",
   tasksBaseFile: "Tasks.base",
@@ -4651,7 +4658,902 @@ var DEFAULT_SETTINGS = {
   projectBasesEnabled: true,
   autoSyncAreaProjectBases: true
 };
-var TaskSyncPlugin = class extends import_obsidian6.Plugin {
+var VALIDATION_PATTERNS = {
+  folderName: /^[^<>:"/\\|?*\x00-\x1f]*$/,
+  fileName: /^[^<>:"/\\|?*\x00-\x1f]+\.[a-zA-Z0-9]+$/
+};
+
+// src/components/ui/settings/validation.ts
+function validateFolderPath(path) {
+  if (!path.trim()) {
+    return { isValid: true };
+  }
+  if (!VALIDATION_PATTERNS.folderName.test(path)) {
+    return {
+      isValid: false,
+      error: "Folder path contains invalid characters"
+    };
+  }
+  const reservedNames = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"];
+  const pathParts = path.split("/").filter((part) => part.length > 0);
+  for (const part of pathParts) {
+    if (reservedNames.includes(part.toUpperCase())) {
+      return {
+        isValid: false,
+        error: `"${part}" is a reserved folder name`
+      };
+    }
+  }
+  return { isValid: true };
+}
+function validateFileName(fileName) {
+  if (!fileName.trim()) {
+    return { isValid: true };
+  }
+  if (!VALIDATION_PATTERNS.fileName.test(fileName)) {
+    return {
+      isValid: false,
+      error: "File name contains invalid characters or missing extension"
+    };
+  }
+  const reservedNames = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"];
+  const nameWithoutExt = fileName.split(".")[0];
+  if (reservedNames.includes(nameWithoutExt.toUpperCase())) {
+    return {
+      isValid: false,
+      error: `"${nameWithoutExt}" is a reserved file name`
+    };
+  }
+  return { isValid: true };
+}
+function validateBaseFileName(fileName) {
+  const baseValidation = validateFileName(fileName);
+  if (!baseValidation.isValid) {
+    return baseValidation;
+  }
+  if (fileName.trim() && !fileName.endsWith(".base")) {
+    return {
+      isValid: false,
+      error: "Base file must have .base extension"
+    };
+  }
+  return { isValid: true };
+}
+function validateTemplateFileName(fileName) {
+  const baseValidation = validateFileName(fileName);
+  if (!baseValidation.isValid) {
+    return baseValidation;
+  }
+  if (fileName.trim() && !fileName.endsWith(".md")) {
+    return {
+      isValid: false,
+      error: "Template file must have .md extension"
+    };
+  }
+  return { isValid: true };
+}
+
+// src/components/ui/settings/suggest.ts
+var import_obsidian6 = require("obsidian");
+var FolderSuggestComponent = class {
+  constructor(app, inputEl, options = {}) {
+    this.suggestEl = null;
+    this.isOpen = false;
+    this.app = app;
+    this.inputEl = inputEl;
+    this.options = options;
+    this.setupEventListeners();
+  }
+  setupEventListeners() {
+    this.inputEl.addEventListener("input", this.handleInput.bind(this));
+    this.inputEl.addEventListener("focus", this.handleFocus.bind(this));
+    this.inputEl.addEventListener("blur", this.handleBlur.bind(this));
+    this.inputEl.addEventListener("keydown", this.handleKeydown.bind(this));
+  }
+  handleInput() {
+    const value = this.inputEl.value;
+    this.showSuggestions(value);
+    if (this.onChangeCallback) {
+      this.onChangeCallback(value);
+    }
+  }
+  handleFocus() {
+    this.showSuggestions(this.inputEl.value);
+  }
+  handleBlur() {
+    setTimeout(() => this.hideSuggestions(), 150);
+  }
+  handleKeydown(event) {
+    if (!this.isOpen) return;
+    switch (event.key) {
+      case "Escape":
+        this.hideSuggestions();
+        break;
+      case "ArrowDown":
+        event.preventDefault();
+        this.selectNextSuggestion();
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        this.selectPreviousSuggestion();
+        break;
+      case "Enter":
+        event.preventDefault();
+        this.acceptSelectedSuggestion();
+        break;
+    }
+  }
+  showSuggestions(query) {
+    const folders = this.getFolderSuggestions(query);
+    if (folders.length === 0) {
+      this.hideSuggestions();
+      return;
+    }
+    if (!this.suggestEl) {
+      this.createSuggestElement();
+    }
+    this.renderSuggestions(folders);
+    this.isOpen = true;
+  }
+  getFolderSuggestions(query) {
+    const allFolders = this.app.vault.getAllLoadedFiles().filter((file) => file instanceof import_obsidian6.TFolder).map((folder) => folder.path).sort();
+    if (!query.trim()) {
+      return allFolders.slice(0, 10);
+    }
+    return allFolders.filter((path) => path.toLowerCase().includes(query.toLowerCase())).slice(0, 10);
+  }
+  createSuggestElement() {
+    this.suggestEl = document.createElement("div");
+    this.suggestEl.className = "suggestion-container task-sync-folder-suggest";
+    const rect = this.inputEl.getBoundingClientRect();
+    this.suggestEl.style.position = "absolute";
+    this.suggestEl.style.top = `${rect.bottom + window.scrollY}px`;
+    this.suggestEl.style.left = `${rect.left + window.scrollX}px`;
+    this.suggestEl.style.width = `${rect.width}px`;
+    this.suggestEl.style.zIndex = "1000";
+    this.suggestEl.style.backgroundColor = "var(--background-primary)";
+    this.suggestEl.style.border = "1px solid var(--background-modifier-border)";
+    this.suggestEl.style.borderRadius = "4px";
+    this.suggestEl.style.maxHeight = "200px";
+    this.suggestEl.style.overflowY = "auto";
+    document.body.appendChild(this.suggestEl);
+  }
+  renderSuggestions(folders) {
+    if (!this.suggestEl) return;
+    this.suggestEl.innerHTML = "";
+    folders.forEach((folder, index) => {
+      const item = document.createElement("div");
+      item.className = "suggestion-item";
+      item.textContent = folder || "(root)";
+      item.style.padding = "8px 12px";
+      item.style.cursor = "pointer";
+      if (index === 0) {
+        item.classList.add("is-selected");
+        item.style.backgroundColor = "var(--background-modifier-hover)";
+      }
+      item.addEventListener("click", () => {
+        this.inputEl.value = folder;
+        this.hideSuggestions();
+        if (this.onChangeCallback) {
+          this.onChangeCallback(folder);
+        }
+      });
+      item.addEventListener("mouseenter", () => {
+        this.clearSelection();
+        item.classList.add("is-selected");
+        item.style.backgroundColor = "var(--background-modifier-hover)";
+      });
+      this.suggestEl.appendChild(item);
+    });
+  }
+  selectNextSuggestion() {
+    if (!this.suggestEl) return;
+    const items = this.suggestEl.querySelectorAll(".suggestion-item");
+    const selected = this.suggestEl.querySelector(".is-selected");
+    if (!selected) {
+      if (items.length > 0) {
+        this.selectItem(items[0]);
+      }
+      return;
+    }
+    const currentIndex = Array.from(items).indexOf(selected);
+    const nextIndex = (currentIndex + 1) % items.length;
+    this.selectItem(items[nextIndex]);
+  }
+  selectPreviousSuggestion() {
+    if (!this.suggestEl) return;
+    const items = this.suggestEl.querySelectorAll(".suggestion-item");
+    const selected = this.suggestEl.querySelector(".is-selected");
+    if (!selected) {
+      if (items.length > 0) {
+        this.selectItem(items[items.length - 1]);
+      }
+      return;
+    }
+    const currentIndex = Array.from(items).indexOf(selected);
+    const prevIndex = currentIndex === 0 ? items.length - 1 : currentIndex - 1;
+    this.selectItem(items[prevIndex]);
+  }
+  selectItem(item) {
+    this.clearSelection();
+    item.classList.add("is-selected");
+    item.style.backgroundColor = "var(--background-modifier-hover)";
+  }
+  clearSelection() {
+    if (!this.suggestEl) return;
+    this.suggestEl.querySelectorAll(".suggestion-item").forEach((item) => {
+      item.classList.remove("is-selected");
+      item.style.backgroundColor = "";
+    });
+  }
+  acceptSelectedSuggestion() {
+    if (!this.suggestEl) return;
+    const selected = this.suggestEl.querySelector(".is-selected");
+    if (selected) {
+      this.inputEl.value = selected.textContent || "";
+      this.hideSuggestions();
+      if (this.onChangeCallback) {
+        this.onChangeCallback(this.inputEl.value);
+      }
+    }
+  }
+  hideSuggestions() {
+    if (this.suggestEl) {
+      this.suggestEl.remove();
+      this.suggestEl = null;
+    }
+    this.isOpen = false;
+  }
+  onChange(callback) {
+    this.onChangeCallback = callback;
+  }
+  destroy() {
+    this.hideSuggestions();
+  }
+};
+var FileSuggestComponent = class {
+  constructor(app, inputEl, options = {}) {
+    this.suggestEl = null;
+    this.isOpen = false;
+    this.app = app;
+    this.inputEl = inputEl;
+    this.options = options;
+    this.setupEventListeners();
+  }
+  setupEventListeners() {
+    this.inputEl.addEventListener("input", this.handleInput.bind(this));
+    this.inputEl.addEventListener("focus", this.handleFocus.bind(this));
+    this.inputEl.addEventListener("blur", this.handleBlur.bind(this));
+    this.inputEl.addEventListener("keydown", this.handleKeydown.bind(this));
+  }
+  handleInput() {
+    const value = this.inputEl.value;
+    this.showSuggestions(value);
+    if (this.onChangeCallback) {
+      this.onChangeCallback(value);
+    }
+  }
+  handleFocus() {
+    this.showSuggestions(this.inputEl.value);
+  }
+  handleBlur() {
+    setTimeout(() => this.hideSuggestions(), 150);
+  }
+  handleKeydown(event) {
+    if (!this.isOpen) return;
+    switch (event.key) {
+      case "Escape":
+        this.hideSuggestions();
+        break;
+      case "ArrowDown":
+        event.preventDefault();
+        this.selectNextSuggestion();
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        this.selectPreviousSuggestion();
+        break;
+      case "Enter":
+        event.preventDefault();
+        this.acceptSelectedSuggestion();
+        break;
+    }
+  }
+  showSuggestions(query) {
+    const files = this.getFileSuggestions(query);
+    if (files.length === 0) {
+      this.hideSuggestions();
+      return;
+    }
+    if (!this.suggestEl) {
+      this.createSuggestElement();
+    }
+    this.renderSuggestions(files);
+    this.isOpen = true;
+  }
+  getFileSuggestions(query) {
+    let allFiles = this.app.vault.getAllLoadedFiles().filter((file) => file instanceof import_obsidian6.TFile).map((file) => file.name);
+    if (this.options.fileExtensions && this.options.fileExtensions.length > 0) {
+      allFiles = allFiles.filter(
+        (fileName) => this.options.fileExtensions.some((ext) => fileName.endsWith(ext))
+      );
+    }
+    allFiles.sort();
+    if (!query.trim()) {
+      return allFiles.slice(0, 10);
+    }
+    return allFiles.filter((name) => name.toLowerCase().includes(query.toLowerCase())).slice(0, 10);
+  }
+  createSuggestElement() {
+    this.suggestEl = document.createElement("div");
+    this.suggestEl.className = "suggestion-container task-sync-file-suggest";
+    const rect = this.inputEl.getBoundingClientRect();
+    this.suggestEl.style.position = "absolute";
+    this.suggestEl.style.top = `${rect.bottom + window.scrollY}px`;
+    this.suggestEl.style.left = `${rect.left + window.scrollX}px`;
+    this.suggestEl.style.width = `${rect.width}px`;
+    this.suggestEl.style.zIndex = "1000";
+    this.suggestEl.style.backgroundColor = "var(--background-primary)";
+    this.suggestEl.style.border = "1px solid var(--background-modifier-border)";
+    this.suggestEl.style.borderRadius = "4px";
+    this.suggestEl.style.maxHeight = "200px";
+    this.suggestEl.style.overflowY = "auto";
+    document.body.appendChild(this.suggestEl);
+  }
+  renderSuggestions(files) {
+    if (!this.suggestEl) return;
+    this.suggestEl.innerHTML = "";
+    files.forEach((file, index) => {
+      const item = document.createElement("div");
+      item.className = "suggestion-item";
+      item.textContent = file;
+      item.style.padding = "8px 12px";
+      item.style.cursor = "pointer";
+      if (index === 0) {
+        item.classList.add("is-selected");
+        item.style.backgroundColor = "var(--background-modifier-hover)";
+      }
+      item.addEventListener("click", () => {
+        this.inputEl.value = file;
+        this.hideSuggestions();
+        if (this.onChangeCallback) {
+          this.onChangeCallback(file);
+        }
+      });
+      item.addEventListener("mouseenter", () => {
+        this.clearSelection();
+        item.classList.add("is-selected");
+        item.style.backgroundColor = "var(--background-modifier-hover)";
+      });
+      this.suggestEl.appendChild(item);
+    });
+  }
+  selectNextSuggestion() {
+    if (!this.suggestEl) return;
+    const items = this.suggestEl.querySelectorAll(".suggestion-item");
+    const selected = this.suggestEl.querySelector(".is-selected");
+    if (!selected) {
+      if (items.length > 0) {
+        this.selectItem(items[0]);
+      }
+      return;
+    }
+    const currentIndex = Array.from(items).indexOf(selected);
+    const nextIndex = (currentIndex + 1) % items.length;
+    this.selectItem(items[nextIndex]);
+  }
+  selectPreviousSuggestion() {
+    if (!this.suggestEl) return;
+    const items = this.suggestEl.querySelectorAll(".suggestion-item");
+    const selected = this.suggestEl.querySelector(".is-selected");
+    if (!selected) {
+      if (items.length > 0) {
+        this.selectItem(items[items.length - 1]);
+      }
+      return;
+    }
+    const currentIndex = Array.from(items).indexOf(selected);
+    const prevIndex = currentIndex === 0 ? items.length - 1 : currentIndex - 1;
+    this.selectItem(items[prevIndex]);
+  }
+  selectItem(item) {
+    this.clearSelection();
+    item.classList.add("is-selected");
+    item.style.backgroundColor = "var(--background-modifier-hover)";
+  }
+  clearSelection() {
+    if (!this.suggestEl) return;
+    this.suggestEl.querySelectorAll(".suggestion-item").forEach((item) => {
+      item.classList.remove("is-selected");
+      item.style.backgroundColor = "";
+    });
+  }
+  acceptSelectedSuggestion() {
+    if (!this.suggestEl) return;
+    const selected = this.suggestEl.querySelector(".is-selected");
+    if (selected) {
+      this.inputEl.value = selected.textContent || "";
+      this.hideSuggestions();
+      if (this.onChangeCallback) {
+        this.onChangeCallback(this.inputEl.value);
+      }
+    }
+  }
+  hideSuggestions() {
+    if (this.suggestEl) {
+      this.suggestEl.remove();
+      this.suggestEl = null;
+    }
+    this.isOpen = false;
+  }
+  onChange(callback) {
+    this.onChangeCallback = callback;
+  }
+  destroy() {
+    this.hideSuggestions();
+  }
+};
+
+// src/components/ui/TypeBadge.ts
+function createTypeBadge(taskType, className) {
+  const badge = document.createElement("span");
+  badge.className = `task-type-badge task-type-${taskType.color}`;
+  if (className) {
+    badge.className += ` ${className}`;
+  }
+  badge.textContent = taskType.name;
+  return badge;
+}
+
+// src/components/ui/settings/SettingsTab.ts
+var TaskSyncSettingTab = class extends import_obsidian7.PluginSettingTab {
+  constructor(app, plugin) {
+    super(app, plugin);
+    this.validationErrors = /* @__PURE__ */ new Map();
+    this.suggestComponents = [];
+    this.plugin = plugin;
+    this.loadStyles();
+  }
+  loadStyles() {
+    const styleId = "task-sync-settings-styles";
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement("style");
+      style.id = styleId;
+      style.textContent = `
+        /* Task Sync Settings Styles */
+        .task-sync-settings {
+          padding: 20px;
+          max-width: 800px;
+          margin: 0 auto;
+        }
+
+        .task-sync-settings-header {
+          margin-bottom: 30px;
+          text-align: center;
+        }
+
+        .task-sync-settings-header h2 {
+          margin-bottom: 10px;
+          color: var(--text-normal);
+        }
+
+        .task-sync-settings-description {
+          color: var(--text-muted);
+          font-size: 14px;
+          margin: 0;
+        }
+
+        .task-sync-settings-sections {
+          display: flex;
+          flex-direction: column;
+          gap: 30px;
+        }
+
+        .task-sync-settings-section {
+          background: var(--background-secondary);
+          border-radius: 8px;
+          padding: 20px;
+          border: 1px solid var(--background-modifier-border);
+        }
+
+        .task-sync-section-header {
+          margin: 0 0 15px 0;
+          color: var(--text-normal);
+          font-size: 18px;
+          font-weight: 600;
+          border-bottom: 1px solid var(--background-modifier-border);
+          padding-bottom: 8px;
+        }
+
+        .task-sync-settings-section-desc {
+          color: var(--text-muted);
+          font-size: 13px;
+          margin: 0 0 20px 0;
+          line-height: 1.4;
+        }
+
+        .task-sync-setting-error {
+          border-left: 3px solid var(--text-error);
+          padding-left: 15px;
+          background: var(--background-modifier-error);
+        }
+
+        .task-sync-validation-error {
+          color: var(--text-error);
+          font-size: 12px;
+          margin-top: 5px;
+          font-weight: 500;
+        }
+
+        .task-sync-settings-actions {
+          margin-top: 20px;
+          display: flex;
+          gap: 10px;
+          justify-content: flex-end;
+        }
+
+        .task-type-preview {
+          margin-right: 10px;
+          display: inline-block;
+        }
+
+        .suggestion-container {
+          background: var(--background-primary);
+          border: 1px solid var(--background-modifier-border);
+          border-radius: 4px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          z-index: 1000;
+        }
+
+        .suggestion-item {
+          padding: 8px 12px;
+          cursor: pointer;
+          color: var(--text-normal);
+          border-bottom: 1px solid var(--background-modifier-border-hover);
+          transition: background-color 0.1s ease;
+        }
+
+        .suggestion-item:last-child {
+          border-bottom: none;
+        }
+
+        .suggestion-item:hover,
+        .suggestion-item.is-selected {
+          background: var(--background-modifier-hover);
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.addClass("task-sync-settings");
+    this.createHeader(containerEl);
+    this.createSectionInterface(containerEl);
+  }
+  createHeader(container) {
+    const header = container.createDiv("task-sync-settings-header");
+    header.createEl("h2", { text: "Task Sync Settings" });
+    header.createEl("p", {
+      text: "Configure your task management system. Changes are saved automatically.",
+      cls: "task-sync-settings-description"
+    });
+  }
+  createSectionInterface(container) {
+    const sectionsContainer = container.createDiv("task-sync-settings-sections");
+    this.createGeneralSection(sectionsContainer);
+    this.createTemplatesSection(sectionsContainer);
+    this.createBasesSection(sectionsContainer);
+    this.createTaskTypesSection(sectionsContainer);
+  }
+  createGeneralSection(container) {
+    const section = container.createDiv("task-sync-settings-section");
+    section.createEl("h2", { text: "General", cls: "task-sync-section-header" });
+    this.createFolderSetting(
+      section,
+      "tasksFolder",
+      "Tasks Folder",
+      "Folder where task files will be stored"
+    );
+    this.createFolderSetting(
+      section,
+      "projectsFolder",
+      "Projects Folder",
+      "Folder where project files will be stored"
+    );
+    this.createFolderSetting(
+      section,
+      "areasFolder",
+      "Areas Folder",
+      "Folder where area files will be stored"
+    );
+  }
+  createTemplatesSection(container) {
+    const section = container.createDiv("task-sync-settings-section");
+    section.createEl("h2", { text: "Templates", cls: "task-sync-section-header" });
+    this.createFolderSetting(
+      section,
+      "templateFolder",
+      "Template Folder",
+      "Folder where templates are stored"
+    );
+    new import_obsidian7.Setting(section).setName("Use Templater Plugin").setDesc("Enable integration with Templater plugin for advanced templates").addToggle((toggle) => toggle.setValue(this.plugin.settings.useTemplater).onChange(async (value) => {
+      this.plugin.settings.useTemplater = value;
+      await this.plugin.saveSettings();
+    }));
+    this.createFileSetting(
+      section,
+      "defaultTaskTemplate",
+      "Default Task Template",
+      "Default template to use when creating new tasks",
+      [".md"]
+    );
+    this.createFileSetting(
+      section,
+      "defaultProjectTemplate",
+      "Default Project Template",
+      "Default template to use when creating new projects",
+      [".md"]
+    );
+    this.createFileSetting(
+      section,
+      "defaultAreaTemplate",
+      "Default Area Template",
+      "Default template to use when creating new areas",
+      [".md"]
+    );
+  }
+  createBasesSection(container) {
+    const section = container.createDiv("task-sync-settings-section");
+    section.createEl("h2", { text: "Bases Integration", cls: "task-sync-section-header" });
+    this.createFolderSetting(
+      section,
+      "basesFolder",
+      "Bases Folder",
+      "Folder where .base files are stored"
+    );
+    this.createFileSetting(
+      section,
+      "tasksBaseFile",
+      "Tasks Base File",
+      "Name of the main tasks base file",
+      [".base"]
+    );
+    new import_obsidian7.Setting(section).setName("Auto Generate Bases").setDesc("Automatically generate base files when needed").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoGenerateBases).onChange(async (value) => {
+      this.plugin.settings.autoGenerateBases = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian7.Setting(section).setName("Auto Update Base Views").setDesc("Automatically update base views when tasks change").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoUpdateBaseViews).onChange(async (value) => {
+      this.plugin.settings.autoUpdateBaseViews = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian7.Setting(section).setName("Enable Area Bases").setDesc("Create individual base files for each area with filtered views").addToggle((toggle) => toggle.setValue(this.plugin.settings.areaBasesEnabled).onChange(async (value) => {
+      this.plugin.settings.areaBasesEnabled = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian7.Setting(section).setName("Enable Project Bases").setDesc("Create individual base files for each project with filtered views").addToggle((toggle) => toggle.setValue(this.plugin.settings.projectBasesEnabled).onChange(async (value) => {
+      this.plugin.settings.projectBasesEnabled = value;
+      await this.plugin.saveSettings();
+    }));
+    new import_obsidian7.Setting(section).setName("Auto-Sync Area/Project Bases").setDesc("Automatically update area and project bases when settings change").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoSyncAreaProjectBases).onChange(async (value) => {
+      this.plugin.settings.autoSyncAreaProjectBases = value;
+      await this.plugin.saveSettings();
+    }));
+    this.createActionButtons(section);
+  }
+  createTaskTypesSection(container) {
+    const section = container.createDiv("task-sync-settings-section");
+    section.createEl("h2", { text: "Task Types", cls: "task-sync-section-header" });
+    section.createEl("p", {
+      text: "Configure the available task types and their colors.",
+      cls: "task-sync-settings-section-desc"
+    });
+    this.plugin.settings.taskTypes.forEach((taskType, index) => {
+      const setting = new import_obsidian7.Setting(section).setName(taskType.name).setDesc(`Configure the "${taskType.name}" task type`);
+      const badgeContainer = setting.controlEl.createDiv("task-type-preview");
+      const badge = createTypeBadge(taskType);
+      badgeContainer.appendChild(badge);
+      setting.addText((text) => {
+        text.setValue(taskType.name).setPlaceholder("Task type name").onChange(async (value) => {
+          if (value.trim()) {
+            this.plugin.settings.taskTypes[index].name = value.trim();
+            await this.plugin.saveSettings();
+            setting.setName(value.trim());
+            badge.textContent = value.trim();
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          }
+        });
+      });
+      setting.addDropdown((dropdown) => {
+        TASK_TYPE_COLORS.forEach((color) => {
+          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+        });
+        dropdown.setValue(taskType.color).onChange(async (value) => {
+          this.plugin.settings.taskTypes[index].color = value;
+          await this.plugin.saveSettings();
+          badge.className = `task-type-badge task-type-${value}`;
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
+        });
+      });
+      if (this.plugin.settings.taskTypes.length > 1) {
+        setting.addButton((button) => {
+          button.setButtonText("Delete").setWarning().onClick(async () => {
+            this.plugin.settings.taskTypes.splice(index, 1);
+            await this.plugin.saveSettings();
+            container.empty();
+            this.createTaskTypesSection(container);
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+        });
+      }
+    });
+    this.createAddTaskTypeSection(section);
+  }
+  createAddTaskTypeSection(container) {
+    let newTypeName = "";
+    let newTypeColor = "blue";
+    const addSetting = new import_obsidian7.Setting(container).setName("Add New Task Type").setDesc("Create a new task type for your workflow").addText((text) => {
+      text.setPlaceholder("e.g., Epic, Story, Research").onChange((value) => {
+        newTypeName = value.trim();
+      });
+    }).addDropdown((dropdown) => {
+      TASK_TYPE_COLORS.forEach((color) => {
+        dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      });
+      dropdown.setValue(newTypeColor).onChange((value) => {
+        newTypeColor = value;
+      });
+    }).addButton((button) => {
+      button.setButtonText("Add Task Type").setCta().onClick(async () => {
+        if (newTypeName && !this.plugin.settings.taskTypes.some((t) => t.name === newTypeName)) {
+          this.plugin.settings.taskTypes.push({ name: newTypeName, color: newTypeColor });
+          await this.plugin.saveSettings();
+          container.empty();
+          this.createTaskTypesSection(container);
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
+        }
+      });
+    });
+  }
+  createActionButtons(container) {
+    const actionsContainer = container.createDiv("task-sync-settings-actions");
+    const refreshButton = actionsContainer.createEl("button", {
+      text: "Refresh",
+      cls: "mod-cta"
+    });
+    refreshButton.addEventListener("click", async () => {
+      refreshButton.disabled = true;
+      refreshButton.setText("Refreshing...");
+      try {
+        await this.plugin.refresh();
+        refreshButton.setText("\u2713 Refreshed");
+        setTimeout(() => {
+          refreshButton.disabled = false;
+          refreshButton.setText("Refresh");
+        }, 2e3);
+      } catch (error) {
+        refreshButton.setText("\u2717 Failed");
+        console.error("Failed to refresh:", error);
+        setTimeout(() => {
+          refreshButton.disabled = false;
+          refreshButton.setText("Refresh");
+        }, 2e3);
+      }
+    });
+  }
+  createFolderSetting(container, key, name, desc) {
+    const setting = new import_obsidian7.Setting(container).setName(name).setDesc(desc).addText((text) => {
+      const defaultValue = DEFAULT_SETTINGS[key];
+      text.setPlaceholder(defaultValue).setValue(this.plugin.settings[key]).onChange(async (value) => {
+        const validation = validateFolderPath(value);
+        if (validation.isValid) {
+          this.clearValidationError(key);
+          this.plugin.settings[key] = value;
+          await this.plugin.saveSettings();
+        } else {
+          this.setValidationError(key, validation.error);
+        }
+        this.updateSettingValidation(setting, key);
+      });
+      const folderSuggest = new FolderSuggestComponent(this.app, text.inputEl);
+      folderSuggest.onChange(async (value) => {
+        const validation = validateFolderPath(value);
+        if (validation.isValid) {
+          this.clearValidationError(key);
+          this.plugin.settings[key] = value;
+          await this.plugin.saveSettings();
+        } else {
+          this.setValidationError(key, validation.error);
+        }
+        this.updateSettingValidation(setting, key);
+      });
+      this.suggestComponents.push(folderSuggest);
+    });
+    this.updateSettingValidation(setting, key);
+  }
+  createFileSetting(container, key, name, desc, extensions) {
+    const setting = new import_obsidian7.Setting(container).setName(name).setDesc(desc).addText((text) => {
+      const defaultValue = DEFAULT_SETTINGS[key];
+      text.setPlaceholder(defaultValue).setValue(this.plugin.settings[key]).onChange(async (value) => {
+        let validation;
+        if (key === "tasksBaseFile") {
+          validation = validateBaseFileName(value);
+        } else if (key.includes("Template")) {
+          validation = validateTemplateFileName(value);
+        } else {
+          validation = validateFileName(value);
+        }
+        if (validation.isValid) {
+          this.clearValidationError(key);
+          this.plugin.settings[key] = value;
+          await this.plugin.saveSettings();
+        } else {
+          this.setValidationError(key, validation.error);
+        }
+        this.updateSettingValidation(setting, key);
+      });
+      const fileSuggest = new FileSuggestComponent(this.app, text.inputEl, {
+        fileExtensions: extensions
+      });
+      fileSuggest.onChange(async (value) => {
+        let validation;
+        if (key === "tasksBaseFile") {
+          validation = validateBaseFileName(value);
+        } else if (key.includes("Template")) {
+          validation = validateTemplateFileName(value);
+        } else {
+          validation = validateFileName(value);
+        }
+        if (validation.isValid) {
+          this.clearValidationError(key);
+          this.plugin.settings[key] = value;
+          await this.plugin.saveSettings();
+        } else {
+          this.setValidationError(key, validation.error);
+        }
+        this.updateSettingValidation(setting, key);
+      });
+      this.suggestComponents.push(fileSuggest);
+    });
+    this.updateSettingValidation(setting, key);
+  }
+  setValidationError(key, error) {
+    this.validationErrors.set(key, error);
+  }
+  clearValidationError(key) {
+    this.validationErrors.delete(key);
+  }
+  updateSettingValidation(setting, key) {
+    const error = this.validationErrors.get(key);
+    const settingEl = setting.settingEl;
+    settingEl.removeClass("task-sync-setting-error");
+    const existingError = settingEl.querySelector(".task-sync-validation-error");
+    if (existingError) {
+      existingError.remove();
+    }
+    if (error) {
+      settingEl.addClass("task-sync-setting-error");
+      const errorEl = settingEl.createDiv("task-sync-validation-error");
+      errorEl.textContent = error;
+    }
+  }
+  hide() {
+    this.suggestComponents.forEach((component) => component.destroy());
+    this.suggestComponents = [];
+  }
+};
+
+// src/main.ts
+var TaskSyncPlugin = class extends import_obsidian8.Plugin {
   async onload() {
     console.log("Loading Task Sync Plugin");
     await this.loadSettings();
@@ -4812,7 +5714,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
    * Detect todo item under cursor in the active editor
    */
   detectTodoUnderCursor() {
-    const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView);
+    const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
     if (!markdownView) {
       return null;
     }
@@ -4844,7 +5746,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
     try {
       const todoItem = this.detectTodoUnderCursor();
       if (!todoItem) {
-        new import_obsidian6.Notice("No todo item found under cursor");
+        new import_obsidian8.Notice("No todo item found under cursor");
         return;
       }
       const context = this.detectCurrentFileContext();
@@ -4859,7 +5761,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
         ...context.type === "area" && context.name ? { areas: context.name } : {}
       };
       await this.createTask(taskData);
-      const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian6.MarkdownView);
+      const markdownView = this.app.workspace.getActiveViewOfType(import_obsidian8.MarkdownView);
       if (!markdownView) {
         throw new Error("No active markdown view found");
       }
@@ -4871,13 +5773,13 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
         replacementLine = `${todoItem.indentation}${todoItem.listMarker} [[${todoItem.text}]]`;
       }
       editor.setLine(todoItem.lineNumber, replacementLine);
-      new import_obsidian6.Notice(`Todo promoted to task: ${todoItem.text}`);
+      new import_obsidian8.Notice(`Todo promoted to task: ${todoItem.text}`);
       if (this.settings.autoUpdateBaseViews) {
         await this.refreshBaseViews();
       }
     } catch (error) {
       console.error("Failed to promote todo to task:", error);
-      new import_obsidian6.Notice("Failed to promote todo to task");
+      new import_obsidian8.Notice("Failed to promote todo to task");
     }
   }
   // Task creation logic
@@ -4974,7 +5876,7 @@ var TaskSyncPlugin = class extends import_obsidian6.Plugin {
     try {
       const templatePath = `${this.settings.templateFolder}/${templateName}`;
       const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
-      if (!templateFile || !(templateFile instanceof import_obsidian6.TFile)) {
+      if (!templateFile || !(templateFile instanceof import_obsidian8.TFile)) {
         console.warn(`Template not found: ${templatePath}, using default content`);
         if (data.hasOwnProperty("areas")) {
           return this.generateProjectContent(data);
@@ -5181,7 +6083,7 @@ ${expectedBaseEmbed}`;
   async updateSingleFile(filePath, type2, results) {
     try {
       const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (!file || !(file instanceof import_obsidian6.TFile)) {
+      if (!file || !(file instanceof import_obsidian8.TFile)) {
         console.log(`Task Sync: Skipping non-file: ${filePath}`);
         return;
       }
@@ -5273,7 +6175,7 @@ Errors encountered:
 `;
       });
     }
-    new import_obsidian6.Notice(message, 5e3);
+    new import_obsidian8.Notice(message, 5e3);
     console.log("Task Sync: Refresh results:", results);
   }
   /**
@@ -5314,275 +6216,6 @@ Errors encountered:
     } catch (error) {
       console.error("Failed to sync area and project bases:", error);
       throw error;
-    }
-  }
-};
-var TaskSyncSettingTab = class extends import_obsidian6.PluginSettingTab {
-  constructor(app, plugin) {
-    super(app, plugin);
-    this.validationErrors = /* @__PURE__ */ new Map();
-    this.plugin = plugin;
-  }
-  display() {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.addClass("task-sync-settings");
-    const header = containerEl.createDiv("task-sync-settings-header");
-    header.createEl("h2", { text: "Task Sync Settings" });
-    header.createEl("p", {
-      text: "Configure your task management system. Changes are saved automatically.",
-      cls: "task-sync-settings-description"
-    });
-    this.createSectionInterface(containerEl);
-  }
-  createSectionInterface(containerEl) {
-    const sectionsContainer = containerEl.createDiv("task-sync-settings-sections");
-    this.createGeneralSection(sectionsContainer);
-    this.createTemplatesSection(sectionsContainer);
-    this.createBasesSection(sectionsContainer);
-    this.createTaskTypesSection(sectionsContainer);
-  }
-  createGeneralSection(container) {
-    const section = container.createDiv("task-sync-settings-section");
-    section.createEl("h2", { text: "General", cls: "task-sync-section-header" });
-    this.createFolderSetting(
-      section,
-      "tasksFolder",
-      "Tasks Folder",
-      "Folder where task files will be stored",
-      "Tasks"
-    );
-    this.createFolderSetting(
-      section,
-      "projectsFolder",
-      "Projects Folder",
-      "Folder where project files will be stored",
-      "Projects"
-    );
-    this.createFolderSetting(
-      section,
-      "areasFolder",
-      "Areas Folder",
-      "Folder where area files will be stored",
-      "Areas"
-    );
-    const infoBox = section.createDiv("task-sync-settings-info");
-    infoBox.createEl("strong", { text: "Note: " });
-    infoBox.appendText("Folders will be created automatically if they don't exist. Use relative paths from your vault root.");
-  }
-  createFolderSetting(container, key, name, desc, placeholder) {
-    const setting = new import_obsidian6.Setting(container).setName(name).setDesc(desc).addText((text) => {
-      text.setPlaceholder(placeholder).setValue(this.plugin.settings[key]).onChange(async (value) => {
-        const validation = this.validateFolderPath(value);
-        if (validation.isValid) {
-          this.clearValidationError(key);
-          this.plugin.settings[key] = value;
-          await this.plugin.saveSettings();
-        } else {
-          this.setValidationError(key, validation.error);
-        }
-        this.updateSettingValidation(setting, key);
-      });
-    });
-    this.updateSettingValidation(setting, key);
-  }
-  createTemplatesSection(container) {
-    const section = container.createDiv("task-sync-settings-section");
-    section.createEl("h2", { text: "Templates", cls: "task-sync-section-header" });
-    this.createFolderSetting(
-      section,
-      "templateFolder",
-      "Template Folder",
-      "Folder where templates are stored",
-      "Templates"
-    );
-    new import_obsidian6.Setting(section).setName("Use Templater Plugin").setDesc("Enable integration with Templater plugin for advanced templates").addToggle((toggle) => toggle.setValue(this.plugin.settings.useTemplater).onChange(async (value) => {
-      this.plugin.settings.useTemplater = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(section).setName("Default Task Template").setDesc("Default template to use when creating new tasks").addText((text) => text.setPlaceholder("task-template.md").setValue(this.plugin.settings.defaultTaskTemplate).onChange(async (value) => {
-      this.plugin.settings.defaultTaskTemplate = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(section).setName("Default Project Template").setDesc("Default template to use when creating new projects").addText((text) => text.setPlaceholder("project-template.md").setValue(this.plugin.settings.defaultProjectTemplate).onChange(async (value) => {
-      this.plugin.settings.defaultProjectTemplate = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(section).setName("Default Area Template").setDesc("Default template to use when creating new areas").addText((text) => text.setPlaceholder("area-template.md").setValue(this.plugin.settings.defaultAreaTemplate).onChange(async (value) => {
-      this.plugin.settings.defaultAreaTemplate = value;
-      await this.plugin.saveSettings();
-    }));
-  }
-  createBasesSection(container) {
-    const section = container.createDiv("task-sync-settings-section");
-    section.createEl("h2", { text: "Bases Integration", cls: "task-sync-section-header" });
-    this.createFolderSetting(
-      section,
-      "basesFolder",
-      "Bases Folder",
-      "Folder where .base files are stored",
-      "Bases"
-    );
-    new import_obsidian6.Setting(section).setName("Tasks Base File").setDesc("Name of the main tasks base file").addText((text) => text.setPlaceholder("Tasks.base").setValue(this.plugin.settings.tasksBaseFile).onChange(async (value) => {
-      this.plugin.settings.tasksBaseFile = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(section).setName("Auto-Update Base Views").setDesc("Automatically refresh base views when tasks, projects, or areas change").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoUpdateBaseViews).onChange(async (value) => {
-      this.plugin.settings.autoUpdateBaseViews = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(section).setName("Enable Area Bases").setDesc("Create individual base files for each area with filtered views").addToggle((toggle) => toggle.setValue(this.plugin.settings.areaBasesEnabled).onChange(async (value) => {
-      this.plugin.settings.areaBasesEnabled = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(section).setName("Enable Project Bases").setDesc("Create individual base files for each project with filtered views").addToggle((toggle) => toggle.setValue(this.plugin.settings.projectBasesEnabled).onChange(async (value) => {
-      this.plugin.settings.projectBasesEnabled = value;
-      await this.plugin.saveSettings();
-    }));
-    new import_obsidian6.Setting(section).setName("Auto-Sync Area/Project Bases").setDesc("Automatically update area and project bases when settings change").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoSyncAreaProjectBases).onChange(async (value) => {
-      this.plugin.settings.autoSyncAreaProjectBases = value;
-      await this.plugin.saveSettings();
-    }));
-    const actionsContainer = section.createDiv("task-sync-settings-actions");
-    const refreshButton = actionsContainer.createEl("button", {
-      text: "Refresh",
-      cls: "mod-cta"
-    });
-    refreshButton.addEventListener("click", async () => {
-      refreshButton.disabled = true;
-      refreshButton.setText("Refreshing...");
-      try {
-        await this.plugin.refresh();
-        refreshButton.setText("\u2713 Refreshed");
-        setTimeout(() => {
-          refreshButton.disabled = false;
-          refreshButton.setText("Refresh");
-        }, 2e3);
-      } catch (error) {
-        refreshButton.setText("\u2717 Failed");
-        console.error("Failed to refresh:", error);
-        setTimeout(() => {
-          refreshButton.disabled = false;
-          refreshButton.setText("Refresh");
-        }, 2e3);
-      }
-    });
-  }
-  createTaskTypesSection(container) {
-    const section = container.createDiv("task-sync-settings-section");
-    section.createEl("h2", { text: "Task Types", cls: "task-sync-section-header" });
-    section.createEl("p", {
-      text: "Configure the available task types for your workflow.",
-      cls: "task-sync-settings-section-desc"
-    });
-    this.renderTaskTypeSettings(section);
-    this.createAddTaskTypeSection(section);
-  }
-  renderTaskTypeSettings(container) {
-    const count = this.plugin.settings.taskTypes.length;
-    if (count === 0) {
-      const emptySetting = new import_obsidian6.Setting(container).setName("No task types configured").setDesc("Add your first task type below to get started");
-      emptySetting.settingEl.addClass("task-sync-empty-state");
-      return;
-    }
-    this.plugin.settings.taskTypes.forEach((taskType, index) => {
-      const setting = new import_obsidian6.Setting(container).setName(taskType.name).setDesc(`Task type: ${taskType.name}`);
-      if (this.plugin.settings.taskTypes.length > 1) {
-        setting.addButton((button) => {
-          button.setButtonText("Delete").setWarning().onClick(async () => {
-            this.plugin.settings.taskTypes.splice(index, 1);
-            await this.plugin.saveSettings();
-            container.empty();
-            this.createTaskTypesSection(container);
-            if (this.plugin.settings.autoSyncAreaProjectBases) {
-              await this.plugin.syncAreaProjectBases();
-            }
-          });
-        });
-      }
-    });
-  }
-  createAddTaskTypeSection(container) {
-    let newTypeName = "";
-    const addSetting = new import_obsidian6.Setting(container).setName("Add New Task Type").setDesc("Create a new task type for your workflow").addText((text) => {
-      text.setPlaceholder("e.g., Epic, Story, Research").onChange((value) => {
-        newTypeName = value.trim();
-      });
-    }).addButton((button) => {
-      button.setButtonText("Add Task Type").setCta().onClick(async () => {
-        if (newTypeName && !this.plugin.settings.taskTypes.some((t) => t.name === newTypeName)) {
-          const defaultColor = this.getNextAvailableColor();
-          this.plugin.settings.taskTypes.push({ name: newTypeName, color: defaultColor });
-          await this.plugin.saveSettings();
-          container.empty();
-          this.createTaskTypesSection(container);
-          if (this.plugin.settings.autoSyncAreaProjectBases) {
-            await this.plugin.syncAreaProjectBases();
-          }
-        }
-      });
-    });
-  }
-  /**
-   * Get the next available color for a new task type
-   */
-  getNextAvailableColor() {
-    const usedColors = this.plugin.settings.taskTypes.map((t) => t.color);
-    const availableColors = TASK_TYPE_COLORS.filter((color) => !usedColors.includes(color));
-    return availableColors.length > 0 ? availableColors[0] : TASK_TYPE_COLORS[0];
-  }
-  createUISettings(container) {
-    container.createEl("h3", { text: "Interface Settings" });
-    container.createEl("p", {
-      text: "Customize the appearance and behavior of the Task Sync interface.",
-      cls: "task-sync-settings-section-desc"
-    });
-    const placeholder = container.createDiv("task-sync-settings-placeholder");
-    placeholder.createEl("p", { text: "UI customization options will be available in a future update." });
-  }
-  createAdvancedSettings(container) {
-    container.createEl("h3", { text: "Advanced Settings" });
-    container.createEl("p", {
-      text: "Advanced configuration options for power users.",
-      cls: "task-sync-settings-section-desc"
-    });
-    const placeholder = container.createDiv("task-sync-settings-placeholder");
-    placeholder.createEl("p", { text: "Advanced options will be available in a future update." });
-  }
-  // Validation methods
-  validateFolderPath(path) {
-    if (!path.trim()) {
-      return { isValid: false, error: "Folder path cannot be empty" };
-    }
-    if (path.includes("..") || path.startsWith("/")) {
-      return { isValid: false, error: "Invalid folder path" };
-    }
-    return { isValid: true };
-  }
-  validateSyncInterval(value) {
-    const minutes = parseInt(value);
-    if (isNaN(minutes) || minutes < 1) {
-      return { isValid: false, error: "Sync interval must be at least 1 minute" };
-    }
-    if (minutes > 1440) {
-      return { isValid: false, error: "Sync interval cannot exceed 24 hours (1440 minutes)" };
-    }
-    return { isValid: true };
-  }
-  // Validation error management
-  setValidationError(key, error) {
-    this.validationErrors.set(key, error);
-  }
-  clearValidationError(key) {
-    this.validationErrors.delete(key);
-  }
-  updateSettingValidation(setting, key) {
-    const error = this.validationErrors.get(key);
-    if (error) {
-      setting.setDesc(`${setting.descEl.textContent} \u26A0\uFE0F ${error}`);
-      setting.settingEl.addClass("task-sync-setting-error");
-    } else {
-      setting.settingEl.removeClass("task-sync-setting-error");
     }
   }
 };

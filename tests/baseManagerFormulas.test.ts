@@ -63,8 +63,9 @@ describe('BaseManager Formula Structure', () => {
       const result = await baseManager.generateTasksBase(projectsAndAreas);
 
       expect(result).toContain('formulas:');
-      expect(result).toContain('Type: Type');
       expect(result).toContain('Title: link(file.name, Title)');
+      expect(result).toContain('note.Type:');
+      expect(result).toContain('displayName: Type');
     });
 
     it('should use formula.Title in view order instead of file.name', async () => {
@@ -97,8 +98,9 @@ describe('BaseManager Formula Structure', () => {
       const result = await baseManager.generateAreaBase(area);
 
       expect(result).toContain('formulas:');
-      expect(result).toContain('Type: Type');
       expect(result).toContain('Title: link(file.name, Title)');
+      expect(result).toContain('note.Type:');
+      expect(result).toContain('displayName: Type');
     });
 
     it('should use formula.Title in view configurations', async () => {
@@ -128,8 +130,9 @@ describe('BaseManager Formula Structure', () => {
       const result = await baseManager.generateProjectBase(project);
 
       expect(result).toContain('formulas:');
-      expect(result).toContain('Type: Type');
       expect(result).toContain('Title: link(file.name, Title)');
+      expect(result).toContain('note.Type:');
+      expect(result).toContain('displayName: Type');
     });
 
     it('should use formula.Title in view configurations', async () => {
