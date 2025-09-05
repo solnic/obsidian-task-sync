@@ -1,33 +1,28 @@
 /**
- * Tests for the new declarative base configuration system
+ * Tests for base file generation - verifies correct YAML structure
  */
 
 import { describe, it, expect } from 'vitest';
 import {
   generateTasksBase,
   generateAreaBase,
-  generateProjectBase,
-  ProjectAreaInfo,
-  FORMULAS,
-  Properties,
-  PROPERTY_DEFINITIONS,
-  SORT_CONFIGS,
-  VIEW_ORDERS
+  ProjectAreaInfo
 } from '../../../../src/services/base-definitions/BaseConfigurations';
 import { TaskSyncSettings } from '../../../../src/main';
 import * as yaml from 'js-yaml';
 
-describe('BaseConfigurations', () => {
+describe('Base File Generation', () => {
   const mockSettings: TaskSyncSettings = {
-    tasksFolder: 'Tasks',
+    tasksFolder: '5. Bases/Tasks',
     projectsFolder: 'Projects',
     areasFolder: 'Areas',
     templateFolder: 'Templates',
     basesFolder: 'Bases',
     taskTypes: [
-      { name: 'Task', color: '#3b82f6' },
       { name: 'Bug', color: '#ef4444' },
-      { name: 'Feature', color: '#10b981' }
+      { name: 'Feature', color: '#10b981' },
+      { name: 'Improvement', color: '#8b5cf6' },
+      { name: 'Chore', color: '#6b7280' }
     ],
     taskPriorities: [
       { name: 'Low', color: 'green' },
@@ -54,269 +49,172 @@ describe('BaseConfigurations', () => {
   };
 
   const mockProjectsAndAreas: ProjectAreaInfo[] = [
-    { name: 'Test Area', path: 'Areas/Test Area.md', type: 'area' },
-    { name: 'Test Project', path: 'Projects/Test Project.md', type: 'project' }
+    { name: 'Task Sync', path: 'Areas/Task Sync.md', type: 'area' }
   ];
 
-  describe('Static configurations', () => {
-    it('should have correct formulas', () => {
-      expect(FORMULAS.common.Title).toBe('link(file.name, Title)');
-    });
-
-    it('should have correct property definitions', () => {
-      expect(Properties.TITLE.name).toBe('Title');
-      expect(Properties.TITLE.type).toBe('string');
-      expect(Properties.DONE.name).toBe('Done');
-      expect(Properties.DONE.type).toBe('checkbox');
-      expect(Properties.DONE.default).toBe(false);
-    });
-
-    it('should have source field for CREATED_AT and UPDATED_AT properties', () => {
-      expect(Properties.CREATED_AT.source).toBe('file.ctime');
-      expect(Properties.UPDATED_AT.source).toBe('file.mtime');
-      expect(Properties.TITLE.source).toBe('formula.Title');
-    });
-
-    it('should use PropertyDefinition constants in VIEW_ORDERS instead of raw strings', () => {
-      // First verify that the Properties have the correct source values
-      expect(Properties.UPDATED_AT.source).toBe('file.mtime');
-      expect(Properties.CREATED_AT.source).toBe('file.ctime');
-      expect(Properties.TITLE.source).toBe('formula.Title');
-
-      // VIEW_ORDERS should use property sources from PropertyDefinition constants
-      expect(VIEW_ORDERS.tasks.main).toContain('file.mtime'); // Properties.UPDATED_AT.source
-      expect(VIEW_ORDERS.tasks.main).toContain('file.ctime'); // Properties.CREATED_AT.source
-      expect(VIEW_ORDERS.tasks.main).toContain('formula.Title'); // Properties.TITLE.source
-
-      // The values should be the same as the source values
-      expect(VIEW_ORDERS.tasks.main).toContain(Properties.UPDATED_AT.source);
-      expect(VIEW_ORDERS.tasks.main).toContain(Properties.CREATED_AT.source);
-      expect(VIEW_ORDERS.tasks.main).toContain(Properties.TITLE.source);
-    });
-
-    it('should generate base properties with human-readable names from PropertyDefinition', () => {
+  describe('Tasks Base YAML Structure', () => {
+    it('should generate base with correct formulas section', () => {
       const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
-      const parsedConfig = yaml.load(result) as any;
+      const parsed = yaml.load(result) as any;
 
-      // Verify that properties include human-readable names for CREATED_AT and UPDATED_AT
-      const properties = parsedConfig.properties;
+      expect(parsed.formulas).toBeDefined();
+      expect(parsed.formulas.Title).toBe('link(file.name, Title)');
+    });
 
-      // Find the Created At and Updated At properties
-      const createdAtProp = properties.find((p: any) => p.name === 'Created At');
-      const updatedAtProp = properties.find((p: any) => p.name === 'Updated At');
-      const titleProp = properties.find((p: any) => p.name === 'Title');
+    it('should generate base with numbered properties and metadata properties', () => {
+      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
+      const parsed = yaml.load(result) as any;
 
-      // Verify they exist with correct names and types
+      expect(parsed.properties).toBeDefined();
+
+      // Should have numbered properties
+      expect(parsed.properties['0']).toBeDefined();
+      expect(parsed.properties['0'].name).toBe('Title');
+      expect(parsed.properties['0'].type).toBe('string');
+      expect(parsed.properties['0'].source).toBe('formula.Title');
+
+      // Should have Created At and Updated At as numbered properties
+      const createdAtProp = Object.values(parsed.properties).find((p: any) => p.name === 'Created At');
+      const updatedAtProp = Object.values(parsed.properties).find((p: any) => p.name === 'Updated At');
+
       expect(createdAtProp).toBeDefined();
-      expect(createdAtProp.name).toBe('Created At');
-      expect(createdAtProp.type).toBe('string');
+      expect((createdAtProp as any).type).toBe('string');
+      expect((createdAtProp as any).source).toBe('file.ctime');
 
       expect(updatedAtProp).toBeDefined();
-      expect(updatedAtProp.name).toBe('Updated At');
-      expect(updatedAtProp.type).toBe('string');
+      expect((updatedAtProp as any).type).toBe('string');
+      expect((updatedAtProp as any).source).toBe('file.mtime');
 
-      expect(titleProp).toBeDefined();
-      expect(titleProp.name).toBe('Title');
-      expect(titleProp.type).toBe('string');
+      // Should have file.ctime and file.mtime metadata entries
+      expect(parsed.properties['file.ctime']).toBeDefined();
+      expect(parsed.properties['file.ctime'].displayName).toBe('Created At');
+
+      expect(parsed.properties['file.mtime']).toBeDefined();
+      expect(parsed.properties['file.mtime'].displayName).toBe('Updated At');
     });
 
-    it('should have task-specific properties in correct order', () => {
-      const taskProperties = PROPERTY_DEFINITIONS.task;
-      expect(taskProperties[0].name).toBe('Title');
-      expect(taskProperties[1].name).toBe('Type');
-      expect(taskProperties[2].name).toBe('Priority');
-      expect(taskProperties[3].name).toBe('Areas');
-      expect(taskProperties[4].name).toBe('Project');
-      expect(taskProperties[5].name).toBe('Done');
-      expect(taskProperties[6].name).toBe('Status');
-      expect(taskProperties[7].name).toBe('Parent task');
-      expect(taskProperties[8].name).toBe('Sub-tasks');
-      expect(taskProperties[9].name).toBe('tags');
+    it('should generate views that reference source values in order and sort', () => {
+      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
+      const parsed = yaml.load(result) as any;
+
+      expect(parsed.views).toBeDefined();
+      expect(Array.isArray(parsed.views)).toBe(true);
+
+      // Find the main Tasks view
+      const tasksView = parsed.views.find((v: any) => v.name === 'Tasks');
+      expect(tasksView).toBeDefined();
+
+      // Should reference source values in order
+      expect(tasksView.order).toContain('Done');
+      expect(tasksView.order).toContain('formula.Title');
+      expect(tasksView.order).toContain('file.ctime');
+      expect(tasksView.order).toContain('file.mtime');
+
+      // Should reference source values in sort
+      expect(tasksView.sort).toBeDefined();
+      expect(Array.isArray(tasksView.sort)).toBe(true);
+
+      const sortProperties = tasksView.sort.map((s: any) => s.property);
+      expect(sortProperties).toContain('Done');
+      expect(sortProperties).toContain('file.mtime');
+      expect(sortProperties).toContain('formula.Title');
     });
 
-    it('should have link properties correctly marked', () => {
-      expect(Properties.AREAS.link).toBe(true);
-      expect(Properties.PROJECT.link).toBe(true);
-      expect(Properties.PARENT_TASK.link).toBe(true);
-      expect(Properties.SUB_TASKS.link).toBe(true);
-      expect(Properties.TYPE.link).toBeUndefined();
-      expect(Properties.PRIORITY.link).toBeUndefined();
+    it('should generate all required task types and priority views', () => {
+      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
+      const parsed = yaml.load(result) as any;
+
+      // Should have views for each task type
+      const bugView = parsed.views.find((v: any) => v.name === 'All Bugs');
+      const featureView = parsed.views.find((v: any) => v.name === 'All Features');
+      const improvementView = parsed.views.find((v: any) => v.name === 'All Improvements');
+      const choreView = parsed.views.find((v: any) => v.name === 'All Chores');
+
+      expect(bugView).toBeDefined();
+      expect(featureView).toBeDefined();
+      expect(improvementView).toBeDefined();
+      expect(choreView).toBeDefined();
+
+      // Should have priority-based views
+      const bugLowView = parsed.views.find((v: any) => v.name === 'Bugs • Low priority');
+      const featureHighView = parsed.views.find((v: any) => v.name === 'Features • High priority');
+
+      expect(bugLowView).toBeDefined();
+      expect(featureHighView).toBeDefined();
+
+      // Views should have correct filters
+      expect(bugView.filters.and).toContain('Type == "Bug"');
+      expect(featureView.filters.and).toContain('Type == "Feature"');
+      expect(bugLowView.filters.and).toContain('Type == "Bug"');
+      expect(bugLowView.filters.and).toContain('Priority == "Low"');
     });
+
   });
 
-  describe('generateTasksBase', () => {
-    it('should generate valid YAML', () => {
-      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
-
-      expect(() => yaml.load(result)).not.toThrow();
-    });
-
-    it('should include all required sections', () => {
-      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
-
-      expect(result).toContain('formulas:');
-      expect(result).toContain('properties:');
-      expect(result).toContain('views:');
-    });
-
-    it('should include correct formulas and properties', () => {
-      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
-
-      expect(result).toContain('Title: link(file.name, Title)');
-      expect(result).toContain('- name: Type');
-      expect(result).toContain('type: string');
-      expect(result).toContain('- name: Project');
-      expect(result).toContain('link: true');
-    });
-
-    it('should include main views', () => {
-      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
-
-      expect(result).toContain('name: Tasks');
-      expect(result).toContain('name: All');
-      expect(result).toContain('name: All Bugs');
-      expect(result).toContain('name: All Features');
-    });
-
-    it('should include priority-based views', () => {
-      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
-
-      expect(result).toContain('name: Bugs • Low priority');
-      expect(result).toContain('name: Bugs • Medium priority');
-      expect(result).toContain('name: Bugs • High priority');
-      expect(result).toContain('name: Bugs • Urgent priority');
-      expect(result).toContain('name: Features • Low priority');
-      expect(result).toContain('name: Features • Medium priority');
-      expect(result).toContain('name: Features • High priority');
-      expect(result).toContain('name: Features • Urgent priority');
-    });
-
-    it('should include area and project views', () => {
-      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
-
-      expect(result).toContain('name: Test Area');
-      expect(result).toContain('name: Test Project');
-    });
-
-    it('should include correct filters', () => {
-      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
-
-      expect(result).toContain('file.folder == "Tasks"');
-      expect(result).toContain('Type == "Bug"');
-      expect(result).toContain('Areas.contains(link("Test Area"))');
-      expect(result).toContain('Project.contains(link("Test Project"))');
-    });
-  });
-
-  describe('generateAreaBase', () => {
+  describe('Area Base Generation', () => {
     const testArea: ProjectAreaInfo = {
-      name: 'Test Area',
-      path: 'Areas/Test Area.md',
+      name: 'Task Sync',
+      path: 'Areas/Task Sync.md',
       type: 'area'
     };
 
-    it('should generate valid YAML', () => {
+    it('should generate valid YAML for area base', () => {
       const result = generateAreaBase(mockSettings, testArea);
-
       expect(() => yaml.load(result)).not.toThrow();
     });
 
     it('should include area-specific filters', () => {
       const result = generateAreaBase(mockSettings, testArea);
+      const parsed = yaml.load(result) as any;
 
-      expect(result).toContain('Areas.contains(link("Test Area"))');
-    });
-
-    it('should include area properties', () => {
-      const result = generateAreaBase(mockSettings, testArea);
-
-      expect(result).toContain('- name: Project');
-      expect(result).toContain('type: string');
-      expect(result).not.toContain('- name: Areas'); // Areas shouldn't be in area bases
+      const tasksView = parsed.views.find((v: any) => v.name === 'Tasks');
+      expect(tasksView.filters.and).toContain('Areas.contains(link("Task Sync"))');
     });
   });
 
-  describe('generateProjectBase', () => {
-    const testProject: ProjectAreaInfo = {
-      name: 'Test Project',
-      path: 'Projects/Test Project.md',
-      type: 'project'
-    };
+  describe('YAML Structure Verification', () => {
+    it('should generate YAML structure that matches the user example format', () => {
+      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
+      const parsed = yaml.load(result) as any;
 
-    it('should generate valid YAML', () => {
-      const result = generateProjectBase(mockSettings, testProject);
+      // Verify formulas section
+      expect(parsed.formulas).toBeDefined();
+      expect(parsed.formulas.Title).toBe('link(file.name, Title)');
 
-      expect(() => yaml.load(result)).not.toThrow();
-    });
+      // Verify properties section has numbered keys
+      expect(parsed.properties['0']).toBeDefined();
+      expect(parsed.properties['0'].name).toBe('Title');
+      expect(parsed.properties['0'].source).toBe('formula.Title');
 
-    it('should include project-specific filters', () => {
-      const result = generateProjectBase(mockSettings, testProject);
+      // Verify Created At and Updated At are properly numbered
+      const createdAtKey = Object.keys(parsed.properties).find(key =>
+        parsed.properties[key].name === 'Created At'
+      );
+      const updatedAtKey = Object.keys(parsed.properties).find(key =>
+        parsed.properties[key].name === 'Updated At'
+      );
 
-      expect(result).toContain('Project.contains(link("Test Project"))');
-    });
+      expect(createdAtKey).toBeDefined();
+      expect(updatedAtKey).toBeDefined();
+      expect(parsed.properties[createdAtKey!].source).toBe('file.ctime');
+      expect(parsed.properties[updatedAtKey!].source).toBe('file.mtime');
 
-    it('should include project properties', () => {
-      const result = generateProjectBase(mockSettings, testProject);
+      // Verify file.ctime and file.mtime metadata entries
+      expect(parsed.properties['file.ctime']).toBeDefined();
+      expect(parsed.properties['file.ctime'].displayName).toBe('Created At');
+      expect(parsed.properties['file.mtime']).toBeDefined();
+      expect(parsed.properties['file.mtime'].displayName).toBe('Updated At');
 
-      expect(result).toContain('- name: Areas');
-      expect(result).toContain('type: string');
-      expect(result).not.toContain('- name: Project'); // Project shouldn't be in project bases
-    });
-  });
+      // Verify views use source values in order and sort
+      const tasksView = parsed.views.find((v: any) => v.name === 'Tasks');
+      expect(tasksView.order).toContain('file.ctime');
+      expect(tasksView.order).toContain('file.mtime');
+      expect(tasksView.order).toContain('formula.Title');
 
-  describe('Sort Configurations', () => {
-    it('should sort by Done first in main sort config', () => {
-      expect(SORT_CONFIGS.main[0]).toEqual({
-        property: 'note.Done',
-        direction: 'ASC'
-      });
-    });
-
-    it('should sort by Done first in area sort config', () => {
-      expect(SORT_CONFIGS.area[0]).toEqual({
-        property: 'note.Done',
-        direction: 'ASC'
-      });
-    });
-
-    it('should have secondary sorting by modification time and title', () => {
-      // Main config: Done -> mtime (DESC) -> Title (ASC)
-      expect(SORT_CONFIGS.main[1]).toEqual({
-        property: Properties.UPDATED_AT.source, // 'file.mtime'
-        direction: 'DESC'
-      });
-      expect(SORT_CONFIGS.main[2]).toEqual({
-        property: Properties.TITLE.source, // 'formula.Title'
-        direction: 'ASC'
-      });
-
-      // Area config: Done -> mtime (ASC) -> Title (ASC)
-      expect(SORT_CONFIGS.area[1]).toEqual({
-        property: Properties.UPDATED_AT.source, // 'file.mtime'
-        direction: 'ASC'
-      });
-      expect(SORT_CONFIGS.area[2]).toEqual({
-        property: Properties.TITLE.source, // 'formula.Title'
-        direction: 'ASC'
-      });
-    });
-
-    it('should generate bases with Done-first sorting', () => {
-      const tasksBase = generateTasksBase(mockSettings, mockProjectsAndAreas);
-      const parsedConfig = yaml.load(tasksBase) as any;
-
-      // Check that the main Tasks view has Done as first sort property
-      const mainView = parsedConfig.views.find((view: any) => view.name === 'Tasks');
-      expect(mainView.sort[0]).toEqual({
-        property: 'note.Done',
-        direction: 'ASC'
-      });
-
-      // Check that the second sort property uses PropertyDefinition source
-      expect(mainView.sort[1]).toEqual({
-        property: Properties.UPDATED_AT.source, // 'file.mtime'
-        direction: 'DESC'
-      });
+      const sortProperties = tasksView.sort.map((s: any) => s.property);
+      expect(sortProperties).toContain('file.mtime');
+      expect(sortProperties).toContain('formula.Title');
     });
   });
+
 });

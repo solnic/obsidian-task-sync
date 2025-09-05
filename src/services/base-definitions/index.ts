@@ -9,15 +9,18 @@ export {
   generateAreaBase,
   generateProjectBase,
   generateParentTaskBase,
+  generateTaskFrontMatter,
+  generateProjectFrontMatter,
+  generateAreaFrontMatter,
   ProjectAreaInfo,
-  FORMULAS,
+  PropertyDefinition,
+  PROPERTY_REGISTRY,
+  PROPERTY_SETS,
   VIEW_ORDERS,
   SORT_CONFIGS,
-  FRONTMATTER_FIELDS,
   Properties,
-  PROPERTY_DEFINITIONS,
-  PropertyDefinition,
-  FILTER_GENERATORS
+  FILTER_GENERATORS,
+  FRONTMATTER_FIELDS
 } from './BaseConfigurations';
 
 export * from './FrontMatterGenerator';

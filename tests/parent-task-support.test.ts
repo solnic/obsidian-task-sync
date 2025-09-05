@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   generateParentTaskBase,
   Properties,
-  PROPERTY_DEFINITIONS,
   generateParentTaskFrontMatter,
   FILTER_GENERATORS
 } from '../src/services/base-definitions';

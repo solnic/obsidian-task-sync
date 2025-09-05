@@ -76,7 +76,7 @@ describe('BaseManager Formula Structure', () => {
 
       expect(result).toContain('formulas:');
       expect(result).toContain('Title: link(file.name, Title)');
-      expect(result).toContain('- name: Type');
+      expect(result).toContain('name: Type');
       expect(result).toContain('type: string');
     });
 
@@ -94,7 +94,7 @@ describe('BaseManager Formula Structure', () => {
       const projectsAndAreas: ProjectAreaInfo[] = [];
       const result = await baseManager.generateTasksBase(projectsAndAreas);
 
-      expect(result).toContain('- name: Title');
+      expect(result).toContain('name: Title');
       expect(result).toContain('type: string');
     });
   });
@@ -111,7 +111,7 @@ describe('BaseManager Formula Structure', () => {
 
       expect(result).toContain('formulas:');
       expect(result).toContain('Title: link(file.name, Title)');
-      expect(result).toContain('- name: Type');
+      expect(result).toContain('name: Type');
       expect(result).toContain('type: string');
     });
 
@@ -143,7 +143,7 @@ describe('BaseManager Formula Structure', () => {
 
       expect(result).toContain('formulas:');
       expect(result).toContain('Title: link(file.name, Title)');
-      expect(result).toContain('- name: Type');
+      expect(result).toContain('name: Type');
       expect(result).toContain('type: string');
     });
 

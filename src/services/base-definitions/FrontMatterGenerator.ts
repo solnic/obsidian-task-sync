@@ -3,7 +3,15 @@
  * Generates front-matter for tasks, areas, and projects using base definitions
  */
 
-import { FRONTMATTER_FIELDS, PROPERTY_DEFINITIONS, PropertyDefinition } from './BaseConfigurations';
+import {
+  PROPERTY_REGISTRY,
+  PROPERTY_SETS,
+  PropertyDefinition,
+  generateTaskFrontMatter as getTaskPropertyDefinitions,
+  generateProjectFrontMatter as getProjectPropertyDefinitions,
+  generateAreaFrontMatter as getAreaPropertyDefinitions,
+  FRONTMATTER_FIELDS
+} from './BaseConfigurations';
 import { TaskCreateData } from '../../components/modals/TaskCreateModal';
 import { ProjectCreateData } from '../../components/modals/ProjectCreateModal';
 import { AreaCreateData } from '../../components/modals/AreaCreateModal';
@@ -38,7 +46,7 @@ export function generateTaskFrontMatter(
   taskData: TaskCreateData,
   options: FrontMatterOptions = {}
 ): string {
-  const properties = PROPERTY_DEFINITIONS.task;
+  const properties = getTaskPropertyDefinitions();
   const frontMatter: string[] = ['---'];
 
   // Add all defined fields in the correct order
@@ -91,7 +99,7 @@ export function generateProjectFrontMatter(
   projectData: ProjectCreateData,
   options: FrontMatterOptions = {}
 ): string {
-  const properties = PROPERTY_DEFINITIONS.project;
+  const properties = getProjectPropertyDefinitions();
   const frontMatter: string[] = ['---'];
 
   // Add all defined fields in the correct order
@@ -155,7 +163,7 @@ export function generateAreaFrontMatter(
   areaData: AreaCreateData,
   options: FrontMatterOptions = {}
 ): string {
-  const properties = PROPERTY_DEFINITIONS.area;
+  const properties = getAreaPropertyDefinitions();
   const frontMatter: string[] = ['---'];
 
   // Add all defined fields in the correct order
@@ -217,7 +225,7 @@ export function generateParentTaskFrontMatter(
   taskData: TaskCreateData,
   options: FrontMatterOptions = {}
 ): string {
-  const properties = PROPERTY_DEFINITIONS.task;
+  const properties = getTaskPropertyDefinitions();
   const frontMatter: string[] = ['---'];
 
   // Add all defined fields in the correct order
@@ -378,9 +386,9 @@ function formatValue(value: any, type?: string, isLinked?: boolean): string {
 function findPropertyDefinition(fieldName: string): PropertyDefinition | undefined {
   // Search through all property definitions to find the one with matching name
   const allProperties = [
-    ...PROPERTY_DEFINITIONS.task,
-    ...PROPERTY_DEFINITIONS.area,
-    ...PROPERTY_DEFINITIONS.project
+    ...getTaskPropertyDefinitions(),
+    ...getAreaPropertyDefinitions(),
+    ...getProjectPropertyDefinitions()
   ];
 
   return allProperties.find(prop => prop.name === fieldName);

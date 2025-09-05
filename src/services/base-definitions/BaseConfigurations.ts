@@ -1,403 +1,23 @@
 /**
- * Static Base Configurations
- * Declarative configuration objects for base definitions
+ * Base Configurations
+ * Simplified declarative base generation system
  */
 
-import { BaseProperty, BaseView, BaseConfig } from '../BaseManager';
 import { TaskSyncSettings } from '../../main';
 import * as yaml from 'js-yaml';
 import pluralize from 'pluralize';
 
 // ============================================================================
-// CORE TYPES
+// TYPES AND INTERFACES
 // ============================================================================
 
 export interface PropertyDefinition {
   name: string;
-  type: 'string' | 'checkbox' | 'array' | 'boolean';
+  type: 'string' | 'number' | 'checkbox' | 'array' | 'date';
+  source?: string;
+  link?: boolean;
   default?: any;
-  link?: boolean; // For internal usage, specifies that this property is used for linking with other notes
-  displayName?: string;
-  source?: string; // NEW: specifies where the property value comes from (file metadata, formulas, front-matter values, etc.)
 }
-
-export interface BaseFormulas {
-  [key: string]: string;
-}
-
-export interface ViewTemplate {
-  type: 'table' | 'kanban' | 'calendar';
-  name: string;
-  filters?: {
-    and?: string[];
-    or?: string[];
-  };
-  order?: string[];
-  sort?: Array<{
-    property: string;
-    direction: 'ASC' | 'DESC';
-  }>;
-  columnSize?: Record<string, number>;
-}
-
-export interface BaseConfiguration {
-  formulas: BaseFormulas;
-  properties: readonly PropertyDefinition[];
-  viewTemplates: ViewTemplate[];
-}
-
-export interface ConfigurationContext {
-  settings: TaskSyncSettings;
-  name?: string;
-  type?: 'project' | 'area';
-  projectsAndAreas?: Array<{ name: string; path: string; type: 'project' | 'area' }>;
-}
-
-// ============================================================================
-// PROPERTY DEFINITIONS
-// ============================================================================
-
-export namespace Properties {
-  // Common properties
-  export const TITLE: PropertyDefinition = {
-    name: "Title",
-    type: "string",
-    source: "formula.Title"
-  };
-
-  export const DONE: PropertyDefinition = {
-    name: "Done",
-    type: "checkbox",
-    default: false
-  };
-
-  export const CREATED_AT: PropertyDefinition = {
-    name: "Created At",
-    type: "string",
-    source: "file.ctime"
-  };
-
-  export const UPDATED_AT: PropertyDefinition = {
-    name: "Updated At",
-    type: "string",
-    source: "file.mtime"
-  };
-
-  // Task-specific properties (in order from screenshot)
-  export const AREAS: PropertyDefinition = {
-    name: "Areas",
-    type: "string",
-    link: true
-  };
-
-  export const PROJECT: PropertyDefinition = {
-    name: "Project",
-    type: "string",
-    link: true
-  };
-
-  export const TYPE: PropertyDefinition = {
-    name: "Type",
-    type: "string"
-  };
-
-  export const PRIORITY: PropertyDefinition = {
-    name: "Priority",
-    type: "string"
-  };
-
-  export const STATUS: PropertyDefinition = {
-    name: "Status",
-    type: "string",
-    default: "Backlog"
-  };
-
-  export const PARENT_TASK: PropertyDefinition = {
-    name: "Parent task",
-    type: "string",
-    link: true
-  };
-
-  export const SUB_TASKS: PropertyDefinition = {
-    name: "Sub-tasks",
-    type: "array",
-    link: true
-  };
-
-  export const TAGS: PropertyDefinition = {
-    name: "tags",
-    type: "array"
-  };
-
-  // Area/Project specific properties
-  export const NAME: PropertyDefinition = {
-    name: "Name",
-    type: "string"
-  };
-}
-
-// ============================================================================
-// PROPERTY ARRAYS (defining order)
-// ============================================================================
-
-export const PROPERTY_DEFINITIONS = {
-  task: [
-    Properties.TITLE,
-    Properties.TYPE,
-    Properties.PRIORITY,
-    Properties.AREAS,
-    Properties.PROJECT,
-    Properties.DONE,
-    Properties.STATUS,
-    Properties.PARENT_TASK,
-    Properties.SUB_TASKS,
-    Properties.TAGS,
-    Properties.CREATED_AT,
-    Properties.UPDATED_AT
-  ],
-
-  // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
-  areaBase: [
-    Properties.TITLE,
-    Properties.TYPE,
-    Properties.PRIORITY,
-    Properties.PROJECT,
-    Properties.DONE,
-    Properties.STATUS,
-    Properties.PARENT_TASK,
-    Properties.SUB_TASKS,
-    Properties.TAGS,
-    Properties.CREATED_AT,
-    Properties.UPDATED_AT
-  ],
-
-  // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
-  projectBase: [
-    Properties.TITLE,
-    Properties.TYPE,
-    Properties.PRIORITY,
-    Properties.AREAS,
-    Properties.DONE,
-    Properties.STATUS,
-    Properties.PARENT_TASK,
-    Properties.SUB_TASKS,
-    Properties.TAGS,
-    Properties.CREATED_AT,
-    Properties.UPDATED_AT
-  ],
-
-  // Properties for area/project files themselves (not for bases showing tasks)
-  area: [
-    Properties.NAME,
-    Properties.PROJECT
-  ],
-
-  project: [
-    Properties.NAME,
-    Properties.AREAS
-  ]
-} as const;
-
-// ============================================================================
-// STATIC FORMULAS
-// ============================================================================
-
-export const FORMULAS = {
-  common: {
-    Title: 'link(file.name, Title)'
-  },
-
-  area: {
-    Name: 'link(file.name, Name)'
-  },
-
-  project: {
-    Name: 'link(file.name, Name)'
-  }
-} as const;
-
-
-
-// ============================================================================
-// VIEW ORDER CONFIGURATIONS
-// ============================================================================
-
-export const VIEW_ORDERS = {
-  tasks: {
-    main: [
-      'Status',
-      Properties.TITLE.source!, // 'formula.Title'
-      'note.Type',
-      'tags',
-      Properties.UPDATED_AT.source!, // 'file.mtime'
-      Properties.CREATED_AT.source!, // 'file.ctime'
-      'Areas',
-      'Project'
-    ],
-    type: [
-      'Status',
-      Properties.TITLE.source!, // 'formula.Title'
-      'tags',
-      Properties.UPDATED_AT.source!, // 'file.mtime'
-      Properties.CREATED_AT.source!, // 'file.ctime'
-      'Areas',
-      'Project'
-    ]
-  },
-
-  area: {
-    main: [
-      'Done',
-      Properties.TITLE.source!, // 'formula.Title'
-      'Project',
-      'note.Type',
-      Properties.CREATED_AT.source!, // 'file.ctime'
-      Properties.UPDATED_AT.source! // 'file.mtime'
-    ],
-    type: [
-      'Done',
-      Properties.TITLE.source!, // 'formula.Title'
-      'Project',
-      Properties.CREATED_AT.source!, // 'file.ctime'
-      Properties.UPDATED_AT.source! // 'file.mtime'
-    ]
-  },
-
-  project: {
-    main: [
-      'Done',
-      Properties.TITLE.source!, // 'formula.Title'
-      'Areas',
-      'note.Type',
-      Properties.CREATED_AT.source!, // 'file.ctime'
-      Properties.UPDATED_AT.source! // 'file.mtime'
-    ],
-    type: [
-      'Done',
-      Properties.TITLE.source!, // 'formula.Title'
-      'Areas',
-      Properties.CREATED_AT.source!, // 'file.ctime'
-      Properties.UPDATED_AT.source! // 'file.mtime'
-    ]
-  }
-} as const;
-
-// ============================================================================
-// SORT CONFIGURATIONS
-// ============================================================================
-
-export const SORT_CONFIGS = {
-  main: [
-    { property: 'note.Done', direction: 'ASC' as const }, // Uncompleted tasks first
-    { property: Properties.UPDATED_AT.source!, direction: 'DESC' as const }, // 'file.mtime'
-    { property: Properties.TITLE.source!, direction: 'ASC' as const } // 'formula.Title'
-  ],
-
-  area: [
-    { property: 'note.Done', direction: 'ASC' as const }, // Uncompleted tasks first
-    { property: Properties.UPDATED_AT.source!, direction: 'ASC' as const }, // 'file.mtime'
-    { property: Properties.TITLE.source!, direction: 'ASC' as const } // 'formula.Title'
-  ]
-} as const;
-
-// ============================================================================
-// VIEW TEMPLATES
-// ============================================================================
-
-export const VIEW_TEMPLATES = {
-  tasks: {
-    main: {
-      type: 'table' as const,
-      name: 'Tasks',
-      order: VIEW_ORDERS.tasks.main,
-      sort: SORT_CONFIGS.main
-    },
-
-    all: {
-      type: 'table' as const,
-      name: 'All',
-      order: VIEW_ORDERS.tasks.main,
-      sort: SORT_CONFIGS.main
-    }
-  },
-
-  area: {
-    main: {
-      type: 'table' as const,
-      name: 'Tasks',
-      order: VIEW_ORDERS.area.main,
-      sort: SORT_CONFIGS.area,
-      columnSize: {
-        [Properties.TITLE.source!]: 382, // 'formula.Title'
-        'note.tags': 134,
-        [Properties.UPDATED_AT.source!]: 165, // 'file.mtime'
-        [Properties.CREATED_AT.source!]: 183 // 'file.ctime'
-      }
-    }
-  },
-
-  project: {
-    main: {
-      type: 'table' as const,
-      name: 'Tasks',
-      order: VIEW_ORDERS.project.main,
-      sort: SORT_CONFIGS.main
-    }
-  }
-} as const;
-
-// ============================================================================
-// FILTER GENERATORS
-// ============================================================================
-
-export const FILTER_GENERATORS = {
-  tasksFolder: (settings: TaskSyncSettings) => `file.folder == "${settings.tasksFolder}"`,
-
-  area: (areaName: string) => `Areas.contains(link("${areaName}"))`,
-
-  project: (projectName: string) => `Project.contains(link("${projectName}"))`,
-
-  taskType: (typeName: string) => `Type == "${typeName}"`,
-
-  excludeSubTasks: () => `!"Parent task" || "Parent task" == null`,
-
-  parentTask: (parentName: string) => `"Parent task" == link("${parentName}")`
-} as const;
-
-// ============================================================================
-// FRONT-MATTER FIELD DEFINITIONS
-// ============================================================================
-
-/**
- * Convert property definitions array to front-matter field format
- */
-function convertPropertiesToFrontMatterFormat(properties: readonly PropertyDefinition[], defaultType?: string): Record<string, any> {
-  const result: Record<string, any> = {};
-
-  properties.forEach(prop => {
-    result[prop.name] = {
-      type: prop.type,
-      ...(prop.default !== undefined && { default: prop.default })
-    };
-  });
-
-  // Add Type field with default if specified
-  if (defaultType) {
-    result.Type = { type: 'string', default: defaultType };
-  }
-
-  return result;
-}
-
-export const FRONTMATTER_FIELDS = {
-  task: convertPropertiesToFrontMatterFormat(PROPERTY_DEFINITIONS.task, 'Task'),
-  project: convertPropertiesToFrontMatterFormat(PROPERTY_DEFINITIONS.project, 'Project'),
-  area: convertPropertiesToFrontMatterFormat(PROPERTY_DEFINITIONS.area, 'Area')
-} as const;
-
-// ============================================================================
-// BASE GENERATION FUNCTIONS
-// ============================================================================
 
 export interface ProjectAreaInfo {
   name: string;
@@ -405,13 +25,144 @@ export interface ProjectAreaInfo {
   type: 'project' | 'area';
 }
 
+// ============================================================================
+// SINGLE SOURCE OF TRUTH FOR ALL PROPERTIES
+// ============================================================================
+
+export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
+  TITLE: { name: "Title", type: "string", source: "formula.Title" },
+  TYPE: { name: "Type", type: "string" },
+  PRIORITY: { name: "Priority", type: "string" },
+  AREAS: { name: "Areas", type: "string", link: true },
+  PROJECT: { name: "Project", type: "string", link: true },
+  DONE: { name: "Done", type: "checkbox", default: false },
+  STATUS: { name: "Status", type: "string", default: "Backlog" },
+  PARENT_TASK: { name: "Parent task", type: "string", link: true },
+  SUB_TASKS: { name: "Sub-tasks", type: "array", link: true },
+  TAGS: { name: "tags", type: "array" },
+  CREATED_AT: { name: "Created At", type: "string", source: "file.ctime" },
+  UPDATED_AT: { name: "Updated At", type: "string", source: "file.mtime" }
+};
+
+// ============================================================================
+// PROPERTY SETS FOR DIFFERENT CONTEXTS
+// ============================================================================
+
+export const PROPERTY_SETS = {
+  TASK_FRONTMATTER: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
+  TASKS_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'],
+  AREA_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'],
+  PROJECT_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT']
+} as const;
+
+// ============================================================================
+// SIMPLE VIEW ORDERS USING PROPERTY KEYS
+// ============================================================================
+
+export const VIEW_ORDERS = {
+  TASKS_MAIN: ['DONE', 'TITLE', 'PROJECT', 'TYPE', 'CREATED_AT', 'UPDATED_AT'],
+  TASKS_TYPE: ['DONE', 'TITLE', 'PROJECT', 'CREATED_AT', 'UPDATED_AT'],
+  AREA_MAIN: ['DONE', 'TITLE', 'PROJECT', 'TYPE', 'CREATED_AT', 'UPDATED_AT'],
+  PROJECT_MAIN: ['DONE', 'TITLE', 'AREAS', 'TYPE', 'CREATED_AT', 'UPDATED_AT']
+} as const;
+
+// ============================================================================
+// SIMPLE SORT CONFIGURATIONS
+// ============================================================================
+
+export const SORT_CONFIGS = {
+  MAIN: [
+    { property: 'DONE', direction: 'ASC' as const },
+    { property: 'UPDATED_AT', direction: 'DESC' as const },
+    { property: 'CREATED_AT', direction: 'DESC' as const },
+    { property: 'TITLE', direction: 'ASC' as const }
+  ],
+  AREA: [
+    { property: 'DONE', direction: 'ASC' as const },
+    { property: 'UPDATED_AT', direction: 'DESC' as const },
+    { property: 'TITLE', direction: 'ASC' as const }
+  ]
+} as const;
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Resolve property key to its source value for use in views
+ */
+function resolvePropertySource(propertyKey: string): string {
+  const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+  if (!prop) return propertyKey;
+
+  // For properties with source, use the source value
+  if (prop.source) return prop.source;
+
+  // For properties without source, use the property name directly
+  return prop.name;
+}
+
+/**
+ * Generate properties section for base YAML
+ */
+function generatePropertiesSection(propertyKeys: readonly string[]): Record<string, any> {
+  const properties: Record<string, any> = {};
+
+  // Add numbered properties
+  propertyKeys.forEach((key, index) => {
+    const prop = PROPERTY_REGISTRY[key as keyof typeof PROPERTY_REGISTRY];
+    if (!prop) return;
+
+    properties[index.toString()] = {
+      name: prop.name,
+      type: prop.type,
+      ...(prop.source && { source: prop.source }),
+      ...(prop.link && { link: prop.link }),
+      ...(prop.default !== undefined && { default: prop.default })
+    };
+  });
+
+  // Add metadata properties with displayName
+  if (propertyKeys.includes('CREATED_AT')) {
+    properties['file.ctime'] = { displayName: 'Created At' };
+  }
+  if (propertyKeys.includes('UPDATED_AT')) {
+    properties['file.mtime'] = { displayName: 'Updated At' };
+  }
+
+  return properties;
+}
+
+/**
+ * Resolve view order from property keys to source values
+ */
+function resolveViewOrder(propertyKeys: readonly string[]): string[] {
+  return propertyKeys.map(resolvePropertySource);
+}
+
+/**
+ * Resolve sort configuration from property keys to source values
+ */
+function resolveSortConfig(sortConfig: readonly { property: string; direction: 'ASC' | 'DESC' }[]): Array<{ property: string; direction: 'ASC' | 'DESC' }> {
+  return sortConfig.map(sort => ({
+    property: resolvePropertySource(sort.property),
+    direction: sort.direction
+  }));
+}
+
+// ============================================================================
+// BASE GENERATION FUNCTIONS
+// ============================================================================
+
 /**
  * Generate Tasks base configuration
  */
 export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: ProjectAreaInfo[]): string {
-  const config: BaseConfig = {
-    formulas: FORMULAS.common,
-    properties: PROPERTY_DEFINITIONS.task,
+  const config = {
+    formulas: {
+      Title: 'link(file.name, Title)'
+    },
+    properties: generatePropertiesSection(PROPERTY_SETS.TASKS_BASE),
     views: [
       // Main Tasks view
       {
@@ -420,107 +171,51 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
         filters: {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
+            `Areas.contains(link("${projectsAndAreas.find(p => p.type === 'area')?.name || 'Task Sync'}"))`,
             `note["Parent task"].isEmpty()`
           ]
         },
-        order: [...VIEW_ORDERS.tasks.main],
-        sort: [...SORT_CONFIGS.main]
+        order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.MAIN),
+        columnSize: {
+          'formula.Title': 382,
+          'note.tags': 134,
+          'file.mtime': 165,
+          'file.ctime': 183
+        }
       },
-      // All view (including sub-tasks)
-      {
-        type: 'table',
-        name: 'All',
-        filters: { and: [`file.folder == "${settings.tasksFolder}"`] },
-        order: [...VIEW_ORDERS.tasks.main],
-        sort: [...SORT_CONFIGS.main]
-      },
-      // Type-specific views (renamed to "All X")
-      ...settings.taskTypes
-        .filter(taskType => taskType.name !== 'Task')
-        .map(taskType => ({
-          type: 'table' as const,
-          name: `All ${pluralize(taskType.name)}`,
-          filters: {
-            and: [
-              `file.folder == "${settings.tasksFolder}"`,
-              `Type == "${taskType.name}"`,
-              `note["Parent task"].isEmpty()`
-            ]
-          },
-          order: [...VIEW_ORDERS.tasks.type],
-          sort: [...SORT_CONFIGS.main]
-        })),
+      // All task types views
+      ...settings.taskTypes.map(taskType => ({
+        type: 'table' as const,
+        name: `All ${pluralize(taskType.name)}`,
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `Areas.contains(link("${projectsAndAreas.find(p => p.type === 'area')?.name || 'Task Sync'}"))`,
+            `Type == "${taskType.name}"`,
+            `note["Parent task"].isEmpty()`
+          ]
+        },
+        order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
+        sort: resolveSortConfig(SORT_CONFIGS.MAIN)
+      })),
       // Priority-based views for each type
-      ...settings.taskTypes
-        .filter(taskType => taskType.name !== 'Task')
-        .flatMap(taskType =>
-          settings.taskPriorities.map(priority => ({
-            type: 'table' as const,
-            name: `${pluralize(taskType.name)} • ${priority.name} priority`,
-            filters: {
-              and: [
-                `file.folder == "${settings.tasksFolder}"`,
-                `Type == "${taskType.name}"`,
-                `Priority == "${priority.name}"`,
-                `note["Parent task"].isEmpty()`
-              ]
-            },
-            order: [...VIEW_ORDERS.tasks.type],
-            sort: [...SORT_CONFIGS.main]
-          }))
-        ),
-      // Area views
-      ...projectsAndAreas
-        .filter(item => item.type === 'area')
-        .map(area => ({
+      ...settings.taskTypes.flatMap(taskType =>
+        settings.taskPriorities.map(priority => ({
           type: 'table' as const,
-          name: area.name,
+          name: `${pluralize(taskType.name)} • ${priority.name} priority`,
           filters: {
             and: [
               `file.folder == "${settings.tasksFolder}"`,
-              `Areas.contains(link("${area.name}"))`
+              `Areas.contains(link("${projectsAndAreas.find(p => p.type === 'area')?.name || 'Task Sync'}"))`,
+              `Type == "${taskType.name}"`,
+              `Priority == "${priority.name}"`
             ]
           },
-          order: [
-            'Status',
-            Properties.TITLE.source!, // 'formula.Title'
-            'note.Type',
-            'tags',
-            Properties.UPDATED_AT.source!, // 'file.mtime'
-            Properties.CREATED_AT.source!, // 'file.ctime'
-            'Project'
-          ],
-          sort: [...SORT_CONFIGS.area],
-          columnSize: {
-            [Properties.TITLE.source!]: 382, // 'formula.Title'
-            'note.tags': 134,
-            [Properties.UPDATED_AT.source!]: 165, // 'file.mtime'
-            [Properties.CREATED_AT.source!]: 183 // 'file.ctime'
-          }
-        })),
-      // Project views
-      ...projectsAndAreas
-        .filter(item => item.type === 'project')
-        .map(project => ({
-          type: 'table' as const,
-          name: project.name,
-          filters: {
-            and: [
-              `file.folder == "${settings.tasksFolder}"`,
-              `Project.contains(link("${project.name}"))`
-            ]
-          },
-          order: [
-            'Status',
-            Properties.TITLE.source!, // 'formula.Title'
-            'note.Type',
-            'tags',
-            Properties.UPDATED_AT.source!, // 'file.mtime'
-            Properties.CREATED_AT.source!, // 'file.ctime'
-            'Areas'
-          ],
-          sort: [...SORT_CONFIGS.area]
+          order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
+          sort: resolveSortConfig(SORT_CONFIGS.MAIN)
         }))
+      )
     ]
   };
 
@@ -536,9 +231,11 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
  * Generate Area base configuration
  */
 export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaInfo): string {
-  const config: BaseConfig = {
-    formulas: FORMULAS.common,
-    properties: PROPERTY_DEFINITIONS.areaBase,
+  const config = {
+    formulas: {
+      Title: 'link(file.name, Title)'
+    },
+    properties: generatePropertiesSection(PROPERTY_SETS.AREA_BASE),
     views: [
       // Main Tasks view
       {
@@ -551,51 +248,47 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
             `note["Parent task"].isEmpty()`
           ]
         },
-        order: [...VIEW_ORDERS.area.main],
-        sort: [...SORT_CONFIGS.area],
+        order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.AREA),
         columnSize: {
-          [Properties.TITLE.source!]: 382, // 'formula.Title'
+          'formula.Title': 382,
           'note.tags': 134,
-          [Properties.UPDATED_AT.source!]: 165, // 'file.mtime'
-          [Properties.CREATED_AT.source!]: 183 // 'file.ctime'
+          'file.mtime': 165,
+          'file.ctime': 183
         }
       },
-      // Type-specific views (renamed to "All X")
-      ...settings.taskTypes
-        .filter(taskType => taskType.name !== 'Task')
-        .map(taskType => ({
+      // All task types views
+      ...settings.taskTypes.map(taskType => ({
+        type: 'table' as const,
+        name: `All ${pluralize(taskType.name)}`,
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `Areas.contains(link("${area.name}"))`,
+            `Type == "${taskType.name}"`,
+            `note["Parent task"].isEmpty()`
+          ]
+        },
+        order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.AREA)
+      })),
+      // Priority-based views for each type
+      ...settings.taskTypes.flatMap(taskType =>
+        settings.taskPriorities.map(priority => ({
           type: 'table' as const,
-          name: `All ${pluralize(taskType.name)}`,
+          name: `${pluralize(taskType.name)} • ${priority.name} priority`,
           filters: {
             and: [
               `file.folder == "${settings.tasksFolder}"`,
               `Areas.contains(link("${area.name}"))`,
               `Type == "${taskType.name}"`,
-              `note["Parent task"].isEmpty()`
+              `Priority == "${priority.name}"`
             ]
           },
-          order: [...VIEW_ORDERS.area.type],
-          sort: [...SORT_CONFIGS.main]
-        })),
-      // Priority-based views for each type
-      ...settings.taskTypes
-        .filter(taskType => taskType.name !== 'Task')
-        .flatMap(taskType =>
-          settings.taskPriorities.map(priority => ({
-            type: 'table' as const,
-            name: `${pluralize(taskType.name)} • ${priority.name} priority`,
-            filters: {
-              and: [
-                `file.folder == "${settings.tasksFolder}"`,
-                `Areas.contains(link("${area.name}"))`,
-                `Type == "${taskType.name}"`,
-                `Priority == "${priority.name}"`
-              ]
-            },
-            order: [...VIEW_ORDERS.area.type],
-            sort: [...SORT_CONFIGS.main]
-          }))
-        )
+          order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
+          sort: resolveSortConfig(SORT_CONFIGS.AREA)
+        }))
+      )
     ]
   };
 
@@ -611,9 +304,11 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
  * Generate Project base configuration
  */
 export function generateProjectBase(settings: TaskSyncSettings, project: ProjectAreaInfo): string {
-  const config: BaseConfig = {
-    formulas: FORMULAS.common,
-    properties: PROPERTY_DEFINITIONS.projectBase,
+  const config = {
+    formulas: {
+      Title: 'link(file.name, Title)'
+    },
+    properties: generatePropertiesSection(PROPERTY_SETS.PROJECT_BASE),
     views: [
       // Main Tasks view
       {
@@ -626,45 +321,47 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
             `note["Parent task"].isEmpty()`
           ]
         },
-        order: [...VIEW_ORDERS.project.main],
-        sort: [...SORT_CONFIGS.main]
+        order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.MAIN),
+        columnSize: {
+          'formula.Title': 382,
+          'note.tags': 134,
+          'file.mtime': 165,
+          'file.ctime': 183
+        }
       },
-      // Type-specific views (renamed to "All X")
-      ...settings.taskTypes
-        .filter(taskType => taskType.name !== 'Task')
-        .map(taskType => ({
+      // All task types views
+      ...settings.taskTypes.map(taskType => ({
+        type: 'table' as const,
+        name: `All ${pluralize(taskType.name)}`,
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `Project.contains(link("${project.name}"))`,
+            `Type == "${taskType.name}"`,
+            `note["Parent task"].isEmpty()`
+          ]
+        },
+        order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.MAIN)
+      })),
+      // Priority-based views for each type
+      ...settings.taskTypes.flatMap(taskType =>
+        settings.taskPriorities.map(priority => ({
           type: 'table' as const,
-          name: `All ${pluralize(taskType.name)}`,
+          name: `${pluralize(taskType.name)} • ${priority.name} priority`,
           filters: {
             and: [
               `file.folder == "${settings.tasksFolder}"`,
               `Project.contains(link("${project.name}"))`,
               `Type == "${taskType.name}"`,
-              `note["Parent task"].isEmpty()`
+              `Priority == "${priority.name}"`
             ]
           },
-          order: [...VIEW_ORDERS.project.type],
-          sort: [...SORT_CONFIGS.main]
-        })),
-      // Priority-based views for each type
-      ...settings.taskTypes
-        .filter(taskType => taskType.name !== 'Task')
-        .flatMap(taskType =>
-          settings.taskPriorities.map(priority => ({
-            type: 'table' as const,
-            name: `${pluralize(taskType.name)} • ${priority.name} priority`,
-            filters: {
-              and: [
-                `file.folder == "${settings.tasksFolder}"`,
-                `Project.contains(link("${project.name}"))`,
-                `Type == "${taskType.name}"`,
-                `Priority == "${priority.name}"`
-              ]
-            },
-            order: [...VIEW_ORDERS.project.type],
-            sort: [...SORT_CONFIGS.main]
-          }))
-        )
+          order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
+          sort: resolveSortConfig(SORT_CONFIGS.MAIN)
+        }))
+      )
     ]
   };
 
@@ -680,9 +377,11 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
  * Generate Parent Task base configuration
  */
 export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskName: string): string {
-  const config: BaseConfig = {
-    formulas: FORMULAS.common,
-    properties: PROPERTY_DEFINITIONS.task,
+  const config = {
+    formulas: {
+      Title: 'link(file.name, Title)'
+    },
+    properties: generatePropertiesSection(PROPERTY_SETS.TASKS_BASE),
     views: [
       // Sub-tasks view
       {
@@ -694,8 +393,8 @@ export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskNam
             `"Parent task".contains(link("${parentTaskName}"))`
           ]
         },
-        order: [...VIEW_ORDERS.tasks.main],
-        sort: [...SORT_CONFIGS.main]
+        order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.MAIN)
       },
       // All related tasks (parent + sub-tasks)
       {
@@ -707,8 +406,8 @@ export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskNam
             `"Parent task".contains(link("${parentTaskName}"))`
           ]
         },
-        order: [...VIEW_ORDERS.tasks.main],
-        sort: [...SORT_CONFIGS.main]
+        order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.MAIN)
       }
     ]
   };
@@ -720,3 +419,97 @@ export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskNam
     sortKeys: false
   });
 }
+
+// ============================================================================
+// FRONT-MATTER GENERATION
+// ============================================================================
+
+/**
+ * Generate front-matter properties for task files
+ */
+export function generateTaskFrontMatter(): PropertyDefinition[] {
+  return PROPERTY_SETS.TASK_FRONTMATTER.map(key => {
+    const prop = PROPERTY_REGISTRY[key as keyof typeof PROPERTY_REGISTRY];
+    return { ...prop };
+  });
+}
+
+/**
+ * Generate front-matter properties for project files
+ */
+export function generateProjectFrontMatter(): PropertyDefinition[] {
+  // Projects need Name (as Title), Areas, and Type properties
+  return [
+    { name: "Name", type: "string" }, // Use Name instead of Title for projects
+    PROPERTY_REGISTRY.AREAS,
+    { name: "Type", type: "string" }
+  ];
+}
+
+/**
+ * Generate front-matter properties for area files
+ */
+export function generateAreaFrontMatter(): PropertyDefinition[] {
+  // Areas need Name (as Title), Project, and Type properties
+  return [
+    { name: "Name", type: "string" }, // Use Name instead of Title for areas
+    PROPERTY_REGISTRY.PROJECT,
+    { name: "Type", type: "string" }
+  ];
+}
+
+// ============================================================================
+// BACKWARD COMPATIBILITY EXPORTS
+// ============================================================================
+
+/**
+ * Legacy Properties namespace for backward compatibility
+ */
+export const Properties = PROPERTY_REGISTRY;
+
+/**
+ * Legacy FILTER_GENERATORS for backward compatibility
+ */
+export const FILTER_GENERATORS = {
+  excludeSubTasks: () => '!"Parent task" || "Parent task" == null'
+};
+
+/**
+ * Legacy FRONTMATTER_FIELDS for backward compatibility
+ * Convert property definitions to schema objects expected by refresh functionality
+ */
+export const FRONTMATTER_FIELDS = {
+  task: (() => {
+    const schema: Record<string, any> = {};
+    generateTaskFrontMatter().forEach(prop => {
+      schema[prop.name] = {
+        type: prop.type,
+        ...(prop.default !== undefined && { default: prop.default }),
+        ...(prop.link && { link: prop.link })
+      };
+    });
+    return schema;
+  })(),
+  project: (() => {
+    const schema: Record<string, any> = {};
+    generateProjectFrontMatter().forEach(prop => {
+      schema[prop.name] = {
+        type: prop.type,
+        ...(prop.default !== undefined && { default: prop.default }),
+        ...(prop.link && { link: prop.link })
+      };
+    });
+    return schema;
+  })(),
+  area: (() => {
+    const schema: Record<string, any> = {};
+    generateAreaFrontMatter().forEach(prop => {
+      schema[prop.name] = {
+        type: prop.type,
+        ...(prop.default !== undefined && { default: prop.default }),
+        ...(prop.link && { link: prop.link })
+      };
+    });
+    return schema;
+  })()
+};
