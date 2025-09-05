@@ -95,7 +95,6 @@ export class StatusDoneHandler implements EventHandler {
    * Handle done change events
    */
   private async handleDoneChanged(data: DoneChangedEventData): Promise<void> {
-    console.log(`StatusDoneHandler: handleDoneChanged called for ${data.filePath}, newDone: ${data.newDone}`);
     const { filePath, newDone, frontmatter } = data;
 
     // Get current status
