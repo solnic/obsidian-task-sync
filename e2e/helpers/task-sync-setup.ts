@@ -391,6 +391,65 @@ export async function waitForFileContentToContain(
 }
 
 /**
+ * Wait for the event system to be idle (no processing files)
+ */
+export async function waitForEventSystemIdle(page: Page, timeout: number = 5000): Promise<void> {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    const isIdle = await page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app?.plugins?.plugins?.['obsidian-task-sync'];
+
+      if (!plugin || !plugin.eventManager) {
+        return false; // Plugin not ready
+      }
+
+      // Check if StatusDoneHandler has any processing files
+      const handlers = plugin.eventManager.handlers;
+      if (handlers) {
+        for (const handlerList of handlers.values()) {
+          for (const handler of handlerList) {
+            if (handler.constructor.name === 'StatusDoneHandler' && handler.processingFiles) {
+              if (handler.processingFiles.size > 0) {
+                return false; // Still processing
+              }
+            }
+          }
+        }
+      }
+
+      return true; // System is idle
+    });
+
+    if (isIdle) {
+      return; // Success!
+    }
+
+    await page.waitForTimeout(50); // Check every 50ms
+  }
+
+  console.warn(`Event system did not become idle within ${timeout}ms`);
+}
+
+/**
+ * Wait for a status change to be fully processed (both status and done fields updated)
+ */
+export async function waitForStatusChangeComplete(
+  page: Page,
+  filePath: string,
+  expectedStatus: string,
+  expectedDone: boolean,
+  timeout: number = 10000
+): Promise<void> {
+  // Wait for both properties to be updated
+  await Promise.all([
+    waitForTaskPropertySync(page, filePath, 'Status', expectedStatus, timeout),
+    waitForTaskPropertySync(page, filePath, 'Done', expectedDone.toString(), timeout)
+  ]);
+}
+
+/**
  * Wait for a task property to be synchronized to a specific value
  * Specialized helper for task property synchronization with better error messages
  */

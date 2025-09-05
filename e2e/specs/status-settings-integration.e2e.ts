@@ -9,6 +9,7 @@ import {
   createTestFolders,
   waitForTaskSyncPlugin,
   waitForTaskPropertySync,
+  waitForStatusChangeComplete,
   openTaskStatusSettings,
   addTaskStatus,
   toggleTaskStatusDone,
@@ -69,8 +70,8 @@ This task tests custom status configurations.`);
       }
     });
 
-    // Wait for synchronization using smart wait
-    await waitForTaskPropertySync(context.page, 'Tasks/Custom Status Task.md', 'Done', 'true');
+    // Wait for synchronization using smart wait - wait for both status and done to be updated
+    await waitForStatusChangeComplete(context.page, 'Tasks/Custom Status Task.md', 'Shipped', true);
 
     // Verify the changes
     let fileContent = await context.page.evaluate(async () => {
@@ -94,8 +95,8 @@ This task tests custom status configurations.`);
       }
     });
 
-    // Wait for synchronization using smart wait
-    await waitForTaskPropertySync(context.page, 'Tasks/Custom Status Task.md', 'Done', 'false');
+    // Wait for synchronization using smart wait - wait for both status and done to be updated
+    await waitForStatusChangeComplete(context.page, 'Tasks/Custom Status Task.md', 'Blocked', false);
 
     // Verify the changes
     fileContent = await context.page.evaluate(async () => {
@@ -160,13 +161,20 @@ This task tests dynamic configuration changes.`);
         // Change to a different status and back to trigger the event
         let updatedContent = content.replace('Status: In Progress', 'Status: Backlog');
         await app.vault.modify(file, updatedContent);
+      }
+    });
 
-        // Wait a bit
-        await new Promise(resolve => setTimeout(resolve, 200));
+    // Wait for the intermediate change to be processed
+    await waitForTaskPropertySync(context.page, 'Tasks/Dynamic Config Task.md', 'Status', 'Backlog');
 
-        // Change back to In Progress
-        const content2 = await app.vault.read(file);
-        updatedContent = content2.replace('Status: Backlog', 'Status: In Progress');
+    // Change back to In Progress
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath('Tasks/Dynamic Config Task.md');
+
+      if (file) {
+        const content = await app.vault.read(file);
+        const updatedContent = content.replace('Status: Backlog', 'Status: In Progress');
         await app.vault.modify(file, updatedContent);
       }
     });
@@ -266,7 +274,7 @@ This task tests multiple done statuses.`);
 
     await context.page.keyboard.press('Escape');
 
-    // Create a task with a non-done status
+    // Create a task with a non-done status (use Backlog which is guaranteed to be non-done)
     await context.page.evaluate(async () => {
       const app = (window as any).app;
 
@@ -277,7 +285,7 @@ Priority: Medium
 Areas: Development
 Project: Test Project
 Done: false
-Status: In Progress
+Status: Backlog
 Parent task:
 Sub-tasks:
 tags: test
@@ -293,17 +301,13 @@ This task tests status preference logic.`);
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath('Tasks/Status Preference Task.md');
-
-      if (file) {
-        const content = await app.vault.read(file);
-        const updatedContent = content.replace('Done: false', 'Done: true');
-        await app.vault.modify(file, updatedContent);
-      }
+      const content = await app.vault.read(file);
+      const updatedContent = content.replace('Done: false', 'Done: true');
+      await app.vault.modify(file, updatedContent);
     });
 
     // Wait for synchronization using smart wait - wait for both Done and Status to be updated
-    await waitForTaskPropertySync(context.page, 'Tasks/Status Preference Task.md', 'Done', 'true');
-    await waitForTaskPropertySync(context.page, 'Tasks/Status Preference Task.md', 'Status', 'Done');
+    await waitForStatusChangeComplete(context.page, 'Tasks/Status Preference Task.md', 'Done', true);
 
     // Verify Status was changed to a done status (should prefer "Done")
     let fileContent = await context.page.evaluate(async () => {
@@ -313,18 +317,15 @@ This task tests status preference logic.`);
     });
 
     expect(fileContent).toContain('Done: true');
-    expect(fileContent).toContain('Status: Done'); // Should prefer "Done" over other done statuses
+    expect(fileContent).toContain('Status: Done');
 
     // Change Done back to false
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath('Tasks/Status Preference Task.md');
-
-      if (file) {
-        const content = await app.vault.read(file);
-        const updatedContent = content.replace('Done: true', 'Done: false');
-        await app.vault.modify(file, updatedContent);
-      }
+      const content = await app.vault.read(file);
+      const updatedContent = content.replace('Done: true', 'Done: false');
+      await app.vault.modify(file, updatedContent);
     });
 
     // Wait for synchronization using smart wait
