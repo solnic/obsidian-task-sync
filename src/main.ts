@@ -82,11 +82,8 @@ export default class TaskSyncPlugin extends Plugin {
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
 
-    // Only ensure the bases folder exists, don't regenerate bases on startup
-    await this.baseManager.ensureBasesFolder();
-
-    // Create default task template if it doesn't exist and is configured
-    await this.ensureDefaultTaskTemplate();
+    // Note: Removed automatic folder creation - Obsidian handles this automatically
+    // Base files and templates will be created on-demand when needed
 
     // Add commands
     this.addCommand({
@@ -931,26 +928,7 @@ export default class TaskSyncPlugin extends Plugin {
 
 
 
-  /**
-   * Ensure default task template exists if configured
-   */
-  private async ensureDefaultTaskTemplate(): Promise<void> {
-    if (!this.settings.defaultTaskTemplate) {
-      return; // No default template configured
-    }
 
-    const templatePath = `${this.settings.templateFolder}/${this.settings.defaultTaskTemplate}`;
-    const templateExists = await this.app.vault.adapter.exists(templatePath);
-
-    if (!templateExists) {
-      try {
-        await this.templateManager.createTaskTemplate();
-        console.log(`Created default task template: ${templatePath}`);
-      } catch (error) {
-        console.warn(`Failed to create default task template: ${error.message}`);
-      }
-    }
-  }
 
   /**
    * Comprehensive refresh operation - updates file properties and regenerates bases

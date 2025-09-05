@@ -85,16 +85,7 @@ export class BaseManager {
     await this.createOrUpdateBaseFile(baseFilePath, content, 'Tasks');
   }
 
-  /**
-   * Ensure the bases folder exists
-   */
-  async ensureBasesFolder(): Promise<void> {
-    const folderExists = await this.vault.adapter.exists(this.settings.basesFolder);
-    if (!folderExists) {
-      await this.vault.createFolder(this.settings.basesFolder);
-      console.log(`Created bases folder: ${this.settings.basesFolder}`);
-    }
-  }
+
 
   /**
    * Helper method to create or update a base file with robust error handling

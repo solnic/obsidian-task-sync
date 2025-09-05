@@ -21,9 +21,6 @@ export class TemplateManager {
     const templateFileName = filename || this.settings.defaultTaskTemplate;
     const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
 
-    // Check if template folder exists, create if not
-    await this.ensureTemplateFolder();
-
     // Check if file already exists
     const fileExists = await this.vault.adapter.exists(templatePath);
     if (fileExists) {
@@ -33,7 +30,7 @@ export class TemplateManager {
     // Generate template content
     const templateContent = this.generateTaskTemplateContent();
 
-    // Create the template file
+    // Create the template file (Obsidian will create the folder automatically if needed)
     await this.vault.create(templatePath, templateContent);
     console.log(`Created task template: ${templatePath}`);
   }
@@ -63,14 +60,5 @@ export class TemplateManager {
     return frontMatterContent;
   }
 
-  /**
-   * Ensure the template folder exists
-   */
-  private async ensureTemplateFolder(): Promise<void> {
-    const folderExists = await this.vault.adapter.exists(this.settings.templateFolder);
-    if (!folderExists) {
-      await this.vault.createFolder(this.settings.templateFolder);
-      console.log(`Created template folder: ${this.settings.templateFolder}`);
-    }
-  }
+
 }

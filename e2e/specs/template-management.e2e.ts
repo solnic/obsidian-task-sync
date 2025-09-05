@@ -15,56 +15,17 @@ import { setupE2ETestHooks } from '../helpers/shared-context';
 describe('Template Management', () => {
   const context = setupE2ETestHooks();
 
-  test('should create Task.md template automatically during plugin initialization', async () => {
+  test('should not create Task.md template automatically during plugin initialization', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // The plugin should automatically create the default task template during initialization
-    // Check if Task.md template was created
+    // The plugin should NOT automatically create templates to avoid interfering with Obsidian's core template plugin
+    // Check that Task.md template was NOT created automatically
     const templateExists = await fileExists(context.page, 'Templates/Task.md');
-    expect(templateExists).toBe(true);
+    expect(templateExists).toBe(false);
 
-    // Verify the template content
-    const templateContent = await getFileContent(context.page, 'Templates/Task.md');
-
-    // Should contain proper front-matter in correct order
-    expect(templateContent).toContain('---');
-    expect(templateContent).toContain('Title: ');
-    expect(templateContent).toContain('Type: ');
-    expect(templateContent).toContain('Priority: Low');
-    expect(templateContent).toContain('Areas: []');
-    expect(templateContent).toContain('Project: ');
-    expect(templateContent).toContain('Done: false');
-    expect(templateContent).toContain('Status:');
-    expect(templateContent).toContain('Parent task: ');
-    expect(templateContent).toContain('Sub-tasks: []');
-    expect(templateContent).toContain('tags: []');
-
-    // Should contain description placeholder
-    expect(templateContent).toContain('{{description}}');
-
-    // Verify the exact structure matches user requirements
-    const expectedStructure = [
-      '---',
-      'Title: ',
-      'Type: ',
-      'Priority: Low',
-      'Areas: []',
-      'Project: ',
-      'Done: false',
-      'Status:',
-      'Parent task: ',
-      'Sub-tasks: []',
-      'tags: []',
-      '---',
-      '',
-      '{{description}}'
-    ];
-
-    // Check that the template follows the expected structure
-    for (const line of expectedStructure) {
-      expect(templateContent).toContain(line);
-    }
+    // Templates should be created on-demand when explicitly requested
+    // This prevents interference with Obsidian's core template functionality
   });
 
   test('should prompt user when Task.md template already exists', async () => {

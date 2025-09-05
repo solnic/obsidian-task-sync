@@ -229,31 +229,15 @@ export class VaultScanner implements VaultScannerService {
 
     // Add suggestions
     if (result.missingFolders.length > 0) {
-      result.suggestions.push('Use the "Create Missing Folders" command to automatically create missing folders');
+      result.suggestions.push('Create missing folders manually in Obsidian - the plugin will work once folders exist');
     }
 
     return result;
   }
 
   async createMissingFolders(): Promise<void> {
-    const foldersToCreate = [
-      this.settings.tasksFolder,
-      this.settings.projectsFolder,
-      this.settings.areasFolder,
-      this.settings.templateFolder
-    ].filter(Boolean);
-
-    for (const folderPath of foldersToCreate) {
-      try {
-        const exists = await this.folderExists(folderPath);
-        if (!exists) {
-          await this.vault.createFolder(folderPath);
-          console.log(`Created folder: ${folderPath}`);
-        }
-      } catch (error) {
-        console.error(`Failed to create folder ${folderPath}:`, error);
-      }
-    }
+    // Note: Folder creation removed - Obsidian handles this automatically when files are created
+    console.log('Folder creation is handled automatically by Obsidian when files are created');
   }
 
   private async getFileInfo(path: string): Promise<TaskFileInfo | null> {
