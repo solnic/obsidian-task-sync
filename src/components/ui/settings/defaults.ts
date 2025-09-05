@@ -10,7 +10,7 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   areasFolder: 'Areas',
   templateFolder: 'Templates',
   useTemplater: false,
-  defaultTaskTemplate: 'task-template.md',
+  defaultTaskTemplate: 'Task.md',
   defaultProjectTemplate: 'project-template.md',
   defaultAreaTemplate: 'area-template.md',
   defaultParentTaskTemplate: 'parent-task-template.md',

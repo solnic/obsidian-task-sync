@@ -3,6 +3,7 @@ import { VaultScanner } from './services/VaultScannerService';
 import { BaseManager } from './services/BaseManager';
 import { PluginStorageService } from './services/PluginStorageService';
 import { FileChangeListener } from './services/FileChangeListener';
+import { TemplateManager } from './services/TemplateManager';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
 import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
 import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
@@ -46,6 +47,7 @@ export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
   vaultScanner: VaultScanner;
   baseManager: BaseManager;
+  templateManager: TemplateManager;
   storageService: PluginStorageService;
   eventManager: EventManager;
   fileChangeListener: FileChangeListener;
@@ -60,6 +62,7 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize services
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
+    this.templateManager = new TemplateManager(this.app, this.app.vault, this.settings);
     this.storageService = new PluginStorageService(this.app, this);
 
     // Initialize storage service
