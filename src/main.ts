@@ -661,7 +661,7 @@ export default class TaskSyncPlugin extends Plugin {
       const isParentTask = taskData.subTasks && taskData.subTasks.length > 0;
       const taskContent = isParentTask
         ? await this.generateParentTaskContent(taskData)
-        : this.generateTaskContent(taskData);
+        : await this.generateTaskContent(taskData);
 
       await this.app.vault.create(taskPath, taskContent);
       console.log('Task created successfully:', taskPath);
@@ -671,7 +671,16 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
-  private generateTaskContent(taskData: any): string {
+  private async generateTaskContent(taskData: any): Promise<string> {
+    // Use template if configured, otherwise use default
+    if (this.settings.defaultTaskTemplate) {
+      try {
+        return await this.generateFromTemplate(this.settings.defaultTaskTemplate, taskData, 'task');
+      } catch (error) {
+        console.error('Failed to use task template, falling back to default:', error);
+      }
+    }
+
     // Import the new front-matter generator
     const { generateTaskFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
 
@@ -687,7 +696,7 @@ export default class TaskSyncPlugin extends Plugin {
     // Use template if configured, otherwise use default
     if (this.settings.defaultParentTaskTemplate) {
       try {
-        return await this.generateFromTemplate(this.settings.defaultParentTaskTemplate, taskData);
+        return await this.generateFromTemplate(this.settings.defaultParentTaskTemplate, taskData, 'task');
       } catch (error) {
         console.error('Failed to use parent task template, falling back to default:', error);
       }
@@ -712,7 +721,7 @@ export default class TaskSyncPlugin extends Plugin {
       // Use template if configured, otherwise use default
       let areaContent: string;
       if (this.settings.defaultAreaTemplate) {
-        areaContent = await this.generateFromTemplate(this.settings.defaultAreaTemplate, areaData);
+        areaContent = await this.generateFromTemplate(this.settings.defaultAreaTemplate, areaData, 'area');
       } else {
         areaContent = this.generateAreaContent(areaData);
       }
@@ -745,7 +754,7 @@ export default class TaskSyncPlugin extends Plugin {
       // Use template if configured, otherwise use default
       let projectContent: string;
       if (this.settings.defaultProjectTemplate) {
-        projectContent = await this.generateFromTemplate(this.settings.defaultProjectTemplate, projectData);
+        projectContent = await this.generateFromTemplate(this.settings.defaultProjectTemplate, projectData, 'project');
       } else {
         projectContent = this.generateProjectContent(projectData);
       }
@@ -790,13 +799,18 @@ export default class TaskSyncPlugin extends Plugin {
   /**
    * Generate content from template with proper base embedding
    */
-  private async generateFromTemplate(templateName: string, data: any): Promise<string> {
+  private async generateFromTemplate(templateName: string, data: any, entityType?: 'task' | 'project' | 'area'): Promise<string> {
     try {
       const templatePath = `${this.settings.templateFolder}/${templateName}`;
       const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
 
       if (!templateFile || !(templateFile instanceof TFile)) {
         console.warn(`Template not found: ${templatePath}, using default content`);
+        // For tasks, throw error to let the calling method handle fallback
+        if (entityType === 'task') {
+          throw new Error(`Template not found: ${templatePath}`);
+        }
+        // For projects and areas, fall back to default generation
         if (data.hasOwnProperty('areas')) {
           return this.generateProjectContent(data as ProjectCreateData);
         } else {
@@ -815,7 +829,11 @@ export default class TaskSyncPlugin extends Plugin {
       return templateContent;
     } catch (error) {
       console.error(`Failed to process template ${templateName}:`, error);
-      // Fallback to default content
+      // For tasks, re-throw to let the calling method handle fallback
+      if (entityType === 'task') {
+        throw error;
+      }
+      // For projects and areas, fall back to default generation
       if (data.hasOwnProperty('areas')) {
         return this.generateProjectContent(data as ProjectCreateData);
       } else {
@@ -843,6 +861,41 @@ export default class TaskSyncPlugin extends Plugin {
 
     if (data.areas) {
       processedContent = processedContent.replace(/\{\{areas\}\}/g, data.areas);
+    }
+
+    // Replace task-specific variables
+    if (data.type) {
+      processedContent = processedContent.replace(/\{\{type\}\}/g, data.type);
+    }
+
+    if (data.priority) {
+      processedContent = processedContent.replace(/\{\{priority\}\}/g, data.priority);
+    }
+
+    if (data.status) {
+      processedContent = processedContent.replace(/\{\{status\}\}/g, data.status);
+    }
+
+    if (data.project) {
+      processedContent = processedContent.replace(/\{\{project\}\}/g, data.project);
+    }
+
+    if (data.parentTask) {
+      processedContent = processedContent.replace(/\{\{parentTask\}\}/g, data.parentTask);
+    }
+
+    if (data.subTasks) {
+      const subTasksStr = Array.isArray(data.subTasks) ? data.subTasks.join(', ') : data.subTasks;
+      processedContent = processedContent.replace(/\{\{subTasks\}\}/g, subTasksStr);
+    }
+
+    if (data.tags) {
+      const tagsStr = Array.isArray(data.tags) ? data.tags.join(', ') : data.tags;
+      processedContent = processedContent.replace(/\{\{tags\}\}/g, tagsStr);
+    }
+
+    if (data.done !== undefined) {
+      processedContent = processedContent.replace(/\{\{done\}\}/g, data.done.toString());
     }
 
     // Replace {{tasks}} with appropriate base embed
