@@ -11,7 +11,8 @@ import {
   FORMULAS,
   Properties,
   PROPERTY_DEFINITIONS,
-  SORT_CONFIGS
+  SORT_CONFIGS,
+  VIEW_ORDERS
 } from '../../../../src/services/base-definitions/BaseConfigurations';
 import { TaskSyncSettings } from '../../../../src/main';
 import * as yaml from 'js-yaml';
@@ -68,6 +69,55 @@ describe('BaseConfigurations', () => {
       expect(Properties.DONE.name).toBe('Done');
       expect(Properties.DONE.type).toBe('checkbox');
       expect(Properties.DONE.default).toBe(false);
+    });
+
+    it('should have source field for CREATED_AT and UPDATED_AT properties', () => {
+      expect(Properties.CREATED_AT.source).toBe('file.ctime');
+      expect(Properties.UPDATED_AT.source).toBe('file.mtime');
+      expect(Properties.TITLE.source).toBe('formula.Title');
+    });
+
+    it('should use PropertyDefinition constants in VIEW_ORDERS instead of raw strings', () => {
+      // First verify that the Properties have the correct source values
+      expect(Properties.UPDATED_AT.source).toBe('file.mtime');
+      expect(Properties.CREATED_AT.source).toBe('file.ctime');
+      expect(Properties.TITLE.source).toBe('formula.Title');
+
+      // VIEW_ORDERS should use property sources from PropertyDefinition constants
+      expect(VIEW_ORDERS.tasks.main).toContain('file.mtime'); // Properties.UPDATED_AT.source
+      expect(VIEW_ORDERS.tasks.main).toContain('file.ctime'); // Properties.CREATED_AT.source
+      expect(VIEW_ORDERS.tasks.main).toContain('formula.Title'); // Properties.TITLE.source
+
+      // The values should be the same as the source values
+      expect(VIEW_ORDERS.tasks.main).toContain(Properties.UPDATED_AT.source);
+      expect(VIEW_ORDERS.tasks.main).toContain(Properties.CREATED_AT.source);
+      expect(VIEW_ORDERS.tasks.main).toContain(Properties.TITLE.source);
+    });
+
+    it('should generate base properties with human-readable names from PropertyDefinition', () => {
+      const result = generateTasksBase(mockSettings, mockProjectsAndAreas);
+      const parsedConfig = yaml.load(result) as any;
+
+      // Verify that properties include human-readable names for CREATED_AT and UPDATED_AT
+      const properties = parsedConfig.properties;
+
+      // Find the Created At and Updated At properties
+      const createdAtProp = properties.find((p: any) => p.name === 'Created At');
+      const updatedAtProp = properties.find((p: any) => p.name === 'Updated At');
+      const titleProp = properties.find((p: any) => p.name === 'Title');
+
+      // Verify they exist with correct names and types
+      expect(createdAtProp).toBeDefined();
+      expect(createdAtProp.name).toBe('Created At');
+      expect(createdAtProp.type).toBe('string');
+
+      expect(updatedAtProp).toBeDefined();
+      expect(updatedAtProp.name).toBe('Updated At');
+      expect(updatedAtProp.type).toBe('string');
+
+      expect(titleProp).toBeDefined();
+      expect(titleProp.name).toBe('Title');
+      expect(titleProp.type).toBe('string');
     });
 
     it('should have task-specific properties in correct order', () => {
@@ -232,21 +282,21 @@ describe('BaseConfigurations', () => {
     it('should have secondary sorting by modification time and title', () => {
       // Main config: Done -> mtime (DESC) -> Title (ASC)
       expect(SORT_CONFIGS.main[1]).toEqual({
-        property: 'file.mtime',
+        property: Properties.UPDATED_AT.source, // 'file.mtime'
         direction: 'DESC'
       });
       expect(SORT_CONFIGS.main[2]).toEqual({
-        property: 'formula.Title',
+        property: Properties.TITLE.source, // 'formula.Title'
         direction: 'ASC'
       });
 
       // Area config: Done -> mtime (ASC) -> Title (ASC)
       expect(SORT_CONFIGS.area[1]).toEqual({
-        property: 'file.mtime',
+        property: Properties.UPDATED_AT.source, // 'file.mtime'
         direction: 'ASC'
       });
       expect(SORT_CONFIGS.area[2]).toEqual({
-        property: 'formula.Title',
+        property: Properties.TITLE.source, // 'formula.Title'
         direction: 'ASC'
       });
     });
@@ -260,6 +310,12 @@ describe('BaseConfigurations', () => {
       expect(mainView.sort[0]).toEqual({
         property: 'note.Done',
         direction: 'ASC'
+      });
+
+      // Check that the second sort property uses PropertyDefinition source
+      expect(mainView.sort[1]).toEqual({
+        property: Properties.UPDATED_AT.source, // 'file.mtime'
+        direction: 'DESC'
       });
     });
   });

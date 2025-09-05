@@ -18,6 +18,7 @@ export interface PropertyDefinition {
   default?: any;
   link?: boolean; // For internal usage, specifies that this property is used for linking with other notes
   displayName?: string;
+  source?: string; // NEW: specifies where the property value comes from (file metadata, formulas, front-matter values, etc.)
 }
 
 export interface BaseFormulas {
@@ -60,7 +61,8 @@ export namespace Properties {
   // Common properties
   export const TITLE: PropertyDefinition = {
     name: "Title",
-    type: "string"
+    type: "string",
+    source: "formula.Title"
   };
 
   export const DONE: PropertyDefinition = {
@@ -71,12 +73,14 @@ export namespace Properties {
 
   export const CREATED_AT: PropertyDefinition = {
     name: "Created At",
-    type: "string"
+    type: "string",
+    source: "file.ctime"
   };
 
   export const UPDATED_AT: PropertyDefinition = {
     name: "Updated At",
-    type: "string"
+    type: "string",
+    source: "file.mtime"
   };
 
   // Task-specific properties (in order from screenshot)
@@ -147,7 +151,9 @@ export const PROPERTY_DEFINITIONS = {
     Properties.STATUS,
     Properties.PARENT_TASK,
     Properties.SUB_TASKS,
-    Properties.TAGS
+    Properties.TAGS,
+    Properties.CREATED_AT,
+    Properties.UPDATED_AT
   ],
 
   // Properties for area bases (showing tasks, but excluding Areas since we're already filtering by area)
@@ -160,7 +166,9 @@ export const PROPERTY_DEFINITIONS = {
     Properties.STATUS,
     Properties.PARENT_TASK,
     Properties.SUB_TASKS,
-    Properties.TAGS
+    Properties.TAGS,
+    Properties.CREATED_AT,
+    Properties.UPDATED_AT
   ],
 
   // Properties for project bases (showing tasks, but excluding Project since we're already filtering by project)
@@ -173,7 +181,9 @@ export const PROPERTY_DEFINITIONS = {
     Properties.STATUS,
     Properties.PARENT_TASK,
     Properties.SUB_TASKS,
-    Properties.TAGS
+    Properties.TAGS,
+    Properties.CREATED_AT,
+    Properties.UPDATED_AT
   ],
 
   // Properties for area/project files themselves (not for bases showing tasks)
@@ -216,20 +226,20 @@ export const VIEW_ORDERS = {
   tasks: {
     main: [
       'Status',
-      'formula.Title',
+      Properties.TITLE.source!, // 'formula.Title'
       'note.Type',
       'tags',
-      'file.mtime',
-      'file.ctime',
+      Properties.UPDATED_AT.source!, // 'file.mtime'
+      Properties.CREATED_AT.source!, // 'file.ctime'
       'Areas',
       'Project'
     ],
     type: [
       'Status',
-      'formula.Title',
+      Properties.TITLE.source!, // 'formula.Title'
       'tags',
-      'file.mtime',
-      'file.ctime',
+      Properties.UPDATED_AT.source!, // 'file.mtime'
+      Properties.CREATED_AT.source!, // 'file.ctime'
       'Areas',
       'Project'
     ]
@@ -238,36 +248,36 @@ export const VIEW_ORDERS = {
   area: {
     main: [
       'Done',
-      'formula.Title',
+      Properties.TITLE.source!, // 'formula.Title'
       'Project',
       'note.Type',
-      'file.ctime',
-      'file.mtime'
+      Properties.CREATED_AT.source!, // 'file.ctime'
+      Properties.UPDATED_AT.source! // 'file.mtime'
     ],
     type: [
       'Done',
-      'formula.Title',
+      Properties.TITLE.source!, // 'formula.Title'
       'Project',
-      'file.ctime',
-      'file.mtime'
+      Properties.CREATED_AT.source!, // 'file.ctime'
+      Properties.UPDATED_AT.source! // 'file.mtime'
     ]
   },
 
   project: {
     main: [
       'Done',
-      'formula.Title',
+      Properties.TITLE.source!, // 'formula.Title'
       'Areas',
       'note.Type',
-      'file.ctime',
-      'file.mtime'
+      Properties.CREATED_AT.source!, // 'file.ctime'
+      Properties.UPDATED_AT.source! // 'file.mtime'
     ],
     type: [
       'Done',
-      'formula.Title',
+      Properties.TITLE.source!, // 'formula.Title'
       'Areas',
-      'file.ctime',
-      'file.mtime'
+      Properties.CREATED_AT.source!, // 'file.ctime'
+      Properties.UPDATED_AT.source! // 'file.mtime'
     ]
   }
 } as const;
@@ -279,14 +289,14 @@ export const VIEW_ORDERS = {
 export const SORT_CONFIGS = {
   main: [
     { property: 'note.Done', direction: 'ASC' as const }, // Uncompleted tasks first
-    { property: 'file.mtime', direction: 'DESC' as const },
-    { property: 'formula.Title', direction: 'ASC' as const }
+    { property: Properties.UPDATED_AT.source!, direction: 'DESC' as const }, // 'file.mtime'
+    { property: Properties.TITLE.source!, direction: 'ASC' as const } // 'formula.Title'
   ],
 
   area: [
     { property: 'note.Done', direction: 'ASC' as const }, // Uncompleted tasks first
-    { property: 'file.mtime', direction: 'ASC' as const },
-    { property: 'formula.Title', direction: 'ASC' as const }
+    { property: Properties.UPDATED_AT.source!, direction: 'ASC' as const }, // 'file.mtime'
+    { property: Properties.TITLE.source!, direction: 'ASC' as const } // 'formula.Title'
   ]
 } as const;
 
@@ -318,10 +328,10 @@ export const VIEW_TEMPLATES = {
       order: VIEW_ORDERS.area.main,
       sort: SORT_CONFIGS.area,
       columnSize: {
-        'formula.Title': 382,
+        [Properties.TITLE.source!]: 382, // 'formula.Title'
         'note.tags': 134,
-        'file.mtime': 165,
-        'file.ctime': 183
+        [Properties.UPDATED_AT.source!]: 165, // 'file.mtime'
+        [Properties.CREATED_AT.source!]: 183 // 'file.ctime'
       }
     }
   },
@@ -473,19 +483,19 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
           },
           order: [
             'Status',
-            'formula.Title',
+            Properties.TITLE.source!, // 'formula.Title'
             'note.Type',
             'tags',
-            'file.mtime',
-            'file.ctime',
+            Properties.UPDATED_AT.source!, // 'file.mtime'
+            Properties.CREATED_AT.source!, // 'file.ctime'
             'Project'
           ],
           sort: [...SORT_CONFIGS.area],
           columnSize: {
-            'formula.Title': 382,
+            [Properties.TITLE.source!]: 382, // 'formula.Title'
             'note.tags': 134,
-            'file.mtime': 165,
-            'file.ctime': 183
+            [Properties.UPDATED_AT.source!]: 165, // 'file.mtime'
+            [Properties.CREATED_AT.source!]: 183 // 'file.ctime'
           }
         })),
       // Project views
@@ -502,11 +512,11 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
           },
           order: [
             'Status',
-            'formula.Title',
+            Properties.TITLE.source!, // 'formula.Title'
             'note.Type',
             'tags',
-            'file.mtime',
-            'file.ctime',
+            Properties.UPDATED_AT.source!, // 'file.mtime'
+            Properties.CREATED_AT.source!, // 'file.ctime'
             'Areas'
           ],
           sort: [...SORT_CONFIGS.area]
@@ -544,10 +554,10 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
         order: [...VIEW_ORDERS.area.main],
         sort: [...SORT_CONFIGS.area],
         columnSize: {
-          'formula.Title': 382,
+          [Properties.TITLE.source!]: 382, // 'formula.Title'
           'note.tags': 134,
-          'file.mtime': 165,
-          'file.ctime': 183
+          [Properties.UPDATED_AT.source!]: 165, // 'file.mtime'
+          [Properties.CREATED_AT.source!]: 183 // 'file.ctime'
         }
       },
       // Type-specific views (renamed to "All X")
