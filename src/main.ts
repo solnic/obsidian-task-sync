@@ -1028,9 +1028,33 @@ export default class TaskSyncPlugin extends Plugin {
    * Get the current front-matter schema for a file type
    */
   private getFrontMatterSchema(type: 'task' | 'project' | 'area') {
-    // Import the centralized FRONTMATTER_FIELDS from base definitions
-    const { FRONTMATTER_FIELDS } = require('./services/base-definitions/BaseConfigurations');
-    return FRONTMATTER_FIELDS[type];
+    const { generateTaskFrontMatter, generateProjectFrontMatter, generateAreaFrontMatter } = require('./services/base-definitions/BaseConfigurations');
+
+    let properties;
+    switch (type) {
+      case 'task':
+        properties = generateTaskFrontMatter();
+        break;
+      case 'project':
+        properties = generateProjectFrontMatter();
+        break;
+      case 'area':
+        properties = generateAreaFrontMatter();
+        break;
+      default:
+        return {};
+    }
+
+    // Convert property definitions to schema objects
+    const schema: Record<string, any> = {};
+    properties.forEach((prop: any) => {
+      schema[prop.name] = {
+        type: prop.type,
+        ...(prop.default !== undefined && { default: prop.default }),
+        ...(prop.link && { link: prop.link })
+      };
+    });
+    return schema;
   }
 
   /**

@@ -17,10 +17,7 @@ export {
   PROPERTY_REGISTRY,
   PROPERTY_SETS,
   VIEW_ORDERS,
-  SORT_CONFIGS,
-  Properties,
-  FILTER_GENERATORS,
-  FRONTMATTER_FIELDS
+  SORT_CONFIGS
 } from './BaseConfigurations';
 
 export * from './FrontMatterGenerator';

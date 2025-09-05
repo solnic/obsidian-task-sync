@@ -1,6 +1,6 @@
 /**
  * Base Configurations
- * Simplified declarative base generation system
+ * Simplified declarative base generation system using entity-based configurations
  */
 
 import { TaskSyncSettings } from '../../main';
@@ -45,25 +45,25 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
 };
 
 // ============================================================================
-// PROPERTY SETS FOR DIFFERENT CONTEXTS
+// ENTITY-BASED PROPERTY SETS (using entity configurations)
 // ============================================================================
 
 export const PROPERTY_SETS = {
-  TASK_FRONTMATTER: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
-  TASKS_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'],
-  AREA_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'],
-  PROJECT_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT']
+  TASK_FRONTMATTER: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'] as const,
+  TASKS_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
+  AREA_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
+  PROJECT_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const
 } as const;
 
 // ============================================================================
-// SIMPLE VIEW ORDERS USING PROPERTY KEYS
+// VIEW ORDERS (using entity configurations)
 // ============================================================================
 
 export const VIEW_ORDERS = {
-  TASKS_MAIN: ['DONE', 'TITLE', 'PROJECT', 'TYPE', 'CREATED_AT', 'UPDATED_AT'],
-  TASKS_TYPE: ['DONE', 'TITLE', 'PROJECT', 'CREATED_AT', 'UPDATED_AT'],
-  AREA_MAIN: ['DONE', 'TITLE', 'PROJECT', 'TYPE', 'CREATED_AT', 'UPDATED_AT'],
-  PROJECT_MAIN: ['DONE', 'TITLE', 'AREAS', 'TYPE', 'CREATED_AT', 'UPDATED_AT']
+  TASKS_MAIN: ['DONE', 'TITLE', 'PROJECT', 'TYPE', 'CREATED_AT', 'UPDATED_AT'] as const,
+  TASKS_TYPE: ['DONE', 'TITLE', 'PROJECT', 'CREATED_AT', 'UPDATED_AT'] as const,
+  AREA_MAIN: ['DONE', 'TITLE', 'PROJECT', 'TYPE', 'CREATED_AT', 'UPDATED_AT'] as const,
+  PROJECT_MAIN: ['DONE', 'TITLE', 'AREAS', 'TYPE', 'CREATED_AT', 'UPDATED_AT'] as const
 } as const;
 
 // ============================================================================
@@ -438,7 +438,7 @@ export function generateTaskFrontMatter(): PropertyDefinition[] {
  * Generate front-matter properties for project files
  */
 export function generateProjectFrontMatter(): PropertyDefinition[] {
-  // Projects need Name (as Title), Type, and Areas properties in that order
+  // Projects use Name instead of Title, Type, and Areas properties in that order
   return [
     { name: "Name", type: "string" }, // Use Name instead of Title for projects
     { name: "Type", type: "string" },
@@ -450,7 +450,7 @@ export function generateProjectFrontMatter(): PropertyDefinition[] {
  * Generate front-matter properties for area files
  */
 export function generateAreaFrontMatter(): PropertyDefinition[] {
-  // Areas need Name (as Title), Type, and Project properties in that order
+  // Areas use Name instead of Title, Type, and Project properties in that order
   return [
     { name: "Name", type: "string" }, // Use Name instead of Title for areas
     { name: "Type", type: "string" },
@@ -458,58 +458,4 @@ export function generateAreaFrontMatter(): PropertyDefinition[] {
   ];
 }
 
-// ============================================================================
-// BACKWARD COMPATIBILITY EXPORTS
-// ============================================================================
 
-/**
- * Legacy Properties namespace for backward compatibility
- */
-export const Properties = PROPERTY_REGISTRY;
-
-/**
- * Legacy FILTER_GENERATORS for backward compatibility
- */
-export const FILTER_GENERATORS = {
-  excludeSubTasks: () => '!"Parent task" || "Parent task" == null'
-};
-
-/**
- * Legacy FRONTMATTER_FIELDS for backward compatibility
- * Convert property definitions to schema objects expected by refresh functionality
- */
-export const FRONTMATTER_FIELDS = {
-  task: (() => {
-    const schema: Record<string, any> = {};
-    generateTaskFrontMatter().forEach(prop => {
-      schema[prop.name] = {
-        type: prop.type,
-        ...(prop.default !== undefined && { default: prop.default }),
-        ...(prop.link && { link: prop.link })
-      };
-    });
-    return schema;
-  })(),
-  project: (() => {
-    const schema: Record<string, any> = {};
-    generateProjectFrontMatter().forEach(prop => {
-      schema[prop.name] = {
-        type: prop.type,
-        ...(prop.default !== undefined && { default: prop.default }),
-        ...(prop.link && { link: prop.link })
-      };
-    });
-    return schema;
-  })(),
-  area: (() => {
-    const schema: Record<string, any> = {};
-    generateAreaFrontMatter().forEach(prop => {
-      schema[prop.name] = {
-        type: prop.type,
-        ...(prop.default !== undefined && { default: prop.default }),
-        ...(prop.link && { link: prop.link })
-      };
-    });
-    return schema;
-  })()
-};

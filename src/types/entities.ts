@@ -3,6 +3,8 @@
  * Implements GTD (Getting Things Done) methodology with hierarchical organization
  */
 
+import { PROPERTY_REGISTRY } from '../services/base-definitions/BaseConfigurations';
+
 // Base interface for all entities
 export interface BaseEntity {
   id: string;
@@ -62,6 +64,35 @@ export interface Task extends BaseEntity {
   estimatedDuration?: number; // In minutes
   actualDuration?: number; // In minutes
 
+  // Configuration
+  frontmatter: [
+    'TITLE',
+    'TYPE',
+    'PRIORITY',
+    'AREAS',
+    'PROJECT',
+    'DONE',
+    'STATUS',
+    'PARENT_TASK',
+    'SUB_TASKS',
+    'TAGS'
+  ];
+
+  base: [
+    'TITLE',
+    'TYPE',
+    'PRIORITY',
+    'AREAS',
+    'PROJECT',
+    'DONE',
+    'STATUS',
+    'PARENT_TASK',
+    'SUB_TASKS',
+    'TAGS',
+    'CREATED_AT',
+    'UPDATED_AT'
+  ];
+
   // Template and automation
   templateId?: string;
   recurring?: RecurringConfig;
@@ -107,6 +138,13 @@ export interface Project extends BaseEntity {
   // Goals and outcomes
   objectives: string[];
   successCriteria: string[];
+
+  // Configuration
+  frontmatter: [
+    'TITLE',
+    'TYPE',
+    'AREAS'
+  ];
 }
 
 // Area entity - life/work area for organizing projects
@@ -132,6 +170,13 @@ export interface Area extends BaseEntity {
 
   // Status
   isActive: boolean;
+
+  // Configuration
+  frontmatter: [
+    'TITLE',
+    'TYPE',
+    'PROJECT'
+  ];
 }
 
 // Template entity for creating new tasks/projects/areas

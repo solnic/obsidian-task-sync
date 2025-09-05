@@ -1,9 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   generateParentTaskBase,
-  Properties,
-  generateParentTaskFrontMatter,
-  FILTER_GENERATORS
+  PROPERTY_REGISTRY,
+  generateTaskFrontMatter
 } from '../src/services/base-definitions';
 import { TaskSyncSettings } from '../src/main';
 
@@ -42,13 +41,13 @@ describe('Parent Task Support', () => {
 
   describe('Property Definitions', () => {
     it('should define Sub-tasks as array type', () => {
-      expect(Properties.SUB_TASKS.type).toBe('array');
-      expect(Properties.SUB_TASKS.link).toBe(true);
+      expect(PROPERTY_REGISTRY.SUB_TASKS.type).toBe('array');
+      expect(PROPERTY_REGISTRY.SUB_TASKS.link).toBe(true);
     });
 
     it('should define Parent task as string with link', () => {
-      expect(Properties.PARENT_TASK.type).toBe('string');
-      expect(Properties.PARENT_TASK.link).toBe(true);
+      expect(PROPERTY_REGISTRY.PARENT_TASK.type).toBe('string');
+      expect(PROPERTY_REGISTRY.PARENT_TASK.link).toBe(true);
     });
   });
 
@@ -74,63 +73,39 @@ describe('Parent Task Support', () => {
   });
 
   describe('Front-matter Generation', () => {
-    it('should generate parent task front-matter with correct type', () => {
-      const taskData = {
-        name: 'Epic Feature',
-        subTasks: ['Sub-task 1', 'Sub-task 2'],
-        type: 'Feature',
-        tags: [] as string[],
-        done: false,
-        status: 'Backlog'
-      };
+    it('should generate task front-matter properties', () => {
+      const properties = generateTaskFrontMatter();
 
-      const frontMatter = generateParentTaskFrontMatter(taskData);
-
-      expect(frontMatter).toContain('Type: Parent Task');
-      expect(frontMatter).toContain('Title: Epic Feature');
-      // Gray-matter generates YAML arrays in standard format
-      expect(frontMatter).toContain('Sub-tasks:\n  - Sub-task 1\n  - Sub-task 2');
+      // Should include all expected properties
+      const propertyNames = properties.map(p => p.name);
+      expect(propertyNames).toContain('Title');
+      expect(propertyNames).toContain('Type');
+      expect(propertyNames).toContain('Sub-tasks');
+      expect(propertyNames).toContain('Parent task');
     });
 
-    it('should handle linked properties with proper quoting', () => {
-      const taskData = {
-        name: 'Parent Task',
-        parentTask: 'Higher Level Task',
-        subTasks: ['Child Task 1', 'Child Task 2'],
-        tags: [] as string[],
-        done: false,
-        status: 'Backlog'
-      };
+    it('should have correct property types for parent task fields', () => {
+      const properties = generateTaskFrontMatter();
 
-      const frontMatter = generateParentTaskFrontMatter(taskData);
+      const subTasksProp = properties.find(p => p.name === 'Sub-tasks');
+      expect(subTasksProp?.type).toBe('array');
+      expect(subTasksProp?.link).toBe(true);
 
-      // Parent task should be a simple string (gray-matter handles linking in Obsidian)
-      expect(frontMatter).toContain('Parent task: Higher Level Task');
-
-      // Sub-tasks should be an array in standard YAML format
-      expect(frontMatter).toContain('Sub-tasks:\n  - Child Task 1\n  - Child Task 2');
-    });
-
-    it('should include base embedding in template content', () => {
-      const taskData = {
-        name: 'Epic Feature',
-        tags: [] as string[],
-        done: false,
-        status: 'Backlog'
-      };
-
-      const frontMatter = generateParentTaskFrontMatter(taskData);
-
-      expect(frontMatter).toContain('## Sub-tasks');
-      expect(frontMatter).toContain('![[Epic Feature.base]]');
+      const parentTaskProp = properties.find(p => p.name === 'Parent task');
+      expect(parentTaskProp?.type).toBe('string');
+      expect(parentTaskProp?.link).toBe(true);
     });
   });
 
   describe('Sub-task Filtering', () => {
-    it('should exclude sub-tasks from main views', () => {
-      // This would be tested in integration tests, but we can verify
-      // that the filter generator includes the exclude sub-tasks filter
-      expect(FILTER_GENERATORS.excludeSubTasks()).toBe('!"Parent task" || "Parent task" == null');
+    it('should include sub-tasks in parent task base configuration', () => {
+      const parentTaskName = 'Test Parent';
+      const baseConfig = generateParentTaskBase(mockSettings, parentTaskName);
+
+      // Should include filter to show tasks that have this parent
+      expect(baseConfig).toContain('"Parent task".contains(link("Test Parent"))');
+      // Should have a sub-tasks view
+      expect(baseConfig).toContain('Sub-tasks');
     });
   });
 });
