@@ -217,6 +217,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
     this.createFileSetting(section, 'defaultParentTaskTemplate', 'Default Parent Task Template',
       'Default template to use when creating new parent tasks', ['.md']);
+
+    // Template creation button
+    this.createTemplateCreationButton(section);
   }
 
   private createBasesSection(container: HTMLElement): void {
@@ -979,6 +982,35 @@ export class TaskSyncSettingTab extends PluginSettingTab {
               if (this.plugin.settings.autoSyncAreaProjectBases) {
                 await this.plugin.syncAreaProjectBases();
               }
+            }
+          });
+      });
+  }
+
+  private createTemplateCreationButton(container: HTMLElement): void {
+    new Setting(container)
+      .setName('Create Default Task Template')
+      .setDesc('Create the default task template file if it doesn\'t exist')
+      .addButton(button => {
+        button.setButtonText('Create Template')
+          .setCta()
+          .onClick(async () => {
+            button.setDisabled(true);
+            button.setButtonText('Creating...');
+            try {
+              await this.plugin.templateManager.createTaskTemplate();
+              button.setButtonText('✓ Created');
+              setTimeout(() => {
+                button.setDisabled(false);
+                button.setButtonText('Create Template');
+              }, 2000);
+            } catch (error) {
+              button.setButtonText('✗ Failed');
+              console.error('Failed to create template:', error);
+              setTimeout(() => {
+                button.setDisabled(false);
+                button.setButtonText('Create Template');
+              }, 2000);
             }
           });
       });
