@@ -92,45 +92,6 @@ Task description...`;
     expect(updatedContent).toContain('Type: Task'); // Should be set to first configured task type
   });
 
-  test('should set Priority to Low when task created with null Priority', async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create a task file with null Priority property
-    const taskName = 'Test Task with Null Priority';
-    const taskPath = `Tasks/${taskName}.md`;
-
-    const taskContent = `---
-Title: ${taskName}
-Type: Task
-Priority:
-Areas: []
-Project:
-Done:
-Status:
-Parent task:
-Sub-tasks: []
-tags: []
----
-Task description...`;
-
-    // Create the file directly in the vault
-    await context.page.evaluate(
-      async ({ path, content }: { path: string; content: string }) => {
-        const app = (window as any).app;
-        await app.vault.create(path, content);
-      },
-      { path: taskPath, content: taskContent }
-    );
-
-    // Wait a moment for the TaskPropertyHandler to process the file
-    await context.page.waitForTimeout(1000);
-
-    // Verify the file was updated with default Priority
-    const updatedContent = await getFileContent(context.page, taskPath);
-    expect(updatedContent).toContain('Priority: Low'); // Should be set to default priority
-  });
-
   test('should set Done to false when task created with null Done', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);

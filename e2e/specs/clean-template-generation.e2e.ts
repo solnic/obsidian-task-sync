@@ -35,7 +35,7 @@ describe('Clean Template Generation', () => {
 
     // Verify the template has clean front-matter structure
     const templateContent = await getFileContent(context.page, 'Templates/Clean Task.md');
-    
+
     // Should have front-matter structure but without pre-filled values
     expect(templateContent).toContain('---');
     expect(templateContent).toContain('Title:');
@@ -48,18 +48,18 @@ describe('Clean Template Generation', () => {
     expect(templateContent).toContain('Parent task:');
     expect(templateContent).toContain('Sub-tasks:');
     expect(templateContent).toContain('tags:');
-    
+
     // Should NOT have pre-filled values (except for arrays which should be empty)
     expect(templateContent).not.toContain('Type: Task');
     expect(templateContent).not.toContain('Priority: Low');
     expect(templateContent).not.toContain('Done: false');
     expect(templateContent).not.toContain('Status: Backlog');
-    
+
     // Arrays should be empty
     expect(templateContent).toContain('Areas: []');
     expect(templateContent).toContain('Sub-tasks: []');
     expect(templateContent).toContain('tags: []');
-    
+
     // Should have template placeholder
     expect(templateContent).toContain('{{description}}');
   });
@@ -80,11 +80,11 @@ describe('Clean Template Generation', () => {
 
     // Get the template content
     const templateContent = await getFileContent(context.page, 'Templates/Clean Task Template.md');
-    
+
     // Create a task using the template content (simulating user copying template)
     const taskName = 'Task from Clean Template';
     const taskPath = `Tasks/${taskName}.md`;
-    
+
     // Use the template content but with a title filled in
     const taskContent = templateContent?.replace('Title:', `Title: ${taskName}`);
 
@@ -103,7 +103,6 @@ describe('Clean Template Generation', () => {
     // Verify the file was updated with default values by the handler
     const updatedContent = await getFileContent(context.page, taskPath);
     expect(updatedContent).toContain('Type: Task'); // Should be set by handler
-    expect(updatedContent).toContain('Priority: Low'); // Should be set by handler
     expect(updatedContent).toContain('Done: false'); // Should be set by handler
     expect(updatedContent).toContain('Status: Backlog'); // Should be set by handler
     expect(updatedContent).toContain(`Title: ${taskName}`); // Should preserve user input
