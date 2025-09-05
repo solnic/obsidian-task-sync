@@ -60,7 +60,7 @@ export class TaskPropertyHandler implements EventHandler {
       }
 
       const content = await this.app.vault.read(file);
-      const updatedContent = this.updatePropertiesInContent(content);
+      const updatedContent = this.updatePropertiesInContent(content, filePath);
 
       if (updatedContent !== content) {
         await this.app.vault.modify(file, updatedContent);
@@ -74,7 +74,7 @@ export class TaskPropertyHandler implements EventHandler {
   /**
    * Update properties in file content, setting defaults for null/empty values
    */
-  private updatePropertiesInContent(content: string): string {
+  private updatePropertiesInContent(content: string, filePath: string): string {
     const frontmatterRegex = /^(---\n)([\s\S]*?)(\n---)/;
     const match = content.match(frontmatterRegex);
 
@@ -88,6 +88,7 @@ export class TaskPropertyHandler implements EventHandler {
     const updatedLines = [...lines];
 
     // Check and update each property
+    this.updatePropertyIfNull(updatedLines, 'Title', this.getDefaultTitle(filePath));
     this.updatePropertyIfNull(updatedLines, 'Type', this.getDefaultType());
     this.updatePropertyIfNull(updatedLines, 'Priority', this.getDefaultPriority());
     this.updatePropertyIfNull(updatedLines, 'Done', this.getDefaultDone());
@@ -117,7 +118,7 @@ export class TaskPropertyHandler implements EventHandler {
           propertyFound = true;
           propertyIndex = i;
           const value = line.substring(colonIndex + 1).trim();
-          
+
           // Check if value is null, empty, or just whitespace
           if (!value || value === 'null' || value === '""' || value === "''") {
             lines[i] = `${propertyName}: ${this.formatValue(defaultValue)}`;
@@ -155,6 +156,12 @@ export class TaskPropertyHandler implements EventHandler {
   /**
    * Get default values for properties
    */
+  private getDefaultTitle(filePath: string): string {
+    // Extract filename without extension from the file path
+    const fileName = filePath.split('/').pop() || '';
+    return fileName.replace(/\.md$/, '');
+  }
+
   private getDefaultType(): string {
     return this.settings.taskTypes[0]?.name || 'Task';
   }

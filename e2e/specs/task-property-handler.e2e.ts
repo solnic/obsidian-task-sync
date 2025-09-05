@@ -7,13 +7,51 @@ import { test, expect, describe } from 'vitest';
 import {
   createTestFolders,
   waitForTaskSyncPlugin,
-  getFileContent,
-  fileExists
+  getFileContent
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
 
 describe('TaskPropertyHandler', () => {
   const context = setupE2ETestHooks();
+
+  test('should set Title to filename when task created with null Title', async () => {
+    await createTestFolders(context.page);
+    await waitForTaskSyncPlugin(context.page);
+
+    // Create a task file with null Title property
+    const taskName = 'Test Task with Null Title';
+    const taskPath = `Tasks/${taskName}.md`;
+
+    const taskContent = `---
+Title:
+Type: Task
+Priority: Low
+Areas: []
+Project:
+Done: false
+Status: Backlog
+Parent task:
+Sub-tasks: []
+tags: []
+---
+Task description...`;
+
+    // Create the file directly in the vault
+    await context.page.evaluate(
+      async ({ path, content }: { path: string; content: string }) => {
+        const app = (window as any).app;
+        await app.vault.create(path, content);
+      },
+      { path: taskPath, content: taskContent }
+    );
+
+    // Wait a moment for the TaskPropertyHandler to process the file
+    await context.page.waitForTimeout(1000);
+
+    // Verify the file was updated with Title set to filename
+    const updatedContent = await getFileContent(context.page, taskPath);
+    expect(updatedContent).toContain('Title: Test Task with Null Title'); // Should be set to filename
+  });
 
   test('should set Type to first configured task type when task created with null Type', async () => {
     await createTestFolders(context.page);
