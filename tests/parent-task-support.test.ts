@@ -88,7 +88,8 @@ describe('Parent Task Support', () => {
 
       expect(frontMatter).toContain('Type: Parent Task');
       expect(frontMatter).toContain('Title: Epic Feature');
-      expect(frontMatter).toContain('Sub-tasks: ["[[Sub-task 1]]", "[[Sub-task 2]]"]');
+      // Gray-matter generates YAML arrays in standard format
+      expect(frontMatter).toContain('Sub-tasks:\n  - Sub-task 1\n  - Sub-task 2');
     });
 
     it('should handle linked properties with proper quoting', () => {
@@ -103,11 +104,11 @@ describe('Parent Task Support', () => {
 
       const frontMatter = generateParentTaskFrontMatter(taskData);
 
-      // Parent task should be quoted as a link
-      expect(frontMatter).toContain('Parent task: "[[Higher Level Task]]"');
+      // Parent task should be a simple string (gray-matter handles linking in Obsidian)
+      expect(frontMatter).toContain('Parent task: Higher Level Task');
 
-      // Sub-tasks should be an array of quoted links
-      expect(frontMatter).toContain('Sub-tasks: ["[[Child Task 1]]", "[[Child Task 2]]"]');
+      // Sub-tasks should be an array in standard YAML format
+      expect(frontMatter).toContain('Sub-tasks:\n  - Child Task 1\n  - Child Task 2');
     });
 
     it('should include base embedding in template content', () => {

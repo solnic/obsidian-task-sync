@@ -33,7 +33,7 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
   TITLE: { name: "Title", type: "string", source: "formula.Title" },
   TYPE: { name: "Type", type: "string" },
   PRIORITY: { name: "Priority", type: "string" },
-  AREAS: { name: "Areas", type: "string", link: true },
+  AREAS: { name: "Areas", type: "array", link: true, default: [] },
   PROJECT: { name: "Project", type: "string", link: true },
   DONE: { name: "Done", type: "checkbox", default: false },
   STATUS: { name: "Status", type: "string", default: "Backlog" },
@@ -438,11 +438,11 @@ export function generateTaskFrontMatter(): PropertyDefinition[] {
  * Generate front-matter properties for project files
  */
 export function generateProjectFrontMatter(): PropertyDefinition[] {
-  // Projects need Name (as Title), Areas, and Type properties
+  // Projects need Name (as Title), Type, and Areas properties in that order
   return [
     { name: "Name", type: "string" }, // Use Name instead of Title for projects
-    PROPERTY_REGISTRY.AREAS,
-    { name: "Type", type: "string" }
+    { name: "Type", type: "string" },
+    PROPERTY_REGISTRY.AREAS
   ];
 }
 
@@ -450,11 +450,11 @@ export function generateProjectFrontMatter(): PropertyDefinition[] {
  * Generate front-matter properties for area files
  */
 export function generateAreaFrontMatter(): PropertyDefinition[] {
-  // Areas need Name (as Title), Project, and Type properties
+  // Areas need Name (as Title), Type, and Project properties in that order
   return [
     { name: "Name", type: "string" }, // Use Name instead of Title for areas
-    PROPERTY_REGISTRY.PROJECT,
-    { name: "Type", type: "string" }
+    { name: "Type", type: "string" },
+    PROPERTY_REGISTRY.PROJECT
   ];
 }
 
