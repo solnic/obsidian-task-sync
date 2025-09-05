@@ -9,7 +9,9 @@ import {
   PropertyDefinition,
   generateTaskFrontMatter as getTaskPropertyDefinitions,
   generateProjectFrontMatter as getProjectPropertyDefinitions,
-  generateAreaFrontMatter as getAreaPropertyDefinitions
+  generateAreaFrontMatter as getAreaPropertyDefinitions,
+  PROPERTY_REGISTRY,
+  PROPERTY_SETS
 } from './BaseConfigurations';
 import { TaskCreateData } from '../../components/modals/TaskCreateModal';
 import { ProjectCreateData } from '../../components/modals/ProjectCreateModal';
@@ -33,6 +35,7 @@ export interface FrontMatterOptions {
   includeDescription?: boolean;
   customFields?: Record<string, any>;
   templateContent?: string;
+  settings?: import('../../components/ui/settings/types').TaskSyncSettings;
 }
 
 // ============================================================================
@@ -46,11 +49,24 @@ export function generateTaskFrontMatter(
   taskData: TaskCreateData,
   options: FrontMatterOptions = {}
 ): string {
-  const properties = getTaskPropertyDefinitions();
+  // Get property order from settings or use default
+  const propertyOrder = options.settings?.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
+
+  // Validate property order - ensure all required properties are present
+  const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
+  const isValidOrder = requiredProperties.every(prop => propertyOrder.includes(prop)) &&
+    propertyOrder.every(prop => requiredProperties.includes(prop as typeof requiredProperties[number]));
+
+  // Use validated order or fall back to default
+  const finalPropertyOrder = isValidOrder ? propertyOrder : requiredProperties;
+
   const frontMatterData: Record<string, any> = {};
 
   // Add all defined fields in the correct order
-  for (const prop of properties) {
+  for (const propertyKey of finalPropertyOrder) {
+    const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+    if (!prop) continue;
+
     const value = getFieldValue(taskData, prop.name, prop);
     if (value !== undefined && value !== null) {
       frontMatterData[prop.name] = value;

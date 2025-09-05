@@ -199,8 +199,13 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   private async migrateSettings() {
+    // Migrate taskPropertyOrder setting for existing users
+    if (!this.settings.taskPropertyOrder) {
+      this.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
+      console.log('Task Sync: Migrated taskPropertyOrder setting to default order');
+    }
+
     // Future settings migration logic will go here
-    // For now, just ensure we have the current version structure
   }
 
   private validateSettings() {

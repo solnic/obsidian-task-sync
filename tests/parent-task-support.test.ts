@@ -36,7 +36,8 @@ describe('Parent Task Support', () => {
     ],
     areaBasesEnabled: true,
     projectBasesEnabled: true,
-    autoSyncAreaProjectBases: true
+    autoSyncAreaProjectBases: true,
+    taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
   };
 
   describe('Property Definitions', () => {

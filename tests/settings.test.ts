@@ -38,7 +38,8 @@ describe('TaskSync Settings', () => {
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true
+        autoSyncAreaProjectBases: true,
+        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
       };
 
       expect(defaultSettings.tasksFolder).toBe('Tasks');
@@ -97,7 +98,8 @@ describe('TaskSync Settings', () => {
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true
+        autoSyncAreaProjectBases: true,
+        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
       };
 
       expect(typeof settings.defaultTaskTemplate).toBe('string');
@@ -139,7 +141,8 @@ describe('TaskSync Settings', () => {
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true
+        autoSyncAreaProjectBases: true,
+        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
       };
 
       expect(typeof settings.useTemplater).toBe('boolean');
@@ -181,7 +184,8 @@ describe('TaskSync Settings', () => {
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true
+        autoSyncAreaProjectBases: true,
+        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
       };
 
       expect(typeof settings.tasksFolder).toBe('string');
@@ -230,7 +234,8 @@ describe('TaskSync Settings', () => {
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true
+        autoSyncAreaProjectBases: true,
+        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
       };
 
       // Empty strings should be valid (user might not want to use certain folders)
@@ -283,7 +288,8 @@ describe('TaskSync Settings', () => {
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true
+        autoSyncAreaProjectBases: true,
+        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
       };
 
       expect(settings1.useTemplater).toBe(true);
@@ -324,7 +330,8 @@ describe('TaskSync Settings', () => {
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true
+        autoSyncAreaProjectBases: true,
+        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
       };
 
       expect(settings2.useTemplater).toBe(false);

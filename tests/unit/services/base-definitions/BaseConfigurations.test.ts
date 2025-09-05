@@ -45,7 +45,8 @@ describe('Base File Generation', () => {
     tasksBaseFile: 'Tasks.base',
     autoGenerateBases: true,
     autoUpdateBaseViews: true,
-    useTemplater: false
+    useTemplater: false,
+    taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
   };
 
   const mockProjectsAndAreas: ProjectAreaInfo[] = [

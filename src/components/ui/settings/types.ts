@@ -67,6 +67,8 @@ export interface TaskSyncSettings {
   areaBasesEnabled: boolean;
   projectBasesEnabled: boolean;
   autoSyncAreaProjectBases: boolean;
+  // Task property ordering
+  taskPropertyOrder: string[];
 }
 
 export interface ValidationResult {

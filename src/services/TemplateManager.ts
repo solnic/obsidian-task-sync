@@ -51,10 +51,18 @@ export class TemplateManager {
     // Create clean front-matter structure using property definitions
     const frontMatterData: Record<string, any> = {};
 
-    // Get task property definitions in the correct order
-    const taskProperties = PROPERTY_SETS.TASK_FRONTMATTER;
+    // Get property order from settings or use default
+    const propertyOrder = this.settings.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
 
-    for (const propertyKey of taskProperties) {
+    // Validate property order - ensure all required properties are present
+    const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
+    const isValidOrder = requiredProperties.every(prop => propertyOrder.includes(prop)) &&
+      propertyOrder.every(prop => requiredProperties.includes(prop as typeof requiredProperties[number]));
+
+    // Use validated order or fall back to default
+    const finalPropertyOrder = isValidOrder ? propertyOrder : requiredProperties;
+
+    for (const propertyKey of finalPropertyOrder) {
       const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
       if (!prop) continue;
 

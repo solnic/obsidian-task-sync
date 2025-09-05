@@ -11,6 +11,7 @@ import { FolderSuggestComponent, FileSuggestComponent } from './suggest';
 import { createTypeBadge } from '../TypeBadge';
 import { createPriorityBadge } from '../PriorityBadge';
 import { createStatusBadge } from '../StatusBadge';
+import { SortablePropertyList } from './SortablePropertyList';
 
 export class TaskSyncSettingTab extends PluginSettingTab {
   plugin: TaskSyncPlugin;
@@ -165,6 +166,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     this.createGeneralSection(sectionsContainer);
     this.createTemplatesSection(sectionsContainer);
     this.createBasesSection(sectionsContainer);
+    this.createTaskPropertyOrderSection(sectionsContainer);
     this.createTaskTypesSection(sectionsContainer);
     this.createTaskPrioritiesSection(sectionsContainer);
     this.createTaskStatusesSection(sectionsContainer);
@@ -286,6 +288,47 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
     // Action buttons
     this.createActionButtons(section);
+  }
+
+  private createTaskPropertyOrderSection(container: HTMLElement): void {
+    const section = container.createDiv('task-sync-settings-section');
+
+    // Section header
+    section.createEl('h2', { text: 'Task Property Order', cls: 'task-sync-section-header' });
+    section.createEl('p', {
+      text: 'Drag and drop to reorder how properties appear in task front-matter.',
+      cls: 'task-sync-settings-section-desc'
+    });
+
+    // Create sortable property list
+    const propertyOrder = this.plugin.settings.taskPropertyOrder || DEFAULT_SETTINGS.taskPropertyOrder;
+
+    new SortablePropertyList({
+      container: section,
+      properties: propertyOrder,
+      onReorder: async (newOrder: string[]) => {
+        this.plugin.settings.taskPropertyOrder = newOrder;
+        await this.plugin.saveSettings();
+
+        // Trigger base sync if enabled
+        if (this.plugin.settings.autoSyncAreaProjectBases) {
+          await this.plugin.syncAreaProjectBases();
+        }
+      },
+      onReset: async () => {
+        this.plugin.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
+        await this.plugin.saveSettings();
+
+        // Refresh the section
+        section.empty();
+        this.createTaskPropertyOrderSection(section.parentElement!);
+
+        // Trigger base sync if enabled
+        if (this.plugin.settings.autoSyncAreaProjectBases) {
+          await this.plugin.syncAreaProjectBases();
+        }
+      }
+    });
   }
 
   private createTaskTypesSection(container: HTMLElement): void {

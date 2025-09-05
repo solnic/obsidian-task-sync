@@ -43,7 +43,9 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   // Individual area/project bases defaults
   areaBasesEnabled: true,
   projectBasesEnabled: true,
-  autoSyncAreaProjectBases: true
+  autoSyncAreaProjectBases: true,
+  // Task property ordering defaults
+  taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
 };
 
 /**
