@@ -194,8 +194,8 @@ Website redesign project for the company.
     expect(baseContent).not.toContain('RED:');
     expect(baseContent).not.toContain('BLUE:');
 
-    // Should use formula.Type in views instead of Type
-    expect(baseContent).toContain('note.Type');
+    // Should use Type in views (simplified property names)
+    expect(baseContent).toContain('Type == "');
 
     // Should NOT contain HTML spans or old Type Badge property
     expect(baseContent).not.toContain('<span');

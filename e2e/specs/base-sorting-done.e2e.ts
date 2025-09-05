@@ -118,7 +118,7 @@ This task is also not completed.`);
     console.log('Generated base content:', baseContent);
 
     // Verify that the base contains the Done-first sorting configuration
-    expect(baseContent).toContain('property: note.Done');
+    expect(baseContent).toContain('property: Done');
     expect(baseContent).toContain('direction: ASC');
 
     // The sorting should be:
@@ -136,10 +136,10 @@ This task is also not completed.`);
 
     const sortSection = sortSectionMatch![1];
     const firstSortProperty = sortSection.match(/^\s*-\s*property:\s*(.+)/);
-    expect(firstSortProperty![1].trim()).toBe('note.Done');
+    expect(firstSortProperty![1].trim()).toBe('Done');
 
     // Verify direction is ASC for Done property
-    const firstSortDirection = sortSection.match(/^\s*-\s*property:\s*note\.Done\s*\n\s*direction:\s*(.+)/);
+    const firstSortDirection = sortSection.match(/^\s*-\s*property:\s*Done\s*\n\s*direction:\s*(.+)/);
     expect(firstSortDirection![1].trim()).toBe('ASC');
   });
 
@@ -232,7 +232,7 @@ Development task 2.`);
     console.log('Generated area base content:', areaBaseContent);
 
     // Verify that the area base also has Done-first sorting
-    expect(areaBaseContent).toContain('property: note.Done');
+    expect(areaBaseContent).toContain('property: Done');
     expect(areaBaseContent).toContain('direction: ASC');
 
     // Check that Done is the first sort property in area base too
@@ -241,6 +241,6 @@ Development task 2.`);
 
     const sortSection = sortSectionMatch![1];
     const firstSortProperty = sortSection.match(/^\s*-\s*property:\s*(.+)/);
-    expect(firstSortProperty![1].trim()).toBe('note.Done');
+    expect(firstSortProperty![1].trim()).toBe('Done');
   });
 });

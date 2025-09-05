@@ -99,7 +99,7 @@ This is a test area for bases integration.
     expect(content).toContain('views:');
     expect(content).toContain('type: table');
     expect(content).toContain('name: All');
-    expect(content).toContain('name: Test Project');
+    expect(content).toContain('Areas.contains(link("Test Area"))');
 
     // Debug: Check what's actually in the content
     console.log('Tasks.base content:', content);

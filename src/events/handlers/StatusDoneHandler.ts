@@ -96,7 +96,7 @@ export class StatusDoneHandler implements EventHandler {
 
     if (currentDone !== shouldBeDone) {
       console.log(`StatusDoneHandler: Updating Done field for ${filePath} from ${currentDone} to ${shouldBeDone}`);
-      await this.updateDoneField(filePath, shouldBeDone);
+      await this.updateDoneField(filePath, shouldBeDone, true); // Allow override when triggered by status change
     } else {
       console.log(`StatusDoneHandler: Done field already correct for ${filePath}`);
     }
@@ -186,8 +186,8 @@ export class StatusDoneHandler implements EventHandler {
   /**
    * Update the Done field in a file
    */
-  private async updateDoneField(filePath: string, newDone: boolean): Promise<void> {
-    await this.updateFrontmatterField(filePath, 'Done', newDone);
+  private async updateDoneField(filePath: string, newDone: boolean, allowOverride: boolean = false): Promise<void> {
+    await this.updateFrontmatterField(filePath, 'Done', newDone, allowOverride);
   }
 
   /**
@@ -200,13 +200,13 @@ export class StatusDoneHandler implements EventHandler {
   /**
    * Update a frontmatter field in a file
    */
-  private async updateFrontmatterField(filePath: string, fieldName: string, newValue: any): Promise<void> {
+  private async updateFrontmatterField(filePath: string, fieldName: string, newValue: any, allowOverride: boolean = false): Promise<void> {
     // Determine the event type we're processing based on the field being updated
     const eventType = fieldName === 'Done' ? EventType.DONE_CHANGED : EventType.STATUS_CHANGED;
 
     // Prevent infinite loops by tracking specific event types being processed for each file
     const processingTypes = this.processingFiles.get(filePath) || new Set();
-    if (processingTypes.has(eventType)) {
+    if (processingTypes.has(eventType) && !allowOverride) {
       console.log(`StatusDoneHandler: Skipping ${fieldName} update for ${filePath} - already processing ${eventType}`);
       return;
     }
