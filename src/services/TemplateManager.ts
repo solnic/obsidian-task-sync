@@ -6,7 +6,7 @@
 import { App, Vault, TFile } from 'obsidian';
 import { TaskSyncSettings } from '../main';
 import { generateTaskFrontMatter } from './base-definitions/FrontMatterGenerator';
-import { PROPERTY_SETS, PROPERTY_REGISTRY } from './base-definitions/BaseConfigurations';
+import { PROPERTY_SETS, PROPERTY_REGISTRY, generateAreaFrontMatter as getAreaPropertyDefinitions } from './base-definitions/BaseConfigurations';
 import matter from 'gray-matter';
 
 export class TemplateManager {
@@ -62,6 +62,59 @@ export class TemplateManager {
       if (prop.type === 'array') {
         frontMatterData[prop.name] = [];
       } else {
+        // Use empty string for clean template values
+        frontMatterData[prop.name] = '';
+      }
+    }
+
+    // Use gray-matter to generate the front-matter with clean structure
+    return matter.stringify('{{description}}', frontMatterData);
+  }
+
+  /**
+   * Create an Area template file with proper front-matter and content
+   */
+  async createAreaTemplate(filename?: string): Promise<void> {
+    const templateFileName = filename || this.settings.defaultAreaTemplate;
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    // Check if file already exists
+    const fileExists = await this.vault.adapter.exists(templatePath);
+    if (fileExists) {
+      throw new Error(`Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`);
+    }
+
+    // Generate template content
+    const templateContent = this.generateAreaTemplateContent();
+
+    // Create the template file (Obsidian will create the folder automatically if needed)
+    await this.vault.create(templatePath, templateContent);
+    console.log(`Created area template: ${templatePath}`);
+  }
+
+  /**
+   * Generate the default area template content with clean front-matter structure
+   */
+  private generateAreaTemplateContent(): string {
+    return this.generateCleanAreaTemplate();
+  }
+
+  /**
+   * Generate a clean area template without pre-filled values
+   */
+  private generateCleanAreaTemplate(): string {
+    // Create clean front-matter structure using property definitions
+    const frontMatterData: Record<string, any> = {};
+
+    // Get area property definitions in the correct order
+    const areaProperties = getAreaPropertyDefinitions();
+
+    for (const prop of areaProperties) {
+      // Set clean values based on property type
+      if (prop.type === 'array') {
+        frontMatterData[prop.name] = [];
+      } else {
+        // Use empty string for clean template values
         frontMatterData[prop.name] = '';
       }
     }
