@@ -650,7 +650,9 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   // Task creation logic
-  private async createTask(taskData: any): Promise<void> {
+  // This is the SINGLE METHOD for creating tasks - all task creation must go through this method
+  // to ensure consistent property setting and context handling
+  async createTask(taskData: any): Promise<void> {
     try {
       const taskFileName = createSafeFileName(taskData.name);
       const taskPath = `${this.settings.tasksFolder}/${taskFileName}`;

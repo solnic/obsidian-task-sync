@@ -550,7 +550,7 @@ export async function createTestFolders(page: Page): Promise<void> {
 }
 
 /**
- * Create a test task file
+ * Create a test task file using the plugin's createTask method for consistency
  */
 export async function createTestTaskFile(
   page: Page,
@@ -561,22 +561,38 @@ export async function createTestTaskFile(
   await page.evaluate(
     async ({ filename, frontmatter, content }) => {
       const app = (window as any).app;
-      const fullPath = `Tasks/${filename}.md`;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
 
-      // Create frontmatter content
-      const frontmatterLines = ['---'];
-      for (const [key, value] of Object.entries(frontmatter)) {
-        frontmatterLines.push(`${key}: ${JSON.stringify(value)}`);
+      if (!plugin) {
+        throw new Error('Task Sync plugin not found');
       }
-      frontmatterLines.push('---', '');
 
-      const fullContent = frontmatterLines.join('\n') + content;
+      // Prepare task data using the same structure as the plugin expects
+      // Use the Title from frontmatter if provided, otherwise use filename
+      const taskName = frontmatter.Title || frontmatter.title || filename;
+
+      const taskData = {
+        name: taskName,
+        description: content || 'Test task description',
+        // Map frontmatter properties to task data
+        type: frontmatter.Type || frontmatter.type || 'Task',
+        areas: frontmatter.Areas || frontmatter.areas,
+        project: frontmatter.Project || frontmatter.project,
+        done: frontmatter.Done || frontmatter.done || false,
+        status: frontmatter.Status || frontmatter.status || 'Backlog',
+        priority: frontmatter.Priority || frontmatter.priority,
+        parentTask: frontmatter['Parent task'] || frontmatter.parentTask,
+        subTasks: frontmatter['Sub-tasks'] || frontmatter.subTasks || [],
+        tags: frontmatter.tags || []
+      };
 
       try {
-        await app.vault.create(fullPath, fullContent);
-        console.log(`Created test task file: ${fullPath}`);
+        // Use the plugin's createTask method to ensure consistency
+        await plugin.createTask(taskData);
+        console.log(`Created test task file using plugin: ${taskName}`);
       } catch (error) {
-        console.log(`Error creating task file ${fullPath}:`, error.message);
+        console.log(`Error creating task file ${taskName}:`, error.message);
+        throw error;
       }
     },
     { filename, frontmatter, content }
