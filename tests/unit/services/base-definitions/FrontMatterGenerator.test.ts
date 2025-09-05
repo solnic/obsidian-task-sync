@@ -63,4 +63,38 @@ describe('FrontMatterGenerator - Property Ordering', () => {
     expect(lines[0]).toMatch(/^Title:/);
     expect(lines[1]).toMatch(/^Type:/);
   });
+
+  it('should handle property order changes consistently', () => {
+    // Test multiple different orders to ensure consistency
+    const orders = [
+      ['DONE', 'TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
+      ['TYPE', 'PRIORITY', 'TITLE', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
+      ['TAGS', 'TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS']
+    ];
+
+    orders.forEach((order, index) => {
+      const customSettings: Partial<TaskSyncSettings> = {
+        ...DEFAULT_SETTINGS,
+        taskPropertyOrder: order
+      };
+
+      const frontMatter = generateTaskFrontMatter(mockTaskData, { settings: customSettings as TaskSyncSettings });
+      const lines = frontMatter.split('\n').filter(line => line.trim() && !line.startsWith('---'));
+
+      // First property should match the first in the custom order
+      const expectedFirstProperty = order[0].toLowerCase().replace('_', ' ');
+      const actualFirstProperty = lines[0].toLowerCase();
+
+      // Handle special cases for property name mapping
+      if (order[0] === 'TITLE') {
+        expect(lines[0]).toMatch(/^Title:/);
+      } else if (order[0] === 'DONE') {
+        expect(lines[0]).toMatch(/^Done:/);
+      } else if (order[0] === 'TYPE') {
+        expect(lines[0]).toMatch(/^Type:/);
+      } else if (order[0] === 'TAGS') {
+        expect(lines[0]).toMatch(/^tags:/);
+      }
+    });
+  });
 });

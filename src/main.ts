@@ -1011,6 +1011,7 @@ export default class TaskSyncPlugin extends Plugin {
         filesUpdated: 0,
         propertiesUpdated: 0,
         basesRegenerated: 0,
+        templatesUpdated: 0,
         errors: [] as string[]
       };
 
@@ -1019,11 +1020,14 @@ export default class TaskSyncPlugin extends Plugin {
       // 1. Update task/project/area file properties
       await this.updateFileProperties(results);
 
-      // 2. Regenerate all base files (existing functionality)
+      // 2. Update template files to match current property order
+      await this.updateTemplateFiles(results);
+
+      // 3. Regenerate all base files (existing functionality)
       await this.regenerateBases();
       results.basesRegenerated = 1;
 
-      // 3. Provide feedback
+      // 4. Provide feedback
       this.showRefreshResults(results);
 
       console.log('Task Sync: Refresh completed successfully');
@@ -1102,6 +1106,112 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
+   * Update template files to match current property order
+   */
+  private async updateTemplateFiles(results: any): Promise<void> {
+    try {
+      console.log('Task Sync: Starting template file updates...');
+
+      // Update task templates
+      await this.updateTaskTemplates(results);
+
+      console.log(`Task Sync: Updated ${results.templatesUpdated} template files`);
+    } catch (error) {
+      console.error('Task Sync: Failed to update template files:', error);
+      results.errors.push(`Failed to update template files: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update task template files to match current property order
+   */
+  private async updateTaskTemplates(results: any): Promise<void> {
+    try {
+      const templateFiles = this.app.vault.getMarkdownFiles().filter(file =>
+        file.path.startsWith(this.settings.templateFolder + '/') &&
+        file.path.endsWith('.md')
+      );
+
+      for (const file of templateFiles) {
+        const content = await this.app.vault.read(file);
+
+        // Check if this is a task template (has task-like front-matter)
+        if (this.isTaskTemplate(content)) {
+          const updatedContent = await this.updateTaskTemplateContent(content);
+          if (updatedContent !== content) {
+            await this.app.vault.modify(file, updatedContent);
+            results.templatesUpdated++;
+            console.log(`Task Sync: Updated template ${file.path}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Task Sync: Failed to update task templates:', error);
+      results.errors.push(`Failed to update task templates: ${error.message}`);
+    }
+  }
+
+  /**
+   * Check if a template file is a task template
+   */
+  private isTaskTemplate(content: string): boolean {
+    // Check if the template has task-like properties in front-matter
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontMatterMatch) {
+      return false;
+    }
+
+    const frontMatterText = frontMatterMatch[1];
+    const taskProperties = ['Title', 'Type', 'Priority', 'Status', 'Done'];
+
+    return taskProperties.some(prop => frontMatterText.includes(`${prop}:`));
+  }
+
+  /**
+   * Update task template content to match current property order
+   */
+  private async updateTaskTemplateContent(content: string): Promise<string> {
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+    if (!frontMatterMatch) {
+      return content;
+    }
+
+    const [, frontMatterText, bodyContent] = frontMatterMatch;
+
+    // Parse existing front-matter
+    const existingData: Record<string, string> = {};
+    const lines = frontMatterText.split('\n');
+    for (const line of lines) {
+      const match = line.match(/^([^:]+):\s*(.*)$/);
+      if (match) {
+        const [, key, value] = match;
+        existingData[key.trim()] = value;
+      }
+    }
+
+    // Get the current property order
+    const properties = this.getTaskPropertiesInOrder();
+
+    // Regenerate front-matter in correct order
+    const frontMatterLines = ['---'];
+    for (const prop of properties) {
+      const value = existingData[prop.name] || '';
+      frontMatterLines.push(`${prop.name}: ${value}`);
+    }
+
+    // Add any additional properties not in the schema
+    for (const [key, value] of Object.entries(existingData)) {
+      if (!properties.some((p: any) => p.name === key)) {
+        frontMatterLines.push(`${key}: ${value}`);
+      }
+    }
+
+    frontMatterLines.push('---');
+
+    return frontMatterLines.join('\n') + '\n' + bodyContent;
+  }
+
+  /**
    * Get the current front-matter schema for a file type
    */
   private getFrontMatterSchema(type: 'task' | 'project' | 'area') {
@@ -1110,7 +1220,8 @@ export default class TaskSyncPlugin extends Plugin {
     let properties;
     switch (type) {
       case 'task':
-        properties = generateTaskFrontMatter();
+        // For tasks, use the custom property order from settings
+        properties = this.getTaskPropertiesInOrder();
         break;
       case 'project':
         properties = generateProjectFrontMatter();
@@ -1132,6 +1243,30 @@ export default class TaskSyncPlugin extends Plugin {
       };
     });
     return schema;
+  }
+
+  /**
+   * Get task properties in the custom order from settings
+   */
+  private getTaskPropertiesInOrder() {
+    const { PROPERTY_REGISTRY, PROPERTY_SETS } = require('./services/base-definitions/BaseConfigurations');
+
+    // Get property order from settings or use default
+    const propertyOrder = this.settings.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
+
+    // Validate property order - ensure all required properties are present
+    const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
+    const isValidOrder = requiredProperties.every((prop: any) => propertyOrder.includes(prop)) &&
+      propertyOrder.every((prop: any) => requiredProperties.includes(prop as typeof requiredProperties[number]));
+
+    // Use validated order or fall back to default
+    const finalPropertyOrder = isValidOrder ? propertyOrder : requiredProperties;
+
+    // Convert property keys to property definitions in the correct order
+    return finalPropertyOrder.map((propertyKey: any) => {
+      const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+      return { ...prop };
+    }).filter((prop: any) => prop); // Filter out any undefined properties
   }
 
   /**
@@ -1339,11 +1474,12 @@ export default class TaskSyncPlugin extends Plugin {
    * Show refresh results to the user
    */
   private showRefreshResults(results: any): void {
-    const { filesUpdated, propertiesUpdated, basesRegenerated, errors } = results;
+    const { filesUpdated, propertiesUpdated, basesRegenerated, templatesUpdated, errors } = results;
 
     let message = 'Refresh completed!\n\n';
     message += `• Files updated: ${filesUpdated}\n`;
     message += `• Properties updated: ${propertiesUpdated}\n`;
+    message += `• Templates updated: ${templatesUpdated}\n`;
     message += `• Bases regenerated: ${basesRegenerated}\n`;
 
     if (errors.length > 0) {

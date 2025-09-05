@@ -310,10 +310,8 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         this.plugin.settings.taskPropertyOrder = newOrder;
         await this.plugin.saveSettings();
 
-        // Trigger base sync if enabled
-        if (this.plugin.settings.autoSyncAreaProjectBases) {
-          await this.plugin.syncAreaProjectBases();
-        }
+        // Trigger refresh to update existing files with new property order
+        await this.plugin.refresh();
       },
       onReset: async () => {
         this.plugin.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
@@ -323,10 +321,8 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         section.empty();
         this.createTaskPropertyOrderSection(section.parentElement!);
 
-        // Trigger base sync if enabled
-        if (this.plugin.settings.autoSyncAreaProjectBases) {
-          await this.plugin.syncAreaProjectBases();
-        }
+        // Trigger refresh to update existing files with new property order
+        await this.plugin.refresh();
       }
     });
   }
