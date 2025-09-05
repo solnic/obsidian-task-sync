@@ -12,6 +12,7 @@ import { TaskSyncSettingTab } from './components/ui/settings';
 import type { TaskSyncSettings, TaskType, TaskTypeColor } from './components/ui/settings';
 import { EventManager } from './events';
 import { StatusDoneHandler } from './events/handlers';
+import { TaskPropertyHandler } from './events/handlers/TaskPropertyHandler';
 import { DEFAULT_SETTINGS, TASK_TYPE_COLORS } from './components/ui/settings';
 
 import pluralize from 'pluralize';
@@ -52,6 +53,7 @@ export default class TaskSyncPlugin extends Plugin {
   eventManager: EventManager;
   fileChangeListener: FileChangeListener;
   statusDoneHandler: StatusDoneHandler;
+  taskPropertyHandler: TaskPropertyHandler;
 
   async onload() {
     console.log('Loading Task Sync Plugin');
@@ -71,10 +73,12 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize event system
     this.eventManager = new EventManager();
     this.statusDoneHandler = new StatusDoneHandler(this.app, this.settings);
+    this.taskPropertyHandler = new TaskPropertyHandler(this.app, this.settings);
     this.fileChangeListener = new FileChangeListener(this.app, this.app.vault, this.eventManager, this.settings);
 
     // Register event handlers
     this.eventManager.registerHandler(this.statusDoneHandler);
+    this.eventManager.registerHandler(this.taskPropertyHandler);
 
     // Initialize file change listener
     await this.fileChangeListener.initialize();
@@ -179,6 +183,11 @@ export default class TaskSyncPlugin extends Plugin {
       // Update event system with new settings
       if (this.statusDoneHandler) {
         this.statusDoneHandler.updateSettings(this.settings);
+      }
+      if (this.taskPropertyHandler) {
+        this.taskPropertyHandler.updateSettings(this.settings);
+      }
+      if (this.statusDoneHandler || this.taskPropertyHandler) {
         console.log('Task Sync: Event system updated with new settings');
       }
 
@@ -823,8 +832,10 @@ export default class TaskSyncPlugin extends Plugin {
       // Replace template variables
       templateContent = this.processTemplateVariables(templateContent, data);
 
-      // Ensure proper base embedding
-      templateContent = this.ensureProperBaseEmbedding(templateContent, data);
+      // Ensure proper base embedding (only for projects and areas, not tasks)
+      if (entityType !== 'task') {
+        templateContent = this.ensureProperBaseEmbedding(templateContent, data);
+      }
 
       return templateContent;
     } catch (error) {
@@ -860,7 +871,8 @@ export default class TaskSyncPlugin extends Plugin {
     }
 
     if (data.areas) {
-      processedContent = processedContent.replace(/\{\{areas\}\}/g, data.areas);
+      const areasStr = Array.isArray(data.areas) ? data.areas.join(', ') : data.areas;
+      processedContent = processedContent.replace(/\{\{areas\}\}/g, areasStr);
     }
 
     // Replace task-specific variables

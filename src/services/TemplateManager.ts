@@ -6,6 +6,8 @@
 import { App, Vault, TFile } from 'obsidian';
 import { TaskSyncSettings } from '../main';
 import { generateTaskFrontMatter } from './base-definitions/FrontMatterGenerator';
+import { PROPERTY_SETS, PROPERTY_REGISTRY } from './base-definitions/BaseConfigurations';
+import matter from 'gray-matter';
 
 export class TemplateManager {
   constructor(
@@ -36,28 +38,36 @@ export class TemplateManager {
   }
 
   /**
-   * Generate the default task template content
+   * Generate the default task template content with clean front-matter structure
    */
   private generateTaskTemplateContent(): string {
-    // Create mock task data for front-matter generation
-    const mockTaskData = {
-      name: '',
-      description: '',
-      areas: [] as string[],
-      project: '',
-      priority: 'Low',
-      status: '',
-      parentTask: '',
-      subTasks: [] as string[],
-      tags: [] as string[]
-    };
+    return this.generateCleanTaskTemplate();
+  }
 
-    // Generate front-matter using the existing generator
-    const frontMatterContent = generateTaskFrontMatter(mockTaskData as any, {
-      templateContent: '{{description}}'
-    });
+  /**
+   * Generate a clean task template without pre-filled values
+   */
+  private generateCleanTaskTemplate(): string {
+    // Create clean front-matter structure using property definitions
+    const frontMatterData: Record<string, any> = {};
 
-    return frontMatterContent;
+    // Get task property definitions in the correct order
+    const taskProperties = PROPERTY_SETS.TASK_FRONTMATTER;
+
+    for (const propertyKey of taskProperties) {
+      const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+      if (!prop) continue;
+
+      // Set clean values based on property type
+      if (prop.type === 'array') {
+        frontMatterData[prop.name] = [];
+      } else {
+        frontMatterData[prop.name] = '';
+      }
+    }
+
+    // Use gray-matter to generate the front-matter with clean structure
+    return matter.stringify('{{description}}', frontMatterData);
   }
 
 

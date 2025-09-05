@@ -32,14 +32,14 @@ export interface ProjectAreaInfo {
 export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
   TITLE: { name: "Title", type: "string", source: "formula.Title" },
   TYPE: { name: "Type", type: "string" },
-  PRIORITY: { name: "Priority", type: "string" },
+  PRIORITY: { name: "Priority", type: "string", default: "Low" },
   AREAS: { name: "Areas", type: "array", link: true, default: [] },
   PROJECT: { name: "Project", type: "string", link: true },
   DONE: { name: "Done", type: "checkbox", default: false },
   STATUS: { name: "Status", type: "string", default: "Backlog" },
   PARENT_TASK: { name: "Parent task", type: "string", link: true },
-  SUB_TASKS: { name: "Sub-tasks", type: "array", link: true },
-  TAGS: { name: "tags", type: "array" },
+  SUB_TASKS: { name: "Sub-tasks", type: "array", link: true, default: [] },
+  TAGS: { name: "tags", type: "array", default: [] },
   CREATED_AT: { name: "Created At", type: "string", source: "file.ctime" },
   UPDATED_AT: { name: "Updated At", type: "string", source: "file.mtime" }
 };
