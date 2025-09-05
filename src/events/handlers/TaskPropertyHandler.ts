@@ -163,30 +163,30 @@ export class TaskPropertyHandler implements EventHandler {
   }
 
   private getDefaultType(): string {
-    return this.settings.taskTypes[0]?.name || 'Task';
+    return this.settings.taskTypes[0]?.name;
   }
 
   private getDefaultPriority(): string {
-    return PROPERTY_REGISTRY.PRIORITY.default || 'Low';
+    return PROPERTY_REGISTRY.PRIORITY.default;
   }
 
   private getDefaultDone(): boolean {
-    return PROPERTY_REGISTRY.DONE.default || false;
+    return PROPERTY_REGISTRY.DONE.default;
   }
 
   private getDefaultStatus(): string {
-    return this.settings.taskStatuses[0]?.name || 'Backlog';
+    return this.settings.taskStatuses[0]?.name;
   }
 
   private getDefaultAreas(): any[] {
-    return PROPERTY_REGISTRY.AREAS.default || [];
+    return PROPERTY_REGISTRY.AREAS.default;
   }
 
   private getDefaultSubTasks(): any[] {
-    return PROPERTY_REGISTRY.SUB_TASKS.default || [];
+    return PROPERTY_REGISTRY.SUB_TASKS.default;
   }
 
   private getDefaultTags(): any[] {
-    return PROPERTY_REGISTRY.TAGS.default || [];
+    return PROPERTY_REGISTRY.TAGS.default;
   }
 }
