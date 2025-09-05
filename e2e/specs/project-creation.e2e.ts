@@ -78,8 +78,9 @@ describe('Project Creation', () => {
     const projectContent = await getFileContent(context.page, 'Projects/Test Project.md');
     expect(projectContent).toContain('Name: Test Project');
     expect(projectContent).toContain('Type: Project');
-    // Gray-matter generates YAML arrays in standard format
-    expect(projectContent).toContain('Areas:\n  - \'Work, Development\'');
+    // Areas should be split into array format
+    expect(projectContent).toContain('- Work');
+    expect(projectContent).toContain('- Development');
     expect(projectContent).toContain('This is a test project for e2e testing');
     expect(projectContent).toContain('![[Bases/Test Project.base]]');
   });
@@ -216,6 +217,14 @@ Status: Planning
         await app.vault.create('Templates/project-template.md', templateContent);
       } catch (error) {
         console.log('Template creation error:', error);
+        // If file already exists, modify it instead
+        if (error.message.includes('already exists')) {
+          const existingFile = app.vault.getAbstractFileByPath('Templates/project-template.md');
+          if (existingFile) {
+            await app.vault.modify(existingFile, templateContent);
+            console.log('Template file updated successfully');
+          }
+        }
       }
     });
 
@@ -258,7 +267,8 @@ Status: Planning
     expect(projectContent).toContain('## Objectives');
     expect(projectContent).toContain('## Milestones');
     expect(projectContent).toContain('Build a modern e-commerce platform with React and Node.js');
-    expect(projectContent).toContain('Areas: Work, Technology');
+    expect(projectContent).toContain('- Work');
+    expect(projectContent).toContain('- Technology');
     expect(projectContent).toContain('![[Bases/E-commerce Platform.base]]');
   });
 

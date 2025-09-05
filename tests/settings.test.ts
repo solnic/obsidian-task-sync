@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { TaskSyncSettings } from '../src/main';
+import { validateFolderPath } from '../src/components/ui/settings';
 
 describe('TaskSync Settings', () => {
   describe('Settings Interface', () => {
@@ -336,6 +337,47 @@ describe('TaskSync Settings', () => {
 
       expect(settings2.useTemplater).toBe(false);
       expect(settings2.defaultTaskTemplate).toBe('task.md');
+    });
+  });
+
+  describe('Folder Path Validation', () => {
+    it('should reject "Obsidian" folder names', () => {
+      const result1 = validateFolderPath('Obsidian');
+      expect(result1.isValid).toBe(false);
+      expect(result1.error).toContain('Obsidian');
+      expect(result1.error).toContain('not recommended');
+
+      const result2 = validateFolderPath('Obsidian/Templates');
+      expect(result2.isValid).toBe(false);
+      expect(result2.error).toContain('Obsidian');
+
+      const result3 = validateFolderPath('obsidian/templates');
+      expect(result3.isValid).toBe(false);
+      expect(result3.error).toContain('obsidian');
+    });
+
+    it('should accept valid folder names', () => {
+      const result1 = validateFolderPath('Templates');
+      expect(result1.isValid).toBe(true);
+
+      const result2 = validateFolderPath('MyTemplates');
+      expect(result2.isValid).toBe(true);
+
+      const result3 = validateFolderPath('Custom/Templates');
+      expect(result3.isValid).toBe(true);
+
+      const result4 = validateFolderPath('');
+      expect(result4.isValid).toBe(true);
+    });
+
+    it('should reject invalid characters', () => {
+      const result1 = validateFolderPath('Templates<>');
+      expect(result1.isValid).toBe(false);
+      expect(result1.error).toContain('invalid characters');
+
+      const result2 = validateFolderPath('Templates|Test');
+      expect(result2.isValid).toBe(false);
+      expect(result2.error).toContain('invalid characters');
     });
   });
 });

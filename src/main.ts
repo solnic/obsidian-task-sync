@@ -13,7 +13,9 @@ import type { TaskSyncSettings, TaskType, TaskTypeColor } from './components/ui/
 import { EventManager } from './events';
 import { StatusDoneHandler } from './events/handlers';
 import { TaskPropertyHandler } from './events/handlers/TaskPropertyHandler';
-import { DEFAULT_SETTINGS, TASK_TYPE_COLORS } from './components/ui/settings';
+import { AreaPropertyHandler } from './events/handlers/AreaPropertyHandler';
+import { ProjectPropertyHandler } from './events/handlers/ProjectPropertyHandler';
+import { DEFAULT_SETTINGS, TASK_TYPE_COLORS, validateFolderPath } from './components/ui/settings';
 
 import pluralize from 'pluralize';
 
@@ -54,6 +56,8 @@ export default class TaskSyncPlugin extends Plugin {
   fileChangeListener: FileChangeListener;
   statusDoneHandler: StatusDoneHandler;
   taskPropertyHandler: TaskPropertyHandler;
+  areaPropertyHandler: AreaPropertyHandler;
+  projectPropertyHandler: ProjectPropertyHandler;
 
   async onload() {
     console.log('Loading Task Sync Plugin');
@@ -70,15 +74,22 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize storage service
     await this.storageService.initialize();
 
+    // Validate and create missing templates
+    await this.validateAndCreateTemplates();
+
     // Initialize event system
     this.eventManager = new EventManager();
     this.statusDoneHandler = new StatusDoneHandler(this.app, this.settings);
     this.taskPropertyHandler = new TaskPropertyHandler(this.app, this.settings);
+    this.areaPropertyHandler = new AreaPropertyHandler(this.app, this.settings);
+    this.projectPropertyHandler = new ProjectPropertyHandler(this.app, this.settings);
     this.fileChangeListener = new FileChangeListener(this.app, this.app.vault, this.eventManager, this.settings);
 
     // Register event handlers
     this.eventManager.registerHandler(this.statusDoneHandler);
     this.eventManager.registerHandler(this.taskPropertyHandler);
+    this.eventManager.registerHandler(this.areaPropertyHandler);
+    this.eventManager.registerHandler(this.projectPropertyHandler);
 
     // Initialize file change listener
     await this.fileChangeListener.initialize();
@@ -187,7 +198,13 @@ export default class TaskSyncPlugin extends Plugin {
       if (this.taskPropertyHandler) {
         this.taskPropertyHandler.updateSettings(this.settings);
       }
-      if (this.statusDoneHandler || this.taskPropertyHandler) {
+      if (this.areaPropertyHandler) {
+        this.areaPropertyHandler.updateSettings(this.settings);
+      }
+      if (this.projectPropertyHandler) {
+        this.projectPropertyHandler.updateSettings(this.settings);
+      }
+      if (this.statusDoneHandler || this.taskPropertyHandler || this.areaPropertyHandler || this.projectPropertyHandler) {
         console.log('Task Sync: Event system updated with new settings');
       }
 
@@ -212,11 +229,127 @@ export default class TaskSyncPlugin extends Plugin {
     // Validate folder names (allow empty strings but ensure they're strings)
     const folderFields = ['tasksFolder', 'projectsFolder', 'areasFolder', 'templateFolder'];
     folderFields.forEach(field => {
-      if (typeof this.settings[field as keyof TaskSyncSettings] !== 'string') {
+      const folderPath = this.settings[field as keyof TaskSyncSettings] as string;
+
+      if (typeof folderPath !== 'string') {
         console.warn(`Task Sync: Invalid ${field}, using default`);
+        (this.settings as any)[field] = (DEFAULT_SETTINGS as any)[field];
+        return;
+      }
+
+      // Validate folder path using validation function
+      const validation = validateFolderPath(folderPath);
+      if (!validation.isValid) {
+        console.error(`Task Sync: Invalid ${field}: ${validation.error}`);
+        console.warn(`Task Sync: Resetting ${field} to default value`);
         (this.settings as any)[field] = (DEFAULT_SETTINGS as any)[field];
       }
     });
+  }
+
+  /**
+   * Validate that configured template files exist and create missing default templates
+   */
+  private async validateAndCreateTemplates(): Promise<void> {
+    try {
+      let settingsUpdated = false;
+
+      // Check and create default Task template if missing or not configured
+      if (!this.settings.defaultTaskTemplate) {
+        // Set default template name if not configured
+        this.settings.defaultTaskTemplate = DEFAULT_SETTINGS.defaultTaskTemplate;
+        settingsUpdated = true;
+        console.log(`Task Sync: No task template configured, setting default: ${this.settings.defaultTaskTemplate}`);
+      }
+
+      if (this.settings.defaultTaskTemplate) {
+        const taskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultTaskTemplate}`;
+        const taskTemplateExists = await this.app.vault.adapter.exists(taskTemplatePath);
+
+        if (!taskTemplateExists) {
+          console.log(`Task Sync: Default task template '${this.settings.defaultTaskTemplate}' not found, creating it...`);
+          try {
+            await this.templateManager.createTaskTemplate(this.settings.defaultTaskTemplate);
+            console.log(`Task Sync: Created default task template: ${taskTemplatePath}`);
+          } catch (error) {
+            console.error(`Task Sync: Failed to create default task template:`, error);
+          }
+        }
+      }
+
+      // Check and create default Area template if missing or not configured
+      if (!this.settings.defaultAreaTemplate) {
+        this.settings.defaultAreaTemplate = DEFAULT_SETTINGS.defaultAreaTemplate;
+        settingsUpdated = true;
+        console.log(`Task Sync: No area template configured, setting default: ${this.settings.defaultAreaTemplate}`);
+      }
+
+      if (this.settings.defaultAreaTemplate) {
+        const areaTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultAreaTemplate}`;
+        const areaTemplateExists = await this.app.vault.adapter.exists(areaTemplatePath);
+
+        if (!areaTemplateExists) {
+          console.log(`Task Sync: Default area template '${this.settings.defaultAreaTemplate}' not found, creating it...`);
+          try {
+            await this.templateManager.createAreaTemplate(this.settings.defaultAreaTemplate);
+            console.log(`Task Sync: Created default area template: ${areaTemplatePath}`);
+          } catch (error) {
+            console.error(`Task Sync: Failed to create default area template:`, error);
+          }
+        }
+      }
+
+      // Check and create default Project template if missing or not configured
+      if (!this.settings.defaultProjectTemplate) {
+        this.settings.defaultProjectTemplate = DEFAULT_SETTINGS.defaultProjectTemplate;
+        settingsUpdated = true;
+        console.log(`Task Sync: No project template configured, setting default: ${this.settings.defaultProjectTemplate}`);
+      }
+
+      if (this.settings.defaultProjectTemplate) {
+        const projectTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultProjectTemplate}`;
+        const projectTemplateExists = await this.app.vault.adapter.exists(projectTemplatePath);
+
+        if (!projectTemplateExists) {
+          console.log(`Task Sync: Default project template '${this.settings.defaultProjectTemplate}' not found, creating it...`);
+          try {
+            await this.templateManager.createProjectTemplate(this.settings.defaultProjectTemplate);
+            console.log(`Task Sync: Created default project template: ${projectTemplatePath}`);
+          } catch (error) {
+            console.error(`Task Sync: Failed to create default project template:`, error);
+          }
+        }
+      }
+
+      // Check and create default Parent Task template if missing or not configured
+      if (!this.settings.defaultParentTaskTemplate) {
+        this.settings.defaultParentTaskTemplate = DEFAULT_SETTINGS.defaultParentTaskTemplate;
+        settingsUpdated = true;
+        console.log(`Task Sync: No parent task template configured, setting default: ${this.settings.defaultParentTaskTemplate}`);
+      }
+
+      if (this.settings.defaultParentTaskTemplate) {
+        const parentTaskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultParentTaskTemplate}`;
+        const parentTaskTemplateExists = await this.app.vault.adapter.exists(parentTaskTemplatePath);
+
+        if (!parentTaskTemplateExists) {
+          console.log(`Task Sync: Default parent task template '${this.settings.defaultParentTaskTemplate}' not found, creating it...`);
+          try {
+            await this.templateManager.createParentTaskTemplate(this.settings.defaultParentTaskTemplate);
+            console.log(`Task Sync: Created default parent task template: ${parentTaskTemplatePath}`);
+          } catch (error) {
+            console.error(`Task Sync: Failed to create default parent task template:`, error);
+          }
+        }
+      }
+
+      // Save settings if any templates were created
+      if (settingsUpdated) {
+        await this.saveSettings();
+      }
+    } catch (error) {
+      console.error('Task Sync: Failed to validate and create templates:', error);
+    }
   }
 
   // UI Methods
@@ -686,42 +819,24 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   private async generateTaskContent(taskData: any): Promise<string> {
-    // Use template if configured, otherwise use default
-    if (this.settings.defaultTaskTemplate) {
-      try {
-        return await this.generateFromTemplate(this.settings.defaultTaskTemplate, taskData, 'task');
-      } catch (error) {
-        console.error('Failed to use task template, falling back to default:', error);
-      }
+    // Always use template - it should be created during initialization
+    if (!this.settings.defaultTaskTemplate) {
+      throw new Error('No default task template configured');
     }
 
-    // Import the new front-matter generator
-    const { generateTaskFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
-
-    return generateTaskFrontMatter(taskData, {
-      includeDescription: true
-    });
+    return await this.generateFromTemplate(this.settings.defaultTaskTemplate, taskData, 'task');
   }
 
   /**
    * Generate default parent task content
    */
   private async generateParentTaskContent(taskData: any): Promise<string> {
-    // Use template if configured, otherwise use default
-    if (this.settings.defaultParentTaskTemplate) {
-      try {
-        return await this.generateFromTemplate(this.settings.defaultParentTaskTemplate, taskData, 'task');
-      } catch (error) {
-        console.error('Failed to use parent task template, falling back to default:', error);
-      }
+    // Always use template - it should be created during initialization
+    if (!this.settings.defaultParentTaskTemplate) {
+      throw new Error('No default parent task template configured');
     }
 
-    // Import the new front-matter generator
-    const { generateParentTaskFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
-
-    return generateParentTaskFrontMatter(taskData, {
-      includeDescription: true
-    });
+    return await this.generateFromTemplate(this.settings.defaultParentTaskTemplate, taskData, 'task');
   }
 
   /**
@@ -807,6 +922,7 @@ export default class TaskSyncPlugin extends Plugin {
     // Import the new front-matter generator
     const { generateProjectFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
 
+
     return generateProjectFrontMatter(projectData);
   }
 
@@ -815,20 +931,44 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async generateFromTemplate(templateName: string, data: any, entityType?: 'task' | 'project' | 'area'): Promise<string> {
     try {
-      const templatePath = `${this.settings.templateFolder}/${templateName}`;
-      const templateFile = this.app.vault.getAbstractFileByPath(templatePath);
 
-      if (!templateFile || !(templateFile instanceof TFile)) {
-        console.warn(`Template not found: ${templatePath}, using default content`);
-        // For tasks, throw error to let the calling method handle fallback
-        if (entityType === 'task') {
+      const templatePath = `${this.settings.templateFolder}/${templateName}`;
+      let templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+
+      // Also check if the file actually exists on disk, not just in Obsidian's cache
+      const fileExistsOnDisk = await this.app.vault.adapter.exists(templatePath);
+
+      if (!templateFile || !(templateFile instanceof TFile) || !fileExistsOnDisk) {
+        console.warn(`Template not found: ${templatePath}, creating it...`);
+
+        // Try to create the missing template
+        if (entityType === 'task' && templateName === this.settings.defaultTaskTemplate) {
+          await this.templateManager.createTaskTemplate(templateName);
+        } else if (entityType === 'task' && templateName === this.settings.defaultParentTaskTemplate) {
+          await this.templateManager.createParentTaskTemplate(templateName);
+        } else if (entityType === 'area' && templateName === this.settings.defaultAreaTemplate) {
+          await this.templateManager.createAreaTemplate(templateName);
+        } else if (entityType === 'project' && templateName === this.settings.defaultProjectTemplate) {
+          await this.templateManager.createProjectTemplate(templateName);
+        } else {
+          // Unknown template, can't create it
           throw new Error(`Template not found: ${templatePath}`);
         }
-        // For projects and areas, fall back to default generation
-        if (data.hasOwnProperty('areas')) {
-          return this.generateProjectContent(data as ProjectCreateData);
-        } else {
-          return this.generateAreaContent(data as AreaCreateData);
+
+        // Wait for Obsidian to process the new file and retry multiple times
+        let retries = 0;
+        const maxRetries = 10;
+        while (retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+          if (templateFile && templateFile instanceof TFile) {
+            break;
+          }
+          retries++;
+        }
+
+        if (!templateFile || !(templateFile instanceof TFile)) {
+          throw new Error(`Failed to create template after ${maxRetries} retries: ${templatePath}`);
         }
       }
 
@@ -864,6 +1004,25 @@ export default class TaskSyncPlugin extends Plugin {
   private processTemplateVariables(content: string, data: any): string {
     let processedContent = content;
 
+    // Handle front-matter fields specifically for tasks
+    if (data.name && processedContent.includes('Title: \'\'')) {
+      processedContent = processedContent.replace('Title: \'\'', `Title: '${data.name}'`);
+    } else if (data.name && processedContent.includes('Title: ""')) {
+      processedContent = processedContent.replace('Title: ""', `Title: "${data.name}"`);
+    } else if (data.name && processedContent.includes('Title:')) {
+      // Handle cases where Title is empty without quotes
+      processedContent = processedContent.replace(/^Title:\s*$/m, `Title: '${data.name}'`);
+    }
+
+    // Handle Type field
+    if (data.type && processedContent.includes('Type: \'\'')) {
+      processedContent = processedContent.replace('Type: \'\'', `Type: ${data.type}`);
+    } else if (data.type && processedContent.includes('Type: ""')) {
+      processedContent = processedContent.replace('Type: ""', `Type: ${data.type}`);
+    } else if (data.type && processedContent.includes('Type:')) {
+      processedContent = processedContent.replace(/^Type:\s*$/m, `Type: ${data.type}`);
+    }
+
     // Replace common variables
     if (data.name) {
       processedContent = processedContent.replace(/<% tp\.file\.title %>/g, data.name);
@@ -876,8 +1035,24 @@ export default class TaskSyncPlugin extends Plugin {
     }
 
     if (data.areas) {
-      const areasStr = Array.isArray(data.areas) ? data.areas.join(', ') : data.areas;
+      // Convert areas to proper array format for YAML
+      const areasArray = Array.isArray(data.areas) ? data.areas : data.areas.split(',').map((s: string) => s.trim());
+
+      // For template variables, use array format
+      const yamlArray = areasArray.map((area: string) => `  - ${area}`).join('\n');
+      const areasYaml = `Areas:\n${yamlArray}`;
+
+      // Replace {{areas}} with proper YAML array format
+      processedContent = processedContent.replace(/Areas:\s*\{\{areas\}\}/g, areasYaml);
+
+      // Also handle standalone {{areas}} replacement for content (not properties)
+      const areasStr = areasArray.join(', ');
       processedContent = processedContent.replace(/\{\{areas\}\}/g, areasStr);
+
+      // Also update the Areas field in YAML front-matter if it's an empty array
+      if (processedContent.includes('Areas: []')) {
+        processedContent = processedContent.replace('Areas: []', areasYaml);
+      }
     }
 
     // Replace task-specific variables
@@ -1359,18 +1534,22 @@ export default class TaskSyncPlugin extends Plugin {
       }
 
       // Check if file has correct Type property for its expected type
-      if (type === 'project' && existingFrontMatter.Type !== 'Project') {
-        // For projects, Type property must be 'Project'
-        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Project, found: ${existingFrontMatter.Type})`);
-        return;
+      if (type === 'project') {
+        if (!existingFrontMatter.Type || existingFrontMatter.Type !== 'Project') {
+          // For projects, Type property must be 'Project'
+          console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Project, found: ${existingFrontMatter.Type || 'missing'})`);
+          return;
+        }
       }
-      if (type === 'area' && existingFrontMatter.Type !== 'Area') {
-        // For areas, Type property must be 'Area'
-        console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Area, found: ${existingFrontMatter.Type})`);
-        return;
+      if (type === 'area') {
+        if (!existingFrontMatter.Type || existingFrontMatter.Type !== 'Area') {
+          // For areas, Type property must be 'Area'
+          console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Area, found: ${existingFrontMatter.Type || 'missing'})`);
+          return;
+        }
       }
       if (type === 'task' && existingFrontMatter.Type) {
-        // For tasks, check if Type is one of the configured task types
+        // For tasks, check if Type is one of the configured task types (Type is optional for tasks)
         const validTaskTypes = this.settings.taskTypes.map(t => t.name);
         if (!validTaskTypes.includes(existingFrontMatter.Type)) {
           console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected one of: ${validTaskTypes.join(', ')}, found: ${existingFrontMatter.Type})`);

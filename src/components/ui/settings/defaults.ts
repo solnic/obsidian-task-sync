@@ -72,6 +72,6 @@ export const DEFAULT_TEMPLATE_NAMES = {
  * Validation patterns for settings
  */
 export const VALIDATION_PATTERNS = {
-  folderName: /^[^<>:"/\\|?*\x00-\x1f]*$/,
+  folderName: /^[^<>:"\\|?*\x00-\x1f]*$/,  // Allow forward slashes for folder paths
   fileName: /^[^<>:"/\\|?*\x00-\x1f]+\.[a-zA-Z0-9]+$/
 } as const;

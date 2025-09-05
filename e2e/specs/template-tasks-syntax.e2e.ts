@@ -65,7 +65,7 @@ Additional project notes here.
         await plugin.createProject({
           name: 'Mobile App Development',
           description: 'Building a cross-platform mobile application',
-          areas: 'Technology, Business'
+          areas: ['Technology', 'Business']
         });
       }
     });
@@ -85,7 +85,8 @@ Additional project notes here.
 
     // Verify other variables were processed
     expect(projectContent).toContain('Name: Mobile App Development');
-    expect(projectContent).toContain('Areas: Technology, Business');
+    expect(projectContent).toContain('- Technology');
+    expect(projectContent).toContain('- Business');
     expect(projectContent).toContain('Building a cross-platform mobile application');
   });
 

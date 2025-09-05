@@ -36,6 +36,10 @@ describe('Todo Promotion E2E', () => {
     await context.page.click('.cm-editor');
     await context.page.waitForTimeout(500);
 
+    // Position cursor on the todo line explicitly using keyboard navigation
+    await context.page.keyboard.press('Control+Home'); // Go to beginning of document
+    await context.page.waitForTimeout(200);
+
     // Execute the promote todo command
     await executeCommand(context, 'Task Sync: Promote Todo to Task');
     await context.page.waitForTimeout(3000);
@@ -70,6 +74,10 @@ describe('Todo Promotion E2E', () => {
     // Click on the editor to focus it
     await context.page.click('.cm-editor');
     await context.page.waitForTimeout(500);
+
+    // Position cursor on the todo line explicitly using keyboard navigation
+    await context.page.keyboard.press('Control+Home'); // Go to beginning of document
+    await context.page.waitForTimeout(200);
 
     // Execute the promote todo command
     await executeCommand(context, 'Task Sync: Promote Todo to Task');
@@ -106,6 +114,10 @@ describe('Todo Promotion E2E', () => {
     await context.page.click('.cm-editor');
     await context.page.waitForTimeout(500);
 
+    // Position cursor on the todo line explicitly using keyboard navigation
+    await context.page.keyboard.press('Control+Home'); // Go to beginning of document
+    await context.page.waitForTimeout(200);
+
     // Execute the promote todo command
     await executeCommand(context, 'Task Sync: Promote Todo to Task');
     await context.page.waitForTimeout(3000);
@@ -141,6 +153,10 @@ describe('Todo Promotion E2E', () => {
     await context.page.click('.cm-editor');
     await context.page.waitForTimeout(500);
 
+    // Position cursor on the todo line explicitly using keyboard navigation
+    await context.page.keyboard.press('Control+Home'); // Go to beginning of document
+    await context.page.waitForTimeout(200);
+
     // Execute the promote todo command
     await executeCommand(context, 'Task Sync: Promote Todo to Task');
     await context.page.waitForTimeout(2000);
@@ -170,6 +186,10 @@ describe('Todo Promotion E2E', () => {
     // Click on the editor to focus it
     await context.page.click('.cm-editor');
     await context.page.waitForTimeout(500);
+
+    // Position cursor on the todo line explicitly using keyboard navigation
+    await context.page.keyboard.press('Control+Home'); // Go to beginning of document
+    await context.page.waitForTimeout(200);
 
     // Execute the promote todo command
     await executeCommand(context, 'Task Sync: Promote Todo to Task');

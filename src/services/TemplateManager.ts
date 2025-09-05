@@ -6,7 +6,7 @@
 import { App, Vault, TFile } from 'obsidian';
 import { TaskSyncSettings } from '../main';
 import { generateTaskFrontMatter } from './base-definitions/FrontMatterGenerator';
-import { PROPERTY_SETS, PROPERTY_REGISTRY, generateAreaFrontMatter as getAreaPropertyDefinitions, generateProjectFrontMatter as getProjectPropertyDefinitions } from './base-definitions/BaseConfigurations';
+import { PROPERTY_SETS, PROPERTY_REGISTRY, generateAreaFrontMatter as getAreaPropertyDefinitions, generateProjectFrontMatter as getProjectPropertyDefinitions, generateTaskFrontMatter as getTaskPropertyDefinitions } from './base-definitions/BaseConfigurations';
 import matter from 'gray-matter';
 
 export class TemplateManager {
@@ -29,26 +29,21 @@ export class TemplateManager {
       throw new Error(`Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`);
     }
 
-    // Generate template content
-    const templateContent = this.generateTaskTemplateContent();
+    // Generate template content with configured default values
+    const templateContent = this.generateTaskTemplateWithDefaults();
 
     // Create the template file (Obsidian will create the folder automatically if needed)
     await this.vault.create(templatePath, templateContent);
     console.log(`Created task template: ${templatePath}`);
   }
 
-  /**
-   * Generate the default task template content with clean front-matter structure
-   */
-  private generateTaskTemplateContent(): string {
-    return this.generateCleanTaskTemplate();
-  }
+
 
   /**
-   * Generate a clean task template without pre-filled values
+   * Generate a task template with default values for auto-creation
    */
-  private generateCleanTaskTemplate(): string {
-    // Create clean front-matter structure using property definitions
+  private generateTaskTemplateWithDefaults(): string {
+    // Create front-matter structure using property definitions with defaults
     const frontMatterData: Record<string, any> = {};
 
     // Get property order from settings or use default
@@ -66,18 +61,22 @@ export class TemplateManager {
       const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
       if (!prop) continue;
 
-      // Set clean values based on property type
-      if (prop.type === 'array') {
+      // Use default values from property definitions
+      if (prop.default !== undefined) {
+        frontMatterData[prop.name] = prop.default;
+      } else if (prop.type === 'array') {
         frontMatterData[prop.name] = [];
       } else {
-        // Use empty string for clean template values
+        // Use empty string for properties without defaults
         frontMatterData[prop.name] = '';
       }
     }
 
-    // Use gray-matter to generate the front-matter with clean structure
+    // Use gray-matter to generate the front-matter with default values
     return matter.stringify('{{description}}', frontMatterData);
   }
+
+
 
   /**
    * Create an Area template file with proper front-matter and content
@@ -101,33 +100,35 @@ export class TemplateManager {
   }
 
   /**
-   * Generate the default area template content with clean front-matter structure
+   * Generate the default area template content with default values
    */
   private generateAreaTemplateContent(): string {
-    return this.generateCleanAreaTemplate();
+    return this.generateAreaTemplateWithDefaults();
   }
 
   /**
-   * Generate a clean area template without pre-filled values
+   * Generate an area template with default values
    */
-  private generateCleanAreaTemplate(): string {
-    // Create clean front-matter structure using property definitions
+  private generateAreaTemplateWithDefaults(): string {
+    // Create front-matter structure using property definitions with defaults
     const frontMatterData: Record<string, any> = {};
 
     // Get area property definitions in the correct order
     const areaProperties = getAreaPropertyDefinitions();
 
     for (const prop of areaProperties) {
-      // Set clean values based on property type
-      if (prop.type === 'array') {
+      // Use default values from property definitions
+      if (prop.default !== undefined) {
+        frontMatterData[prop.name] = prop.default;
+      } else if (prop.type === 'array') {
         frontMatterData[prop.name] = [];
       } else {
-        // Use empty string for clean template values
+        // Use empty string for properties without defaults
         frontMatterData[prop.name] = '';
       }
     }
 
-    // Use gray-matter to generate the front-matter with clean structure
+    // Use gray-matter to generate the front-matter with default values
     return matter.stringify('{{description}}', frontMatterData);
   }
 
@@ -153,34 +154,93 @@ export class TemplateManager {
   }
 
   /**
-   * Generate the default project template content with clean front-matter structure
+   * Generate the default project template content with default values
    */
   private generateProjectTemplateContent(): string {
-    return this.generateCleanProjectTemplate();
+    return this.generateProjectTemplateWithDefaults();
   }
 
   /**
-   * Generate a clean project template without pre-filled values
+   * Generate a project template with default values
    */
-  private generateCleanProjectTemplate(): string {
-    // Create clean front-matter structure using property definitions
+  private generateProjectTemplateWithDefaults(): string {
+    // Create front-matter structure using property definitions with defaults
     const frontMatterData: Record<string, any> = {};
 
     // Get project property definitions in the correct order
     const projectProperties = getProjectPropertyDefinitions();
 
     for (const prop of projectProperties) {
-      // Set clean values based on property type
-      if (prop.type === 'array') {
+      // Use default values from property definitions
+      if (prop.default !== undefined) {
+        frontMatterData[prop.name] = prop.default;
+      } else if (prop.type === 'array') {
         frontMatterData[prop.name] = [];
       } else {
-        // Use empty string for clean template values
+        // Use empty string for properties without defaults
+        frontMatterData[prop.name] = '';
+      }
+    }
+
+    // Use gray-matter to generate the front-matter with default values
+    return matter.stringify('{{description}}', frontMatterData);
+  }
+
+  /**
+   * Create a Parent Task template file with proper front-matter and content
+   */
+  async createParentTaskTemplate(filename?: string): Promise<void> {
+    const templateFileName = filename || this.settings.defaultParentTaskTemplate;
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    // Check if file already exists
+    const fileExists = await this.vault.adapter.exists(templatePath);
+    if (fileExists) {
+      throw new Error(`Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`);
+    }
+
+    // Generate template content
+    const templateContent = this.generateParentTaskTemplateContent();
+
+    // Create the template file (Obsidian will create the folder automatically if needed)
+    await this.vault.create(templatePath, templateContent);
+    console.log(`Created parent task template: ${templatePath}`);
+  }
+
+  /**
+   * Generate the default parent task template content with default values
+   */
+  private generateParentTaskTemplateContent(): string {
+    return this.generateParentTaskTemplateWithDefaults();
+  }
+
+  /**
+   * Generate a parent task template with default values
+   */
+  private generateParentTaskTemplateWithDefaults(): string {
+    // Create front-matter structure using property definitions with defaults
+    const frontMatterData: Record<string, any> = {};
+
+    // Get task property definitions in the correct order
+    const taskProperties = getTaskPropertyDefinitions();
+
+    for (const prop of taskProperties) {
+      // Use default values from property definitions
+      if (prop.default !== undefined) {
+        frontMatterData[prop.name] = prop.default;
+      } else if (prop.type === 'array') {
+        frontMatterData[prop.name] = [];
+      } else {
+        // Use empty string for properties without defaults
         frontMatterData[prop.name] = '';
       }
     }
 
     // Use gray-matter to generate the front-matter with clean structure
-    return matter.stringify('{{description}}', frontMatterData);
+    const baseContent = matter.stringify('{{description}}', frontMatterData);
+
+    // Add embedded base for sub-tasks
+    return baseContent + '\n\n## Sub-tasks\n\n![[Bases/{{name}}.base]]';
   }
 
 }

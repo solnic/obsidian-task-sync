@@ -15,7 +15,7 @@ import { setupE2ETestHooks } from '../helpers/shared-context';
 describe('Clean Template Generation', () => {
   const context = setupE2ETestHooks();
 
-  test('should generate task template with clean front-matter structure', async () => {
+  test('should generate task template with configured default values', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
@@ -33,10 +33,10 @@ describe('Clean Template Generation', () => {
     const templateExists = await fileExists(context.page, 'Templates/Clean Task.md');
     expect(templateExists).toBe(true);
 
-    // Verify the template has clean front-matter structure
+    // Verify the template has proper front-matter structure with defaults
     const templateContent = await getFileContent(context.page, 'Templates/Clean Task.md');
 
-    // Should have front-matter structure but without pre-filled values
+    // Should have front-matter structure with configured default values
     expect(templateContent).toContain('---');
     expect(templateContent).toContain('Title:');
     expect(templateContent).toContain('Type:');
@@ -49,11 +49,10 @@ describe('Clean Template Generation', () => {
     expect(templateContent).toContain('Sub-tasks:');
     expect(templateContent).toContain('tags:');
 
-    // Should NOT have pre-filled values (except for arrays which should be empty)
-    expect(templateContent).not.toContain('Type: Task');
-    expect(templateContent).not.toContain('Priority: Low');
-    expect(templateContent).not.toContain('Done: false');
-    expect(templateContent).not.toContain('Status: Backlog');
+    // Should have configured default values
+    expect(templateContent).toContain('Priority: Low');
+    expect(templateContent).toContain('Done: false');
+    expect(templateContent).toContain('Status: Backlog');
 
     // Arrays should be empty
     expect(templateContent).toContain('Areas: []');

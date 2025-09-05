@@ -194,7 +194,7 @@ export class StatusDoneHandler implements EventHandler {
    * Update the Status field in a file
    */
   private async updateStatusField(filePath: string, newStatus: string): Promise<void> {
-    await this.updateFrontmatterField(filePath, 'Status', newStatus);
+    await this.updateFrontmatterField(filePath, 'Status', newStatus, true); // Allow override when triggered by done change
   }
 
   /**

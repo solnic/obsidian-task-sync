@@ -85,12 +85,12 @@ export function generateTaskFrontMatter(
 
   // Generate content
   let content = '';
-  if (options.includeDescription && taskData.description) {
+  if (taskData.description) {
     content = taskData.description;
   } else if (options.templateContent) {
     content = options.templateContent;
   } else {
-    content = 'Task description...';
+    content = 'This task uses default generation';
   }
 
   // Use gray-matter to generate the front-matter

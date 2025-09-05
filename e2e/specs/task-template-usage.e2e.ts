@@ -95,7 +95,7 @@ This task was created from a template!
     expect(taskContent).toContain('Status: In Progress');
   });
 
-  test('should fall back to default generation when no template is configured', async () => {
+  test('should require template configuration for task creation', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
@@ -109,43 +109,31 @@ This task was created from a template!
       }
     });
 
-    // Create a task using the plugin
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        await plugin.createTask({
-          name: 'Default Test Task',
-          type: 'Bug',
-          priority: 'Low',
-          areas: [],
-          done: false,
-          status: 'Backlog',
-          tags: [],
-          description: 'This task uses default generation'
-        });
-      }
-    });
+    // Try to create a task - this should fail without a template
+    let errorOccurred = false;
+    try {
+      await context.page.evaluate(async () => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins['obsidian-task-sync'];
+        if (plugin) {
+          await plugin.createTask({
+            name: 'Should Fail Task',
+            type: 'Bug',
+            priority: 'Low',
+            areas: [],
+            done: false,
+            status: 'Backlog',
+            tags: [],
+            description: 'This task should fail to create'
+          });
+        }
+      });
+    } catch (error) {
+      errorOccurred = true;
+      expect(error.message).toContain('No default task template configured');
+    }
 
-    await context.page.waitForTimeout(1000);
-
-    // Check if task file was created
-    const taskFileExists = await fileExists(context.page, 'Tasks/Default Test Task.md');
-    expect(taskFileExists).toBe(true);
-
-    // Check task file content
-    const taskContent = await getFileContent(context.page, 'Tasks/Default Test Task.md');
-
-    // Verify default generation was used (should not contain template-specific content)
-    expect(taskContent).not.toContain('This task was created from a template!');
-    expect(taskContent).not.toContain('## Checklist');
-    expect(taskContent).toContain('This task uses default generation');
-
-    // Verify basic front-matter is present
-    expect(taskContent).toContain('Title: Default Test Task');
-    expect(taskContent).toContain('Type: Bug');
-    expect(taskContent).toContain('Priority: Low');
-    expect(taskContent).toContain('Status: Backlog');
+    expect(errorOccurred).toBe(true);
   });
 
   test('should fall back to default generation when template file does not exist', async () => {
@@ -193,8 +181,8 @@ This task was created from a template!
     expect(taskContent).toContain('This task tests fallback behavior');
     expect(taskContent).toContain('Title: Fallback Test Task');
     expect(taskContent).toContain('Type: Improvement');
-    expect(taskContent).toContain('Priority: Medium');
-    expect(taskContent).toContain('Status: Todo');
+    expect(taskContent).toContain('Priority: Low'); // Uses default value from property definition
+    expect(taskContent).toContain('Status: Backlog'); // Uses default value from property definition
   });
 
   test('should process template variables correctly', async () => {

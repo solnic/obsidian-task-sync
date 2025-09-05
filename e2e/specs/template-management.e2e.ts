@@ -15,17 +15,22 @@ import { setupE2ETestHooks } from '../helpers/shared-context';
 describe('Template Management', () => {
   const context = setupE2ETestHooks();
 
-  test('should not create Task.md template automatically during plugin initialization', async () => {
+  test('should create Task.md template automatically during plugin initialization', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // The plugin should NOT automatically create templates to avoid interfering with Obsidian's core template plugin
-    // Check that Task.md template was NOT created automatically
+    // The plugin SHOULD automatically create default templates when they're missing
+    // This ensures explicit configuration rather than hidden fallback mechanisms
     const templateExists = await fileExists(context.page, 'Templates/Task.md');
-    expect(templateExists).toBe(false);
+    expect(templateExists).toBe(true);
 
-    // Templates should be created on-demand when explicitly requested
-    // This prevents interference with Obsidian's core template functionality
+    // Verify the template has proper structure
+    const templateContent = await getFileContent(context.page, 'Templates/Task.md');
+    expect(templateContent).toContain('---');
+    expect(templateContent).toContain('Title:');
+    expect(templateContent).toContain('Type:');
+    expect(templateContent).toContain('Priority: Low');
+    expect(templateContent).toContain('{{description}}');
   });
 
   test('should prompt user when Task.md template already exists', async () => {

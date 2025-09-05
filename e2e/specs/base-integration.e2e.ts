@@ -125,12 +125,19 @@ Some project content.
 `);
     });
 
-    // Execute regenerate bases command
+    // Enable project bases and execute regenerate bases command
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin && plugin.regenerateBases) {
-        await plugin.regenerateBases();
+      if (plugin) {
+        // Enable project bases to get specific base embedding
+        plugin.settings.projectBasesEnabled = true;
+        plugin.settings.autoSyncAreaProjectBases = true;
+        await plugin.saveSettings();
+
+        if (plugin.regenerateBases) {
+          await plugin.regenerateBases();
+        }
       }
     });
 

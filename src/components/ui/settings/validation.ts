@@ -25,12 +25,21 @@ export function validateFolderPath(path: string): ValidationResult {
   // Check for reserved names (Windows)
   const reservedNames = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
   const pathParts = path.split('/').filter(part => part.length > 0);
-  
+
   for (const part of pathParts) {
     if (reservedNames.includes(part.toUpperCase())) {
       return {
         isValid: false,
         error: `"${part}" is a reserved folder name`
+      };
+    }
+
+    // Check for "Obsidian" folder name (case-insensitive)
+    // Obsidian hides folders named "Obsidian" to avoid confusion with the .obsidian system folder
+    if (part.toLowerCase() === 'obsidian') {
+      return {
+        isValid: false,
+        error: `"${part}" folder name is not recommended as Obsidian hides folders with this name. Use "Templates" or "MyTemplates" instead.`
       };
     }
   }
@@ -58,7 +67,7 @@ export function validateFileName(fileName: string): ValidationResult {
   // Check for reserved names (Windows)
   const reservedNames = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
   const nameWithoutExt = fileName.split('.')[0];
-  
+
   if (reservedNames.includes(nameWithoutExt.toUpperCase())) {
     return {
       isValid: false,

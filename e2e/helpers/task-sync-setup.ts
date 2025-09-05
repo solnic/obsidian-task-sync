@@ -227,9 +227,10 @@ export async function setupObsidianElectron(
       enableAutoSync: false, // Disable for testing
       syncInterval: 300000,
       useTemplater: false,
-      defaultTaskTemplate: "",
-      defaultProjectTemplate: "",
-      defaultAreaTemplate: ""
+      defaultTaskTemplate: "Task.md",
+      defaultProjectTemplate: "project-template.md",
+      defaultAreaTemplate: "area-template.md",
+      defaultParentTaskTemplate: "parent-task-template.md"
     };
 
     const app = (window as any).app;
