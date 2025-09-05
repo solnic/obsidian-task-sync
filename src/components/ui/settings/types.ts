@@ -32,6 +32,7 @@ export type TaskPriorityColor = typeof TASK_PRIORITY_COLORS[number];
 export interface TaskStatus {
   name: string;
   color: string;
+  isDone: boolean; // Indicates if this status represents a completed/done state
 }
 
 // Available colors for task statuses
@@ -50,6 +51,7 @@ export interface TaskSyncSettings {
   defaultTaskTemplate: string;
   defaultProjectTemplate: string;
   defaultAreaTemplate: string;
+  defaultParentTaskTemplate: string;
   // Base-related settings
   basesFolder: string;
   tasksBaseFile: string;

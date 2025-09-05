@@ -35,9 +35,9 @@ describe('BaseConfigurations', () => {
       { name: 'Urgent', color: 'red' }
     ],
     taskStatuses: [
-      { name: 'Backlog', color: 'gray' },
-      { name: 'In Progress', color: 'blue' },
-      { name: 'Done', color: 'green' }
+      { name: 'Backlog', color: 'gray', isDone: false },
+      { name: 'In Progress', color: 'blue', isDone: false },
+      { name: 'Done', color: 'green', isDone: true }
     ],
     projectBasesEnabled: true,
     areaBasesEnabled: true,
@@ -45,6 +45,7 @@ describe('BaseConfigurations', () => {
     defaultProjectTemplate: '',
     defaultAreaTemplate: '',
     defaultTaskTemplate: '',
+    defaultParentTaskTemplate: '',
     tasksBaseFile: 'Tasks.base',
     autoGenerateBases: true,
     autoUpdateBaseViews: true,

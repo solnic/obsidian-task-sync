@@ -12,6 +12,7 @@ import {
   generateTasksBase as generateTasksBaseConfig,
   generateAreaBase as generateAreaBaseConfig,
   generateProjectBase as generateProjectBaseConfig,
+  generateParentTaskBase as generateParentTaskBaseConfig,
   PropertyDefinition
 } from './base-definitions';
 
@@ -55,16 +56,12 @@ export class BaseManager {
     private settings: TaskSyncSettings
   ) { }
 
-
-
   /**
    * Generate the main Tasks.base file with all task properties and default views
    */
   async generateTasksBase(projectsAndAreas: ProjectAreaInfo[]): Promise<string> {
     return generateTasksBaseConfig(this.settings, projectsAndAreas);
   }
-
-
 
   /**
    * Parse existing base file content
@@ -332,6 +329,30 @@ export class BaseManager {
    */
   async generateProjectBase(project: ProjectAreaInfo): Promise<string> {
     return generateProjectBaseConfig(this.settings, project);
+  }
+
+  /**
+   * Generate base configuration for a parent task
+   */
+  async generateParentTaskBase(parentTaskName: string): Promise<string> {
+    return generateParentTaskBaseConfig(this.settings, parentTaskName);
+  }
+
+  /**
+   * Create or update a parent task base file
+   */
+  async createOrUpdateParentTaskBase(parentTaskName: string): Promise<void> {
+    const sanitizedName = sanitizeFileName(parentTaskName);
+    const baseFileName = `${sanitizedName}.base`;
+    const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
+    const content = await this.generateParentTaskBase(parentTaskName);
+
+    try {
+      await this.createOrUpdateBaseFile(baseFilePath, content, 'parent-task');
+    } catch (error) {
+      console.error(`Failed to create/update parent task base file: ${error}`);
+      throw error;
+    }
   }
 
   /**

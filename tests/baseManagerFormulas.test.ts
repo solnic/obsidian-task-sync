@@ -31,6 +31,7 @@ const mockSettings: TaskSyncSettings = {
   defaultTaskTemplate: '',
   defaultProjectTemplate: '',
   defaultAreaTemplate: '',
+  defaultParentTaskTemplate: '',
   basesFolder: 'Bases',
   tasksBaseFile: 'Tasks.base',
   autoGenerateBases: true,
@@ -47,9 +48,9 @@ const mockSettings: TaskSyncSettings = {
     { name: 'Urgent', color: 'red' }
   ],
   taskStatuses: [
-    { name: 'Backlog', color: 'gray' },
-    { name: 'In Progress', color: 'blue' },
-    { name: 'Done', color: 'green' }
+    { name: 'Backlog', color: 'gray', isDone: false },
+    { name: 'In Progress', color: 'blue', isDone: false },
+    { name: 'Done', color: 'green', isDone: true }
   ],
   areaBasesEnabled: true,
   projectBasesEnabled: true,

@@ -214,6 +214,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
     this.createFileSetting(section, 'defaultAreaTemplate', 'Default Area Template',
       'Default template to use when creating new areas', ['.md']);
+
+    this.createFileSetting(section, 'defaultParentTaskTemplate', 'Default Parent Task Template',
+      'Default template to use when creating new parent tasks', ['.md']);
   }
 
   private createBasesSection(container: HTMLElement): void {
@@ -734,7 +737,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     // Section header
     section.createEl('h2', { text: 'Task Statuses', cls: 'task-sync-section-header' });
     section.createEl('p', {
-      text: 'Configure the available task statuses and their colors.',
+      text: 'Configure the available task statuses, their colors, and which statuses represent completed tasks.',
       cls: 'task-sync-settings-section-desc'
     });
 
@@ -791,6 +794,21 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           });
       });
 
+      // Add isDone toggle
+      setting.addToggle(toggle => {
+        toggle.setValue(taskStatus.isDone || false)
+          .setTooltip('Mark this status as representing a completed/done state')
+          .onChange(async (value) => {
+            this.plugin.settings.taskStatuses[index].isDone = value;
+            await this.plugin.saveSettings();
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+      });
+
       // Add delete button (don't allow deleting if it's the last status)
       if (this.plugin.settings.taskStatuses.length > 1) {
         setting.addButton(button => {
@@ -821,7 +839,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     // Section header
     section.createEl('h2', { text: 'Task Statuses', cls: 'task-sync-section-header' });
     section.createEl('p', {
-      text: 'Configure the available task statuses and their colors.',
+      text: 'Configure the available task statuses, their colors, and which statuses represent completed tasks.',
       cls: 'task-sync-settings-section-desc'
     });
 
@@ -870,6 +888,21 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
             // Update badge color
             badge.className = `task-status-badge task-status-${value}`;
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+      });
+
+      // Add isDone toggle
+      setting.addToggle(toggle => {
+        toggle.setValue(taskStatus.isDone || false)
+          .setTooltip('Mark this status as representing a completed/done state')
+          .onChange(async (value) => {
+            this.plugin.settings.taskStatuses[index].isDone = value;
+            await this.plugin.saveSettings();
 
             // Trigger base sync if enabled
             if (this.plugin.settings.autoSyncAreaProjectBases) {
@@ -932,7 +965,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           .setCta()
           .onClick(async () => {
             if (newStatusName && !this.plugin.settings.taskStatuses.some(s => s.name === newStatusName)) {
-              this.plugin.settings.taskStatuses.push({ name: newStatusName, color: newStatusColor });
+              this.plugin.settings.taskStatuses.push({ name: newStatusName, color: newStatusColor, isDone: false });
               await this.plugin.saveSettings();
 
               // Find the task statuses section and refresh it

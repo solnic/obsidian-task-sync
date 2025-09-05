@@ -2,12 +2,15 @@ import { Plugin, TFile, MarkdownView, Notice } from 'obsidian';
 import { VaultScanner } from './services/VaultScannerService';
 import { BaseManager } from './services/BaseManager';
 import { PluginStorageService } from './services/PluginStorageService';
+import { FileChangeListener } from './services/FileChangeListener';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
 import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
 import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
 import { sanitizeFileName, createSafeFileName } from './utils/fileNameSanitizer';
 import { TaskSyncSettingTab } from './components/ui/settings';
 import type { TaskSyncSettings, TaskType, TaskTypeColor } from './components/ui/settings';
+import { EventManager } from './events';
+import { StatusDoneHandler } from './events/handlers';
 import { DEFAULT_SETTINGS, TASK_TYPE_COLORS } from './components/ui/settings';
 
 import pluralize from 'pluralize';
@@ -44,6 +47,9 @@ export default class TaskSyncPlugin extends Plugin {
   vaultScanner: VaultScanner;
   baseManager: BaseManager;
   storageService: PluginStorageService;
+  eventManager: EventManager;
+  fileChangeListener: FileChangeListener;
+  statusDoneHandler: StatusDoneHandler;
 
   async onload() {
     console.log('Loading Task Sync Plugin');
@@ -58,6 +64,17 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize storage service
     await this.storageService.initialize();
+
+    // Initialize event system
+    this.eventManager = new EventManager();
+    this.statusDoneHandler = new StatusDoneHandler(this.app, this.settings);
+    this.fileChangeListener = new FileChangeListener(this.app, this.app.vault, this.eventManager, this.settings);
+
+    // Register event handlers
+    this.eventManager.registerHandler(this.statusDoneHandler);
+
+    // Initialize file change listener
+    await this.fileChangeListener.initialize();
 
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
@@ -125,6 +142,15 @@ export default class TaskSyncPlugin extends Plugin {
 
   onunload() {
     console.log('Unloading Task Sync Plugin');
+
+    // Cleanup event system
+    if (this.fileChangeListener) {
+      this.fileChangeListener.cleanup();
+    }
+
+    if (this.eventManager) {
+      this.eventManager.clear();
+    }
   }
 
   async loadSettings() {
@@ -146,6 +172,12 @@ export default class TaskSyncPlugin extends Plugin {
   async saveSettings() {
     try {
       await this.saveData(this.settings);
+
+      // Update event system with new settings
+      if (this.statusDoneHandler) {
+        // The handler will use the updated settings automatically since it references this.settings
+        console.log('Task Sync: Event system updated with new settings');
+      }
     } catch (error) {
       console.error('Task Sync: Failed to save settings:', error);
       throw error;
@@ -377,8 +409,16 @@ export default class TaskSyncPlugin extends Plugin {
             // Parse existing sub-tasks (could be comma-separated or array format)
             const subTasksValue = subTasksMatch[1].trim();
             if (subTasksValue.startsWith('[') && subTasksValue.endsWith(']')) {
-              // Array format: [task1, task2]
-              currentSubTasks = subTasksValue.slice(1, -1).split(',').map(t => t.trim().replace(/['"]/g, ''));
+              // Array format: ["[[task1]]", "[[task2]]"]
+              try {
+                const parsed = JSON.parse(subTasksValue);
+                currentSubTasks = parsed.map((item: string) => item.replace(/^\[\[(.+)\]\]$/, '$1'));
+              } catch (e) {
+                // Fallback: parse manually
+                currentSubTasks = subTasksValue.slice(1, -1).split(',').map(t =>
+                  t.trim().replace(/^"?\[\[(.+)\]\]"?$/, '$1').replace(/['"]/g, '')
+                );
+              }
             } else {
               // Comma-separated format: task1, task2
               currentSubTasks = subTasksValue.split(',').map(t => t.trim());
@@ -389,8 +429,9 @@ export default class TaskSyncPlugin extends Plugin {
           if (!currentSubTasks.includes(childTaskName)) {
             currentSubTasks.push(childTaskName);
 
-            // Update the sub-tasks field
-            const updatedSubTasks = currentSubTasks.filter(t => t).join(', ');
+            // Update the sub-tasks field in array format with quoted links
+            const linkedSubTasks = currentSubTasks.filter(t => t).map(task => `"[[${task}]]"`);
+            const updatedSubTasks = `[${linkedSubTasks.join(', ')}]`;
             const updatedFrontMatter = frontMatter.replace(
               /^Sub-tasks:\s*.*$/m,
               `Sub-tasks: ${updatedSubTasks}`
@@ -434,7 +475,7 @@ export default class TaskSyncPlugin extends Plugin {
           status: todoWithParent.parentTodo.completed ? 'Done' : 'Backlog',
           tags: [] as string[],
           // Include the child task in sub-tasks field from the start
-          subTasks: todoWithParent.text,
+          subTasks: [todoWithParent.text],
           // Set context-specific fields
           ...(context.type === 'project' && context.name ? { project: context.name } : {}),
           ...(context.type === 'area' && context.name ? { areas: context.name } : {})
@@ -447,6 +488,13 @@ export default class TaskSyncPlugin extends Plugin {
         if (!parentExists) {
           await this.createTask(parentTaskData);
           console.log(`Created parent task: ${todoWithParent.parentTodo.text}`);
+
+          // Create base for parent task to show its sub-tasks
+          try {
+            await this.baseManager.createOrUpdateParentTaskBase(todoWithParent.parentTodo.text);
+          } catch (error) {
+            console.error('Failed to create parent task base:', error);
+          }
         } else {
           // If parent exists, update its sub-tasks field
           await this.updateParentTaskSubTasks(todoWithParent.parentTodo.text, todoWithParent.text);
@@ -602,8 +650,11 @@ export default class TaskSyncPlugin extends Plugin {
       const taskFileName = createSafeFileName(taskData.name);
       const taskPath = `${this.settings.tasksFolder}/${taskFileName}`;
 
-      // Create task content based on your template structure
-      const taskContent = this.generateTaskContent(taskData);
+      // Create task content based on whether it's a parent task
+      const isParentTask = taskData.subTasks && taskData.subTasks.length > 0;
+      const taskContent = isParentTask
+        ? await this.generateParentTaskContent(taskData)
+        : this.generateTaskContent(taskData);
 
       await this.app.vault.create(taskPath, taskContent);
       console.log('Task created successfully:', taskPath);
@@ -618,6 +669,27 @@ export default class TaskSyncPlugin extends Plugin {
     const { generateTaskFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
 
     return generateTaskFrontMatter(taskData, {
+      includeDescription: true
+    });
+  }
+
+  /**
+   * Generate default parent task content
+   */
+  private async generateParentTaskContent(taskData: any): Promise<string> {
+    // Use template if configured, otherwise use default
+    if (this.settings.defaultParentTaskTemplate) {
+      try {
+        return await this.generateFromTemplate(this.settings.defaultParentTaskTemplate, taskData);
+      } catch (error) {
+        console.error('Failed to use parent task template, falling back to default:', error);
+      }
+    }
+
+    // Import the new front-matter generator
+    const { generateParentTaskFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
+
+    return generateParentTaskFrontMatter(taskData, {
       includeDescription: true
     });
   }

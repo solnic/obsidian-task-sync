@@ -11,7 +11,7 @@ export interface TaskCreateData {
   type?: string;
   areas?: string;
   parentTask?: string;
-  subTasks?: string;
+  subTasks?: string[];
   tags: string[];
   project?: string;
   done: boolean;
@@ -177,9 +177,9 @@ export class TaskCreateModal extends Modal {
       .setDesc('Comma-separated list of subtasks')
       .addText(text => {
         text.setPlaceholder('Subtask names (optional)')
-          .setValue(this.formData.subTasks || '')
+          .setValue(this.formData.subTasks?.join(', ') || '')
           .onChange(value => {
-            this.formData.subTasks = value;
+            this.formData.subTasks = value ? value.split(',').map(s => s.trim()).filter(s => s) : [];
           });
       });
 

@@ -3,7 +3,7 @@
  * Generates front-matter for tasks, areas, and projects using base definitions
  */
 
-import { FRONTMATTER_FIELDS, PROPERTY_DEFINITIONS } from './BaseConfigurations';
+import { FRONTMATTER_FIELDS, PROPERTY_DEFINITIONS, PropertyDefinition } from './BaseConfigurations';
 import { TaskCreateData } from '../../components/modals/TaskCreateModal';
 import { ProjectCreateData } from '../../components/modals/ProjectCreateModal';
 import { AreaCreateData } from '../../components/modals/AreaCreateModal';
@@ -210,6 +210,72 @@ export function generateAreaFrontMatter(
   return frontMatter.join('\n');
 }
 
+/**
+ * Generate front-matter for a parent task
+ */
+export function generateParentTaskFrontMatter(
+  taskData: TaskCreateData,
+  options: FrontMatterOptions = {}
+): string {
+  const properties = PROPERTY_DEFINITIONS.task;
+  const frontMatter: string[] = ['---'];
+
+  // Add all defined fields in the correct order
+  for (const prop of properties) {
+    // Map checkbox type to boolean for front-matter compatibility
+    const frontMatterType = prop.type === 'checkbox' ? 'boolean' : prop.type as 'string' | 'boolean' | 'array';
+    const fieldConfig: FrontMatterField = {
+      type: frontMatterType,
+      ...(prop.default !== undefined && { default: prop.default })
+    };
+
+    // For Type field, use "Parent Task" as default
+    if (prop.name === 'Type') {
+      fieldConfig.default = 'Parent Task';
+    }
+
+    let value = getFieldValue(taskData, prop.name, fieldConfig);
+
+    // Override type for parent tasks
+    if (prop.name === 'Type' && value !== 'Parent Task') {
+      value = 'Parent Task';
+    }
+
+    if (value !== undefined && value !== null) {
+      frontMatter.push(formatFrontMatterField(prop.name, value, fieldConfig));
+    }
+  }
+
+  // Add custom fields
+  if (options.customFields) {
+    for (const [key, value] of Object.entries(options.customFields)) {
+      if (value !== undefined && value !== null) {
+        frontMatter.push(`${key}: ${formatValue(value)}`);
+      }
+    }
+  }
+
+  frontMatter.push('---', '');
+
+  // Add parent task template content
+  if (options.includeDescription && taskData.description) {
+    frontMatter.push(taskData.description, '');
+  } else if (options.templateContent) {
+    frontMatter.push(options.templateContent, '');
+  } else {
+    frontMatter.push(
+      'Parent task description...',
+      '',
+      '## Sub-tasks',
+      '',
+      `![[${sanitizeFileName(taskData.name)}.base]]`,
+      ''
+    );
+  }
+
+  return frontMatter.join('\n');
+}
+
 // ============================================================================
 // UTILITY FUNCTIONS
 // ============================================================================
@@ -253,14 +319,18 @@ function getFieldValue(data: any, fieldName: string, fieldConfig: FrontMatterFie
  * Format a front-matter field
  */
 function formatFrontMatterField(fieldName: string, value: any, fieldConfig: FrontMatterField): string {
-  const formattedValue = formatValue(value, fieldConfig.type);
+  // Check if this is a linked property by looking up the property definition
+  const propertyDef = findPropertyDefinition(fieldName);
+  const isLinked = propertyDef?.link === true;
+
+  const formattedValue = formatValue(value, fieldConfig.type, isLinked);
   return `${fieldName}: ${formattedValue}`;
 }
 
 /**
  * Format a value based on its type
  */
-function formatValue(value: any, type?: string): string {
+function formatValue(value: any, type?: string, isLinked?: boolean): string {
   if (value === null || value === undefined) {
     return '';
   }
@@ -268,7 +338,15 @@ function formatValue(value: any, type?: string): string {
   switch (type) {
     case 'array':
       if (Array.isArray(value)) {
-        return value.length > 0 ? value.join(', ') : '';
+        if (value.length === 0) return '';
+
+        if (isLinked) {
+          // Format as array of quoted links: ["[[item1]]", "[[item2]]"]
+          const linkedItems = value.map(item => `"[[${String(item)}]]"`);
+          return `[${linkedItems.join(', ')}]`;
+        } else {
+          return value.join(', ');
+        }
       }
       return String(value);
 
@@ -280,8 +358,32 @@ function formatValue(value: any, type?: string): string {
 
     case 'string':
     default:
-      return String(value);
+      const stringValue = String(value);
+      if (isLinked && stringValue) {
+        // Format as quoted link: "[[item]]"
+        // Check if value already contains brackets
+        if (stringValue.startsWith('[[') && stringValue.endsWith(']]')) {
+          return `"${stringValue}"`;
+        } else {
+          return `"[[${stringValue}]]"`;
+        }
+      }
+      return stringValue;
   }
+}
+
+/**
+ * Find property definition by name
+ */
+function findPropertyDefinition(fieldName: string): PropertyDefinition | undefined {
+  // Search through all property definitions to find the one with matching name
+  const allProperties = [
+    ...PROPERTY_DEFINITIONS.task,
+    ...PROPERTY_DEFINITIONS.area,
+    ...PROPERTY_DEFINITIONS.project
+  ];
+
+  return allProperties.find(prop => prop.name === fieldName);
 }
 
 /**

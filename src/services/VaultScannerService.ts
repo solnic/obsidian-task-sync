@@ -292,14 +292,16 @@ export class VaultScanner implements VaultScannerService {
     return [];
   }
 
-  private detectTemplateType(path: string, content: string): 'task' | 'project' | 'area' {
+  private detectTemplateType(path: string, content: string): 'task' | 'project' | 'area' | 'parent-task' {
     const pathLower = path.toLowerCase();
+    if (pathLower.includes('parent-task') || pathLower.includes('parent_task')) return 'parent-task';
     if (pathLower.includes('task')) return 'task';
     if (pathLower.includes('project')) return 'project';
     if (pathLower.includes('area')) return 'area';
 
     // Analyze content for clues
     const contentLower = content.toLowerCase();
+    if (contentLower.includes('sub-tasks') || contentLower.includes('subtasks')) return 'parent-task';
     if (contentLower.includes('deadline') || contentLower.includes('status')) return 'task';
     if (contentLower.includes('objectives') || contentLower.includes('milestones')) return 'project';
 

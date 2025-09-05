@@ -13,6 +13,7 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   defaultTaskTemplate: 'task-template.md',
   defaultProjectTemplate: 'project-template.md',
   defaultAreaTemplate: 'area-template.md',
+  defaultParentTaskTemplate: 'parent-task-template.md',
   // Base-related defaults
   basesFolder: 'Bases',
   tasksBaseFile: 'Tasks.base',
@@ -35,9 +36,9 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   ],
   // Task statuses defaults
   taskStatuses: [
-    { name: 'Backlog', color: 'gray' },
-    { name: 'In Progress', color: 'blue' },
-    { name: 'Done', color: 'green' }
+    { name: 'Backlog', color: 'gray', isDone: false },
+    { name: 'In Progress', color: 'blue', isDone: false },
+    { name: 'Done', color: 'green', isDone: true }
   ],
   // Individual area/project bases defaults
   areaBasesEnabled: true,

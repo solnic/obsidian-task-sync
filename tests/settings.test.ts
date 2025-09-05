@@ -13,6 +13,7 @@ describe('TaskSync Settings', () => {
         defaultTaskTemplate: '',
         defaultProjectTemplate: '',
         defaultAreaTemplate: '',
+        defaultParentTaskTemplate: '',
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
@@ -31,9 +32,9 @@ describe('TaskSync Settings', () => {
           { name: 'Urgent', color: 'red' }
         ],
         taskStatuses: [
-          { name: 'Backlog', color: 'gray' },
-          { name: 'In Progress', color: 'blue' },
-          { name: 'Done', color: 'green' }
+          { name: 'Backlog', color: 'gray', isDone: false },
+          { name: 'In Progress', color: 'blue', isDone: false },
+          { name: 'Done', color: 'green', isDone: true }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
@@ -71,6 +72,7 @@ describe('TaskSync Settings', () => {
         defaultTaskTemplate: 'Task Template',
         defaultProjectTemplate: 'Project Template',
         defaultAreaTemplate: 'Area Template',
+        defaultParentTaskTemplate: 'Parent Task Template',
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
@@ -89,9 +91,9 @@ describe('TaskSync Settings', () => {
           { name: 'Urgent', color: 'red' }
         ],
         taskStatuses: [
-          { name: 'Backlog', color: 'gray' },
-          { name: 'In Progress', color: 'blue' },
-          { name: 'Done', color: 'green' }
+          { name: 'Backlog', color: 'gray', isDone: false },
+          { name: 'In Progress', color: 'blue', isDone: false },
+          { name: 'Done', color: 'green', isDone: true }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
@@ -112,6 +114,7 @@ describe('TaskSync Settings', () => {
         defaultTaskTemplate: '',
         defaultProjectTemplate: '',
         defaultAreaTemplate: '',
+        defaultParentTaskTemplate: '',
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
@@ -130,9 +133,9 @@ describe('TaskSync Settings', () => {
           { name: 'Urgent', color: 'red' }
         ],
         taskStatuses: [
-          { name: 'Backlog', color: 'gray' },
-          { name: 'In Progress', color: 'blue' },
-          { name: 'Done', color: 'green' }
+          { name: 'Backlog', color: 'gray', isDone: false },
+          { name: 'In Progress', color: 'blue', isDone: false },
+          { name: 'Done', color: 'green', isDone: true }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
@@ -153,6 +156,7 @@ describe('TaskSync Settings', () => {
         defaultTaskTemplate: 'task-template.md',
         defaultProjectTemplate: 'project-template.md',
         defaultAreaTemplate: 'area-template.md',
+        defaultParentTaskTemplate: 'parent-task-template.md',
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
@@ -171,9 +175,9 @@ describe('TaskSync Settings', () => {
           { name: 'Urgent', color: 'red' }
         ],
         taskStatuses: [
-          { name: 'Backlog', color: 'gray' },
-          { name: 'In Progress', color: 'blue' },
-          { name: 'Done', color: 'green' }
+          { name: 'Backlog', color: 'gray', isDone: false },
+          { name: 'In Progress', color: 'blue', isDone: false },
+          { name: 'Done', color: 'green', isDone: true }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
@@ -201,6 +205,7 @@ describe('TaskSync Settings', () => {
         defaultTaskTemplate: '',
         defaultProjectTemplate: '',
         defaultAreaTemplate: '',
+        defaultParentTaskTemplate: '',
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
@@ -219,9 +224,9 @@ describe('TaskSync Settings', () => {
           { name: 'Urgent', color: 'red' }
         ],
         taskStatuses: [
-          { name: 'Backlog', color: 'gray' },
-          { name: 'In Progress', color: 'blue' },
-          { name: 'Done', color: 'green' }
+          { name: 'Backlog', color: 'gray', isDone: false },
+          { name: 'In Progress', color: 'blue', isDone: false },
+          { name: 'Done', color: 'green', isDone: true }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
@@ -253,6 +258,7 @@ describe('TaskSync Settings', () => {
         defaultTaskTemplate: '',
         defaultProjectTemplate: '',
         defaultAreaTemplate: '',
+        defaultParentTaskTemplate: '',
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
@@ -271,9 +277,9 @@ describe('TaskSync Settings', () => {
           { name: 'Urgent', color: 'red' }
         ],
         taskStatuses: [
-          { name: 'Backlog', color: 'gray' },
-          { name: 'In Progress', color: 'blue' },
-          { name: 'Done', color: 'green' }
+          { name: 'Backlog', color: 'gray', isDone: false },
+          { name: 'In Progress', color: 'blue', isDone: false },
+          { name: 'Done', color: 'green', isDone: true }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,
@@ -293,6 +299,7 @@ describe('TaskSync Settings', () => {
         defaultTaskTemplate: 'task.md',
         defaultProjectTemplate: 'project.md',
         defaultAreaTemplate: 'area.md',
+        defaultParentTaskTemplate: 'parent-task.md',
         basesFolder: 'Bases',
         tasksBaseFile: 'Tasks.base',
         autoGenerateBases: true,
@@ -311,9 +318,9 @@ describe('TaskSync Settings', () => {
           { name: 'Urgent', color: 'red' }
         ],
         taskStatuses: [
-          { name: 'Backlog', color: 'gray' },
-          { name: 'In Progress', color: 'blue' },
-          { name: 'Done', color: 'green' }
+          { name: 'Backlog', color: 'gray', isDone: false },
+          { name: 'In Progress', color: 'blue', isDone: false },
+          { name: 'Done', color: 'green', isDone: true }
         ],
         areaBasesEnabled: true,
         projectBasesEnabled: true,

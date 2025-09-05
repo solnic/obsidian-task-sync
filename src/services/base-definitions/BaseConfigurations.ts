@@ -1,7 +1,6 @@
 /**
  * Static Base Configurations
  * Declarative configuration objects for base definitions
- * Replaces getter methods with composable static objects
  */
 
 import { BaseProperty, BaseView, BaseConfig } from '../BaseManager';
@@ -117,7 +116,7 @@ export namespace Properties {
 
   export const SUB_TASKS: PropertyDefinition = {
     name: "Sub-tasks",
-    type: "string",
+    type: "array",
     link: true
   };
 
@@ -348,7 +347,11 @@ export const FILTER_GENERATORS = {
 
   project: (projectName: string) => `Project.contains(link("${projectName}"))`,
 
-  taskType: (typeName: string) => `Type == "${typeName}"`
+  taskType: (typeName: string) => `Type == "${typeName}"`,
+
+  excludeSubTasks: () => `!"Parent task" || "Parent task" == null`,
+
+  parentTask: (parentName: string) => `"Parent task" == link("${parentName}")`
 } as const;
 
 // ============================================================================
@@ -404,11 +407,11 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
       {
         type: 'table',
         name: 'Tasks',
-        filters: { and: [`file.folder == "${settings.tasksFolder}"`] },
+        filters: { and: [`file.folder == "${settings.tasksFolder}"`, `!"Parent task"`] },
         order: [...VIEW_ORDERS.tasks.main],
         sort: [...SORT_CONFIGS.main]
       },
-      // All view
+      // All view (including sub-tasks)
       {
         type: 'table',
         name: 'All',
@@ -425,7 +428,8 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
           filters: {
             and: [
               `file.folder == "${settings.tasksFolder}"`,
-              `Type == "${taskType.name}"`
+              `Type == "${taskType.name}"`,
+              `!"Parent task"`
             ]
           },
           order: [...VIEW_ORDERS.tasks.type],
@@ -442,7 +446,8 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
               and: [
                 `file.folder == "${settings.tasksFolder}"`,
                 `Type == "${taskType.name}"`,
-                `Priority == "${priority.name}"`
+                `Priority == "${priority.name}"`,
+                `!"Parent task"`
               ]
             },
             order: [...VIEW_ORDERS.tasks.type],
@@ -527,7 +532,8 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
         filters: {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
-            `Areas.contains(link("${area.name}"))`
+            `Areas.contains(link("${area.name}"))`,
+            `!"Parent task"`
           ]
         },
         order: [...VIEW_ORDERS.area.main],
@@ -549,7 +555,8 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
             and: [
               `file.folder == "${settings.tasksFolder}"`,
               `Areas.contains(link("${area.name}"))`,
-              `Type == "${taskType.name}"`
+              `Type == "${taskType.name}"`,
+              `!"Parent task"`
             ]
           },
           order: [...VIEW_ORDERS.area.type],
@@ -600,7 +607,8 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
         filters: {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
-            `Project.contains(link("${project.name}"))`
+            `Project.contains(link("${project.name}"))`,
+            `!"Parent task"`
           ]
         },
         order: [...VIEW_ORDERS.project.main],
@@ -616,7 +624,8 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
             and: [
               `file.folder == "${settings.tasksFolder}"`,
               `Project.contains(link("${project.name}"))`,
-              `Type == "${taskType.name}"`
+              `Type == "${taskType.name}"`,
+              `!"Parent task"`
             ]
           },
           order: [...VIEW_ORDERS.project.type],
@@ -641,6 +650,51 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
             sort: [...SORT_CONFIGS.main]
           }))
         )
+    ]
+  };
+
+  return yaml.dump(config, {
+    indent: 2,
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false
+  });
+}
+
+/**
+ * Generate Parent Task base configuration
+ */
+export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskName: string): string {
+  const config: BaseConfig = {
+    formulas: FORMULAS.common,
+    properties: PROPERTY_DEFINITIONS.task,
+    views: [
+      // Sub-tasks view
+      {
+        type: 'table',
+        name: 'Sub-tasks',
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `"Parent task".contains(link("${parentTaskName}"))`
+          ]
+        },
+        order: [...VIEW_ORDERS.tasks.main],
+        sort: [...SORT_CONFIGS.main]
+      },
+      // All related tasks (parent + sub-tasks)
+      {
+        type: 'table',
+        name: 'All Related',
+        filters: {
+          or: [
+            `file.name == "${parentTaskName}"`,
+            `"Parent task".contains(link("${parentTaskName}"))`
+          ]
+        },
+        order: [...VIEW_ORDERS.tasks.main],
+        sort: [...SORT_CONFIGS.main]
+      }
     ]
   };
 

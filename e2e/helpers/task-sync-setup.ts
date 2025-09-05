@@ -354,7 +354,7 @@ export async function createTestFolders(page: Page): Promise<void> {
   try {
     await page.evaluate(async () => {
       const app = (window as any).app;
-      const folders = ['Tasks', 'Projects', 'Areas', 'Templates'];
+      const folders = ['Tasks', 'Projects', 'Areas', 'Templates', 'Notes'];
 
       console.log('🔧 Starting folder creation...');
 

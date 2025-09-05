@@ -78,7 +78,7 @@ describe('Project Creation', () => {
     const projectContent = await getFileContent(context.page, 'Projects/Test Project.md');
     expect(projectContent).toContain('Name: Test Project');
     expect(projectContent).toContain('Type: Project');
-    expect(projectContent).toContain('Areas: Work, Development');
+    expect(projectContent).toContain('Areas: "[[Work, Development]]"');
     expect(projectContent).toContain('This is a test project for e2e testing');
     expect(projectContent).toContain('![[Bases/Test Project.base]]');
   });

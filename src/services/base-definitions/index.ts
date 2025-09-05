@@ -8,6 +8,7 @@ export {
   generateTasksBase,
   generateAreaBase,
   generateProjectBase,
+  generateParentTaskBase,
   ProjectAreaInfo,
   FORMULAS,
   VIEW_ORDERS,
@@ -15,7 +16,8 @@ export {
   FRONTMATTER_FIELDS,
   Properties,
   PROPERTY_DEFINITIONS,
-  PropertyDefinition
+  PropertyDefinition,
+  FILTER_GENERATORS
 } from './BaseConfigurations';
 
 export * from './FrontMatterGenerator';

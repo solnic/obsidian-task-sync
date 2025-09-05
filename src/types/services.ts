@@ -44,7 +44,7 @@ export interface AreaFileInfo extends TaskFileInfo {
 }
 
 export interface TemplateFileInfo extends TaskFileInfo {
-  templateType: 'task' | 'project' | 'area';
+  templateType: 'task' | 'project' | 'area' | 'parent-task';
   variables: string[]; // Detected template variables
 }
 
@@ -111,7 +111,7 @@ export interface TemplateService {
   detectTemplaterPlugin(): Promise<boolean>;
 
   // Template management
-  getAvailableTemplates(type: 'task' | 'project' | 'area'): Promise<Template[]>;
+  getAvailableTemplates(type: 'task' | 'project' | 'area' | 'parent-task'): Promise<Template[]>;
   loadTemplate(templateId: string): Promise<Template>;
 
   // Template processing
