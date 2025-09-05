@@ -988,6 +988,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
   }
 
   private createTemplateCreationButton(container: HTMLElement): void {
+    // Task template creation
     new Setting(container)
       .setName('Create Default Task Template')
       .setDesc('Create the default task template file if it doesn\'t exist')
@@ -999,6 +1000,62 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             button.setButtonText('Creating...');
             try {
               await this.plugin.templateManager.createTaskTemplate();
+              button.setButtonText('✓ Created');
+              setTimeout(() => {
+                button.setDisabled(false);
+                button.setButtonText('Create Template');
+              }, 2000);
+            } catch (error) {
+              button.setButtonText('✗ Failed');
+              console.error('Failed to create template:', error);
+              setTimeout(() => {
+                button.setDisabled(false);
+                button.setButtonText('Create Template');
+              }, 2000);
+            }
+          });
+      });
+
+    // Project template creation
+    new Setting(container)
+      .setName('Create Default Project Template')
+      .setDesc('Create the default project template file if it doesn\'t exist')
+      .addButton(button => {
+        button.setButtonText('Create Template')
+          .setCta()
+          .onClick(async () => {
+            button.setDisabled(true);
+            button.setButtonText('Creating...');
+            try {
+              await this.plugin.templateManager.createProjectTemplate();
+              button.setButtonText('✓ Created');
+              setTimeout(() => {
+                button.setDisabled(false);
+                button.setButtonText('Create Template');
+              }, 2000);
+            } catch (error) {
+              button.setButtonText('✗ Failed');
+              console.error('Failed to create template:', error);
+              setTimeout(() => {
+                button.setDisabled(false);
+                button.setButtonText('Create Template');
+              }, 2000);
+            }
+          });
+      });
+
+    // Area template creation
+    new Setting(container)
+      .setName('Create Default Area Template')
+      .setDesc('Create the default area template file if it doesn\'t exist')
+      .addButton(button => {
+        button.setButtonText('Create Template')
+          .setCta()
+          .onClick(async () => {
+            button.setDisabled(true);
+            button.setButtonText('Creating...');
+            try {
+              await this.plugin.templateManager.createAreaTemplate();
               button.setButtonText('✓ Created');
               setTimeout(() => {
                 button.setDisabled(false);

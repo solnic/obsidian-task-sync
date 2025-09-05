@@ -6,7 +6,7 @@
 import { App, Vault, TFile } from 'obsidian';
 import { TaskSyncSettings } from '../main';
 import { generateTaskFrontMatter } from './base-definitions/FrontMatterGenerator';
-import { PROPERTY_SETS, PROPERTY_REGISTRY, generateAreaFrontMatter as getAreaPropertyDefinitions } from './base-definitions/BaseConfigurations';
+import { PROPERTY_SETS, PROPERTY_REGISTRY, generateAreaFrontMatter as getAreaPropertyDefinitions, generateProjectFrontMatter as getProjectPropertyDefinitions } from './base-definitions/BaseConfigurations';
 import matter from 'gray-matter';
 
 export class TemplateManager {
@@ -123,5 +123,56 @@ export class TemplateManager {
     return matter.stringify('{{description}}', frontMatterData);
   }
 
+  /**
+   * Create a Project template file with proper front-matter and content
+   */
+  async createProjectTemplate(filename?: string): Promise<void> {
+    const templateFileName = filename || this.settings.defaultProjectTemplate;
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    // Check if file already exists
+    const fileExists = await this.vault.adapter.exists(templatePath);
+    if (fileExists) {
+      throw new Error(`Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`);
+    }
+
+    // Generate template content
+    const templateContent = this.generateProjectTemplateContent();
+
+    // Create the template file (Obsidian will create the folder automatically if needed)
+    await this.vault.create(templatePath, templateContent);
+    console.log(`Created project template: ${templatePath}`);
+  }
+
+  /**
+   * Generate the default project template content with clean front-matter structure
+   */
+  private generateProjectTemplateContent(): string {
+    return this.generateCleanProjectTemplate();
+  }
+
+  /**
+   * Generate a clean project template without pre-filled values
+   */
+  private generateCleanProjectTemplate(): string {
+    // Create clean front-matter structure using property definitions
+    const frontMatterData: Record<string, any> = {};
+
+    // Get project property definitions in the correct order
+    const projectProperties = getProjectPropertyDefinitions();
+
+    for (const prop of projectProperties) {
+      // Set clean values based on property type
+      if (prop.type === 'array') {
+        frontMatterData[prop.name] = [];
+      } else {
+        // Use empty string for clean template values
+        frontMatterData[prop.name] = '';
+      }
+    }
+
+    // Use gray-matter to generate the front-matter with clean structure
+    return matter.stringify('{{description}}', frontMatterData);
+  }
 
 }
