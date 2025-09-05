@@ -834,3 +834,41 @@ export async function openTaskStatusSettings(context: any): Promise<void> {
   await openTaskSyncSettings(context);
   await scrollToSettingsSection(context.page, 'Task Statuses');
 }
+
+/**
+ * Wait for a file to be created and have initial content
+ */
+export async function waitForFileCreation(page: Page, filePath: string, timeout: number = 5000): Promise<void> {
+  const startTime = Date.now();
+  let waitTime = 100; // Start with 100ms
+  const maxWaitTime = 1000; // Cap individual waits at 1 second for file creation
+
+  while (Date.now() - startTime < timeout) {
+    // Check if file exists and has content
+    const fileExists = await page.evaluate(
+      async ({ path }) => {
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(path);
+        if (!file) return false;
+
+        try {
+          const content = await app.vault.read(file);
+          return content.length > 0; // File exists and has content
+        } catch (error) {
+          return false;
+        }
+      },
+      { path: filePath }
+    );
+
+    if (fileExists) {
+      return; // Success!
+    }
+
+    // Wait with exponential backoff
+    await page.waitForTimeout(waitTime);
+    waitTime = Math.min(waitTime * 2, maxWaitTime);
+  }
+
+  throw new Error(`Timeout waiting for file "${filePath}" to be created after ${timeout}ms`);
+}

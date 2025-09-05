@@ -11,7 +11,8 @@ import {
   waitForTaskPropertySync,
   openTaskStatusSettings,
   addTaskStatus,
-  toggleTaskStatusDone
+  toggleTaskStatusDone,
+  waitForFileCreation
 } from '../helpers/task-sync-setup';
 
 describe('Status Settings Integration with Event System', () => {
@@ -54,7 +55,7 @@ This task tests custom status configurations.`);
     });
 
     // Wait for file to be created and processed
-    await context.page.waitForTimeout(500);
+    await waitForFileCreation(context.page, 'Tasks/Custom Status Task.md');
 
     // Test changing to custom done status
     await context.page.evaluate(async () => {
@@ -132,7 +133,7 @@ This task tests dynamic configuration changes.`);
     });
 
     // Wait for file to be created and processed
-    await context.page.waitForTimeout(500);
+    await waitForFileCreation(context.page, 'Tasks/Dynamic Config Task.md');
 
     // Initially, "In Progress" should not be marked as done
     let fileContent = await context.page.evaluate(async () => {
@@ -216,7 +217,7 @@ This task tests multiple done statuses.`);
     });
 
     // Wait for file to be created and processed
-    await context.page.waitForTimeout(500);
+    await waitForFileCreation(context.page, 'Tasks/Multiple Done Task.md');
 
     // Test each done status
     const doneStatuses = ['Completed', 'Delivered', 'Archived'];
@@ -286,7 +287,7 @@ This task tests status preference logic.`);
     });
 
     // Wait for file to be created and processed
-    await context.page.waitForTimeout(500);
+    await waitForFileCreation(context.page, 'Tasks/Status Preference Task.md');
 
     // Change Done to true
     await context.page.evaluate(async () => {
@@ -300,8 +301,9 @@ This task tests status preference logic.`);
       }
     });
 
-    // Wait for synchronization using smart wait
+    // Wait for synchronization using smart wait - wait for both Done and Status to be updated
     await waitForTaskPropertySync(context.page, 'Tasks/Status Preference Task.md', 'Done', 'true');
+    await waitForTaskPropertySync(context.page, 'Tasks/Status Preference Task.md', 'Status', 'Done');
 
     // Verify Status was changed to a done status (should prefer "Done")
     let fileContent = await context.page.evaluate(async () => {
@@ -312,9 +314,6 @@ This task tests status preference logic.`);
 
     expect(fileContent).toContain('Done: true');
     expect(fileContent).toContain('Status: Done'); // Should prefer "Done" over other done statuses
-
-    // Wait a bit to ensure the first synchronization is fully complete
-    await context.page.waitForTimeout(200);
 
     // Change Done back to false
     await context.page.evaluate(async () => {
@@ -367,7 +366,7 @@ This task tests settings changes.`);
     });
 
     // Wait for file to be created and processed
-    await context.page.waitForTimeout(500);
+    await waitForFileCreation(context.page, 'Tasks/Settings Change Task.md');
 
     // Test initial synchronization
     await context.page.evaluate(async () => {
