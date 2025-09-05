@@ -5,39 +5,33 @@
 
 import { test, expect, describe } from 'vitest';
 import { setupE2ETestHooks } from '../helpers/shared-context';
-import { createTestFolders, waitForTaskSyncPlugin } from '../helpers/task-sync-setup';
-
-const context = setupE2ETestHooks();
+import {
+  createTestFolders,
+  waitForTaskSyncPlugin,
+  waitForTaskPropertySync,
+  openTaskStatusSettings,
+  addTaskStatus,
+  toggleTaskStatusDone
+} from '../helpers/task-sync-setup';
 
 describe('Status Settings Integration with Event System', () => {
+  const context = setupE2ETestHooks();
 
   test('should respect isDone configuration for status synchronization', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Configure a custom status as done
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['task-sync'];
+    // Open Task Status settings and add custom statuses through UI
+    await openTaskStatusSettings(context);
 
-      if (plugin) {
-        // Add a custom status marked as done
-        plugin.settings.taskStatuses.push({
-          name: 'Shipped',
-          color: 'purple',
-          isDone: true
-        });
+    // Add a custom status marked as done
+    await addTaskStatus(context.page, 'Shipped', 'purple', true);
 
-        // Add a custom status not marked as done
-        plugin.settings.taskStatuses.push({
-          name: 'Blocked',
-          color: 'red',
-          isDone: false
-        });
+    // Add a custom status not marked as done
+    await addTaskStatus(context.page, 'Blocked', 'red', false);
 
-        await plugin.saveSettings();
-      }
-    });
+    // Close settings by pressing Escape
+    await context.page.keyboard.press('Escape');
 
     // Create a task
     await context.page.evaluate(async () => {
@@ -74,10 +68,10 @@ This task tests custom status configurations.`);
       }
     });
 
-    // Wait for synchronization
-    await context.page.waitForTimeout(1000);
+    // Wait for synchronization using smart wait
+    await waitForTaskPropertySync(context.page, 'Tasks/Custom Status Task.md', 'Done', 'true');
 
-    // Verify Done was set to true
+    // Verify the changes
     let fileContent = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath('Tasks/Custom Status Task.md');
@@ -99,10 +93,10 @@ This task tests custom status configurations.`);
       }
     });
 
-    // Wait for synchronization
-    await context.page.waitForTimeout(1000);
+    // Wait for synchronization using smart wait
+    await waitForTaskPropertySync(context.page, 'Tasks/Custom Status Task.md', 'Done', 'false');
 
-    // Verify Done was set to false
+    // Verify the changes
     fileContent = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath('Tasks/Custom Status Task.md');
@@ -150,19 +144,10 @@ This task tests dynamic configuration changes.`);
     expect(fileContent).toContain('Status: In Progress');
     expect(fileContent).toContain('Done: false');
 
-    // Change the "In Progress" status to be marked as done
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['task-sync'];
-
-      if (plugin) {
-        const inProgressStatus = plugin.settings.taskStatuses.find((s: any) => s.name === 'In Progress');
-        if (inProgressStatus) {
-          inProgressStatus.isDone = true;
-          await plugin.saveSettings();
-        }
-      }
-    });
+    // Change the "In Progress" status to be marked as done through UI
+    await openTaskStatusSettings(context);
+    await toggleTaskStatusDone(context.page, 'In Progress', true);
+    await context.page.keyboard.press('Escape');
 
     // Trigger a status change to the same status to test the new configuration
     await context.page.evaluate(async () => {
@@ -185,10 +170,10 @@ This task tests dynamic configuration changes.`);
       }
     });
 
-    // Wait for synchronization with new configuration
-    await context.page.waitForTimeout(1000);
+    // Wait for synchronization with new configuration using smart wait
+    await waitForTaskPropertySync(context.page, 'Tasks/Dynamic Config Task.md', 'Done', 'true');
 
-    // Verify Done was set to true based on new configuration
+    // Verify the changes
     fileContent = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath('Tasks/Dynamic Config Task.md');
@@ -203,22 +188,12 @@ This task tests dynamic configuration changes.`);
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Configure multiple statuses as done
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['task-sync'];
-
-      if (plugin) {
-        // Add multiple done statuses
-        plugin.settings.taskStatuses.push(
-          { name: 'Completed', color: 'green', isDone: true },
-          { name: 'Delivered', color: 'blue', isDone: true },
-          { name: 'Archived', color: 'gray', isDone: true }
-        );
-
-        await plugin.saveSettings();
-      }
-    });
+    // Configure multiple statuses as done through UI
+    await openTaskStatusSettings(context);
+    await addTaskStatus(context.page, 'Completed', 'green', true);
+    await addTaskStatus(context.page, 'Delivered', 'blue', true);
+    await addTaskStatus(context.page, 'Archived', 'gray', true);
+    await context.page.keyboard.press('Escape');
 
     // Create a task
     await context.page.evaluate(async () => {
@@ -259,10 +234,10 @@ This task tests multiple done statuses.`);
         }
       }, status);
 
-      // Wait for synchronization
-      await context.page.waitForTimeout(1000);
+      // Wait for synchronization using smart wait
+      await waitForTaskPropertySync(context.page, 'Tasks/Multiple Done Task.md', 'Done', 'true');
 
-      // Verify Done was set to true
+      // Verify the changes
       const fileContent = await context.page.evaluate(async () => {
         const app = (window as any).app;
         const file = app.vault.getAbstractFileByPath('Tasks/Multiple Done Task.md');
@@ -278,25 +253,17 @@ This task tests multiple done statuses.`);
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Configure multiple statuses with different done states
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['task-sync'];
+    // Configure multiple statuses with different done states through UI
+    await openTaskStatusSettings(context);
 
-      if (plugin) {
-        // Ensure we have a good mix of done and not-done statuses
-        plugin.settings.taskStatuses = [
-          { name: 'Backlog', color: 'gray', isDone: false },
-          { name: 'Todo', color: 'blue', isDone: false },
-          { name: 'In Progress', color: 'yellow', isDone: false },
-          { name: 'Done', color: 'green', isDone: true },
-          { name: 'Completed', color: 'green', isDone: true },
-          { name: 'Finished', color: 'purple', isDone: true }
-        ];
+    // Add additional done statuses
+    await addTaskStatus(context.page, 'Completed', 'green', true);
+    await addTaskStatus(context.page, 'Finished', 'purple', true);
 
-        await plugin.saveSettings();
-      }
-    });
+    // Add additional non-done statuses
+    await addTaskStatus(context.page, 'Todo', 'blue', false);
+
+    await context.page.keyboard.press('Escape');
 
     // Create a task with a non-done status
     await context.page.evaluate(async () => {
@@ -333,8 +300,8 @@ This task tests status preference logic.`);
       }
     });
 
-    // Wait for synchronization
-    await context.page.waitForTimeout(1000);
+    // Wait for synchronization using smart wait
+    await waitForTaskPropertySync(context.page, 'Tasks/Status Preference Task.md', 'Done', 'true');
 
     // Verify Status was changed to a done status (should prefer "Done")
     let fileContent = await context.page.evaluate(async () => {
@@ -345,6 +312,9 @@ This task tests status preference logic.`);
 
     expect(fileContent).toContain('Done: true');
     expect(fileContent).toContain('Status: Done'); // Should prefer "Done" over other done statuses
+
+    // Wait a bit to ensure the first synchronization is fully complete
+    await context.page.waitForTimeout(200);
 
     // Change Done back to false
     await context.page.evaluate(async () => {
@@ -358,8 +328,8 @@ This task tests status preference logic.`);
       }
     });
 
-    // Wait for synchronization
-    await context.page.waitForTimeout(1000);
+    // Wait for synchronization using smart wait
+    await waitForTaskPropertySync(context.page, 'Tasks/Status Preference Task.md', 'Done', 'false');
 
     // Verify Status was changed to a non-done status (should prefer "Backlog")
     fileContent = await context.page.evaluate(async () => {
@@ -411,7 +381,8 @@ This task tests settings changes.`);
       }
     });
 
-    await context.page.waitForTimeout(1000);
+    // Wait for synchronization using smart wait
+    await waitForTaskPropertySync(context.page, 'Tasks/Settings Change Task.md', 'Done', 'true');
 
     let fileContent = await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -422,21 +393,10 @@ This task tests settings changes.`);
     expect(fileContent).toContain('Status: Done');
     expect(fileContent).toContain('Done: true');
 
-    // Change settings (add new status)
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['task-sync'];
-
-      if (plugin) {
-        plugin.settings.taskStatuses.push({
-          name: 'Review',
-          color: 'orange',
-          isDone: false
-        });
-
-        await plugin.saveSettings();
-      }
-    });
+    // Change settings (add new status) through UI
+    await openTaskStatusSettings(context);
+    await addTaskStatus(context.page, 'Review', 'orange', false);
+    await context.page.keyboard.press('Escape');
 
     // Test synchronization still works after settings change
     await context.page.evaluate(async () => {
@@ -450,7 +410,8 @@ This task tests settings changes.`);
       }
     });
 
-    await context.page.waitForTimeout(1000);
+    // Wait for synchronization using smart wait
+    await waitForTaskPropertySync(context.page, 'Tasks/Settings Change Task.md', 'Done', 'false');
 
     fileContent = await context.page.evaluate(async () => {
       const app = (window as any).app;

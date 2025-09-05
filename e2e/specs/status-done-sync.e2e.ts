@@ -397,7 +397,7 @@ This is a note outside the task folders.`);
     // Configure custom statuses with isDone properties
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['task-sync'];
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
 
       if (plugin) {
         // Add a custom done status

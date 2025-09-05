@@ -407,7 +407,12 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
       {
         type: 'table',
         name: 'Tasks',
-        filters: { and: [`file.folder == "${settings.tasksFolder}"`, `!"Parent task"`] },
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `note["Parent task"].isEmpty()`
+          ]
+        },
         order: [...VIEW_ORDERS.tasks.main],
         sort: [...SORT_CONFIGS.main]
       },
@@ -429,7 +434,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
             and: [
               `file.folder == "${settings.tasksFolder}"`,
               `Type == "${taskType.name}"`,
-              `!"Parent task"`
+              `note["Parent task"].isEmpty()`
             ]
           },
           order: [...VIEW_ORDERS.tasks.type],
@@ -447,7 +452,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
                 `file.folder == "${settings.tasksFolder}"`,
                 `Type == "${taskType.name}"`,
                 `Priority == "${priority.name}"`,
-                `!"Parent task"`
+                `note["Parent task"].isEmpty()`
               ]
             },
             order: [...VIEW_ORDERS.tasks.type],
@@ -533,7 +538,7 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
           and: [
             `file.folder == "${settings.tasksFolder}"`,
             `Areas.contains(link("${area.name}"))`,
-            `!"Parent task"`
+            `note["Parent task"].isEmpty()`
           ]
         },
         order: [...VIEW_ORDERS.area.main],
@@ -556,7 +561,7 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
               `file.folder == "${settings.tasksFolder}"`,
               `Areas.contains(link("${area.name}"))`,
               `Type == "${taskType.name}"`,
-              `!"Parent task"`
+              `note["Parent task"].isEmpty()`
             ]
           },
           order: [...VIEW_ORDERS.area.type],
@@ -608,7 +613,7 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
           and: [
             `file.folder == "${settings.tasksFolder}"`,
             `Project.contains(link("${project.name}"))`,
-            `!"Parent task"`
+            `note["Parent task"].isEmpty()`
           ]
         },
         order: [...VIEW_ORDERS.project.main],
@@ -625,7 +630,7 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
               `file.folder == "${settings.tasksFolder}"`,
               `Project.contains(link("${project.name}"))`,
               `Type == "${taskType.name}"`,
-              `!"Parent task"`
+              `note["Parent task"].isEmpty()`
             ]
           },
           order: [...VIEW_ORDERS.project.type],

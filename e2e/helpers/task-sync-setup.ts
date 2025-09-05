@@ -328,6 +328,115 @@ export async function waitForBaseContent(page: Page, baseFilePath: string, expec
 }
 
 /**
+ * Wait for file content to contain specific text using exponential backoff
+ * More efficient than fixed timeouts - starts with short waits and increases gradually
+ */
+export async function waitForFileContentToContain(
+  page: Page,
+  filePath: string,
+  expectedContent: string,
+  timeout: number = 10000
+): Promise<void> {
+  const startTime = Date.now();
+  let waitTime = 100; // Start with 100ms
+  const maxWaitTime = 2000; // Cap individual waits at 2 seconds
+
+  while (Date.now() - startTime < timeout) {
+    // Check if file contains expected content
+    const hasContent = await page.evaluate(
+      async ({ path, content }) => {
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(path);
+        if (!file) return false;
+
+        try {
+          const fileContent = await app.vault.read(file);
+          return fileContent.includes(content);
+        } catch (error) {
+          return false;
+        }
+      },
+      { path: filePath, content: expectedContent }
+    );
+
+    if (hasContent) {
+      return; // Success!
+    }
+
+    // Wait with exponential backoff
+    await page.waitForTimeout(waitTime);
+    waitTime = Math.min(waitTime * 2, maxWaitTime); // Double wait time, but cap it
+  }
+
+  // Timeout reached - get current content for debugging
+  const currentContent = await page.evaluate(
+    async ({ path }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (!file) return 'FILE_NOT_FOUND';
+
+      try {
+        return await app.vault.read(file);
+      } catch (error) {
+        return `ERROR_READING_FILE: ${error.message}`;
+      }
+    },
+    { path: filePath }
+  );
+
+  throw new Error(
+    `Timeout waiting for file "${filePath}" to contain "${expectedContent}" after ${timeout}ms.\n` +
+    `Current file content:\n${currentContent}`
+  );
+}
+
+/**
+ * Wait for a task property to be synchronized to a specific value
+ * Specialized helper for task property synchronization with better error messages
+ */
+export async function waitForTaskPropertySync(
+  page: Page,
+  filePath: string,
+  property: string,
+  expectedValue: string | boolean,
+  timeout: number = 10000
+): Promise<void> {
+  const expectedText = `${property}: ${expectedValue}`;
+
+  try {
+    await waitForFileContentToContain(page, filePath, expectedText, timeout);
+  } catch (error) {
+    // Enhanced error message for task property sync
+    const currentContent = await page.evaluate(
+      async ({ path }) => {
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(path);
+        if (!file) return 'FILE_NOT_FOUND';
+
+        try {
+          return await app.vault.read(file);
+        } catch (error) {
+          return `ERROR_READING_FILE: ${error.message}`;
+        }
+      },
+      { path: filePath }
+    );
+
+    // Extract current property value for better debugging
+    const propertyMatch = currentContent.match(new RegExp(`${property}:\\s*(.+)`));
+    const currentValue = propertyMatch ? propertyMatch[1].trim() : 'NOT_FOUND';
+
+    throw new Error(
+      `Task property synchronization failed for "${filePath}".\n` +
+      `Expected: ${property}: ${expectedValue}\n` +
+      `Current: ${property}: ${currentValue}\n` +
+      `Timeout: ${timeout}ms\n\n` +
+      `Full file content:\n${currentContent}`
+    );
+  }
+}
+
+/**
  * Wait for bases regeneration to complete
  */
 export async function waitForBasesRegeneration(page: Page, timeout: number = 5000): Promise<void> {
@@ -667,4 +776,61 @@ export async function scrollToSettingsSection(page: Page, sectionName: string): 
   await section.scrollIntoViewIfNeeded();
   // Wait for the section to be visible after scrolling
   await section.waitFor({ state: 'visible', timeout: 5000 });
+}
+
+/**
+ * Add a new task status through the UI
+ */
+export async function addTaskStatus(page: Page, statusName: string, color: string = 'blue', isDone: boolean = false): Promise<void> {
+  // Find the "Add New Task Status" section
+  const addSection = page.locator('.setting-item').filter({ hasText: 'Add New Task Status' });
+  await addSection.waitFor({ state: 'visible', timeout: 5000 });
+
+  // Fill in the status name
+  const nameInput = addSection.locator('input[placeholder*="Review, Testing, Blocked"]');
+  await nameInput.fill(statusName);
+
+  // Select the color
+  const colorDropdown = addSection.locator('select').first();
+  await colorDropdown.selectOption(color);
+
+  // Click the Add Status button
+  const addButton = addSection.locator('button').filter({ hasText: 'Add Status' });
+  await addButton.click();
+
+  // Wait for the new status to appear
+  const newStatusSetting = page.locator('.setting-item').filter({ hasText: statusName }).first();
+  await newStatusSetting.waitFor({ state: 'visible', timeout: 5000 });
+
+  // If isDone should be true, toggle it
+  if (isDone) {
+    const toggle = newStatusSetting.locator('input[type="checkbox"]');
+    const isChecked = await toggle.isChecked();
+    if (!isChecked) {
+      await toggle.click();
+    }
+  }
+}
+
+/**
+ * Toggle the isDone state of an existing task status
+ */
+export async function toggleTaskStatusDone(page: Page, statusName: string, isDone: boolean): Promise<void> {
+  const statusSetting = page.locator('.setting-item').filter({ hasText: statusName }).first();
+  await statusSetting.waitFor({ state: 'visible', timeout: 5000 });
+
+  const toggle = statusSetting.locator('input[type="checkbox"]');
+  const isChecked = await toggle.isChecked();
+
+  if (isChecked !== isDone) {
+    await toggle.click();
+  }
+}
+
+/**
+ * Open Task Sync settings and navigate to Task Statuses section
+ */
+export async function openTaskStatusSettings(context: any): Promise<void> {
+  await openTaskSyncSettings(context);
+  await scrollToSettingsSection(context.page, 'Task Statuses');
 }

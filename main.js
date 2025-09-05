@@ -3013,7 +3013,12 @@ function generateTasksBase(settings, projectsAndAreas) {
       {
         type: "table",
         name: "Tasks",
-        filters: { and: [`file.folder == "${settings.tasksFolder}"`, `!"Parent task"`] },
+        filters: {
+          and: [
+            `file.folder == "${settings.tasksFolder}"`,
+            `note["Parent task"].isEmpty()`
+          ]
+        },
         order: [...VIEW_ORDERS.tasks.main],
         sort: [...SORT_CONFIGS.main]
       },
@@ -3033,7 +3038,7 @@ function generateTasksBase(settings, projectsAndAreas) {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
             `Type == "${taskType.name}"`,
-            `!"Parent task"`
+            `note["Parent task"].isEmpty()`
           ]
         },
         order: [...VIEW_ORDERS.tasks.type],
@@ -3049,7 +3054,7 @@ function generateTasksBase(settings, projectsAndAreas) {
               `file.folder == "${settings.tasksFolder}"`,
               `Type == "${taskType.name}"`,
               `Priority == "${priority.name}"`,
-              `!"Parent task"`
+              `note["Parent task"].isEmpty()`
             ]
           },
           order: [...VIEW_ORDERS.tasks.type],
@@ -3126,7 +3131,7 @@ function generateAreaBase(settings, area) {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
             `Areas.contains(link("${area.name}"))`,
-            `!"Parent task"`
+            `note["Parent task"].isEmpty()`
           ]
         },
         order: [...VIEW_ORDERS.area.main],
@@ -3147,7 +3152,7 @@ function generateAreaBase(settings, area) {
             `file.folder == "${settings.tasksFolder}"`,
             `Areas.contains(link("${area.name}"))`,
             `Type == "${taskType.name}"`,
-            `!"Parent task"`
+            `note["Parent task"].isEmpty()`
           ]
         },
         order: [...VIEW_ORDERS.area.type],
@@ -3192,7 +3197,7 @@ function generateProjectBase(settings, project) {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
             `Project.contains(link("${project.name}"))`,
-            `!"Parent task"`
+            `note["Parent task"].isEmpty()`
           ]
         },
         order: [...VIEW_ORDERS.project.main],
@@ -3207,7 +3212,7 @@ function generateProjectBase(settings, project) {
             `file.folder == "${settings.tasksFolder}"`,
             `Project.contains(link("${project.name}"))`,
             `Type == "${taskType.name}"`,
-            `!"Parent task"`
+            `note["Parent task"].isEmpty()`
           ]
         },
         order: [...VIEW_ORDERS.project.type],
@@ -5188,6 +5193,7 @@ var FileChangeListener = class {
     const oldDone = oldFrontmatter.Done;
     const newDone = newFrontmatter.Done;
     if (oldDone !== newDone) {
+      console.log(`FileChangeListener: Done changed in ${newState.path} from ${oldDone} to ${newDone}`);
       const eventData = {
         filePath: newState.path,
         oldDone,
@@ -7033,6 +7039,13 @@ var StatusDoneHandler = class {
     this.processingFiles = /* @__PURE__ */ new Set();
   }
   /**
+   * Update the settings reference for this handler
+   * This should be called when plugin settings are updated
+   */
+  updateSettings(newSettings) {
+    this.settings = newSettings;
+  }
+  /**
    * Get the event types this handler supports
    */
   getSupportedEventTypes() {
@@ -7085,6 +7098,7 @@ var StatusDoneHandler = class {
    * Handle done change events
    */
   async handleDoneChanged(data) {
+    console.log(`StatusDoneHandler: handleDoneChanged called for ${data.filePath}, newDone: ${data.newDone}`);
     const { filePath, newDone, frontmatter } = data;
     const currentStatus = frontmatter.Status;
     if (!currentStatus) {
@@ -7321,6 +7335,7 @@ var TaskSyncPlugin = class extends import_obsidian11.Plugin {
     try {
       await this.saveData(this.settings);
       if (this.statusDoneHandler) {
+        this.statusDoneHandler.updateSettings(this.settings);
         console.log("Task Sync: Event system updated with new settings");
       }
     } catch (error) {

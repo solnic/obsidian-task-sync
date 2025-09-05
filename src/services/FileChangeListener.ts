@@ -354,6 +354,7 @@ export class FileChangeListener {
     const newDone = newFrontmatter.Done;
 
     if (oldDone !== newDone) {
+      console.log(`FileChangeListener: Done changed in ${newState.path} from ${oldDone} to ${newDone}`);
       const eventData: DoneChangedEventData = {
         filePath: newState.path,
         oldDone,

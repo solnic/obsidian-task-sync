@@ -175,9 +175,11 @@ export default class TaskSyncPlugin extends Plugin {
 
       // Update event system with new settings
       if (this.statusDoneHandler) {
-        // The handler will use the updated settings automatically since it references this.settings
+        this.statusDoneHandler.updateSettings(this.settings);
         console.log('Task Sync: Event system updated with new settings');
       }
+
+      // Note: FileChangeListener will get updated settings automatically since it references this.settings
     } catch (error) {
       console.error('Task Sync: Failed to save settings:', error);
       throw error;

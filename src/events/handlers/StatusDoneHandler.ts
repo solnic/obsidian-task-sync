@@ -25,6 +25,14 @@ export class StatusDoneHandler implements EventHandler {
   ) { }
 
   /**
+   * Update the settings reference for this handler
+   * This should be called when plugin settings are updated
+   */
+  updateSettings(newSettings: TaskSyncSettings): void {
+    this.settings = newSettings;
+  }
+
+  /**
    * Get the event types this handler supports
    */
   getSupportedEventTypes(): EventType[] {
@@ -87,6 +95,7 @@ export class StatusDoneHandler implements EventHandler {
    * Handle done change events
    */
   private async handleDoneChanged(data: DoneChangedEventData): Promise<void> {
+    console.log(`StatusDoneHandler: handleDoneChanged called for ${data.filePath}, newDone: ${data.newDone}`);
     const { filePath, newDone, frontmatter } = data;
 
     // Get current status
