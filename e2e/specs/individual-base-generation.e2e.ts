@@ -9,11 +9,9 @@ import {
   getFileContent,
   fileExists,
   waitForBasesRegeneration,
-  configureBasesSettings,
-  toggleAreaBasesEnabled,
-  toggleProjectBasesEnabled
+  configureBasesSettings
 } from '../helpers/task-sync-setup';
-import { setupE2ETestHooks } from '../helpers/shared-context';
+import { setupE2ETestHooks, executeCommand } from '../helpers/shared-context';
 
 describe('Individual Base Generation', () => {
   const context = setupE2ETestHooks();
@@ -46,14 +44,8 @@ This is a health area for tracking fitness and wellness.
     // Enable area bases via UI and trigger regeneration
     await configureBasesSettings(context, true, false);
 
-    // Trigger regeneration
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        await plugin.regenerateBases();
-      }
-    });
+    // Trigger regeneration via command
+    await executeCommand(context, 'Task Sync: Refresh');
 
     await waitForBasesRegeneration(context.page);
 
@@ -118,14 +110,8 @@ This is a website redesign project.
     // Enable project bases via UI and trigger regeneration
     await configureBasesSettings(context, false, true);
 
-    // Trigger regeneration
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        await plugin.regenerateBases();
-      }
-    });
+    // Trigger regeneration via command
+    await executeCommand(context, 'Task Sync: Refresh');
 
     await waitForBasesRegeneration(context.page);
 
@@ -186,14 +172,8 @@ Finance area for budgeting and investments.
     // Disable area bases and enable project bases via UI
     await configureBasesSettings(context, false, true);
 
-    // Trigger regeneration
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        await plugin.regenerateBases();
-      }
-    });
+    // Trigger regeneration via command
+    await executeCommand(context, 'Task Sync: Refresh');
 
     await waitForBasesRegeneration(context.page);
 
@@ -224,14 +204,8 @@ Mobile app development project.
     // Enable area bases and disable project bases via UI
     await configureBasesSettings(context, true, false);
 
-    // Trigger regeneration
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        await plugin.regenerateBases();
-      }
-    });
+    // Trigger regeneration via command
+    await executeCommand(context, 'Task Sync: Refresh');
 
     await waitForBasesRegeneration(context.page);
 
@@ -262,17 +236,17 @@ Learning and skill development area.
       await app.vault.create('Areas/Learning.md', areaContent);
     });
 
-    // Enable area bases via UI and trigger regeneration
-    await configureBasesSettings(context, true, false);
-
-    // Trigger regeneration
+    // Enable area bases directly via plugin settings
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        await plugin.regenerateBases();
-      }
+      plugin.settings.areaBasesEnabled = true;
+      plugin.settings.projectBasesEnabled = false;
+      await plugin.saveSettings();
     });
+
+    // Trigger regeneration via command
+    await executeCommand(context, 'Task Sync: Refresh');
 
     await waitForBasesRegeneration(context.page);
 
@@ -345,14 +319,8 @@ Monthly budget tracking system.
     // Enable both area and project bases via UI
     await configureBasesSettings(context, true, true);
 
-    // Trigger regeneration
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        await plugin.regenerateBases();
-      }
-    });
+    // Trigger regeneration via command
+    await executeCommand(context, 'Task Sync: Refresh');
 
     await waitForBasesRegeneration(context.page);
 

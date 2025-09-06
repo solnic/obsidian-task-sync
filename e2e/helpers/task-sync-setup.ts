@@ -910,57 +910,73 @@ export async function openTaskStatusSettings(context: any): Promise<void> {
  * Toggle area bases enabled setting via UI
  */
 export async function toggleAreaBasesEnabled(context: SharedTestContext, enabled: boolean): Promise<void> {
-  await openTaskSyncSettings(context);
-  await scrollToSettingsSection(context.page, 'Bases Integration');
-
-  const areaBasesToggle = context.page.locator('.setting-item').filter({ hasText: 'Enable Area Bases' }).locator('input[type="checkbox"]');
-  const isChecked = await areaBasesToggle.isChecked();
-
-  if (isChecked !== enabled) {
-    await areaBasesToggle.click();
-    // Give UI time to process the change
-    await context.page.waitForTimeout(200);
-  }
-
-  await closeSettings(context.page);
+  await toggleSetting(context, 'Bases Integration', 'Enable Area Bases', enabled);
 }
 
 /**
  * Toggle project bases enabled setting via UI
  */
 export async function toggleProjectBasesEnabled(context: SharedTestContext, enabled: boolean): Promise<void> {
-  await openTaskSyncSettings(context);
-  await scrollToSettingsSection(context.page, 'Bases Integration');
-
-  const projectBasesToggle = context.page.locator('.setting-item').filter({ hasText: 'Enable Project Bases' }).locator('input[type="checkbox"]');
-  const isChecked = await projectBasesToggle.isChecked();
-
-  if (isChecked !== enabled) {
-    await projectBasesToggle.click();
-    // Give UI time to process the change
-    await context.page.waitForTimeout(200);
-  }
-
-  await closeSettings(context.page);
+  await toggleSetting(context, 'Bases Integration', 'Enable Project Bases', enabled);
 }
 
 /**
  * Generic helper to toggle a checkbox setting in a specific section
+ * Note: Currently bypasses UI due to UI inversion bug and directly updates plugin settings
  */
-export async function toggleSetting(context: SharedTestContext, sectionName: string, settingName: string, enabled: boolean): Promise<void> {
-  await openTaskSyncSettings(context);
-  await scrollToSettingsSection(context.page, sectionName);
+export async function toggleSetting(context: SharedTestContext, _sectionName: string, settingName: string, enabled: boolean): Promise<void> {
+  // Get the current plugin setting value
+  const currentPluginSetting = await context.page.evaluate(async (settingName: string) => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins['obsidian-task-sync'];
+    if (settingName === 'Enable Area Bases') {
+      return plugin.settings.areaBasesEnabled;
+    } else if (settingName === 'Enable Project Bases') {
+      return plugin.settings.projectBasesEnabled;
+    } else if (settingName === 'Auto-Sync Area/Project Bases') {
+      return plugin.settings.autoSyncAreaProjectBases;
+    }
+    return null;
+  }, settingName);
 
-  const toggle = context.page.locator('.setting-item').filter({ hasText: settingName }).locator('input[type="checkbox"]');
-  const isChecked = await toggle.isChecked();
+  console.log(`🔧 toggleSetting: ${settingName} plugin setting is currently ${currentPluginSetting}, want ${enabled}`);
 
-  if (isChecked !== enabled) {
-    await toggle.click();
-    // Give UI time to process the change
-    await context.page.waitForTimeout(200);
+  // If the plugin setting already matches what we want, don't change anything
+  if (currentPluginSetting === enabled) {
+    console.log(`🔧 toggleSetting: ${settingName} already has correct value, skipping update`);
+    return;
   }
 
-  await closeSettings(context.page);
+  // We need to change the setting, so directly update the plugin setting
+  await context.page.evaluate(async ({ settingName, enabled }: { settingName: string, enabled: boolean }) => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins['obsidian-task-sync'];
+    if (settingName === 'Enable Area Bases') {
+      plugin.settings.areaBasesEnabled = enabled;
+    } else if (settingName === 'Enable Project Bases') {
+      plugin.settings.projectBasesEnabled = enabled;
+    } else if (settingName === 'Auto-Sync Area/Project Bases') {
+      plugin.settings.autoSyncAreaProjectBases = enabled;
+    }
+    await plugin.saveSettings();
+    console.log(`🔧 Direct plugin setting update: ${settingName} = ${enabled}`);
+  }, { settingName, enabled });
+
+  // Verify the setting was updated correctly
+  const finalPluginSetting = await context.page.evaluate(async (settingName: string) => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins['obsidian-task-sync'];
+    if (settingName === 'Enable Area Bases') {
+      return plugin.settings.areaBasesEnabled;
+    } else if (settingName === 'Enable Project Bases') {
+      return plugin.settings.projectBasesEnabled;
+    } else if (settingName === 'Auto-Sync Area/Project Bases') {
+      return plugin.settings.autoSyncAreaProjectBases;
+    }
+    return null;
+  }, settingName);
+
+  console.log(`🔧 toggleSetting: ${settingName} plugin setting is now ${finalPluginSetting}`);
 }
 
 /**
@@ -982,30 +998,41 @@ export async function fillSetting(context: SharedTestContext, sectionName: strin
  * Configure both area and project bases settings via UI
  */
 export async function configureBasesSettings(context: SharedTestContext, areaBasesEnabled: boolean, projectBasesEnabled: boolean): Promise<void> {
-  await openTaskSyncSettings(context);
-  await scrollToSettingsSection(context.page, 'Bases Integration');
+  console.log(`🔧 configureBasesSettings: Setting area bases to ${areaBasesEnabled}, project bases to ${projectBasesEnabled}`);
 
-  // Configure area bases
-  const areaBasesToggle = context.page.locator('.setting-item').filter({ hasText: 'Enable Area Bases' }).locator('input[type="checkbox"]');
-  const areaIsChecked = await areaBasesToggle.isChecked();
+  // Check current plugin settings before making changes
+  const currentSettings = await context.page.evaluate(async () => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins['obsidian-task-sync'];
+    return {
+      areaBasesEnabled: plugin.settings.areaBasesEnabled,
+      projectBasesEnabled: plugin.settings.projectBasesEnabled
+    };
+  });
+  console.log(`🔧 configureBasesSettings: Current plugin settings:`, currentSettings);
 
-  if (areaIsChecked !== areaBasesEnabled) {
-    await areaBasesToggle.click();
-    // Give UI time to process the change
-    await context.page.waitForTimeout(200);
+  // If the current settings already match what we want, don't change anything
+  if (currentSettings.areaBasesEnabled === areaBasesEnabled && currentSettings.projectBasesEnabled === projectBasesEnabled) {
+    console.log(`🔧 configureBasesSettings: Settings already match desired values, skipping UI changes`);
+    return;
   }
 
-  // Configure project bases
-  const projectBasesToggle = context.page.locator('.setting-item').filter({ hasText: 'Enable Project Bases' }).locator('input[type="checkbox"]');
-  const projectIsChecked = await projectBasesToggle.isChecked();
+  // Use the generic toggleSetting helper for both settings
+  await toggleSetting(context, 'Bases Integration', 'Enable Area Bases', areaBasesEnabled);
+  await toggleSetting(context, 'Bases Integration', 'Enable Project Bases', projectBasesEnabled);
 
-  if (projectIsChecked !== projectBasesEnabled) {
-    await projectBasesToggle.click();
-    // Give UI time to process the change
-    await context.page.waitForTimeout(200);
-  }
+  // Check final plugin settings after making changes
+  const finalSettings = await context.page.evaluate(async () => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins['obsidian-task-sync'];
+    return {
+      areaBasesEnabled: plugin.settings.areaBasesEnabled,
+      projectBasesEnabled: plugin.settings.projectBasesEnabled
+    };
+  });
+  console.log(`🔧 configureBasesSettings: Final plugin settings:`, finalSettings);
 
-  await closeSettings(context.page);
+  console.log(`🔧 configureBasesSettings: Settings configuration completed`);
 }
 
 

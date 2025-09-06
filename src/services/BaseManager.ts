@@ -252,28 +252,37 @@ export class BaseManager {
    */
   async syncAreaProjectBases(): Promise<void> {
     const projectsAndAreas = await this.getProjectsAndAreas();
+    console.log(`BaseManager: Found ${projectsAndAreas.length} projects and areas:`, projectsAndAreas.map(item => `${item.name} (${item.type})`));
 
     // Handle area bases
+    console.log(`BaseManager: areaBasesEnabled = ${this.settings.areaBasesEnabled}`);
     if (this.settings.areaBasesEnabled) {
       // Create individual bases for areas
       const areas = projectsAndAreas.filter(item => item.type === 'area');
+      console.log(`BaseManager: Found ${areas.length} areas to create bases for:`, areas.map(a => a.name));
       for (const area of areas) {
+        console.log(`BaseManager: Creating area base for: ${area.name}`);
         await this.createOrUpdateAreaBase(area);
       }
     } else {
       // Clean up existing area bases when disabled
+      console.log('BaseManager: Area bases disabled, cleaning up existing bases');
       await this.cleanupAreaBases(projectsAndAreas);
     }
 
     // Handle project bases
+    console.log(`BaseManager: projectBasesEnabled = ${this.settings.projectBasesEnabled}`);
     if (this.settings.projectBasesEnabled) {
       // Create individual bases for projects
       const projects = projectsAndAreas.filter(item => item.type === 'project');
+      console.log(`BaseManager: Found ${projects.length} projects to create bases for:`, projects.map(p => p.name));
       for (const project of projects) {
+        console.log(`BaseManager: Creating project base for: ${project.name}`);
         await this.createOrUpdateProjectBase(project);
       }
     } else {
       // Clean up existing project bases when disabled
+      console.log('BaseManager: Project bases disabled, cleaning up existing bases');
       await this.cleanupProjectBases(projectsAndAreas);
     }
 

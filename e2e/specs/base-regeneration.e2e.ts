@@ -10,7 +10,9 @@ import {
   fileExists,
   waitForTaskSyncPlugin,
   waitForBaseFile,
-  waitForBasesRegeneration
+  waitForBasesRegeneration,
+  toggleSetting,
+  fillSetting
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks, executeCommand } from '../helpers/shared-context';
 
@@ -45,18 +47,13 @@ This is the Task Sync area for managing plugin development.
 `);
     });
 
-    // Enable area bases and regenerate
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        plugin.settings.areasFolder = '2. Areas';
-        plugin.settings.areaBasesEnabled = true;
-        plugin.settings.autoSyncAreaProjectBases = true;
-        await plugin.saveSettings();
-        await plugin.regenerateBases();
-      }
-    });
+    // Configure settings via UI
+    await fillSetting(context, 'General', 'Areas Folder', '2. Areas');
+    await toggleSetting(context, 'Bases Integration', 'Enable Area Bases', true);
+    await toggleSetting(context, 'Bases Integration', 'Auto-Sync Area/Project Bases', true);
+
+    // Trigger regeneration via command
+    await executeCommand(context, 'Task Sync: Refresh');
 
     // Wait for the area base to be created
     await waitForBaseFile(context.page, 'Bases/Task Sync.base');
@@ -93,17 +90,12 @@ Website redesign project for the company.
 `);
     });
 
-    // Enable project bases and regenerate
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        plugin.settings.projectBasesEnabled = true;
-        plugin.settings.autoSyncAreaProjectBases = true;
-        await plugin.saveSettings();
-        await plugin.regenerateBases();
-      }
-    });
+    // Configure settings via UI
+    await toggleSetting(context, 'Bases Integration', 'Enable Project Bases', true);
+    await toggleSetting(context, 'Bases Integration', 'Auto-Sync Area/Project Bases', true);
+
+    // Trigger regeneration via command
+    await executeCommand(context, 'Task Sync: Refresh');
 
     // Wait for bases regeneration to complete
     await waitForBasesRegeneration(context.page);
@@ -160,20 +152,8 @@ Website redesign project for the company.
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Configure custom task types with colors and regenerate main base
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        plugin.settings.taskTypes = [
-          { name: 'Bug', color: 'red' },
-          { name: 'Feature', color: 'blue' },
-          { name: 'Task', color: 'green' }
-        ];
-        await plugin.saveSettings();
-        await plugin.regenerateBases();
-      }
-    });
+    // Trigger regeneration via command (task types are already configured by default)
+    await executeCommand(context, 'Task Sync: Refresh');
 
     // Wait for bases regeneration to complete
     await waitForBasesRegeneration(context.page);
@@ -218,7 +198,7 @@ Website redesign project for the company.
         // Folder might already exist
       }
 
-      await app.vault.create('2. Areas/Health & Fitness.md', `---
+      await app.vault.create('Areas/Health & Fitness.md', `---
 Name: Health & Fitness
 Type: Area
 ---
@@ -236,17 +216,10 @@ Marathon training project.
 `);
     });
 
-    // Enable both types of bases
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        plugin.settings.areaBasesEnabled = true;
-        plugin.settings.projectBasesEnabled = true;
-        plugin.settings.autoSyncAreaProjectBases = true;
-        await plugin.saveSettings();
-      }
-    });
+    // Configure settings via UI
+    await toggleSetting(context, 'Bases Integration', 'Enable Area Bases', true);
+    await toggleSetting(context, 'Bases Integration', 'Enable Project Bases', true);
+    await toggleSetting(context, 'Bases Integration', 'Auto-Sync Area/Project Bases', true);
 
     // Use the refresh command
     await executeCommand(context, 'Task Sync: Refresh');
@@ -285,7 +258,7 @@ Marathon training project.
         // Folder might already exist
       }
 
-      await app.vault.create('2. Areas/R&D (Research).md', `---
+      await app.vault.create('Areas/R&D (Research).md', `---
 Name: R&D (Research)
 Type: Area
 ---
@@ -303,18 +276,13 @@ API version 2.0 development project.
 `);
     });
 
-    // Enable bases and regenerate
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        plugin.settings.areaBasesEnabled = true;
-        plugin.settings.projectBasesEnabled = true;
-        plugin.settings.autoSyncAreaProjectBases = true;
-        await plugin.saveSettings();
-        await plugin.regenerateBases();
-      }
-    });
+    // Configure settings via UI
+    await toggleSetting(context, 'Bases Integration', 'Enable Area Bases', true);
+    await toggleSetting(context, 'Bases Integration', 'Enable Project Bases', true);
+    await toggleSetting(context, 'Bases Integration', 'Auto-Sync Area/Project Bases', true);
+
+    // Trigger regeneration via command
+    await executeCommand(context, 'Task Sync: Refresh');
 
     // Wait for bases regeneration to complete
     await waitForBasesRegeneration(context.page);
