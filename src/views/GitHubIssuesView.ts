@@ -28,11 +28,16 @@ export class GitHubIssuesView extends ItemView {
   private isLoading: boolean = false;
 
   constructor(leaf: WorkspaceLeaf, githubService: GitHubService, settings: GitHubIssuesViewSettings) {
+    console.log('🔧 GitHubIssuesView constructor called');
+    console.log('🔧 GitHubIssuesView constructor - settings:', JSON.stringify(settings, null, 2));
+
     super(leaf);
     this.githubService = githubService;
     this.settings = settings;
     this.currentRepository = settings.githubIntegration.defaultRepository;
     this.currentState = settings.githubIntegration.issueFilters.state;
+
+    console.log('✅ GitHubIssuesView constructor completed');
   }
 
   getViewType(): string {
@@ -48,20 +53,41 @@ export class GitHubIssuesView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
+    console.log('🔧 GitHubIssuesView.onOpen() called');
+
     this.containerEl.empty();
     this.containerEl.addClass('github-issues-view');
+    // Ensure data-type attribute is set for e2e tests
+    this.containerEl.setAttribute('data-type', GITHUB_ISSUES_VIEW_TYPE);
 
+    console.log('🔧 GitHubIssuesView: Container setup complete, calling renderView()');
     this.renderView();
 
-    if (this.githubService.isEnabled()) {
-      // Load repositories first to populate the selector
-      await this.loadRepositories();
+    console.log('🔧 GitHubIssuesView: renderView() complete, checking GitHub service');
+    console.log('🔧 GitHubIssuesView: GitHub service enabled:', this.githubService.isEnabled());
 
-      // Then load issues if we have a current repository
-      if (this.currentRepository) {
-        await this.loadIssues();
-      }
+    if (this.githubService.isEnabled()) {
+      console.log('🔧 GitHubIssuesView: Loading repositories...');
+      // Load repositories asynchronously without blocking the view rendering
+      this.loadRepositories().then(() => {
+        console.log('🔧 GitHubIssuesView: Repository loading completed');
+        // Then load issues if we have a current repository
+        if (this.currentRepository) {
+          console.log('🔧 GitHubIssuesView: Loading issues for repository:', this.currentRepository);
+          return this.loadIssues();
+        } else {
+          console.log('🔧 GitHubIssuesView: No current repository set');
+        }
+      }).catch((error) => {
+        console.error('❌ GitHubIssuesView: Error during async loading:', error);
+        this.error = error.message || 'Failed to load GitHub data';
+        this.renderView();
+      });
+    } else {
+      console.log('🔧 GitHubIssuesView: GitHub service not enabled, showing disabled state');
     }
+
+    console.log('✅ GitHubIssuesView.onOpen() completed');
   }
 
   async onClose(): Promise<void> {
@@ -72,21 +98,58 @@ export class GitHubIssuesView extends ItemView {
    * Render the main view structure
    */
   private renderView(): void {
+    console.log('🔧 GitHubIssuesView.renderView() called');
+
     this.containerEl.empty();
+
+    // Re-add the class and data-type attribute after emptying
+    this.containerEl.addClass('github-issues-view');
+    this.containerEl.setAttribute('data-type', GITHUB_ISSUES_VIEW_TYPE);
+
+    console.log('🔧 GitHubIssuesView: Creating header and content sections');
 
     // Header section
     const header = this.containerEl.createDiv('github-issues-header');
+    console.log('🔧 GitHubIssuesView: Header div created, calling renderHeader()');
     this.renderHeader(header);
 
     // Content section
     const content = this.containerEl.createDiv('github-issues-content');
+    console.log('🔧 GitHubIssuesView: Content div created, calling renderContent()');
     this.renderContent(content);
+
+    console.log('✅ GitHubIssuesView.renderView() completed');
+
+    // Debug: Check what's actually in the DOM
+    setTimeout(() => {
+      const headerCheck = this.containerEl.querySelector('.github-issues-header');
+      const contentCheck = this.containerEl.querySelector('.github-issues-content');
+      console.log('🔍 DOM Check after renderView:');
+      console.log('🔍 Header element exists:', !!headerCheck);
+      console.log('🔍 Content element exists:', !!contentCheck);
+      console.log('🔍 Container children count:', this.containerEl.children.length);
+      console.log('🔍 Container HTML:', this.containerEl.innerHTML.substring(0, 200));
+
+      // Also check what the test is looking for
+      const testViewElement = document.querySelector('[data-type="github-issues"]');
+      console.log('🔍 Test view element found:', !!testViewElement);
+      console.log('🔍 Test view element === this.containerEl:', testViewElement === this.containerEl);
+      if (testViewElement) {
+        const testHeaderCheck = testViewElement.querySelector('.github-issues-header');
+        const testContentCheck = testViewElement.querySelector('.github-issues-content');
+        console.log('🔍 Test view - Header exists:', !!testHeaderCheck);
+        console.log('🔍 Test view - Content exists:', !!testContentCheck);
+        console.log('🔍 Test view HTML:', testViewElement.innerHTML.substring(0, 200));
+      }
+    }, 100);
   }
 
   /**
    * Render the header with tabs and controls
    */
   private renderHeader(container: HTMLElement): void {
+    console.log('🔧 GitHubIssuesView.renderHeader() called');
+
     // Tab header (Issues, PRs, Projects)
     const tabHeader = container.createDiv('tab-header');
 
@@ -163,21 +226,30 @@ export class GitHubIssuesView extends ItemView {
    * Render the main content area
    */
   private renderContent(container: HTMLElement): void {
+    console.log('🔧 GitHubIssuesView.renderContent() called');
+    console.log('🔧 GitHubIssuesView: GitHub service enabled:', this.githubService.isEnabled());
+    console.log('🔧 GitHubIssuesView: Error state:', this.error);
+    console.log('🔧 GitHubIssuesView: Loading state:', this.isLoading);
+
     if (!this.githubService.isEnabled()) {
+      console.log('🔧 GitHubIssuesView: Rendering disabled state');
       this.renderDisabledState(container);
       return;
     }
 
     if (this.error) {
+      console.log('🔧 GitHubIssuesView: Rendering error state');
       this.renderErrorState(container);
       return;
     }
 
     if (this.isLoading) {
+      console.log('🔧 GitHubIssuesView: Rendering loading state');
       this.renderLoadingState(container);
       return;
     }
 
+    console.log('🔧 GitHubIssuesView: Rendering issues list');
     this.renderIssuesList(container);
   }
 
@@ -292,13 +364,19 @@ export class GitHubIssuesView extends ItemView {
    * Load repositories from GitHub and update settings
    */
   async loadRepositories(): Promise<void> {
+    console.log('🔧 GitHubIssuesView.loadRepositories() called');
+
     if (!this.githubService.isEnabled()) {
+      console.log('🔧 GitHubIssuesView: GitHub service not enabled, skipping repository load');
       return;
     }
 
     try {
+      console.log('🔧 GitHubIssuesView: Fetching repositories from GitHub...');
       const repositories = await this.githubService.fetchRepositories();
       const repositoryNames = repositories.map(repo => repo.full_name);
+
+      console.log('🔧 GitHubIssuesView: Fetched repositories:', repositoryNames);
 
       // Update settings with fetched repositories
       this.settings.githubIntegration.repositories = repositoryNames;
@@ -309,12 +387,16 @@ export class GitHubIssuesView extends ItemView {
         await plugin.saveSettings();
       }
 
-      // Re-render to update repository selector
-      this.renderView();
+      console.log('🔧 GitHubIssuesView: Updating repository selector after repository load...');
+      // Update just the repository selector instead of re-rendering the entire view
+      this.updateRepositorySelector();
+      console.log('✅ GitHubIssuesView: Repository load completed successfully');
     } catch (error: any) {
-      console.error('Failed to load repositories:', error);
+      console.error('❌ GitHubIssuesView: Failed to load repositories:', error);
       this.error = error.message || 'Failed to load repositories';
-      this.renderView();
+      console.log('🔧 GitHubIssuesView: Updating view after repository load error...');
+      // Update just the content area to show the error instead of re-rendering everything
+      this.updateContentArea();
     }
   }
 
@@ -328,16 +410,19 @@ export class GitHubIssuesView extends ItemView {
 
     this.isLoading = true;
     this.error = null;
-    this.renderView();
+    // Update content area to show loading state without full re-render
+    this.updateContentArea();
 
     try {
       this.issues = await this.githubService.fetchIssues(this.currentRepository);
       this.isLoading = false;
-      this.renderView();
+      // Update content area to show issues without full re-render
+      this.updateContentArea();
     } catch (error: any) {
       this.error = error.message || 'Failed to load issues';
       this.isLoading = false;
-      this.renderView();
+      // Update content area to show error without full re-render
+      this.updateContentArea();
     }
   }
 
@@ -365,6 +450,45 @@ export class GitHubIssuesView extends ItemView {
     });
 
     this.renderIssuesList();
+  }
+
+  /**
+   * Update just the repository selector without re-rendering the entire view
+   */
+  private updateRepositorySelector(): void {
+    const repoSelect = this.containerEl.querySelector('.repository-selector select') as HTMLSelectElement;
+    if (!repoSelect) return;
+
+    // Clear existing options
+    repoSelect.innerHTML = '';
+
+    // Add repository options
+    if (this.settings.githubIntegration.repositories.length > 0) {
+      this.settings.githubIntegration.repositories.forEach(repo => {
+        const option = repoSelect.createEl('option');
+        option.value = repo;
+        option.textContent = repo;
+        if (repo === this.currentRepository) {
+          option.selected = true;
+        }
+      });
+    } else if (this.currentRepository) {
+      const option = repoSelect.createEl('option');
+      option.value = this.currentRepository;
+      option.textContent = this.currentRepository;
+      option.selected = true;
+    }
+  }
+
+  /**
+   * Update just the content area without re-rendering the entire view
+   */
+  private updateContentArea(): void {
+    const contentEl = this.containerEl.querySelector('.github-issues-content') as HTMLElement;
+    if (!contentEl) return;
+
+    contentEl.empty();
+    this.renderContent(contentEl);
   }
 
   /**

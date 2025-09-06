@@ -104,8 +104,13 @@ export default class TaskSyncPlugin extends Plugin {
     // Register GitHub Issues view
     this.registerView(
       GITHUB_ISSUES_VIEW_TYPE,
-      (leaf) => new GitHubIssuesView(leaf, this.githubService, this.settings)
+      (leaf) => new GitHubIssuesView(leaf, this.githubService, { githubIntegration: this.settings.githubIntegration })
     );
+
+    // Create GitHub Issues view in right sidebar if it doesn't exist
+    this.app.workspace.onLayoutReady(() => {
+      this.initializeGitHubIssuesView();
+    });
 
     // Note: Removed automatic folder creation - Obsidian handles this automatically
     // Base files and templates will be created on-demand when needed
@@ -167,13 +172,7 @@ export default class TaskSyncPlugin extends Plugin {
       }
     });
 
-    this.addCommand({
-      id: 'open-github-issues',
-      name: 'Open GitHub Issues',
-      callback: () => {
-        this.openGitHubIssuesView();
-      }
-    });
+
   }
 
   onunload() {
@@ -236,7 +235,7 @@ export default class TaskSyncPlugin extends Plugin {
       githubLeaves.forEach(leaf => {
         const view = leaf.view as GitHubIssuesView;
         if (view && view.updateSettings) {
-          view.updateSettings(this.settings);
+          view.updateSettings({ githubIntegration: this.settings.githubIntegration });
         }
       });
 
@@ -440,19 +439,36 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
+
+
   /**
-   * Open GitHub Issues view in the right sidebar
+   * Initialize GitHub Issues view in the right sidebar if it doesn't already exist
    */
-  private async openGitHubIssuesView(): Promise<void> {
+  private async initializeGitHubIssuesView(): Promise<void> {
     try {
-      const leaf = this.app.workspace.getRightLeaf(false);
-      await leaf.setViewState({
+      console.log('🔧 Initializing GitHub Issues view...');
+
+      // Check if GitHub Issues view already exists
+      const existingLeaves = this.app.workspace.getLeavesOfType(GITHUB_ISSUES_VIEW_TYPE);
+      console.log(`🔧 Found ${existingLeaves.length} existing GitHub Issues views`);
+
+      if (existingLeaves.length > 0) {
+        console.log('✅ GitHub Issues view already exists, skipping creation');
+        return; // View already exists
+      }
+
+      console.log('🔧 Creating GitHub Issues view in right sidebar...');
+
+      // Create the view in the right sidebar
+      const rightLeaf = this.app.workspace.getRightLeaf(false);
+      await rightLeaf.setViewState({
         type: GITHUB_ISSUES_VIEW_TYPE,
-        active: true
+        active: false // Don't make it active by default
       });
-      this.app.workspace.revealLeaf(leaf);
+
+      console.log('✅ GitHub Issues view created successfully');
     } catch (error) {
-      console.error('Failed to open GitHub Issues view:', error);
+      console.error('❌ Failed to initialize GitHub Issues view:', error);
     }
   }
 
