@@ -1,23 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { TaskSyncSettings } from '../src/main';
 import { validateFolderPath } from '../src/components/ui/settings';
+import { DEFAULT_SETTINGS } from '../src/components/ui/settings/defaults';
 
 describe('TaskSync Settings', () => {
   describe('Settings Interface', () => {
     it('should have correct default settings structure', () => {
       const defaultSettings: TaskSyncSettings = {
-        tasksFolder: 'Tasks',
-        projectsFolder: 'Projects',
-        areasFolder: 'Areas',
-        templateFolder: 'Templates',
-        useTemplater: false,
+        ...DEFAULT_SETTINGS,
         defaultTaskTemplate: '',
         defaultProjectTemplate: '',
         defaultAreaTemplate: '',
         defaultParentTaskTemplate: '',
-        basesFolder: 'Bases',
-        tasksBaseFile: 'Tasks.base',
-        autoGenerateBases: true,
         autoUpdateBaseViews: true,
         taskTypes: [
           { name: 'Task', color: 'blue' },
@@ -66,41 +60,7 @@ describe('TaskSync Settings', () => {
 
     it('should validate template settings', () => {
       const settings: TaskSyncSettings = {
-        tasksFolder: 'Tasks',
-        projectsFolder: 'Projects',
-        areasFolder: 'Areas',
-        templateFolder: 'Templates',
-        useTemplater: false,
-        defaultTaskTemplate: 'Task Template',
-        defaultProjectTemplate: 'Project Template',
-        defaultAreaTemplate: 'Area Template',
-        defaultParentTaskTemplate: 'Parent Task Template',
-        basesFolder: 'Bases',
-        tasksBaseFile: 'Tasks.base',
-        autoGenerateBases: true,
-        autoUpdateBaseViews: true,
-        taskTypes: [
-          { name: 'Task', color: 'blue' },
-          { name: 'Bug', color: 'red' },
-          { name: 'Feature', color: 'green' },
-          { name: 'Improvement', color: 'purple' },
-          { name: 'Chore', color: 'gray' }
-        ],
-        taskPriorities: [
-          { name: 'Low', color: 'green' },
-          { name: 'Medium', color: 'yellow' },
-          { name: 'High', color: 'orange' },
-          { name: 'Urgent', color: 'red' }
-        ],
-        taskStatuses: [
-          { name: 'Backlog', color: 'gray', isDone: false },
-          { name: 'In Progress', color: 'blue', isDone: false },
-          { name: 'Done', color: 'green', isDone: true }
-        ],
-        areaBasesEnabled: true,
-        projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true,
-        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
+        ...DEFAULT_SETTINGS
       };
 
       expect(typeof settings.defaultTaskTemplate).toBe('string');
@@ -109,41 +69,8 @@ describe('TaskSync Settings', () => {
 
     it('should validate boolean settings', () => {
       const settings: TaskSyncSettings = {
-        tasksFolder: 'Tasks',
-        projectsFolder: 'Projects',
-        areasFolder: 'Areas',
-        templateFolder: 'Templates',
-        useTemplater: true,
-        defaultTaskTemplate: '',
-        defaultProjectTemplate: '',
-        defaultAreaTemplate: '',
-        defaultParentTaskTemplate: '',
-        basesFolder: 'Bases',
-        tasksBaseFile: 'Tasks.base',
-        autoGenerateBases: true,
-        autoUpdateBaseViews: true,
-        taskTypes: [
-          { name: 'Task', color: 'blue' },
-          { name: 'Bug', color: 'red' },
-          { name: 'Feature', color: 'green' },
-          { name: 'Improvement', color: 'purple' },
-          { name: 'Chore', color: 'gray' }
-        ],
-        taskPriorities: [
-          { name: 'Low', color: 'green' },
-          { name: 'Medium', color: 'yellow' },
-          { name: 'High', color: 'orange' },
-          { name: 'Urgent', color: 'red' }
-        ],
-        taskStatuses: [
-          { name: 'Backlog', color: 'gray', isDone: false },
-          { name: 'In Progress', color: 'blue', isDone: false },
-          { name: 'Done', color: 'green', isDone: true }
-        ],
-        areaBasesEnabled: true,
-        projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true,
-        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
+        ...DEFAULT_SETTINGS,
+        useTemplater: true
       };
 
       expect(typeof settings.useTemplater).toBe('boolean');
@@ -152,41 +79,15 @@ describe('TaskSync Settings', () => {
 
     it('should validate string settings', () => {
       const settings: TaskSyncSettings = {
+        ...DEFAULT_SETTINGS,
         tasksFolder: 'Custom/Tasks',
         projectsFolder: 'Custom/Projects',
         areasFolder: 'Custom/Areas',
         templateFolder: 'Custom/Templates',
-        useTemplater: false,
         defaultTaskTemplate: 'task-template.md',
         defaultProjectTemplate: 'project-template.md',
         defaultAreaTemplate: 'area-template.md',
-        defaultParentTaskTemplate: 'parent-task-template.md',
-        basesFolder: 'Bases',
-        tasksBaseFile: 'Tasks.base',
-        autoGenerateBases: true,
-        autoUpdateBaseViews: true,
-        taskTypes: [
-          { name: 'Task', color: 'blue' },
-          { name: 'Bug', color: 'red' },
-          { name: 'Feature', color: 'green' },
-          { name: 'Improvement', color: 'purple' },
-          { name: 'Chore', color: 'gray' }
-        ],
-        taskPriorities: [
-          { name: 'Low', color: 'green' },
-          { name: 'Medium', color: 'yellow' },
-          { name: 'High', color: 'orange' },
-          { name: 'Urgent', color: 'red' }
-        ],
-        taskStatuses: [
-          { name: 'Backlog', color: 'gray', isDone: false },
-          { name: 'In Progress', color: 'blue', isDone: false },
-          { name: 'Done', color: 'green', isDone: true }
-        ],
-        areaBasesEnabled: true,
-        projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true,
-        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
+        defaultParentTaskTemplate: 'parent-task-template.md'
       };
 
       expect(typeof settings.tasksFolder).toBe('string');
@@ -202,41 +103,11 @@ describe('TaskSync Settings', () => {
   describe('Settings Validation Logic', () => {
     it('should handle empty folder paths', () => {
       const settings: TaskSyncSettings = {
+        ...DEFAULT_SETTINGS,
         tasksFolder: '',
         projectsFolder: '',
         areasFolder: '',
-        templateFolder: '',
-        useTemplater: false,
-        defaultTaskTemplate: '',
-        defaultProjectTemplate: '',
-        defaultAreaTemplate: '',
-        defaultParentTaskTemplate: '',
-        basesFolder: 'Bases',
-        tasksBaseFile: 'Tasks.base',
-        autoGenerateBases: true,
-        autoUpdateBaseViews: true,
-        taskTypes: [
-          { name: 'Task', color: 'blue' },
-          { name: 'Bug', color: 'red' },
-          { name: 'Feature', color: 'green' },
-          { name: 'Improvement', color: 'purple' },
-          { name: 'Chore', color: 'gray' }
-        ],
-        taskPriorities: [
-          { name: 'Low', color: 'green' },
-          { name: 'Medium', color: 'yellow' },
-          { name: 'High', color: 'orange' },
-          { name: 'Urgent', color: 'red' }
-        ],
-        taskStatuses: [
-          { name: 'Backlog', color: 'gray', isDone: false },
-          { name: 'In Progress', color: 'blue', isDone: false },
-          { name: 'Done', color: 'green', isDone: true }
-        ],
-        areaBasesEnabled: true,
-        projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true,
-        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
+        templateFolder: ''
       };
 
       // Empty strings should be valid (user might not want to use certain folders)
@@ -256,41 +127,8 @@ describe('TaskSync Settings', () => {
     it('should handle template settings combinations', () => {
       // Test when Templater is enabled but no templates specified
       const settings1: TaskSyncSettings = {
-        tasksFolder: 'Tasks',
-        projectsFolder: 'Projects',
-        areasFolder: 'Areas',
-        templateFolder: 'Templates',
-        useTemplater: true,
-        defaultTaskTemplate: '',
-        defaultProjectTemplate: '',
-        defaultAreaTemplate: '',
-        defaultParentTaskTemplate: '',
-        basesFolder: 'Bases',
-        tasksBaseFile: 'Tasks.base',
-        autoGenerateBases: true,
-        autoUpdateBaseViews: true,
-        taskTypes: [
-          { name: 'Task', color: 'blue' },
-          { name: 'Bug', color: 'red' },
-          { name: 'Feature', color: 'green' },
-          { name: 'Improvement', color: 'purple' },
-          { name: 'Chore', color: 'gray' }
-        ],
-        taskPriorities: [
-          { name: 'Low', color: 'green' },
-          { name: 'Medium', color: 'yellow' },
-          { name: 'High', color: 'orange' },
-          { name: 'Urgent', color: 'red' }
-        ],
-        taskStatuses: [
-          { name: 'Backlog', color: 'gray', isDone: false },
-          { name: 'In Progress', color: 'blue', isDone: false },
-          { name: 'Done', color: 'green', isDone: true }
-        ],
-        areaBasesEnabled: true,
-        projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true,
-        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
+        ...DEFAULT_SETTINGS,
+        useTemplater: true
       };
 
       expect(settings1.useTemplater).toBe(true);
@@ -298,41 +136,12 @@ describe('TaskSync Settings', () => {
 
       // Test when Templater is disabled but templates are specified
       const settings2: TaskSyncSettings = {
-        tasksFolder: 'Tasks',
-        projectsFolder: 'Projects',
-        areasFolder: 'Areas',
-        templateFolder: 'Templates',
+        ...DEFAULT_SETTINGS,
         useTemplater: false,
         defaultTaskTemplate: 'task.md',
         defaultProjectTemplate: 'project.md',
         defaultAreaTemplate: 'area.md',
-        defaultParentTaskTemplate: 'parent-task.md',
-        basesFolder: 'Bases',
-        tasksBaseFile: 'Tasks.base',
-        autoGenerateBases: true,
-        autoUpdateBaseViews: true,
-        taskTypes: [
-          { name: 'Task', color: 'blue' },
-          { name: 'Bug', color: 'red' },
-          { name: 'Feature', color: 'green' },
-          { name: 'Improvement', color: 'purple' },
-          { name: 'Chore', color: 'gray' }
-        ],
-        taskPriorities: [
-          { name: 'Low', color: 'green' },
-          { name: 'Medium', color: 'yellow' },
-          { name: 'High', color: 'orange' },
-          { name: 'Urgent', color: 'red' }
-        ],
-        taskStatuses: [
-          { name: 'Backlog', color: 'gray', isDone: false },
-          { name: 'In Progress', color: 'blue', isDone: false },
-          { name: 'Done', color: 'green', isDone: true }
-        ],
-        areaBasesEnabled: true,
-        projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true,
-        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
+        defaultParentTaskTemplate: 'parent-task.md'
       };
 
       expect(settings2.useTemplater).toBe(false);

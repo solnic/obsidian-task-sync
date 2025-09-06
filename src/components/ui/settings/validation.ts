@@ -115,3 +115,28 @@ export function validateTemplateFileName(fileName: string): ValidationResult {
 
   return { isValid: true };
 }
+
+/**
+ * Validates GitHub Personal Access Token format
+ */
+export function validateGitHubToken(token: string): ValidationResult {
+  // Allow empty tokens (integration can be disabled)
+  if (!token.trim()) {
+    return { isValid: true };
+  }
+
+  // GitHub Classic PAT format: ghp_ followed by 40 characters
+  const classicPATPattern = /^ghp_[a-zA-Z0-9]{40}$/;
+
+  // GitHub Fine-grained PAT format: github_pat_ followed by version and token
+  const fineGrainedPATPattern = /^github_pat_[a-zA-Z0-9_]{82,}$/;
+
+  if (classicPATPattern.test(token) || fineGrainedPATPattern.test(token)) {
+    return { isValid: true };
+  }
+
+  return {
+    isValid: false,
+    error: 'Invalid GitHub Personal Access Token format. Expected format: ghp_... (classic) or github_pat_... (fine-grained)'
+  };
+}

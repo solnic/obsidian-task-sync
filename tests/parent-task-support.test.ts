@@ -5,39 +5,11 @@ import {
   generateTaskFrontMatter
 } from '../src/services/base-definitions';
 import { TaskSyncSettings } from '../src/main';
+import { DEFAULT_SETTINGS } from '../src/components/ui/settings/defaults';
 
 describe('Parent Task Support', () => {
   const mockSettings: TaskSyncSettings = {
-    tasksFolder: 'Tasks',
-    projectsFolder: 'Projects',
-    areasFolder: 'Areas',
-    templateFolder: 'Templates',
-    useTemplater: false,
-    defaultTaskTemplate: '',
-    defaultProjectTemplate: '',
-    defaultAreaTemplate: '',
-    defaultParentTaskTemplate: '',
-    basesFolder: 'Bases',
-    tasksBaseFile: 'Tasks.base',
-    autoGenerateBases: true,
-    autoUpdateBaseViews: true,
-    taskTypes: [
-      { name: 'Task', color: 'blue' },
-      { name: 'Bug', color: 'red' },
-      { name: 'Feature', color: 'green' }
-    ],
-    taskPriorities: [
-      { name: 'Low', color: 'green' },
-      { name: 'High', color: 'red' }
-    ],
-    taskStatuses: [
-      { name: 'Backlog', color: 'gray', isDone: false },
-      { name: 'Done', color: 'green', isDone: true }
-    ],
-    areaBasesEnabled: true,
-    projectBasesEnabled: true,
-    autoSyncAreaProjectBases: true,
-    taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
+    ...DEFAULT_SETTINGS
   };
 
   describe('Property Definitions', () => {

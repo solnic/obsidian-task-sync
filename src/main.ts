@@ -1,4 +1,4 @@
-import { Plugin, TFile, MarkdownView, Notice } from 'obsidian';
+import { Plugin, TFile, MarkdownView, Notice, WorkspaceLeaf } from 'obsidian';
 import { VaultScanner } from './services/VaultScannerService';
 import { BaseManager } from './services/BaseManager';
 import { PluginStorageService } from './services/PluginStorageService';
@@ -16,6 +16,8 @@ import { TaskPropertyHandler } from './events/handlers/TaskPropertyHandler';
 import { AreaPropertyHandler } from './events/handlers/AreaPropertyHandler';
 import { ProjectPropertyHandler } from './events/handlers/ProjectPropertyHandler';
 import { DEFAULT_SETTINGS, TASK_TYPE_COLORS, validateFolderPath } from './components/ui/settings';
+import { GitHubService } from './services/GitHubService';
+import { GitHubIssuesView, GITHUB_ISSUES_VIEW_TYPE } from './views/GitHubIssuesView';
 
 import pluralize from 'pluralize';
 
@@ -58,6 +60,7 @@ export default class TaskSyncPlugin extends Plugin {
   taskPropertyHandler: TaskPropertyHandler;
   areaPropertyHandler: AreaPropertyHandler;
   projectPropertyHandler: ProjectPropertyHandler;
+  githubService: GitHubService;
 
   async onload() {
     console.log('Loading Task Sync Plugin');
@@ -70,6 +73,7 @@ export default class TaskSyncPlugin extends Plugin {
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
     this.templateManager = new TemplateManager(this.app, this.app.vault, this.settings);
     this.storageService = new PluginStorageService(this.app, this);
+    this.githubService = new GitHubService(this.settings);
 
     // Initialize storage service
     await this.storageService.initialize();
@@ -96,6 +100,12 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
+
+    // Register GitHub Issues view
+    this.registerView(
+      GITHUB_ISSUES_VIEW_TYPE,
+      (leaf) => new GitHubIssuesView(leaf, this.githubService, this.settings)
+    );
 
     // Note: Removed automatic folder creation - Obsidian handles this automatically
     // Base files and templates will be created on-demand when needed
@@ -156,6 +166,14 @@ export default class TaskSyncPlugin extends Plugin {
         await this.revertPromotedTodo();
       }
     });
+
+    this.addCommand({
+      id: 'open-github-issues',
+      name: 'Open GitHub Issues',
+      callback: () => {
+        this.openGitHubIssuesView();
+      }
+    });
   }
 
   onunload() {
@@ -207,6 +225,20 @@ export default class TaskSyncPlugin extends Plugin {
       if (this.statusDoneHandler || this.taskPropertyHandler || this.areaPropertyHandler || this.projectPropertyHandler) {
         console.log('Task Sync: Event system updated with new settings');
       }
+
+      // Update GitHub service with new settings
+      if (this.githubService) {
+        this.githubService.updateSettings(this.settings);
+      }
+
+      // Update GitHub Issues view if it's open
+      const githubLeaves = this.app.workspace.getLeavesOfType(GITHUB_ISSUES_VIEW_TYPE);
+      githubLeaves.forEach(leaf => {
+        const view = leaf.view as GitHubIssuesView;
+        if (view && view.updateSettings) {
+          view.updateSettings(this.settings);
+        }
+      });
 
       // Note: FileChangeListener will get updated settings automatically since it references this.settings
     } catch (error) {
@@ -405,6 +437,22 @@ export default class TaskSyncPlugin extends Plugin {
       modal.open();
     } catch (error) {
       console.error('Failed to open project creation modal:', error);
+    }
+  }
+
+  /**
+   * Open GitHub Issues view in the right sidebar
+   */
+  private async openGitHubIssuesView(): Promise<void> {
+    try {
+      const leaf = this.app.workspace.getRightLeaf(false);
+      await leaf.setViewState({
+        type: GITHUB_ISSUES_VIEW_TYPE,
+        active: true
+      });
+      this.app.workspace.revealLeaf(leaf);
+    } catch (error) {
+      console.error('Failed to open GitHub Issues view:', error);
     }
   }
 

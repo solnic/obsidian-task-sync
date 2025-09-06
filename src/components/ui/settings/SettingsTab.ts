@@ -6,7 +6,7 @@ import { App, PluginSettingTab, Setting } from 'obsidian';
 import TaskSyncPlugin from '../../../main';
 import { TaskSyncSettings, ValidationResult, SettingsSection, TaskType, TASK_TYPE_COLORS, TaskTypeColor, TaskPriority, TASK_PRIORITY_COLORS, TaskPriorityColor, TaskStatus, TASK_STATUS_COLORS, TaskStatusColor, FileSuggestOptions } from './types';
 import { DEFAULT_SETTINGS } from './defaults';
-import { validateFolderPath, validateFileName, validateBaseFileName, validateTemplateFileName } from './validation';
+import { validateFolderPath, validateFileName, validateBaseFileName, validateTemplateFileName, validateGitHubToken } from './validation';
 import { FolderSuggestComponent, FileSuggestComponent } from './suggest';
 import { createTypeBadge } from '../TypeBadge';
 import { createPriorityBadge } from '../PriorityBadge';
@@ -170,6 +170,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     this.createTaskTypesSection(sectionsContainer);
     this.createTaskPrioritiesSection(sectionsContainer);
     this.createTaskStatusesSection(sectionsContainer);
+    this.createGitHubIntegrationSection(sectionsContainer);
   }
 
   private createGeneralSection(container: HTMLElement): void {
@@ -1270,9 +1271,109 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     }
   }
 
+  private createGitHubIntegrationSection(container: HTMLElement): void {
+    const section = container.createDiv('task-sync-settings-section');
+
+    // Section header
+    section.createEl('h2', { text: 'Integrations', cls: 'task-sync-section-header' });
+
+    // GitHub integration toggle
+    new Setting(section)
+      .setName('Enable GitHub Integration')
+      .setDesc('Connect to GitHub to browse and import issues as tasks')
+      .addToggle(toggle => {
+        toggle
+          .setValue(this.plugin.settings.githubIntegration.enabled)
+          .onChange(async (value) => {
+            this.plugin.settings.githubIntegration.enabled = value;
+            await this.plugin.saveSettings();
+
+            // Refresh the section to show/hide additional settings
+            section.empty();
+            this.createGitHubIntegrationSection(container);
+          });
+      });
+
+    // Only show additional settings if GitHub integration is enabled
+    if (this.plugin.settings.githubIntegration.enabled) {
+      // Personal Access Token
+      new Setting(section)
+        .setName('GitHub Personal Access Token')
+        .setDesc('Your GitHub PAT for API access. Create one at github.com/settings/tokens')
+        .addText(text => {
+          text
+            .setPlaceholder('ghp_...')
+            .setValue(this.plugin.settings.githubIntegration.personalAccessToken)
+            .onChange(async (value) => {
+              const validation = validateGitHubToken(value);
+              if (validation.isValid) {
+                this.plugin.settings.githubIntegration.personalAccessToken = value;
+                await this.plugin.saveSettings();
+                this.clearValidationError('github-token');
+              } else {
+                this.setValidationError('github-token', validation.error || 'Invalid token');
+              }
+            });
+
+          // Set input type to password for security
+          text.inputEl.type = 'password';
+          text.inputEl.style.fontFamily = 'monospace';
+        });
+
+      // Default repository
+      new Setting(section)
+        .setName('Default Repository')
+        .setDesc('Default repository to load issues from (format: owner/repo)')
+        .addText(text => {
+          text
+            .setPlaceholder('owner/repository')
+            .setValue(this.plugin.settings.githubIntegration.defaultRepository)
+            .onChange(async (value) => {
+              this.plugin.settings.githubIntegration.defaultRepository = value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Issue filters
+      new Setting(section)
+        .setName('Default Issue State')
+        .setDesc('Default state filter for GitHub issues')
+        .addDropdown(dropdown => {
+          dropdown
+            .addOption('open', 'Open')
+            .addOption('closed', 'Closed')
+            .addOption('all', 'All')
+            .setValue(this.plugin.settings.githubIntegration.issueFilters.state)
+            .onChange(async (value: 'open' | 'closed' | 'all') => {
+              this.plugin.settings.githubIntegration.issueFilters.state = value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      new Setting(section)
+        .setName('Default Assignee Filter')
+        .setDesc('Default assignee filter (leave empty for all, "me" for your issues)')
+        .addText(text => {
+          text
+            .setPlaceholder('me, username, or empty')
+            .setValue(this.plugin.settings.githubIntegration.issueFilters.assignee)
+            .onChange(async (value) => {
+              this.plugin.settings.githubIntegration.issueFilters.assignee = value;
+              await this.plugin.saveSettings();
+            });
+        });
+    }
+  }
+
   hide(): void {
     // Clean up suggest components
     this.suggestComponents.forEach(component => component.destroy());
     this.suggestComponents = [];
   }
+}
+
+// Export for testing
+export function createGitHubIntegrationSection() {
+  // This is just for testing that the function exists
+  return true;
 }

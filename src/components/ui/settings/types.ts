@@ -42,6 +42,21 @@ export const TASK_STATUS_COLORS = [
 
 export type TaskStatusColor = typeof TASK_STATUS_COLORS[number];
 
+// GitHub integration interfaces
+export interface GitHubIssueFilters {
+  state: 'open' | 'closed' | 'all';
+  assignee: string; // 'me' for current user, username, or empty for all
+  labels: string[];
+}
+
+export interface GitHubIntegrationSettings {
+  enabled: boolean;
+  personalAccessToken: string;
+  repositories: string[]; // Array of 'owner/repo' strings
+  defaultRepository: string; // Default 'owner/repo' string
+  issueFilters: GitHubIssueFilters;
+}
+
 export interface TaskSyncSettings {
   tasksFolder: string;
   projectsFolder: string;
@@ -69,6 +84,8 @@ export interface TaskSyncSettings {
   autoSyncAreaProjectBases: boolean;
   // Task property ordering
   taskPropertyOrder: string[];
+  // GitHub integration settings
+  githubIntegration: GitHubIntegrationSettings;
 }
 
 export interface ValidationResult {

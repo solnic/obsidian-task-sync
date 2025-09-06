@@ -9,44 +9,13 @@ import {
   ProjectAreaInfo
 } from '../../../../src/services/base-definitions/BaseConfigurations';
 import { TaskSyncSettings } from '../../../../src/main';
+import { DEFAULT_SETTINGS } from '../../../../src/components/ui/settings/defaults';
 import * as yaml from 'js-yaml';
 
 describe('Base File Generation', () => {
   const mockSettings: TaskSyncSettings = {
-    tasksFolder: '5. Bases/Tasks',
-    projectsFolder: 'Projects',
-    areasFolder: 'Areas',
-    templateFolder: 'Templates',
-    basesFolder: 'Bases',
-    taskTypes: [
-      { name: 'Bug', color: '#ef4444' },
-      { name: 'Feature', color: '#10b981' },
-      { name: 'Improvement', color: '#8b5cf6' },
-      { name: 'Chore', color: '#6b7280' }
-    ],
-    taskPriorities: [
-      { name: 'Low', color: 'green' },
-      { name: 'Medium', color: 'yellow' },
-      { name: 'High', color: 'orange' },
-      { name: 'Urgent', color: 'red' }
-    ],
-    taskStatuses: [
-      { name: 'Backlog', color: 'gray', isDone: false },
-      { name: 'In Progress', color: 'blue', isDone: false },
-      { name: 'Done', color: 'green', isDone: true }
-    ],
-    projectBasesEnabled: true,
-    areaBasesEnabled: true,
-    autoSyncAreaProjectBases: true,
-    defaultProjectTemplate: '',
-    defaultAreaTemplate: '',
-    defaultTaskTemplate: '',
-    defaultParentTaskTemplate: '',
-    tasksBaseFile: 'Tasks.base',
-    autoGenerateBases: true,
-    autoUpdateBaseViews: true,
-    useTemplater: false,
-    taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
+    ...DEFAULT_SETTINGS,
+    tasksFolder: '5. Bases/Tasks'
   };
 
   const mockProjectsAndAreas: ProjectAreaInfo[] = [

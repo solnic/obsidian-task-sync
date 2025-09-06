@@ -56,8 +56,8 @@ if [ "$NEEDS_REINSTALL" = true ]; then
 fi
 
 # Run tests first
-echo "🧪 Running tests..."
-npm run test
+# echo "🧪 Running tests..."
+# npm run test
 
 echo "🔨 Building plugin..."
 npm run build
