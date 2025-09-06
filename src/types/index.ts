@@ -6,8 +6,11 @@
 // Entity types
 export * from './entities';
 
-// Service types  
+// Service types
 export * from './services';
+
+// Integration types
+export * from './integrations';
 
 // Plugin-specific types
 export interface PluginState {

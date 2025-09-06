@@ -1,0 +1,263 @@
+/**
+ * TaskImportManager Service
+ * Handles importing external tasks into Obsidian with proper organization and formatting
+ */
+
+import { App, Vault, TFile } from 'obsidian';
+import { ExternalTaskData, TaskImportConfig } from '../types/integrations';
+import { TaskSyncSettings } from '../components/ui/settings/types';
+import { sanitizeFileName } from '../utils/fileNameSanitizer';
+import matter from 'gray-matter';
+
+export class TaskImportManager {
+  constructor(
+    private app: App,
+    private vault: Vault,
+    private settings: TaskSyncSettings
+  ) {}
+
+  /**
+   * Update settings reference (for when settings are changed)
+   */
+  updateSettings(newSettings: TaskSyncSettings): void {
+    this.settings = newSettings;
+  }
+
+  /**
+   * Create Obsidian task from external task data
+   */
+  async createTaskFromData(
+    taskData: ExternalTaskData,
+    config: TaskImportConfig
+  ): Promise<string> {
+    const taskName = this.sanitizeTaskName(taskData.title);
+    const taskFolder = this.determineTaskFolder(config);
+    const taskPath = `${taskFolder}/${taskName}.md`;
+
+    // Check if task already exists
+    if (await this.taskExists(taskPath, taskData.id)) {
+      throw new Error(`Task already exists: ${taskPath}`);
+    }
+
+    // Generate task content with front-matter and body
+    const taskContent = this.generateCompleteTaskContent(taskData, config);
+
+    // Create the task file
+    await this.vault.create(taskPath, taskContent);
+
+    return taskPath;
+  }
+
+  /**
+   * Sanitize task name for file system compatibility
+   */
+  sanitizeTaskName(title: string): string {
+    return sanitizeFileName(title);
+  }
+
+  /**
+   * Determine the appropriate folder for the task based on configuration
+   */
+  determineTaskFolder(config: TaskImportConfig): string {
+    // Priority: Area > Project > Default tasks folder
+    if (config.targetArea) {
+      return `${this.settings.areasFolder}/${config.targetArea}/${this.settings.tasksFolder}`;
+    }
+    
+    if (config.targetProject) {
+      return `${this.settings.projectsFolder}/${config.targetProject}/${this.settings.tasksFolder}`;
+    }
+
+    return this.settings.tasksFolder;
+  }
+
+  /**
+   * Generate complete task content including front-matter and body
+   */
+  private generateCompleteTaskContent(
+    taskData: ExternalTaskData,
+    config: TaskImportConfig
+  ): string {
+    const frontMatterData = this.generateTaskFrontMatter(taskData, config);
+    const content = this.generateTaskContent(taskData);
+
+    return matter.stringify(content, frontMatterData);
+  }
+
+  /**
+   * Generate front-matter for the task based on external data and configuration
+   */
+  generateTaskFrontMatter(
+    taskData: ExternalTaskData,
+    config: TaskImportConfig
+  ): Record<string, any> {
+    const frontMatter: Record<string, any> = {};
+
+    // Title (required)
+    frontMatter.Title = taskData.title;
+
+    // Type from config or default
+    frontMatter.Type = config.taskType || 'Task';
+
+    // Priority - extract from external data or labels
+    frontMatter.Priority = this.extractPriority(taskData) || 'Low';
+
+    // Areas - from config
+    frontMatter.Areas = config.targetArea ? [config.targetArea] : [];
+
+    // Project - from config
+    if (config.targetProject) {
+      frontMatter.Project = config.targetProject;
+    }
+
+    // Done status - always false for new imports
+    frontMatter.Done = false;
+
+    // Status - map external status to internal status
+    frontMatter.Status = this.mapExternalStatus(taskData.status);
+
+    // Parent task - empty for imports
+    frontMatter['Parent task'] = '';
+
+    // Sub-tasks - empty for imports
+    frontMatter['Sub-tasks'] = [];
+
+    // Tags - from labels if configured
+    if (config.importLabelsAsTags && taskData.labels) {
+      frontMatter.tags = taskData.labels;
+    } else {
+      frontMatter.tags = [];
+    }
+
+    return frontMatter;
+  }
+
+  /**
+   * Generate task content body with external reference
+   */
+  generateTaskContent(taskData: ExternalTaskData): string {
+    let content = '';
+
+    // Add description if available
+    if (taskData.description) {
+      content += taskData.description + '\n\n';
+    }
+
+    // Add external reference section
+    content += '## External Reference\n\n';
+    content += `**Source:** ${taskData.sourceType}\n`;
+    content += `**External ID:** ${taskData.id}\n`;
+    content += `**URL:** [View in ${taskData.sourceType}](${taskData.externalUrl})\n`;
+    content += `**Created:** ${taskData.createdAt.toISOString().split('T')[0]}\n`;
+    content += `**Updated:** ${taskData.updatedAt.toISOString().split('T')[0]}\n`;
+
+    // Add assignee if available
+    if (taskData.assignee) {
+      content += `**Assignee:** ${taskData.assignee}\n`;
+    }
+
+    // Add labels if available
+    if (taskData.labels && taskData.labels.length > 0) {
+      content += `**Labels:** ${taskData.labels.join(', ')}\n`;
+    }
+
+    return content;
+  }
+
+  /**
+   * Check if a task already exists at the given path
+   */
+  async taskExists(taskPath: string, externalId: string): Promise<boolean> {
+    const file = this.vault.getAbstractFileByPath(taskPath);
+    return file instanceof TFile;
+  }
+
+  /**
+   * Extract priority from external task data
+   */
+  private extractPriority(taskData: ExternalTaskData): string | undefined {
+    // Check explicit priority field
+    if (taskData.priority) {
+      return this.normalizePriority(taskData.priority);
+    }
+
+    // Check labels for priority indicators
+    if (taskData.labels) {
+      for (const label of taskData.labels) {
+        if (label.toLowerCase().includes('priority:')) {
+          const priority = label.split(':')[1]?.trim();
+          if (priority) {
+            return this.normalizePriority(priority);
+          }
+        }
+        
+        // Check for common priority labels
+        const lowerLabel = label.toLowerCase();
+        if (lowerLabel.includes('urgent') || lowerLabel.includes('critical')) {
+          return 'Urgent';
+        }
+        if (lowerLabel.includes('high')) {
+          return 'High';
+        }
+        if (lowerLabel.includes('medium')) {
+          return 'Medium';
+        }
+        if (lowerLabel.includes('low')) {
+          return 'Low';
+        }
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Normalize priority values to standard format
+   */
+  private normalizePriority(priority: string): string {
+    const normalized = priority.toLowerCase();
+    
+    if (normalized.includes('urgent') || normalized.includes('critical')) {
+      return 'Urgent';
+    }
+    if (normalized.includes('high')) {
+      return 'High';
+    }
+    if (normalized.includes('medium') || normalized.includes('normal')) {
+      return 'Medium';
+    }
+    if (normalized.includes('low')) {
+      return 'Low';
+    }
+
+    // Capitalize first letter for unknown priorities
+    return priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase();
+  }
+
+  /**
+   * Map external status to internal status format
+   */
+  private mapExternalStatus(externalStatus: string): string {
+    const status = externalStatus.toLowerCase();
+    
+    switch (status) {
+      case 'open':
+      case 'todo':
+      case 'new':
+        return 'todo';
+      case 'in_progress':
+      case 'in-progress':
+      case 'working':
+        return 'in-progress';
+      case 'closed':
+      case 'done':
+      case 'completed':
+        return 'done';
+      case 'cancelled':
+      case 'canceled':
+        return 'cancelled';
+      default:
+        return 'todo';
+    }
+  }
+}

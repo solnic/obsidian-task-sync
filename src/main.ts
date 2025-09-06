@@ -1,4 +1,4 @@
-import { Plugin, TFile, MarkdownView, Notice, WorkspaceLeaf } from 'obsidian';
+import { Plugin, TFile, MarkdownView, Notice, WorkspaceLeaf, Modal, App } from 'obsidian';
 import { VaultScanner } from './services/VaultScannerService';
 import { BaseManager } from './services/BaseManager';
 import { PluginStorageService } from './services/PluginStorageService';
@@ -17,6 +17,8 @@ import { AreaPropertyHandler } from './events/handlers/AreaPropertyHandler';
 import { ProjectPropertyHandler } from './events/handlers/ProjectPropertyHandler';
 import { DEFAULT_SETTINGS, TASK_TYPE_COLORS, validateFolderPath } from './components/ui/settings';
 import { GitHubService } from './services/GitHubService';
+import { TaskImportManager } from './services/TaskImportManager';
+import { ImportStatusService } from './services/ImportStatusService';
 import { GitHubIssuesView, GITHUB_ISSUES_VIEW_TYPE } from './views/GitHubIssuesView';
 
 import pluralize from 'pluralize';
@@ -61,6 +63,8 @@ export default class TaskSyncPlugin extends Plugin {
   areaPropertyHandler: AreaPropertyHandler;
   projectPropertyHandler: ProjectPropertyHandler;
   githubService: GitHubService;
+  taskImportManager: TaskImportManager;
+  importStatusService: ImportStatusService;
 
   async onload() {
     console.log('Loading Task Sync Plugin');
@@ -74,6 +78,13 @@ export default class TaskSyncPlugin extends Plugin {
     this.templateManager = new TemplateManager(this.app, this.app.vault, this.settings);
     this.storageService = new PluginStorageService(this.app, this);
     this.githubService = new GitHubService(this.settings);
+
+    // Initialize import services
+    this.taskImportManager = new TaskImportManager(this.app, this.app.vault, this.settings);
+    this.importStatusService = new ImportStatusService();
+
+    // Wire up GitHub service with import dependencies
+    this.githubService.setImportDependencies(this.taskImportManager, this.importStatusService);
 
     // Initialize storage service
     await this.storageService.initialize();
@@ -172,6 +183,22 @@ export default class TaskSyncPlugin extends Plugin {
       }
     });
 
+    // GitHub Import Commands
+    this.addCommand({
+      id: 'import-github-issue',
+      name: 'Import GitHub Issue',
+      callback: async () => {
+        await this.importGitHubIssue();
+      }
+    });
+
+    this.addCommand({
+      id: 'import-all-github-issues',
+      name: 'Import All GitHub Issues',
+      callback: async () => {
+        await this.importAllGitHubIssues();
+      }
+    });
 
   }
 
@@ -228,6 +255,11 @@ export default class TaskSyncPlugin extends Plugin {
       // Update GitHub service with new settings
       if (this.githubService) {
         this.githubService.updateSettings(this.settings);
+      }
+
+      // Update TaskImportManager with new settings
+      if (this.taskImportManager) {
+        this.taskImportManager.updateSettings(this.settings);
       }
 
       // Update GitHub Issues view if it's open
@@ -1788,6 +1820,207 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async refreshBaseViews(): Promise<void> {
     await this.regenerateBases();
+  }
+
+  /**
+   * Import a single GitHub issue as a task
+   */
+  private async importGitHubIssue(): Promise<void> {
+    if (!this.githubService.isEnabled()) {
+      new Notice('GitHub integration is not enabled or configured');
+      return;
+    }
+
+    try {
+      // For now, show a simple prompt for issue URL
+      // In a full implementation, this could be a modal with repository selection
+      const issueUrl = await this.promptForIssueUrl();
+      if (!issueUrl) {
+        return;
+      }
+
+      const issue = await this.fetchIssueFromUrl(issueUrl);
+      if (!issue) {
+        new Notice('Failed to fetch GitHub issue');
+        return;
+      }
+
+      // Use default import configuration
+      const config = this.getDefaultImportConfig();
+
+      const result = await this.githubService.importIssueAsTask(issue, config);
+
+      if (result.success) {
+        if (result.skipped) {
+          new Notice(`Issue already imported: ${result.reason}`);
+        } else {
+          new Notice(`Successfully imported issue: ${issue.title}`);
+        }
+      } else {
+        new Notice(`Failed to import issue: ${result.error}`);
+      }
+    } catch (error: any) {
+      console.error('Failed to import GitHub issue:', error);
+      new Notice(`Error importing issue: ${error.message}`);
+    }
+  }
+
+  /**
+   * Import all GitHub issues from the default repository
+   */
+  private async importAllGitHubIssues(): Promise<void> {
+    if (!this.githubService.isEnabled()) {
+      new Notice('GitHub integration is not enabled or configured');
+      return;
+    }
+
+    try {
+      const repository = this.settings.githubIntegration.defaultRepository;
+      if (!repository) {
+        new Notice('No default repository configured');
+        return;
+      }
+
+      new Notice('Fetching GitHub issues...');
+
+      const issues = await this.githubService.fetchIssues(repository);
+      if (issues.length === 0) {
+        new Notice('No issues found in repository');
+        return;
+      }
+
+      new Notice(`Found ${issues.length} issues. Starting import...`);
+
+      const config = this.getDefaultImportConfig();
+      let imported = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (const issue of issues) {
+        try {
+          const result = await this.githubService.importIssueAsTask(issue, config);
+
+          if (result.success) {
+            if (result.skipped) {
+              skipped++;
+            } else {
+              imported++;
+            }
+          } else {
+            failed++;
+            console.error(`Failed to import issue ${issue.number}:`, result.error);
+          }
+        } catch (error: any) {
+          failed++;
+          console.error(`Error importing issue ${issue.number}:`, error);
+        }
+      }
+
+      new Notice(`Import complete: ${imported} imported, ${skipped} skipped, ${failed} failed`);
+    } catch (error: any) {
+      console.error('Failed to import GitHub issues:', error);
+      new Notice(`Error importing issues: ${error.message}`);
+    }
+  }
+
+  /**
+   * Prompt user for GitHub issue URL
+   */
+  private async promptForIssueUrl(): Promise<string | null> {
+    return new Promise((resolve) => {
+      const modal = new (class extends Modal {
+        result: string | null = null;
+
+        constructor(app: App) {
+          super(app);
+        }
+
+        onOpen() {
+          const { contentEl } = this;
+          contentEl.createEl('h2', { text: 'Import GitHub Issue' });
+
+          const inputEl = contentEl.createEl('input', {
+            type: 'text',
+            placeholder: 'https://github.com/owner/repo/issues/123'
+          });
+          inputEl.style.width = '100%';
+          inputEl.style.marginBottom = '10px';
+
+          const buttonContainer = contentEl.createDiv();
+          buttonContainer.style.textAlign = 'right';
+
+          const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
+          cancelBtn.style.marginRight = '10px';
+          cancelBtn.onclick = () => {
+            this.result = null;
+            this.close();
+          };
+
+          const importBtn = buttonContainer.createEl('button', { text: 'Import' });
+          importBtn.onclick = () => {
+            this.result = inputEl.value.trim();
+            this.close();
+          };
+
+          inputEl.focus();
+          inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              this.result = inputEl.value.trim();
+              this.close();
+            }
+          });
+        }
+
+        onClose() {
+          resolve(this.result);
+        }
+      })(this.app);
+
+      modal.open();
+    });
+  }
+
+  /**
+   * Fetch GitHub issue from URL
+   */
+  private async fetchIssueFromUrl(url: string): Promise<any | null> {
+    try {
+      // Parse GitHub issue URL
+      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/issues\/(\d+)/);
+      if (!match) {
+        new Notice('Invalid GitHub issue URL format');
+        return null;
+      }
+
+      const [, owner, repo, issueNumber] = match;
+      const repository = `${owner}/${repo}`;
+
+      // Fetch all issues and find the specific one
+      // In a full implementation, you'd want to fetch the specific issue directly
+      const issues = await this.githubService.fetchIssues(repository);
+      const issue = issues.find(i => i.number === parseInt(issueNumber));
+
+      if (!issue) {
+        new Notice(`Issue #${issueNumber} not found in ${repository}`);
+        return null;
+      }
+
+      return issue;
+    } catch (error: any) {
+      console.error('Error fetching issue from URL:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get default import configuration
+   */
+  private getDefaultImportConfig() {
+    return {
+      taskType: 'Task',
+      importLabelsAsTags: true,
+      preserveAssignee: true
+    };
   }
 
   /**

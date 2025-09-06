@@ -7,6 +7,9 @@
 import { Octokit } from '@octokit/rest';
 import { requestUrl } from 'obsidian';
 import { GitHubIntegrationSettings } from '../components/ui/settings/types';
+import { ExternalTaskData, TaskImportConfig, ImportResult, ImportedTaskMetadata } from '../types/integrations';
+import { TaskImportManager } from './TaskImportManager';
+import { ImportStatusService } from './ImportStatusService';
 
 export interface GitHubIssue {
   id: number;
@@ -40,9 +43,21 @@ export class GitHubService {
   private octokit: Octokit | null = null;
   private settings: GitHubServiceSettings;
 
+  // Import functionality dependencies (injected for testing)
+  public taskImportManager?: TaskImportManager;
+  public importStatusService?: ImportStatusService;
+
   constructor(settings: GitHubServiceSettings) {
     this.settings = settings;
     this.initializeOctokit();
+  }
+
+  /**
+   * Set import dependencies (for dependency injection)
+   */
+  setImportDependencies(taskImportManager: TaskImportManager, importStatusService: ImportStatusService): void {
+    this.taskImportManager = taskImportManager;
+    this.importStatusService = importStatusService;
   }
 
   /**
@@ -202,5 +217,136 @@ export class GitHubService {
       console.error('GitHub API error:', error);
       throw error;
     }
+  }
+
+  /**
+   * Import GitHub issue as Obsidian task
+   */
+  async importIssueAsTask(
+    issue: GitHubIssue,
+    config: TaskImportConfig
+  ): Promise<ImportResult> {
+    if (!this.taskImportManager || !this.importStatusService) {
+      throw new Error('Import dependencies not initialized. Call setImportDependencies() first.');
+    }
+
+    try {
+      const taskData = this.transformIssueToTaskData(issue);
+
+      // Check if task is already imported
+      if (this.importStatusService.isTaskImported(taskData.id, taskData.sourceType)) {
+        return {
+          success: true,
+          skipped: true,
+          reason: 'Task already imported'
+        };
+      }
+
+      // Create the task
+      const taskPath = await this.taskImportManager.createTaskFromData(taskData, config);
+
+      // Record the import
+      const importMetadata: ImportedTaskMetadata = {
+        externalId: taskData.id,
+        externalSource: taskData.sourceType,
+        taskPath,
+        importedAt: new Date(),
+        lastSyncedAt: new Date(),
+        externalUrl: taskData.externalUrl,
+        importConfig: config
+      };
+
+      this.importStatusService.recordImport(importMetadata);
+
+      return {
+        success: true,
+        taskPath
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  /**
+   * Transform GitHub issue to standardized external task data
+   */
+  transformIssueToTaskData(issue: GitHubIssue): ExternalTaskData {
+    return {
+      id: `github-${issue.id}`,
+      title: issue.title,
+      description: issue.body || undefined,
+      status: issue.state,
+      priority: this.extractPriorityFromLabels(issue.labels),
+      assignee: issue.assignee?.login,
+      labels: issue.labels.map(label => label.name),
+      createdAt: new Date(issue.created_at),
+      updatedAt: new Date(issue.updated_at),
+      externalUrl: issue.html_url,
+      sourceType: 'github',
+      sourceData: {
+        number: issue.number,
+        state: issue.state,
+        id: issue.id
+      }
+    };
+  }
+
+  /**
+   * Extract priority from GitHub issue labels
+   */
+  extractPriorityFromLabels(labels: Array<{ name: string }>): string | undefined {
+    for (const label of labels) {
+      const labelName = label.name.toLowerCase();
+
+      // Check for priority: prefix
+      if (labelName.startsWith('priority:')) {
+        const priority = labelName.split(':')[1]?.trim();
+        if (priority) {
+          return this.normalizePriority(priority);
+        }
+      }
+
+      // Check for common priority keywords
+      if (labelName.includes('urgent') || labelName.includes('critical')) {
+        return 'Urgent';
+      }
+      if (labelName.includes('high')) {
+        return 'High';
+      }
+      if (labelName.includes('medium') || labelName.includes('normal')) {
+        return 'Medium';
+      }
+      if (labelName.includes('low')) {
+        return 'Low';
+      }
+    }
+
+    return undefined;
+  }
+
+  /**
+   * Normalize priority values to standard format
+   */
+  private normalizePriority(priority: string): string {
+    const normalized = priority.toLowerCase();
+
+    if (normalized.includes('urgent') || normalized.includes('critical')) {
+      return 'Urgent';
+    }
+    if (normalized.includes('high')) {
+      return 'High';
+    }
+    if (normalized.includes('medium') || normalized.includes('normal')) {
+      return 'Medium';
+    }
+    if (normalized.includes('low')) {
+      return 'Low';
+    }
+
+    // Capitalize first letter for unknown priorities
+    return priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase();
   }
 }
