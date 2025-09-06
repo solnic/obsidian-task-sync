@@ -1,53 +1,46 @@
 import type { Page } from 'playwright';
-import { executeCommand, type SharedTestContext } from './shared-context';
-import { openTaskSyncSettings, closeSettings } from './task-sync-setup';
+import { type SharedTestContext } from './shared-context';
+import { openTaskSyncSettings } from './task-sync-setup';
 
 /**
  * GitHub Integration helpers for e2e tests
  * Provides reusable functions for GitHub integration testing
  */
 
-/**
- * Execute a GitHub-related command
- */
-export async function executeGitHubCommand(context: SharedTestContext, commandId: string): Promise<void> {
-  await context.page.evaluate(async (id) => {
-    const app = (window as any).app;
-    const commands = app.commands.commands;
-    const command = Object.values(commands).find((cmd: any) => cmd.id === id);
-    
-    if (!command) {
-      throw new Error(`Command not found: ${id}`);
-    }
-    
-    await (command as any).callback();
-  }, commandId);
-}
+
 
 /**
  * Wait for GitHub Issues view to appear and be ready
  */
-export async function waitForGitHubView(page: Page, timeout: number = 5000): Promise<void> {
+export async function waitForGitHubView(page: Page, timeout: number = 10000): Promise<void> {
+  // First wait for the view element to exist
+  await page.waitForSelector('[data-type="github-issues"]', { timeout });
+
+  // Then wait for it to be visible (may take additional time for Obsidian to render)
   await page.waitForFunction(() => {
     const viewElement = document.querySelector('[data-type="github-issues"]');
     return viewElement !== null && (viewElement as HTMLElement).offsetParent !== null;
-  }, { timeout });
+  }, { timeout: 5000 });
 }
 
 /**
  * Wait for GitHub view content to load
  */
-export async function waitForGitHubViewContent(page: Page, timeout: number = 10000): Promise<void> {
+export async function waitForGitHubViewContent(page: Page, timeout: number = 15000): Promise<void> {
+  // First ensure the view exists
+  await waitForGitHubView(page, Math.min(timeout / 3, 5000));
+
+  // Then wait for content to load
   await page.waitForFunction(() => {
     const viewElement = document.querySelector('[data-type="github-issues"]');
     if (!viewElement) return false;
-    
+
     const hasHeader = viewElement.querySelector('.github-issues-header') !== null;
     const hasContent = viewElement.querySelector('.github-issues-content') !== null;
     const hasText = viewElement.textContent !== null && viewElement.textContent.length > 0;
-    
+
     return hasHeader && hasContent && hasText;
-  }, { timeout });
+  }, { timeout: Math.max(timeout - 5000, 5000) });
 }
 
 /**
@@ -57,7 +50,7 @@ export async function waitForGitHubSettings(page: Page, timeout: number = 5000):
   await page.waitForFunction(() => {
     const settingsContainer = document.querySelector('.vertical-tab-content');
     if (!settingsContainer) return false;
-    
+
     const text = settingsContainer.textContent || '';
     return text.includes('Enable GitHub Integration');
   }, { timeout });
@@ -85,7 +78,7 @@ export async function toggleGitHubIntegration(page: Page, enabled: boolean): Pro
       if (nameEl && nameEl.textContent?.includes('Enable GitHub Integration')) {
         const toggle = setting.querySelector('.checkbox-container') as HTMLElement;
         const checkbox = setting.querySelector('input[type="checkbox"]') as HTMLInputElement;
-        
+
         if (toggle && checkbox) {
           const isCurrentlyEnabled = checkbox.checked;
           if (isCurrentlyEnabled !== shouldEnable) {
@@ -115,7 +108,7 @@ export async function waitForGitHubTokenSettings(page: Page, timeout: number = 5
   await page.waitForFunction(() => {
     const settingsContainer = document.querySelector('.vertical-tab-content');
     if (!settingsContainer) return false;
-    
+
     const text = settingsContainer.textContent || '';
     return text.includes('GitHub Personal Access Token') && text.includes('Default Repository');
   }, { timeout });
@@ -179,19 +172,23 @@ export async function configureGitHubRepository(page: Page, repository: string):
 
 /**
  * Configure GitHub integration programmatically
+ * Automatically uses GITHUB_TOKEN from environment if no token is provided
  */
 export async function configureGitHubIntegration(
-  page: Page, 
+  page: Page,
   config: {
     enabled: boolean;
     token?: string;
     repository?: string;
   }
 ): Promise<void> {
+  // Use environment token as fallback if no token provided
+  const tokenToUse = config.token || process.env.GITHUB_TOKEN || '';
+
   await page.evaluate(async (configuration) => {
     const app = (window as any).app;
     const plugin = app.plugins.plugins['obsidian-task-sync'];
-    
+
     if (!plugin) {
       throw new Error('Task Sync plugin not found');
     }
@@ -202,9 +199,9 @@ export async function configureGitHubIntegration(
       ...(configuration.token && { personalAccessToken: configuration.token }),
       ...(configuration.repository && { defaultRepository: configuration.repository })
     };
-    
+
     await plugin.saveSettings();
-  }, config);
+  }, { ...config, token: tokenToUse });
 }
 
 /**
@@ -217,7 +214,7 @@ export async function waitForGitHubDisabledState(page: Page, timeout: number = 5
 
     const text = viewElement.textContent || '';
     return text.includes('GitHub integration is not enabled') ||
-           text.includes('Please configure it in settings');
+      text.includes('Please configure it in settings');
   }, { timeout });
 }
 
@@ -231,9 +228,9 @@ export async function waitForGitHubErrorState(page: Page, timeout: number = 1000
 
     const text = viewElement.textContent || '';
     return text.includes('Bad credentials') ||
-           text.includes('Failed to load') ||
-           text.includes('error') ||
-           text.includes('Error');
+      text.includes('Failed to load') ||
+      text.includes('error') ||
+      text.includes('Error');
   }, { timeout });
 }
 

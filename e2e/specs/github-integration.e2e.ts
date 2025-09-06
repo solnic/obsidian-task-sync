@@ -3,10 +3,9 @@
  */
 
 import { test, expect, describe } from 'vitest';
-import { setupE2ETestHooks } from '../helpers/shared-context';
+import { setupE2ETestHooks, executeCommand } from '../helpers/shared-context';
 import { createTestFolders } from '../helpers/task-sync-setup';
 import {
-  executeGitHubCommand,
   waitForGitHubView,
   waitForGitHubViewContent,
   openGitHubSettings,
@@ -26,7 +25,7 @@ describe('GitHub Integration', () => {
     await createTestFolders(context.page);
 
     // Execute the GitHub Issues command using helper
-    await executeGitHubCommand(context, 'obsidian-task-sync:open-github-issues');
+    await executeCommand(context, 'obsidian-task-sync:open-github-issues');
 
     // Wait for view to open using smart waiting
     await waitForGitHubView(context.page);
@@ -75,15 +74,14 @@ describe('GitHub Integration', () => {
   test('should display GitHub Issues view with proper UI structure', async () => {
     await createTestFolders(context.page);
 
-    // Enable GitHub integration using helper
+    // Enable GitHub integration using helper (will use GITHUB_TOKEN from environment)
     await configureGitHubIntegration(context.page, {
       enabled: true,
-      token: 'test-token',
-      repository: 'octocat/Hello-World'
+      repository: 'solnic/obsidian-task-sync'
     });
 
     // Open GitHub Issues view using helper
-    await executeGitHubCommand(context, 'obsidian-task-sync:open-github-issues');
+    await executeCommand(context, 'obsidian-task-sync:open-github-issues');
 
     // Wait for view content to load using smart waiting
     await waitForGitHubViewContent(context.page);
@@ -108,7 +106,7 @@ describe('GitHub Integration', () => {
     });
 
     // Open GitHub Issues view using helper
-    await executeGitHubCommand(context, 'obsidian-task-sync:open-github-issues');
+    await executeCommand(context, 'obsidian-task-sync:open-github-issues');
 
     // Wait for disabled state using smart waiting
     await waitForGitHubDisabledState(context.page);
@@ -164,11 +162,11 @@ describe('GitHub Integration', () => {
     await configureGitHubIntegration(context.page, {
       enabled: true,
       token: 'invalid-token',
-      repository: 'octocat/Hello-World'
+      repository: 'solnic/obsidian-task-sync'
     });
 
     // Open GitHub Issues view using helper
-    await executeGitHubCommand(context, 'obsidian-task-sync:open-github-issues');
+    await executeCommand(context, 'obsidian-task-sync:open-github-issues');
 
     // Wait for error state using smart waiting
     await waitForGitHubErrorState(context.page);
