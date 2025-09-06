@@ -671,8 +671,93 @@ async function clearDirectoryContents(dirPath: string, preservePaths: string[] =
 }
 
 /**
+ * Reset plugin settings to pristine state
+ * This ensures each test starts with clean, default settings
+ */
+async function resetPluginSettings(page: Page): Promise<void> {
+  try {
+    console.log('🔄 Resetting plugin settings to pristine state...');
+
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+
+      if (plugin) {
+        // Reset to default settings structure
+        plugin.settings = {
+          tasksFolder: 'Tasks',
+          projectsFolder: 'Projects',
+          areasFolder: 'Areas',
+          templateFolder: 'Templates',
+          useTemplater: false,
+          defaultTaskTemplate: 'Task.md',
+          defaultProjectTemplate: 'project-template.md',
+          defaultAreaTemplate: 'area-template.md',
+          defaultParentTaskTemplate: 'parent-task-template.md',
+          // Base-related defaults
+          basesFolder: 'Bases',
+          tasksBaseFile: 'Tasks.base',
+          autoGenerateBases: true,
+          autoUpdateBaseViews: true,
+          // Task types defaults
+          taskTypes: [
+            { name: 'Task', color: 'blue' },
+            { name: 'Bug', color: 'red' },
+            { name: 'Feature', color: 'green' },
+            { name: 'Improvement', color: 'purple' },
+            { name: 'Chore', color: 'gray' }
+          ],
+          // Task priorities defaults
+          taskPriorities: [
+            { name: 'Low', color: 'green' },
+            { name: 'Medium', color: 'yellow' },
+            { name: 'High', color: 'orange' },
+            { name: 'Urgent', color: 'red' }
+          ],
+          // Task statuses defaults
+          taskStatuses: [
+            { name: 'Backlog', color: 'gray', isDone: false },
+            { name: 'In Progress', color: 'blue', isDone: false },
+            { name: 'Done', color: 'green', isDone: true }
+          ],
+          // Individual area/project bases defaults
+          areaBasesEnabled: true,
+          projectBasesEnabled: true,
+          autoSyncAreaProjectBases: true,
+          // Task property ordering defaults
+          taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
+          // GitHub integration defaults
+          githubIntegration: {
+            enabled: false,
+            personalAccessToken: '',
+            repositories: [],
+            defaultRepository: '',
+            issueFilters: {
+              state: 'open',
+              assignee: '',
+              labels: []
+            }
+          }
+        };
+
+        await plugin.saveSettings();
+        console.log('🔄 Plugin settings reset to defaults');
+      } else {
+        console.warn('⚠️ Plugin not found during settings reset');
+      }
+    });
+
+    console.log('✅ Plugin settings reset completed');
+  } catch (error) {
+    console.error(`❌ Failed to reset plugin settings: ${error.message}`);
+    // Don't throw - this is a cleanup operation that shouldn't fail tests
+  }
+}
+
+/**
  * Sets up common e2e test hooks and returns a context proxy
  * This eliminates duplication of beforeAll/beforeEach/afterEach/afterAll setup across test files
+ * Includes automatic plugin settings reset and screenshot capture on test failure
  *
  * Usage:
  * ```typescript
@@ -688,6 +773,7 @@ async function clearDirectoryContents(dirPath: string, preservePaths: string[] =
 export function setupE2ETestHooks(): SharedTestContext {
   let context: SharedTestContext;
   let consoleLogs: Array<{ type: string; text: string; timestamp: Date }> = [];
+  let currentTestName = 'unknown-test';
 
   beforeAll(async () => {
     console.log('🔧 Starting beforeAll hook...');
@@ -713,64 +799,70 @@ export function setupE2ETestHooks(): SharedTestContext {
     });
   });
 
-  beforeEach(async () => {
+  beforeEach(async (testContext) => {
     // Clear console logs for each test
     consoleLogs = [];
+
+    // Get current test name for potential failure capture
+    if ((testContext as any)?.task?.name) {
+      currentTestName = (testContext as any).task.name;
+    } else if ((testContext as any)?.name) {
+      currentTestName = (testContext as any).name;
+    }
+
     await resetSharedTestContext();
+
+    // Reset plugin settings to pristine state for each test
+    await resetPluginSettings(context.page);
   });
 
   afterEach(async (testContext) => {
     const context = await getSharedTestContext();
 
-    // Get test information from multiple possible sources
-    const testResult = (testContext as any)?.meta?.result;
-    const testState = testResult?.state;
-    const hasErrors = testResult?.errors?.length > 0;
-
-    // Try to get test name from different sources
-    let testName = 'unknown-test';
-    if ((testContext as any)?.meta?.name) {
-      testName = (testContext as any).meta.name;
-    } else if ((testContext as any)?.task?.name) {
-      testName = (testContext as any).task.name;
-    } else if ((testContext as any)?.name) {
-      testName = (testContext as any).name;
-    }
+    // Use the test name we captured in beforeEach
+    let testName = currentTestName;
 
     // Clean up test name for file system
     testName = testName.replace(/[^a-zA-Z0-9\s]/g, '-').replace(/\s+/g, '-');
 
-    // Capture debug info for ALL test failures (including timeouts)
-    // Timeouts are often the most important failures to debug
-    const isFailure = testState === 'fail' || hasErrors || testState === 'timeout';
+    // For Vitest, we need to use a different approach to detect failures
+    // We'll use the onTestFailed callback if available, or check for uncaught errors
+    let testFailed = false;
 
-    if (isFailure) {
-      console.log(`📸 Test failed with state: ${testState}, capturing debug info for: ${testName}`);
-      console.log(`📊 Console logs captured: ${consoleLogs.length} entries`);
+    // Check if there's a failure callback in the test context
+    if ((testContext as any)?.onTestFailed) {
+      // Set up failure detection using Vitest's callback
+      (testContext as any).onTestFailed(async (error: any) => {
+        testFailed = true;
+        console.log(`📸 Test failed (via onTestFailed): ${testName}, error: ${error?.message}`);
+        console.log(`📊 Console logs captured: ${consoleLogs.length} entries`);
 
-      try {
-        // Always capture screenshot first (most important for debugging)
-        await captureScreenshotOnFailure(context, `test-failure-${testName}`);
-        console.log(`✅ Screenshot captured successfully`);
-
-        // Then capture full debug info
-        await captureFullDebugInfo(context, `test-failure-${testName}`, consoleLogs);
-        console.log(`✅ Full debug info captured successfully`);
-      } catch (error) {
-        console.error(`❌ Failed to capture debug info: ${error.message}`);
-        console.error(`❌ Error details:`, error);
-
-        // Try a simpler screenshot capture as fallback
         try {
-          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-          const fallbackPath = `e2e/screenshots/fallback-${testName}-${timestamp}.png`;
-          await context.page.screenshot({ path: fallbackPath, fullPage: true });
-          console.log(`📸 Fallback screenshot saved: ${fallbackPath}`);
-        } catch (fallbackError) {
-          console.error(`❌ Even fallback screenshot failed: ${fallbackError.message}`);
+          // Always capture screenshot first (most important for debugging)
+          await captureScreenshotOnFailure(context, `test-failure-${testName}`);
+          console.log(`✅ Screenshot captured successfully`);
+
+          // Then capture full debug info
+          await captureFullDebugInfo(context, `test-failure-${testName}`, consoleLogs);
+          console.log(`✅ Full debug info captured successfully`);
+        } catch (captureError) {
+          console.error(`❌ Failed to capture debug info: ${captureError.message}`);
+
+          // Try a simpler screenshot capture as fallback
+          try {
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const fallbackPath = `e2e/screenshots/fallback-${testName}-${timestamp}.png`;
+            await context.page.screenshot({ path: fallbackPath, fullPage: true });
+            console.log(`📸 Fallback screenshot saved: ${fallbackPath}`);
+          } catch (fallbackError) {
+            console.error(`❌ Even fallback screenshot failed: ${fallbackError.message}`);
+          }
         }
-      }
-    } else {
+      });
+    }
+
+    // If no failure was detected through callbacks, assume test passed
+    if (!testFailed) {
       console.log(`✅ Test passed: ${testName}`);
     }
 

@@ -239,6 +239,12 @@ export default class TaskSyncPlugin extends Plugin {
         }
       });
 
+      // Update TemplateManager with new settings
+      if (this.templateManager) {
+        this.templateManager.updateSettings(this.settings);
+        console.log('Task Sync: TemplateManager updated with new settings');
+      }
+
       // Note: FileChangeListener will get updated settings automatically since it references this.settings
     } catch (error) {
       console.error('Task Sync: Failed to save settings:', error);

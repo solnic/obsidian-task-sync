@@ -4,7 +4,6 @@
 
 import { test, expect, describe } from 'vitest';
 import { setupE2ETestHooks } from '../helpers/shared-context';
-import { setupTestFailureHandler } from '../helpers/test-failure-handler';
 import { createTestFolders } from '../helpers/task-sync-setup';
 import {
   waitForGitHubViewContent,
@@ -12,16 +11,12 @@ import {
   toggleGitHubIntegration,
   configureGitHubToken,
   configureGitHubIntegration,
-  waitForGitHubDisabledState,
   getGitHubViewStructure,
   openGitHubIssuesView
 } from '../helpers/github-integration-helpers';
 
 describe('GitHub Integration', () => {
   const context = setupE2ETestHooks();
-
-  // Setup automatic screenshot capture on test failures
-  setupTestFailureHandler();
 
   test('should display GitHub Issues view with proper UI structure', async () => {
     console.log('🧪 Starting GitHub Issues view UI structure test');
@@ -56,18 +51,24 @@ describe('GitHub Integration', () => {
   });
 
   test('should configure GitHub token via settings input', async () => {
+    console.log('🧪 Starting GitHub token configuration test');
+
     await createTestFolders(context.page);
 
     // Open GitHub settings using helper
+    console.log('🔧 Opening GitHub settings...');
     await openGitHubSettings(context);
 
     // Enable GitHub integration using helper
+    console.log('🔧 Enabling GitHub integration...');
     await toggleGitHubIntegration(context.page, true);
 
     // Configure GitHub token using helper
+    console.log('🔧 Configuring GitHub token...');
     await configureGitHubToken(context.page, 'test-token-123');
 
     // Verify token was configured by checking the input value
+    console.log('🔍 Verifying token configuration...');
     const tokenConfigured = await context.page.evaluate(() => {
       const settingsContainer = document.querySelector('.vertical-tab-content');
       if (!settingsContainer) return false;
@@ -84,5 +85,6 @@ describe('GitHub Integration', () => {
     });
 
     expect(tokenConfigured).toBe(true);
+    console.log('✅ GitHub token configuration test completed successfully');
   });
 });

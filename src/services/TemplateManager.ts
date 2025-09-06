@@ -17,6 +17,13 @@ export class TemplateManager {
   ) { }
 
   /**
+   * Update settings reference (for when settings are changed)
+   */
+  updateSettings(newSettings: TaskSyncSettings): void {
+    this.settings = newSettings;
+  }
+
+  /**
    * Create a Task template file with proper front-matter and content
    */
   async createTaskTemplate(filename?: string): Promise<void> {

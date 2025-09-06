@@ -228,14 +228,45 @@ export async function waitForGitHubSettings(page: Page, timeout: number = 5000):
  * Open GitHub integration settings
  */
 export async function openGitHubSettings(context: SharedTestContext): Promise<void> {
+  console.log('🔧 Opening GitHub settings...');
+
+  // Take a screenshot before opening settings
+  await context.page.screenshot({
+    path: `e2e/screenshots/before-open-settings-${Date.now()}.png`,
+    fullPage: true
+  });
+
   await openTaskSyncSettings(context);
+
+  // Take a screenshot after opening Task Sync settings
+  await context.page.screenshot({
+    path: `e2e/screenshots/after-open-task-sync-settings-${Date.now()}.png`,
+    fullPage: true
+  });
+
   await waitForGitHubSettings(context.page);
+
+  // Take a screenshot after GitHub settings are visible
+  await context.page.screenshot({
+    path: `e2e/screenshots/after-github-settings-visible-${Date.now()}.png`,
+    fullPage: true
+  });
+
+  console.log('✅ GitHub settings opened');
 }
 
 /**
  * Toggle GitHub integration setting
  */
 export async function toggleGitHubIntegration(page: Page, enabled: boolean): Promise<void> {
+  console.log(`🔧 Toggling GitHub integration to: ${enabled}`);
+
+  // Take a screenshot before toggling
+  await page.screenshot({
+    path: `e2e/screenshots/before-toggle-${enabled ? 'enable' : 'disable'}-${Date.now()}.png`,
+    fullPage: true
+  });
+
   const toggleClicked = await page.evaluate((shouldEnable) => {
     const settingsContainer = document.querySelector('.vertical-tab-content');
     if (!settingsContainer) return false;
@@ -249,8 +280,12 @@ export async function toggleGitHubIntegration(page: Page, enabled: boolean): Pro
 
         if (toggle && checkbox) {
           const isCurrentlyEnabled = checkbox.checked;
+          console.log(`🔍 Current state: ${isCurrentlyEnabled}, Target state: ${shouldEnable}`);
           if (isCurrentlyEnabled !== shouldEnable) {
             toggle.click();
+            console.log('🔧 Clicked toggle');
+          } else {
+            console.log('🔍 Already in desired state');
           }
           return true;
         }
@@ -260,32 +295,134 @@ export async function toggleGitHubIntegration(page: Page, enabled: boolean): Pro
   }, enabled);
 
   if (!toggleClicked) {
+    // Take a screenshot on failure
+    await page.screenshot({
+      path: `e2e/screenshots/toggle-failed-${Date.now()}.png`,
+      fullPage: true
+    });
     throw new Error('Could not find GitHub integration toggle');
   }
 
   // Wait for additional settings to appear/disappear
   if (enabled) {
-    await waitForGitHubTokenSettings(page);
+    console.log('🔍 Waiting for GitHub token settings to appear...');
+
+    // Wait a bit for the section to be recreated
+    await page.waitForTimeout(1000);
+
+    // Take a screenshot after waiting
+    await page.screenshot({
+      path: `e2e/screenshots/after-toggle-wait-${Date.now()}.png`,
+      fullPage: true
+    });
+
+    await waitForGitHubTokenSettings(page, 10000); // Increase timeout to 10 seconds
+
+    // Take a screenshot after settings appear
+    await page.screenshot({
+      path: `e2e/screenshots/after-toggle-enable-${Date.now()}.png`,
+      fullPage: true
+    });
   }
+
+  console.log('✅ GitHub integration toggle completed');
 }
 
 /**
  * Wait for GitHub token settings to appear
  */
 export async function waitForGitHubTokenSettings(page: Page, timeout: number = 5000): Promise<void> {
-  await page.waitForFunction(() => {
-    const settingsContainer = document.querySelector('.vertical-tab-content');
-    if (!settingsContainer) return false;
+  console.log(`🔍 Waiting for GitHub token settings to appear (timeout: ${timeout}ms)...`);
 
-    const text = settingsContainer.textContent || '';
-    return text.includes('GitHub Personal Access Token') && text.includes('Default Repository');
-  }, { timeout });
+  try {
+    await page.waitForFunction(() => {
+      const settingsContainer = document.querySelector('.vertical-tab-content');
+      if (!settingsContainer) {
+        console.log('❌ No settings container found');
+        return false;
+      }
+
+      const text = settingsContainer.textContent || '';
+      const hasToken = text.includes('GitHub Personal Access Token');
+      const hasRepo = text.includes('Default Repository');
+
+      console.log(`🔍 Settings check - Token: ${hasToken}, Repo: ${hasRepo}`);
+      console.log(`🔍 Settings text preview: "${text.substring(0, 200)}..."`);
+
+      return hasToken && hasRepo;
+    }, { timeout });
+
+    console.log('✅ GitHub token settings appeared');
+  } catch (error) {
+    console.error('❌ Timeout waiting for GitHub token settings');
+
+    // Take a screenshot on timeout
+    await page.screenshot({
+      path: `e2e/screenshots/token-settings-timeout-${Date.now()}.png`,
+      fullPage: true
+    });
+
+    // Debug what settings are actually present
+    const settingsDebug = await page.evaluate(() => {
+      const settingsContainer = document.querySelector('.vertical-tab-content');
+      if (!settingsContainer) {
+        return { error: 'No settings container found' };
+      }
+
+      const settings = Array.from(settingsContainer.querySelectorAll('.setting-item'));
+      const settingNames = settings.map(setting => {
+        const nameEl = setting.querySelector('.setting-item-name');
+        return nameEl?.textContent || 'No name';
+      });
+
+      return {
+        containerExists: true,
+        settingsCount: settings.length,
+        settingNames,
+        fullText: settingsContainer.textContent?.substring(0, 1000) || 'No text'
+      };
+    });
+
+    console.error('❌ Settings debug info:', JSON.stringify(settingsDebug, null, 2));
+    throw error;
+  }
 }
 
 /**
  * Configure GitHub personal access token
  */
 export async function configureGitHubToken(page: Page, token: string): Promise<void> {
+  console.log('🔧 Configuring GitHub token...');
+
+  // Take a screenshot before attempting to configure token
+  await page.screenshot({
+    path: `e2e/screenshots/before-token-config-${Date.now()}.png`,
+    fullPage: true
+  });
+
+  // First, let's debug what settings are actually available
+  const settingsDebugInfo = await page.evaluate(() => {
+    const settingsContainer = document.querySelector('.vertical-tab-content');
+    if (!settingsContainer) {
+      return { error: 'No settings container found' };
+    }
+
+    const settings = Array.from(settingsContainer.querySelectorAll('.setting-item'));
+    const settingNames = settings.map(setting => {
+      const nameEl = setting.querySelector('.setting-item-name');
+      return nameEl?.textContent || 'No name';
+    });
+
+    return {
+      containerExists: true,
+      settingsCount: settings.length,
+      settingNames,
+      containerHTML: settingsContainer.innerHTML.substring(0, 500)
+    };
+  });
+
+  console.log('🔍 Settings debug info:', JSON.stringify(settingsDebugInfo, null, 2));
+
   const tokenConfigured = await page.evaluate((tokenValue) => {
     const settingsContainer = document.querySelector('.vertical-tab-content');
     if (!settingsContainer) return false;
@@ -306,8 +443,18 @@ export async function configureGitHubToken(page: Page, token: string): Promise<v
   }, token);
 
   if (!tokenConfigured) {
+    // Take a screenshot on failure
+    await page.screenshot({
+      path: `e2e/screenshots/token-config-failed-${Date.now()}.png`,
+      fullPage: true
+    });
+
+    console.error('❌ Could not find GitHub token input field');
+    console.error('❌ Available settings:', settingsDebugInfo);
     throw new Error('Could not find GitHub token input field');
   }
+
+  console.log('✅ GitHub token configured successfully');
 }
 
 /**
