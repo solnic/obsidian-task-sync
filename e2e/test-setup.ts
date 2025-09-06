@@ -5,21 +5,14 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import { config } from 'dotenv';
 
-// Load environment variables from .env file
+// Load environment variables from .env file using dotenv
 try {
-  const envPath = path.join(process.cwd(), '.env');
-  if (fs.existsSync(envPath)) {
-    const envContent = fs.readFileSync(envPath, 'utf8');
-    const envLines = envContent.split('\n').filter(line => line.trim() && !line.startsWith('#'));
-
-    for (const line of envLines) {
-      const [key, ...valueParts] = line.split('=');
-      if (key && valueParts.length > 0) {
-        const value = valueParts.join('=').replace(/^["']|["']$/g, ''); // Remove quotes
-        process.env[key.trim()] = value.trim();
-      }
-    }
+  const result = config();
+  if (result.error) {
+    console.warn('⚠️ Failed to load .env file:', result.error.message);
+  } else {
     console.log('🔧 Loaded environment variables from .env file');
   }
 } catch (error) {

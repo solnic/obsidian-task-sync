@@ -1,5 +1,9 @@
 import { defineConfig } from 'vitest/config';
 import * as fs from 'fs';
+import { config } from 'dotenv';
+
+// Load environment variables early
+config();
 
 // Ensure HAR recordings directory exists
 const harDir = './e2e/recordings';
