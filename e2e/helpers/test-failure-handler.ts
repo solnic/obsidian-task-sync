@@ -27,16 +27,29 @@ export function setupTestFailureHandler() {
 }
 
 async function handleTestFailure(testContext: any, type: string) {
-  // Check if the test failed
+  // Check if the test failed - be more comprehensive in failure detection
   const testResult = testContext?.meta?.result;
-  if (testResult?.state === 'fail' || testResult?.errors?.length > 0) {
+  const hasErrors = testResult?.errors?.length > 0;
+  const isFailed = testResult?.state === 'fail' || testResult?.state === 'failed';
+  const hasFailures = testContext?.meta?.failures?.length > 0;
+
+  console.log(`🔍 Test failure check - Type: ${type}, State: ${testResult?.state}, Errors: ${hasErrors}, Failures: ${hasFailures}`);
+
+  if (isFailed || hasErrors || hasFailures) {
     try {
       const context = await getSharedTestContext();
       const testName = testContext?.meta?.name?.replace(/[^a-zA-Z0-9]/g, '-') || 'unknown-test';
 
       // Capture full debug info for failed tests (includes screenshot + more)
       console.log(`🔍 ${type} failed: ${testName}, capturing debug information...`);
+      console.log(`🔍 Test context:`, JSON.stringify({
+        state: testResult?.state,
+        errors: testResult?.errors?.length || 0,
+        failures: testContext?.meta?.failures?.length || 0
+      }, null, 2));
+
       await captureFullDebugInfo(context, `${type}-failure-${testName}`);
+      console.log(`✅ Debug info captured for failed ${type}: ${testName}`);
     } catch (error) {
       console.warn(`⚠️ Failed to capture debug info on ${type} failure: ${error.message}`);
 
@@ -45,10 +58,13 @@ async function handleTestFailure(testContext: any, type: string) {
         const context = await getSharedTestContext();
         const testName = testContext?.meta?.name?.replace(/[^a-zA-Z0-9]/g, '-') || 'unknown-test';
         await captureScreenshotOnFailure(context, `${type}-failure-${testName}-fallback`);
+        console.log(`✅ Fallback screenshot captured for failed ${type}: ${testName}`);
       } catch (fallbackError) {
         console.warn(`⚠️ Fallback screenshot also failed: ${fallbackError.message}`);
       }
     }
+  } else {
+    console.log(`✅ ${type} passed: ${testContext?.meta?.name || 'unknown'}`);
   }
 }
 
