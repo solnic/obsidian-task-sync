@@ -61,12 +61,49 @@ async function killExistingElectronProcesses(): Promise<void> {
   }
 }
 
+/**
+ * Clean up old screenshots from previous test runs
+ */
+async function cleanupScreenshots(): Promise<void> {
+  try {
+    console.log('🧹 Cleaning up old screenshots...');
+    const screenshotsDir = path.join(process.cwd(), 'e2e/screenshots');
+
+    if (fs.existsSync(screenshotsDir)) {
+      const files = await fs.promises.readdir(screenshotsDir);
+      let cleanedCount = 0;
+
+      for (const file of files) {
+        if (file.endsWith('.png') || file.endsWith('.jpg') || file.endsWith('.jpeg')) {
+          const filePath = path.join(screenshotsDir, file);
+          try {
+            await fs.promises.unlink(filePath);
+            cleanedCount++;
+          } catch (error) {
+            console.log(`⚠️ Could not delete screenshot ${file}:`, error.message);
+          }
+        }
+      }
+
+      console.log(`✅ Cleaned up ${cleanedCount} old screenshots`);
+    } else {
+      console.log('📁 Screenshots directory does not exist, creating it...');
+      await fs.promises.mkdir(screenshotsDir, { recursive: true });
+    }
+  } catch (error) {
+    console.log('⚠️ Error cleaning up screenshots:', error.message);
+  }
+}
+
 export default async function globalSetup() {
   console.log("🌍 Starting global e2e test setup...");
 
   try {
     // Kill any existing Electron processes first
     await killExistingElectronProcesses();
+
+    // Clean up old screenshots from previous runs
+    await cleanupScreenshots();
 
     // Build the plugin before running e2e tests
     console.log('🔨 Building plugin for e2e tests...');

@@ -57,6 +57,13 @@ export class BaseManager {
   ) { }
 
   /**
+   * Update settings reference (for when settings are changed)
+   */
+  updateSettings(newSettings: TaskSyncSettings): void {
+    this.settings = newSettings;
+  }
+
+  /**
    * Generate the main Tasks.base file with all task properties and default views
    */
   async generateTasksBase(projectsAndAreas: ProjectAreaInfo[]): Promise<string> {
@@ -244,27 +251,30 @@ export class BaseManager {
    * Sync area and project bases when settings change
    */
   async syncAreaProjectBases(): Promise<void> {
-    if (!this.settings.areaBasesEnabled && !this.settings.projectBasesEnabled) {
-      console.log('Area and project bases are disabled, skipping sync');
-      return;
-    }
-
     const projectsAndAreas = await this.getProjectsAndAreas();
 
-    // Create individual bases for areas if enabled
+    // Handle area bases
     if (this.settings.areaBasesEnabled) {
+      // Create individual bases for areas
       const areas = projectsAndAreas.filter(item => item.type === 'area');
       for (const area of areas) {
         await this.createOrUpdateAreaBase(area);
       }
+    } else {
+      // Clean up existing area bases when disabled
+      await this.cleanupAreaBases(projectsAndAreas);
     }
 
-    // Create individual bases for projects if enabled
+    // Handle project bases
     if (this.settings.projectBasesEnabled) {
+      // Create individual bases for projects
       const projects = projectsAndAreas.filter(item => item.type === 'project');
       for (const project of projects) {
         await this.createOrUpdateProjectBase(project);
       }
+    } else {
+      // Clean up existing project bases when disabled
+      await this.cleanupProjectBases(projectsAndAreas);
     }
 
     console.log('Area and project bases synced successfully');
@@ -389,6 +399,58 @@ export class BaseManager {
       console.log(`Updated base embedding to ${baseFileName} in: ${filePath}`);
     } catch (error) {
       console.error(`Failed to update base embedding in ${filePath}:`, error);
+    }
+  }
+
+  /**
+   * Clean up area base files when area bases are disabled
+   */
+  private async cleanupAreaBases(projectsAndAreas: ProjectAreaInfo[]): Promise<void> {
+    const areas = projectsAndAreas.filter(item => item.type === 'area');
+
+    for (const area of areas) {
+      const sanitizedName = sanitizeFileName(area.name);
+      const baseFileName = `${sanitizedName}.base`;
+      const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
+
+      try {
+        const file = this.vault.getAbstractFileByPath(baseFilePath);
+        if (file instanceof TFile) {
+          await this.vault.delete(file);
+          console.log(`Deleted area base file: ${baseFilePath}`);
+        }
+
+        // Restore generic Tasks.base embedding in area file
+        await this.ensureBaseEmbedding(area.path);
+      } catch (error) {
+        console.error(`Failed to cleanup area base ${baseFilePath}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Clean up project base files when project bases are disabled
+   */
+  private async cleanupProjectBases(projectsAndAreas: ProjectAreaInfo[]): Promise<void> {
+    const projects = projectsAndAreas.filter(item => item.type === 'project');
+
+    for (const project of projects) {
+      const sanitizedName = sanitizeFileName(project.name);
+      const baseFileName = `${sanitizedName}.base`;
+      const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
+
+      try {
+        const file = this.vault.getAbstractFileByPath(baseFilePath);
+        if (file instanceof TFile) {
+          await this.vault.delete(file);
+          console.log(`Deleted project base file: ${baseFilePath}`);
+        }
+
+        // Restore generic Tasks.base embedding in project file
+        await this.ensureBaseEmbedding(project.path);
+      } catch (error) {
+        console.error(`Failed to cleanup project base ${baseFilePath}:`, error);
+      }
     }
   }
 }

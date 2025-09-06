@@ -265,6 +265,11 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .onChange(async (value) => {
           this.plugin.settings.areaBasesEnabled = value;
           await this.plugin.saveSettings();
+
+          // Trigger base sync if enabled
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
         }));
 
     new Setting(section)
@@ -275,6 +280,11 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .onChange(async (value) => {
           this.plugin.settings.projectBasesEnabled = value;
           await this.plugin.saveSettings();
+
+          // Trigger base sync if enabled
+          if (this.plugin.settings.autoSyncAreaProjectBases) {
+            await this.plugin.syncAreaProjectBases();
+          }
         }));
 
     new Setting(section)

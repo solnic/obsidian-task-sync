@@ -259,12 +259,39 @@ export async function cleanupAllWorkerContexts(): Promise<void> {
 }
 
 /**
+ * Clean up old screenshots for a specific test to avoid accumulation
+ */
+async function cleanupOldScreenshots(screenshotsDir: string, testName: string): Promise<void> {
+  try {
+    const files = await fs.promises.readdir(screenshotsDir);
+    const testScreenshots = files.filter(file =>
+      file.startsWith(`test-failure-${testName}`) && file.endsWith('.png')
+    );
+
+    // Remove old screenshots for this test
+    for (const file of testScreenshots) {
+      try {
+        await fs.promises.unlink(path.join(screenshotsDir, file));
+        console.log(`🗑️ Removed old screenshot: ${file}`);
+      } catch (error) {
+        console.warn(`⚠️ Could not remove old screenshot ${file}: ${error.message}`);
+      }
+    }
+  } catch (error) {
+    console.warn(`⚠️ Could not clean up old screenshots: ${error.message}`);
+  }
+}
+
+/**
  * Capture a screenshot for debugging purposes using Playwright Electron support
  */
 export async function captureScreenshotOnFailure(context: SharedTestContext, name: string): Promise<void> {
   try {
     const screenshotsDir = path.join(process.cwd(), 'e2e', 'screenshots');
     await fs.promises.mkdir(screenshotsDir, { recursive: true });
+
+    // Clean up old screenshots for this test first
+    await cleanupOldScreenshots(screenshotsDir, name.replace('test-failure-', ''));
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filename = `${name}-${timestamp}-${context.workerId}.png`;
@@ -367,11 +394,44 @@ export async function captureScreenshotOnFailure(context: SharedTestContext, nam
 }
 
 /**
+ * Clean up old debug directories for a specific test
+ */
+async function cleanupOldDebugInfo(baseDebugDir: string, testName: string): Promise<void> {
+  try {
+    if (!fs.existsSync(baseDebugDir)) {
+      return;
+    }
+
+    const entries = await fs.promises.readdir(baseDebugDir, { withFileTypes: true });
+    const testDebugDirs = entries.filter(entry =>
+      entry.isDirectory() && entry.name.startsWith(`test-failure-${testName}`)
+    );
+
+    // Remove old debug directories for this test
+    for (const dir of testDebugDirs) {
+      try {
+        await fs.promises.rm(path.join(baseDebugDir, dir.name), { recursive: true, force: true });
+        console.log(`🗑️ Removed old debug directory: ${dir.name}`);
+      } catch (error) {
+        console.warn(`⚠️ Could not remove old debug directory ${dir.name}: ${error.message}`);
+      }
+    }
+  } catch (error) {
+    console.warn(`⚠️ Could not clean up old debug info: ${error.message}`);
+  }
+}
+
+/**
  * Capture a full debugging package including screenshot, console logs, and app state
  */
 export async function captureFullDebugInfo(context: SharedTestContext, name: string, consoleLogs?: Array<{ type: string; text: string; timestamp: Date }>): Promise<void> {
   try {
-    const debugDir = path.join(process.cwd(), 'e2e', 'debug', name);
+    const baseDebugDir = path.join(process.cwd(), 'e2e', 'debug');
+
+    // Clean up old debug info for this test first
+    await cleanupOldDebugInfo(baseDebugDir, name.replace('test-failure-', ''));
+
+    const debugDir = path.join(baseDebugDir, name);
     await fs.promises.mkdir(debugDir, { recursive: true });
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');

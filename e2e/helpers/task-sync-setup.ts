@@ -307,6 +307,21 @@ export async function waitForBaseFile(page: Page, baseFilePath: string, timeout:
 }
 
 /**
+ * Wait for a base file to be deleted
+ */
+export async function waitForBaseFileDeleted(page: Page, baseFilePath: string, timeout: number = 5000): Promise<void> {
+  await page.waitForFunction(
+    ({ filePath }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(filePath);
+      return file === null;
+    },
+    { filePath: baseFilePath },
+    { timeout }
+  );
+}
+
+/**
  * Wait for base content to contain specific text
  */
 export async function waitForBaseContent(page: Page, baseFilePath: string, expectedContent: string, timeout: number = 5000): Promise<void> {
@@ -789,44 +804,22 @@ export async function closeSettings(page: Page): Promise<void> {
       return;
     }
 
-    // Try to find and click close button
-    const closeButton = page.locator('.modal-close-button, .modal-close, [aria-label="Close"]');
-    const closeButtonCount = await closeButton.count();
+    // Use Escape key - most reliable method for closing Obsidian modals
+    console.log('🔧 Pressing Escape to close settings...');
+    await page.keyboard.press('Escape');
 
-    if (closeButtonCount > 0) {
-      console.log('🔧 Found close button, clicking...');
-      await closeButton.first().click();
-    } else {
-      console.log('🔧 No close button found, pressing Escape...');
+    // Wait briefly for modal to close
+    await page.waitForTimeout(300);
+
+    // Verify modal is closed
+    const stillOpen = await page.locator('.modal-container').count() > 0;
+    if (stillOpen) {
+      console.log('🔧 Modal still open, trying second Escape...');
       await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
     }
 
-    // Wait for modal to close with a short timeout to prevent hangs
-    console.log('🔧 Waiting for modal to close...');
-    try {
-      await page.waitForSelector('.modal-container', { state: 'detached', timeout: 2000 });
-      console.log('✅ Settings modal closed successfully');
-    } catch (timeoutError) {
-      console.warn('⚠️ Modal did not close within timeout, trying Escape again...');
-
-      try {
-        // Try Escape key as fallback
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(300);
-
-        // Check if modal is still there (don't wait long)
-        const stillOpen = await page.locator('.modal-container').count() > 0;
-        if (stillOpen) {
-          console.warn('⚠️ Settings modal is still open after attempts to close');
-          // Don't throw error, just log warning to prevent test hangs
-        } else {
-          console.log('✅ Settings modal closed after fallback attempt');
-        }
-      } catch (fallbackError) {
-        console.warn(`⚠️ Fallback close attempt failed: ${fallbackError.message}`);
-        // Don't throw error to prevent test hangs
-      }
-    }
+    console.log('✅ Settings modal close attempt completed');
   } catch (error) {
     console.warn(`⚠️ Error while closing settings: ${error.message}`);
     // Don't throw error to prevent test hangs
@@ -874,12 +867,12 @@ export async function addTaskStatus(page: Page, statusName: string, color: strin
   const addButton = addSection.locator('button').filter({ hasText: 'Add Status' });
   await addButton.click();
 
-  // Wait for the new status to appear
-  const newStatusSetting = page.locator('.setting-item').filter({ hasText: statusName }).first();
-  await newStatusSetting.waitFor({ state: 'visible', timeout: 5000 });
+  // Give UI time to add the new status
+  await page.waitForTimeout(300);
 
   // If isDone should be true, toggle it
   if (isDone) {
+    const newStatusSetting = page.locator('.setting-item').filter({ hasText: statusName }).first();
     const toggle = newStatusSetting.locator('input[type="checkbox"]');
     const isChecked = await toggle.isChecked();
     if (!isChecked) {
@@ -900,6 +893,8 @@ export async function toggleTaskStatusDone(page: Page, statusName: string, isDon
 
   if (isChecked !== isDone) {
     await toggle.click();
+    // Give UI time to process the change
+    await page.waitForTimeout(100);
   }
 }
 
@@ -910,6 +905,110 @@ export async function openTaskStatusSettings(context: any): Promise<void> {
   await openTaskSyncSettings(context);
   await scrollToSettingsSection(context.page, 'Task Statuses');
 }
+
+/**
+ * Toggle area bases enabled setting via UI
+ */
+export async function toggleAreaBasesEnabled(context: SharedTestContext, enabled: boolean): Promise<void> {
+  await openTaskSyncSettings(context);
+  await scrollToSettingsSection(context.page, 'Bases Integration');
+
+  const areaBasesToggle = context.page.locator('.setting-item').filter({ hasText: 'Enable Area Bases' }).locator('input[type="checkbox"]');
+  const isChecked = await areaBasesToggle.isChecked();
+
+  if (isChecked !== enabled) {
+    await areaBasesToggle.click();
+    // Give UI time to process the change
+    await context.page.waitForTimeout(200);
+  }
+
+  await closeSettings(context.page);
+}
+
+/**
+ * Toggle project bases enabled setting via UI
+ */
+export async function toggleProjectBasesEnabled(context: SharedTestContext, enabled: boolean): Promise<void> {
+  await openTaskSyncSettings(context);
+  await scrollToSettingsSection(context.page, 'Bases Integration');
+
+  const projectBasesToggle = context.page.locator('.setting-item').filter({ hasText: 'Enable Project Bases' }).locator('input[type="checkbox"]');
+  const isChecked = await projectBasesToggle.isChecked();
+
+  if (isChecked !== enabled) {
+    await projectBasesToggle.click();
+    // Give UI time to process the change
+    await context.page.waitForTimeout(200);
+  }
+
+  await closeSettings(context.page);
+}
+
+/**
+ * Generic helper to toggle a checkbox setting in a specific section
+ */
+export async function toggleSetting(context: SharedTestContext, sectionName: string, settingName: string, enabled: boolean): Promise<void> {
+  await openTaskSyncSettings(context);
+  await scrollToSettingsSection(context.page, sectionName);
+
+  const toggle = context.page.locator('.setting-item').filter({ hasText: settingName }).locator('input[type="checkbox"]');
+  const isChecked = await toggle.isChecked();
+
+  if (isChecked !== enabled) {
+    await toggle.click();
+    // Give UI time to process the change
+    await context.page.waitForTimeout(200);
+  }
+
+  await closeSettings(context.page);
+}
+
+/**
+ * Generic helper to fill an input setting in a specific section
+ */
+export async function fillSetting(context: SharedTestContext, sectionName: string, settingName: string, value: string): Promise<void> {
+  await openTaskSyncSettings(context);
+  await scrollToSettingsSection(context.page, sectionName);
+
+  const input = context.page.locator('.setting-item').filter({ hasText: settingName }).locator('input[type="text"], input[type="password"], textarea');
+  await input.fill(value);
+  // Give UI time to process the change
+  await context.page.waitForTimeout(200);
+
+  await closeSettings(context.page);
+}
+
+/**
+ * Configure both area and project bases settings via UI
+ */
+export async function configureBasesSettings(context: SharedTestContext, areaBasesEnabled: boolean, projectBasesEnabled: boolean): Promise<void> {
+  await openTaskSyncSettings(context);
+  await scrollToSettingsSection(context.page, 'Bases Integration');
+
+  // Configure area bases
+  const areaBasesToggle = context.page.locator('.setting-item').filter({ hasText: 'Enable Area Bases' }).locator('input[type="checkbox"]');
+  const areaIsChecked = await areaBasesToggle.isChecked();
+
+  if (areaIsChecked !== areaBasesEnabled) {
+    await areaBasesToggle.click();
+    // Give UI time to process the change
+    await context.page.waitForTimeout(200);
+  }
+
+  // Configure project bases
+  const projectBasesToggle = context.page.locator('.setting-item').filter({ hasText: 'Enable Project Bases' }).locator('input[type="checkbox"]');
+  const projectIsChecked = await projectBasesToggle.isChecked();
+
+  if (projectIsChecked !== projectBasesEnabled) {
+    await projectBasesToggle.click();
+    // Give UI time to process the change
+    await context.page.waitForTimeout(200);
+  }
+
+  await closeSettings(context.page);
+}
+
+
 
 /**
  * Wait for a file to be created and have initial content

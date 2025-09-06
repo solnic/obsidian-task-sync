@@ -8,7 +8,10 @@ import {
   createTestFolders,
   getFileContent,
   fileExists,
-  waitForBasesRegeneration
+  waitForBasesRegeneration,
+  configureBasesSettings,
+  toggleAreaBasesEnabled,
+  toggleProjectBasesEnabled
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
 
@@ -40,14 +43,14 @@ This is a health area for tracking fitness and wellness.
     // Wait for metadata cache to update
     await context.page.waitForTimeout(1000);
 
-    // Enable area bases and trigger regeneration
+    // Enable area bases via UI and trigger regeneration
+    await configureBasesSettings(context, true, false);
+
+    // Trigger regeneration
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.areaBasesEnabled = true;
-        plugin.settings.autoSyncAreaProjectBases = true;
-        await plugin.saveSettings();
         await plugin.regenerateBases();
       }
     });
@@ -112,14 +115,14 @@ This is a website redesign project.
       await app.vault.create('Projects/Website Redesign.md', projectContent);
     });
 
-    // Enable project bases and trigger regeneration
+    // Enable project bases via UI and trigger regeneration
+    await configureBasesSettings(context, false, true);
+
+    // Trigger regeneration
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.projectBasesEnabled = true;
-        plugin.settings.autoSyncAreaProjectBases = true;
-        await plugin.saveSettings();
         await plugin.regenerateBases();
       }
     });
@@ -180,14 +183,14 @@ Finance area for budgeting and investments.
       await app.vault.create('Areas/Finance.md', areaContent);
     });
 
-    // Disable area bases and trigger regeneration
+    // Disable area bases and enable project bases via UI
+    await configureBasesSettings(context, false, true);
+
+    // Trigger regeneration
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.areaBasesEnabled = false;
-        plugin.settings.projectBasesEnabled = true;
-        await plugin.saveSettings();
         await plugin.regenerateBases();
       }
     });
@@ -218,14 +221,14 @@ Mobile app development project.
       await app.vault.create('Projects/Mobile App.md', projectContent);
     });
 
-    // Disable project bases and trigger regeneration
+    // Enable area bases and disable project bases via UI
+    await configureBasesSettings(context, true, false);
+
+    // Trigger regeneration
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.areaBasesEnabled = true;
-        plugin.settings.projectBasesEnabled = false;
-        await plugin.saveSettings();
         await plugin.regenerateBases();
       }
     });
@@ -259,14 +262,14 @@ Learning and skill development area.
       await app.vault.create('Areas/Learning.md', areaContent);
     });
 
-    // Enable area bases and trigger regeneration
+    // Enable area bases via UI and trigger regeneration
+    await configureBasesSettings(context, true, false);
+
+    // Trigger regeneration
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.areaBasesEnabled = true;
-        plugin.settings.autoSyncAreaProjectBases = true;
-        await plugin.saveSettings();
         await plugin.regenerateBases();
       }
     });
@@ -339,15 +342,14 @@ Monthly budget tracking system.
       }
     });
 
-    // Enable both area and project bases
+    // Enable both area and project bases via UI
+    await configureBasesSettings(context, true, true);
+
+    // Trigger regeneration
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.areaBasesEnabled = true;
-        plugin.settings.projectBasesEnabled = true;
-        plugin.settings.autoSyncAreaProjectBases = true;
-        await plugin.saveSettings();
         await plugin.regenerateBases();
       }
     });
