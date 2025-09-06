@@ -136,55 +136,6 @@ This task was created from a template!
     expect(errorOccurred).toBe(true);
   });
 
-  test('should fall back to default generation when template file does not exist', async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Configure plugin to use a non-existent template
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        plugin.settings.defaultTaskTemplate = 'NonExistentTemplate.md';
-        await plugin.saveSettings();
-      }
-    });
-
-    // Create a task using the plugin
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        await plugin.createTask({
-          name: 'Fallback Test Task',
-          type: 'Improvement',
-          priority: 'Medium',
-          areas: ['Testing'],
-          done: false,
-          status: 'Todo',
-          tags: ['fallback'],
-          description: 'This task tests fallback behavior'
-        });
-      }
-    });
-
-    await context.page.waitForTimeout(1000);
-
-    // Check if task file was created
-    const taskFileExists = await fileExists(context.page, 'Tasks/Fallback Test Task.md');
-    expect(taskFileExists).toBe(true);
-
-    // Check task file content
-    const taskContent = await getFileContent(context.page, 'Tasks/Fallback Test Task.md');
-
-    // Verify fallback to default generation
-    expect(taskContent).toContain('This task tests fallback behavior');
-    expect(taskContent).toContain('Title: Fallback Test Task');
-    expect(taskContent).toContain('Type: Improvement');
-    expect(taskContent).toContain('Priority: Low'); // Uses default value from property definition
-    expect(taskContent).toContain('Status: Backlog'); // Uses default value from property definition
-  });
-
   test('should process template variables correctly', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);

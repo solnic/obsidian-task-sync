@@ -67,8 +67,15 @@ export class TemplateManager {
       } else if (prop.type === 'array') {
         frontMatterData[prop.name] = [];
       } else {
-        // Use empty string for properties without defaults
-        frontMatterData[prop.name] = '';
+        // Set specific defaults for key properties
+        if (prop.name === 'Type') {
+          frontMatterData[prop.name] = this.settings.taskTypes[0]?.name || 'Task';
+        } else if (prop.name === 'Title') {
+          frontMatterData[prop.name] = ''; // Title will be set by property handler
+        } else {
+          // Use empty string for other properties without defaults
+          frontMatterData[prop.name] = '';
+        }
       }
     }
 

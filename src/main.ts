@@ -1062,13 +1062,17 @@ export default class TaskSyncPlugin extends Plugin {
       processedContent = processedContent.replace(/^Title:\s*$/m, `Title: '${data.name}'`);
     }
 
-    // Handle Type field
-    if (data.type && processedContent.includes('Type: \'\'')) {
-      processedContent = processedContent.replace('Type: \'\'', `Type: ${data.type}`);
-    } else if (data.type && processedContent.includes('Type: ""')) {
-      processedContent = processedContent.replace('Type: ""', `Type: ${data.type}`);
-    } else if (data.type && processedContent.includes('Type:')) {
-      processedContent = processedContent.replace(/^Type:\s*$/m, `Type: ${data.type}`);
+    // Handle Type field - replace any existing Type value with the provided one
+    if (data.type) {
+      // First try to replace empty Type fields
+      if (processedContent.includes('Type: \'\'')) {
+        processedContent = processedContent.replace('Type: \'\'', `Type: ${data.type}`);
+      } else if (processedContent.includes('Type: ""')) {
+        processedContent = processedContent.replace('Type: ""', `Type: ${data.type}`);
+      } else if (processedContent.includes('Type:')) {
+        // Replace any Type field value, including existing non-empty values
+        processedContent = processedContent.replace(/^Type:\s*.*$/m, `Type: ${data.type}`);
+      }
     }
 
     // Replace common variables

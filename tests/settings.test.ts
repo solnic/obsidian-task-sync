@@ -6,45 +6,30 @@ import { DEFAULT_SETTINGS } from '../src/components/ui/settings/defaults';
 describe('TaskSync Settings', () => {
   describe('Settings Interface', () => {
     it('should have correct default settings structure', () => {
-      const defaultSettings: TaskSyncSettings = {
-        ...DEFAULT_SETTINGS,
-        defaultTaskTemplate: '',
-        defaultProjectTemplate: '',
-        defaultAreaTemplate: '',
-        defaultParentTaskTemplate: '',
-        autoUpdateBaseViews: true,
-        taskTypes: [
-          { name: 'Task', color: 'blue' },
-          { name: 'Bug', color: 'red' },
-          { name: 'Feature', color: 'green' },
-          { name: 'Improvement', color: 'purple' },
-          { name: 'Chore', color: 'gray' }
-        ],
-        taskPriorities: [
-          { name: 'Low', color: 'green' },
-          { name: 'Medium', color: 'yellow' },
-          { name: 'High', color: 'orange' },
-          { name: 'Urgent', color: 'red' }
-        ],
-        taskStatuses: [
-          { name: 'Backlog', color: 'gray', isDone: false },
-          { name: 'In Progress', color: 'blue', isDone: false },
-          { name: 'Done', color: 'green', isDone: true }
-        ],
-        areaBasesEnabled: true,
-        projectBasesEnabled: true,
-        autoSyncAreaProjectBases: true,
-        taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
-      };
+      // Test the actual DEFAULT_SETTINGS values
+      expect(DEFAULT_SETTINGS.tasksFolder).toBe('Tasks');
+      expect(DEFAULT_SETTINGS.projectsFolder).toBe('Projects');
+      expect(DEFAULT_SETTINGS.areasFolder).toBe('Areas');
+      expect(DEFAULT_SETTINGS.templateFolder).toBe('Templates');
+      expect(DEFAULT_SETTINGS.useTemplater).toBe(false);
+      expect(DEFAULT_SETTINGS.defaultTaskTemplate).toBe('Task.md');
+      expect(DEFAULT_SETTINGS.defaultProjectTemplate).toBe('project-template.md');
+      expect(DEFAULT_SETTINGS.defaultAreaTemplate).toBe('area-template.md');
+      expect(DEFAULT_SETTINGS.defaultParentTaskTemplate).toBe('parent-task-template.md');
+      expect(DEFAULT_SETTINGS.autoUpdateBaseViews).toBe(true);
+      expect(DEFAULT_SETTINGS.areaBasesEnabled).toBe(true);
+      expect(DEFAULT_SETTINGS.projectBasesEnabled).toBe(true);
+      expect(DEFAULT_SETTINGS.autoSyncAreaProjectBases).toBe(true);
 
-      expect(defaultSettings.tasksFolder).toBe('Tasks');
-      expect(defaultSettings.projectsFolder).toBe('Projects');
-      expect(defaultSettings.areasFolder).toBe('Areas');
-      expect(defaultSettings.templateFolder).toBe('Templates');
-      expect(defaultSettings.useTemplater).toBe(false);
-      expect(defaultSettings.defaultTaskTemplate).toBe('');
-      expect(defaultSettings.defaultProjectTemplate).toBe('');
-      expect(defaultSettings.defaultAreaTemplate).toBe('');
+      // Test array structures
+      expect(Array.isArray(DEFAULT_SETTINGS.taskTypes)).toBe(true);
+      expect(DEFAULT_SETTINGS.taskTypes).toHaveLength(5);
+      expect(Array.isArray(DEFAULT_SETTINGS.taskPriorities)).toBe(true);
+      expect(DEFAULT_SETTINGS.taskPriorities).toHaveLength(4);
+      expect(Array.isArray(DEFAULT_SETTINGS.taskStatuses)).toBe(true);
+      expect(DEFAULT_SETTINGS.taskStatuses).toHaveLength(3);
+      expect(Array.isArray(DEFAULT_SETTINGS.taskPropertyOrder)).toBe(true);
+      expect(DEFAULT_SETTINGS.taskPropertyOrder).toHaveLength(10);
     });
 
     it('should allow partial settings objects', () => {
@@ -64,7 +49,7 @@ describe('TaskSync Settings', () => {
       };
 
       expect(typeof settings.defaultTaskTemplate).toBe('string');
-      expect(settings.defaultTaskTemplate).toBe('Task Template');
+      expect(settings.defaultTaskTemplate).toBe('Task.md');
     });
 
     it('should validate boolean settings', () => {
@@ -132,7 +117,7 @@ describe('TaskSync Settings', () => {
       };
 
       expect(settings1.useTemplater).toBe(true);
-      expect(settings1.defaultTaskTemplate).toBe('');
+      expect(settings1.defaultTaskTemplate).toBe('Task.md'); // DEFAULT_SETTINGS has 'Task.md', not empty string
 
       // Test when Templater is disabled but templates are specified
       const settings2: TaskSyncSettings = {

@@ -57,7 +57,8 @@ export class ProjectPropertyHandler implements EventHandler {
   }
 
   /**
-   * Check if a file has the correct Type property for its location
+   * Check if a file should be processed by this handler
+   * Process files in the Projects folder that either have the correct Type or need Type to be set
    */
   private async hasCorrectTypeProperty(filePath: string): Promise<boolean> {
     try {
@@ -66,12 +67,20 @@ export class ProjectPropertyHandler implements EventHandler {
         return false;
       }
 
+      // Check if file is in the Projects folder
+      if (!filePath.startsWith(this.settings.projectsFolder + '/')) {
+        return false;
+      }
+
       const content = await this.app.vault.read(file);
       const parsed = matter(content);
       const frontmatterData = parsed.data || {};
 
-      // For project files, Type should be "Project"
-      return frontmatterData.Type === 'Project';
+      // Process files that either have the correct Type or need Type to be set
+      // This allows us to set default Type for files with null/empty Type
+      return frontmatterData.Type === 'Project' ||
+        !frontmatterData.Type ||
+        frontmatterData.Type === '';
     } catch (error) {
       console.error(`ProjectPropertyHandler: Error checking Type property for ${filePath}:`, error);
       return false;

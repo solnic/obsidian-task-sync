@@ -57,7 +57,8 @@ export class AreaPropertyHandler implements EventHandler {
   }
 
   /**
-   * Check if a file has the correct Type property for its location
+   * Check if a file should be processed by this handler
+   * Process files in the Areas folder that either have the correct Type or need Type to be set
    */
   private async hasCorrectTypeProperty(filePath: string): Promise<boolean> {
     try {
@@ -66,12 +67,20 @@ export class AreaPropertyHandler implements EventHandler {
         return false;
       }
 
+      // Check if file is in the Areas folder
+      if (!filePath.startsWith(this.settings.areasFolder + '/')) {
+        return false;
+      }
+
       const content = await this.app.vault.read(file);
       const parsed = matter(content);
       const frontmatterData = parsed.data || {};
 
-      // For area files, Type should be "Area"
-      return frontmatterData.Type === 'Area';
+      // Process files that either have the correct Type or need Type to be set
+      // This allows us to set default Type for files with null/empty Type
+      return frontmatterData.Type === 'Area' ||
+        !frontmatterData.Type ||
+        frontmatterData.Type === '';
     } catch (error) {
       console.error(`AreaPropertyHandler: Error checking Type property for ${filePath}:`, error);
       return false;

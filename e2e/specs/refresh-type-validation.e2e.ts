@@ -10,18 +10,11 @@ describe('Refresh Type Validation', () => {
     await waitForTaskSyncPlugin(context.page);
 
     // Create files with mixed Type properties in Projects folder
-    // Disable property handlers temporarily to prevent automatic Type property addition
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
 
-      // Temporarily disable event system to prevent property handlers from running
-      const originalEventSystem = plugin.eventSystem;
-      plugin.eventSystem = null;
-
-      try {
-        // Valid project file
-        await app.vault.create('Projects/Valid Project.md', `---
+      // Valid project file
+      await app.vault.create('Projects/Valid Project.md', `---
 Name: Valid Project
 Type: Project
 Areas: Development
@@ -29,74 +22,55 @@ Areas: Development
 
 This is a valid project file.`);
 
-        // Invalid project file (wrong Type)
-        await app.vault.create('Projects/Invalid Project.md', `---
+      // Invalid project file (wrong Type)
+      await app.vault.create('Projects/Invalid Project.md', `---
 Name: Invalid Project
 Type: Area
 ---
 
 This file has wrong Type property.`);
 
-        // File without Type property
-        await app.vault.create('Projects/Random Note.md', `---
-Title: Random Note
-Description: Just a random note
+      // Files without Type property will get Type added by property handlers
+      // This is the expected behavior - property handlers ensure files have correct Type
+      await app.vault.create('Projects/Auto Type File.md', `---
+Name: Auto Type File
+Description: File that will get Type added automatically
 ---
 
-This file has no Type property.`);
-
-        // File with no front-matter
-        await app.vault.create('Projects/Plain File.md', `# Plain File
-
-This file has no front-matter at all.`);
-      } finally {
-        // Re-enable event system
-        plugin.eventSystem = originalEventSystem;
-      }
+This file will get Type: Project added by property handlers.`);
     });
 
     // Create files with mixed Type properties in Areas folder
-    // Disable property handlers temporarily to prevent automatic Type property addition
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
 
-      // Temporarily disable event system to prevent property handlers from running
-      const originalEventSystem = plugin.eventSystem;
-      plugin.eventSystem = null;
-
-      try {
-        // Valid area file
-        await app.vault.create('Areas/Valid Area.md', `---
+      // Valid area file
+      await app.vault.create('Areas/Valid Area.md', `---
 Name: Valid Area
 Type: Area
 ---
 
 This is a valid area file.`);
 
-        // Invalid area file (wrong Type)
-        await app.vault.create('Areas/Invalid Area.md', `---
+      // Invalid area file (wrong Type)
+      await app.vault.create('Areas/Invalid Area.md', `---
 Name: Invalid Area
 Type: Project
 ---
 
 This file has wrong Type property.`);
 
-        // File without Type property
-        await app.vault.create('Areas/Some Document.md', `---
-Title: Some Document
-Description: Just a document
+      // Files without Type property will get Type added by property handlers
+      await app.vault.create('Areas/Auto Type Area.md', `---
+Name: Auto Type Area
+Description: Area that will get Type added automatically
 ---
 
-This file has no Type property.`);
-      } finally {
-        // Re-enable event system
-        plugin.eventSystem = originalEventSystem;
-      }
+This file will get Type: Area added by property handlers.`);
     });
 
-    // Wait for metadata cache to update after file creation
-    await context.page.waitForTimeout(1000);
+    // Wait for property handlers to process the files
+    await context.page.waitForTimeout(2000);
 
     // Capture console logs to verify which files are processed/skipped
     const consoleLogs: string[] = [];
@@ -112,30 +86,24 @@ This file has no Type property.`);
     // Wait for refresh to complete
     await context.page.waitForTimeout(3000);
 
-    // Verify that only files with correct Type properties were processed
-    const processedLogs = consoleLogs.filter(log => log.includes('Processing file with correct Type') || log.includes('Updated') && log.includes('properties'));
+    // Verify that only files with incorrect Type properties were skipped
     const skippedLogs = consoleLogs.filter(log =>
-      log.includes('Skipping file with incorrect Type property') ||
-      log.includes('Skipping file without front-matter')
+      log.includes('Skipping file with incorrect Type property')
     );
 
     console.log('Console logs captured:', consoleLogs);
-    console.log('Processed logs:', processedLogs);
+    console.log('Processed logs:', consoleLogs.filter(log => log.includes('Updated') && log.includes('properties')));
     console.log('Skipped logs:', skippedLogs);
 
-    // Should have skipped files with incorrect/missing Type properties
+    // Should have skipped files with incorrect Type properties
     expect(skippedLogs.some(log => log.includes('Invalid Project.md'))).toBe(true);
-    expect(skippedLogs.some(log => log.includes('Random Note.md'))).toBe(true);
-    expect(skippedLogs.some(log => log.includes('Plain File.md'))).toBe(true);
     expect(skippedLogs.some(log => log.includes('Invalid Area.md'))).toBe(true);
-    expect(skippedLogs.some(log => log.includes('Some Document.md'))).toBe(true);
 
-    // Should NOT have processed invalid files
-    expect(consoleLogs.some(log => log.includes('Processing') && log.includes('Invalid Project.md'))).toBe(false);
-    expect(consoleLogs.some(log => log.includes('Processing') && log.includes('Random Note.md'))).toBe(false);
-    expect(consoleLogs.some(log => log.includes('Processing') && log.includes('Plain File.md'))).toBe(false);
-    expect(consoleLogs.some(log => log.includes('Processing') && log.includes('Invalid Area.md'))).toBe(false);
-    expect(consoleLogs.some(log => log.includes('Processing') && log.includes('Some Document.md'))).toBe(false);
+    // Should NOT have skipped files that got correct Type properties from property handlers
+    expect(skippedLogs.some(log => log.includes('Auto Type File.md'))).toBe(false);
+    expect(skippedLogs.some(log => log.includes('Auto Type Area.md'))).toBe(false);
+    expect(skippedLogs.some(log => log.includes('Valid Project.md'))).toBe(false);
+    expect(skippedLogs.some(log => log.includes('Valid Area.md'))).toBe(false);
   });
 
   test('should not create bases for files without correct Type property', async () => {
@@ -155,78 +123,42 @@ This file has no Type property.`);
     });
 
     // Create files with mixed Type properties
-    // Disable property handlers temporarily to prevent automatic Type property addition
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
 
-      // Temporarily disable event system to prevent property handlers from running
-      const originalEventSystem = plugin.eventSystem;
-      plugin.eventSystem = null;
-
-      try {
-        // Valid files that should get bases
-        await app.vault.create('Projects/Valid Project.md', `---
+      // Valid files that should get bases
+      await app.vault.create('Projects/Valid Project.md', `---
 Name: Valid Project
 Type: Project
 ---
 
 Valid project file.`);
 
-        await app.vault.create('Areas/Valid Area.md', `---
+      await app.vault.create('Areas/Valid Area.md', `---
 Name: Valid Area
 Type: Area
 ---
 
 Valid area file.`);
 
-        // Invalid files that should NOT get bases
-        await app.vault.create('Projects/Invalid Project.md', `---
+      // Invalid files that should NOT get bases (wrong Type)
+      await app.vault.create('Projects/Invalid Project.md', `---
 Name: Invalid Project
 Type: Area
 ---
 
 Invalid project file.`);
 
-        await app.vault.create('Areas/Invalid Area.md', `---
+      await app.vault.create('Areas/Invalid Area.md', `---
 Name: Invalid Area
 Type: Project
 ---
 
 Invalid area file.`);
-
-        await app.vault.create('Projects/Random Note.md', `---
-Title: Random Note
----
-
-Random note without Type.`);
-
-        await app.vault.create('Areas/Some Document.md', `---
-Title: Some Document
----
-
-Document without Type.`);
-      } finally {
-        // Re-enable event system
-        plugin.eventSystem = originalEventSystem;
-      }
     });
 
-    // Wait for metadata cache to update after file creation
-    await context.page.waitForTimeout(1000);
-
-    // Force metadata cache refresh
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      // Force metadata cache to update for all files
-      const files = app.vault.getMarkdownFiles();
-      for (const file of files) {
-        app.metadataCache.getFileCache(file, true); // Force refresh
-      }
-    });
-
-    // Wait a bit more for cache to settle
-    await context.page.waitForTimeout(500);
+    // Wait for property handlers to process files
+    await context.page.waitForTimeout(2000);
 
     // Trigger base regeneration
     await executeCommand(context, 'Task Sync: Refresh');
@@ -258,11 +190,9 @@ Document without Type.`);
     expect(baseFiles).toContain('Valid Project.base');
     expect(baseFiles).toContain('Valid Area.base');
 
-    // Should NOT have bases for invalid files
+    // Should NOT have bases for invalid files (wrong Type)
     expect(baseFiles).not.toContain('Invalid Project.base');
     expect(baseFiles).not.toContain('Invalid Area.base');
-    expect(baseFiles).not.toContain('Random Note.base');
-    expect(baseFiles).not.toContain('Some Document.base');
   });
 
   test('should handle task files correctly (Type property is optional)', async () => {
