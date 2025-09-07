@@ -174,8 +174,8 @@ Website redesign project for the company.
     expect(baseContent).not.toContain('RED:');
     expect(baseContent).not.toContain('BLUE:');
 
-    // Should use Type in views (simplified property names)
-    expect(baseContent).toContain('Type == "');
+    // Should use Category in views (simplified property names)
+    expect(baseContent).toContain('Category == "');
 
     // Should NOT contain HTML spans or old Type Badge property
     expect(baseContent).not.toContain('<span');

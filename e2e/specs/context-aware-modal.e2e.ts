@@ -104,11 +104,11 @@ This is a test project file.
 
     // Check specific setting items exist
     const taskNameVisible = await isElementVisible(context.page, '.setting-item:has-text("Task Name")');
-    const typeVisible = await isElementVisible(context.page, '.setting-item:has-text("Type")');
+    const categoryVisible = await isElementVisible(context.page, '.setting-item:has-text("Category")');
     const projectVisible = await isElementVisible(context.page, '.setting-item:has-text("Project")');
 
     expect(taskNameVisible).toBe(true);
-    expect(typeVisible).toBe(true);
+    expect(categoryVisible).toBe(true);
     expect(projectVisible).toBe(true);
   });
 

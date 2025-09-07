@@ -408,7 +408,7 @@ Area for testing sync functionality.
         const baseFile = app.vault.getAbstractFileByPath('Bases/Sync Test.base');
         if (baseFile) {
           const content = await app.vault.read(baseFile);
-          return content.includes('name: Epics') && content.includes('Type == "Epic"');
+          return content.includes('name: Epics') && content.includes('Category == "Epic"');
         }
         return false;
       }, { timeout: 10000 });
@@ -457,7 +457,7 @@ Area for testing sync functionality.
         const baseFile = app.vault.getAbstractFileByPath('Bases/Sync Test.base');
         if (baseFile) {
           const content = await app.vault.read(baseFile);
-          return !content.includes('name: Epics') && !content.includes('Type == "Epic"');
+          return !content.includes('name: Epics') && !content.includes('Category == "Epic"');
         }
         return false;
       }, { timeout: 10000 });
@@ -504,7 +504,7 @@ Area for testing sync functionality.
     });
 
     expect(baseContent).not.toContain('name: Epics');
-    expect(baseContent).not.toContain('Type == "Epic"');
+    expect(baseContent).not.toContain('Category == "Epic"');
 
     console.log('✅ Test completed successfully - Epic task type was created, synced, removed, and base sync was triggered for both operations');
 

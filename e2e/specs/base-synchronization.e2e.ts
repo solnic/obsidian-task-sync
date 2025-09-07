@@ -111,11 +111,11 @@ Areas: Health
     // Check that bases were updated with new task type
     healthBaseContent = await getFileContent(context.page, 'Bases/Health.base');
     expect(healthBaseContent).toContain('name: All Epics');
-    expect(healthBaseContent).toContain('Type == "Epic"');
+    expect(healthBaseContent).toContain('Category == "Epic"');
 
     const fitnessBaseContent = await getFileContent(context.page, 'Bases/Fitness Plan.base');
     expect(fitnessBaseContent).toContain('name: All Epics');
-    expect(fitnessBaseContent).toContain('Type == "Epic"');
+    expect(fitnessBaseContent).toContain('Category == "Epic"');
   });
 
   test('should sync bases when task type is removed', async () => {
@@ -175,7 +175,7 @@ Work-related tasks and projects.
     expect(workBaseContent).toBeTruthy();
     // Look for the Chores view in the views section
     expect(workBaseContent).toContain('name: Chores');
-    expect(workBaseContent).toContain('Type == "Chore"');
+    expect(workBaseContent).toContain('Category == "Chore"');
 
     // Remove "Chore" task type
     await context.page.evaluate(async () => {
@@ -197,7 +197,7 @@ Work-related tasks and projects.
     // Check that base was updated without "Chores" view
     workBaseContent = await getFileContent(context.page, 'Bases/Work.base');
     expect(workBaseContent).not.toContain('name: Chores');
-    expect(workBaseContent).not.toContain('Type == "Chore"');
+    expect(workBaseContent).not.toContain('Category == "Chore"');
   });
 
   test('should respect autoSyncAreaProjectBases setting', { timeout: 15000 }, async () => {
@@ -268,7 +268,7 @@ Learning and development area.
     // Check that base was updated after manual sync
     learningBaseContent = await getFileContent(context.page, 'Bases/Learning.base');
     expect(learningBaseContent).toContain('name: All Stories');
-    expect(learningBaseContent).toContain('Type == "Story"');
+    expect(learningBaseContent).toContain('Category == "Story"');
   });
 
   test('should sync only enabled base types', async () => {
@@ -335,7 +335,7 @@ REST API development project.
     // Check that only area base was updated
     const technologyBaseContent = await getFileContent(context.page, 'Bases/Technology.base');
     expect(technologyBaseContent).toContain('name: Research'); // Research is uncountable, so pluralize returns the same
-    expect(technologyBaseContent).toContain('Type == "Research"');
+    expect(technologyBaseContent).toContain('Category == "Research"');
 
     // Project base should still not exist
     const apiBaseStillExists = await fileExists(context.page, 'Bases/API Development.base');

@@ -89,9 +89,9 @@ Task description...`;
     // Wait a moment for the TaskPropertyHandler to process the file
     await context.page.waitForTimeout(1000);
 
-    // Verify the file was updated with default Type
+    // Verify the file was updated with default Category
     const updatedContent = await getFileContent(context.page, taskPath);
-    expect(updatedContent).toContain('Type: Task'); // Should be set to first configured task type
+    expect(updatedContent).toContain('Category: Task'); // Should be set to first configured task category
   });
 
   test('should set Done to false when task created with null Done', async () => {
@@ -182,7 +182,8 @@ Task description...`;
 
     const taskContent = `---
 Title: ${taskName}
-Type: Bug
+Type: Task
+Category: Bug
 Priority: High
 Areas: []
 Project:
@@ -208,7 +209,7 @@ Task description...`;
 
     // Verify the file preserved existing values
     const updatedContent = await getFileContent(context.page, taskPath);
-    expect(updatedContent).toContain('Type: Bug'); // Should preserve existing Type
+    expect(updatedContent).toContain('Category: Bug'); // Should preserve existing Category
     expect(updatedContent).toContain('Priority: High'); // Should preserve existing Priority
     expect(updatedContent).toContain('Status: In Progress'); // Should preserve existing Status
   });

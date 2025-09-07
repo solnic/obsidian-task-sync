@@ -131,7 +131,8 @@ This is a test project for context-aware importing.
 
     expect(taskContent).toBeTruthy();
     expect(taskContent).toContain('Title: Fix login error when user has special characters');
-    expect(taskContent).toContain('Type: Bug'); // Label mapping should work
+    expect(taskContent).toContain('Type: Task'); // Type is always 'Task' for task entities
+    expect(taskContent).toContain('Category: Bug'); // Label mapping should work for Category
     expect(taskContent).toContain("Project: '[[Test Project]]'"); // Should be assigned to project with note linking
     expect(taskContent).toContain('bug'); // Should include original labels as tags
 
@@ -257,7 +258,8 @@ This is a test area for context-aware importing.
 
     expect(taskContent).toBeTruthy();
     expect(taskContent).toContain('Title: Add dark mode support');
-    expect(taskContent).toContain('Type: Feature'); // enhancement label should map to Feature
+    expect(taskContent).toContain('Type: Task'); // Type is always 'Task' for task entities
+    expect(taskContent).toContain('Category: Feature'); // enhancement label should map to Feature category
     expect(taskContent).toContain("- '[[Development]]'"); // Should be assigned to area with note linking
     expect(taskContent).toContain('enhancement'); // Should include original labels as tags
 
@@ -379,8 +381,9 @@ This is just a regular note, not in a project or area folder.
 
     expect(taskContent).toBeTruthy();
     expect(taskContent).toContain('Title: Update documentation');
-    // Should fallback to first available task type since 'documentation' doesn't map to anything
-    expect(taskContent).toMatch(/Type: (Task|Bug|Feature|Improvement|Chore)/);
+    expect(taskContent).toContain('Type: Task'); // Type is always 'Task' for task entities
+    // Should fallback to first available task category since 'documentation' doesn't map to anything
+    expect(taskContent).toMatch(/Category: (Task|Bug|Feature|Improvement|Chore)/);
     expect(taskContent).toContain('documentation'); // Should include original labels as tags
 
     // Verify context was correctly detected during import (should be none)
