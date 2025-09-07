@@ -35,7 +35,8 @@ describe('GitHubService', () => {
         state: 'open' as const,
         assignee: 'me',
         labels: [] as any[]
-      }
+      },
+      labelTypeMapping: {}
     }
   };
 

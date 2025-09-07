@@ -55,6 +55,7 @@ export interface GitHubIntegrationSettings {
   repositories: string[]; // Array of 'owner/repo' strings
   defaultRepository: string; // Default 'owner/repo' string
   issueFilters: GitHubIssueFilters;
+  labelTypeMapping: Record<string, string>; // Map GitHub labels to task types
 }
 
 export interface TaskSyncSettings {

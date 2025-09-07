@@ -56,6 +56,14 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
       state: 'open',
       assignee: '',
       labels: []
+    },
+    labelTypeMapping: {
+      'bug': 'Bug',
+      'enhancement': 'Feature',
+      'feature': 'Feature',
+      'improvement': 'Improvement',
+      'chore': 'Chore',
+      'documentation': 'Chore'
     }
   }
 };

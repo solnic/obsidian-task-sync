@@ -23,7 +23,8 @@ describe('GitHub Integration Settings', () => {
           state: 'open',
           assignee: 'me',
           labels: []
-        }
+        },
+        labelTypeMapping: {}
       }
     };
 

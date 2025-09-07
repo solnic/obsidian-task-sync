@@ -20,6 +20,7 @@ import { GitHubService } from './services/GitHubService';
 import { TaskImportManager } from './services/TaskImportManager';
 import { ImportStatusService } from './services/ImportStatusService';
 import { GitHubIssuesView, GITHUB_ISSUES_VIEW_TYPE } from './views/GitHubIssuesView';
+import { TaskImportConfig } from './types/integrations';
 
 import pluralize from 'pluralize';
 
@@ -2018,14 +2019,25 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
-   * Get default import configuration
+   * Get default import configuration with context awareness
    */
-  private getDefaultImportConfig() {
-    return {
+  private getDefaultImportConfig(): TaskImportConfig {
+    const context = this.detectCurrentFileContext();
+
+    const config: TaskImportConfig = {
       taskType: 'Task',
       importLabelsAsTags: true,
       preserveAssignee: true
     };
+
+    // Apply context-specific configuration
+    if (context.type === 'project' && context.name) {
+      config.targetProject = context.name;
+    } else if (context.type === 'area' && context.name) {
+      config.targetArea = context.name;
+    }
+
+    return config;
   }
 
   /**

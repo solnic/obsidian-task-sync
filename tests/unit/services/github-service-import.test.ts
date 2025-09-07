@@ -29,6 +29,10 @@ const mockSettings = {
       state: 'open' as const,
       assignee: '',
       labels: [] as string[]
+    },
+    labelTypeMapping: {
+      'bug': 'Bug',
+      'enhancement': 'Feature'
     }
   }
 };
@@ -38,11 +42,11 @@ describe('GitHubService Import Functionality - Pure Logic', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    
+
     // Import the service fresh for each test
     const { GitHubService } = await import('../../../src/services/GitHubService');
     githubService = new GitHubService(mockSettings);
-    
+
     // Inject mock dependencies for testing import functionality
     githubService.taskImportManager = mockTaskImportManager;
     githubService.importStatusService = mockImportStatusService;
@@ -168,6 +172,49 @@ describe('GitHubService Import Functionality - Pure Logic', () => {
         externalId: 'github-999',
         externalSource: 'github',
         taskPath: 'Areas/Product/Tasks/New feature request.md'
+      })
+    );
+  });
+
+  it('should map GitHub labels to task types', async () => {
+    const githubIssue: GitHubIssue = {
+      id: 555,
+      number: 666,
+      title: 'Bug fix needed',
+      body: 'Fix critical bug',
+      state: 'open',
+      assignee: null,
+      labels: [{ name: 'bug' }, { name: 'priority:high' }],
+      created_at: '2023-01-01T00:00:00Z',
+      updated_at: '2023-01-01T00:00:00Z',
+      html_url: 'https://github.com/owner/repo/issues/666'
+    };
+
+    // Mock label mapping configuration
+    const labelMapping = { 'bug': 'Bug', 'enhancement': 'Feature' };
+    githubService.setLabelTypeMapping(labelMapping);
+
+    const config: TaskImportConfig = {
+      targetArea: 'Development'
+    };
+
+    mockTaskImportManager.createTaskFromData.mockResolvedValue('Areas/Development/Tasks/Bug fix needed.md');
+    mockImportStatusService.isTaskImported.mockReturnValue(false);
+
+    const result = await githubService.importIssueAsTask(githubIssue, config);
+
+    expect(result.success).toBe(true);
+
+    // Verify TaskImportManager was called with mapped task type
+    expect(mockTaskImportManager.createTaskFromData).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'github-555',
+        title: 'Bug fix needed',
+        sourceType: 'github'
+      }),
+      expect.objectContaining({
+        taskType: 'Bug', // Should be mapped from 'bug' label
+        targetArea: 'Development'
       })
     );
   });

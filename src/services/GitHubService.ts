@@ -10,6 +10,8 @@ import { GitHubIntegrationSettings } from '../components/ui/settings/types';
 import { ExternalTaskData, TaskImportConfig, ImportResult, ImportedTaskMetadata } from '../types/integrations';
 import { TaskImportManager } from './TaskImportManager';
 import { ImportStatusService } from './ImportStatusService';
+import { GitHubLabelTypeMapper } from './GitHubLabelTypeMapper';
+import { LabelTypeMapper } from '../types/label-mapping';
 
 export interface GitHubIssue {
   id: number;
@@ -42,6 +44,7 @@ export interface GitHubServiceSettings {
 export class GitHubService {
   private octokit: Octokit | null = null;
   private settings: GitHubServiceSettings;
+  private labelTypeMapper: LabelTypeMapper;
 
   // Import functionality dependencies (injected for testing)
   public taskImportManager?: TaskImportManager;
@@ -49,6 +52,9 @@ export class GitHubService {
 
   constructor(settings: GitHubServiceSettings) {
     this.settings = settings;
+    this.labelTypeMapper = GitHubLabelTypeMapper.createWithDefaults({
+      labelToTypeMapping: settings.githubIntegration.labelTypeMapping || {}
+    });
     this.initializeOctokit();
   }
 
@@ -58,6 +64,33 @@ export class GitHubService {
   setImportDependencies(taskImportManager: TaskImportManager, importStatusService: ImportStatusService): void {
     this.taskImportManager = taskImportManager;
     this.importStatusService = importStatusService;
+  }
+
+  /**
+   * Set label-to-type mapping configuration
+   */
+  setLabelTypeMapping(mapping: Record<string, string>): void {
+    this.labelTypeMapper.setLabelMapping(mapping);
+  }
+
+  /**
+   * Get current label-to-type mapping configuration
+   */
+  getLabelTypeMapping(): Record<string, string> {
+    return this.labelTypeMapper.getLabelMapping();
+  }
+
+  /**
+   * Update settings and reinitialize components
+   */
+  updateSettings(newSettings: GitHubServiceSettings): void {
+    this.settings = newSettings;
+
+    // Update label type mapper with new settings
+    this.labelTypeMapper.setLabelMapping(newSettings.githubIntegration.labelTypeMapping || {});
+
+    // Reinitialize Octokit with new settings
+    this.initializeOctokit();
   }
 
   /**
@@ -194,13 +227,7 @@ export class GitHubService {
     return parts.length === 2 && parts[0].length > 0 && parts[1].length > 0;
   }
 
-  /**
-   * Update settings and reinitialize Octokit if needed
-   */
-  updateSettings(settings: GitHubServiceSettings): void {
-    this.settings = settings;
-    this.initializeOctokit();
-  }
+
 
   /**
    * Get current rate limit status
@@ -242,8 +269,11 @@ export class GitHubService {
         };
       }
 
+      // Enhance config with label-based task type mapping
+      const enhancedConfig = this.enhanceConfigWithLabelMapping(issue, config);
+
       // Create the task
-      const taskPath = await this.taskImportManager.createTaskFromData(taskData, config);
+      const taskPath = await this.taskImportManager.createTaskFromData(taskData, enhancedConfig);
 
       // Record the import
       const importMetadata: ImportedTaskMetadata = {
@@ -292,6 +322,37 @@ export class GitHubService {
         id: issue.id
       }
     };
+  }
+
+  /**
+   * Enhance import configuration with label-based task type mapping
+   */
+  private enhanceConfigWithLabelMapping(issue: GitHubIssue, config: TaskImportConfig): TaskImportConfig {
+    const enhancedConfig = { ...config };
+
+    // Only map task type if not already specified in config
+    if (!enhancedConfig.taskType) {
+      const labels = issue.labels.map(label => label.name);
+
+      // Get available task types from GitHub integration settings
+      // Use the task types from the main settings if available
+      const availableTypes = this.getAvailableTaskTypes();
+
+      const mappedType = this.labelTypeMapper.mapLabelsToType(labels, availableTypes);
+      if (mappedType) {
+        enhancedConfig.taskType = mappedType;
+      }
+    }
+
+    return enhancedConfig;
+  }
+
+  /**
+   * Get available task types from settings
+   */
+  private getAvailableTaskTypes(): string[] {
+    // Default task types as fallback
+    return ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'];
   }
 
   /**

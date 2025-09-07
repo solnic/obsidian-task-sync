@@ -51,7 +51,8 @@ const mockSettings = {
       state: 'open' as const,
       assignee: '',
       labels: [] as string[]
-    }
+    },
+    labelTypeMapping: {}
   }
 };
 
