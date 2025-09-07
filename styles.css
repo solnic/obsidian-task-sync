@@ -1361,6 +1361,25 @@ Provides consistent styling for all UI components
   background: var(--background-modifier-hover);
 }
 
+/* Import All Button */
+.import-all-button {
+  padding: 4px 8px;
+  border: 1px solid var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  margin-left: 8px;
+  transition: all 0.2s ease;
+}
+
+.import-all-button:hover {
+  background: var(--interactive-accent-hover);
+  border-color: var(--interactive-accent-hover);
+}
+
 /* Content Section */
 .github-issues-content {
   flex: 1;
@@ -1401,11 +1420,27 @@ Provides consistent styling for all UI components
   background: var(--background-primary);
   cursor: pointer;
   transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 .issue-item:hover {
   background: var(--background-modifier-hover);
   border-color: var(--background-modifier-border-hover);
+}
+
+.issue-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.issue-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .issue-title {
@@ -1442,6 +1477,57 @@ Provides consistent styling for all UI components
   color: var(--text-muted);
   font-size: 10px;
   font-weight: 500;
+}
+
+/* Import Button */
+.import-button {
+  padding: 4px 8px;
+  border: 1px solid var(--interactive-accent);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.import-button:hover {
+  background: var(--interactive-accent-hover);
+  border-color: var(--interactive-accent-hover);
+}
+
+/* Import Status Indicators */
+.import-status {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.import-status.imported {
+  background: var(--color-green);
+  color: var(--text-on-accent);
+}
+
+.import-status.importing {
+  background: var(--color-orange);
+  color: var(--text-on-accent);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 
 /* GitHub Issues View Responsive adjustments */

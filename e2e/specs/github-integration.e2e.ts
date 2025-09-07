@@ -87,4 +87,65 @@ describe('GitHub Integration', () => {
     expect(tokenConfigured).toBe(true);
     console.log('✅ GitHub token configuration test completed successfully');
   });
+
+  test('should display import buttons on GitHub issues', async () => {
+    console.log('🧪 Starting GitHub import buttons test');
+
+    await createTestFolders(context.page);
+
+    // Configure GitHub integration with real token
+    await configureGitHubIntegration(context.page, {
+      enabled: true,
+      repository: 'solnic/obsidian-task-sync'
+    });
+
+    // Open GitHub Issues view
+    await openGitHubIssuesView(context.page);
+    await waitForGitHubViewContent(context.page, 30000);
+
+    // Check for import buttons on issues
+    const hasImportButtons = await context.page.evaluate(() => {
+      const issueItems = document.querySelectorAll('.issue-item');
+      if (issueItems.length === 0) return false;
+
+      // Check if each issue has an import button
+      for (let i = 0; i < issueItems.length; i++) {
+        const item = issueItems[i];
+        const importButton = item.querySelector('[data-test="issue-import-button"]');
+        if (!importButton) return false;
+      }
+      return true;
+    });
+
+    expect(hasImportButtons).toBe(true);
+    console.log('✅ GitHub import buttons test completed successfully');
+  });
+
+  test('should display import all button in header', async () => {
+    console.log('🧪 Starting GitHub import all button test');
+
+    await createTestFolders(context.page);
+
+    // Configure GitHub integration
+    await configureGitHubIntegration(context.page, {
+      enabled: true,
+      repository: 'solnic/obsidian-task-sync'
+    });
+
+    // Open GitHub Issues view
+    await openGitHubIssuesView(context.page);
+    await waitForGitHubViewContent(context.page, 30000);
+
+    // Check for import all button in header
+    const hasImportAllButton = await context.page.evaluate(() => {
+      const header = document.querySelector('.github-issues-header');
+      if (!header) return false;
+
+      const importAllButton = header.querySelector('[data-test="import-all-button"]');
+      return !!importAllButton;
+    });
+
+    expect(hasImportAllButton).toBe(true);
+    console.log('✅ GitHub import all button test completed successfully');
+  });
 });

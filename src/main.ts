@@ -115,7 +115,12 @@ export default class TaskSyncPlugin extends Plugin {
     // Register GitHub Issues view
     this.registerView(
       GITHUB_ISSUES_VIEW_TYPE,
-      (leaf) => new GitHubIssuesView(leaf, this.githubService, { githubIntegration: this.settings.githubIntegration })
+      (leaf) => new GitHubIssuesView(
+        leaf,
+        this.githubService,
+        { githubIntegration: this.settings.githubIntegration },
+        { taskImportManager: this.taskImportManager, importStatusService: this.importStatusService }
+      )
     );
 
     // Create GitHub Issues view in right sidebar if it doesn't exist

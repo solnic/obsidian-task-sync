@@ -3,14 +3,22 @@
  * Custom ItemView for displaying GitHub issues in the sidebar
  */
 
-import { ItemView, WorkspaceLeaf } from 'obsidian';
+import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
 import { GitHubService, GitHubIssue, GitHubRepository } from '../services/GitHubService';
 import { GitHubIntegrationSettings } from '../components/ui/settings/types';
+import { TaskImportManager } from '../services/TaskImportManager';
+import { ImportStatusService } from '../services/ImportStatusService';
+import { TaskImportConfig } from '../types/integrations';
 
 export const GITHUB_ISSUES_VIEW_TYPE = 'github-issues';
 
 export interface GitHubIssuesViewSettings {
   githubIntegration: GitHubIntegrationSettings;
+}
+
+export interface GitHubIssuesViewDependencies {
+  taskImportManager: TaskImportManager;
+  importStatusService: ImportStatusService;
 }
 
 /**
@@ -19,6 +27,7 @@ export interface GitHubIssuesViewSettings {
 export class GitHubIssuesView extends ItemView {
   private githubService: GitHubService;
   private settings: GitHubIssuesViewSettings;
+  private dependencies: GitHubIssuesViewDependencies;
   private issues: GitHubIssue[] = [];
   private repositories: GitHubRepository[] = [];
   private currentRepository: string = '';
@@ -26,14 +35,16 @@ export class GitHubIssuesView extends ItemView {
   private searchQuery: string = '';
   private error: string | null = null;
   private isLoading: boolean = false;
+  private importingIssues: Set<number> = new Set(); // Track which issues are being imported
 
-  constructor(leaf: WorkspaceLeaf, githubService: GitHubService, settings: GitHubIssuesViewSettings) {
+  constructor(leaf: WorkspaceLeaf, githubService: GitHubService, settings: GitHubIssuesViewSettings, dependencies: GitHubIssuesViewDependencies) {
     console.log('🔧 GitHubIssuesView constructor called');
     console.log('🔧 GitHubIssuesView constructor - settings:', JSON.stringify(settings, null, 2));
 
     super(leaf);
     this.githubService = githubService;
     this.settings = settings;
+    this.dependencies = dependencies;
     this.currentRepository = settings.githubIntegration.defaultRepository;
     this.currentState = settings.githubIntegration.issueFilters.state;
 
@@ -220,6 +231,13 @@ export class GitHubIssuesView extends ItemView {
     refreshButton.textContent = '↻';
     refreshButton.title = 'Refresh';
     refreshButton.addEventListener('click', () => this.refresh());
+
+    // Import All button
+    const importAllButton = filtersSection.createEl('button', { cls: 'import-all-button' });
+    importAllButton.textContent = 'Import All';
+    importAllButton.title = 'Import all visible issues as tasks';
+    importAllButton.setAttribute('data-test', 'import-all-button');
+    importAllButton.addEventListener('click', () => this.importAllIssues());
   }
 
   /**
@@ -302,24 +320,49 @@ export class GitHubIssuesView extends ItemView {
     filteredIssues.forEach(issue => {
       const issueItem = issuesList.createDiv('issue-item');
 
-      const issueTitle = issueItem.createDiv('issue-title');
+      const issueContent = issueItem.createDiv('issue-content');
+
+      const issueTitle = issueContent.createDiv('issue-title');
       issueTitle.textContent = issue.title;
 
-      const issueNumber = issueItem.createDiv('issue-number');
+      const issueNumber = issueContent.createDiv('issue-number');
       issueNumber.textContent = `#${issue.number}`;
 
-      const issueMeta = issueItem.createDiv('issue-meta');
+      const issueMeta = issueContent.createDiv('issue-meta');
       if (issue.assignee) {
         issueMeta.textContent += `Assigned to ${issue.assignee.login} • `;
       }
       issueMeta.textContent += `${issue.state} • ${new Date(issue.created_at).toLocaleDateString()}`;
 
       if (issue.labels.length > 0) {
-        const labelsContainer = issueItem.createDiv('issue-labels');
+        const labelsContainer = issueContent.createDiv('issue-labels');
         issue.labels.forEach(label => {
           const labelEl = labelsContainer.createSpan('issue-label');
           labelEl.textContent = label.name;
         });
+      }
+
+      // Import actions container
+      const actionsContainer = issueItem.createDiv('issue-actions');
+
+      // Check if issue is already imported
+      const isImported = this.dependencies.importStatusService.isTaskImported(`github-${issue.id}`, 'github');
+      const isImporting = this.importingIssues.has(issue.number);
+
+      if (isImported) {
+        const importedIndicator = actionsContainer.createSpan('import-status imported');
+        importedIndicator.textContent = '✓ Imported';
+        importedIndicator.title = 'This issue has already been imported as a task';
+      } else if (isImporting) {
+        const importingIndicator = actionsContainer.createSpan('import-status importing');
+        importingIndicator.textContent = '⏳ Importing...';
+        importingIndicator.title = 'Import in progress';
+      } else {
+        const importButton = actionsContainer.createEl('button', { cls: 'import-button' });
+        importButton.textContent = 'Import';
+        importButton.title = 'Import this issue as a task';
+        importButton.setAttribute('data-test', 'issue-import-button');
+        importButton.addEventListener('click', () => this.importIssue(issue));
       }
     });
   }
@@ -515,5 +558,109 @@ export class GitHubIssuesView extends ItemView {
       this.currentRepository = settings.githubIntegration.defaultRepository;
       this.loadIssues();
     }
+  }
+
+  /**
+   * Import a single GitHub issue as a task
+   */
+  private async importIssue(issue: GitHubIssue): Promise<void> {
+    try {
+      // Mark as importing
+      this.importingIssues.add(issue.number);
+      this.renderIssuesList(); // Re-render to show importing state
+
+      // Get default import configuration
+      const config = this.getDefaultImportConfig();
+
+      // Import the issue
+      const result = await this.githubService.importIssueAsTask(issue, config);
+
+      if (result.success) {
+        if (result.skipped) {
+          new Notice(`Issue already imported: ${result.reason}`);
+        } else {
+          new Notice(`Successfully imported: ${issue.title}`);
+        }
+      } else {
+        new Notice(`Failed to import issue: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error importing issue:', error);
+      new Notice(`Failed to import issue: ${error.message}`);
+    } finally {
+      // Remove from importing set and re-render
+      this.importingIssues.delete(issue.number);
+      this.renderIssuesList();
+    }
+  }
+
+  /**
+   * Import all visible issues as tasks
+   */
+  private async importAllIssues(): Promise<void> {
+    const filteredIssues = this.getFilteredIssues();
+
+    if (filteredIssues.length === 0) {
+      new Notice('No issues to import');
+      return;
+    }
+
+    // Confirm bulk import
+    const confirmed = confirm(`Import ${filteredIssues.length} issues as tasks?`);
+    if (!confirmed) {
+      return;
+    }
+
+    let imported = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    new Notice(`Starting import of ${filteredIssues.length} issues...`);
+
+    for (const issue of filteredIssues) {
+      try {
+        // Mark as importing
+        this.importingIssues.add(issue.number);
+
+        // Get default import configuration
+        const config = this.getDefaultImportConfig();
+
+        // Import the issue
+        const result = await this.githubService.importIssueAsTask(issue, config);
+
+        if (result.success) {
+          if (result.skipped) {
+            skipped++;
+          } else {
+            imported++;
+          }
+        } else {
+          failed++;
+          console.error(`Failed to import issue ${issue.number}:`, result.error);
+        }
+      } catch (error) {
+        failed++;
+        console.error(`Error importing issue ${issue.number}:`, error);
+      } finally {
+        this.importingIssues.delete(issue.number);
+      }
+    }
+
+    // Re-render to update import status
+    this.renderIssuesList();
+
+    // Show summary
+    new Notice(`Import complete: ${imported} imported, ${skipped} skipped, ${failed} failed`);
+  }
+
+  /**
+   * Get default import configuration
+   */
+  private getDefaultImportConfig(): TaskImportConfig {
+    return {
+      taskType: 'Task',
+      importLabelsAsTags: true,
+      preserveAssignee: true
+    };
   }
 }
