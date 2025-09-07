@@ -25,6 +25,7 @@ describe('TaskPropertyHandler', () => {
     const taskContent = `---
 Title:
 Type: Task
+Category: Task
 Priority: Low
 Areas: []
 Project:
@@ -53,17 +54,18 @@ Task description...`;
     expect(updatedContent).toContain('Title: Test Task with Null Title'); // Should be set to filename
   });
 
-  test('should set Type to first configured task type when task created with null Type', async () => {
+  test('should set Category to first configured task type when task created with null Category', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a task file with null Type property
-    const taskName = 'Test Task with Null Type';
+    // Create a task file with null Category property
+    const taskName = 'Test Task with Null Category';
     const taskPath = `Tasks/${taskName}.md`;
 
     const taskContent = `---
 Title: ${taskName}
-Type:
+Type: Task
+Category:
 Priority:
 Areas: []
 Project:

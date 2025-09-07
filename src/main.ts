@@ -822,7 +822,7 @@ export default class TaskSyncPlugin extends Plugin {
       if (todoWithParent.parentTodo) {
         const parentTaskData = {
           name: todoWithParent.parentTodo.text,
-          type: this.settings.taskTypes[0]?.name || 'Task',
+          category: this.settings.taskTypes[0]?.name || 'Task',
           done: todoWithParent.parentTodo.completed,
           status: todoWithParent.parentTodo.completed ? 'Done' : 'Backlog',
           tags: [] as string[],
@@ -858,7 +858,7 @@ export default class TaskSyncPlugin extends Plugin {
       // Prepare child task data
       const taskData = {
         name: todoWithParent.text,
-        type: this.settings.taskTypes[0]?.name || 'Task',
+        category: this.settings.taskTypes[0]?.name || 'Task',
         done: todoWithParent.completed,
         status: todoWithParent.completed ? 'Done' : 'Backlog',
         tags: [] as string[],
@@ -1260,8 +1260,12 @@ export default class TaskSyncPlugin extends Plugin {
     }
 
     // Replace task-specific variables
-    if (data.type) {
-      processedContent = processedContent.replace(/\{\{type\}\}/g, data.type);
+    // For Type field, always replace with 'Task' since Type is always 'Task' for task entities
+    processedContent = processedContent.replace(/\{\{type\}\}/g, 'Task');
+
+    // For Category field, use the category from task data
+    if (data.category) {
+      processedContent = processedContent.replace(/\{\{category\}\}/g, data.category);
     }
 
     if (data.priority) {
@@ -1753,10 +1757,9 @@ export default class TaskSyncPlugin extends Plugin {
         }
       }
       if (type === 'task' && existingFrontMatter.Type) {
-        // For tasks, check if Type is one of the configured task types (Type is optional for tasks)
-        const validTaskTypes = this.settings.taskTypes.map(t => t.name);
-        if (!validTaskTypes.includes(existingFrontMatter.Type)) {
-          console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected one of: ${validTaskTypes.join(', ')}, found: ${existingFrontMatter.Type})`);
+        // For tasks, Type should always be 'Task'
+        if (existingFrontMatter.Type !== 'Task') {
+          console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected 'Task', found: ${existingFrontMatter.Type})`);
           return;
         }
       }

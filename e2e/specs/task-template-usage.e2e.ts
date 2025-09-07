@@ -19,7 +19,8 @@ describe('Task Template Usage', () => {
       const app = (window as any).app;
       const templateContent = `---
 Title: {{name}}
-Type: {{type}}
+Type: Task
+Category: {{category}}
 Priority: {{priority}}
 Areas: {{areas}}
 Done: {{done}}
@@ -62,7 +63,7 @@ This task was created from a template!
       if (plugin) {
         await plugin.createTask({
           name: 'Template Test Task',
-          type: 'Feature',
+          category: 'Feature',
           priority: 'High',
           areas: ['Development'],
           done: false,
@@ -90,7 +91,8 @@ This task was created from a template!
 
     // Verify template variables were processed
     expect(taskContent).toContain('Title: Template Test Task');
-    expect(taskContent).toContain('Type: Feature');
+    expect(taskContent).toContain('Type: Task');
+    expect(taskContent).toContain('Category: Feature');
     expect(taskContent).toContain('Priority: High');
     expect(taskContent).toContain('Status: In Progress');
   });
@@ -118,7 +120,7 @@ This task was created from a template!
         if (plugin) {
           await plugin.createTask({
             name: 'Should Fail Task',
-            type: 'Bug',
+            category: 'Bug',
             priority: 'Low',
             areas: [],
             done: false,
@@ -146,6 +148,7 @@ This task was created from a template!
       const templateContent = `---
 Title: {{name}}
 Type: {{type}}
+Category: {{category}}
 Priority: {{priority}}
 Areas: {{areas}}
 Project: {{project}}
@@ -183,7 +186,7 @@ Created for project: {{project}}`;
       if (plugin) {
         await plugin.createTask({
           name: 'Variable Test Task',
-          type: 'Feature',
+          category: 'Feature',
           priority: 'High',
           areas: ['Development', 'Testing'],
           project: 'Test Project',
@@ -203,7 +206,8 @@ Created for project: {{project}}`;
 
     // Verify all variables were processed correctly
     expect(taskContent).toContain('Title: Variable Test Task');
-    expect(taskContent).toContain('Type: Feature');
+    expect(taskContent).toContain('Type: Task');
+    expect(taskContent).toContain('Category: Feature');
     expect(taskContent).toContain('Priority: High');
     expect(taskContent).toContain('Project: Test Project');
     expect(taskContent).toContain('Status: In Progress');

@@ -129,7 +129,10 @@ export class TaskPropertyHandler implements EventHandler {
         frontmatterData.Title = this.getDefaultTitle(filePath);
       }
       if (!frontmatterData.Type || frontmatterData.Type === '') {
-        frontmatterData.Type = this.getDefaultType();
+        frontmatterData.Type = 'Task'; // Always 'Task' for task entities
+      }
+      if (!frontmatterData.Category || frontmatterData.Category === '') {
+        frontmatterData.Category = this.getDefaultCategory();
       }
       if (!frontmatterData.Priority || frontmatterData.Priority === '') {
         frontmatterData.Priority = this.getDefaultPriority();
@@ -170,8 +173,8 @@ export class TaskPropertyHandler implements EventHandler {
     return fileName.replace(/\.md$/, '');
   }
 
-  private getDefaultType(): string {
-    return this.settings.taskTypes[0]?.name;
+  private getDefaultCategory(): string {
+    return this.settings.taskTypes[0]?.name || 'Task';
   }
 
   private getDefaultPriority(): string {

@@ -68,6 +68,7 @@ export interface Task extends BaseEntity {
   frontmatter: [
     'TITLE',
     'TYPE',
+    'CATEGORY',
     'PRIORITY',
     'AREAS',
     'PROJECT',
@@ -81,6 +82,7 @@ export interface Task extends BaseEntity {
   base: [
     'TITLE',
     'TYPE',
+    'CATEGORY',
     'PRIORITY',
     'AREAS',
     'PROJECT',

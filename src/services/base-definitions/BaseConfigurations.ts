@@ -31,7 +31,8 @@ export interface ProjectAreaInfo {
 
 export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
   TITLE: { name: "Title", type: "string", source: "formula.Title" },
-  TYPE: { name: "Type", type: "string" },
+  TYPE: { name: "Type", type: "string", default: "Task" },
+  CATEGORY: { name: "Category", type: "string", default: "Task" },
   PRIORITY: { name: "Priority", type: "string", default: "Low" },
   AREAS: { name: "Areas", type: "array", link: true, default: [] },
   PROJECT: { name: "Project", type: "string", link: true },
@@ -49,8 +50,8 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
 // ============================================================================
 
 export const PROPERTY_SETS = {
-  TASK_FRONTMATTER: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'] as const,
-  TASKS_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
+  TASK_FRONTMATTER: ['TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'] as const,
+  TASKS_BASE: ['TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
   AREA_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
   PROJECT_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const
 } as const;
@@ -60,10 +61,10 @@ export const PROPERTY_SETS = {
 // ============================================================================
 
 export const VIEW_ORDERS = {
-  TASKS_MAIN: ['DONE', 'TITLE', 'PROJECT', 'TYPE', 'CREATED_AT', 'UPDATED_AT'] as const,
+  TASKS_MAIN: ['DONE', 'TITLE', 'PROJECT', 'CATEGORY', 'CREATED_AT', 'UPDATED_AT'] as const,
   TASKS_TYPE: ['DONE', 'TITLE', 'PROJECT', 'CREATED_AT', 'UPDATED_AT'] as const,
-  AREA_MAIN: ['DONE', 'TITLE', 'PROJECT', 'TYPE', 'CREATED_AT', 'UPDATED_AT'] as const,
-  PROJECT_MAIN: ['DONE', 'TITLE', 'AREAS', 'TYPE', 'CREATED_AT', 'UPDATED_AT'] as const
+  AREA_MAIN: ['DONE', 'TITLE', 'PROJECT', 'CATEGORY', 'CREATED_AT', 'UPDATED_AT'] as const,
+  PROJECT_MAIN: ['DONE', 'TITLE', 'AREAS', 'CATEGORY', 'CREATED_AT', 'UPDATED_AT'] as const
 } as const;
 
 // ============================================================================
@@ -192,7 +193,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
           and: [
             `file.folder == "${settings.tasksFolder}"`,
             `Areas.contains(link("${projectsAndAreas.find(p => p.type === 'area')?.name || 'Task Sync'}"))`,
-            `Type == "${taskType.name}"`,
+            `Category == "${taskType.name}"`,
             `note["Parent task"].isEmpty()`
           ]
         },
@@ -208,7 +209,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
             and: [
               `file.folder == "${settings.tasksFolder}"`,
               `Areas.contains(link("${projectsAndAreas.find(p => p.type === 'area')?.name || 'Task Sync'}"))`,
-              `Type == "${taskType.name}"`,
+              `Category == "${taskType.name}"`,
               `Priority == "${priority.name}"`
             ]
           },
@@ -265,7 +266,7 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
           and: [
             `file.folder == "${settings.tasksFolder}"`,
             `Areas.contains(link("${area.name}"))`,
-            `Type == "${taskType.name}"`,
+            `Category == "${taskType.name}"`,
             `note["Parent task"].isEmpty()`
           ]
         },
@@ -281,7 +282,7 @@ export function generateAreaBase(settings: TaskSyncSettings, area: ProjectAreaIn
             and: [
               `file.folder == "${settings.tasksFolder}"`,
               `Areas.contains(link("${area.name}"))`,
-              `Type == "${taskType.name}"`,
+              `Category == "${taskType.name}"`,
               `Priority == "${priority.name}"`
             ]
           },
@@ -338,7 +339,7 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
           and: [
             `file.folder == "${settings.tasksFolder}"`,
             `Project.contains(link("${project.name}"))`,
-            `Type == "${taskType.name}"`,
+            `Category == "${taskType.name}"`,
             `note["Parent task"].isEmpty()`
           ]
         },
@@ -354,7 +355,7 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
             and: [
               `file.folder == "${settings.tasksFolder}"`,
               `Project.contains(link("${project.name}"))`,
-              `Type == "${taskType.name}"`,
+              `Category == "${taskType.name}"`,
               `Priority == "${priority.name}"`
             ]
           },

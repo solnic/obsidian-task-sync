@@ -53,6 +53,7 @@ describe('Parent Task Support', () => {
       const propertyNames = properties.map(p => p.name);
       expect(propertyNames).toContain('Title');
       expect(propertyNames).toContain('Type');
+      expect(propertyNames).toContain('Category');
       expect(propertyNames).toContain('Sub-tasks');
       expect(propertyNames).toContain('Parent task');
     });

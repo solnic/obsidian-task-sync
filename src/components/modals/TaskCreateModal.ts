@@ -8,7 +8,7 @@ import TaskSyncPlugin, { FileContext } from '../../main';
 
 export interface TaskCreateData {
   name: string;
-  type?: string;
+  category?: string;
   areas?: string;
   parentTask?: string;
   subTasks?: string[];
@@ -56,7 +56,7 @@ export class TaskCreateModal extends Modal {
     // Pre-fill form data based on context
     this.formData = {
       name: '',
-      type: this.plugin.settings.taskTypes[0]?.name || 'Task', // Use first configured task type
+      category: this.plugin.settings.taskTypes[0]?.name || 'Task', // Use first configured task type
       done: false,
       status: this.plugin.settings.taskStatuses[0]?.name || 'Backlog', // Use first configured task status
       tags: []
@@ -109,19 +109,19 @@ export class TaskCreateModal extends Modal {
         text.inputEl.addClass('task-sync-required-field');
       });
 
-    // Type
+    // Category
     new Setting(container)
-      .setName('Type')
-      .setDesc('Specify the type of task')
+      .setName('Category')
+      .setDesc('Specify the category of task')
       .addDropdown(dropdown => {
         // Use configured task types from settings
         this.plugin.settings.taskTypes.forEach(taskType => {
           dropdown.addOption(taskType.name, taskType.name);
         });
 
-        dropdown.setValue(this.formData.type || this.plugin.settings.taskTypes[0]?.name)
+        dropdown.setValue(this.formData.category || this.plugin.settings.taskTypes[0]?.name)
           .onChange(value => {
-            this.formData.type = value;
+            this.formData.category = value;
           });
       });
 
@@ -271,7 +271,7 @@ export class TaskCreateModal extends Modal {
     // Prepare task data
     const taskData: TaskCreateData = {
       name: this.formData.name.trim(),
-      type: this.formData.type || undefined,
+      category: this.formData.category || undefined,
       areas: this.formData.areas || undefined,
       parentTask: this.formData.parentTask || undefined,
       subTasks: this.formData.subTasks || undefined,

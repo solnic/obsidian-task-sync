@@ -76,6 +76,8 @@ export class TemplateManager {
       } else {
         // Set specific defaults for key properties
         if (prop.name === 'Type') {
+          frontMatterData[prop.name] = 'Task'; // Always 'Task' for task entities
+        } else if (prop.name === 'Category') {
           frontMatterData[prop.name] = this.settings.taskTypes[0]?.name || 'Task';
         } else if (prop.name === 'Title') {
           frontMatterData[prop.name] = ''; // Title will be set by property handler

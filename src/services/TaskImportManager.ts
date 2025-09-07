@@ -93,8 +93,11 @@ export class TaskImportManager {
     // Title (required)
     frontMatter.Title = taskData.title;
 
-    // Type from config or default
-    frontMatter.Type = config.taskType || 'Task';
+    // Type is always 'Task' for task entities
+    frontMatter.Type = 'Task';
+
+    // Category from config or default
+    frontMatter.Category = config.taskType || 'Task';
 
     // Priority - extract from external data or labels
     frontMatter.Priority = this.extractPriority(taskData) || 'Low';

@@ -121,7 +121,8 @@ describe('TaskImportManager - Pure Logic', () => {
     const frontMatter = taskImportManager.generateTaskFrontMatter(taskData, config);
 
     expect(frontMatter.Title).toBe('Fix login bug');
-    expect(frontMatter.Type).toBe('Bug');
+    expect(frontMatter.Type).toBe('Task');
+    expect(frontMatter.Category).toBe('Bug');
     expect(frontMatter.Priority).toBe('High');
     expect(frontMatter.Areas).toEqual(['[[Development]]']);
     expect(frontMatter.Done).toBe(false);

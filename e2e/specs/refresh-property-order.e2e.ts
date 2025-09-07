@@ -14,7 +14,7 @@ describe('Refresh Property Order', () => {
       const app = (window as any).app;
 
       // Create task with properties in wrong order (not matching schema)
-      // Schema order should be: Title, Type, Priority, Areas, Project, Done, Status, Parent task, Sub-tasks, tags
+      // Schema order should be: Title, Type, Category, Priority, Areas, Project, Done, Status, Parent task, Sub-tasks, tags
       await app.vault.create('Tasks/Wrong Order Task.md', `---
 Done: false
 tags: test
@@ -22,10 +22,11 @@ Areas: Development
 Title: Wrong Order Task
 Project: Test Project
 Type: Task
+Category: Task
 Priority: High
 Status: In Progress
-Parent task: 
-Sub-tasks: 
+Parent task:
+Sub-tasks:
 ---
 
 This task has all properties but in wrong order.`);
@@ -48,7 +49,7 @@ This task has all properties but in wrong order.`);
     console.log('Initial property order:', initialPropertyOrder);
 
     // Expected order based on schema
-    const expectedOrder = ['Title', 'Type', 'Priority', 'Areas', 'Project', 'Done', 'Status', 'Parent task', 'Sub-tasks', 'tags'];
+    const expectedOrder = ['Title', 'Type', 'Category', 'Priority', 'Areas', 'Project', 'Done', 'Status', 'Parent task', 'Sub-tasks', 'tags'];
 
     // Verify initial order is wrong
     expect(initialPropertyOrder).not.toEqual(expectedOrder);

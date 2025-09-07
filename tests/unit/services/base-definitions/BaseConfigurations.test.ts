@@ -113,9 +113,9 @@ describe('Base File Generation', () => {
       expect(featureHighView).toBeDefined();
 
       // Views should have correct filters
-      expect(bugView.filters.and).toContain('Type == "Bug"');
-      expect(featureView.filters.and).toContain('Type == "Feature"');
-      expect(bugLowView.filters.and).toContain('Type == "Bug"');
+      expect(bugView.filters.and).toContain('Category == "Bug"');
+      expect(featureView.filters.and).toContain('Category == "Feature"');
+      expect(bugLowView.filters.and).toContain('Category == "Bug"');
       expect(bugLowView.filters.and).toContain('Priority == "Low"');
     });
 

@@ -80,8 +80,8 @@ This is a health area for tracking fitness and wellness.
 
     // Check filtering
     expect(baseContent).toContain('Areas.contains(link("Health"))');
-    expect(baseContent).toContain('Type == "Bug"');
-    expect(baseContent).toContain('Type == "Feature"');
+    expect(baseContent).toContain('Category == "Bug"');
+    expect(baseContent).toContain('Category == "Feature"');
   });
 
   test('should generate individual project base with correct structure', async () => {
@@ -147,8 +147,8 @@ This is a website redesign project.
 
     // Check filtering
     expect(baseContent).toContain('Project.contains(link("Website Redesign"))');
-    expect(baseContent).toContain('Type == "Bug"');
-    expect(baseContent).toContain('Type == "Feature"');
+    expect(baseContent).toContain('Category == "Bug"');
+    expect(baseContent).toContain('Category == "Feature"');
   });
 
   test('should respect area bases enabled setting', async () => {

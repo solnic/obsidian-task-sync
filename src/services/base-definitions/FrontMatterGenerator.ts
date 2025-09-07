@@ -73,9 +73,12 @@ export function generateTaskFrontMatter(
     }
   }
 
-  // For Type field, use the default value if not provided
-  if (!frontMatterData.Type) {
-    frontMatterData.Type = 'Task';
+  // For Type field, always set to 'Task' for task entities
+  frontMatterData.Type = 'Task';
+
+  // For Category field, use the task type if not provided
+  if (!frontMatterData.Category) {
+    frontMatterData.Category = 'Task';
   }
 
   // Add custom fields
@@ -120,10 +123,8 @@ export function generateProjectFrontMatter(
     frontMatterData.Areas = [];
   }
 
-  // For Type field, use the default value if not provided
-  if (!frontMatterData.Type) {
-    frontMatterData.Type = 'Project';
-  }
+  // For Type field, always set to 'Project' for project entities
+  frontMatterData.Type = 'Project';
 
   // Add custom fields
   if (options.customFields) {
@@ -169,10 +170,8 @@ export function generateAreaFrontMatter(
     }
   }
 
-  // For Type field, use the default value if not provided
-  if (!frontMatterData.Type) {
-    frontMatterData.Type = 'Area';
-  }
+  // For Type field, always set to 'Area' for area entities
+  frontMatterData.Type = 'Area';
 
   // Add custom fields
   if (options.customFields) {
@@ -218,8 +217,9 @@ export function generateParentTaskFrontMatter(
     }
   }
 
-  // Override type for parent tasks
-  frontMatterData.Type = 'Parent Task';
+  // For parent tasks, Type is still 'Task' but Category is 'Parent Task'
+  frontMatterData.Type = 'Task';
+  frontMatterData.Category = 'Parent Task';
 
   // Add custom fields
   if (options.customFields) {

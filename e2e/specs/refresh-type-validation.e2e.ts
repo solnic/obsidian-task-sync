@@ -207,6 +207,7 @@ Invalid area file.`);
       await app.vault.create('Tasks/Valid Task.md', `---
 Title: Valid Task
 Type: Task
+Category: Task
 Status: Backlog
 ---
 
@@ -273,6 +274,7 @@ Task with wrong Type property.`);
       await app.vault.create('Tasks/Task Without Status.md', `---
 Title: Task Without Status
 Type: Task
+Category: Task
 Done: false
 ---
 
@@ -282,6 +284,7 @@ This task is missing the Status field.`);
       await app.vault.create('Tasks/Another Task.md', `---
 Title: Another Task
 Type: Task
+Category: Task
 Priority: High
 Done: false
 ---
