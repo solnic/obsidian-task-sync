@@ -391,8 +391,17 @@ export class FileChangeListener {
     if (path.startsWith(this.settings.tasksFolder + '/')) {
       return 'task';
     } else if (path.startsWith(this.settings.projectsFolder + '/')) {
+      // Check if this is a task file within a project folder
+      // Task files in projects are typically in a "Tasks" subfolder
+      if (path.includes('/Tasks/')) {
+        return 'task';
+      }
       return 'project';
     } else {
+      // Check if this is a task file within an area folder
+      if (path.includes('/Tasks/')) {
+        return 'task';
+      }
       return 'area';
     }
   }

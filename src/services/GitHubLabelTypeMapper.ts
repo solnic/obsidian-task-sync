@@ -16,7 +16,7 @@ export class GitHubLabelTypeMapper implements LabelTypeMapper {
       mappingStrategy: 'first-match',
       ...config
     };
-    
+
     this.labelMapping = this.config.labelToTypeMapping;
   }
 
@@ -31,7 +31,7 @@ export class GitHubLabelTypeMapper implements LabelTypeMapper {
 
     // Normalize labels to lowercase for case-insensitive matching
     const normalizedLabels = labels.map(label => label.toLowerCase());
-    
+
     if (this.config.mappingStrategy === 'priority-based' && this.config.labelPriority) {
       return this.mapWithPriority(normalizedLabels, availableTypes);
     } else {
@@ -160,13 +160,19 @@ export class GitHubLabelTypeMapper implements LabelTypeMapper {
    * Create a mapper with default GitHub configuration
    */
   static createWithDefaults(overrides?: Partial<LabelMappingConfig>): GitHubLabelTypeMapper {
-    const defaultConfig: LabelMappingConfig = {
-      labelToTypeMapping: GitHubLabelTypeMapper.getDefaultMappings(),
-      defaultTaskType: 'Task',
-      mappingStrategy: 'priority-based',
-      labelPriority: GitHubLabelTypeMapper.getDefaultPriority()
+    const defaultMappings = GitHubLabelTypeMapper.getDefaultMappings();
+
+    // Merge default mappings with any provided overrides
+    const customMappings = overrides?.labelToTypeMapping;
+    const mergedMappings = customMappings ? { ...defaultMappings, ...customMappings } : defaultMappings;
+
+    const config: LabelMappingConfig = {
+      labelToTypeMapping: mergedMappings,
+      defaultTaskType: overrides?.defaultTaskType || 'Task',
+      mappingStrategy: overrides?.mappingStrategy || 'priority-based',
+      labelPriority: overrides?.labelPriority || GitHubLabelTypeMapper.getDefaultPriority()
     };
 
-    return new GitHubLabelTypeMapper({ ...defaultConfig, ...overrides });
+    return new GitHubLabelTypeMapper(config);
   }
 }

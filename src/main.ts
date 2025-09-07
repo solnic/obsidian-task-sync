@@ -67,6 +67,9 @@ export default class TaskSyncPlugin extends Plugin {
   taskImportManager: TaskImportManager;
   importStatusService: ImportStatusService;
 
+  // Global context system
+  private currentContext: FileContext = { type: 'none' };
+
   async onload() {
     console.log('Loading Task Sync Plugin');
 
@@ -74,6 +77,11 @@ export default class TaskSyncPlugin extends Plugin {
     await this.loadSettings();
 
     // Initialize services
+    console.log('🔧 Initializing services with settings:', {
+      taskTypes: this.settings.taskTypes,
+      githubIntegration: this.settings.githubIntegration
+    });
+
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
     this.templateManager = new TemplateManager(this.app, this.app.vault, this.settings);
@@ -110,6 +118,9 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize file change listener
     await this.fileChangeListener.initialize();
 
+    // Initialize context tracking system
+    this.initializeContextTracking();
+
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
 
@@ -120,7 +131,11 @@ export default class TaskSyncPlugin extends Plugin {
         leaf,
         this.githubService,
         { githubIntegration: this.settings.githubIntegration },
-        { taskImportManager: this.taskImportManager, importStatusService: this.importStatusService }
+        {
+          taskImportManager: this.taskImportManager,
+          importStatusService: this.importStatusService,
+          getDefaultImportConfig: () => this.getDefaultImportConfig()
+        }
       )
     );
 
@@ -224,7 +239,14 @@ export default class TaskSyncPlugin extends Plugin {
   async loadSettings() {
     try {
       const loadedData = await this.loadData();
+      console.log('🔧 Loaded data from storage:', loadedData);
+      console.log('🔧 DEFAULT_SETTINGS.taskTypes:', DEFAULT_SETTINGS.taskTypes);
+
       this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
+      console.log('🔧 Final settings after merge:', {
+        taskTypes: this.settings.taskTypes,
+        githubIntegration: this.settings.githubIntegration
+      });
 
       // Perform settings migration if needed
       await this.migrateSettings();
@@ -234,6 +256,9 @@ export default class TaskSyncPlugin extends Plugin {
     } catch (error) {
       console.error('Task Sync: Failed to load settings:', error);
       this.settings = { ...DEFAULT_SETTINGS };
+      console.log('🔧 Using fallback DEFAULT_SETTINGS:', {
+        taskTypes: this.settings.taskTypes
+      });
     }
   }
 
@@ -301,6 +326,24 @@ export default class TaskSyncPlugin extends Plugin {
     if (!this.settings.taskPropertyOrder) {
       this.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
       console.log('Task Sync: Migrated taskPropertyOrder setting to default order');
+    }
+
+    // Migrate taskTypes setting for existing users
+    if (!this.settings.taskTypes || !Array.isArray(this.settings.taskTypes) || this.settings.taskTypes.length === 0) {
+      this.settings.taskTypes = [...DEFAULT_SETTINGS.taskTypes];
+      console.log('Task Sync: Migrated taskTypes setting to default types');
+    }
+
+    // Migrate taskPriorities setting for existing users
+    if (!this.settings.taskPriorities || !Array.isArray(this.settings.taskPriorities) || this.settings.taskPriorities.length === 0) {
+      this.settings.taskPriorities = [...DEFAULT_SETTINGS.taskPriorities];
+      console.log('Task Sync: Migrated taskPriorities setting to default priorities');
+    }
+
+    // Migrate taskStatuses setting for existing users
+    if (!this.settings.taskStatuses || !Array.isArray(this.settings.taskStatuses) || this.settings.taskStatuses.length === 0) {
+      this.settings.taskStatuses = [...DEFAULT_SETTINGS.taskStatuses];
+      console.log('Task Sync: Migrated taskStatuses setting to default statuses');
     }
 
     // Future settings migration logic will go here
@@ -551,6 +594,49 @@ export default class TaskSyncPlugin extends Plugin {
     }
 
     return { type: 'none' };
+  }
+
+  /**
+   * Initialize context tracking system
+   */
+  private initializeContextTracking(): void {
+    // Update context when active file changes
+    this.registerEvent(
+      this.app.workspace.on('active-leaf-change', () => {
+        this.updateCurrentContext();
+      })
+    );
+
+    // Update context when file is opened
+    this.registerEvent(
+      this.app.workspace.on('file-open', () => {
+        this.updateCurrentContext();
+      })
+    );
+
+    // Set initial context
+    this.updateCurrentContext();
+  }
+
+  /**
+   * Update the current context based on active file
+   */
+  private updateCurrentContext(): void {
+    const newContext = this.detectCurrentFileContext();
+
+    // Only update if context actually changed
+    if (this.currentContext.type !== newContext.type ||
+      this.currentContext.name !== newContext.name) {
+      this.currentContext = newContext;
+      console.log('🔄 Context updated:', this.currentContext);
+    }
+  }
+
+  /**
+   * Get the current context
+   */
+  getCurrentContext(): FileContext {
+    return { ...this.currentContext };
   }
 
   /**
@@ -2021,11 +2107,12 @@ export default class TaskSyncPlugin extends Plugin {
   /**
    * Get default import configuration with context awareness
    */
-  private getDefaultImportConfig(): TaskImportConfig {
-    const context = this.detectCurrentFileContext();
+  getDefaultImportConfig(): TaskImportConfig {
+    // Use the global context instead of detecting again
+    const context = this.getCurrentContext();
 
     const config: TaskImportConfig = {
-      taskType: 'Task',
+      // Don't set taskType here - let label mapping handle it
       importLabelsAsTags: true,
       preserveAssignee: true
     };

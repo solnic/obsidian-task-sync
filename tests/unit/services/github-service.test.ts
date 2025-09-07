@@ -26,6 +26,37 @@ vi.mock('@octokit/rest', () => {
 describe('GitHubService', () => {
   let githubService: any;
   const mockSettings = {
+    tasksFolder: 'Tasks',
+    projectsFolder: 'Projects',
+    areasFolder: 'Areas',
+    templateFolder: 'Templates',
+    useTemplater: false,
+    defaultTaskTemplate: 'Task.md',
+    defaultProjectTemplate: 'project-template.md',
+    defaultAreaTemplate: 'area-template.md',
+    defaultParentTaskTemplate: 'parent-task-template.md',
+    basesFolder: 'Bases',
+    tasksBaseFile: 'Tasks.base',
+    autoGenerateBases: true,
+    autoUpdateBaseViews: true,
+    taskTypes: [
+      { name: 'Bug', color: '#ff4444' },
+      { name: 'Feature', color: '#44ff44' },
+      { name: 'Task', color: '#888888' }
+    ],
+    taskPriorities: [
+      { name: 'Low', color: 'green' },
+      { name: 'Medium', color: 'yellow' },
+      { name: 'High', color: 'orange' }
+    ],
+    taskStatuses: [
+      { name: 'Backlog', color: 'gray', isDone: false },
+      { name: 'Done', color: 'green', isDone: true }
+    ],
+    areaBasesEnabled: true,
+    projectBasesEnabled: true,
+    autoSyncAreaProjectBases: true,
+    taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
     githubIntegration: {
       enabled: true,
       personalAccessToken: 'ghp_test1234567890abcdef1234567890abcdef1234',

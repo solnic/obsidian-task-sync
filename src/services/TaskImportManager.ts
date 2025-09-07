@@ -14,7 +14,7 @@ export class TaskImportManager {
     private app: App,
     private vault: Vault,
     private settings: TaskSyncSettings
-  ) {}
+  ) { }
 
   /**
    * Update settings reference (for when settings are changed)
@@ -39,6 +39,9 @@ export class TaskImportManager {
       throw new Error(`Task already exists: ${taskPath}`);
     }
 
+    // Ensure the task folder exists before creating the file
+    await this.ensureFolderExists(taskFolder);
+
     // Generate task content with front-matter and body
     const taskContent = this.generateCompleteTaskContent(taskData, config);
 
@@ -57,17 +60,11 @@ export class TaskImportManager {
 
   /**
    * Determine the appropriate folder for the task based on configuration
+   * All tasks go in the configured task directory - project/area context is stored in front-matter
    */
   determineTaskFolder(config: TaskImportConfig): string {
-    // Priority: Area > Project > Default tasks folder
-    if (config.targetArea) {
-      return `${this.settings.areasFolder}/${config.targetArea}/${this.settings.tasksFolder}`;
-    }
-    
-    if (config.targetProject) {
-      return `${this.settings.projectsFolder}/${config.targetProject}/${this.settings.tasksFolder}`;
-    }
-
+    // All tasks go in the configured task directory regardless of project/area context
+    // The bases system expects all tasks to be in this single location
     return this.settings.tasksFolder;
   }
 
@@ -102,12 +99,12 @@ export class TaskImportManager {
     // Priority - extract from external data or labels
     frontMatter.Priority = this.extractPriority(taskData) || 'Low';
 
-    // Areas - from config
-    frontMatter.Areas = config.targetArea ? [config.targetArea] : [];
+    // Areas - from config (using Obsidian note linking syntax)
+    frontMatter.Areas = config.targetArea ? [`[[${config.targetArea}]]`] : [];
 
-    // Project - from config
+    // Project - from config (using Obsidian note linking syntax)
     if (config.targetProject) {
-      frontMatter.Project = config.targetProject;
+      frontMatter.Project = `[[${config.targetProject}]]`;
     }
 
     // Done status - always false for new imports
@@ -190,7 +187,7 @@ export class TaskImportManager {
             return this.normalizePriority(priority);
           }
         }
-        
+
         // Check for common priority labels
         const lowerLabel = label.toLowerCase();
         if (lowerLabel.includes('urgent') || lowerLabel.includes('critical')) {
@@ -216,7 +213,7 @@ export class TaskImportManager {
    */
   private normalizePriority(priority: string): string {
     const normalized = priority.toLowerCase();
-    
+
     if (normalized.includes('urgent') || normalized.includes('critical')) {
       return 'Urgent';
     }
@@ -239,7 +236,7 @@ export class TaskImportManager {
    */
   private mapExternalStatus(externalStatus: string): string {
     const status = externalStatus.toLowerCase();
-    
+
     switch (status) {
       case 'open':
       case 'todo':
@@ -258,6 +255,29 @@ export class TaskImportManager {
         return 'cancelled';
       default:
         return 'todo';
+    }
+  }
+
+  /**
+   * Ensure that a folder exists, creating it and any parent folders if necessary
+   */
+  private async ensureFolderExists(folderPath: string): Promise<void> {
+    try {
+      // Check if folder already exists
+      const exists = await this.vault.adapter.exists(folderPath);
+      if (exists) {
+        return;
+      }
+
+      // Create the folder (this will create parent folders automatically)
+      await this.vault.createFolder(folderPath);
+    } catch (error: any) {
+      // If the error is that the folder already exists, that's fine
+      if (error.message && error.message.includes('already exists')) {
+        return;
+      }
+      // Re-throw other errors
+      throw error;
     }
   }
 }

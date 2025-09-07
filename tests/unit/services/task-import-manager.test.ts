@@ -72,7 +72,7 @@ describe('TaskImportManager - Pure Logic', () => {
     expect(sanitized).not.toContain(':');
   });
 
-  it('should determine correct task folder based on config', () => {
+  it('should always use configured tasks folder regardless of context', () => {
     const configWithArea: TaskImportConfig = {
       targetArea: 'Development'
     };
@@ -90,9 +90,10 @@ describe('TaskImportManager - Pure Logic', () => {
     const projectFolder = taskImportManager.determineTaskFolder(configWithProject);
     const bothFolder = taskImportManager.determineTaskFolder(configWithBoth);
 
-    expect(areaFolder).toContain('Areas/Development');
-    expect(projectFolder).toContain('Projects/Mobile App');
-    expect(bothFolder).toContain('Areas/Development'); // Area takes precedence
+    // All tasks should go in the configured tasks folder
+    expect(areaFolder).toBe('Tasks');
+    expect(projectFolder).toBe('Tasks');
+    expect(bothFolder).toBe('Tasks');
   });
 
   it('should generate proper front matter for external task', () => {
@@ -122,7 +123,7 @@ describe('TaskImportManager - Pure Logic', () => {
     expect(frontMatter.Title).toBe('Fix login bug');
     expect(frontMatter.Type).toBe('Bug');
     expect(frontMatter.Priority).toBe('High');
-    expect(frontMatter.Areas).toEqual(['Development']);
+    expect(frontMatter.Areas).toEqual(['[[Development]]']);
     expect(frontMatter.Done).toBe(false);
     expect(frontMatter.tags).toEqual(['bug', 'priority:high']);
   });

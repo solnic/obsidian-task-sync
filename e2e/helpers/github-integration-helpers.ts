@@ -10,10 +10,47 @@ import { openTaskSyncSettings } from './task-sync-setup';
 
 
 /**
+ * Dismiss any visible notices that might block UI interactions
+ */
+export async function dismissNotices(page: Page): Promise<void> {
+  console.log('🔍 Dismissing any visible notices...');
+
+  // Wait a bit for notices to appear
+  await page.waitForTimeout(100);
+
+  // Click on any visible notices to dismiss them
+  const notices = page.locator('.notice-container .notice');
+  const noticeCount = await notices.count();
+
+  if (noticeCount > 0) {
+    console.log(`🔍 Found ${noticeCount} notices to dismiss`);
+    for (let i = 0; i < noticeCount; i++) {
+      try {
+        const notice = notices.nth(i);
+        if (await notice.isVisible()) {
+          await notice.click();
+          await page.waitForTimeout(100);
+        }
+      } catch (error) {
+        // Ignore errors when dismissing notices
+        console.log('⚠️ Could not dismiss notice:', error.message);
+      }
+    }
+  }
+
+  // Wait for notices to disappear
+  await page.waitForTimeout(300);
+  console.log('✅ Notices dismissed');
+}
+
+/**
  * Open GitHub Issues view through UI interactions (like a real user)
  */
 export async function openGitHubIssuesView(page: Page): Promise<void> {
   console.log('🔍 Opening GitHub Issues view through UI...');
+
+  // First dismiss any notices that might block interactions
+  await dismissNotices(page);
 
   // First ensure the view exists (but not active)
   await page.evaluate(async () => {
@@ -486,6 +523,88 @@ export async function configureGitHubRepository(page: Page, repository: string):
 }
 
 /**
+ * Stub GitHub API responses for testing
+ * This mocks the external GitHub API calls while keeping all internal plugin logic real
+ */
+export async function stubGitHubApiResponses(
+  page: Page,
+  mockData: {
+    issues?: any[];
+    repositories?: any[];
+  }
+): Promise<void> {
+  console.log('🔧 Stubbing GitHub API responses for testing...');
+
+  await page.evaluate(async (data) => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins['obsidian-task-sync'];
+
+    if (!plugin || !plugin.githubService) {
+      throw new Error('Task Sync plugin or GitHub service not found');
+    }
+
+    // Store original methods
+    const originalFetchIssues = plugin.githubService.fetchIssues;
+    const originalFetchRepositories = plugin.githubService.fetchRepositories;
+
+    // Stub fetchIssues method
+    if (data.issues) {
+      plugin.githubService.fetchIssues = async (repository: string) => {
+        console.log(`🔧 Stubbed fetchIssues called for repository: ${repository}`);
+        return data.issues;
+      };
+    }
+
+    // Stub fetchRepositories method
+    if (data.repositories) {
+      plugin.githubService.fetchRepositories = async () => {
+        console.log('🔧 Stubbed fetchRepositories called');
+        return data.repositories;
+      };
+    }
+
+    // Store original methods for potential restoration
+    (plugin.githubService as any)._originalFetchIssues = originalFetchIssues;
+    (plugin.githubService as any)._originalFetchRepositories = originalFetchRepositories;
+
+    console.log('✅ GitHub API responses stubbed successfully');
+  }, mockData);
+
+  console.log('✅ GitHub API stubbing completed');
+}
+
+/**
+ * Restore original GitHub API methods (cleanup after stubbing)
+ */
+export async function restoreGitHubApiMethods(page: Page): Promise<void> {
+  console.log('🔧 Restoring original GitHub API methods...');
+
+  await page.evaluate(async () => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins['obsidian-task-sync'];
+
+    if (!plugin || !plugin.githubService) {
+      return;
+    }
+
+    // Restore original methods if they were stored
+    if ((plugin.githubService as any)._originalFetchIssues) {
+      plugin.githubService.fetchIssues = (plugin.githubService as any)._originalFetchIssues;
+      delete (plugin.githubService as any)._originalFetchIssues;
+    }
+
+    if ((plugin.githubService as any)._originalFetchRepositories) {
+      plugin.githubService.fetchRepositories = (plugin.githubService as any)._originalFetchRepositories;
+      delete (plugin.githubService as any)._originalFetchRepositories;
+    }
+
+    console.log('✅ Original GitHub API methods restored');
+  });
+
+  console.log('✅ GitHub API restoration completed');
+}
+
+/**
  * Configure GitHub integration programmatically
  * Automatically uses GITHUB_TOKEN from environment if no token is provided
  */
@@ -715,6 +834,73 @@ export async function debugGitHubViewState(page: Page): Promise<void> {
   console.log('Plugin:', JSON.stringify(debugInfo.pluginInfo, null, 2));
   console.log('Leaves:', JSON.stringify(debugInfo.leavesInfo, null, 2));
   console.log('DOM:', JSON.stringify(debugInfo.domInfo, null, 2));
+}
+
+/**
+ * Click import button for a specific GitHub issue in the UI
+ */
+export async function clickIssueImportButton(page: Page, issueNumber: number): Promise<void> {
+  console.log(`🔍 Looking for import button for issue #${issueNumber}...`);
+
+  // Wait for the issue to appear in the list
+  await page.waitForFunction((targetIssueNumber) => {
+    const issueItems = document.querySelectorAll('.issue-item');
+    for (let i = 0; i < issueItems.length; i++) {
+      const item = issueItems[i];
+      const issueText = item.textContent || '';
+      if (issueText.includes(`#${targetIssueNumber}`)) {
+        const importButton = item.querySelector('[data-test="issue-import-button"]');
+        return importButton !== null;
+      }
+    }
+    return false;
+  }, issueNumber, { timeout: 10000 });
+
+  // Click the import button
+  const clicked = await page.evaluate((targetIssueNumber) => {
+    const issueItems = document.querySelectorAll('.issue-item');
+    for (let i = 0; i < issueItems.length; i++) {
+      const item = issueItems[i];
+      const issueText = item.textContent || '';
+      if (issueText.includes(`#${targetIssueNumber}`)) {
+        const importButton = item.querySelector('[data-test="issue-import-button"]') as HTMLButtonElement;
+        if (importButton) {
+          importButton.click();
+          console.log(`🔧 Clicked import button for issue #${targetIssueNumber}`);
+          return true;
+        }
+      }
+    }
+    return false;
+  }, issueNumber);
+
+  if (!clicked) {
+    throw new Error(`Could not find or click import button for issue #${issueNumber}`);
+  }
+
+  console.log(`✅ Successfully clicked import button for issue #${issueNumber}`);
+}
+
+/**
+ * Wait for issue import to complete (button changes to "Imported" state)
+ */
+export async function waitForIssueImportComplete(page: Page, issueNumber: number, timeout: number = 10000): Promise<void> {
+  console.log(`🔍 Waiting for issue #${issueNumber} import to complete...`);
+
+  await page.waitForFunction((targetIssueNumber) => {
+    const issueItems = document.querySelectorAll('.issue-item');
+    for (let i = 0; i < issueItems.length; i++) {
+      const item = issueItems[i];
+      const issueText = item.textContent || '';
+      if (issueText.includes(`#${targetIssueNumber}`)) {
+        const importedIndicator = item.querySelector('.import-status.imported');
+        return importedIndicator !== null;
+      }
+    }
+    return false;
+  }, issueNumber, { timeout });
+
+  console.log(`✅ Issue #${issueNumber} import completed`);
 }
 
 /**

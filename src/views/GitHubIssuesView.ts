@@ -19,6 +19,7 @@ export interface GitHubIssuesViewSettings {
 export interface GitHubIssuesViewDependencies {
   taskImportManager: TaskImportManager;
   importStatusService: ImportStatusService;
+  getDefaultImportConfig: () => TaskImportConfig;
 }
 
 /**
@@ -552,7 +553,7 @@ export class GitHubIssuesView extends ItemView {
    */
   updateSettings(settings: GitHubIssuesViewSettings): void {
     this.settings = settings;
-    this.githubService.updateSettings(settings);
+    // Note: GitHubService settings are updated by the main plugin, not by the view
 
     if (settings.githubIntegration.defaultRepository !== this.currentRepository) {
       this.currentRepository = settings.githubIntegration.defaultRepository;
@@ -657,10 +658,7 @@ export class GitHubIssuesView extends ItemView {
    * Get default import configuration
    */
   private getDefaultImportConfig(): TaskImportConfig {
-    return {
-      taskType: 'Task',
-      importLabelsAsTags: true,
-      preserveAssignee: true
-    };
+    // Use the plugin's context-aware import configuration
+    return this.dependencies.getDefaultImportConfig();
   }
 }

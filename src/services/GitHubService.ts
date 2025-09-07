@@ -6,7 +6,7 @@
 
 import { Octokit } from '@octokit/rest';
 import { requestUrl } from 'obsidian';
-import { GitHubIntegrationSettings } from '../components/ui/settings/types';
+import { GitHubIntegrationSettings, TaskSyncSettings } from '../components/ui/settings/types';
 import { ExternalTaskData, TaskImportConfig, ImportResult, ImportedTaskMetadata } from '../types/integrations';
 import { TaskImportManager } from './TaskImportManager';
 import { ImportStatusService } from './ImportStatusService';
@@ -34,27 +34,30 @@ export interface GitHubRepository {
   private: boolean;
 }
 
-export interface GitHubServiceSettings {
-  githubIntegration: GitHubIntegrationSettings;
-}
+// GitHubService now uses the full TaskSyncSettings to access all plugin configuration
 
 /**
  * Service for interacting with GitHub API using Octokit
  */
 export class GitHubService {
   private octokit: Octokit | null = null;
-  private settings: GitHubServiceSettings;
+  private settings: TaskSyncSettings;
   private labelTypeMapper: LabelTypeMapper;
 
   // Import functionality dependencies (injected for testing)
   public taskImportManager?: TaskImportManager;
   public importStatusService?: ImportStatusService;
 
-  constructor(settings: GitHubServiceSettings) {
+  constructor(settings: TaskSyncSettings) {
     this.settings = settings;
-    this.labelTypeMapper = GitHubLabelTypeMapper.createWithDefaults({
-      labelToTypeMapping: settings.githubIntegration.labelTypeMapping || {}
-    });
+
+    // Only pass custom label mappings if they exist, otherwise use defaults
+    const customMappings = settings.githubIntegration.labelTypeMapping;
+    const hasCustomMappings = customMappings && Object.keys(customMappings).length > 0;
+
+    this.labelTypeMapper = GitHubLabelTypeMapper.createWithDefaults(
+      hasCustomMappings ? { labelToTypeMapping: customMappings } : undefined
+    );
     this.initializeOctokit();
   }
 
@@ -83,11 +86,19 @@ export class GitHubService {
   /**
    * Update settings and reinitialize components
    */
-  updateSettings(newSettings: GitHubServiceSettings): void {
+  updateSettings(newSettings: TaskSyncSettings): void {
     this.settings = newSettings;
 
     // Update label type mapper with new settings
-    this.labelTypeMapper.setLabelMapping(newSettings.githubIntegration.labelTypeMapping || {});
+    // Only override mappings if custom mappings are provided, otherwise keep defaults
+    const customMappings = newSettings.githubIntegration.labelTypeMapping;
+    if (customMappings && Object.keys(customMappings).length > 0) {
+      // Merge custom mappings with defaults
+      const defaultMappings = GitHubLabelTypeMapper.getDefaultMappings();
+      const mergedMappings = { ...defaultMappings, ...customMappings };
+      this.labelTypeMapper.setLabelMapping(mergedMappings);
+    }
+    // If no custom mappings, keep the existing mappings (which should be defaults)
 
     // Reinitialize Octokit with new settings
     this.initializeOctokit();
@@ -253,15 +264,27 @@ export class GitHubService {
     issue: GitHubIssue,
     config: TaskImportConfig
   ): Promise<ImportResult> {
+    console.log('🔧 GitHubService.importIssueAsTask called with:', {
+      issueId: issue.id,
+      issueTitle: issue.title,
+      config
+    });
+
     if (!this.taskImportManager || !this.importStatusService) {
-      throw new Error('Import dependencies not initialized. Call setImportDependencies() first.');
+      const error = 'Import dependencies not initialized. Call setImportDependencies() first.';
+      console.error('❌ GitHubService import error:', error);
+      throw new Error(error);
     }
 
     try {
+      console.log('🔧 Transforming issue to task data...');
       const taskData = this.transformIssueToTaskData(issue);
+      console.log('✅ Task data transformed:', taskData);
 
       // Check if task is already imported
+      console.log('🔧 Checking if task is already imported...');
       if (this.importStatusService.isTaskImported(taskData.id, taskData.sourceType)) {
+        console.log('⚠️ Task already imported, skipping');
         return {
           success: true,
           skipped: true,
@@ -270,12 +293,20 @@ export class GitHubService {
       }
 
       // Enhance config with label-based task type mapping
+      console.log('🔧 Enhancing config with label mapping...');
+      console.log('🔧 Issue labels:', issue.labels);
+      console.log('🔧 Settings taskTypes:', this.settings.taskTypes);
+
       const enhancedConfig = this.enhanceConfigWithLabelMapping(issue, config);
+      console.log('✅ Enhanced config:', enhancedConfig);
 
       // Create the task
+      console.log('🔧 Creating task from data...');
       const taskPath = await this.taskImportManager.createTaskFromData(taskData, enhancedConfig);
+      console.log('✅ Task created at path:', taskPath);
 
       // Record the import
+      console.log('🔧 Recording import metadata...');
       const importMetadata: ImportedTaskMetadata = {
         externalId: taskData.id,
         externalSource: taskData.sourceType,
@@ -287,12 +318,21 @@ export class GitHubService {
       };
 
       this.importStatusService.recordImport(importMetadata);
+      console.log('✅ Import recorded successfully');
 
       return {
         success: true,
         taskPath
       };
     } catch (error: any) {
+      console.error('❌ GitHubService import error:', error);
+      console.error('❌ Error stack:', error.stack);
+      console.error('❌ Error details:', {
+        name: error.name,
+        message: error.message,
+        cause: error.cause
+      });
+
       return {
         success: false,
         error: error.message
@@ -328,31 +368,66 @@ export class GitHubService {
    * Enhance import configuration with label-based task type mapping
    */
   private enhanceConfigWithLabelMapping(issue: GitHubIssue, config: TaskImportConfig): TaskImportConfig {
+    console.log('🔧 enhanceConfigWithLabelMapping called with:', {
+      issueLabels: issue.labels,
+      config
+    });
+
     const enhancedConfig = { ...config };
 
-    // Only map task type if not already specified in config
-    if (!enhancedConfig.taskType) {
-      const labels = issue.labels.map(label => label.name);
+    try {
+      // Always try to map task type from labels (even if one is already set)
+      if (!issue.labels) {
+        console.warn('⚠️ Issue has no labels property, using empty array');
+        issue.labels = [];
+      }
 
-      // Get available task types from GitHub integration settings
-      // Use the task types from the main settings if available
+      const labels = issue.labels.map(label => label.name);
+      console.log('🔧 Extracted label names:', labels);
+
       const availableTypes = this.getAvailableTaskTypes();
+      console.log('🔧 Available task types:', availableTypes);
 
       const mappedType = this.labelTypeMapper.mapLabelsToType(labels, availableTypes);
+      console.log('🔧 Mapped type from labels:', mappedType);
+
       if (mappedType) {
         enhancedConfig.taskType = mappedType;
+        console.log('✅ Set task type from mapping:', mappedType);
+      } else if (!enhancedConfig.taskType) {
+        // Fallback to first available task type if no mapping found and no type set
+        const fallbackType = availableTypes[0] || 'Task';
+        enhancedConfig.taskType = fallbackType;
+        console.log('✅ Set fallback task type:', fallbackType);
       }
-    }
 
-    return enhancedConfig;
+      console.log('✅ Final enhanced config:', enhancedConfig);
+      return enhancedConfig;
+    } catch (error: any) {
+      console.error('❌ Error in enhanceConfigWithLabelMapping:', error);
+      console.error('❌ Error stack:', error.stack);
+      throw error;
+    }
   }
 
   /**
    * Get available task types from settings
    */
   private getAvailableTaskTypes(): string[] {
-    // Default task types as fallback
-    return ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'];
+    console.log('🔧 getAvailableTaskTypes called');
+    console.log('🔧 this.settings:', this.settings);
+    console.log('🔧 this.settings.taskTypes:', this.settings.taskTypes);
+
+    if (!this.settings.taskTypes || !Array.isArray(this.settings.taskTypes)) {
+      console.error('❌ this.settings.taskTypes is undefined or not an array!');
+      console.log('🔧 Using fallback task types');
+      // Return default task types as fallback
+      return ['Task', 'Bug', 'Feature', 'Improvement', 'Chore'];
+    }
+
+    const types = this.settings.taskTypes.map(type => type.name);
+    console.log('✅ Available task types:', types);
+    return types;
   }
 
   /**

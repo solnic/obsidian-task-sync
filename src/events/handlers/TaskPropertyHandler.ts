@@ -59,7 +59,7 @@ export class TaskPropertyHandler implements EventHandler {
 
   /**
    * Check if a file should be processed by this handler
-   * Process files in the Tasks folder that either have the correct Type or need Type to be set
+   * Process task files in any Tasks folder (main, area-specific, or project-specific)
    */
   private async hasCorrectTypeProperty(filePath: string): Promise<boolean> {
     try {
@@ -68,8 +68,9 @@ export class TaskPropertyHandler implements EventHandler {
         return false;
       }
 
-      // Check if file is in the Tasks folder
-      if (!filePath.startsWith(this.settings.tasksFolder + '/')) {
+      // Check if file is in the configured tasks folder
+      // All tasks should be in the single configured tasks directory
+      if (!filePath.startsWith(`${this.settings.tasksFolder}/`)) {
         return false;
       }
 
@@ -77,9 +78,12 @@ export class TaskPropertyHandler implements EventHandler {
       const parsed = matter(content);
       const frontmatterData = parsed.data || {};
 
-      // Process files that either have the correct Type or need Type to be set
+      // Get all configured task type names
+      const configuredTaskTypes = this.settings.taskTypes.map(taskType => taskType.name);
+
+      // Process files that either have a valid configured task type or need Type to be set
       // This allows us to set default Type for files with null/empty Type
-      return frontmatterData.Type === 'Task' ||
+      return configuredTaskTypes.includes(frontmatterData.Type) ||
         !frontmatterData.Type ||
         frontmatterData.Type === '';
     } catch (error) {
