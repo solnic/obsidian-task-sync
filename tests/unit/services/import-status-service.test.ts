@@ -3,16 +3,23 @@
  * Tests import tracking and duplicate prevention without Obsidian APIs
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { ImportedTaskMetadata } from '../../../src/types/integrations';
 
 describe('ImportStatusService - Pure Logic', () => {
   let importStatusService: any;
+  let mockPlugin: any;
 
   beforeEach(async () => {
+    // Create a mock plugin for testing
+    mockPlugin = {
+      loadData: vi.fn().mockResolvedValue({}),
+      saveData: vi.fn().mockResolvedValue(undefined)
+    };
+
     // Import the service fresh for each test
     const { ImportStatusService } = await import('../../../src/services/ImportStatusService');
-    importStatusService = new ImportStatusService();
+    importStatusService = new ImportStatusService(mockPlugin);
   });
 
   it('should track imported tasks', () => {

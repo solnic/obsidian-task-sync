@@ -90,7 +90,10 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize import services
     this.taskImportManager = new TaskImportManager(this.app, this.app.vault, this.settings);
-    this.importStatusService = new ImportStatusService();
+    this.importStatusService = new ImportStatusService(this);
+
+    // Initialize import status service with persisted data
+    await this.importStatusService.initialize();
 
     // Wire up GitHub service with import dependencies
     this.githubService.setImportDependencies(this.taskImportManager, this.importStatusService);
