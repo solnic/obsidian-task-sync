@@ -30,14 +30,14 @@ Type: Area
 
 This file has wrong Type property.`);
 
-      // Files without Type property will get Type added by property handlers
-      // This is the expected behavior - property handlers ensure files have correct Type
-      await app.vault.create('Projects/Auto Type File.md', `---
-Name: Auto Type File
-Description: File that will get Type added automatically
+      // Files without Type property should be skipped by property handlers
+      // Property handlers only process files that already have the correct Type
+      await app.vault.create('Projects/No Type File.md', `---
+Name: No Type File
+Description: File without Type property
 ---
 
-This file will get Type: Project added by property handlers.`);
+This file should be skipped by property handlers.`);
     });
 
     // Create files with mixed Type properties in Areas folder
@@ -60,13 +60,13 @@ Type: Project
 
 This file has wrong Type property.`);
 
-      // Files without Type property will get Type added by property handlers
-      await app.vault.create('Areas/Auto Type Area.md', `---
-Name: Auto Type Area
-Description: Area that will get Type added automatically
+      // Files without Type property should be skipped by property handlers
+      await app.vault.create('Areas/No Type Area.md', `---
+Name: No Type Area
+Description: Area without Type property
 ---
 
-This file will get Type: Area added by property handlers.`);
+This file should be skipped by property handlers.`);
     });
 
     // Wait for property handlers to process the files
@@ -99,9 +99,11 @@ This file will get Type: Area added by property handlers.`);
     expect(skippedLogs.some(log => log.includes('Invalid Project.md'))).toBe(true);
     expect(skippedLogs.some(log => log.includes('Invalid Area.md'))).toBe(true);
 
-    // Should NOT have skipped files that got correct Type properties from property handlers
-    expect(skippedLogs.some(log => log.includes('Auto Type File.md'))).toBe(false);
-    expect(skippedLogs.some(log => log.includes('Auto Type Area.md'))).toBe(false);
+    // Should also skip files without Type properties (new correct behavior)
+    expect(skippedLogs.some(log => log.includes('No Type File.md'))).toBe(true);
+    expect(skippedLogs.some(log => log.includes('No Type Area.md'))).toBe(true);
+
+    // Should NOT have skipped files with correct Type properties
     expect(skippedLogs.some(log => log.includes('Valid Project.md'))).toBe(false);
     expect(skippedLogs.some(log => log.includes('Valid Area.md'))).toBe(false);
   });
@@ -195,7 +197,7 @@ Invalid area file.`);
     expect(baseFiles).not.toContain('Invalid Area.base');
   });
 
-  test('should handle task files correctly (Type property is optional)', async () => {
+  test('should skip task files without Type property during refresh', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
@@ -213,7 +215,7 @@ Status: Backlog
 
 Valid task file.`);
 
-      // Valid task without Type property (should be allowed)
+      // Task without Type property (should be skipped by property handlers)
       await app.vault.create('Tasks/No Type Task.md', `---
 Title: No Type Task
 Status: Backlog
@@ -247,8 +249,8 @@ Task with wrong Type property.`);
 
     console.log('Task refresh logs:', consoleLogs);
 
-    // Should process valid task files (both with and without Type property)
-    const shouldProcess = ['Valid Task.md', 'No Type Task.md'];
+    // Should process valid task files (only those with correct Type property)
+    const shouldProcess = ['Valid Task.md'];
     for (const filename of shouldProcess) {
       const wasSkipped = consoleLogs.some(log =>
         log.includes('Skipping file with incorrect Type property') && log.includes(filename)
@@ -256,9 +258,14 @@ Task with wrong Type property.`);
       expect(wasSkipped).toBe(false);
     }
 
-    // Should skip task with wrong Type property
+    // Should skip tasks with wrong Type property
     expect(consoleLogs.some(log =>
       log.includes('Skipping file with incorrect Type property') && log.includes('Wrong Type Task.md')
+    )).toBe(true);
+
+    // Should add Type property to files without it (during refresh, files without Type get the Type property added)
+    expect(consoleLogs.some(log =>
+      log.includes('Added missing field \'Type\' to') && log.includes('No Type Task.md')
     )).toBe(true);
   });
 

@@ -118,13 +118,14 @@ export function generateProjectFrontMatter(
     }
   }
 
+  // Always set required fields for projects
+  frontMatterData.Name = projectData.name;
+  frontMatterData.Type = 'Project';
+
   // Always include Areas field for projects, even if empty (as array)
   if (!frontMatterData.Areas) {
     frontMatterData.Areas = [];
   }
-
-  // For Type field, always set to 'Project' for project entities
-  frontMatterData.Type = 'Project';
 
   // Add custom fields
   if (options.customFields) {
@@ -170,7 +171,8 @@ export function generateAreaFrontMatter(
     }
   }
 
-  // For Type field, always set to 'Area' for area entities
+  // Always set required fields for areas
+  frontMatterData.Name = areaData.name;
   frontMatterData.Type = 'Area';
 
   // Add custom fields

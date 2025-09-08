@@ -144,6 +144,9 @@ export class TemplateManager {
       }
     }
 
+    // Always set Type to 'Area' for area templates
+    frontMatterData.Type = 'Area';
+
     // Use gray-matter to generate the front-matter with default values
     return matter.stringify('{{description}}', frontMatterData);
   }
@@ -197,6 +200,9 @@ export class TemplateManager {
         frontMatterData[prop.name] = '';
       }
     }
+
+    // Always set Type to 'Project' for project templates
+    frontMatterData.Type = 'Project';
 
     // Use gray-matter to generate the front-matter with default values
     return matter.stringify('{{description}}', frontMatterData);

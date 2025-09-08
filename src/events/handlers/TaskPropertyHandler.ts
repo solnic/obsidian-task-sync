@@ -81,11 +81,9 @@ export class TaskPropertyHandler implements EventHandler {
       // Get all configured task type names
       const configuredTaskTypes = this.settings.taskTypes.map(taskType => taskType.name);
 
-      // Process files that either have a valid configured task type or need Type to be set
-      // This allows us to set default Type for files with null/empty Type
-      return configuredTaskTypes.includes(frontmatterData.Type) ||
-        !frontmatterData.Type ||
-        frontmatterData.Type === '';
+      // Only process files that already have a valid configured task type
+      // Skip files with no Type property - they should not be processed by this handler
+      return configuredTaskTypes.includes(frontmatterData.Type);
     } catch (error) {
       console.error(`TaskPropertyHandler: Error checking Type property for ${filePath}:`, error);
       return false;
@@ -125,11 +123,9 @@ export class TaskPropertyHandler implements EventHandler {
       const frontmatterData = parsed.data || {};
 
       // Check and update each property for tasks
+      // Note: Type property is never set by handlers - only by templates
       if (!frontmatterData.Title || frontmatterData.Title === '') {
         frontmatterData.Title = this.getDefaultTitle(filePath);
-      }
-      if (!frontmatterData.Type || frontmatterData.Type === '') {
-        frontmatterData.Type = 'Task'; // Always 'Task' for task entities
       }
       if (!frontmatterData.Category || frontmatterData.Category === '') {
         frontmatterData.Category = this.getDefaultCategory();

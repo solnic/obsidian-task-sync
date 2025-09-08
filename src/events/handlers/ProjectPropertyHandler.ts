@@ -76,11 +76,9 @@ export class ProjectPropertyHandler implements EventHandler {
       const parsed = matter(content);
       const frontmatterData = parsed.data || {};
 
-      // Process files that either have the correct Type or need Type to be set
-      // This allows us to set default Type for files with null/empty Type
-      return frontmatterData.Type === 'Project' ||
-        !frontmatterData.Type ||
-        frontmatterData.Type === '';
+      // Only process files that already have the correct Type property
+      // Skip files with no Type property - they should not be processed by this handler
+      return frontmatterData.Type === 'Project';
     } catch (error) {
       console.error(`ProjectPropertyHandler: Error checking Type property for ${filePath}:`, error);
       return false;
@@ -120,11 +118,9 @@ export class ProjectPropertyHandler implements EventHandler {
       const frontmatterData = parsed.data || {};
 
       // Check and update each property for projects
+      // Note: Type property is never set by handlers - only by templates
       if (!frontmatterData.Name || frontmatterData.Name === '') {
         frontmatterData.Name = this.getDefaultName(filePath);
-      }
-      if (!frontmatterData.Type || frontmatterData.Type === '') {
-        frontmatterData.Type = this.getDefaultType();
       }
       // Only set default if Areas is missing or null, not if it's an empty array
       if (frontmatterData.Areas === undefined || frontmatterData.Areas === null) {
