@@ -66,8 +66,8 @@ export interface Task extends BaseEntity {
 
   // Configuration
   frontmatter: [
-    'TITLE',
     'TYPE',
+    'TITLE',
     'CATEGORY',
     'PRIORITY',
     'AREAS',
@@ -143,8 +143,8 @@ export interface Project extends BaseEntity {
 
   // Configuration
   frontmatter: [
-    'TITLE',
     'TYPE',
+    'TITLE',
     'AREAS'
   ];
 }
@@ -175,9 +175,9 @@ export interface Area extends BaseEntity {
 
   // Configuration
   frontmatter: [
-    'TITLE',
     'TYPE',
-    'PROJECT'
+    'TITLE',
+    'PROJECTS'
   ];
 }
 

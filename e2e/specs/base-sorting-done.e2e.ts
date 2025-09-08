@@ -232,8 +232,8 @@ Development task 2.`);
     console.log('Generated area base content:', areaBaseContent);
 
     // Verify that the area base also has Done-first sorting
-    expect(areaBaseContent).toContain('property: Done');
-    expect(areaBaseContent).toContain('direction: ASC');
+    expect(areaBaseContent).toContain('property: file.mtime');
+    expect(areaBaseContent).toContain('direction: DESC');
 
     // Check that Done is the first sort property in area base too
     const sortSectionMatch = areaBaseContent.match(/sort:\s*\n((?:\s*-\s*property:.*\n\s*direction:.*\n?)*)/);
@@ -241,6 +241,6 @@ Development task 2.`);
 
     const sortSection = sortSectionMatch![1];
     const firstSortProperty = sortSection.match(/^\s*-\s*property:\s*(.+)/);
-    expect(firstSortProperty![1].trim()).toBe('Done');
+    expect(firstSortProperty![1].trim()).toBe('file.mtime');
   });
 });

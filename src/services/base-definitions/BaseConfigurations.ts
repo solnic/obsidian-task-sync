@@ -36,6 +36,7 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
   PRIORITY: { name: "Priority", type: "string", default: "Low" },
   AREAS: { name: "Areas", type: "array", link: true, default: [] },
   PROJECT: { name: "Project", type: "string", link: true },
+  PROJECTS: { name: "Projects", type: "array", link: true, default: [] },
   DONE: { name: "Done", type: "checkbox", default: false },
   STATUS: { name: "Status", type: "string", default: "Backlog" },
   PARENT_TASK: { name: "Parent task", type: "string", link: true },
@@ -52,7 +53,7 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
 export const PROPERTY_SETS = {
   TASK_FRONTMATTER: ['TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'] as const,
   TASKS_BASE: ['TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
-  AREA_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
+  AREA_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'PROJECTS', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
   PROJECT_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const
 } as const;
 
@@ -63,7 +64,7 @@ export const PROPERTY_SETS = {
 export const VIEW_ORDERS = {
   TASKS_MAIN: ['DONE', 'TITLE', 'PROJECT', 'CATEGORY', 'CREATED_AT', 'UPDATED_AT'] as const,
   TASKS_TYPE: ['DONE', 'TITLE', 'PROJECT', 'CREATED_AT', 'UPDATED_AT'] as const,
-  AREA_MAIN: ['DONE', 'TITLE', 'PROJECT', 'CATEGORY', 'CREATED_AT', 'UPDATED_AT'] as const,
+  AREA_MAIN: ['DONE', 'TITLE', 'PROJECTS', 'CATEGORY', 'CREATED_AT', 'UPDATED_AT'] as const,
   PROJECT_MAIN: ['DONE', 'TITLE', 'AREAS', 'CATEGORY', 'CREATED_AT', 'UPDATED_AT'] as const
 } as const;
 
@@ -72,16 +73,22 @@ export const VIEW_ORDERS = {
 // ============================================================================
 
 export const SORT_CONFIGS = {
-  MAIN: [
+  TASK: [
     { property: 'DONE', direction: 'ASC' as const },
+    { property: 'CATEGORY', direction: 'ASC' as const },
     { property: 'UPDATED_AT', direction: 'DESC' as const },
     { property: 'CREATED_AT', direction: 'DESC' as const },
     { property: 'TITLE', direction: 'ASC' as const }
   ],
   AREA: [
-    { property: 'DONE', direction: 'ASC' as const },
     { property: 'UPDATED_AT', direction: 'DESC' as const },
-    { property: 'TITLE', direction: 'ASC' as const }
+    { property: 'CREATED_AT', direction: 'DESC' as const },
+    { property: 'NAME', direction: 'ASC' as const }
+  ],
+  PROJECT: [
+    { property: 'UPDATED_AT', direction: 'DESC' as const },
+    { property: 'CREATED_AT', direction: 'DESC' as const },
+    { property: 'NAME', direction: 'ASC' as const }
   ]
 } as const;
 
@@ -177,7 +184,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
           ]
         },
         order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
-        sort: resolveSortConfig(SORT_CONFIGS.MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.TASK),
         columnSize: {
           'formula.Title': 382,
           'note.tags': 134,
@@ -198,7 +205,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
           ]
         },
         order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
-        sort: resolveSortConfig(SORT_CONFIGS.MAIN)
+        sort: resolveSortConfig(SORT_CONFIGS.TASK)
       })),
       // Priority-based views for each type
       ...settings.taskTypes.flatMap(taskType =>
@@ -214,7 +221,7 @@ export function generateTasksBase(settings: TaskSyncSettings, projectsAndAreas: 
             ]
           },
           order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
-          sort: resolveSortConfig(SORT_CONFIGS.MAIN)
+          sort: resolveSortConfig(SORT_CONFIGS.TASK)
         }))
       )
     ]
@@ -323,7 +330,7 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
           ]
         },
         order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
-        sort: resolveSortConfig(SORT_CONFIGS.MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.PROJECT),
         columnSize: {
           'formula.Title': 382,
           'note.tags': 134,
@@ -344,7 +351,7 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
           ]
         },
         order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
-        sort: resolveSortConfig(SORT_CONFIGS.MAIN)
+        sort: resolveSortConfig(SORT_CONFIGS.PROJECT)
       })),
       // Priority-based views for each type
       ...settings.taskTypes.flatMap(taskType =>
@@ -360,7 +367,7 @@ export function generateProjectBase(settings: TaskSyncSettings, project: Project
             ]
           },
           order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
-          sort: resolveSortConfig(SORT_CONFIGS.MAIN)
+          sort: resolveSortConfig(SORT_CONFIGS.PROJECT)
         }))
       )
     ]
@@ -395,7 +402,7 @@ export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskNam
           ]
         },
         order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
-        sort: resolveSortConfig(SORT_CONFIGS.MAIN)
+        sort: resolveSortConfig(SORT_CONFIGS.TASK)
       },
       // All related tasks (parent + sub-tasks)
       {
@@ -408,7 +415,7 @@ export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskNam
           ]
         },
         order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
-        sort: resolveSortConfig(SORT_CONFIGS.MAIN)
+        sort: resolveSortConfig(SORT_CONFIGS.TASK)
       }
     ]
   };
