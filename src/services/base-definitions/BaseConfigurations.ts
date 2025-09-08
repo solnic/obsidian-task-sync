@@ -75,20 +75,26 @@ export const VIEW_ORDERS = {
 export const SORT_CONFIGS = {
   TASK: [
     { property: 'DONE', direction: 'ASC' as const },
+    { property: 'PROJECT', direction: 'ASC' as const },
     { property: 'CATEGORY', direction: 'ASC' as const },
     { property: 'UPDATED_AT', direction: 'DESC' as const },
     { property: 'CREATED_AT', direction: 'DESC' as const },
     { property: 'TITLE', direction: 'ASC' as const }
   ],
   AREA: [
+    { property: 'DONE', direction: 'ASC' as const },
+    { property: 'CATEGORY', direction: 'ASC' as const },
     { property: 'UPDATED_AT', direction: 'DESC' as const },
     { property: 'CREATED_AT', direction: 'DESC' as const },
-    { property: 'NAME', direction: 'ASC' as const }
+    { property: 'TITLE', direction: 'ASC' as const }
   ],
   PROJECT: [
+    { property: 'DONE', direction: 'ASC' as const },
+    { property: 'AREAS', direction: 'ASC' as const },
+    { property: 'CATEGORY', direction: 'ASC' as const },
     { property: 'UPDATED_AT', direction: 'DESC' as const },
     { property: 'CREATED_AT', direction: 'DESC' as const },
-    { property: 'NAME', direction: 'ASC' as const }
+    { property: 'TITLE', direction: 'ASC' as const }
   ]
 } as const;
 

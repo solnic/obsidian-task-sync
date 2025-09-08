@@ -121,11 +121,6 @@ This task is also not completed.`);
     expect(baseContent).toContain('property: Done');
     expect(baseContent).toContain('direction: ASC');
 
-    // The sorting should be:
-    // 1. note.Done ASC (false before true)
-    // 2. file.mtime DESC (newer first)
-    // 3. formula.Title ASC (alphabetical)
-
     // Parse the YAML to verify sort configuration
     const yamlMatch = baseContent.match(/^([\s\S]*)$/);
     expect(yamlMatch).toBeTruthy();
@@ -232,7 +227,7 @@ Development task 2.`);
     console.log('Generated area base content:', areaBaseContent);
 
     // Verify that the area base also has Done-first sorting
-    expect(areaBaseContent).toContain('property: file.mtime');
+    expect(areaBaseContent).toContain('property: Done');
     expect(areaBaseContent).toContain('direction: DESC');
 
     // Check that Done is the first sort property in area base too
@@ -241,6 +236,6 @@ Development task 2.`);
 
     const sortSection = sortSectionMatch![1];
     const firstSortProperty = sortSection.match(/^\s*-\s*property:\s*(.+)/);
-    expect(firstSortProperty![1].trim()).toBe('file.mtime');
+    expect(firstSortProperty![1].trim()).toBe('Done');
   });
 });
