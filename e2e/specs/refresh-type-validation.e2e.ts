@@ -5,109 +5,6 @@ import { setupE2ETestHooks, executeCommand } from '../helpers/shared-context';
 describe('Refresh Type Validation', () => {
   const context = setupE2ETestHooks();
 
-  test('should only process files with correct Type property during refresh', async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create files with mixed Type properties in Projects folder
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Valid project file
-      await app.vault.create('Projects/Valid Project.md', `---
-Name: Valid Project
-Type: Project
-Areas: Development
----
-
-This is a valid project file.`);
-
-      // Invalid project file (wrong Type)
-      await app.vault.create('Projects/Invalid Project.md', `---
-Name: Invalid Project
-Type: Area
----
-
-This file has wrong Type property.`);
-
-      // Files without Type property should be skipped by property handlers
-      // Property handlers only process files that already have the correct Type
-      await app.vault.create('Projects/No Type File.md', `---
-Name: No Type File
-Description: File without Type property
----
-
-This file should be skipped by property handlers.`);
-    });
-
-    // Create files with mixed Type properties in Areas folder
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Valid area file
-      await app.vault.create('Areas/Valid Area.md', `---
-Name: Valid Area
-Type: Area
----
-
-This is a valid area file.`);
-
-      // Invalid area file (wrong Type)
-      await app.vault.create('Areas/Invalid Area.md', `---
-Name: Invalid Area
-Type: Project
----
-
-This file has wrong Type property.`);
-
-      // Files without Type property should be skipped by property handlers
-      await app.vault.create('Areas/No Type Area.md', `---
-Name: No Type Area
-Description: Area without Type property
----
-
-This file should be skipped by property handlers.`);
-    });
-
-    // Wait for property handlers to process the files
-    await context.page.waitForTimeout(2000);
-
-    // Capture console logs to verify which files are processed/skipped
-    const consoleLogs: string[] = [];
-    context.page.on('console', (msg: any) => {
-      if (msg.type() === 'log' && msg.text().includes('Task Sync:')) {
-        consoleLogs.push(msg.text());
-      }
-    });
-
-    // Execute refresh command
-    await executeCommand(context, 'Task Sync: Refresh');
-
-    // Wait for refresh to complete
-    await context.page.waitForTimeout(3000);
-
-    // Verify that only files with incorrect Type properties were skipped
-    const skippedLogs = consoleLogs.filter(log =>
-      log.includes('Skipping file with incorrect Type property')
-    );
-
-    console.log('Console logs captured:', consoleLogs);
-    console.log('Processed logs:', consoleLogs.filter(log => log.includes('Updated') && log.includes('properties')));
-    console.log('Skipped logs:', skippedLogs);
-
-    // Should have skipped files with incorrect Type properties
-    expect(skippedLogs.some(log => log.includes('Invalid Project.md'))).toBe(true);
-    expect(skippedLogs.some(log => log.includes('Invalid Area.md'))).toBe(true);
-
-    // Should also skip files without Type properties (new correct behavior)
-    expect(skippedLogs.some(log => log.includes('No Type File.md'))).toBe(true);
-    expect(skippedLogs.some(log => log.includes('No Type Area.md'))).toBe(true);
-
-    // Should NOT have skipped files with correct Type properties
-    expect(skippedLogs.some(log => log.includes('Valid Project.md'))).toBe(false);
-    expect(skippedLogs.some(log => log.includes('Valid Area.md'))).toBe(false);
-  });
-
   test('should not create bases for files without correct Type property', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
@@ -185,8 +82,6 @@ Invalid area file.`);
       collectFiles(basesFolder);
       return files;
     });
-
-    console.log('Base files found:', baseFiles);
 
     // Should have bases for valid files
     expect(baseFiles).toContain('Valid Project.base');

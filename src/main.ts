@@ -1398,22 +1398,26 @@ export default class TaskSyncPlugin extends Plugin {
         propertiesUpdated: 0,
         basesRegenerated: 0,
         templatesUpdated: 0,
+        tasksMigrated: 0,
         errors: [] as string[]
       };
 
       console.log('Task Sync: Starting comprehensive refresh...');
 
-      // 1. Update task/project/area file properties
+      // 1. Migrate task types to category (one-time migration)
+      await this.migrateTaskTypes(results);
+
+      // 2. Update task/project/area file properties
       await this.updateFileProperties(results);
 
-      // 2. Update template files to match current property order
+      // 3. Update template files to match current property order
       await this.updateTemplateFiles(results);
 
-      // 3. Regenerate all base files (existing functionality)
+      // 4. Regenerate all base files (existing functionality)
       await this.regenerateBases();
       results.basesRegenerated = 1;
 
-      // 4. Provide feedback
+      // 5. Provide feedback
       this.showRefreshResults(results);
 
       console.log('Task Sync: Refresh completed successfully');
@@ -1860,15 +1864,172 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
+   * Migrate task types to category property (one-time migration)
+   * Converts Type values like "Bug", "Feature" to Category and sets Type to "Task"
+   */
+  private async migrateTaskTypes(results: any): Promise<void> {
+    try {
+      console.log('Task Sync: Starting task type migration...');
+
+      const taskFiles = await this.vaultScanner.scanTasksFolder();
+      let migratedCount = 0;
+
+      for (const filePath of taskFiles) {
+        try {
+          const file = this.app.vault.getAbstractFileByPath(filePath);
+          if (!file || !(file instanceof TFile)) {
+            continue;
+          }
+
+          const content = await this.app.vault.read(file);
+          const frontMatterData = this.extractFrontMatterData(content);
+
+          if (!frontMatterData) {
+            continue; // Skip files without front-matter
+          }
+
+          // Check if this file needs migration
+          const needsMigration = this.shouldMigrateTaskType(frontMatterData);
+          if (!needsMigration) {
+            continue;
+          }
+
+          // Perform the migration
+          const migratedContent = this.performTaskTypeMigration(content, frontMatterData);
+          if (migratedContent !== content) {
+            await this.app.vault.modify(file, migratedContent);
+            migratedCount++;
+            console.log(`Task Sync: Migrated task type in ${filePath}`);
+          }
+
+        } catch (error) {
+          console.error(`Task Sync: Failed to migrate task type in ${filePath}:`, error);
+          results.errors.push(`Failed to migrate task type in ${filePath}: ${error.message}`);
+        }
+      }
+
+      results.tasksMigrated = migratedCount;
+      console.log(`Task Sync: Migrated ${migratedCount} task files`);
+
+    } catch (error) {
+      console.error('Task Sync: Failed to migrate task types:', error);
+      results.errors.push(`Failed to migrate task types: ${error.message}`);
+    }
+  }
+
+  /**
+   * Check if a task file needs type migration
+   */
+  private shouldMigrateTaskType(frontMatterData: any): boolean {
+    // Only migrate if:
+    // 1. Type property exists and is not "Task"
+    // 2. Category property doesn't exist or is empty
+    // 3. Type value is one of the known task types (Bug, Feature, Improvement, Chore, etc.)
+
+    if (!frontMatterData.Type || frontMatterData.Type === 'Task') {
+      return false; // Already has correct Type or no Type
+    }
+
+    if (frontMatterData.Category && frontMatterData.Category !== 'Task') {
+      return false; // Already has a Category set
+    }
+
+    // Check if Type value is a known task type that should be migrated
+    const knownTaskTypes = this.settings.taskTypes.map(t => t.name);
+    const isKnownTaskType = knownTaskTypes.includes(frontMatterData.Type);
+
+    return isKnownTaskType;
+  }
+
+  /**
+   * Perform the actual migration of Type to Category
+   */
+  private performTaskTypeMigration(content: string, frontMatterData: any): string {
+    try {
+      // Extract the body content (everything after front-matter)
+      const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+      const bodyContent = frontMatterMatch ? frontMatterMatch[2] : content;
+
+      // Create updated front-matter preserving original types
+      const updatedFrontMatter = { ...frontMatterData };
+
+      // Move Type value to Category
+      updatedFrontMatter.Category = frontMatterData.Type;
+
+      // Set Type to "Task"
+      updatedFrontMatter.Type = 'Task';
+
+      // Get the current schema for proper property ordering
+      const currentSchema = this.getFrontMatterSchema('task');
+      if (!currentSchema) {
+        console.warn('Task Sync: No schema found for task type during migration');
+        return content;
+      }
+
+      // Regenerate the front-matter section with proper ordering and types
+      const frontMatterLines = ['---'];
+
+      // Include ALL fields from the schema in the correct order
+      for (const [fieldName] of Object.entries(currentSchema)) {
+        const value = updatedFrontMatter[fieldName];
+        if (value !== undefined && value !== null) {
+          // Format the value properly for YAML
+          let formattedValue;
+          if (Array.isArray(value)) {
+            formattedValue = value.length === 0 ? '[]' : JSON.stringify(value);
+          } else if (typeof value === 'boolean') {
+            formattedValue = value.toString();
+          } else if (typeof value === 'string') {
+            formattedValue = value;
+          } else {
+            formattedValue = value;
+          }
+          frontMatterLines.push(`${fieldName}: ${formattedValue}`);
+        } else {
+          // Use empty value for missing fields
+          frontMatterLines.push(`${fieldName}:`);
+        }
+      }
+
+      // Add any additional fields that aren't in the schema but exist in the file
+      for (const [key, value] of Object.entries(updatedFrontMatter)) {
+        if (!(key in currentSchema)) {
+          let formattedValue;
+          if (Array.isArray(value)) {
+            formattedValue = value.length === 0 ? '[]' : JSON.stringify(value);
+          } else if (typeof value === 'boolean') {
+            formattedValue = value.toString();
+          } else if (typeof value === 'string') {
+            formattedValue = value;
+          } else {
+            formattedValue = value;
+          }
+          frontMatterLines.push(`${key}: ${formattedValue}`);
+        }
+      }
+
+      frontMatterLines.push('---');
+
+      // Combine updated front-matter with existing body
+      return frontMatterLines.join('\n') + '\n' + bodyContent;
+
+    } catch (error) {
+      console.error('Task Sync: Error performing task type migration:', error);
+      return content; // Return original content if migration fails
+    }
+  }
+
+  /**
    * Show refresh results to the user
    */
   private showRefreshResults(results: any): void {
-    const { filesUpdated, propertiesUpdated, basesRegenerated, templatesUpdated, errors } = results;
+    const { filesUpdated, propertiesUpdated, basesRegenerated, templatesUpdated, tasksMigrated, errors } = results;
 
     let message = 'Refresh completed!\n\n';
     message += `• Files updated: ${filesUpdated}\n`;
     message += `• Properties updated: ${propertiesUpdated}\n`;
     message += `• Templates updated: ${templatesUpdated}\n`;
+    message += `• Tasks migrated: ${tasksMigrated}\n`;
     message += `• Bases regenerated: ${basesRegenerated}\n`;
 
     if (errors.length > 0) {
