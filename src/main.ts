@@ -24,8 +24,6 @@ import { GitHubIssuesView, GITHUB_ISSUES_VIEW_TYPE } from './views/GitHubIssuesV
 import { TaskImportConfig } from './types/integrations';
 
 
-import pluralize from 'pluralize';
-
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
 export { TASK_TYPE_COLORS };
@@ -50,8 +48,6 @@ export interface TodoItem {
 export interface TodoItemWithParent extends TodoItem {
   parentTodo?: TodoItem;
 }
-
-
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
@@ -255,9 +251,6 @@ export default class TaskSyncPlugin extends Plugin {
         githubIntegration: this.settings.githubIntegration
       });
 
-      // Perform settings migration if needed
-      await this.migrateSettings();
-
       // Validate settings
       this.validateSettings();
     } catch (error) {
@@ -335,55 +328,6 @@ export default class TaskSyncPlugin extends Plugin {
       console.error('Task Sync: Failed to save settings:', error);
       throw error;
     }
-  }
-
-  private async migrateSettings() {
-    // Migrate taskPropertyOrder setting for existing users
-    if (!this.settings.taskPropertyOrder) {
-      this.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
-      console.log('Task Sync: Migrated taskPropertyOrder setting to default order');
-    } else {
-      // Check if CATEGORY is missing from existing property order and add it
-      const { PROPERTY_SETS } = require('./services/base-definitions/BaseConfigurations');
-      const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
-      const currentOrder = this.settings.taskPropertyOrder;
-
-      // If CATEGORY is missing, add it after TYPE
-      if (!currentOrder.includes('CATEGORY') && currentOrder.includes('TYPE')) {
-        const typeIndex = currentOrder.indexOf('TYPE');
-        const newOrder = [...currentOrder];
-        newOrder.splice(typeIndex + 1, 0, 'CATEGORY');
-        this.settings.taskPropertyOrder = newOrder;
-        console.log('Task Sync: Added missing CATEGORY property to taskPropertyOrder');
-      }
-
-      // Ensure all required properties are present
-      const missingProperties = requiredProperties.filter((prop: any) => !currentOrder.includes(prop));
-      if (missingProperties.length > 0) {
-        this.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
-        console.log('Task Sync: Reset taskPropertyOrder due to missing properties:', missingProperties);
-      }
-    }
-
-    // Migrate taskTypes setting for existing users
-    if (!this.settings.taskTypes || !Array.isArray(this.settings.taskTypes) || this.settings.taskTypes.length === 0) {
-      this.settings.taskTypes = [...DEFAULT_SETTINGS.taskTypes];
-      console.log('Task Sync: Migrated taskTypes setting to default types');
-    }
-
-    // Migrate taskPriorities setting for existing users
-    if (!this.settings.taskPriorities || !Array.isArray(this.settings.taskPriorities) || this.settings.taskPriorities.length === 0) {
-      this.settings.taskPriorities = [...DEFAULT_SETTINGS.taskPriorities];
-      console.log('Task Sync: Migrated taskPriorities setting to default priorities');
-    }
-
-    // Migrate taskStatuses setting for existing users
-    if (!this.settings.taskStatuses || !Array.isArray(this.settings.taskStatuses) || this.settings.taskStatuses.length === 0) {
-      this.settings.taskStatuses = [...DEFAULT_SETTINGS.taskStatuses];
-      console.log('Task Sync: Migrated taskStatuses setting to default statuses');
-    }
-
-    // Future settings migration logic will go here
   }
 
   private validateSettings() {
@@ -1132,10 +1076,6 @@ export default class TaskSyncPlugin extends Plugin {
     };
   }
 
-
-
-
-
   /**
    * Create a new area
    */
@@ -1272,22 +1212,7 @@ export default class TaskSyncPlugin extends Plugin {
     return processedContent;
   }
 
-
-
-
-
-
-
-
-
-
   // Base Management Methods
-
-
-
-
-
-
 
   /**
    * Comprehensive refresh operation - updates file properties and regenerates bases
@@ -1299,14 +1224,10 @@ export default class TaskSyncPlugin extends Plugin {
         propertiesUpdated: 0,
         basesRegenerated: 0,
         templatesUpdated: 0,
-        tasksMigrated: 0,
         errors: [] as string[]
       };
 
       console.log('Task Sync: Starting comprehensive refresh...');
-
-      // 1. Migrate task types to category (one-time migration)
-      await this.migrateTaskTypes(results);
 
       // 2. Update task/project/area file properties
       await this.updateFileProperties(results);
