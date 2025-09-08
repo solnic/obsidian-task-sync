@@ -89,7 +89,7 @@ describe('Template Auto-Creation', () => {
     expect(taskContent).toContain('Title: Test Task After Auto-Creation');
     expect(taskContent).toContain('Type: Task');
     expect(taskContent).toContain('Priority: Medium'); // Uses default value from property definition
-    expect(taskContent).toContain("- '[[Test Area]]'"); // YAML array format
+    expect(taskContent).toContain(`- "[[Test Area]]"`); // YAML array format
     expect(taskContent).toContain("Project: '[[Test Project]]'"); // Project field uses empty string default
     expect(taskContent).toContain('This task should use the auto-created template');
   });

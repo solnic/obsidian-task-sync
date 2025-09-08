@@ -68,8 +68,7 @@ This task was created from a template!
           areas: ['Development'],
           done: false,
           status: 'In Progress',
-          tags: ['template-test'],
-          description: 'This task tests template usage'
+          tags: ['template-test']
         });
       }
     });
@@ -217,7 +216,7 @@ Created for project: {{project}}`;
     expect(taskContent).toContain('Type: Task');
     expect(taskContent).toContain('Category: Feature');
     expect(taskContent).toContain('Priority: High');
-    expect(taskContent).toContain("Project: '[[Test Project]]'");
+    expect(taskContent).toContain(`Project: "[[Test Project]]"`);
     expect(taskContent).toContain('Status: In Progress');
     expect(taskContent).toContain('Task: Variable Test Task');
     expect(taskContent).toContain('Description: Testing variable processing');

@@ -238,7 +238,7 @@ describe('Todo Promotion E2E', () => {
     // Verify the task has the correct area context in front-matter
     const taskContent = await getFileContent(context.page, 'Tasks/Task with area context.md');
     expect(taskContent).toContain('Areas:');
-    expect(taskContent).toContain("- '[[Work]]'");
+    expect(taskContent).toContain(`- "[[Work]]"`);
   });
 
   test('should set context properties correctly when promoting todo in project', async () => {
@@ -274,7 +274,7 @@ describe('Todo Promotion E2E', () => {
 
     // Verify the task has the correct project context in front-matter
     const taskContent = await getFileContent(context.page, 'Tasks/Task with project context.md');
-    expect(taskContent).toContain("Project: '[[Website Redesign]]'");
+    expect(taskContent).toContain(`Project: "[[Website Redesign]]"`);
   });
 
   test('should promote nested todos and create sub-tasks', async () => {
@@ -321,13 +321,13 @@ describe('Todo Promotion E2E', () => {
     // Verify parent task has sub-tasks in front-matter
     const parentContent = await getFileContent(context.page, 'Tasks/Parent task with children.md');
     expect(parentContent).toContain('Sub-tasks:');
-    expect(parentContent).toContain("'[[First child task]]'");
-    expect(parentContent).toContain("'[[Second child task]]'");
-    expect(parentContent).toContain("'[[Completed child task]]'");
+    expect(parentContent).toContain(`"[[First child task]]"`);
+    expect(parentContent).toContain(`"[[Second child task]]"`);
+    expect(parentContent).toContain(`"[[Completed child task]]"`);
 
     // Verify child tasks have parent task set
     const child1Content = await getFileContent(context.page, 'Tasks/First child task.md');
-    expect(child1Content).toContain("Parent task: '[[Parent task with children]]'");
+    expect(child1Content).toContain(`Parent task: "[[Parent task with children]]"`);
 
     // Verify completed child task has correct status
     const child3Content = await getFileContent(context.page, 'Tasks/Completed child task.md');
@@ -430,7 +430,7 @@ describe('Todo Promotion E2E', () => {
 
     // Verify child task has parent task property set
     const childContent = await getFileContent(context.page, 'Tasks/Sub-task to promote.md');
-    expect(childContent).toContain("Parent task: '[[Main parent task]]'");
+    expect(childContent).toContain(`Parent task: "[[Main parent task]]"`);
 
     // Verify parent task has child in sub-tasks
     const parentContent = await getFileContent(context.page, 'Tasks/Main parent task.md');
