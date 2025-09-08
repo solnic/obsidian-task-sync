@@ -9,8 +9,7 @@ import {
   createTestFolders,
   createTestTaskFile,
   getFileContent,
-  fileExists,
-  waitForTaskSyncPlugin
+  fileExists
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
 
@@ -37,10 +36,15 @@ describe('File Name Sanitization and Base Formulas', () => {
     const taskExists = await fileExists(context.page, `Tasks/${sanitizedTaskName}.md`);
     expect(taskExists).toBe(true);
 
-    // Verify the task content includes the original title in frontmatter
-    const taskContent = await getFileContent(context.page, `Tasks/${sanitizedTaskName}.md`);
-    expect(taskContent).toContain(`Title: '${taskName}'`);
-    expect(taskContent).toContain('Category: Feature');
+    // Verify the task content includes the original title in frontmatter using API
+    const frontMatter = await context.page.evaluate(async (path) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter(path);
+    }, `Tasks/${sanitizedTaskName}.md`);
+
+    expect(frontMatter.Title).toBe(taskName); // Original title should be preserved
+    expect(frontMatter.Category).toBe('Feature');
   });
 
   test('should create area with invalid characters and generate proper base', async () => {
@@ -117,8 +121,13 @@ describe('File Name Sanitization and Base Formulas', () => {
     const taskExists = await fileExists(context.page, `Tasks/${testCase.expected}.md`);
     expect(taskExists).toBe(true);
 
-    // Verify the content has the original title
-    const taskContent = await getFileContent(context.page, `Tasks/${testCase.expected}.md`);
-    expect(taskContent).toContain(`Title: '${testCase.input}'`);
+    // Verify the content has the original title using API
+    const frontMatter = await context.page.evaluate(async (path) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter(path);
+    }, `Tasks/${testCase.expected}.md`);
+
+    expect(frontMatter.Title).toBe(testCase.input); // Original title should be preserved
   });
 });

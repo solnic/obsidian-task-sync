@@ -79,15 +79,21 @@ This task has all properties but in wrong order.`);
     // Verify the order now matches the schema
     expect(updatedPropertyOrder).toEqual(expectedOrder);
 
-    // Verify all property values are preserved
-    expect(updatedContent).toContain('Title: Wrong Order Task');
-    expect(updatedContent).toContain('Type: Task');
-    expect(updatedContent).toContain('Priority: High');
-    expect(updatedContent).toContain('Areas: Development');
-    expect(updatedContent).toContain('Project: Test Project');
-    expect(updatedContent).toContain('Done: false');
-    expect(updatedContent).toContain('Status: In Progress');
-    expect(updatedContent).toContain('tags: test');
+    // Verify all property values are preserved using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Wrong Order Task.md');
+    });
+
+    expect(frontMatter.Title).toBe('Wrong Order Task');
+    expect(frontMatter.Type).toBe('Task');
+    expect(frontMatter.Priority).toBe('High');
+    expect(frontMatter.Areas).toBe('Development');
+    expect(frontMatter.Project).toBe('Test Project');
+    expect(frontMatter.Done).toBe(false);
+    expect(frontMatter.Status).toBe('In Progress');
+    expect(frontMatter.tags).toBe('test');
     expect(updatedContent).toContain('This task has all properties but in wrong order.');
   });
 

@@ -5,7 +5,6 @@
 
 import { App, Vault, TFile } from 'obsidian';
 import { TaskSyncSettings } from '../main';
-import { generateTaskFrontMatter } from './base-definitions/FrontMatterGenerator';
 import { PROPERTY_SETS, PROPERTY_REGISTRY, generateAreaFrontMatter as getAreaPropertyDefinitions, generateProjectFrontMatter as getProjectPropertyDefinitions, generateTaskFrontMatter as getTaskPropertyDefinitions } from './base-definitions/BaseConfigurations';
 import matter from 'gray-matter';
 
@@ -21,6 +20,90 @@ export class TemplateManager {
    */
   updateSettings(newSettings: TaskSyncSettings): void {
     this.settings = newSettings;
+  }
+
+  /**
+   * Ensure all required template files exist, creating them with default content if missing
+   * This should be called when the plugin loads
+   */
+  async ensureTemplatesExist(): Promise<void> {
+    try {
+      // Create task template if missing
+      const taskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultTaskTemplate}`;
+      const taskTemplateExists = await this.app.vault.adapter.exists(taskTemplatePath);
+
+      if (!taskTemplateExists) {
+        console.log(`Task Sync: Task template '${this.settings.defaultTaskTemplate}' not found, creating it...`);
+        try {
+          await this.createTaskTemplate(this.settings.defaultTaskTemplate);
+          console.log(`Task Sync: Created task template: ${taskTemplatePath}`);
+        } catch (error) {
+          console.error(`Task Sync: Failed to create task template:`, error);
+        }
+      }
+
+      // Create area template if missing
+      const areaTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultAreaTemplate}`;
+      const areaTemplateExists = await this.app.vault.adapter.exists(areaTemplatePath);
+
+      if (!areaTemplateExists) {
+        console.log(`Task Sync: Area template '${this.settings.defaultAreaTemplate}' not found, creating it...`);
+        try {
+          await this.createAreaTemplate(this.settings.defaultAreaTemplate);
+          console.log(`Task Sync: Created area template: ${areaTemplatePath}`);
+        } catch (error) {
+          console.error(`Task Sync: Failed to create area template:`, error);
+        }
+      }
+
+      // Create project template if missing
+      const projectTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultProjectTemplate}`;
+      const projectTemplateExists = await this.app.vault.adapter.exists(projectTemplatePath);
+
+      if (!projectTemplateExists) {
+        console.log(`Task Sync: Project template '${this.settings.defaultProjectTemplate}' not found, creating it...`);
+        try {
+          await this.createProjectTemplate(this.settings.defaultProjectTemplate);
+          console.log(`Task Sync: Created project template: ${projectTemplatePath}`);
+        } catch (error) {
+          console.error(`Task Sync: Failed to create project template:`, error);
+        }
+      }
+
+      // Create parent task template if missing
+      const parentTaskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultParentTaskTemplate}`;
+      const parentTaskTemplateExists = await this.app.vault.adapter.exists(parentTaskTemplatePath);
+
+      if (!parentTaskTemplateExists) {
+        console.log(`Task Sync: Parent task template '${this.settings.defaultParentTaskTemplate}' not found, creating it...`);
+        try {
+          await this.createParentTaskTemplate(this.settings.defaultParentTaskTemplate);
+          console.log(`Task Sync: Created parent task template: ${parentTaskTemplatePath}`);
+        } catch (error) {
+          console.error(`Task Sync: Failed to create parent task template:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Task Sync: Failed to ensure templates exist:', error);
+    }
+  }
+
+  /**
+   * Update templates when settings change and trigger refresh if needed
+   * This should be called when settings are saved
+   */
+  async updateTemplatesOnSettingsChange(): Promise<void> {
+    try {
+      console.log('Task Sync: Updating templates after settings change...');
+
+      // For now, we don't automatically regenerate existing templates
+      // Users can manually refresh if they want templates updated
+      // This method is here for future enhancements
+
+      console.log('Task Sync: Template update completed');
+    } catch (error) {
+      console.error('Task Sync: Failed to update templates on settings change:', error);
+    }
   }
 
   /**
@@ -126,7 +209,8 @@ export class TemplateManager {
     }
 
     // Use gray-matter to generate the front-matter with default values
-    return matter.stringify('{{description}}', frontMatterData);
+    // Only {{tasks}} variable is supported, no other template variables
+    return matter.stringify('', frontMatterData);
   }
 
 
@@ -185,7 +269,8 @@ export class TemplateManager {
     frontMatterData.Type = 'Area';
 
     // Use gray-matter to generate the front-matter with default values
-    return matter.stringify('{{description}}', frontMatterData);
+    // Only {{tasks}} variable is supported, no other template variables
+    return matter.stringify('', frontMatterData);
   }
 
   /**
@@ -242,7 +327,8 @@ export class TemplateManager {
     frontMatterData.Type = 'Project';
 
     // Use gray-matter to generate the front-matter with default values
-    return matter.stringify('{{description}}', frontMatterData);
+    // Only {{tasks}} variable is supported, no other template variables
+    return matter.stringify('', frontMatterData);
   }
 
   /**
@@ -296,10 +382,11 @@ export class TemplateManager {
     }
 
     // Use gray-matter to generate the front-matter with clean structure
-    const baseContent = matter.stringify('{{description}}', frontMatterData);
+    // Only {{tasks}} variable is supported, no other template variables
+    const baseContent = matter.stringify('', frontMatterData);
 
-    // Add embedded base for sub-tasks
-    return baseContent + '\n\n## Sub-tasks\n\n![[Bases/{{name}}.base]]';
+    // Add embedded base for sub-tasks using {{tasks}} variable
+    return baseContent + '\n\n## Sub-tasks\n\n{{tasks}}';
   }
 
 }

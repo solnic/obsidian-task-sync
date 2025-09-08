@@ -200,27 +200,30 @@ Another task missing Status field.`);
     // Wait for refresh to complete
     await context.page.waitForTimeout(3000);
 
-    // Check that Status field was added to both files
+    // Check that Status field was added to both files using API
     const filesWithStatus = await context.page.evaluate(async () => {
       const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
       const results: { filename: string; hasStatus: boolean; statusValue: string }[] = [];
 
       const files = ['Tasks/Task Without Status.md', 'Tasks/Another Task.md'];
 
       for (const filePath of files) {
-        const file = app.vault.getAbstractFileByPath(filePath);
-        if (file) {
-          const content = await app.vault.read(file);
-          const hasStatus = content.includes('Status:');
-
-          // Extract Status value if present
-          const statusMatch = content.match(/Status:\s*(.+)/);
-          const statusValue = statusMatch ? statusMatch[1].trim() : '';
+        try {
+          const frontMatter = await plugin.taskFileManager.loadFrontMatter(filePath);
+          const hasStatus = frontMatter.Status !== undefined;
+          const statusValue = frontMatter.Status || '';
 
           results.push({
             filename: filePath,
             hasStatus,
             statusValue
+          });
+        } catch (error) {
+          results.push({
+            filename: filePath,
+            hasStatus: false,
+            statusValue: ''
           });
         }
       }

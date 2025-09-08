@@ -41,7 +41,7 @@ describe('Template Auto-Creation', () => {
     expect(templateContent).toContain('Parent task:');
     expect(templateContent).toContain('Sub-tasks: []');
     expect(templateContent).toContain('tags: []');
-    expect(templateContent).toContain('{{description}}');
+    // Only {{tasks}} variable is supported, no {{description}}
 
     // Verify settings reflect the created template
     const settings = await context.page.evaluate(() => {

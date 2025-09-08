@@ -26,38 +26,28 @@ This task has only a title.`);
     // Wait for refresh to complete
     await context.page.waitForTimeout(5000);
 
-    // Check that ALL schema properties were added
-    const fileAfterRefresh = await context.page.evaluate(async () => {
+    // Check that ALL schema properties were added using API
+    const frontMatter = await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath('Tasks/Minimal Task.md');
-      if (file) {
-        const content = await app.vault.read(file);
-        return content;
-      }
-      return '';
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Minimal Task.md');
     });
 
-    console.log('File content after refresh:', fileAfterRefresh);
+    console.log('Front matter after refresh:', frontMatter);
 
-    // Verify all expected properties are present
-    const expectedProperties = [
-      'Title:',
-      'Type:',
-      'Areas:',
-      'Parent task:',
-      'Sub-tasks:',
-      'tags:',
-      'Project:',
-      'Done:',
-      'Status:',
-      'Priority:'
-    ];
-
-    for (const property of expectedProperties) {
-      expect(fileAfterRefresh).toContain(property);
-    }
+    // Verify all expected properties are present with proper values
+    expect(frontMatter.Title).toBeDefined();
+    expect(frontMatter.Type).toBeDefined();
+    expect(frontMatter.Areas).toBeDefined();
+    expect(frontMatter['Parent task']).toBeDefined();
+    expect(frontMatter['Sub-tasks']).toBeDefined();
+    expect(frontMatter.tags).toBeDefined();
+    expect(frontMatter.Project).toBeDefined();
+    expect(frontMatter.Done).toBeDefined();
+    expect(frontMatter.Status).toBeDefined();
+    expect(frontMatter.Priority).toBeDefined();
 
     // Verify Status has default value
-    expect(fileAfterRefresh).toMatch(/Status:\s*Backlog/);
+    expect(frontMatter.Status).toBe('Backlog');
   });
 });

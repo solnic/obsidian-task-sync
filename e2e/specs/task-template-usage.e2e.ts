@@ -29,7 +29,7 @@ tags: {{tags}}
 ---
 
 ## Description
-{{description}}
+Task description content
 
 ## Notes
 This task was created from a template!
@@ -145,32 +145,31 @@ This task was created from a template!
     expect(taskExists).toBe(true);
   });
 
-  test('should process template variables correctly', async () => {
+  test('should process {{tasks}} variable correctly', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a template with various template variables
+    // Create a template with {{tasks}} variable (the only supported variable)
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const templateContent = `---
 Type: Task
-Title: {{name}}
-Category: {{category}}
-Priority: {{priority}}
-Areas: {{areas}}
-Project: {{project}}
-Done: {{done}}
-Status: {{status}}
-Parent task: {{parentTask}}
-tags: {{tags}}
+Title: ''
+Category: Task
+Priority: Low
+Areas: []
+Project: ''
+Done: false
+Status: Backlog
+Parent task: ''
+tags: []
 ---
 
-Task: {{name}}
-Description: {{description}}
-Created for project: {{project}}`;
+## Sub-tasks
+{{tasks}}`;
 
       try {
-        await app.vault.create('Templates/VariableTest.md', templateContent);
+        await app.vault.create('Templates/TasksVariableTest.md', templateContent);
       } catch (error) {
         console.log('Template creation error:', error);
       }
@@ -181,45 +180,38 @@ Created for project: {{project}}`;
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.defaultTaskTemplate = 'VariableTest.md';
+        plugin.settings.defaultParentTaskTemplate = 'TasksVariableTest.md';
         await plugin.saveSettings();
       }
     });
 
-    // Create a task with various properties (no subTasks to avoid parent task creation)
+    // Create a parent task with sub-tasks to test {{tasks}} variable processing
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
         await plugin.createTask({
-          name: 'Variable Test Task',
+          name: 'Parent Task Test',
           category: 'Feature',
           priority: 'High',
-          areas: ['Development', 'Testing'],
+          areas: ['Development'],
           project: 'Test Project',
           done: false,
           status: 'In Progress',
-          parentTask: 'Parent Task',
-          tags: ['test', 'variables'],
-          description: 'Testing variable processing'
+          tags: ['test'],
+          subTasks: ['Sub Task 1', 'Sub Task 2']
         });
       }
     });
 
     await context.page.waitForTimeout(1000);
 
-    // Check task file content
-    const taskContent = await getFileContent(context.page, 'Tasks/Variable Test Task.md');
+    // Check parent task file content
+    const taskContent = await getFileContent(context.page, 'Tasks/Parent Task Test.md');
 
-    // Verify all variables were processed correctly
-    expect(taskContent).toContain('Title: Variable Test Task');
-    expect(taskContent).toContain('Type: Task');
-    expect(taskContent).toContain('Category: Feature');
-    expect(taskContent).toContain('Priority: High');
-    expect(taskContent).toContain(`Project: "[[Test Project]]"`);
-    expect(taskContent).toContain('Status: In Progress');
-    expect(taskContent).toContain('Task: Variable Test Task');
-    expect(taskContent).toContain('Description: Testing variable processing');
-    expect(taskContent).toContain('Created for project: Test Project');
+    // Verify {{tasks}} variable was processed correctly
+    expect(taskContent).toContain('Title: Parent Task Test');
+    expect(taskContent).toContain('## Sub-tasks');
+    expect(taskContent).toContain('![[Bases/Parent Task Test.base]]');
   });
 });

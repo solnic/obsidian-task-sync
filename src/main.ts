@@ -105,8 +105,8 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize storage service
     await this.storageService.initialize();
 
-    // Validate and create missing templates
-    await this.validateAndCreateTemplates();
+    // Ensure templates exist
+    await this.templateManager.ensureTemplatesExist();
 
     // Initialize event system
     this.eventManager = new EventManager();
@@ -312,9 +312,10 @@ export default class TaskSyncPlugin extends Plugin {
         }
       });
 
-      // Update TemplateManager with new settings
+      // Update TemplateManager with new settings and handle template updates
       if (this.templateManager) {
         this.templateManager.updateSettings(this.settings);
+        await this.templateManager.updateTemplatesOnSettingsChange();
         console.log('Task Sync: TemplateManager updated with new settings');
       }
 
@@ -418,110 +419,7 @@ export default class TaskSyncPlugin extends Plugin {
     });
   }
 
-  /**
-   * Validate that configured template files exist and create missing default templates
-   */
-  private async validateAndCreateTemplates(): Promise<void> {
-    try {
-      let settingsUpdated = false;
 
-      // Check and create default Task template if missing or not configured
-      if (!this.settings.defaultTaskTemplate) {
-        // Set default template name if not configured
-        this.settings.defaultTaskTemplate = DEFAULT_SETTINGS.defaultTaskTemplate;
-        settingsUpdated = true;
-        console.log(`Task Sync: No task template configured, setting default: ${this.settings.defaultTaskTemplate}`);
-      }
-
-      if (this.settings.defaultTaskTemplate) {
-        const taskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultTaskTemplate}`;
-        const taskTemplateExists = await this.app.vault.adapter.exists(taskTemplatePath);
-
-        if (!taskTemplateExists) {
-          console.log(`Task Sync: Default task template '${this.settings.defaultTaskTemplate}' not found, creating it...`);
-          try {
-            await this.templateManager.createTaskTemplate(this.settings.defaultTaskTemplate);
-            console.log(`Task Sync: Created default task template: ${taskTemplatePath}`);
-          } catch (error) {
-            console.error(`Task Sync: Failed to create default task template:`, error);
-          }
-        }
-      }
-
-      // Check and create default Area template if missing or not configured
-      if (!this.settings.defaultAreaTemplate) {
-        this.settings.defaultAreaTemplate = DEFAULT_SETTINGS.defaultAreaTemplate;
-        settingsUpdated = true;
-        console.log(`Task Sync: No area template configured, setting default: ${this.settings.defaultAreaTemplate}`);
-      }
-
-      if (this.settings.defaultAreaTemplate) {
-        const areaTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultAreaTemplate}`;
-        const areaTemplateExists = await this.app.vault.adapter.exists(areaTemplatePath);
-
-        if (!areaTemplateExists) {
-          console.log(`Task Sync: Default area template '${this.settings.defaultAreaTemplate}' not found, creating it...`);
-          try {
-            await this.templateManager.createAreaTemplate(this.settings.defaultAreaTemplate);
-            console.log(`Task Sync: Created default area template: ${areaTemplatePath}`);
-          } catch (error) {
-            console.error(`Task Sync: Failed to create default area template:`, error);
-          }
-        }
-      }
-
-      // Check and create default Project template if missing or not configured
-      if (!this.settings.defaultProjectTemplate) {
-        this.settings.defaultProjectTemplate = DEFAULT_SETTINGS.defaultProjectTemplate;
-        settingsUpdated = true;
-        console.log(`Task Sync: No project template configured, setting default: ${this.settings.defaultProjectTemplate}`);
-      }
-
-      if (this.settings.defaultProjectTemplate) {
-        const projectTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultProjectTemplate}`;
-        const projectTemplateExists = await this.app.vault.adapter.exists(projectTemplatePath);
-
-        if (!projectTemplateExists) {
-          console.log(`Task Sync: Default project template '${this.settings.defaultProjectTemplate}' not found, creating it...`);
-          try {
-            await this.templateManager.createProjectTemplate(this.settings.defaultProjectTemplate);
-            console.log(`Task Sync: Created default project template: ${projectTemplatePath}`);
-          } catch (error) {
-            console.error(`Task Sync: Failed to create default project template:`, error);
-          }
-        }
-      }
-
-      // Check and create default Parent Task template if missing or not configured
-      if (!this.settings.defaultParentTaskTemplate) {
-        this.settings.defaultParentTaskTemplate = DEFAULT_SETTINGS.defaultParentTaskTemplate;
-        settingsUpdated = true;
-        console.log(`Task Sync: No parent task template configured, setting default: ${this.settings.defaultParentTaskTemplate}`);
-      }
-
-      if (this.settings.defaultParentTaskTemplate) {
-        const parentTaskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultParentTaskTemplate}`;
-        const parentTaskTemplateExists = await this.app.vault.adapter.exists(parentTaskTemplatePath);
-
-        if (!parentTaskTemplateExists) {
-          console.log(`Task Sync: Default parent task template '${this.settings.defaultParentTaskTemplate}' not found, creating it...`);
-          try {
-            await this.templateManager.createParentTaskTemplate(this.settings.defaultParentTaskTemplate);
-            console.log(`Task Sync: Created default parent task template: ${parentTaskTemplatePath}`);
-          } catch (error) {
-            console.error(`Task Sync: Failed to create default parent task template:`, error);
-          }
-        }
-      }
-
-      // Save settings if any templates were created
-      if (settingsUpdated) {
-        await this.saveSettings();
-      }
-    } catch (error) {
-      console.error('Task Sync: Failed to validate and create templates:', error);
-    }
-  }
 
   // UI Methods
   private async openTaskCreateModal(): Promise<void> {

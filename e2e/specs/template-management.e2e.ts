@@ -30,7 +30,7 @@ describe('Template Management', () => {
     expect(templateContent).toContain('Title:');
     expect(templateContent).toContain('Type:');
     expect(templateContent).toContain('Priority: Low');
-    expect(templateContent).toContain('{{description}}');
+    // Only {{tasks}} variable is supported, no {{description}}
   });
 
   test('should prompt user when Task.md template already exists', async () => {
@@ -85,7 +85,7 @@ describe('Template Management', () => {
     // Verify the content is still correct
     const templateContent = await getFileContent(context.page, 'Templates/Custom Task.md');
     expect(templateContent).toContain('Title: ');
-    expect(templateContent).toContain('{{description}}');
+    // Only {{tasks}} variable is supported, no {{description}}
   });
 
   test('should provide settings UI to create templates when custom template is configured', async () => {

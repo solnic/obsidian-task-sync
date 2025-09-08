@@ -59,8 +59,7 @@ describe('Clean Template Generation', () => {
     expect(templateContent).toContain('Sub-tasks: []');
     expect(templateContent).toContain('tags: []');
 
-    // Should have template placeholder
-    expect(templateContent).toContain('{{description}}');
+    // Only {{tasks}} variable is supported, no {{description}}
   });
 
   test('should create task from clean template and set default values via handler', async () => {
