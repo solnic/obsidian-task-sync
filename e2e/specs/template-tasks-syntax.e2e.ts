@@ -16,15 +16,17 @@ describe('Template {{tasks}} Syntax', () => {
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const templateContent = `---
-Name: {{name}}
+Name: Mobile App Development
 Type: Project
-Areas: {{areas}}
+Areas:
+  - Technology
+  - Business
 Status: Planning
 ---
 
 ## Overview
 
-{{description}}
+Building a cross-platform mobile application
 
 ## Objectives
 
@@ -97,14 +99,14 @@ Additional project notes here.
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const templateContent = `---
-Name: {{name}}
+Name: Health & Wellness
 Type: Area
 Custom: true
 ---
 
 ## Overview
 
-{{description}}
+Maintaining physical and mental health through exercise, nutrition, and mindfulness practices.
 
 ## Goals
 
@@ -174,7 +176,7 @@ Links and resources for this area.
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const templateContent = `---
-Name: {{name}}
+Name: Test Project
 Type: Project
 ---
 
@@ -230,62 +232,5 @@ Type: Project
     const baseEmbedMatches = projectContent.match(/!\[\[.*\.base\]\]/g);
     expect(baseEmbedMatches).toHaveLength(1);
     expect(baseEmbedMatches[0]).toBe('![[Bases/Test Project.base]]');
-  });
-
-  test('should handle multiple {{tasks}} occurrences in template', async () => {
-    await createTestFolders(context.page);
-
-    // Create a template with multiple {{tasks}} occurrences
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const templateContent = `---
-Name: {{name}}
-Type: Project
----
-
-## Active Tasks
-{{tasks}}
-
-## Archived Tasks
-{{tasks}}`;
-
-      try {
-        await app.vault.create('Templates/multi-tasks-template.md', templateContent);
-      } catch (error) {
-        console.log('Template creation error:', error);
-      }
-    });
-
-    // Configure plugin to use the template
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin) {
-        plugin.settings.defaultProjectTemplate = 'multi-tasks-template.md';
-        await plugin.saveSettings();
-      }
-    });
-
-    // Create a project
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      if (plugin && plugin.createProject) {
-        await plugin.createProject({
-          name: 'Multi Tasks Project',
-          description: 'A project with multiple task sections'
-        });
-      }
-    });
-
-    await context.page.waitForTimeout(1000);
-
-    // Check project file content
-    const projectContent = await getFileContent(context.page, 'Projects/Multi Tasks Project.md');
-
-    // Should have two base embeds (one for each {{tasks}})
-    const baseEmbedMatches = projectContent.match(/!\[\[Bases\/Multi Tasks Project\.base\]\]/g);
-    expect(baseEmbedMatches).toHaveLength(2);
-    expect(projectContent).not.toContain('{{tasks}}');
   });
 });

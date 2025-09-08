@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { TaskFileManager } from '../src/services/TaskFileManager';
 
 // Mock Obsidian API
 const mockApp = {
@@ -6,152 +7,58 @@ const mockApp = {
     getAbstractFileByPath: vi.fn(),
     read: vi.fn(),
     create: vi.fn(),
-    modify: vi.fn()
+    modify: vi.fn(),
+    adapter: {
+      exists: vi.fn()
+    }
   },
-  plugins: {
-    plugins: {}
+  fileManager: {
+    processFrontMatter: vi.fn()
   }
 };
 
-const mockTFile = class {
-  constructor(public path: string) { }
+// Mock settings
+const mockSettings = {
+  templateFolder: 'Templates',
+  useTemplater: false,
+  basesFolder: 'Bases',
+  tasksFolder: 'Tasks'
 };
 
-// Mock the plugin
-class MockTaskSyncPlugin {
-  app = mockApp;
-  settings = {
-    templateFolder: 'Templates',
-    useTemplater: false,
-    basesFolder: 'Bases'
-  };
-
-  private processTemplateVariables(content: string, data: any): string {
-    let processedContent = content;
-
-    // Replace common variables
-    if (data.name) {
-      processedContent = processedContent.replace(/<% tp\.file\.title %>/g, data.name);
-      processedContent = processedContent.replace(/\{\{title\}\}/g, data.name);
-      processedContent = processedContent.replace(/\{\{name\}\}/g, data.name);
-    }
-
-    if (data.description) {
-      processedContent = processedContent.replace(/\{\{description\}\}/g, data.description);
-    }
-
-    if (data.areas) {
-      processedContent = processedContent.replace(/\{\{areas\}\}/g, data.areas);
-    }
-
-    // Replace {{tasks}} with appropriate base embed
-    if (data.name) {
-      const baseEmbed = `![[${this.settings.basesFolder}/${data.name}.base]]`;
-      processedContent = processedContent.replace(/\{\{tasks\}\}/g, baseEmbed);
-    }
-
-    // Replace date variables
-    const now = new Date();
-    processedContent = processedContent.replace(/\{\{date\}\}/g, now.toISOString().split('T')[0]);
-    processedContent = processedContent.replace(/\{\{time\}\}/g, now.toISOString());
-
-    // Process Templater syntax if enabled
-    if (this.settings.useTemplater) {
-      processedContent = this.processTemplaterSyntax(processedContent, data);
-    }
-
-    return processedContent;
+// Mock TaskFileManager for testing {{tasks}} processing
+class MockTaskFileManager extends TaskFileManager {
+  constructor() {
+    super(mockApp as any, mockApp.vault as any, mockSettings as any);
   }
 
-  private processTemplaterSyntax(content: string, data: any): string {
-    let processedContent = content;
-
-    // Check if Templater plugin is available
-    const templaterPlugin = (this.app as any).plugins?.plugins?.['templater-obsidian'];
-    if (!templaterPlugin) {
-      console.warn('Templater plugin not found, falling back to basic processing');
-      return processedContent;
-    }
-
-    // Basic Templater syntax processing
-    if (data.name) {
-      processedContent = processedContent.replace(/<% tp\.file\.title %>/g, data.name);
-      processedContent = processedContent.replace(/<% tp\.file\.basename %>/g, data.name);
-    }
-
-    const now = new Date();
-    processedContent = processedContent.replace(/<% tp\.date\.now\(\) %>/g, now.toISOString().split('T')[0]);
-    processedContent = processedContent.replace(/<% tp\.date\.now\("YYYY-MM-DD"\) %>/g, now.toISOString().split('T')[0]);
-
-    return processedContent;
-  }
-
-  private ensureProperBaseEmbedding(content: string, data: any): string {
-    const entityName = data.name;
-    const expectedBaseEmbed = `![[${this.settings.basesFolder}/${entityName}.base]]`;
-
-    // Check if {{tasks}} was already processed
-    if (content.includes(expectedBaseEmbed)) {
-      return content;
-    }
-
-    // Check if template has generic Tasks.base embedding - replace it first
-    const genericBasePattern = /!\[\[Tasks\.base\]\]/;
-    if (genericBasePattern.test(content)) {
-      return content.replace(genericBasePattern, expectedBaseEmbed);
-    }
-
-    // Check if template has any other base embedding already
-    const anyBasePattern = /!\[\[.*\.base\]\]/;
-    if (anyBasePattern.test(content)) {
-      return content;
-    }
-
-    // Only add base embedding if no base-related content exists
-    if (!content.includes('![[') || !content.includes('.base]]')) {
-      return content.trim() + `\n\n## Tasks\n${expectedBaseEmbed}`;
-    }
-
-    return content;
-  }
-
-  // Public method for testing
-  public testProcessTemplateVariables(content: string, data: any): string {
-    return this.processTemplateVariables(content, data);
-  }
-
-  public testEnsureProperBaseEmbedding(content: string, data: any): string {
-    return this.ensureProperBaseEmbedding(content, data);
+  // Expose the private method for testing
+  public testProcessTasksVariable(content: string, taskName: string): string {
+    return (this as any).processTasksVariable(content, taskName);
   }
 }
 
 describe('Template Processing', () => {
-  let plugin: MockTaskSyncPlugin;
+  let taskFileManager: MockTaskFileManager;
 
   beforeEach(() => {
-    plugin = new MockTaskSyncPlugin();
+    taskFileManager = new MockTaskFileManager();
     vi.clearAllMocks();
   });
 
   describe('{{tasks}} syntax processing', () => {
     it('should replace {{tasks}} with specific base embed', () => {
       const template = `---
-Name: {{name}}
+Name: Mobile App
 Type: Project
 ---
 
 ## Overview
-{{description}}
+Some description
 
 ## Tasks
 {{tasks}}`;
 
-      const data = {
-        name: 'Mobile App',
-        description: 'A mobile application project'
-      };
-
-      const result = plugin.testProcessTemplateVariables(template, data);
+      const result = taskFileManager.testProcessTasksVariable(template, 'Mobile App');
 
       expect(result).toContain('![[Bases/Mobile App.base]]');
       expect(result).not.toContain('{{tasks}}');
@@ -164,8 +71,7 @@ Type: Project
 ## Archived Tasks
 {{tasks}}`;
 
-      const data = { name: 'Test Project' };
-      const result = plugin.testProcessTemplateVariables(template, data);
+      const result = taskFileManager.testProcessTasksVariable(template, 'Test Project');
 
       const matches = result.match(/!\[\[Bases\/Test Project\.base\]\]/g);
       expect(matches).toHaveLength(2);
@@ -173,103 +79,30 @@ Type: Project
 
     it('should work with area templates', () => {
       const template = `---
-Name: {{name}}
+Name: Health & Fitness
 Type: Area
 ---
 
 ## Tasks
 {{tasks}}`;
 
-      const data = { name: 'Health & Fitness' };
-      const result = plugin.testProcessTemplateVariables(template, data);
+      const result = taskFileManager.testProcessTasksVariable(template, 'Health & Fitness');
 
       expect(result).toContain('![[Bases/Health & Fitness.base]]');
     });
-  });
 
-  describe('Base embedding logic', () => {
-    it('should not add duplicate base embeds when {{tasks}} is processed', () => {
-      const content = `## Overview
-Some content
-
-## Tasks
-![[Bases/Mobile App.base]]`;
-
-      const data = { name: 'Mobile App' };
-      const result = plugin.testEnsureProperBaseEmbedding(content, data);
-
-      // Should not add another base embed
-      expect(result).toBe(content);
-      const matches = result.match(/!\[\[.*\.base\]\]/g);
-      expect(matches).toHaveLength(1);
-    });
-
-    it('should replace generic Tasks.base with specific base', () => {
-      const content = `## Tasks
-![[Tasks.base]]`;
-
-      const data = { name: 'Mobile App' };
-      const result = plugin.testEnsureProperBaseEmbedding(content, data);
-
-      expect(result).toContain('![[Bases/Mobile App.base]]');
-      expect(result).not.toContain('![[Tasks.base]]');
-    });
-
-    it('should not interfere with existing specific base embeds', () => {
-      const content = `## Tasks
-![[Other Project.base]]`;
-
-      const data = { name: 'Mobile App' };
-      const result = plugin.testEnsureProperBaseEmbedding(content, data);
-
-      // Should not change existing specific base embed
-      expect(result).toBe(content);
-      expect(result).toContain('![[Other Project.base]]');
-    });
-  });
-
-  describe('Variable replacement', () => {
-    it('should replace all standard variables', () => {
+    it('should not modify content without {{tasks}}', () => {
       const template = `---
-Name: {{name}}
+Name: Simple Project
 Type: Project
-Areas: {{areas}}
 ---
 
-{{description}}
+## Overview
+This is a simple project without tasks variable.`;
 
-Date: {{date}}`;
+      const result = taskFileManager.testProcessTasksVariable(template, 'Simple Project');
 
-      const data = {
-        name: 'Test Project',
-        description: 'Test description',
-        areas: 'Work, Development'
-      };
-
-      const result = plugin.testProcessTemplateVariables(template, data);
-
-      expect(result).toContain('Name: Test Project');
-      expect(result).toContain('Areas: Work, Development');
-      expect(result).toContain('Test description');
-      expect(result).toMatch(/Date: \d{4}-\d{2}-\d{2}/);
-    });
-
-    it('should handle Templater syntax', () => {
-      const template = `---
-Name: <% tp.file.title %>
----
-
-{{description}}`;
-
-      const data = {
-        name: 'Test Project',
-        description: 'Test description'
-      };
-
-      const result = plugin.testProcessTemplateVariables(template, data);
-
-      expect(result).toContain('Name: Test Project');
-      expect(result).toContain('Test description');
+      expect(result).toBe(template); // Should be unchanged
     });
   });
 });

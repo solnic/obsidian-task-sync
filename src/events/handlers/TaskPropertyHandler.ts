@@ -47,13 +47,12 @@ export class TaskPropertyHandler implements EventHandler {
 
     const data = event.data as TaskEventData;
 
-    // Only process files that already have the correct Type property
-    // This ensures we only handle files created through plugin mechanisms
     if (!await this.hasCorrectTypeProperty(data.filePath)) {
       return;
     }
 
-    await this.setDefaultProperties(data.filePath);
+    // This is a no-op for now.
+    return;
   }
 
   /**
@@ -88,115 +87,4 @@ export class TaskPropertyHandler implements EventHandler {
       return false;
     }
   }
-
-  /**
-   * Set default property values for null/empty properties in a task file
-   */
-  private async setDefaultProperties(filePath: string): Promise<void> {
-    try {
-      const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (!(file instanceof TFile)) {
-        console.error(`TaskPropertyHandler: File not found: ${filePath}`);
-        return;
-      }
-
-      const content = await this.app.vault.read(file);
-      const updatedContent = this.updatePropertiesInContent(content, filePath);
-
-      if (updatedContent !== content) {
-        await this.app.vault.modify(file, updatedContent);
-        console.log(`TaskPropertyHandler: Updated default properties in ${filePath}`);
-      }
-    } catch (error) {
-      console.error(`TaskPropertyHandler: Error setting default properties for ${filePath}:`, error);
-    }
-  }
-
-  /**
-   * Update properties in file content, setting defaults for null/empty values
-   * Note: Link formatting is now handled by TaskFileManager, not here
-   */
-  private updatePropertiesInContent(content: string, filePath: string): string {
-    // Parse YAML using gray-matter to check actual values
-    try {
-      const parsed = matter(content);
-      const frontmatterData = parsed.data || {};
-
-      // Check and update each property for tasks
-      // Note: Type property is never set by handlers - only by templates
-      if (!frontmatterData.Title || frontmatterData.Title === '') {
-        frontmatterData.Title = this.getDefaultTitle(filePath);
-      }
-      if (!frontmatterData.Category || frontmatterData.Category === '') {
-        frontmatterData.Category = this.getDefaultCategory();
-      }
-      if (!frontmatterData.Priority || frontmatterData.Priority === '') {
-        frontmatterData.Priority = this.getDefaultPriority();
-      }
-      if (frontmatterData.Done === null || frontmatterData.Done === undefined || frontmatterData.Done === '') {
-        frontmatterData.Done = this.getDefaultDone();
-      }
-      if (!frontmatterData.Status || frontmatterData.Status === '') {
-        frontmatterData.Status = this.getDefaultStatus();
-      }
-
-      // Only set defaults for arrays if they are missing or null, not if they're empty arrays
-      if (frontmatterData.Areas === undefined || frontmatterData.Areas === null) {
-        frontmatterData.Areas = this.getDefaultAreas();
-      }
-      if (frontmatterData['Sub-tasks'] === undefined || frontmatterData['Sub-tasks'] === null) {
-        frontmatterData['Sub-tasks'] = this.getDefaultSubTasks();
-      }
-      if (frontmatterData.tags === undefined || frontmatterData.tags === null) {
-        frontmatterData.tags = this.getDefaultTags();
-      }
-
-      // Use gray-matter to regenerate the content with updated front-matter
-      return matter.stringify(parsed.content, frontmatterData);
-    } catch (error) {
-      console.error('TaskPropertyHandler: Error parsing YAML:', error);
-      return content;
-    }
-  }
-
-
-
-  /**
-   * Get default values for properties
-   */
-  private getDefaultTitle(filePath: string): string {
-    // Extract filename without extension from the file path
-    const fileName = filePath.split('/').pop() || '';
-    return fileName.replace(/\.md$/, '');
-  }
-
-  private getDefaultCategory(): string {
-    return this.settings.taskTypes[0]?.name || 'Task';
-  }
-
-  private getDefaultPriority(): string {
-    return PROPERTY_REGISTRY.PRIORITY.default;
-  }
-
-  private getDefaultDone(): boolean {
-    return PROPERTY_REGISTRY.DONE.default;
-  }
-
-  private getDefaultStatus(): string {
-    return this.settings.taskStatuses[0]?.name;
-  }
-
-  private getDefaultAreas(): any[] {
-    return PROPERTY_REGISTRY.AREAS.default;
-  }
-
-  private getDefaultSubTasks(): any[] {
-    return PROPERTY_REGISTRY.SUB_TASKS.default;
-  }
-
-  private getDefaultTags(): any[] {
-    return PROPERTY_REGISTRY.TAGS.default;
-  }
-
-
 }

@@ -1188,44 +1188,24 @@ export default class TaskSyncPlugin extends Plugin {
       // Convert old taskData format to TaskCreationData format
       const taskCreationData = this.mapToTaskCreationData(taskData);
 
-      // Determine content based on template configuration and parent task status
+      // Determine content based on parent task status
       const isParentTask = taskData.subTasks && taskData.subTasks.length > 0;
       let content = '';
 
-      if (this.settings.defaultTaskTemplate) {
-        // Use template processing when template is configured
-        content = await this.generateFromTemplate(this.settings.defaultTaskTemplate, taskData, 'task');
-
-        // For parent tasks, append sub-tasks base if not already present
-        if (isParentTask && !content.includes(`![[Bases/${createSafeFileName(taskData.name)}.base]]`)) {
-          content += [
-            '',
-            '',
-            '## Sub-tasks',
-            '',
-            `![[Bases/${createSafeFileName(taskData.name)}.base]]`,
-            ''
-          ].join('\n');
-        }
-      } else {
-        // Fallback to simple content when no template is configured
-        if (isParentTask) {
-          // For parent tasks, generate content with sub-tasks base
-          content = [
-            '{{description}}',
-            '',
-            '',
-            '## Sub-tasks',
-            '',
-            `![[Bases/${createSafeFileName(taskData.name)}.base]]`,
-            ''
-          ].join('\n');
-        } else {
-          content = '{{description}}';
-        }
+      if (isParentTask) {
+        // For parent tasks, generate content with sub-tasks base using {{tasks}} variable
+        content = [
+          '',
+          '',
+          '## Sub-tasks',
+          '',
+          '{{tasks}}',
+          ''
+        ].join('\n');
       }
+      // For regular tasks, leave content empty (no {{description}} handling)
 
-      // Use TaskFileManager to create the task file
+      // Use TaskFileManager to create the task file (it will process {{tasks}} variable)
       const taskPath = await this.taskFileManager.createTaskFile(taskCreationData, content);
       console.log('Task created successfully:', taskPath);
     } catch (error) {
@@ -1266,13 +1246,8 @@ export default class TaskSyncPlugin extends Plugin {
       const areaFileName = createSafeFileName(areaData.name);
       const areaPath = `${this.settings.areasFolder}/${areaFileName}`;
 
-      // Templates are mandatory - this should never happen due to settings validation
-      if (!this.settings.defaultAreaTemplate) {
-        throw new Error('No default area template configured - this indicates a settings validation failure');
-      }
-
-      // Use the configured template
-      const areaContent = await this.generateFromTemplate(this.settings.defaultAreaTemplate, areaData, 'area');
+      // Generate area content using the existing method
+      const areaContent = await this.generateAreaContent(areaData);
 
       await this.app.vault.create(areaPath, areaContent);
       console.log('Area created successfully:', areaPath);
@@ -1299,13 +1274,8 @@ export default class TaskSyncPlugin extends Plugin {
       const projectFileName = createSafeFileName(projectData.name);
       const projectPath = `${this.settings.projectsFolder}/${projectFileName}`;
 
-      // Templates are mandatory - this should never happen due to settings validation
-      if (!this.settings.defaultProjectTemplate) {
-        throw new Error('No default project template configured - this indicates a settings validation failure');
-      }
-
-      // Use the configured template
-      const projectContent = await this.generateFromTemplate(this.settings.defaultProjectTemplate, projectData, 'project');
+      // Generate project content using the existing method
+      const projectContent = await this.generateProjectContent(projectData);
 
       await this.app.vault.create(projectPath, projectContent);
       console.log('Project created successfully:', projectPath);
@@ -1327,259 +1297,91 @@ export default class TaskSyncPlugin extends Plugin {
   /**
    * Generate default area content
    */
-  private generateAreaContent(areaData: AreaCreateData): string {
-    // Import the new front-matter generator
-    const { generateAreaFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
+  private async generateAreaContent(areaData: AreaCreateData): Promise<string> {
+    // Try to read template first
+    const templateContent = await this.templateManager.readTemplate('area');
 
-    return generateAreaFrontMatter(areaData);
+    let content: string;
+    if (templateContent) {
+      // Use template content as-is, only process {{tasks}} variable
+      content = templateContent;
+    } else {
+      // Generate basic area content with {{tasks}} variable
+      content = [
+        '---',
+        `Name: ${areaData.name}`,
+        'Type: Area',
+        '---',
+        '',
+        '## Notes',
+        '',
+        areaData.description || '',
+        '',
+        '## Tasks',
+        '',
+        '{{tasks}}',
+        ''
+      ].join('\n');
+    }
+
+    // Process {{tasks}} variable using TaskFileManager
+    const processedContent = this.taskFileManager.processTasksVariable(content, areaData.name);
+
+    return processedContent;
   }
 
   /**
    * Generate default project content
    */
-  private generateProjectContent(projectData: ProjectCreateData): string {
-    // Import the new front-matter generator
-    const { generateProjectFrontMatter } = require('./services/base-definitions/FrontMatterGenerator');
+  private async generateProjectContent(projectData: ProjectCreateData): Promise<string> {
+    // Try to read template first
+    const templateContent = await this.templateManager.readTemplate('project');
 
+    let content: string;
+    if (templateContent) {
+      // Use template content as-is, only process {{tasks}} variable
+      content = templateContent;
+    } else {
+      // Format areas as YAML array
+      const areasArray = Array.isArray(projectData.areas) ? projectData.areas :
+        (projectData.areas ? projectData.areas.split(',').map(s => s.trim()) : []);
+      const areasYaml = areasArray.length > 0 ?
+        areasArray.map(area => `  - ${area}`).join('\n') : '  []';
 
-    return generateProjectFrontMatter(projectData);
-  }
-
-  /**
-   * Generate content from template with proper base embedding
-   */
-  private async generateFromTemplate(templateName: string, data: any, entityType?: 'task' | 'project' | 'area'): Promise<string> {
-    try {
-
-      const templatePath = `${this.settings.templateFolder}/${templateName}`;
-      let templateFile = this.app.vault.getAbstractFileByPath(templatePath);
-
-      // Also check if the file actually exists on disk, not just in Obsidian's cache
-      const fileExistsOnDisk = await this.app.vault.adapter.exists(templatePath);
-
-      if (!templateFile || !(templateFile instanceof TFile) || !fileExistsOnDisk) {
-        console.warn(`Template not found: ${templatePath}, creating it...`);
-
-        // Try to create the missing template
-        if (entityType === 'task' && templateName === this.settings.defaultTaskTemplate) {
-          await this.templateManager.createTaskTemplate(templateName);
-        } else if (entityType === 'task' && templateName === this.settings.defaultParentTaskTemplate) {
-          await this.templateManager.createParentTaskTemplate(templateName);
-        } else if (entityType === 'area' && templateName === this.settings.defaultAreaTemplate) {
-          await this.templateManager.createAreaTemplate(templateName);
-        } else if (entityType === 'project' && templateName === this.settings.defaultProjectTemplate) {
-          await this.templateManager.createProjectTemplate(templateName);
-        } else {
-          // Unknown template, can't create it
-          throw new Error(`Template not found: ${templatePath}`);
-        }
-
-        // Wait for Obsidian to process the new file and retry multiple times
-        let retries = 0;
-        const maxRetries = 10;
-        while (retries < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          templateFile = this.app.vault.getAbstractFileByPath(templatePath);
-          if (templateFile && templateFile instanceof TFile) {
-            break;
-          }
-          retries++;
-        }
-
-        if (!templateFile || !(templateFile instanceof TFile)) {
-          throw new Error(`Failed to create template after ${maxRetries} retries: ${templatePath}`);
-        }
-      }
-
-      let templateContent = await this.app.vault.read(templateFile);
-
-      // Replace template variables
-      templateContent = this.processTemplateVariables(templateContent, data);
-
-      // Ensure proper base embedding (only for projects and areas, not tasks)
-      if (entityType !== 'task') {
-        templateContent = this.ensureProperBaseEmbedding(templateContent, data);
-      }
-
-      return templateContent;
-    } catch (error) {
-      console.error(`Failed to process template ${templateName}:`, error);
-      // For tasks, re-throw to let the calling method handle fallback
-      if (entityType === 'task') {
-        throw error;
-      }
-      // For projects and areas, fall back to default generation
-      if (data.hasOwnProperty('areas')) {
-        return this.generateProjectContent(data as ProjectCreateData);
-      } else {
-        return this.generateAreaContent(data as AreaCreateData);
-      }
-    }
-  }
-
-
-
-  /**
-   * Process template variables with {{tasks}} syntax support
-   */
-  private processTemplateVariables(content: string, data: any): string {
-    let processedContent = content;
-
-    // Replace common variables
-    if (data.name) {
-      processedContent = processedContent.replace(/<% tp\.file\.title %>/g, data.name);
-      processedContent = processedContent.replace(/\{\{title\}\}/g, data.name);
-      processedContent = processedContent.replace(/\{\{name\}\}/g, data.name);
+      // Generate basic project content with {{tasks}} variable
+      content = [
+        '---',
+        `Name: ${projectData.name}`,
+        `Areas:`,
+        areasYaml,
+        'Type: Project',
+        '---',
+        '',
+        '## Notes',
+        '',
+        projectData.description || '',
+        '',
+        '## Tasks',
+        '',
+        '{{tasks}}',
+        ''
+      ].join('\n');
     }
 
-    if (data.description) {
-      processedContent = processedContent.replace(/\{\{description\}\}/g, data.description);
-    }
-
-    if (data.areas) {
-      // Convert areas to proper array format for YAML
-      const areasArray = Array.isArray(data.areas) ? data.areas : data.areas.split(',').map((s: string) => s.trim());
-
-      // For template variables, use array format
-      const yamlArray = areasArray.map((area: string) => `  - ${area}`).join('\n');
-      const areasYaml = `Areas:\n${yamlArray}`;
-
-      // Replace {{areas}} with proper YAML array format
-      processedContent = processedContent.replace(/Areas:\s*\{\{areas\}\}/g, areasYaml);
-
-      // Also handle standalone {{areas}} replacement for content (not properties)
-      const areasStr = areasArray.join(', ');
-      processedContent = processedContent.replace(/\{\{areas\}\}/g, areasStr);
-    }
-
-    // Replace task-specific variables
-    // For Type field, always replace with 'Task' since Type is always 'Task' for task entities
-    processedContent = processedContent.replace(/\{\{type\}\}/g, 'Task');
-
-    // For Category field, use the category from task data
-    if (data.category) {
-      processedContent = processedContent.replace(/\{\{category\}\}/g, data.category);
-    }
-
-    if (data.priority) {
-      processedContent = processedContent.replace(/\{\{priority\}\}/g, data.priority);
-    }
-
-    if (data.status) {
-      processedContent = processedContent.replace(/\{\{status\}\}/g, data.status);
-    }
-
-    // Handle Project field - replace template variables only
-    if (data.project) {
-      processedContent = processedContent.replace(/\{\{project\}\}/g, data.project);
-    }
-
-    // Handle Parent task field - replace template variables only
-    if (data.parentTask) {
-      processedContent = processedContent.replace(/\{\{parentTask\}\}/g, data.parentTask);
-    }
-
-    // Handle Sub-tasks field - replace template variables only
-    if (data.subTasks && Array.isArray(data.subTasks) && data.subTasks.length > 0) {
-      const subTasksStr = data.subTasks.join(', ');
-      processedContent = processedContent.replace(/\{\{subTasks\}\}/g, subTasksStr);
-    }
-
-    if (data.tags) {
-      const tagsStr = Array.isArray(data.tags) ? data.tags.join(', ') : data.tags;
-      processedContent = processedContent.replace(/\{\{tags\}\}/g, tagsStr);
-    }
-
-    // Handle Done field - replace template variables only
-    if (data.done !== undefined) {
-      processedContent = processedContent.replace(/\{\{done\}\}/g, data.done.toString());
-    }
-
-    // Handle Status field - replace template variables only
-    if (data.status) {
-      processedContent = processedContent.replace(/\{\{status\}\}/g, data.status);
-    }
-
-    // Replace {{tasks}} with appropriate base embed
-    if (data.name) {
-      const baseEmbed = `![[${this.settings.basesFolder}/${data.name}.base]]`;
-      processedContent = processedContent.replace(/\{\{tasks\}\}/g, baseEmbed);
-    }
-
-    // Replace date variables
-    const now = new Date();
-    processedContent = processedContent.replace(/\{\{date\}\}/g, now.toISOString().split('T')[0]);
-    processedContent = processedContent.replace(/\{\{time\}\}/g, now.toISOString());
-
-    // Process Templater syntax if enabled
-    if (this.settings.useTemplater) {
-      processedContent = this.processTemplaterSyntax(processedContent, data);
-    }
+    // Process {{tasks}} variable using TaskFileManager
+    const processedContent = this.taskFileManager.processTasksVariable(content, projectData.name);
 
     return processedContent;
   }
 
 
 
-  /**
-   * Process Templater plugin syntax if available
-   */
-  private processTemplaterSyntax(content: string, data: any): string {
-    let processedContent = content;
 
-    // Check if Templater plugin is available
-    const templaterPlugin = (this.app as any).plugins?.plugins?.['templater-obsidian'];
-    if (!templaterPlugin) {
-      console.warn('Templater plugin not found, falling back to basic processing');
-      return processedContent;
-    }
 
-    // Basic Templater syntax processing (can be extended)
-    if (data.name) {
-      processedContent = processedContent.replace(/<% tp\.file\.title %>/g, data.name);
-      processedContent = processedContent.replace(/<% tp\.file\.basename %>/g, data.name);
-    }
 
-    // Add more Templater syntax processing as needed
-    const now = new Date();
-    processedContent = processedContent.replace(/<% tp\.date\.now\(\) %>/g, now.toISOString().split('T')[0]);
-    processedContent = processedContent.replace(/<% tp\.date\.now\("YYYY-MM-DD"\) %>/g, now.toISOString().split('T')[0]);
 
-    return processedContent;
-  }
 
-  /**
-   * Ensure proper base embedding in template content
-   */
-  private ensureProperBaseEmbedding(content: string, data: any): string {
-    const entityName = data.name;
-    const expectedBaseEmbed = `![[${this.settings.basesFolder}/${entityName}.base]]`;
 
-    // Check if {{tasks}} was already processed (content contains the expected base embed)
-    if (content.includes(expectedBaseEmbed)) {
-      return content; // {{tasks}} was processed, no need to add more
-    }
-
-    // Check if template has generic Tasks.base embedding - replace it first
-    const genericBasePattern = /!\[\[Tasks\.base\]\]/;
-    if (genericBasePattern.test(content)) {
-      // Replace generic with specific
-      return content.replace(genericBasePattern, expectedBaseEmbed);
-    }
-
-    // Check if template has any other base embedding already (including display text)
-    const anyBasePattern = /!\[\[.*\.base(\|.*?)?\]\]/;
-    if (anyBasePattern.test(content)) {
-      return content; // Template already has some base embedding, don't interfere
-    }
-
-    // Only add base embedding if no base-related content exists
-    if (!content.includes('![[') || !content.includes('.base]]')) {
-      return content.trim() + `\n\n## Tasks\n${expectedBaseEmbed}`;
-    }
-
-    return content;
-  }
 
   // Base Management Methods
 

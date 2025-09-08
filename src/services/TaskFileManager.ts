@@ -37,17 +37,36 @@ export class TaskFileManager extends FileManager {
   /**
    * Create a task file with proper front-matter structure
    * @param data - Task creation data
+   * @param content - File content that may contain {{tasks}} variable
    * @returns Path of the created task file
    */
   async createTaskFile(data: TaskCreationData, content?: string): Promise<string> {
     const taskFolder = this.settings.tasksFolder;
 
-    const filePath = await this.createFile(taskFolder, data.title, content || '');
+    // Process {{tasks}} variable in content before creating file
+    const processedContent = this.processTasksVariable(content || '', data.title);
+
+    const filePath = await this.createFile(taskFolder, data.title, processedContent);
     const frontMatterData = this.generateTaskFrontMatterObject(data);
 
     await this.updateFrontMatter(filePath, frontMatterData);
 
     return filePath;
+  }
+
+  /**
+   * Process {{tasks}} variable in content and replace with appropriate base embed
+   * @param content - Content that may contain {{tasks}} variable
+   * @param taskName - Name of the task for base embed
+   * @returns Processed content with {{tasks}} replaced
+   */
+  public processTasksVariable(content: string, taskName: string): string {
+    if (!content.includes('{{tasks}}')) {
+      return content;
+    }
+
+    const baseEmbed = `![[${this.settings.basesFolder}/${taskName}.base]]`;
+    return content.replace(/\{\{tasks\}\}/g, baseEmbed);
   }
 
   /**
@@ -63,9 +82,31 @@ export class TaskFileManager extends FileManager {
 
       if (!prop) continue;
 
-      const value = data[prop.key];
+      let value = data[prop.key];
 
       if (value !== undefined && value !== null) {
+        // Format as links if the property has link: true
+        if (prop.link) {
+          if (prop.type === 'array' && Array.isArray(value)) {
+            // For arrays, format each item as a link
+            value = value.map(item => {
+              if (typeof item === 'string' && item.trim() !== '') {
+                // Don't double-format if already a link
+                if (item.startsWith('[[') && item.endsWith(']]')) {
+                  return item;
+                }
+                return `[[${item}]]`;
+              }
+              return item;
+            });
+          } else if (prop.type === 'string' && typeof value === 'string' && value.trim() !== '') {
+            // For strings, format as a link
+            // Don't double-format if already a link
+            if (!value.startsWith('[[') || !value.endsWith(']]')) {
+              value = `[[${value}]]`;
+            }
+          }
+        }
         frontMatterData[prop.name] = value;
       } else if (prop.default !== undefined) {
         frontMatterData[prop.name] = prop.default;
@@ -115,7 +156,9 @@ export class TaskFileManager extends FileManager {
    * @param projectName - Name of the project to assign to
    */
   async assignToProject(filePath: string, projectName: string): Promise<void> {
-    await this.updateProperty(filePath, 'Project', projectName);
+    // Format as link if not empty
+    const projectLink = projectName && projectName.trim() !== '' ? `[[${projectName}]]` : '';
+    await this.updateProperty(filePath, 'Project', projectLink);
   }
 
   /**
@@ -124,7 +167,18 @@ export class TaskFileManager extends FileManager {
    * @param areas - Array of area names to assign to
    */
   async assignToAreas(filePath: string, areas: string[]): Promise<void> {
-    await this.updateProperty(filePath, 'Areas', areas);
+    // Format each area as a link
+    const areaLinks = areas.map(area => {
+      if (typeof area === 'string' && area.trim() !== '') {
+        // Don't double-format if already a link
+        if (area.startsWith('[[') && area.endsWith(']]')) {
+          return area;
+        }
+        return `[[${area}]]`;
+      }
+      return area;
+    });
+    await this.updateProperty(filePath, 'Areas', areaLinks);
   }
 
   /**

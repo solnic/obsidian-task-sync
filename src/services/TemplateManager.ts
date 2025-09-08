@@ -24,6 +24,43 @@ export class TemplateManager {
   }
 
   /**
+   * Read template content from file
+   */
+  async readTemplate(templateType: 'task' | 'area' | 'project' | 'parentTask'): Promise<string | null> {
+    let templateFileName: string;
+
+    switch (templateType) {
+      case 'task':
+        templateFileName = this.settings.defaultTaskTemplate;
+        break;
+      case 'area':
+        templateFileName = this.settings.defaultAreaTemplate;
+        break;
+      case 'project':
+        templateFileName = this.settings.defaultProjectTemplate;
+        break;
+      case 'parentTask':
+        templateFileName = this.settings.defaultParentTaskTemplate;
+        break;
+      default:
+        return null;
+    }
+
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    try {
+      const templateFile = this.vault.getAbstractFileByPath(templatePath);
+      if (templateFile instanceof TFile) {
+        return await this.vault.read(templateFile);
+      }
+    } catch (error) {
+      console.warn(`Could not read template ${templatePath}:`, error);
+    }
+
+    return null;
+  }
+
+  /**
    * Create a Task template file with proper front-matter and content
    */
   async createTaskTemplate(filename?: string): Promise<void> {
