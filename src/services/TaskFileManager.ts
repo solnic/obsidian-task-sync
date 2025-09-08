@@ -115,7 +115,8 @@ export class TaskFileManager extends FileManager {
    * @param projectName - Name of the project to assign to
    */
   async assignToProject(filePath: string, projectName: string): Promise<void> {
-    await this.updateProperty(filePath, 'Project', projectName);
+    const formattedValue = this.formatPropertyValue('Project', projectName);
+    await this.updateProperty(filePath, 'Project', formattedValue);
   }
 
   /**
@@ -124,7 +125,8 @@ export class TaskFileManager extends FileManager {
    * @param areas - Array of area names to assign to
    */
   async assignToAreas(filePath: string, areas: string[]): Promise<void> {
-    await this.updateProperty(filePath, 'Areas', areas);
+    const formattedValue = this.formatPropertyValue('Areas', areas);
+    await this.updateProperty(filePath, 'Areas', formattedValue);
   }
 
   /**
@@ -175,8 +177,8 @@ export class TaskFileManager extends FileManager {
    * @param parentTaskName - Name of the parent task
    */
   async setParentTask(filePath: string, parentTaskName: string): Promise<void> {
-    const parentTaskLink = parentTaskName ? `[[${parentTaskName}]]` : '';
-    await this.updateProperty(filePath, 'Parent task', parentTaskLink);
+    const formattedValue = this.formatPropertyValue('Parent task', parentTaskName);
+    await this.updateProperty(filePath, 'Parent task', formattedValue);
   }
 
   /**
@@ -187,10 +189,10 @@ export class TaskFileManager extends FileManager {
   async addSubTask(filePath: string, subTaskName: string): Promise<void> {
     const currentFrontMatter = await this.loadFrontMatter(filePath);
     const currentSubTasks = currentFrontMatter['Sub-tasks'] || [];
-    const subTaskLink = `[[${subTaskName}]]`;
+    const formattedSubTask = this.formatPropertyValue('Sub-tasks', subTaskName);
 
-    if (!currentSubTasks.includes(subTaskLink)) {
-      const newSubTasks = [...currentSubTasks, subTaskLink];
+    if (!currentSubTasks.includes(formattedSubTask)) {
+      const newSubTasks = [...currentSubTasks, formattedSubTask];
       await this.updateProperty(filePath, 'Sub-tasks', newSubTasks);
     }
   }
@@ -203,8 +205,8 @@ export class TaskFileManager extends FileManager {
   async removeSubTask(filePath: string, subTaskName: string): Promise<void> {
     const currentFrontMatter = await this.loadFrontMatter(filePath);
     const currentSubTasks = currentFrontMatter['Sub-tasks'] || [];
-    const subTaskLink = `[[${subTaskName}]]`;
-    const newSubTasks = currentSubTasks.filter((task: string) => task !== subTaskLink);
+    const formattedSubTask = this.formatPropertyValue('Sub-tasks', subTaskName);
+    const newSubTasks = currentSubTasks.filter((task: string) => task !== formattedSubTask);
     await this.updateProperty(filePath, 'Sub-tasks', newSubTasks);
   }
 
@@ -309,5 +311,42 @@ export class TaskFileManager extends FileManager {
     }
 
     return matchingTasks;
+  }
+
+  /**
+   * Format property value based on property definitions
+   * Automatically applies link formatting for properties marked with link: true
+   * @param propertyName - The property name (e.g., 'Project', 'Areas', 'Parent task', 'Sub-tasks')
+   * @param value - The value to format
+   * @returns Formatted value with link formatting applied if needed
+   */
+  private formatPropertyValue(propertyName: string, value: any): any {
+    // Find the property definition by name
+    const propertyDef = Object.values(PROPERTY_REGISTRY).find(prop => prop.name === propertyName);
+
+    if (!propertyDef || !propertyDef.link || !value) {
+      return value;
+    }
+
+    // Handle link formatting for properties that should be links
+    if (propertyDef.type === 'array' && Array.isArray(value)) {
+      // For array properties with links, format each item as a link
+      return value.map(item => {
+        // Don't double-format if already a link
+        if (typeof item === 'string' && item.startsWith('[[') && item.endsWith(']]')) {
+          return item;
+        }
+        return `[[${item}]]`;
+      });
+    } else if (propertyDef.type === 'string' && typeof value === 'string') {
+      // For string properties with links, format as link
+      // Don't double-format if already a link
+      if (value.startsWith('[[') && value.endsWith(']]')) {
+        return value;
+      }
+      return `[[${value}]]`;
+    }
+
+    return value;
   }
 }

@@ -6,7 +6,6 @@
 import { test, expect, describe } from 'vitest';
 import {
   createTestFolders,
-  getFileContent,
   fileExists,
   waitForTaskSyncPlugin
 } from '../helpers/task-sync-setup';
@@ -46,15 +45,20 @@ describe('TaskFileManager Service', () => {
     const taskExists = await fileExists(context.page, taskPath);
     expect(taskExists).toBe(true);
 
-    // Verify the task content has proper front-matter structure
-    const taskContent = await getFileContent(context.page, taskPath);
-    expect(taskContent).toContain(`Title: '${taskData.title}'`);
-    expect(taskContent).toContain(`Type: Task`);
-    expect(taskContent).toContain(`Priority: ${taskData.priority}`);
-    expect(taskContent).toContain(`- '[[Development]]'`);
-    expect(taskContent).toContain(`Project: '[[Website Redesign]]'`);
-    expect(taskContent).toContain(`Done: ${taskData.done}`);
-    expect(taskContent).toContain(`Status: ${taskData.status}`);
+    // Verify the task front-matter has proper structure using API
+    const frontMatter = await context.page.evaluate(async (path) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter(path);
+    }, taskPath);
+
+    expect(frontMatter.Title).toBe(taskData.title);
+    expect(frontMatter.Type).toBe('Task');
+    expect(frontMatter.Priority).toBe(taskData.priority);
+    expect(frontMatter.Areas).toEqual(['[[Development]]']);
+    expect(frontMatter.Project).toBe('[[Website Redesign]]');
+    expect(frontMatter.Done).toBe(taskData.done);
+    expect(frontMatter.Status).toBe(taskData.status);
   });
 
   test('should load front-matter from existing task file', async () => {
@@ -166,9 +170,17 @@ Task content here.`;
       await taskFileManager.changeTaskStatus('Tasks/Status Test Task.md', true);
     });
 
-    // Verify the status was changed
-    const updatedContent = await getFileContent(context.page, 'Tasks/Status Test Task.md');
-    expect(updatedContent).toContain('Done: true');
+    // Wait a moment for the update to be processed
+    await context.page.waitForTimeout(200);
+
+    // Verify the status was changed using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Status Test Task.md');
+    });
+
+    expect(frontMatter.Done).toBe(true);
   });
 
   test('should change task status using Status property', async () => {
@@ -198,9 +210,14 @@ Task content here.`;
       await taskFileManager.changeTaskStatus('Tasks/Status String Test Task.md', 'Completed');
     });
 
-    // Verify the status was changed
-    const updatedContent = await getFileContent(context.page, 'Tasks/Status String Test Task.md');
-    expect(updatedContent).toContain('Status: Completed');
+    // Verify the status was changed using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Status String Test Task.md');
+    });
+
+    expect(frontMatter.Status).toBe('Completed');
   });
 
   test('should assign task to project', async () => {
@@ -229,10 +246,14 @@ Task content here.`;
       await taskFileManager.assignToProject('Tasks/Project Assignment Test.md', 'New Project');
     });
 
-    // Verify the project was changed
-    const updatedContent = await getFileContent(context.page, 'Tasks/Project Assignment Test.md');
-    expect(updatedContent).toContain(`Project: '[[New Project]]'`);
-    expect(updatedContent).not.toContain('Project: Old Project');
+    // Verify the project was changed using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Project Assignment Test.md');
+    });
+
+    expect(frontMatter.Project).toBe('[[New Project]]');
   });
 
   test('should assign task to areas', async () => {
@@ -262,12 +283,17 @@ Task content here.`;
       await taskFileManager.assignToAreas('Tasks/Areas Assignment Test.md', ['Testing', 'Documentation']);
     });
 
-    // Verify the areas were changed
-    const updatedContent = await getFileContent(context.page, 'Tasks/Areas Assignment Test.md');
+    // Wait a moment for the update to be processed
+    await context.page.waitForTimeout(200);
 
-    expect(updatedContent).toContain("- '[[Development]]'");
-    expect(updatedContent).toContain("- '[[Testing]]'");
-    expect(updatedContent).toContain("- '[[Documentation]]'");
+    // Verify the areas were changed using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Areas Assignment Test.md');
+    });
+
+    expect(frontMatter.Areas).toEqual(['[[Testing]]', '[[Documentation]]']);
   });
 
   test('should update specific front-matter property', async () => {
@@ -299,9 +325,13 @@ Task content here.`;
     // Wait a moment for the update to be processed
     await context.page.waitForTimeout(100);
 
-    // Verify the property was updated
-    const updatedContent = await getFileContent(context.page, 'Tasks/Property Update Test.md');
-    expect(updatedContent).toContain('Priority: Critical');
-    expect(updatedContent).not.toContain('Priority: Low');
+    // Verify the property was updated using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Property Update Test.md');
+    });
+
+    expect(frontMatter.Priority).toBe('Critical');
   });
 });
