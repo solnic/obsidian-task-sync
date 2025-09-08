@@ -2,13 +2,13 @@
  * Settings types and interfaces for the Task Sync plugin
  */
 
-// Task type interface with color support
+// Task category interface with color support
 export interface TaskType {
   name: string;
   color: string;
 }
 
-// Available colors for task types
+// Available colors for task categories
 export const TASK_TYPE_COLORS = [
   'blue', 'red', 'green', 'yellow', 'purple', 'orange', 'pink', 'gray', 'teal', 'indigo'
 ] as const;
@@ -33,6 +33,7 @@ export interface TaskStatus {
   name: string;
   color: string;
   isDone: boolean; // Indicates if this status represents a completed/done state
+  isInProgress: boolean; // Indicates if this status represents an active/in-progress state
 }
 
 // Available colors for task statuses
@@ -73,7 +74,7 @@ export interface TaskSyncSettings {
   tasksBaseFile: string;
   autoGenerateBases: boolean;
   autoUpdateBaseViews: boolean;
-  // Task types configuration
+  // Task categories configuration
   taskTypes: TaskType[];
   // Task priorities configuration
   taskPriorities: TaskPriority[];

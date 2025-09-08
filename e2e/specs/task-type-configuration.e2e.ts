@@ -20,15 +20,15 @@ describe('Task Type Configuration', () => {
   }
 
   async function scrollToTaskTypesSection() {
-    await scrollToSettingsSection(context.page, 'Task Types');
+    await scrollToSettingsSection(context.page, 'Task Categories');
   }
 
   test('should display task types settings section', { timeout: 15000 }, async () => {
     await createTestFolders(context.page);
     await openTaskSyncSettingsWrapper();
 
-    // Check if Task Types section exists
-    const taskTypesSection = context.page.locator('.task-sync-section-header').filter({ hasText: 'Task Types' });
+    // Check if Task Categories section exists
+    const taskTypesSection = context.page.locator('.task-sync-section-header').filter({ hasText: 'Task Categories' });
     expect(await taskTypesSection.isVisible()).toBe(true);
 
     await scrollToTaskTypesSection();
@@ -38,8 +38,8 @@ describe('Task Type Configuration', () => {
     const settingCount = await settingItems.count();
     expect(settingCount).toBeGreaterThan(5); // Should have settings for each task type plus add new
 
-    // Check if add new task type section exists
-    const addTypeSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    // Check if add new task category section exists
+    const addTypeSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Category' });
     expect(await addTypeSection.isVisible()).toBe(true);
   });
 

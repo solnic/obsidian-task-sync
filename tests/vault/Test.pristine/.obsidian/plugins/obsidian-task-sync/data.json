@@ -56,17 +56,20 @@
     {
       "name": "Backlog",
       "color": "gray",
-      "isDone": false
+      "isDone": false,
+      "isInProgress": false
     },
     {
       "name": "In Progress",
       "color": "blue",
-      "isDone": false
+      "isDone": false,
+      "isInProgress": true
     },
     {
       "name": "Done",
       "color": "green",
-      "isDone": true
+      "isDone": true,
+      "isInProgress": false
     }
   ],
   "areaBasesEnabled": true,

@@ -872,7 +872,8 @@ export async function addTaskStatus(page: Page, statusName: string, color: strin
   // If isDone should be true, toggle it
   if (isDone) {
     const newStatusSetting = page.locator('.setting-item').filter({ hasText: statusName }).first();
-    const toggle = newStatusSetting.locator('input[type="checkbox"]');
+    // Target the "Done" checkbox specifically by its tooltip
+    const toggle = newStatusSetting.getByLabel('Mark this status as representing a completed/done state').getByRole('checkbox');
     const isChecked = await toggle.isChecked();
     if (!isChecked) {
       await toggle.click();
@@ -887,10 +888,29 @@ export async function toggleTaskStatusDone(page: Page, statusName: string, isDon
   const statusSetting = page.locator('.setting-item').filter({ hasText: statusName }).first();
   await statusSetting.waitFor({ state: 'visible', timeout: 5000 });
 
-  const toggle = statusSetting.locator('input[type="checkbox"]');
+  // Target the "Done" checkbox specifically by its tooltip
+  const toggle = statusSetting.getByLabel('Mark this status as representing a completed/done state').getByRole('checkbox');
   const isChecked = await toggle.isChecked();
 
   if (isChecked !== isDone) {
+    await toggle.click();
+    // Give UI time to process the change
+    await page.waitForTimeout(100);
+  }
+}
+
+/**
+ * Toggle the isInProgress state of an existing task status
+ */
+export async function toggleTaskStatusInProgress(page: Page, statusName: string, isInProgress: boolean): Promise<void> {
+  const statusSetting = page.locator('.setting-item').filter({ hasText: statusName }).first();
+  await statusSetting.waitFor({ state: 'visible', timeout: 5000 });
+
+  // Target the "In Progress" checkbox specifically by its tooltip
+  const toggle = statusSetting.getByLabel('Mark this status as representing an active/in-progress state').getByRole('checkbox');
+  const isChecked = await toggle.isChecked();
+
+  if (isChecked !== isInProgress) {
     await toggle.click();
     // Give UI time to process the change
     await page.waitForTimeout(100);

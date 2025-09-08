@@ -38,9 +38,9 @@ const mockSettings = {
     { name: 'Urgent', color: 'red' }
   ],
   taskStatuses: [
-    { name: 'Backlog', color: 'gray', isDone: false },
-    { name: 'In Progress', color: 'blue', isDone: false },
-    { name: 'Done', color: 'green', isDone: true }
+    { name: 'Backlog', color: 'gray', isDone: false, isInProgress: false },
+    { name: 'In Progress', color: 'blue', isDone: false, isInProgress: true },
+    { name: 'Done', color: 'green', isDone: true, isInProgress: false }
   ],
   githubIntegration: {
     enabled: false,

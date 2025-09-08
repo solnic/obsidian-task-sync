@@ -4,7 +4,7 @@
 
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import TaskSyncPlugin from '../../../main';
-import { TaskSyncSettings, ValidationResult, SettingsSection, TaskType, TASK_TYPE_COLORS, TaskTypeColor, TaskPriority, TASK_PRIORITY_COLORS, TaskPriorityColor, TaskStatus, TASK_STATUS_COLORS, TaskStatusColor, FileSuggestOptions } from './types';
+import { TaskSyncSettings, ValidationResult, TASK_TYPE_COLORS, TaskTypeColor, TASK_PRIORITY_COLORS, TaskPriorityColor, TASK_STATUS_COLORS, TaskStatusColor, FileSuggestOptions } from './types';
 import { DEFAULT_SETTINGS } from './defaults';
 import { validateFolderPath, validateFileName, validateBaseFileName, validateTemplateFileName, validateGitHubToken } from './validation';
 import { FolderSuggestComponent, FileSuggestComponent } from './suggest';
@@ -167,7 +167,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     this.createTemplatesSection(sectionsContainer);
     this.createBasesSection(sectionsContainer);
     this.createTaskPropertyOrderSection(sectionsContainer);
-    this.createTaskTypesSection(sectionsContainer);
+    this.createTaskCategoriesSection(sectionsContainer);
     this.createTaskPrioritiesSection(sectionsContainer);
     this.createTaskStatusesSection(sectionsContainer);
     this.createGitHubIntegrationSection(sectionsContainer);
@@ -338,13 +338,13 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     });
   }
 
-  private createTaskTypesSection(container: HTMLElement): void {
+  private createTaskCategoriesSection(container: HTMLElement): void {
     const section = container.createDiv('task-sync-settings-section');
 
     // Section header
-    section.createEl('h2', { text: 'Task Types', cls: 'task-sync-section-header' });
+    section.createEl('h2', { text: 'Task Categories', cls: 'task-sync-section-header' });
     section.createEl('p', {
-      text: 'Configure the available task types and their colors.',
+      text: 'Configure the available task categories and their colors.',
       cls: 'task-sync-settings-section-desc'
     });
 
@@ -352,7 +352,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     this.plugin.settings.taskTypes.forEach((taskType, index) => {
       const setting = new Setting(section)
         .setName(taskType.name)
-        .setDesc(`Configure the "${taskType.name}" task type`);
+        .setDesc(`Configure the "${taskType.name}" task category`);
 
       // Add type badge preview
       const badgeContainer = setting.controlEl.createDiv('task-type-preview');
@@ -362,7 +362,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       // Add name input
       setting.addText(text => {
         text.setValue(taskType.name)
-          .setPlaceholder('Task type name')
+          .setPlaceholder('Task category name')
           .onChange(async (value) => {
             if (value.trim()) {
               this.plugin.settings.taskTypes[index].name = value.trim();
@@ -410,9 +410,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
               this.plugin.settings.taskTypes.splice(index, 1);
               await this.plugin.saveSettings();
 
-              // Refresh only the task types section, not the entire container
+              // Refresh only the task categories section, not the entire container
               section.empty();
-              this.recreateTaskTypesSection(section);
+              this.recreateTaskCategoriesSection(section);
 
               // Trigger base sync if enabled
               if (this.plugin.settings.autoSyncAreaProjectBases) {
@@ -423,23 +423,23 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       }
     });
 
-    // Add new task type section
-    this.createAddTaskTypeSection(section);
+    // Add new task category section
+    this.createAddTaskCategorySection(section);
   }
 
-  private recreateTaskTypesSection(section: HTMLElement): void {
+  private recreateTaskCategoriesSection(section: HTMLElement): void {
     // Section header
-    section.createEl('h2', { text: 'Task Types', cls: 'task-sync-section-header' });
+    section.createEl('h2', { text: 'Task Categories', cls: 'task-sync-section-header' });
     section.createEl('p', {
-      text: 'Configure the available task types and their colors.',
+      text: 'Configure the available task categories and their colors.',
       cls: 'task-sync-settings-section-desc'
     });
 
-    // Create a setting for each task type
+    // Create a setting for each task category
     this.plugin.settings.taskTypes.forEach((taskType, index) => {
       const setting = new Setting(section)
         .setName(taskType.name)
-        .setDesc(`Configure the "${taskType.name}" task type`);
+        .setDesc(`Configure the "${taskType.name}" task category`);
 
       // Add type badge preview
       const badgeContainer = setting.controlEl.createDiv('task-type-preview');
@@ -449,7 +449,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       // Add name input
       setting.addText(text => {
         text.setValue(taskType.name)
-          .setPlaceholder('Task type name')
+          .setPlaceholder('Task category name')
           .onChange(async (value) => {
             if (value.trim()) {
               this.plugin.settings.taskTypes[index].name = value.trim();
@@ -497,9 +497,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
               this.plugin.settings.taskTypes.splice(index, 1);
               await this.plugin.saveSettings();
 
-              // Refresh only the task types section, not the entire container
+              // Refresh only the task categories section, not the entire container
               section.empty();
-              this.recreateTaskTypesSection(section);
+              this.recreateTaskCategoriesSection(section);
 
               // Trigger base sync if enabled
               if (this.plugin.settings.autoSyncAreaProjectBases) {
@@ -510,17 +510,17 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       }
     });
 
-    // Add new task type section
-    this.createAddTaskTypeSection(section);
+    // Add new task category section
+    this.createAddTaskCategorySection(section);
   }
 
-  private createAddTaskTypeSection(container: HTMLElement): void {
+  private createAddTaskCategorySection(container: HTMLElement): void {
     let newTypeName = '';
     let newTypeColor: TaskTypeColor = 'blue';
 
     new Setting(container)
-      .setName('Add New Task Type')
-      .setDesc('Create a new task type for your workflow')
+      .setName('Add New Task Category')
+      .setDesc('Create a new task category for your workflow')
       .addText(text => {
         text.setPlaceholder('e.g., Epic, Story, Research')
           .onChange((value) => {
@@ -538,18 +538,18 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           });
       })
       .addButton(button => {
-        button.setButtonText('Add Task Type')
+        button.setButtonText('Add Task Category')
           .setCta()
           .onClick(async () => {
             if (newTypeName && !this.plugin.settings.taskTypes.some(t => t.name === newTypeName)) {
               this.plugin.settings.taskTypes.push({ name: newTypeName, color: newTypeColor });
               await this.plugin.saveSettings();
 
-              // Find the task types section and refresh it
-              const taskTypesSection = container.closest('.task-sync-settings-section');
-              if (taskTypesSection) {
-                taskTypesSection.empty();
-                this.recreateTaskTypesSection(taskTypesSection as HTMLElement);
+              // Find the task categories section and refresh it
+              const taskCategoriesSection = container.closest('.task-sync-settings-section');
+              if (taskCategoriesSection) {
+                taskCategoriesSection.empty();
+                this.recreateTaskCategoriesSection(taskCategoriesSection as HTMLElement);
               }
 
               // Trigger base sync if enabled
@@ -790,7 +790,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     // Section header
     section.createEl('h2', { text: 'Task Statuses', cls: 'task-sync-section-header' });
     section.createEl('p', {
-      text: 'Configure the available task statuses, their colors, and which statuses represent completed tasks.',
+      text: 'Configure the available task statuses, their colors, and which statuses represent completed or in-progress tasks.',
       cls: 'task-sync-settings-section-desc'
     });
 
@@ -853,6 +853,21 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           .setTooltip('Mark this status as representing a completed/done state')
           .onChange(async (value) => {
             this.plugin.settings.taskStatuses[index].isDone = value;
+            await this.plugin.saveSettings();
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+      });
+
+      // Add isInProgress toggle
+      setting.addToggle(toggle => {
+        toggle.setValue(taskStatus.isInProgress || false)
+          .setTooltip('Mark this status as representing an active/in-progress state')
+          .onChange(async (value) => {
+            this.plugin.settings.taskStatuses[index].isInProgress = value;
             await this.plugin.saveSettings();
 
             // Trigger base sync if enabled
@@ -892,7 +907,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     // Section header
     section.createEl('h2', { text: 'Task Statuses', cls: 'task-sync-section-header' });
     section.createEl('p', {
-      text: 'Configure the available task statuses, their colors, and which statuses represent completed tasks.',
+      text: 'Configure the available task statuses, their colors, and which statuses represent completed or in-progress tasks.',
       cls: 'task-sync-settings-section-desc'
     });
 
@@ -955,6 +970,21 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           .setTooltip('Mark this status as representing a completed/done state')
           .onChange(async (value) => {
             this.plugin.settings.taskStatuses[index].isDone = value;
+            await this.plugin.saveSettings();
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          });
+      });
+
+      // Add isInProgress toggle
+      setting.addToggle(toggle => {
+        toggle.setValue(taskStatus.isInProgress || false)
+          .setTooltip('Mark this status as representing an active/in-progress state')
+          .onChange(async (value) => {
+            this.plugin.settings.taskStatuses[index].isInProgress = value;
             await this.plugin.saveSettings();
 
             // Trigger base sync if enabled
@@ -1018,7 +1048,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           .setCta()
           .onClick(async () => {
             if (newStatusName && !this.plugin.settings.taskStatuses.some(s => s.name === newStatusName)) {
-              this.plugin.settings.taskStatuses.push({ name: newStatusName, color: newStatusColor, isDone: false });
+              this.plugin.settings.taskStatuses.push({ name: newStatusName, color: newStatusColor, isDone: false, isInProgress: false });
               await this.plugin.saveSettings();
 
               // Find the task statuses section and refresh it

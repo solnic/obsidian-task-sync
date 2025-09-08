@@ -50,8 +50,8 @@ describe('GitHubService', () => {
       { name: 'High', color: 'orange' }
     ],
     taskStatuses: [
-      { name: 'Backlog', color: 'gray', isDone: false },
-      { name: 'Done', color: 'green', isDone: true }
+      { name: 'Backlog', color: 'gray', isDone: false, isInProgress: false },
+      { name: 'Done', color: 'green', isDone: true, isInProgress: false }
     ],
     areaBasesEnabled: true,
     projectBasesEnabled: true,

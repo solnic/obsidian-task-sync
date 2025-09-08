@@ -20,7 +20,7 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   tasksBaseFile: 'Tasks.base',
   autoGenerateBases: true,
   autoUpdateBaseViews: true,
-  // Task types defaults
+  // Task categories defaults
   taskTypes: [
     { name: 'Task', color: 'blue' },
     { name: 'Bug', color: 'red' },
@@ -37,9 +37,9 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   ],
   // Task statuses defaults
   taskStatuses: [
-    { name: 'Backlog', color: 'gray', isDone: false },
-    { name: 'In Progress', color: 'blue', isDone: false },
-    { name: 'Done', color: 'green', isDone: true }
+    { name: 'Backlog', color: 'gray', isDone: false, isInProgress: false },
+    { name: 'In Progress', color: 'blue', isDone: false, isInProgress: true },
+    { name: 'Done', color: 'green', isDone: true, isInProgress: false }
   ],
   // Individual area/project bases defaults
   areaBasesEnabled: true,
