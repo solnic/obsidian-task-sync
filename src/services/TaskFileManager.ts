@@ -85,11 +85,21 @@ export class TaskFileManager extends FileManager {
     // Try to read template content
     const templateContent = await this.readTemplate(templateType);
     if (templateContent) {
+      // Check if template has meaningful content (not just front-matter)
+      const hasContentAfterFrontMatter = this.hasContentAfterFrontMatter(templateContent);
+      if (hasContentAfterFrontMatter) {
+        return templateContent;
+      }
+      // If template exists but has no content after front-matter, use description if available
+      if (data.description) {
+        return data.description;
+      }
+      // Otherwise use the template as-is (empty content)
       return templateContent;
     }
 
-    // Fallback content if template doesn't exist
-    return '';
+    // Fallback content if template doesn't exist - use description if available
+    return data.description || '';
   }
 
   /**
@@ -144,6 +154,39 @@ export class TaskFileManager extends FileManager {
     }
 
     return null;
+  }
+
+  /**
+   * Check if template content has meaningful content after front-matter
+   * @param content - Template content to check
+   * @returns True if there's content after front-matter, false otherwise
+   */
+  private hasContentAfterFrontMatter(content: string): boolean {
+    // Split content by lines
+    const lines = content.split('\n');
+
+    // Find the end of front-matter (second occurrence of ---)
+    let frontMatterEndIndex = -1;
+    let dashCount = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === '---') {
+        dashCount++;
+        if (dashCount === 2) {
+          frontMatterEndIndex = i;
+          break;
+        }
+      }
+    }
+
+    // If no front-matter found, consider the whole content as meaningful
+    if (frontMatterEndIndex === -1) {
+      return content.trim().length > 0;
+    }
+
+    // Check if there's non-empty content after front-matter
+    const contentAfterFrontMatter = lines.slice(frontMatterEndIndex + 1).join('\n');
+    return contentAfterFrontMatter.trim().length > 0;
   }
 
   /**

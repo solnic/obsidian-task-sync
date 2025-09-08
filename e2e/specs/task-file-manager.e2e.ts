@@ -334,4 +334,50 @@ Task content here.`;
 
     expect(frontMatter.Priority).toBe('Critical');
   });
+
+  test('should create task with description as file content, not just in front-matter', async () => {
+    await createTestFolders(context.page);
+    await waitForTaskSyncPlugin(context.page);
+
+    // Test creating a task file with description
+    const taskData = {
+      title: 'Task with Description',
+      priority: 'Medium'
+    };
+    const description = 'This is a detailed task description that should appear as the file content.';
+
+    const taskPath = await context.page.evaluate(async ({ data, content }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+
+      // Access the taskFileManager instance and call it with content parameter
+      const taskFileManager = plugin.taskFileManager;
+
+      return await taskFileManager.createTaskFile(data, content);
+    }, { data: taskData, content: description });
+
+    // Verify the task file was created
+    const taskExists = await fileExists(context.page, taskPath);
+    expect(taskExists).toBe(true);
+
+    // Get the full file content
+    const fullContent = await context.page.evaluate(async (path) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (file) {
+        return await app.vault.read(file);
+      }
+      return '';
+    }, taskPath);
+
+    // Verify the description appears as file content (after front-matter)
+    expect(fullContent).toContain('This is a detailed task description that should appear as the file content.');
+
+    // Verify the description is not just in front-matter but in the body
+    const lines = fullContent.split('\n');
+    const frontMatterEndIndex = lines.findIndex((line: string, index: number) => index > 0 && line === '---');
+    const bodyContent = lines.slice(frontMatterEndIndex + 1).join('\n');
+
+    expect(bodyContent.trim()).toContain('This is a detailed task description that should appear as the file content.');
+  });
 });

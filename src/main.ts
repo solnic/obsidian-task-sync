@@ -564,8 +564,8 @@ export default class TaskSyncPlugin extends Plugin {
       // Convert old taskData format to TaskCreationData format
       const taskCreationData = this.mapToTaskCreationData(taskData);
 
-      // Use TaskFileManager to create the task file (it will handle template content and {{tasks}} variable)
-      const taskPath = await this.taskFileManager.createTaskFile(taskCreationData);
+      // Use TaskFileManager to create the task file, passing description as content
+      const taskPath = await this.taskFileManager.createTaskFile(taskCreationData, taskData.description);
       console.log('Task created successfully:', taskPath);
     } catch (error) {
       console.error('Failed to create task:', error);
