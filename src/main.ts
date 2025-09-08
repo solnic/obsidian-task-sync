@@ -223,7 +223,6 @@ export default class TaskSyncPlugin extends Plugin {
         await this.importAllGitHubIssues();
       }
     });
-
   }
 
   onunload() {

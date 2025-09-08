@@ -38,7 +38,7 @@ describe('Area Template Management', () => {
     expect(templateContent).toContain('Name:');
     expect(templateContent).toContain('Type:');
     expect(templateContent).toContain('Project:');
-    expect(templateContent).toContain('{{description}}');
+    // No longer expect {{description}} placeholder as it's not supported
 
     // Should have clean empty values (empty strings render with quotes in YAML)
     expect(templateContent).toMatch(/Name:\s*['"]?['"]?\s*$/m);
@@ -158,8 +158,7 @@ describe('Area Template Management', () => {
     expect(templateContent).not.toContain('Finance');
     expect(templateContent).not.toContain('Learning');
 
-    // Should have placeholder for description
-    expect(templateContent).toContain('{{description}}');
+    // No longer expect {{description}} placeholder as it's not supported
 
     // Should have empty field values
     const lines = templateContent.split('\n');

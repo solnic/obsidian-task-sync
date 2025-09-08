@@ -182,14 +182,14 @@ describe('Area Creation', () => {
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const templateContent = `---
-Name: <% tp.file.title %>
+Name: ''
 Type: Area
 Custom: true
 ---
 
 ## Overview
 
-{{description}}
+Continuous learning and skill development
 
 ## Goals
 

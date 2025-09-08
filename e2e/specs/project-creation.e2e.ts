@@ -193,15 +193,17 @@ describe('Project Creation', () => {
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const templateContent = `---
-Name: <% tp.file.title %>
+Name: ''
 Type: Project
-Areas: {{areas}}
+Areas:
+  - Work
+  - Technology
 Status: Planning
 ---
 
 ## Overview
 
-{{description}}
+Build a modern e-commerce platform with React and Node.js
 
 ## Objectives
 

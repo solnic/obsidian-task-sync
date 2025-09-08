@@ -84,7 +84,8 @@ describe('Clean Template Generation', () => {
     const taskPath = `Tasks/${taskName}.md`;
 
     // Use the template content but with a title filled in
-    const taskContent = templateContent?.replace('Title:', `Title: ${taskName}`);
+    // Handle both empty quotes and no quotes in Title field
+    const taskContent = templateContent?.replace(/Title:\s*['"]?['"]?\s*$/m, `Title: ${taskName}`);
 
     // Create the task file
     await context.page.evaluate(
