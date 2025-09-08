@@ -40,7 +40,7 @@ describe('File Name Sanitization and Base Formulas', () => {
     // Verify the task content includes the original title in frontmatter
     const taskContent = await getFileContent(context.page, `Tasks/${sanitizedTaskName}.md`);
     expect(taskContent).toContain(`Title: '${taskName}'`);
-    expect(taskContent).toContain('Type: Feature');
+    expect(taskContent).toContain('Category: Feature');
   });
 
   test('should create area with invalid characters and generate proper base', async () => {

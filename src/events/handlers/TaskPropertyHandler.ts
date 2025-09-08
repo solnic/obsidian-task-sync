@@ -114,6 +114,7 @@ export class TaskPropertyHandler implements EventHandler {
 
   /**
    * Update properties in file content, setting defaults for null/empty values
+   * Note: Link formatting is now handled by TaskFileManager, not here
    */
   private updatePropertiesInContent(content: string, filePath: string): string {
     // Parse YAML using gray-matter to check actual values
@@ -138,26 +139,7 @@ export class TaskPropertyHandler implements EventHandler {
       if (!frontmatterData.Status || frontmatterData.Status === '') {
         frontmatterData.Status = this.getDefaultStatus();
       }
-      // Apply link formatting to Project field if it exists and isn't already formatted
-      if (frontmatterData.Project && typeof frontmatterData.Project === 'string') {
-        frontmatterData.Project = this.formatAsLink(frontmatterData.Project);
-      }
-      // Apply link formatting to Parent task field if it exists and isn't already formatted
-      if (frontmatterData['Parent task'] && typeof frontmatterData['Parent task'] === 'string') {
-        frontmatterData['Parent task'] = this.formatAsLink(frontmatterData['Parent task']);
-      }
-      // Apply link formatting to Areas array if it exists
-      if (frontmatterData.Areas && Array.isArray(frontmatterData.Areas)) {
-        frontmatterData.Areas = frontmatterData.Areas.map((area: any) =>
-          typeof area === 'string' ? this.formatAsLink(area) : area
-        );
-      }
-      // Apply link formatting to Sub-tasks array if it exists
-      if (frontmatterData['Sub-tasks'] && Array.isArray(frontmatterData['Sub-tasks'])) {
-        frontmatterData['Sub-tasks'] = frontmatterData['Sub-tasks'].map((task: any) =>
-          typeof task === 'string' ? this.formatAsLink(task) : task
-        );
-      }
+
       // Only set defaults for arrays if they are missing or null, not if they're empty arrays
       if (frontmatterData.Areas === undefined || frontmatterData.Areas === null) {
         frontmatterData.Areas = this.getDefaultAreas();
@@ -216,14 +198,5 @@ export class TaskPropertyHandler implements EventHandler {
     return PROPERTY_REGISTRY.TAGS.default;
   }
 
-  /**
-   * Format a value as a link if it's not already formatted
-   */
-  private formatAsLink(value: string): string {
-    // Don't double-format if already a link
-    if (value.startsWith('[[') && value.endsWith(']]')) {
-      return value;
-    }
-    return `[[${value}]]`;
-  }
+
 }

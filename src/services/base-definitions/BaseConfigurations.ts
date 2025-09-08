@@ -33,7 +33,7 @@ export interface ProjectAreaInfo {
 export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
   TITLE: { key: "title", name: "Title", type: "string", source: "formula.Title" },
   TYPE: { key: "type", name: "Type", type: "string", default: "Task" },
-  CATEGORY: { key: "category", name: "Category", type: "string", default: "Task" },
+  CATEGORY: { key: "category", name: "Category", type: "string" },
   PRIORITY: { key: "priority", name: "Priority", type: "string", default: "Low" },
   AREAS: { key: "areas", name: "Areas", type: "array", link: true, default: [] },
   PROJECT: { key: "project", name: "Project", type: "string", link: true },
