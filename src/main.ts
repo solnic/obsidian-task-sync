@@ -5,6 +5,8 @@ import { PluginStorageService } from './services/PluginStorageService';
 import { FileChangeListener } from './services/FileChangeListener';
 import { TemplateManager } from './services/TemplateManager';
 import { TaskFileManager } from './services/TaskFileManager';
+import { AreaFileManager } from './services/AreaFileManager';
+import { ProjectFileManager } from './services/ProjectFileManager';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
 import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
 import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
@@ -65,6 +67,8 @@ export default class TaskSyncPlugin extends Plugin {
   taskImportManager: TaskImportManager;
   importStatusService: ImportStatusService;
   taskFileManager: TaskFileManager;
+  areaFileManager: AreaFileManager;
+  projectFileManager: ProjectFileManager;
 
   // Global context system
   private currentContext: FileContext = { type: 'none' };
@@ -91,6 +95,8 @@ export default class TaskSyncPlugin extends Plugin {
     this.taskImportManager = new TaskImportManager(this.app, this.app.vault, this.settings);
     this.importStatusService = new ImportStatusService(this);
     this.taskFileManager = new TaskFileManager(this.app, this.app.vault, this.settings);
+    this.areaFileManager = new AreaFileManager(this.app, this.app.vault, this.settings);
+    this.projectFileManager = new ProjectFileManager(this.app, this.app.vault, this.settings);
 
     // Initialize import status service with persisted data
     await this.importStatusService.initialize();
@@ -317,9 +323,15 @@ export default class TaskSyncPlugin extends Plugin {
         console.log('Task Sync: BaseManager updated with new settings');
       }
 
-      // Update TaskFileManager with new settings
+      // Update file managers with new settings
       if (this.taskFileManager) {
         this.taskFileManager.updateSettings(this.settings);
+      }
+      if (this.areaFileManager) {
+        this.areaFileManager.updateSettings(this.settings);
+      }
+      if (this.projectFileManager) {
+        this.projectFileManager.updateSettings(this.settings);
       }
 
       // Note: FileChangeListener will get updated settings automatically since it references this.settings
@@ -1255,13 +1267,13 @@ export default class TaskSyncPlugin extends Plugin {
     try {
       console.log('Task Sync: Starting file property updates...');
 
-      // Update task files
+      // Update task files using TaskFileManager
       await this.updateTaskFiles(results);
 
-      // Update project files
+      // Update project files using ProjectFileManager
       await this.updateProjectFiles(results);
 
-      // Update area files
+      // Update area files using AreaFileManager
       await this.updateAreaFiles(results);
 
       console.log(`Task Sync: Updated properties in ${results.filesUpdated} files (${results.propertiesUpdated} properties changed)`);
@@ -1305,7 +1317,19 @@ export default class TaskSyncPlugin extends Plugin {
     try {
       const projectFiles = await this.vaultScanner.scanProjectsFolder();
       for (const filePath of projectFiles) {
-        await this.updateSingleFile(filePath, 'project', results);
+        try {
+          const updateResult = await this.projectFileManager.updateFileProperties(filePath);
+          if (updateResult.hasChanges) {
+            results.filesUpdated++;
+            results.propertiesUpdated += updateResult.propertiesChanged;
+            console.log(`Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`);
+          } else {
+            console.log(`Task Sync: No changes needed for ${filePath}`);
+          }
+        } catch (error) {
+          console.error(`Task Sync: Failed to update project file ${filePath}:`, error);
+          results.errors.push(`Failed to update ${filePath}: ${error.message}`);
+        }
       }
     } catch (error) {
       console.error('Task Sync: Failed to update project files:', error);
@@ -1320,7 +1344,19 @@ export default class TaskSyncPlugin extends Plugin {
     try {
       const areaFiles = await this.vaultScanner.scanAreasFolder();
       for (const filePath of areaFiles) {
-        await this.updateSingleFile(filePath, 'area', results);
+        try {
+          const updateResult = await this.areaFileManager.updateFileProperties(filePath);
+          if (updateResult.hasChanges) {
+            results.filesUpdated++;
+            results.propertiesUpdated += updateResult.propertiesChanged;
+            console.log(`Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`);
+          } else {
+            console.log(`Task Sync: No changes needed for ${filePath}`);
+          }
+        } catch (error) {
+          console.error(`Task Sync: Failed to update area file ${filePath}:`, error);
+          results.errors.push(`Failed to update ${filePath}: ${error.message}`);
+        }
       }
     } catch (error) {
       console.error('Task Sync: Failed to update area files:', error);
@@ -1452,241 +1488,33 @@ export default class TaskSyncPlugin extends Plugin {
 
 
 
-  /**
-   * Get the current front-matter schema for a file type
-   */
-  private getFrontMatterSchema(type: 'task' | 'project' | 'area') {
-    const { generateProjectFrontMatter, generateAreaFrontMatter } = require('./services/base-definitions/BaseConfigurations');
+  // ============================================================================
+  // REMOVED COMPLEX PROPERTY ORDERING METHODS - MOVED TO FILE MANAGERS
+  // ============================================================================
+  // The following methods have been moved to dedicated file managers for better
+  // separation of concerns and to use Obsidian's native API for property ordering:
+  //
+  // - getFrontMatterSchema() -> moved to individual file managers
+  // - extractFrontMatterData() -> moved to base FileManager class as protected method
+  // - extractPropertyOrder() -> moved to base FileManager class as protected method
+  // - isPropertyOrderCorrect() -> moved to base FileManager class as protected method
+  // - updateSingleFile() -> replaced by AreaFileManager.updateFileProperties() and ProjectFileManager.updateFileProperties()
+  //
+  // This simplification allows each file manager to handle its own property ordering
+  // logic while using Obsidian's native processFrontMatter API for better integration.
+  // ============================================================================
 
-    let properties;
-    switch (type) {
-      case 'task':
-        // For tasks, use the custom property order from settings
-        properties = this.taskFileManager.getTaskPropertiesInOrder();
-        break;
-      case 'project':
-        properties = generateProjectFrontMatter();
-        break;
-      case 'area':
-        properties = generateAreaFrontMatter();
-        break;
-      default:
-        return { schema: {}, propertyOrder: [] };
-    }
+  // REMOVED: updateSingleFile method - functionality moved to dedicated file managers
 
-    // Convert property definitions to schema objects
-    const schema: Record<string, any> = {};
-    const propertyOrder: string[] = [];
-    properties.forEach((prop: any) => {
-      schema[prop.name] = {
-        type: prop.type,
-        ...(prop.default !== undefined && { default: prop.default }),
-        ...(prop.link && { link: prop.link })
-      };
-      propertyOrder.push(prop.name);
-    });
-    return { schema, propertyOrder };
-  }
-
-
-
-  /**
-   * Extract front-matter data from file content
-   */
-  private extractFrontMatterData(content: string): Record<string, any> | null {
-    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!frontMatterMatch) {
-      return null;
-    }
-
-    const frontMatterText = frontMatterMatch[1];
-    const data: Record<string, any> = {};
-
-    // Simple YAML-like parsing for front-matter
-    const lines = frontMatterText.split('\n');
-    for (const line of lines) {
-      const match = line.match(/^([^:]+):\s*(.*)$/);
-      if (match) {
-        const [, key, value] = match;
-        data[key.trim()] = value.trim();
-      }
-    }
-
-    return data;
-  }
-
-  /**
-   * Extract property order from front-matter content
-   */
-  private extractPropertyOrder(content: string): string[] {
-    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!frontMatterMatch) {
-      return [];
-    }
-
-    const frontMatterText = frontMatterMatch[1];
-    const properties: string[] = [];
-
-    const lines = frontMatterText.split('\n');
-    for (const line of lines) {
-      const match = line.match(/^([^:]+):\s*/);
-      if (match) {
-        properties.push(match[1].trim());
-      }
-    }
-
-    return properties;
-  }
-
-  /**
-   * Check if property order matches the expected schema order
-   */
-  private isPropertyOrderCorrect(content: string, schema: Record<string, any>, expectedOrder: string[]): boolean {
-    const currentOrder = this.extractPropertyOrder(content);
-
-    // Filter current order to only include properties that are in the schema
-    const currentSchemaProperties = currentOrder.filter(prop => prop in schema);
-
-    // Compare the order of schema properties
-    for (let i = 0; i < Math.min(currentSchemaProperties.length, expectedOrder.length); i++) {
-      if (currentSchemaProperties[i] !== expectedOrder[i]) {
-        return false;
-      }
-    }
-
-    return currentSchemaProperties.length === expectedOrder.length;
-  }
-
-  /**
-   * Update a single file's properties to match current schema (for project and area files only)
-   */
-  private async updateSingleFile(filePath: string, type: 'project' | 'area', results: any): Promise<void> {
-    try {
-      const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (!file || !(file instanceof TFile)) {
-        console.log(`Task Sync: Skipping non-file: ${filePath}`);
-        return;
-      }
-
-      const content = await this.app.vault.read(file);
-
-      // Extract existing front-matter
-      const existingFrontMatter = this.extractFrontMatterData(content);
-      if (!existingFrontMatter) {
-        // No front-matter exists, skip this file
-        console.log(`Task Sync: Skipping file without front-matter: ${filePath}`);
-        return;
-      }
-
-      // Check if file has correct Type property for its expected type
-      if (type === 'project') {
-        if (!existingFrontMatter.Type || existingFrontMatter.Type !== 'Project') {
-          // For projects, Type property must be 'Project'
-          console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Project, found: ${existingFrontMatter.Type || 'missing'})`);
-          return;
-        }
-      }
-      if (type === 'area') {
-        if (!existingFrontMatter.Type || existingFrontMatter.Type !== 'Area') {
-          // For areas, Type property must be 'Area'
-          console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Area, found: ${existingFrontMatter.Type || 'missing'})`);
-          return;
-        }
-      }
-
-
-      // Get current schema for this file type
-      const schemaResult = this.getFrontMatterSchema(type);
-      if (!schemaResult || !schemaResult.schema) {
-        console.warn(`Task Sync: No schema found for file type: ${type}`);
-        return;
-      }
-      const { schema: currentSchema, propertyOrder } = schemaResult;
-
-      let hasChanges = false;
-      let propertiesChanged = 0;
-
-      // Create updated front-matter object
-      const updatedFrontMatter = { ...existingFrontMatter };
-
-      // Add all missing fields from schema
-      for (const [fieldName, fieldConfig] of Object.entries(currentSchema)) {
-        try {
-          const config = fieldConfig as { default?: any };
-          if (config && !(fieldName in updatedFrontMatter)) {
-            // Add any field that's defined in the schema
-            updatedFrontMatter[fieldName] = config.default || '';
-            hasChanges = true;
-            propertiesChanged++;
-            console.log(`Task Sync: Added missing field '${fieldName}' to ${filePath}`);
-          }
-        } catch (fieldError) {
-          console.warn(`Task Sync: Error processing field ${fieldName} in ${filePath}:`, fieldError);
-        }
-      }
-
-      // Remove obsolete fields (fields not in current schema) - but be conservative
-      const validFields = new Set(Object.keys(currentSchema));
-      for (const fieldName of Object.keys(updatedFrontMatter)) {
-        // Only remove fields that are clearly not part of the schema
-        // Keep common fields that might be used by other plugins
-        const commonFields = ['tags', 'aliases', 'cssclass', 'publish'];
-        if (!validFields.has(fieldName) && !commonFields.includes(fieldName)) {
-          console.log(`Task Sync: Removing obsolete field '${fieldName}' from ${filePath}`);
-          delete updatedFrontMatter[fieldName];
-          hasChanges = true;
-          propertiesChanged++;
-        }
-      }
-
-      // Check if property order matches schema
-      if (!hasChanges && !this.isPropertyOrderCorrect(content, currentSchema, propertyOrder)) {
-        console.log(`Task Sync: Property order needs updating in ${filePath}`);
-        hasChanges = true;
-        propertiesChanged++; // Count order change as one property change
-      }
-
-      // Only update the file if there are changes
-      if (hasChanges) {
-        // Regenerate the front-matter section
-        const frontMatterLines = ['---'];
-
-        // Include ALL fields from the schema in the correct order
-        for (const fieldName of propertyOrder) {
-          const value = updatedFrontMatter[fieldName];
-          frontMatterLines.push(`${fieldName}: ${value}`);
-        }
-
-        // Add any additional fields that aren't in the schema but exist in the file
-        for (const [key, value] of Object.entries(updatedFrontMatter)) {
-          if (!(key in currentSchema)) {
-            frontMatterLines.push(`${key}: ${value}`);
-          }
-        }
-
-        frontMatterLines.push('---');
-
-        // Extract body content (everything after front-matter)
-        const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-        const bodyContent = frontMatterMatch ? frontMatterMatch[2] : content;
-
-        // Combine updated front-matter with existing body
-        const updatedContent = frontMatterLines.join('\n') + '\n' + bodyContent;
-
-        // Write back to file
-        await this.app.vault.modify(file, updatedContent);
-
-        results.filesUpdated++;
-        results.propertiesUpdated += propertiesChanged;
-        console.log(`Task Sync: Updated ${propertiesChanged} properties in ${filePath}`);
-      } else {
-        console.log(`Task Sync: No changes needed for ${filePath}`);
-      }
-    } catch (error) {
-      console.error(`Task Sync: Failed to update file ${filePath}:`, error);
-      results.errors.push(`Failed to update ${filePath}: ${error.message}`);
-    }
-  }
+  // ============================================================================
+  // REMOVED COMPLEX PROPERTY ORDERING METHODS
+  // These methods have been moved to dedicated file managers:
+  // - updateSingleFile -> AreaFileManager.updateFileProperties / ProjectFileManager.updateFileProperties
+  // - getFrontMatterSchema -> moved to individual file managers
+  // - extractPropertyOrder -> moved to base FileManager class
+  // - isPropertyOrderCorrect -> moved to base FileManager class
+  // - extractFrontMatterData -> moved to base FileManager class
+  // ============================================================================
 
   /**
    * Show refresh results to the user

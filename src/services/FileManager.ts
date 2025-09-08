@@ -210,4 +210,119 @@ export abstract class FileManager {
   updateSettings(newSettings: TaskSyncSettings): void {
     this.settings = newSettings;
   }
+
+  // ============================================================================
+  // PROPERTY ORDERING FUNCTIONALITY (moved from TaskFileManager)
+  // ============================================================================
+
+  /**
+   * Extract front-matter data from file content
+   * @param content - File content
+   * @returns Parsed front-matter data or null if not found
+   */
+  protected extractFrontMatterData(content: string): Record<string, any> | null {
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontMatterMatch) {
+      return null;
+    }
+
+    const frontMatterText = frontMatterMatch[1];
+    const data: Record<string, any> = {};
+
+    // Simple YAML-like parsing for front-matter
+    const lines = frontMatterText.split('\n');
+    for (const line of lines) {
+      const match = line.match(/^([^:]+):\s*(.*)$/);
+      if (match) {
+        const [, key, value] = match;
+        data[key.trim()] = value.trim();
+      }
+    }
+
+    return data;
+  }
+
+  /**
+   * Extract property order from front-matter content
+   * @param content - File content
+   * @returns Array of property names in order
+   */
+  protected extractPropertyOrder(content: string): string[] {
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontMatterMatch) {
+      return [];
+    }
+
+    const frontMatterText = frontMatterMatch[1];
+    const properties: string[] = [];
+
+    const lines = frontMatterText.split('\n');
+    for (const line of lines) {
+      const match = line.match(/^([^:]+):\s*/);
+      if (match) {
+        properties.push(match[1].trim());
+      }
+    }
+
+    return properties;
+  }
+
+  /**
+   * Check if property order matches the expected schema order
+   * @param content - File content
+   * @param schema - Schema object with property definitions
+   * @param expectedOrder - Expected property order
+   * @returns True if order is correct
+   */
+  protected isPropertyOrderCorrect(content: string, schema: Record<string, any>, expectedOrder: string[]): boolean {
+    const currentOrder = this.extractPropertyOrder(content);
+
+    // Filter current order to only include properties that are in the schema
+    const currentSchemaProperties = currentOrder.filter(prop => prop in schema);
+
+    // Compare the order of schema properties
+    for (let i = 0; i < Math.min(currentSchemaProperties.length, expectedOrder.length); i++) {
+      if (currentSchemaProperties[i] !== expectedOrder[i]) {
+        return false;
+      }
+    }
+
+    return currentSchemaProperties.length === expectedOrder.length;
+  }
+
+  /**
+   * Format property value for YAML output
+   * @param value - Property value to format
+   * @returns Formatted value string
+   */
+  protected formatPropertyValue(value: any): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return '[]';
+      }
+      return `[${value.map(v => `"${v}"`).join(', ')}]`;
+    }
+    if (typeof value === 'boolean') {
+      return value.toString();
+    }
+    if (typeof value === 'string' && value.includes('\n')) {
+      return `"${value.replace(/"/g, '\\"')}"`;
+    }
+    return value.toString();
+  }
+
+  /**
+   * Abstract method to get properties in order for specific file type
+   * Must be implemented by subclasses
+   */
+  abstract getPropertiesInOrder(): any[];
+
+  /**
+   * Abstract method to update file properties with correct ordering
+   * Must be implemented by subclasses
+   */
+  abstract updateFileProperties(filePath: string): Promise<{ hasChanges: boolean, propertiesChanged: number }>;
 }
