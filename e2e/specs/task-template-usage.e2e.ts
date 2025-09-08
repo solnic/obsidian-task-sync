@@ -206,11 +206,18 @@ tags: []
 
     await context.page.waitForTimeout(1000);
 
-    // Check parent task file content
-    const taskContent = await getFileContent(context.page, 'Tasks/Parent Task Test.md');
+    // Check parent task file content using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Parent Task Test.md');
+    });
 
-    // Verify {{tasks}} variable was processed correctly
-    expect(taskContent).toContain('Title: Parent Task Test');
+    // Verify front matter was set correctly
+    expect(frontMatter.Title).toBe('Parent Task Test');
+
+    // Check template content was processed correctly
+    const taskContent = await getFileContent(context.page, 'Tasks/Parent Task Test.md');
     expect(taskContent).toContain('## Sub-tasks');
     expect(taskContent).toContain('![[Bases/Parent Task Test.base]]');
   });

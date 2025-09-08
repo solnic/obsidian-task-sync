@@ -165,9 +165,14 @@ describe('Area Creation', () => {
     const areaFileExists = await fileExists(context.page, 'Areas/Health & Fitness (2024).md');
     expect(areaFileExists).toBe(true);
 
-    // Check area file content has original name
-    const areaContent = await getFileContent(context.page, 'Areas/Health & Fitness (2024).md');
-    expect(areaContent).toContain('Name: Health & Fitness (2024)');
+    // Check area file content has original name using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Areas/Health & Fitness (2024).md');
+    });
+
+    expect(frontMatter.Name).toBe('Health & Fitness (2024)');
   });
 
   test('should use template when configured', async () => {

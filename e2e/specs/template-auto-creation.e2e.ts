@@ -84,13 +84,21 @@ describe('Template Auto-Creation', () => {
     const taskExists = await fileExists(context.page, 'Tasks/Test Task After Auto-Creation.md');
     expect(taskExists).toBe(true);
 
-    // Verify task content uses template structure
+    // Verify task content uses template structure using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Test Task After Auto-Creation.md');
+    });
+
+    expect(frontMatter.Title).toBe('Test Task After Auto-Creation');
+    expect(frontMatter.Type).toBe('Task');
+    expect(frontMatter.Priority).toBe('Medium'); // Uses default value from property definition
+    expect(frontMatter.Areas).toEqual(['[[Test Area]]']); // YAML array format
+    expect(frontMatter.Project).toBe('[[Test Project]]'); // Project field uses empty string default
+
+    // Check template content was used
     const taskContent = await getFileContent(context.page, 'Tasks/Test Task After Auto-Creation.md');
-    expect(taskContent).toContain('Title: Test Task After Auto-Creation');
-    expect(taskContent).toContain('Type: Task');
-    expect(taskContent).toContain('Priority: Medium'); // Uses default value from property definition
-    expect(taskContent).toContain(`- "[[Test Area]]"`); // YAML array format
-    expect(taskContent).toContain("Project: '[[Test Project]]'"); // Project field uses empty string default
     expect(taskContent).toContain('This task should use the auto-created template');
   });
 
@@ -185,11 +193,19 @@ This is a custom template that should not be overwritten.
     const taskExists = await fileExists(context.page, 'Tasks/Auto Template Task.md');
     expect(taskExists).toBe(true);
 
-    // Verify task content
+    // Verify task content using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Auto Template Task.md');
+    });
+
+    expect(frontMatter.Title).toBe('Auto Template Task');
+    expect(frontMatter.Type).toBe('Task');
+    expect(frontMatter.Priority).toBe('High');
+
+    // Check template content was used
     const taskContent = await getFileContent(context.page, 'Tasks/Auto Template Task.md');
-    expect(taskContent).toContain('Title: Auto Template Task');
-    expect(taskContent).toContain('Type: Task');
-    expect(taskContent).toContain('Priority: High');
     expect(taskContent).toContain('This should auto-create template');
   });
 });

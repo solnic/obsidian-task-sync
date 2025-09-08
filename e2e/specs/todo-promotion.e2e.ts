@@ -428,13 +428,22 @@ describe('Todo Promotion E2E', () => {
     expect(parentExists).toBe(true);
     expect(childExists).toBe(true);
 
-    // Verify child task has parent task property set
-    const childContent = await getFileContent(context.page, 'Tasks/Sub-task to promote.md');
-    expect(childContent).toContain(`Parent task: "[[Main parent task]]"`);
+    // Verify child task has parent task property set using API
+    const childFrontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Sub-task to promote.md');
+    });
 
-    // Verify parent task has child in sub-tasks
-    const parentContent = await getFileContent(context.page, 'Tasks/Main parent task.md');
-    expect(parentContent).toContain('Sub-tasks:');
-    expect(parentContent).toContain("'[[Sub-task to promote]]'");
+    expect(childFrontMatter['Parent task']).toBe('[[Main parent task]]');
+
+    // Verify parent task has child in sub-tasks using API
+    const parentFrontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Tasks/Main parent task.md');
+    });
+
+    expect(parentFrontMatter['Sub-tasks']).toEqual(['[[Sub-task to promote]]']);
   });
 });

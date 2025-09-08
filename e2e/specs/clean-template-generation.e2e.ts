@@ -98,11 +98,16 @@ describe('Clean Template Generation', () => {
     // Wait for the TaskPropertyHandler to process the file
     await context.page.waitForTimeout(1000);
 
-    // Verify the file was updated with default values by the handler
-    const updatedContent = await getFileContent(context.page, taskPath);
-    expect(updatedContent).toContain('Type: Task'); // Should be set by handler
-    expect(updatedContent).toContain('Done: false'); // Should be set by handler
-    expect(updatedContent).toContain('Status: Backlog'); // Should be set by handler
-    expect(updatedContent).toContain(`Title: ${taskName}`); // Should preserve user input
+    // Verify the file was updated with default values by the handler using API
+    const frontMatter = await context.page.evaluate(async (path) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter(path);
+    }, taskPath);
+
+    expect(frontMatter.Type).toBe('Task'); // Should be set by handler
+    expect(frontMatter.Done).toBe(false); // Should be set by handler
+    expect(frontMatter.Status).toBe('Backlog'); // Should be set by handler
+    expect(frontMatter.Title).toBe(taskName); // Should preserve user input
   });
 });

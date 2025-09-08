@@ -176,9 +176,14 @@ describe('Project Creation', () => {
     const projectFileExists = await fileExists(context.page, 'Projects/Mobile App (iOS & Android).md');
     expect(projectFileExists).toBe(true);
 
-    // Check project file content has original name
-    const projectContent = await getFileContent(context.page, 'Projects/Mobile App (iOS & Android).md');
-    expect(projectContent).toContain('Name: Mobile App (iOS & Android)');
+    // Check project file content has original name using API
+    const frontMatter = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      return await plugin.taskFileManager.loadFrontMatter('Projects/Mobile App (iOS & Android).md');
+    });
+
+    expect(frontMatter.Name).toBe('Mobile App (iOS & Android)');
   });
 
   test('should use template when configured', async () => {
