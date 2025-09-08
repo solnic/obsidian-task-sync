@@ -73,8 +73,10 @@ export function generateTaskFrontMatter(
     }
   }
 
-  // For Type field, always set to 'Task' for task entities
-  frontMatterData.Type = 'Task';
+  // For Type field, use the category (task type) if provided
+  if (taskData.category) {
+    frontMatterData.Type = taskData.category;
+  }
 
   // For Category field, use the task type if not provided
   if (!frontMatterData.Category) {

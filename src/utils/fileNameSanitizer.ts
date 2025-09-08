@@ -21,7 +21,7 @@ export interface SanitizationOptions {
  * List of characters that are invalid in Obsidian file names
  * Based on Obsidian forum documentation and Windows/macOS/Linux compatibility
  */
-const INVALID_CHARACTERS = /[*"\\/<>:|?]/g;
+const INVALID_CHARACTERS = /[*"\\/<>:|?#]/g;
 
 /**
  * Sanitize a file name by replacing invalid characters with safe alternatives

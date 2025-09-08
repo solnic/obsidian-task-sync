@@ -4,6 +4,7 @@ import { BaseManager } from './services/BaseManager';
 import { PluginStorageService } from './services/PluginStorageService';
 import { FileChangeListener } from './services/FileChangeListener';
 import { TemplateManager } from './services/TemplateManager';
+import { TaskFileManager } from './services/TaskFileManager';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
 import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
 import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
@@ -67,6 +68,7 @@ export default class TaskSyncPlugin extends Plugin {
   githubService: GitHubService;
   taskImportManager: TaskImportManager;
   importStatusService: ImportStatusService;
+  taskFileManager: TaskFileManager;
 
   // Global context system
   private currentContext: FileContext = { type: 'none' };
@@ -92,6 +94,7 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize import services
     this.taskImportManager = new TaskImportManager(this.app, this.app.vault, this.settings);
     this.importStatusService = new ImportStatusService(this);
+    this.taskFileManager = new TaskFileManager(this.app, this.app.vault, this.settings);
 
     // Initialize import status service with persisted data
     await this.importStatusService.initialize();
@@ -319,6 +322,11 @@ export default class TaskSyncPlugin extends Plugin {
       if (this.baseManager) {
         this.baseManager.updateSettings(this.settings);
         console.log('Task Sync: BaseManager updated with new settings');
+      }
+
+      // Update TaskFileManager with new settings
+      if (this.taskFileManager) {
+        this.taskFileManager.updateSettings(this.settings);
       }
 
       // Note: FileChangeListener will get updated settings automatically since it references this.settings
