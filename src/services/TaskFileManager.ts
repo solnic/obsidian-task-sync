@@ -262,6 +262,296 @@ export class TaskFileManager extends FileManager {
     await this.updateProperty(filePath, 'Sub-tasks', newSubTasks);
   }
 
+  // ============================================================================
+  // PROPERTY ORDER MANAGEMENT
+  // ============================================================================
+
+  /**
+   * Get task properties in the custom order from settings
+   * @returns Array of property definitions in the correct order
+   */
+  getTaskPropertiesInOrder(): any[] {
+    // Get property order from settings or use default
+    const propertyOrder = this.settings.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
+
+    // Validate property order - ensure all required properties are present
+    const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
+    const isValidOrder = requiredProperties.every((prop: any) => propertyOrder.includes(prop)) &&
+      propertyOrder.every((prop: any) => requiredProperties.includes(prop as typeof requiredProperties[number]));
+
+    // Use validated order or fall back to default
+    const finalPropertyOrder = isValidOrder ? propertyOrder : requiredProperties;
+
+    // Convert property keys to property definitions in the correct order
+    return finalPropertyOrder.map((propertyKey: any) => {
+      const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+      return { ...prop };
+    }).filter((prop: any) => prop); // Filter out any undefined properties
+  }
+
+  /**
+   * Reorder properties in task template content to match current property order
+   * @param content - Template content to reorder
+   * @returns Content with reordered properties
+   */
+  async reorderTaskTemplateProperties(content: string): Promise<string> {
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+    if (!frontMatterMatch) {
+      return content;
+    }
+
+    const [, frontMatterText, bodyContent] = frontMatterMatch;
+
+    // Parse existing front-matter
+    const existingData: Record<string, string> = {};
+    const lines = frontMatterText.split('\n');
+    for (const line of lines) {
+      const match = line.match(/^([^:]+):\s*(.*)$/);
+      if (match) {
+        const [, key, value] = match;
+        existingData[key.trim()] = value;
+      }
+    }
+
+    // Get the current property order
+    const properties = this.getTaskPropertiesInOrder();
+
+    // Regenerate front-matter in correct order
+    const frontMatterLines = ['---'];
+    for (const prop of properties) {
+      const value = existingData[prop.name] || '';
+      frontMatterLines.push(`${prop.name}: ${value}`);
+    }
+
+    // Add any additional properties not in the schema
+    for (const [key, value] of Object.entries(existingData)) {
+      if (!properties.some((p: any) => p.name === key)) {
+        frontMatterLines.push(`${key}: ${value}`);
+      }
+    }
+
+    frontMatterLines.push('---');
+
+    return frontMatterLines.join('\n') + '\n' + bodyContent;
+  }
+
+  /**
+   * Extract front-matter data from file content
+   * @param content - File content
+   * @returns Parsed front-matter data or null if not found
+   */
+  private extractFrontMatterData(content: string): Record<string, any> | null {
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontMatterMatch) {
+      return null;
+    }
+
+    const frontMatterText = frontMatterMatch[1];
+    const data: Record<string, any> = {};
+
+    // Simple YAML-like parsing for front-matter
+    const lines = frontMatterText.split('\n');
+    for (const line of lines) {
+      const match = line.match(/^([^:]+):\s*(.*)$/);
+      if (match) {
+        const [, key, value] = match;
+        data[key.trim()] = value.trim();
+      }
+    }
+
+    return data;
+  }
+
+  /**
+   * Extract property order from front-matter content
+   * @param content - File content
+   * @returns Array of property names in order
+   */
+  private extractPropertyOrder(content: string): string[] {
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!frontMatterMatch) {
+      return [];
+    }
+
+    const frontMatterText = frontMatterMatch[1];
+    const properties: string[] = [];
+
+    const lines = frontMatterText.split('\n');
+    for (const line of lines) {
+      const match = line.match(/^([^:]+):\s*/);
+      if (match) {
+        properties.push(match[1].trim());
+      }
+    }
+
+    return properties;
+  }
+
+  /**
+   * Check if property order matches the expected schema order
+   * @param content - File content
+   * @param schema - Schema object with property definitions
+   * @param expectedOrder - Expected property order
+   * @returns True if order is correct
+   */
+  private isPropertyOrderCorrect(content: string, schema: Record<string, any>, expectedOrder: string[]): boolean {
+    const currentOrder = this.extractPropertyOrder(content);
+
+    // Filter current order to only include properties that are in the schema
+    const currentSchemaProperties = currentOrder.filter(prop => prop in schema);
+
+    // Compare the order of schema properties
+    for (let i = 0; i < Math.min(currentSchemaProperties.length, expectedOrder.length); i++) {
+      if (currentSchemaProperties[i] !== expectedOrder[i]) {
+        return false;
+      }
+    }
+
+    return currentSchemaProperties.length === expectedOrder.length;
+  }
+
+  /**
+   * Update a task file's properties to match current schema and property order
+   * @param filePath - Path to the task file
+   * @returns Object with hasChanges and propertiesChanged count
+   */
+  async updateTaskFileProperties(filePath: string): Promise<{ hasChanges: boolean, propertiesChanged: number }> {
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!file) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    const fullContent = await this.vault.read(file as any);
+
+    // Extract existing front-matter
+    const existingFrontMatter = this.extractFrontMatterData(fullContent);
+    if (!existingFrontMatter) {
+      // No front-matter exists, skip this file
+      return { hasChanges: false, propertiesChanged: 0 };
+    }
+
+    // Check if file has correct Type property for tasks
+    if (existingFrontMatter.Type && existingFrontMatter.Type !== 'Task') {
+      // Skip files that are not tasks
+      console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Task, found: ${existingFrontMatter.Type})`);
+      return { hasChanges: false, propertiesChanged: 0 };
+    }
+
+    // Get current schema for tasks
+    const properties = this.getTaskPropertiesInOrder();
+    const currentSchema: Record<string, any> = {};
+    const propertyOrder: string[] = [];
+
+    properties.forEach((prop: any) => {
+      currentSchema[prop.name] = {
+        type: prop.type,
+        ...(prop.default !== undefined && { default: prop.default }),
+        ...(prop.link && { link: prop.link })
+      };
+      propertyOrder.push(prop.name);
+    });
+
+    let hasChanges = false;
+    let propertiesChanged = 0;
+
+    // Create updated front-matter object
+    const updatedFrontMatter = { ...existingFrontMatter };
+
+    // Add all missing fields from schema
+    for (const [fieldName, fieldConfig] of Object.entries(currentSchema)) {
+      const config = fieldConfig as { default?: any };
+      if (config && !(fieldName in updatedFrontMatter)) {
+        // Add any field that's defined in the schema
+        updatedFrontMatter[fieldName] = config.default || '';
+        console.log(`Task Sync: Added missing field '${fieldName}' to ${filePath}`);
+        hasChanges = true;
+        propertiesChanged++;
+      }
+    }
+
+    // Remove obsolete fields (fields not in current schema) - but be conservative
+    const validFields = new Set(Object.keys(currentSchema));
+    for (const fieldName of Object.keys(updatedFrontMatter)) {
+      // Only remove fields that are clearly not part of the schema
+      // Keep common fields that might be used by other plugins
+      const commonFields = ['tags', 'aliases', 'cssclass', 'publish'];
+      if (!validFields.has(fieldName) && !commonFields.includes(fieldName)) {
+        delete updatedFrontMatter[fieldName];
+        hasChanges = true;
+        propertiesChanged++;
+      }
+    }
+
+    // Check if property order matches schema
+    if (!hasChanges && !this.isPropertyOrderCorrect(fullContent, currentSchema, propertyOrder)) {
+      hasChanges = true;
+      propertiesChanged++; // Count order change as one property change
+    }
+
+    // Only update the file if there are changes
+    if (hasChanges) {
+      // Manually reorder properties to ensure correct order
+      const file = this.app.vault.getAbstractFileByPath(filePath);
+      if (file) {
+        // Regenerate the front-matter section in correct order
+        const frontMatterLines = ['---'];
+
+        // Include ALL fields from the schema in the correct order
+        for (const fieldName of propertyOrder) {
+          const value = updatedFrontMatter[fieldName];
+          if (value !== undefined) {
+            frontMatterLines.push(`${fieldName}: ${this.formatPropertyValue(value)}`);
+          }
+        }
+
+        // Add any additional fields that aren't in the schema but exist in the file
+        for (const [key, value] of Object.entries(updatedFrontMatter)) {
+          if (!propertyOrder.includes(key)) {
+            frontMatterLines.push(`${key}: ${this.formatPropertyValue(value)}`);
+          }
+        }
+
+        frontMatterLines.push('---');
+
+        // Extract body content (everything after front-matter)
+        const frontMatterMatch = fullContent.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+        const bodyContent = frontMatterMatch ? frontMatterMatch[2] : '';
+
+        // Combine updated front-matter with existing body
+        const updatedContent = frontMatterLines.join('\n') + '\n' + bodyContent;
+
+        // Write back to file
+        await this.vault.modify(file as any, updatedContent);
+      }
+    }
+
+    return { hasChanges, propertiesChanged };
+  }
+
+  /**
+   * Format property value for YAML front-matter
+   * @param value - Property value to format
+   * @returns Formatted string value
+   */
+  private formatPropertyValue(value: any): string {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return '[]';
+      }
+      return `[${value.map(item => typeof item === 'string' ? `"${item}"` : item).join(', ')}]`;
+    }
+    if (typeof value === 'boolean') {
+      return value.toString();
+    }
+    if (typeof value === 'string') {
+      return value;
+    }
+    return String(value);
+  }
+
   /**
    * Get task summary information
    * @param filePath - Path to the task file

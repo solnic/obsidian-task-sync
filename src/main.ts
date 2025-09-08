@@ -1278,7 +1278,19 @@ export default class TaskSyncPlugin extends Plugin {
     try {
       const taskFiles = await this.vaultScanner.scanTasksFolder();
       for (const filePath of taskFiles) {
-        await this.updateSingleFile(filePath, 'task', results);
+        try {
+          const updateResult = await this.taskFileManager.updateTaskFileProperties(filePath);
+          if (updateResult.hasChanges) {
+            results.filesUpdated++;
+            results.propertiesUpdated += updateResult.propertiesChanged;
+            console.log(`Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`);
+          } else {
+            console.log(`Task Sync: No changes needed for ${filePath}`);
+          }
+        } catch (error) {
+          console.error(`Task Sync: Failed to update task file ${filePath}:`, error);
+          results.errors.push(`Failed to update ${filePath}: ${error.message}`);
+        }
       }
     } catch (error) {
       console.error('Task Sync: Failed to update task files:', error);
@@ -1366,7 +1378,7 @@ export default class TaskSyncPlugin extends Plugin {
     if (file && file instanceof TFile) {
       // Update existing task template with property reordering
       const content = await this.app.vault.read(file);
-      const updatedContent = await this.reorderTaskTemplateProperties(content);
+      const updatedContent = await this.taskFileManager.reorderTaskTemplateProperties(content);
       if (updatedContent !== content) {
         await this.app.vault.modify(file, updatedContent);
         results.templatesUpdated++;
@@ -1422,7 +1434,7 @@ export default class TaskSyncPlugin extends Plugin {
     if (file && file instanceof TFile) {
       // Update existing parent task template with property reordering
       const content = await this.app.vault.read(file);
-      const updatedContent = await this.reorderTaskTemplateProperties(content);
+      const updatedContent = await this.taskFileManager.reorderTaskTemplateProperties(content);
       if (updatedContent !== content) {
         await this.app.vault.modify(file, updatedContent);
         results.templatesUpdated++;
@@ -1436,73 +1448,9 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
-  /**
-   * Reorder properties in task template content to match current property order
-   */
-  private async reorderTaskTemplateProperties(content: string): Promise<string> {
-    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-    if (!frontMatterMatch) {
-      return content;
-    }
 
-    const [, frontMatterText, bodyContent] = frontMatterMatch;
 
-    // Parse existing front-matter
-    const existingData: Record<string, string> = {};
-    const lines = frontMatterText.split('\n');
-    for (const line of lines) {
-      const match = line.match(/^([^:]+):\s*(.*)$/);
-      if (match) {
-        const [, key, value] = match;
-        existingData[key.trim()] = value;
-      }
-    }
 
-    // Get the current property order
-    const properties = this.getTaskPropertiesInOrder();
-
-    // Regenerate front-matter in correct order
-    const frontMatterLines = ['---'];
-    for (const prop of properties) {
-      const value = existingData[prop.name] || '';
-      frontMatterLines.push(`${prop.name}: ${value}`);
-    }
-
-    // Add any additional properties not in the schema
-    for (const [key, value] of Object.entries(existingData)) {
-      if (!properties.some((p: any) => p.name === key)) {
-        frontMatterLines.push(`${key}: ${value}`);
-      }
-    }
-
-    frontMatterLines.push('---');
-
-    return frontMatterLines.join('\n') + '\n' + bodyContent;
-  }
-
-  /**
-   * Get task properties in the custom order from settings
-   */
-  private getTaskPropertiesInOrder() {
-    const { PROPERTY_REGISTRY, PROPERTY_SETS } = require('./services/base-definitions/BaseConfigurations');
-
-    // Get property order from settings or use default
-    const propertyOrder = this.settings.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
-
-    // Validate property order - ensure all required properties are present
-    const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
-    const isValidOrder = requiredProperties.every((prop: any) => propertyOrder.includes(prop)) &&
-      propertyOrder.every((prop: any) => requiredProperties.includes(prop as typeof requiredProperties[number]));
-
-    // Use validated order or fall back to default
-    const finalPropertyOrder = isValidOrder ? propertyOrder : requiredProperties;
-
-    // Convert property keys to property definitions in the correct order
-    return finalPropertyOrder.map((propertyKey: any) => {
-      const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
-      return { ...prop };
-    }).filter((prop: any) => prop); // Filter out any undefined properties
-  }
 
   /**
    * Get the current front-matter schema for a file type
@@ -1514,7 +1462,7 @@ export default class TaskSyncPlugin extends Plugin {
     switch (type) {
       case 'task':
         // For tasks, use the custom property order from settings
-        properties = this.getTaskPropertiesInOrder();
+        properties = this.taskFileManager.getTaskPropertiesInOrder();
         break;
       case 'project':
         properties = generateProjectFrontMatter();
@@ -1610,9 +1558,9 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
-   * Update a single file's properties to match current schema
+   * Update a single file's properties to match current schema (for project and area files only)
    */
-  private async updateSingleFile(filePath: string, type: 'task' | 'project' | 'area', results: any): Promise<void> {
+  private async updateSingleFile(filePath: string, type: 'project' | 'area', results: any): Promise<void> {
     try {
       const file = this.app.vault.getAbstractFileByPath(filePath);
       if (!file || !(file instanceof TFile)) {
@@ -1645,13 +1593,7 @@ export default class TaskSyncPlugin extends Plugin {
           return;
         }
       }
-      if (type === 'task' && existingFrontMatter.Type) {
-        // For tasks, Type should always be 'Task'
-        if (existingFrontMatter.Type !== 'Task') {
-          console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected 'Task', found: ${existingFrontMatter.Type})`);
-          return;
-        }
-      }
+
 
       // Get current schema for this file type
       const schemaResult = this.getFrontMatterSchema(type);
