@@ -49,7 +49,6 @@ export class ProjectPropertyHandler implements EventHandler {
     // Only process files that already have the correct Type property
     // This ensures we only handle files created through plugin mechanisms
     if (!await this.hasCorrectTypeProperty(data.filePath)) {
-      console.log(`ProjectPropertyHandler: Skipping file without correct Type property: ${data.filePath}`);
       return;
     }
 
