@@ -116,5 +116,22 @@ Task content here.`;
       expect(result.hasChanges).toBe(true);
       expect(result.propertiesChanged).toBeGreaterThan(0);
     });
+
+    it('should work correctly when TaskCreateModal data format uses title', async () => {
+      // After the fix: TaskCreateModal now uses 'title' to match TaskFileManager expectations
+      const taskCreateModalData = {
+        title: 'Test Feature Task', // TaskCreateModal now uses 'title'
+        category: 'Feature',
+      };
+
+      // This should work without throwing an error
+      expect(() => {
+        // Access the private method through any to test it
+        const taskFileManagerAny = taskFileManager as any;
+        const result = taskFileManagerAny.shouldUseParentTaskTemplate(taskCreateModalData);
+        // Should return true for Feature category
+        expect(result).toBe(true);
+      }).not.toThrow();
+    });
   });
 });

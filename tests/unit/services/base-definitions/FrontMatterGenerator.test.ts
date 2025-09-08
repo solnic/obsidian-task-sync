@@ -6,7 +6,7 @@ import { DEFAULT_SETTINGS } from '../../../../src/components/ui/settings/default
 
 describe('FrontMatterGenerator - Property Ordering', () => {
   const mockTaskData: TaskCreateData = {
-    name: 'Test Task',
+    title: 'Test Task',
     category: 'Task',
     priority: 'Medium',
     areas: 'Area1',

@@ -242,7 +242,7 @@ export function generateParentTaskFrontMatter(
       '',
       '## Related Tasks',
       '',
-      `![[${sanitizeFileName(taskData.name)}.base]]`,
+      `![[${sanitizeFileName(taskData.title)}.base]]`,
       ''
     ].join('\n');
   }

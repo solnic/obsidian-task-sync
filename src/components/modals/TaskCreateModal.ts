@@ -7,7 +7,7 @@ import { App, Modal, Setting } from 'obsidian';
 import TaskSyncPlugin, { FileContext } from '../../main';
 
 export interface TaskCreateData {
-  name: string;
+  title: string;
   category?: string;
   areas?: string;
   parentTask?: string;
@@ -54,7 +54,7 @@ export class TaskCreateModal extends Modal {
   private initializeFormData(): void {
     // Pre-fill form data based on context
     this.formData = {
-      name: '',
+      title: '',
       category: this.plugin.settings.taskTypes[0]?.name || 'Task', // Use first configured task type
       done: false,
       status: this.plugin.settings.taskStatuses[0]?.name || 'Backlog', // Use first configured task status
@@ -101,9 +101,9 @@ export class TaskCreateModal extends Modal {
       .setDesc('Enter a descriptive name for the task')
       .addText(text => {
         text.setPlaceholder('Enter task name...')
-          .setValue(this.formData.name || '')
+          .setValue(this.formData.title || '')
           .onChange(value => {
-            this.formData.name = value;
+            this.formData.title = value;
           });
         text.inputEl.addClass('task-sync-required-field');
       });
@@ -250,14 +250,14 @@ export class TaskCreateModal extends Modal {
 
   private async handleSubmit(): Promise<void> {
     // Validate required fields
-    if (!this.formData.name?.trim()) {
+    if (!this.formData.title?.trim()) {
       this.showError('Task name is required');
       return;
     }
 
     // Prepare task data
     const taskData: TaskCreateData = {
-      name: this.formData.name.trim(),
+      title: this.formData.title.trim(),
       category: this.formData.category || undefined,
       areas: this.formData.areas || undefined,
       parentTask: this.formData.parentTask || undefined,
