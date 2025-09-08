@@ -7,14 +7,13 @@
 import { App, Vault } from 'obsidian';
 import { TaskSyncSettings } from '../main';
 import { FileManager, FileCreationData } from './FileManager';
-import { generateTaskFrontMatter } from './base-definitions/FrontMatterGenerator';
+import { PROPERTY_REGISTRY, PROPERTY_SETS } from './base-definitions/BaseConfigurations';
 
 /**
  * Interface for task creation data
  */
 export interface TaskCreationData extends FileCreationData {
   title: string;
-  type?: string;
   priority?: string;
   areas?: string | string[];
   project?: string;
@@ -40,35 +39,42 @@ export class TaskFileManager extends FileManager {
    * @param data - Task creation data
    * @returns Path of the created task file
    */
-  async createTaskFile(data: TaskCreationData): Promise<string> {
+  async createTaskFile(data: TaskCreationData, content?: string): Promise<string> {
     const taskFolder = this.settings.tasksFolder;
 
-    // Normalize areas to string for compatibility with existing interface
-    const normalizedAreas = Array.isArray(data.areas) ? data.areas.join(', ') : (data.areas || '');
+    const filePath = await this.createFile(taskFolder, data.title, content || '');
+    const frontMatterData = this.generateTaskFrontMatterObject(data);
 
-    // Generate front-matter using existing FrontMatterGenerator
-    const frontMatter = generateTaskFrontMatter({
-      name: data.title,
-      category: data.type,
-      priority: data.priority,
-      areas: normalizedAreas,
-      project: data.project,
-      done: data.done,
-      status: data.status,
-      parentTask: data.parentTask,
-      subTasks: data.subTasks,
-      tags: data.tags,
-      description: data.description
-    });
+    await this.updateFrontMatter(filePath, frontMatterData);
 
-    // Create content with front-matter and optional description
-    const content = `---
-${frontMatter}
----
+    return filePath;
+  }
 
-${data.description || ''}`;
+  /**
+   * Generate front-matter object for a task with missing keys and values filled from property definitions
+   * @param data - Task creation data
+   * @returns Front-matter object with all required properties
+   */
+  private generateTaskFrontMatterObject(data: TaskCreationData): Record<string, any> {
+    const frontMatterData: Record<string, any> = {};
 
-    return await this.createFile(taskFolder, data.title, content);
+    for (const propertyKey of PROPERTY_SETS.TASK_FRONTMATTER) {
+      const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+
+      if (!prop) continue;
+
+      const value = data[prop.key];
+
+      if (value !== undefined && value !== null) {
+        frontMatterData[prop.name] = value;
+      } else if (prop.default !== undefined) {
+        frontMatterData[prop.name] = prop.default;
+      }
+    }
+
+    frontMatterData.Type = 'Task';
+
+    return frontMatterData;
   }
 
   /**
@@ -109,11 +115,7 @@ ${data.description || ''}`;
    * @param projectName - Name of the project to assign to
    */
   async assignToProject(filePath: string, projectName: string): Promise<void> {
-    // Format project as link
-    const formattedProject = projectName.startsWith('[[') && projectName.endsWith(']]')
-      ? projectName
-      : `[[${projectName}]]`;
-    await this.updateProperty(filePath, 'Project', formattedProject);
+    await this.updateProperty(filePath, 'Project', projectName);
   }
 
   /**
@@ -122,15 +124,7 @@ ${data.description || ''}`;
    * @param areas - Array of area names to assign to
    */
   async assignToAreas(filePath: string, areas: string[]): Promise<void> {
-    // Format areas as links
-    const formattedAreas = areas.map(area => {
-      // Don't double-format if already a link
-      if (area.startsWith('[[') && area.endsWith(']]')) {
-        return area;
-      }
-      return `[[${area}]]`;
-    });
-    await this.updateProperty(filePath, 'Areas', formattedAreas);
+    await this.updateProperty(filePath, 'Areas', areas);
   }
 
   /**

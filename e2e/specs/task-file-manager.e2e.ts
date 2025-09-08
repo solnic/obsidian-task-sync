@@ -22,7 +22,6 @@ describe('TaskFileManager Service', () => {
     // Test creating a task file with invalid characters in the name
     const taskData = {
       title: 'Fix: Bug/Issue #123',
-      type: 'Bug',
       priority: 'High',
       areas: ['Development'],
       project: 'Website Redesign',
@@ -36,9 +35,6 @@ describe('TaskFileManager Service', () => {
 
       // Access the taskFileManager instance
       const taskFileManager = plugin.taskFileManager;
-      if (!taskFileManager) {
-        throw new Error('TaskFileManager not found on plugin');
-      }
 
       return await taskFileManager.createTaskFile(data);
     }, taskData);
@@ -53,10 +49,10 @@ describe('TaskFileManager Service', () => {
     // Verify the task content has proper front-matter structure
     const taskContent = await getFileContent(context.page, taskPath);
     expect(taskContent).toContain(`Title: '${taskData.title}'`);
-    expect(taskContent).toContain(`Type: ${taskData.type}`);
+    expect(taskContent).toContain(`Type: Task`);
     expect(taskContent).toContain(`Priority: ${taskData.priority}`);
-    expect(taskContent).toContain("- '[[Development]]'");
-    expect(taskContent).toContain("Project: '[[Website Redesign]]'");
+    expect(taskContent).toContain(`- '[[Development]]'`);
+    expect(taskContent).toContain(`Project: '[[Website Redesign]]'`);
     expect(taskContent).toContain(`Done: ${taskData.done}`);
     expect(taskContent).toContain(`Status: ${taskData.status}`);
   });
@@ -235,7 +231,7 @@ Task content here.`;
 
     // Verify the project was changed
     const updatedContent = await getFileContent(context.page, 'Tasks/Project Assignment Test.md');
-    expect(updatedContent).toContain("Project: '[[New Project]]'");
+    expect(updatedContent).toContain(`Project: '[[New Project]]'`);
     expect(updatedContent).not.toContain('Project: Old Project');
   });
 
@@ -249,7 +245,8 @@ Task content here.`;
       const taskContent = `---
 Title: Areas Assignment Test
 Type: Task
-Areas: [Development]
+Areas:
+  - Development
 ---
 
 Task content here.`;
@@ -267,9 +264,10 @@ Task content here.`;
 
     // Verify the areas were changed
     const updatedContent = await getFileContent(context.page, 'Tasks/Areas Assignment Test.md');
+
+    expect(updatedContent).toContain("- '[[Development]]'");
     expect(updatedContent).toContain("- '[[Testing]]'");
     expect(updatedContent).toContain("- '[[Documentation]]'");
-    expect(updatedContent).not.toContain('Areas: [Development]');
   });
 
   test('should update specific front-matter property', async () => {

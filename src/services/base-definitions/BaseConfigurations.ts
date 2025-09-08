@@ -12,6 +12,7 @@ import pluralize from 'pluralize';
 // ============================================================================
 
 export interface PropertyDefinition {
+  key: string;
   name: string;
   type: 'string' | 'number' | 'checkbox' | 'array' | 'date';
   source?: string;
@@ -30,20 +31,20 @@ export interface ProjectAreaInfo {
 // ============================================================================
 
 export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
-  TITLE: { name: "Title", type: "string", source: "formula.Title" },
-  TYPE: { name: "Type", type: "string", default: "Task" },
-  CATEGORY: { name: "Category", type: "string", default: "Task" },
-  PRIORITY: { name: "Priority", type: "string", default: "Low" },
-  AREAS: { name: "Areas", type: "array", link: true, default: [] },
-  PROJECT: { name: "Project", type: "string", link: true },
-  PROJECTS: { name: "Projects", type: "array", link: true, default: [] },
-  DONE: { name: "Done", type: "checkbox", default: false },
-  STATUS: { name: "Status", type: "string", default: "Backlog" },
-  PARENT_TASK: { name: "Parent task", type: "string", link: true },
-  SUB_TASKS: { name: "Sub-tasks", type: "array", link: true, default: [] },
-  TAGS: { name: "tags", type: "array", default: [] },
-  CREATED_AT: { name: "Created At", type: "string", source: "file.ctime" },
-  UPDATED_AT: { name: "Updated At", type: "string", source: "file.mtime" }
+  TITLE: { key: "title", name: "Title", type: "string", source: "formula.Title" },
+  TYPE: { key: "type", name: "Type", type: "string", default: "Task" },
+  CATEGORY: { key: "category", name: "Category", type: "string", default: "Task" },
+  PRIORITY: { key: "priority", name: "Priority", type: "string", default: "Low" },
+  AREAS: { key: "areas", name: "Areas", type: "array", link: true, default: [] },
+  PROJECT: { key: "project", name: "Project", type: "string", link: true },
+  PROJECTS: { key: "projects", name: "Projects", type: "array", link: true, default: [] },
+  DONE: { key: "done", name: "Done", type: "checkbox", default: false },
+  STATUS: { key: "status", name: "Status", type: "string", default: "Backlog" },
+  PARENT_TASK: { key: "parentTask", name: "Parent task", type: "string", link: true },
+  SUB_TASKS: { key: "subTasks", name: "Sub-tasks", type: "array", link: true, default: [] },
+  TAGS: { key: "tags", name: "tags", type: "array", default: [] },
+  CREATED_AT: { key: "createdAt", name: "Created At", type: "string", source: "file.ctime" },
+  UPDATED_AT: { key: "updatedAt", name: "Updated At", type: "string", source: "file.mtime" }
 };
 
 // ============================================================================
@@ -452,10 +453,9 @@ export function generateTaskFrontMatter(): PropertyDefinition[] {
  * Generate front-matter properties for project files
  */
 export function generateProjectFrontMatter(): PropertyDefinition[] {
-  // Projects use Name instead of Title, Type, and Areas properties in that order
   return [
-    { name: "Name", type: "string" }, // Use Name instead of Title for projects
-    { name: "Type", type: "string" },
+    { key: "name", name: "Name", type: "string" }, // Use Name instead of Title for projects
+    { key: "type", name: "Type", type: "string" },
     PROPERTY_REGISTRY.AREAS
   ];
 }
@@ -464,10 +464,9 @@ export function generateProjectFrontMatter(): PropertyDefinition[] {
  * Generate front-matter properties for area files
  */
 export function generateAreaFrontMatter(): PropertyDefinition[] {
-  // Areas use Name instead of Title, Type, and Project properties in that order
   return [
-    { name: "Name", type: "string" }, // Use Name instead of Title for areas
-    { name: "Type", type: "string" },
+    { key: "name", name: "Name", type: "string" }, // Use Name instead of Title for areas
+    { key: "type", name: "Type", type: "string" },
     PROPERTY_REGISTRY.PROJECT
   ];
 }
