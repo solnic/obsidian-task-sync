@@ -11,7 +11,6 @@ export interface TaskCreateData {
   category?: string;
   areas?: string;
   parentTask?: string;
-  subTasks?: string[];
   tags: string[];
   project?: string;
   done: boolean;
@@ -171,18 +170,6 @@ export class TaskCreateModal extends Modal {
           });
       });
 
-    // Sub-tasks
-    new Setting(container)
-      .setName('Sub-tasks')
-      .setDesc('Comma-separated list of subtasks')
-      .addText(text => {
-        text.setPlaceholder('Subtask names (optional)')
-          .setValue(this.formData.subTasks?.join(', ') || '')
-          .onChange(value => {
-            this.formData.subTasks = value ? value.split(',').map(s => s.trim()).filter(s => s) : [];
-          });
-      });
-
     // Tags
     new Setting(container)
       .setName('Tags')
@@ -274,7 +261,6 @@ export class TaskCreateModal extends Modal {
       category: this.formData.category || undefined,
       areas: this.formData.areas || undefined,
       parentTask: this.formData.parentTask || undefined,
-      subTasks: this.formData.subTasks || undefined,
       tags: this.formData.tags || [],
       project: this.formData.project || undefined,
       done: false,

@@ -598,7 +598,6 @@ export async function createTestTaskFile(
         status: frontmatter.Status || frontmatter.status || 'Backlog',
         priority: frontmatter.Priority || frontmatter.priority,
         parentTask: frontmatter['Parent task'] || frontmatter.parentTask,
-        subTasks: frontmatter['Sub-tasks'] || frontmatter.subTasks || [],
         tags: frontmatter.tags || []
       };
 

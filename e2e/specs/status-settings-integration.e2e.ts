@@ -48,7 +48,6 @@ Project: Test Project
 Done: false
 Status: Backlog
 Parent task:
-Sub-tasks:
 tags: test
 ---
 
@@ -126,7 +125,6 @@ Project: Test Project
 Done: false
 Status: In Progress
 Parent task:
-Sub-tasks:
 tags: test
 ---
 
@@ -217,7 +215,6 @@ Project: Test Project
 Done: false
 Status: Backlog
 Parent task:
-Sub-tasks:
 tags: test
 ---
 
@@ -287,7 +284,6 @@ Project: Test Project
 Done: false
 Status: Backlog
 Parent task:
-Sub-tasks:
 tags: test
 ---
 
@@ -359,7 +355,6 @@ Project: Test Project
 Done: false
 Status: Backlog
 Parent task:
-Sub-tasks:
 tags: test
 ---
 

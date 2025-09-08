@@ -586,7 +586,6 @@ export default class TaskSyncPlugin extends Plugin {
       done: taskData.done,
       status: taskData.status,
       parentTask: taskData.parentTask,
-      subTasks: taskData.subTasks,
       tags: taskData.tags
     };
   }

@@ -27,7 +27,7 @@ export class SortablePropertyList {
     this.onReorder = options.onReorder;
     this.onReset = options.onReset;
     this.listElement = this.container.createDiv('sortable-property-list');
-    
+
     this.render();
     this.addStyles();
   }
@@ -132,7 +132,7 @@ export class SortablePropertyList {
       const info = item.createDiv('property-info');
       const name = info.createDiv('property-name');
       name.textContent = prop.name;
-      
+
       const description = info.createDiv('property-description');
       description.textContent = this.getPropertyDescription(propertyKey);
 
@@ -161,7 +161,6 @@ export class SortablePropertyList {
       'DONE': 'Whether the task is completed',
       'STATUS': 'Current status of the task',
       'PARENT_TASK': 'Parent task for sub-tasks',
-      'SUB_TASKS': 'List of sub-tasks',
       'TAGS': 'Tags associated with the task'
     };
     return descriptions[propertyKey] || 'Task property';
@@ -172,7 +171,7 @@ export class SortablePropertyList {
       this.draggedElement = item;
       this.draggedIndex = parseInt(item.dataset.index || '-1');
       item.classList.add('dragging');
-      
+
       if (e.dataTransfer) {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/html', item.outerHTML);
@@ -183,7 +182,7 @@ export class SortablePropertyList {
       item.classList.remove('dragging');
       this.draggedElement = null;
       this.draggedIndex = -1;
-      
+
       // Remove drag-over class from all items
       this.listElement.querySelectorAll('.sortable-property-item').forEach(el => {
         el.classList.remove('drag-over');
@@ -214,7 +213,7 @@ export class SortablePropertyList {
     item.addEventListener('drop', (e) => {
       e.preventDefault();
       item.classList.remove('drag-over');
-      
+
       if (this.draggedElement && item !== this.draggedElement) {
         const targetIndex = parseInt(item.dataset.index || '-1');
         this.moveProperty(this.draggedIndex, targetIndex);

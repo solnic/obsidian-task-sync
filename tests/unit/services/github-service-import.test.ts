@@ -54,7 +54,7 @@ const mockSettings = {
   areaBasesEnabled: true,
   projectBasesEnabled: true,
   autoSyncAreaProjectBases: true,
-  taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
+  taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'TAGS'],
   githubIntegration: {
     enabled: true,
     personalAccessToken: 'test-token',

@@ -161,7 +161,7 @@ Parent task: ''
 tags: []
 ---
 
-## Sub-tasks
+## Sub tasks
 {{tasks}}`;
 
       try {
@@ -181,7 +181,7 @@ tags: []
       }
     });
 
-    // Create a parent task with sub-tasks to test {{tasks}} variable processing
+    // Create a parent task to test {{tasks}} variable processing
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
@@ -194,8 +194,7 @@ tags: []
           project: 'Test Project',
           done: false,
           status: 'In Progress',
-          tags: ['test'],
-          subTasks: ['Sub Task 1', 'Sub Task 2']
+          tags: ['test']
         });
       }
     });
@@ -214,7 +213,7 @@ tags: []
 
     // Check template content was processed correctly
     const taskContent = await getFileContent(context.page, 'Tasks/Parent Task Test.md');
-    expect(taskContent).toContain('## Sub-tasks');
+    expect(taskContent).toContain('## Sub tasks');
     expect(taskContent).toContain('![[Bases/Parent Task Test.base]]');
   });
 });

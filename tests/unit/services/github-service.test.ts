@@ -56,7 +56,7 @@ describe('GitHubService', () => {
     areaBasesEnabled: true,
     projectBasesEnabled: true,
     autoSyncAreaProjectBases: true,
-    taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
+    taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'TAGS'],
     githubIntegration: {
       enabled: true,
       personalAccessToken: 'ghp_test1234567890abcdef1234567890abcdef1234',

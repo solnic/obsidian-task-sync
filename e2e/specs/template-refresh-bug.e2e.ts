@@ -76,7 +76,7 @@ Project: {{project}}
 Done: {{done}}
 Status: {{status}}
 Parent task: {{parentTask}}
-Sub-tasks: {{subTasks}}
+
 tags: {{tags}}
 ---
 
@@ -133,7 +133,7 @@ tags: {{tags}}
     expect(afterAreaContent).not.toContain('Done:');
     expect(afterAreaContent).not.toContain('Status:');
     expect(afterAreaContent).not.toContain('Parent task:');
-    expect(afterAreaContent).not.toContain('Sub-tasks:');
+
 
     // Project template should NOT have task-specific properties added
     expect(afterProjectContent).toContain('Name: {{name}}');
@@ -145,7 +145,7 @@ tags: {{tags}}
     expect(afterProjectContent).not.toContain('Done:');
     expect(afterProjectContent).not.toContain('Status:');
     expect(afterProjectContent).not.toContain('Parent task:');
-    expect(afterProjectContent).not.toContain('Sub-tasks:');
+
 
     // Task template should be properly updated with correct property order
     expect(afterTaskContent).toContain('Title: {{name}}');

@@ -13,11 +13,6 @@ describe('Parent Task Support', () => {
   };
 
   describe('Property Definitions', () => {
-    it('should define Sub-tasks as array type', () => {
-      expect(PROPERTY_REGISTRY.SUB_TASKS.type).toBe('array');
-      expect(PROPERTY_REGISTRY.SUB_TASKS.link).toBe(true);
-    });
-
     it('should define Parent task as string with link', () => {
       expect(PROPERTY_REGISTRY.PARENT_TASK.type).toBe('string');
       expect(PROPERTY_REGISTRY.PARENT_TASK.link).toBe(true);
@@ -29,13 +24,13 @@ describe('Parent Task Support', () => {
       const parentTaskName = 'Epic Feature Development';
       const baseConfig = generateParentTaskBase(mockSettings, parentTaskName);
 
-      expect(baseConfig).toContain('Sub-tasks');
+      expect(baseConfig).toContain('Child Tasks');
       expect(baseConfig).toContain('All Related');
       expect(baseConfig).toContain(`"Parent task".contains(link("${parentTaskName}"))`);
       expect(baseConfig).toContain(`file.name == "${parentTaskName}"`);
     });
 
-    it('should include proper filters for sub-tasks', () => {
+    it('should include proper filters for child tasks', () => {
       const parentTaskName = 'Test Parent';
       const baseConfig = generateParentTaskBase(mockSettings, parentTaskName);
 
@@ -54,16 +49,11 @@ describe('Parent Task Support', () => {
       expect(propertyNames).toContain('Title');
       expect(propertyNames).toContain('Type');
       expect(propertyNames).toContain('Category');
-      expect(propertyNames).toContain('Sub-tasks');
       expect(propertyNames).toContain('Parent task');
     });
 
     it('should have correct property types for parent task fields', () => {
       const properties = generateTaskFrontMatter();
-
-      const subTasksProp = properties.find(p => p.name === 'Sub-tasks');
-      expect(subTasksProp?.type).toBe('array');
-      expect(subTasksProp?.link).toBe(true);
 
       const parentTaskProp = properties.find(p => p.name === 'Parent task');
       expect(parentTaskProp?.type).toBe('string');
@@ -71,15 +61,15 @@ describe('Parent Task Support', () => {
     });
   });
 
-  describe('Sub-task Filtering', () => {
-    it('should include sub-tasks in parent task base configuration', () => {
+  describe('Child Task Filtering', () => {
+    it('should include child tasks in parent task base configuration', () => {
       const parentTaskName = 'Test Parent';
       const baseConfig = generateParentTaskBase(mockSettings, parentTaskName);
 
       // Should include filter to show tasks that have this parent
       expect(baseConfig).toContain('"Parent task".contains(link("Test Parent"))');
-      // Should have a sub-tasks view
-      expect(baseConfig).toContain('Sub-tasks');
+      // Should have a child tasks view
+      expect(baseConfig).toContain('Child Tasks');
     });
   });
 });

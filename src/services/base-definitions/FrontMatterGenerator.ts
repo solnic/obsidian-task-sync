@@ -240,7 +240,7 @@ export function generateParentTaskFrontMatter(
     content = [
       'Parent task description...',
       '',
-      '## Sub-tasks',
+      '## Related Tasks',
       '',
       `![[${sanitizeFileName(taskData.name)}.base]]`,
       ''
@@ -266,7 +266,6 @@ function getFieldValue(data: any, fieldName: string, propertyDef: PropertyDefini
     'Type': 'type',
     'Areas': 'areas',
     'Parent task': 'parentTask',
-    'Sub-tasks': 'subTasks',
     'tags': 'tags',
     'Project': 'project',
     'Done': 'done',

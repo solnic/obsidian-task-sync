@@ -46,7 +46,7 @@ describe('Clean Template Generation', () => {
     expect(templateContent).toContain('Done:');
     expect(templateContent).toContain('Status:');
     expect(templateContent).toContain('Parent task:');
-    expect(templateContent).toContain('Sub-tasks:');
+
     expect(templateContent).toContain('tags:');
 
     // Should have configured default values
@@ -56,7 +56,7 @@ describe('Clean Template Generation', () => {
 
     // Arrays should be empty
     expect(templateContent).toContain('Areas: []');
-    expect(templateContent).toContain('Sub-tasks: []');
+
     expect(templateContent).toContain('tags: []');
 
     // Only {{tasks}} variable is supported, no {{description}}

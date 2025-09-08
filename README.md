@@ -6,7 +6,7 @@ A simple, focused task creation plugin for Obsidian that works seamlessly with t
 
 - **Quick Task Creation**: Simple modal for creating tasks with template-aligned fields
 - **Bases Integration**: Designed to work perfectly with Obsidian's Bases feature for task visualization
-- **Template Alignment**: Task structure matches your existing templates (Title, Type, Areas, Parent task, Sub-tasks, tags, Project, Done, Status, Priority)
+- **Template Alignment**: Task structure matches your existing templates (Title, Type, Areas, Parent task, tags, Project, Done, Status, Priority)
 - **Minimal Configuration**: Simple settings for folder paths and template preferences
 - **No Sync Complexity**: Relies on Bases for automatic syncing and data management
 

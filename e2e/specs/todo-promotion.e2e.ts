@@ -277,7 +277,7 @@ describe('Todo Promotion E2E', () => {
     expect(taskContent).toContain(`Project: "[[Website Redesign]]"`);
   });
 
-  test('should promote nested todos and create sub-tasks', async () => {
+  test('should promote nested todos and create parent-child relationships', async () => {
     await createTestFolders(context.page);
 
     // Create a test file with nested todos
@@ -317,13 +317,6 @@ describe('Todo Promotion E2E', () => {
     expect(child1Exists).toBe(true);
     expect(child2Exists).toBe(true);
     expect(child3Exists).toBe(true);
-
-    // Verify parent task has sub-tasks in front-matter
-    const parentContent = await getFileContent(context.page, 'Tasks/Parent task with children.md');
-    expect(parentContent).toContain('Sub-tasks:');
-    expect(parentContent).toContain(`"[[First child task]]"`);
-    expect(parentContent).toContain(`"[[Second child task]]"`);
-    expect(parentContent).toContain(`"[[Completed child task]]"`);
 
     // Verify child tasks have parent task set
     const child1Content = await getFileContent(context.page, 'Tasks/First child task.md');
@@ -436,14 +429,5 @@ describe('Todo Promotion E2E', () => {
     });
 
     expect(childFrontMatter['Parent task']).toBe('[[Main parent task]]');
-
-    // Verify parent task has child in sub-tasks using API
-    const parentFrontMatter = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      return await plugin.taskFileManager.loadFrontMatter('Tasks/Main parent task.md');
-    });
-
-    expect(parentFrontMatter['Sub-tasks']).toEqual(['[[Sub-task to promote]]']);
   });
 });

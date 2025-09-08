@@ -21,9 +21,9 @@ const mockApp = {
 
 const mockSettings = {
   areasFolder: 'Areas',
-  projectsFolder: 'Projects', 
+  projectsFolder: 'Projects',
   tasksFolder: 'Tasks',
-  taskPropertyOrder: ['TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
+  taskPropertyOrder: ['TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'TAGS']
 };
 
 describe('File Managers Property Ordering', () => {
@@ -59,7 +59,7 @@ Area content here.`;
 
     it('should get area properties in correct order', () => {
       const properties = areaFileManager.getPropertiesInOrder();
-      
+
       expect(properties).toBeDefined();
       expect(properties.length).toBeGreaterThan(0);
       expect(properties[0].name).toBe('Name');
@@ -89,7 +89,7 @@ Project content here.`;
 
     it('should get project properties in correct order', () => {
       const properties = projectFileManager.getPropertiesInOrder();
-      
+
       expect(properties).toBeDefined();
       expect(properties.length).toBeGreaterThan(0);
       expect(properties[0].name).toBe('Name');

@@ -385,8 +385,8 @@ export class TemplateManager {
     // Only {{tasks}} variable is supported, no other template variables
     const baseContent = matter.stringify('', frontMatterData);
 
-    // Add embedded base for sub-tasks using {{tasks}} variable
-    return baseContent + '\n\n## Sub-tasks\n\n{{tasks}}';
+    // Add embedded base for related tasks using {{tasks}} variable
+    return baseContent + '\n\n## Related Tasks\n\n{{tasks}}';
   }
 
 }

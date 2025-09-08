@@ -2,14 +2,14 @@
 
 This document verifies that all the reported bugs have been fixed:
 
-## ✅ Bug 1: Parent task created without sub-tasks
-**Fixed**: Parent tasks now include child tasks in their Sub-tasks field when created.
+## ✅ Bug 1: Parent-child task relationships
+**Fixed**: Parent-child task relationships are now properly established through the Parent task field.
 
-**Implementation**: 
-- Modified the parent task creation to include `subTasks: todoWithParent.text` in the task data
-- Added logic to update existing parent tasks' sub-tasks field if they already exist
+**Implementation**:
+- Child tasks have their Parent task field set to link to the parent task
+- Parent task bases show related child tasks through filtering
 
-## ✅ Bug 2: Sub-tasks Parent value should be a link
+## ✅ Bug 2: Parent task field uses proper link format
 **Fixed**: Parent task field now contains a link to the parent task note.
 
 **Implementation**:

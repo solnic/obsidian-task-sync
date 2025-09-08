@@ -40,7 +40,7 @@ This task has only a title.`);
     expect(frontMatter.Type).toBeDefined();
     expect(frontMatter.Areas).toBeDefined();
     expect(frontMatter['Parent task']).toBeDefined();
-    expect(frontMatter['Sub-tasks']).toBeDefined();
+
     expect(frontMatter.tags).toBeDefined();
     expect(frontMatter.Project).toBeDefined();
     expect(frontMatter.Done).toBeDefined();

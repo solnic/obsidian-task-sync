@@ -14,7 +14,7 @@ describe('Refresh Property Order', () => {
       const app = (window as any).app;
 
       // Create task with properties in wrong order (not matching schema)
-      // Schema order should be: Title, Type, Category, Priority, Areas, Project, Done, Status, Parent task, Sub-tasks, tags
+      // Schema order should be: Title, Type, Category, Priority, Areas, Project, Done, Status, Parent task, tags
       await app.vault.create('Tasks/Wrong Order Task.md', `---
 Done: false
 tags: test
@@ -26,7 +26,6 @@ Category: Task
 Priority: High
 Status: In Progress
 Parent task:
-Sub-tasks:
 ---
 
 This task has all properties but in wrong order.`);
@@ -49,7 +48,7 @@ This task has all properties but in wrong order.`);
     console.log('Initial property order:', initialPropertyOrder);
 
     // Expected order based on default schema
-    const expectedOrder = ['Title', 'Type', 'Category', 'Priority', 'Areas', 'Project', 'Done', 'Status', 'Parent task', 'Sub-tasks', 'tags'];
+    const expectedOrder = ['Title', 'Type', 'Category', 'Priority', 'Areas', 'Project', 'Done', 'Status', 'Parent task', 'tags'];
 
     // Verify initial order is wrong
     expect(initialPropertyOrder).not.toEqual(expectedOrder);
@@ -115,7 +114,6 @@ Project: Test Project
 Done: false
 Status: In Progress
 Parent task:
-Sub-tasks:
 tags: test
 ---
 
@@ -139,7 +137,7 @@ This task was created with default property order.`);
     console.log('Initial property order:', initialPropertyOrder);
 
     // Expected default order
-    const expectedDefaultOrder = ['Title', 'Type', 'Category', 'Priority', 'Areas', 'Project', 'Done', 'Status', 'Parent task', 'Sub-tasks', 'tags'];
+    const expectedDefaultOrder = ['Title', 'Type', 'Category', 'Priority', 'Areas', 'Project', 'Done', 'Status', 'Parent task', 'tags'];
 
     // Verify initial order matches default
     expect(initialPropertyOrder).toEqual(expectedDefaultOrder);
@@ -150,12 +148,12 @@ This task was created with default property order.`);
       const plugin = app.plugins.plugins['obsidian-task-sync'];
 
       // Update settings with custom property order (Done first)
-      plugin.settings.taskPropertyOrder = ['DONE', 'TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'];
+      plugin.settings.taskPropertyOrder = ['DONE', 'TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'STATUS', 'PARENT_TASK', 'TAGS'];
       await plugin.saveSettings();
     });
 
     // Expected order based on NEW custom settings (Done first)
-    const expectedCustomOrder = ['Done', 'Title', 'Type', 'Category', 'Priority', 'Areas', 'Project', 'Status', 'Parent task', 'Sub-tasks', 'tags'];
+    const expectedCustomOrder = ['Done', 'Title', 'Type', 'Category', 'Priority', 'Areas', 'Project', 'Status', 'Parent task', 'tags'];
 
     // Execute refresh command to apply new property order to existing files
     await executeCommand(context, 'Task Sync: Refresh');

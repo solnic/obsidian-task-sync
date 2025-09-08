@@ -20,7 +20,6 @@ export interface TaskCreationData extends FileCreationData {
   done?: boolean;
   status?: string;
   parentTask?: string;
-  subTasks?: string[];
   tags?: string[];
 }
 
@@ -57,6 +56,19 @@ export class TaskFileManager extends FileManager {
 
     await this.updateFrontMatter(filePath, frontMatterData);
 
+    // If this is a parent task, create the corresponding base file
+    if (this.shouldUseParentTaskTemplate(data)) {
+      try {
+        // Import BaseManager to create parent task base
+        const { BaseManager } = await import('./BaseManager');
+        const baseManager = new BaseManager(this.app, this.vault, this.settings);
+        await baseManager.createOrUpdateParentTaskBase(data.title);
+      } catch (error) {
+        console.error('Failed to create parent task base:', error);
+        // Don't fail the task creation if base creation fails
+      }
+    }
+
     return filePath;
   }
 
@@ -66,9 +78,9 @@ export class TaskFileManager extends FileManager {
    * @returns Template content or default content if template not found
    */
   private async getTaskTemplateContent(data: TaskCreationData): Promise<string> {
-    // Determine if this is a parent task (has sub-tasks)
-    const isParentTask = data.subTasks && data.subTasks.length > 0;
-    const templateType = isParentTask ? 'parentTask' : 'task';
+    // Determine if this should be a parent task based on task data
+    const shouldUseParentTemplate = this.shouldUseParentTaskTemplate(data);
+    const templateType = shouldUseParentTemplate ? 'parentTask' : 'task';
 
     // Try to read template content
     const templateContent = await this.readTemplate(templateType);
@@ -77,19 +89,37 @@ export class TaskFileManager extends FileManager {
     }
 
     // Fallback content if template doesn't exist
-    if (isParentTask) {
-      return [
-        '',
-        '',
-        '## Sub-tasks',
-        '',
-        '{{tasks}}',
-        ''
-      ].join('\n');
+    return '';
+  }
+
+  /**
+   * Determine if a task should use the parent task template
+   * @param data - Task creation data
+   * @returns True if parent task template should be used
+   */
+  private shouldUseParentTaskTemplate(data: TaskCreationData): boolean {
+    // Use parent task template if:
+    // 1. Category is explicitly set to 'Parent Task'
+    // 2. Or if the task name suggests it's a parent task (contains words like "Epic", "Parent", etc.)
+    // 3. Or if we're in a context where parent tasks are expected
+
+    if (data.category === 'Parent Task') {
+      return true;
     }
 
-    // For regular tasks, return empty content (front-matter will be added separately)
-    return '';
+    // Check if task name suggests it's a parent task
+    const parentKeywords = ['epic', 'parent', 'main', 'master', 'primary'];
+    const taskNameLower = data.title.toLowerCase();
+    if (parentKeywords.some(keyword => taskNameLower.includes(keyword))) {
+      return true;
+    }
+
+    // For now, also use parent template for Feature category tasks as they often have subtasks
+    if (data.category === 'Feature') {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -295,34 +325,7 @@ export class TaskFileManager extends FileManager {
     await this.updateProperty(filePath, 'Parent task', parentTaskLink);
   }
 
-  /**
-   * Add sub-task
-   * @param filePath - Path to the task file
-   * @param subTaskName - Name of the sub-task to add
-   */
-  async addSubTask(filePath: string, subTaskName: string): Promise<void> {
-    const currentFrontMatter = await this.loadFrontMatter(filePath);
-    const currentSubTasks = currentFrontMatter['Sub-tasks'] || [];
-    const subTaskLink = `[[${subTaskName}]]`;
 
-    if (!currentSubTasks.includes(subTaskLink)) {
-      const newSubTasks = [...currentSubTasks, subTaskLink];
-      await this.updateProperty(filePath, 'Sub-tasks', newSubTasks);
-    }
-  }
-
-  /**
-   * Remove sub-task
-   * @param filePath - Path to the task file
-   * @param subTaskName - Name of the sub-task to remove
-   */
-  async removeSubTask(filePath: string, subTaskName: string): Promise<void> {
-    const currentFrontMatter = await this.loadFrontMatter(filePath);
-    const currentSubTasks = currentFrontMatter['Sub-tasks'] || [];
-    const subTaskLink = `[[${subTaskName}]]`;
-    const newSubTasks = currentSubTasks.filter((task: string) => task !== subTaskLink);
-    await this.updateProperty(filePath, 'Sub-tasks', newSubTasks);
-  }
 
   // ============================================================================
   // PROPERTY ORDER MANAGEMENT
@@ -546,7 +549,6 @@ export class TaskFileManager extends FileManager {
     areas: string[];
     tags: string[];
     parentTask: string;
-    subTasks: string[];
   }> {
     const frontMatter = await this.loadFrontMatter(filePath);
 
@@ -559,8 +561,7 @@ export class TaskFileManager extends FileManager {
       project: frontMatter.Project || '',
       areas: frontMatter.Areas || [],
       tags: frontMatter.tags || [],
-      parentTask: frontMatter['Parent task'] || '',
-      subTasks: frontMatter['Sub-tasks'] || []
+      parentTask: frontMatter['Parent task'] || ''
     };
   }
 

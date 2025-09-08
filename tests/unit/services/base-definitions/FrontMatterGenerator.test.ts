@@ -14,7 +14,6 @@ describe('FrontMatterGenerator - Property Ordering', () => {
     done: false,
     status: 'Backlog',
     parentTask: '',
-    subTasks: [],
     tags: ['tag1']
   };
 
@@ -22,7 +21,7 @@ describe('FrontMatterGenerator - Property Ordering', () => {
     // ❌ This test should fail initially because custom property order is not implemented yet
     const customSettings: Partial<TaskSyncSettings> = {
       ...DEFAULT_SETTINGS,
-      taskPropertyOrder: ['TYPE', 'TITLE', 'CATEGORY', 'DONE', 'STATUS', 'PRIORITY', 'AREAS', 'PROJECT', 'PARENT_TASK', 'SUB_TASKS', 'TAGS']
+      taskPropertyOrder: ['TYPE', 'TITLE', 'CATEGORY', 'DONE', 'STATUS', 'PRIORITY', 'AREAS', 'PROJECT', 'PARENT_TASK', 'TAGS']
     };
 
     const frontMatter = generateTaskFrontMatter(mockTaskData, { settings: customSettings as TaskSyncSettings });
@@ -69,9 +68,9 @@ describe('FrontMatterGenerator - Property Ordering', () => {
   it('should handle property order changes consistently', () => {
     // Test multiple different orders to ensure consistency
     const orders = [
-      ['DONE', 'TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
-      ['TYPE', 'PRIORITY', 'TITLE', 'CATEGORY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
-      ['TAGS', 'TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS']
+      ['DONE', 'TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'STATUS', 'PARENT_TASK', 'TAGS'],
+      ['TYPE', 'PRIORITY', 'TITLE', 'CATEGORY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'TAGS'],
+      ['TAGS', 'TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK']
     ];
 
     orders.forEach((order, index) => {

@@ -41,7 +41,6 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
   DONE: { key: "done", name: "Done", type: "checkbox", default: false },
   STATUS: { key: "status", name: "Status", type: "string", default: "Backlog" },
   PARENT_TASK: { key: "parentTask", name: "Parent task", type: "string", link: true },
-  SUB_TASKS: { key: "subTasks", name: "Sub-tasks", type: "array", link: true, default: [] },
   TAGS: { key: "tags", name: "tags", type: "array", default: [] },
   CREATED_AT: { key: "createdAt", name: "Created At", type: "string", source: "file.ctime" },
   UPDATED_AT: { key: "updatedAt", name: "Updated At", type: "string", source: "file.mtime" }
@@ -52,10 +51,10 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
 // ============================================================================
 
 export const PROPERTY_SETS = {
-  TASK_FRONTMATTER: ['TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'] as const,
-  TASKS_BASE: ['TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
-  AREA_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'PROJECTS', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
-  PROJECT_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const
+  TASK_FRONTMATTER: ['TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'TAGS'] as const,
+  TASKS_BASE: ['TITLE', 'TYPE', 'CATEGORY', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
+  AREA_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'PROJECTS', 'DONE', 'STATUS', 'PARENT_TASK', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const,
+  PROJECT_BASE: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'DONE', 'STATUS', 'PARENT_TASK', 'TAGS', 'CREATED_AT', 'UPDATED_AT'] as const
 } as const;
 
 // ============================================================================
@@ -398,10 +397,10 @@ export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskNam
     },
     properties: generatePropertiesSection(PROPERTY_SETS.TASKS_BASE),
     views: [
-      // Sub-tasks view
+      // Child tasks view
       {
         type: 'table',
-        name: 'Sub-tasks',
+        name: 'Child Tasks',
         filters: {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
@@ -411,7 +410,7 @@ export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskNam
         order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.TASK)
       },
-      // All related tasks (parent + sub-tasks)
+      // All related tasks (parent + children)
       {
         type: 'table',
         name: 'All Related',

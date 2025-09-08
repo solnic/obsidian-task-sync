@@ -75,7 +75,6 @@ export interface Task extends BaseEntity {
     'DONE',
     'STATUS',
     'PARENT_TASK',
-    'SUB_TASKS',
     'TAGS'
   ];
 
@@ -89,7 +88,6 @@ export interface Task extends BaseEntity {
     'DONE',
     'STATUS',
     'PARENT_TASK',
-    'SUB_TASKS',
     'TAGS',
     'CREATED_AT',
     'UPDATED_AT'

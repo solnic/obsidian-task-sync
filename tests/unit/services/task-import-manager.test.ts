@@ -27,7 +27,7 @@ const mockSettings = {
     { name: 'Bug', color: 'red' },
     { name: 'Feature', color: 'green' }
   ],
-  taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
+  taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'TAGS'],
   areaBasesEnabled: true,
   projectBasesEnabled: true,
   autoSyncAreaProjectBases: true,

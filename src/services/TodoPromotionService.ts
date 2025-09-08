@@ -92,8 +92,6 @@ export class TodoPromotionService {
           done: todoWithParent.parentTodo.completed,
           status: todoWithParent.parentTodo.completed ? 'Done' : 'Backlog',
           tags: [] as string[],
-          // Include the child task in sub-tasks field from the start
-          subTasks: [todoWithParent.text],
           // Set context-specific fields
           ...(context.type === 'project' && context.name ? { project: context.name } : {}),
           ...(context.type === 'area' && context.name ? { areas: [context.name] } : {})
@@ -107,15 +105,12 @@ export class TodoPromotionService {
           await this.createTaskCallback(parentTaskData);
           console.log(`Created parent task: ${todoWithParent.parentTodo.text}`);
 
-          // Create base for parent task to show its sub-tasks
+          // Create base for parent task to show related tasks
           try {
             await this.baseManager.createOrUpdateParentTaskBase(todoWithParent.parentTodo.text);
           } catch (error) {
             console.error('Failed to create parent task base:', error);
           }
-        } else {
-          // If parent exists, update its sub-tasks field
-          await this.updateParentTaskSubTasks(todoWithParent.parentTodo.text, todoWithParent.text);
         }
 
         parentTaskName = todoWithParent.parentTodo.text;
@@ -131,8 +126,6 @@ export class TodoPromotionService {
         tags: [] as string[],
         // Set parent task if exists (FrontMatterGenerator will handle link formatting)
         ...(parentTaskName ? { parentTask: parentTaskName } : {}),
-        // If this todo has children, include them as sub-tasks (use sanitized names that will be used for files)
-        ...(childTodos.length > 0 ? { subTasks: childTodos.map(child => sanitizeFileName(child.text)) } : {}),
         // Set context-specific fields
         ...(context.type === 'project' && context.name ? { project: context.name } : {}),
         ...(context.type === 'area' && context.name ? { areas: [context.name] } : {})
@@ -159,7 +152,7 @@ export class TodoPromotionService {
           await this.createTaskCallback(childTaskData);
         }
 
-        // Create base for parent task to show its sub-tasks
+        // Create base for parent task to show related tasks
         try {
           await this.baseManager.createOrUpdateParentTaskBase(todoWithParent.text);
         } catch (error) {
@@ -178,11 +171,9 @@ export class TodoPromotionService {
         await this.refreshBaseViewsCallback();
       }
 
-      const message = childTodos.length > 0
-        ? `Todo promoted to task with ${childTodos.length} sub-tasks: ${todoWithParent.text}`
-        : parentTaskName
-          ? `Todo promoted to task with parent: ${todoWithParent.text} (parent: ${parentTaskName})`
-          : `Todo promoted to task: ${todoWithParent.text}`;
+      const message = parentTaskName
+        ? `Todo promoted to task with parent: ${todoWithParent.text} (parent: ${parentTaskName})`
+        : `Todo promoted to task: ${todoWithParent.text}`;
 
       return {
         success: true,
@@ -407,69 +398,7 @@ export class TodoPromotionService {
     return childTodos;
   }
 
-  /**
-   * Update parent task's sub-tasks field to include the new child task
-   */
-  private async updateParentTaskSubTasks(parentTaskName: string, childTaskName: string): Promise<void> {
-    try {
-      const parentTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(parentTaskName)}`;
-      const parentFile = this.app.vault.getAbstractFileByPath(parentTaskPath);
 
-      if (parentFile instanceof TFile) {
-        const content = await this.app.vault.read(parentFile);
-
-        // Parse front-matter to get current sub-tasks
-        const frontMatterRegex = /^---\n([\s\S]*?)\n---/;
-        const match = content.match(frontMatterRegex);
-
-        if (match) {
-          const frontMatter = match[1];
-          const subTasksMatch = frontMatter.match(/^Sub-tasks:\s*(.*)$/m);
-
-          let currentSubTasks: string[] = [];
-          if (subTasksMatch && subTasksMatch[1].trim()) {
-            // Parse existing sub-tasks (could be comma-separated or array format)
-            const subTasksValue = subTasksMatch[1].trim();
-            if (subTasksValue.startsWith('[') && subTasksValue.endsWith(']')) {
-              // Array format: ["[[task1]]", "[[task2]]"]
-              try {
-                const parsed = JSON.parse(subTasksValue);
-                currentSubTasks = parsed.map((item: string) => item.replace(/^\[\[(.+)\]\]$/, '$1'));
-              } catch (e) {
-                // Fallback: parse manually
-                currentSubTasks = subTasksValue.slice(1, -1).split(',').map(t =>
-                  t.trim().replace(/^"?\[\[(.+)\]\]"?$/, '$1').replace(/['"]/g, '')
-                );
-              }
-            } else {
-              // Comma-separated format: task1, task2
-              currentSubTasks = subTasksValue.split(',').map(t => t.trim());
-            }
-          }
-
-          // Add new child task if not already present
-          if (!currentSubTasks.includes(childTaskName)) {
-            currentSubTasks.push(childTaskName);
-
-            // Update the sub-tasks field in array format with quoted links
-            const linkedSubTasks = currentSubTasks.filter(t => t).map(task => `"[[${task}]]"`);
-            const updatedSubTasks = `[${linkedSubTasks.join(', ')}]`;
-            const updatedFrontMatter = frontMatter.replace(
-              /^Sub-tasks:\s*.*$/m,
-              `Sub-tasks: ${updatedSubTasks}`
-            );
-
-            const updatedContent = content.replace(frontMatterRegex, `---\n${updatedFrontMatter}\n---`);
-            await this.app.vault.modify(parentFile, updatedContent);
-
-            console.log(`Updated parent task ${parentTaskName} with sub-task: ${childTaskName}`);
-          }
-        }
-      }
-    } catch (error) {
-      console.error(`Failed to update parent task sub-tasks: ${error}`);
-    }
-  }
 
   /**
    * Replace todo lines with links to the created tasks

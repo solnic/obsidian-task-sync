@@ -119,9 +119,6 @@ export class TaskImportManager {
     // Parent task - empty for imports
     frontMatter['Parent task'] = '';
 
-    // Sub-tasks - empty for imports
-    frontMatter['Sub-tasks'] = [];
-
     // Tags - from labels if configured
     if (config.importLabelsAsTags && taskData.labels) {
       frontMatter.tags = taskData.labels;
