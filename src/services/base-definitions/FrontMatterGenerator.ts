@@ -290,6 +290,28 @@ function getFieldValue(data: any, fieldName: string, propertyDef: PropertyDefini
     value = [value];
   }
 
+  // Handle link formatting for properties that should be links
+  if (propertyDef.link && value) {
+    if (propertyDef.type === 'array' && Array.isArray(value)) {
+      // For array properties with links, format as links (YAML will handle quoting)
+      value = value.map(item => {
+        // Don't double-format if already a link
+        if (typeof item === 'string' && item.startsWith('[[') && item.endsWith(']]')) {
+          return item;
+        }
+        return `[[${item}]]`;
+      });
+    } else if (propertyDef.type === 'string') {
+      // For string properties with links, format as links (YAML will handle quoting)
+      // Don't double-format if already a link
+      if (typeof value === 'string' && value.startsWith('[[') && value.endsWith(']]')) {
+        value = value;
+      } else {
+        value = `[[${value}]]`;
+      }
+    }
+  }
+
   return value;
 }
 

@@ -21,6 +21,7 @@ import { TaskImportManager } from './services/TaskImportManager';
 import { ImportStatusService } from './services/ImportStatusService';
 import { GitHubIssuesView, GITHUB_ISSUES_VIEW_TYPE } from './views/GitHubIssuesView';
 import { TaskImportConfig } from './types/integrations';
+import { generateTaskFrontMatter, generateParentTaskFrontMatter } from './services/base-definitions/FrontMatterGenerator';
 
 import pluralize from 'pluralize';
 
@@ -762,6 +763,62 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
+   * Find all child todos of a parent todo by looking at lines below
+   * Returns todos that are indented more than the parent
+   */
+  private findChildTodos(parentTodo: TodoItem): TodoItem[] {
+    const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+    if (!markdownView) {
+      return [];
+    }
+
+    const editor = markdownView.editor;
+    const parentIndentLevel = parentTodo.indentation.length;
+    const childTodos: TodoItem[] = [];
+    const totalLines = editor.lineCount();
+
+    // Look forward from parent line to find child todos
+    for (let lineNum = parentTodo.lineNumber + 1; lineNum < totalLines; lineNum++) {
+      const line = editor.getLine(lineNum);
+
+      // Skip empty lines
+      if (line.trim() === '') {
+        continue;
+      }
+
+      const todoRegex = /^(\s*)([-*])\s*\[([xX\s])\]\s*(.+)$/;
+      const match = line.match(todoRegex);
+
+      if (match) {
+        const [, indentation, listMarker, checkboxState, text] = match;
+        const indentLevel = indentation.length;
+
+        // If indentation is greater than parent, it's a child
+        if (indentLevel > parentIndentLevel) {
+          childTodos.push({
+            text: text.trim(),
+            completed: checkboxState.toLowerCase() === 'x',
+            indentation,
+            listMarker,
+            lineNumber: lineNum
+          });
+        } else {
+          // If we hit a todo with same or less indentation, we've reached the end of children
+          break;
+        }
+      } else {
+        // If we hit a non-todo line with same or less indentation, we've reached the end of children
+        const lineIndentLevel = line.match(/^(\s*)/)?.[1]?.length || 0;
+        if (lineIndentLevel <= parentIndentLevel) {
+          break;
+        }
+      }
+    }
+
+    return childTodos;
+  }
+
+  /**
    * Update parent task's sub-tasks field to include the new child task
    */
   private async updateParentTaskSubTasks(parentTaskName: string, childTaskName: string): Promise<void> {
@@ -840,6 +897,10 @@ export default class TaskSyncPlugin extends Plugin {
       // Get current file context
       const context = this.detectCurrentFileContext();
 
+      // Check if the current todo has children (is a parent todo)
+      const childTodos = this.findChildTodos(todoWithParent);
+      const isParentTodo = childTodos.length > 0;
+
       let parentTaskName: string | undefined;
 
       // If this todo has a parent, create the parent task first
@@ -854,7 +915,7 @@ export default class TaskSyncPlugin extends Plugin {
           subTasks: [todoWithParent.text],
           // Set context-specific fields
           ...(context.type === 'project' && context.name ? { project: context.name } : {}),
-          ...(context.type === 'area' && context.name ? { areas: context.name } : {})
+          ...(context.type === 'area' && context.name ? { areas: [context.name] } : {})
         };
 
         // Check if parent task already exists
@@ -879,22 +940,51 @@ export default class TaskSyncPlugin extends Plugin {
         parentTaskName = todoWithParent.parentTodo.text;
       }
 
-      // Prepare child task data
+      // Prepare task data (could be parent or child task)
       const taskData = {
         name: todoWithParent.text,
         category: this.settings.taskTypes[0]?.name || 'Task',
         done: todoWithParent.completed,
         status: todoWithParent.completed ? 'Done' : 'Backlog',
         tags: [] as string[],
-        // Set parent task as a link if exists
-        ...(parentTaskName ? { parentTask: `[[${parentTaskName}]]` } : {}),
+        // Set parent task if exists (FrontMatterGenerator will handle link formatting)
+        ...(parentTaskName ? { parentTask: parentTaskName } : {}),
+        // If this todo has children, include them as sub-tasks
+        ...(childTodos.length > 0 ? { subTasks: childTodos.map(child => child.text) } : {}),
         // Set context-specific fields
         ...(context.type === 'project' && context.name ? { project: context.name } : {}),
-        ...(context.type === 'area' && context.name ? { areas: context.name } : {})
+        ...(context.type === 'area' && context.name ? { areas: [context.name] } : {})
       };
 
-      // Create the child task
+      // Create the main task
       await this.createTask(taskData);
+
+      // If this todo has children, promote them as individual tasks
+      if (childTodos.length > 0) {
+        for (const childTodo of childTodos) {
+          const childTaskData = {
+            name: childTodo.text,
+            category: this.settings.taskTypes[0]?.name || 'Task',
+            done: childTodo.completed,
+            status: childTodo.completed ? 'Done' : 'Backlog',
+            tags: [] as string[],
+            // Set the current todo as parent
+            parentTask: `[[${todoWithParent.text}]]`,
+            // Set context-specific fields
+            ...(context.type === 'project' && context.name ? { project: context.name } : {}),
+            ...(context.type === 'area' && context.name ? { areas: [context.name] } : {})
+          };
+
+          await this.createTask(childTaskData);
+        }
+
+        // Create base for parent task to show its sub-tasks
+        try {
+          await this.baseManager.createOrUpdateParentTaskBase(todoWithParent.text);
+        } catch (error) {
+          console.error('Failed to create parent task base:', error);
+        }
+      }
 
       // Replace the todo line with a link to the created task
       const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -944,7 +1034,10 @@ export default class TaskSyncPlugin extends Plugin {
       if (todoWithParent.parentTodo) {
         const parentLine = editor.getLine(todoWithParent.parentTodo.lineNumber);
         // Only replace if it's still a todo (not already a link)
-        if (parentLine.includes('[ ]') || parentLine.includes('[x]') || parentLine.includes('[X]')) {
+        // Check for checkboxes but exclude lines that already contain links
+        const hasCheckbox = parentLine.includes('[ ]') || parentLine.includes('[x]') || parentLine.includes('[X]');
+        const hasLink = parentLine.includes('[[') && parentLine.includes(']]');
+        if (hasCheckbox && !hasLink) {
           const originalParentLine = parentLine;
           let parentReplacementLine: string;
           if (todoWithParent.parentTodo.completed) {
@@ -967,9 +1060,47 @@ export default class TaskSyncPlugin extends Plugin {
         }
       }
 
-      const message = parentTaskName
-        ? `Todo promoted to task with parent: ${todoWithParent.text} (parent: ${parentTaskName})`
-        : `Todo promoted to task: ${todoWithParent.text}`;
+      // Also replace child todo lines if they exist
+      if (childTodos.length > 0) {
+        for (const childTodo of childTodos) {
+          const childLine = editor.getLine(childTodo.lineNumber);
+          // Only replace if it's still a todo (not already a link)
+          const hasCheckbox = childLine.includes('[ ]') || childLine.includes('[x]') || childLine.includes('[X]');
+          const hasLink = childLine.includes('[[') && childLine.includes(']]');
+          if (hasCheckbox && !hasLink) {
+            const originalChildLine = childLine;
+            let childReplacementLine: string;
+            if (childTodo.completed) {
+              childReplacementLine = `${childTodo.indentation}${childTodo.listMarker} [x] [[${childTodo.text}]]`;
+            } else {
+              childReplacementLine = `${childTodo.indentation}${childTodo.listMarker} [ ] [[${childTodo.text}]]`;
+            }
+            editor.setLine(childTodo.lineNumber, childReplacementLine);
+
+            // Track the child todo promotion as well
+            const childTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(childTodo.text)}`;
+            await this.storageService.trackPromotedTodo(
+              childTodo.text,
+              originalChildLine,
+              activeFile.path,
+              childTodo.lineNumber,
+              childTodo.text,
+              childTaskPath,
+              {
+                text: todoWithParent.text,
+                lineNumber: todoWithParent.lineNumber,
+                taskName: todoWithParent.text
+              }
+            );
+          }
+        }
+      }
+
+      const message = childTodos.length > 0
+        ? `Todo promoted to task with ${childTodos.length} sub-tasks: ${todoWithParent.text}`
+        : parentTaskName
+          ? `Todo promoted to task with parent: ${todoWithParent.text} (parent: ${parentTaskName})`
+          : `Todo promoted to task: ${todoWithParent.text}`;
       new Notice(message);
 
       // Refresh base views if auto-update is enabled
@@ -1043,24 +1174,43 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   private async generateTaskContent(taskData: any): Promise<string> {
-    // Always use template - it should be created during initialization
-    if (!this.settings.defaultTaskTemplate) {
-      throw new Error('No default task template configured');
-    }
+    // Use FrontMatterGenerator for better property handling
+    try {
+      return generateTaskFrontMatter(taskData, {
+        settings: this.settings,
+        templateContent: taskData.description || 'Task description...'
+      });
+    } catch (error) {
+      console.error('Failed to generate task content with FrontMatterGenerator, falling back to template:', error);
 
-    return await this.generateFromTemplate(this.settings.defaultTaskTemplate, taskData, 'task');
+      // Fallback to template if FrontMatterGenerator fails
+      if (!this.settings.defaultTaskTemplate) {
+        throw new Error('No default task template configured and FrontMatterGenerator failed');
+      }
+      return await this.generateFromTemplate(this.settings.defaultTaskTemplate, taskData, 'task');
+    }
   }
 
   /**
    * Generate default parent task content
    */
   private async generateParentTaskContent(taskData: any): Promise<string> {
-    // Always use template - it should be created during initialization
-    if (!this.settings.defaultParentTaskTemplate) {
-      throw new Error('No default parent task template configured');
-    }
+    // Use FrontMatterGenerator for better property handling
+    try {
+      return generateParentTaskFrontMatter(taskData, {
+        settings: this.settings,
+        includeDescription: true,
+        templateContent: taskData.description || 'Parent task description...'
+      });
+    } catch (error) {
+      console.error('Failed to generate parent task content with FrontMatterGenerator, falling back to template:', error);
 
-    return await this.generateFromTemplate(this.settings.defaultParentTaskTemplate, taskData, 'task');
+      // Fallback to template if FrontMatterGenerator fails
+      if (!this.settings.defaultParentTaskTemplate) {
+        throw new Error('No default parent task template configured and FrontMatterGenerator failed');
+      }
+      return await this.generateFromTemplate(this.settings.defaultParentTaskTemplate, taskData, 'task');
+    }
   }
 
   /**

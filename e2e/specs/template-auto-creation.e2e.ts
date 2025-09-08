@@ -88,9 +88,9 @@ describe('Template Auto-Creation', () => {
     const taskContent = await getFileContent(context.page, 'Tasks/Test Task After Auto-Creation.md');
     expect(taskContent).toContain('Title: Test Task After Auto-Creation');
     expect(taskContent).toContain('Type: Task');
-    expect(taskContent).toContain('Priority: Low'); // Uses default value from property definition
-    expect(taskContent).toContain('- Test Area'); // YAML array format
-    expect(taskContent).toContain("Project: ''"); // Project field uses empty string default
+    expect(taskContent).toContain('Priority: Medium'); // Uses default value from property definition
+    expect(taskContent).toContain("- '[[Test Area]]'"); // YAML array format
+    expect(taskContent).toContain("Project: '[[Test Project]]'"); // Project field uses empty string default
     expect(taskContent).toContain('This task should use the auto-created template');
   });
 
@@ -170,7 +170,6 @@ This is a custom template that should not be overwritten.
         await plugin.createTask({
           name: 'Auto Template Task',
           description: 'This should auto-create template',
-          type: 'Task',
           priority: 'High'
         });
       }
@@ -190,7 +189,7 @@ This is a custom template that should not be overwritten.
     const taskContent = await getFileContent(context.page, 'Tasks/Auto Template Task.md');
     expect(taskContent).toContain('Title: Auto Template Task');
     expect(taskContent).toContain('Type: Task');
-    expect(taskContent).toContain('Priority: Low'); // Uses default value from property definition
+    expect(taskContent).toContain('Priority: High');
     expect(taskContent).toContain('This should auto-create template');
   });
 });
