@@ -21,7 +21,7 @@ import { TaskImportManager } from './services/TaskImportManager';
 import { ImportStatusService } from './services/ImportStatusService';
 import { GitHubIssuesView, GITHUB_ISSUES_VIEW_TYPE } from './views/GitHubIssuesView';
 import { TaskImportConfig } from './types/integrations';
-import { generateTaskFrontMatter, generateParentTaskFrontMatter } from './services/base-definitions/FrontMatterGenerator';
+
 
 import pluralize from 'pluralize';
 
@@ -268,6 +268,9 @@ export default class TaskSyncPlugin extends Plugin {
 
   async saveSettings() {
     try {
+      // Validate settings before saving
+      this.validateSettings();
+
       await this.saveData(this.settings);
 
       // Update event system with new settings
@@ -391,6 +394,17 @@ export default class TaskSyncPlugin extends Plugin {
       if (!validation.isValid) {
         console.error(`Task Sync: Invalid ${field}: ${validation.error}`);
         console.warn(`Task Sync: Resetting ${field} to default value`);
+        (this.settings as any)[field] = (DEFAULT_SETTINGS as any)[field];
+      }
+    });
+
+    // Validate template settings - these are MANDATORY and cannot be empty
+    const templateFields = ['defaultTaskTemplate', 'defaultProjectTemplate', 'defaultAreaTemplate', 'defaultParentTaskTemplate'];
+    templateFields.forEach(field => {
+      const templateName = this.settings[field as keyof TaskSyncSettings] as string;
+
+      if (!templateName || typeof templateName !== 'string' || templateName.trim() === '') {
+        console.warn(`Task Sync: Template setting ${field} is empty or invalid, using default`);
         (this.settings as any)[field] = (DEFAULT_SETTINGS as any)[field];
       }
     });
@@ -923,7 +937,7 @@ export default class TaskSyncPlugin extends Plugin {
         const parentExists = await this.app.vault.adapter.exists(parentTaskPath);
 
         if (!parentExists) {
-          await this.createTask(parentTaskData);
+          await this.createTaskForTodoPromotion(parentTaskData);
           console.log(`Created parent task: ${todoWithParent.parentTodo.text}`);
 
           // Create base for parent task to show its sub-tasks
@@ -941,6 +955,11 @@ export default class TaskSyncPlugin extends Plugin {
       }
 
       // Prepare task data (could be parent or child task)
+      console.log(`Creating task data for: ${todoWithParent.text}, childTodos.length: ${childTodos.length}`);
+      if (childTodos.length > 0) {
+        console.log(`Child todos: ${JSON.stringify(childTodos.map(child => child.text))}`);
+      }
+
       const taskData = {
         name: todoWithParent.text,
         category: this.settings.taskTypes[0]?.name || 'Task',
@@ -949,15 +968,17 @@ export default class TaskSyncPlugin extends Plugin {
         tags: [] as string[],
         // Set parent task if exists (FrontMatterGenerator will handle link formatting)
         ...(parentTaskName ? { parentTask: parentTaskName } : {}),
-        // If this todo has children, include them as sub-tasks
-        ...(childTodos.length > 0 ? { subTasks: childTodos.map(child => child.text) } : {}),
+        // If this todo has children, include them as sub-tasks (use sanitized names that will be used for files)
+        ...(childTodos.length > 0 ? { subTasks: childTodos.map(child => sanitizeFileName(child.text)) } : {}),
         // Set context-specific fields
         ...(context.type === 'project' && context.name ? { project: context.name } : {}),
         ...(context.type === 'area' && context.name ? { areas: [context.name] } : {})
       };
 
+      console.log(`Task data created: ${JSON.stringify(taskData)}`);
+
       // Create the main task
-      await this.createTask(taskData);
+      await this.createTaskForTodoPromotion(taskData);
 
       // If this todo has children, promote them as individual tasks
       if (childTodos.length > 0) {
@@ -975,7 +996,7 @@ export default class TaskSyncPlugin extends Plugin {
             ...(context.type === 'area' && context.name ? { areas: [context.name] } : {})
           };
 
-          await this.createTask(childTaskData);
+          await this.createTaskForTodoPromotion(childTaskData);
         }
 
         // Create base for parent task to show its sub-tasks
@@ -1173,21 +1194,58 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
-  private async generateTaskContent(taskData: any): Promise<string> {
-    // Use FrontMatterGenerator for better property handling
+  /**
+   * Task creation logic specifically for todo promotion with front-matter property replacement
+   */
+  async createTaskForTodoPromotion(taskData: any): Promise<void> {
     try {
-      return generateTaskFrontMatter(taskData, {
-        settings: this.settings,
-        templateContent: taskData.description || 'Task description...'
-      });
-    } catch (error) {
-      console.error('Failed to generate task content with FrontMatterGenerator, falling back to template:', error);
+      const taskFileName = createSafeFileName(taskData.name);
+      const taskPath = `${this.settings.tasksFolder}/${taskFileName}`;
 
-      // Fallback to template if FrontMatterGenerator fails
-      if (!this.settings.defaultTaskTemplate) {
-        throw new Error('No default task template configured and FrontMatterGenerator failed');
-      }
+      // Create task content based on whether it's a parent task
+      const isParentTask = taskData.subTasks && taskData.subTasks.length > 0;
+      const taskContent = isParentTask
+        ? await this.generateParentTaskContent(taskData) // Parent tasks don't need special todo promotion handling
+        : await this.generateTaskContentForTodoPromotion(taskData);
+
+      await this.app.vault.create(taskPath, taskContent);
+      console.log('Task created successfully for todo promotion:', taskPath);
+    } catch (error) {
+      console.error('Failed to create task for todo promotion:', error);
+      throw error;
+    }
+  }
+
+  private async generateTaskContent(taskData: any): Promise<string> {
+    // Templates are mandatory - this should never happen due to settings validation
+    if (!this.settings.defaultTaskTemplate) {
+      throw new Error('No default task template configured - this indicates a settings validation failure');
+    }
+
+    // Use the configured template for template variable processing
+    try {
       return await this.generateFromTemplate(this.settings.defaultTaskTemplate, taskData, 'task');
+    } catch (error) {
+      console.error('Failed to generate task content from template:', error);
+      throw new Error(`Failed to generate task content from template: ${error.message}`);
+    }
+  }
+
+  /**
+   * Generate task content specifically for todo promotion with front-matter property replacement
+   */
+  private async generateTaskContentForTodoPromotion(taskData: any): Promise<string> {
+    // Templates are mandatory - this should never happen due to settings validation
+    if (!this.settings.defaultTaskTemplate) {
+      throw new Error('No default task template configured - this indicates a settings validation failure');
+    }
+
+    // Use the configured template for todo promotion template variable processing
+    try {
+      return await this.generateFromTemplateForTodoPromotion(this.settings.defaultTaskTemplate, taskData, 'task');
+    } catch (error) {
+      console.error('Failed to generate task content from template for todo promotion:', error);
+      throw new Error(`Failed to generate task content from template for todo promotion: ${error.message}`);
     }
   }
 
@@ -1195,21 +1253,17 @@ export default class TaskSyncPlugin extends Plugin {
    * Generate default parent task content
    */
   private async generateParentTaskContent(taskData: any): Promise<string> {
-    // Use FrontMatterGenerator for better property handling
-    try {
-      return generateParentTaskFrontMatter(taskData, {
-        settings: this.settings,
-        includeDescription: true,
-        templateContent: taskData.description || 'Parent task description...'
-      });
-    } catch (error) {
-      console.error('Failed to generate parent task content with FrontMatterGenerator, falling back to template:', error);
+    // Templates are mandatory - this should never happen due to settings validation
+    if (!this.settings.defaultParentTaskTemplate) {
+      throw new Error('No default parent task template configured - this indicates a settings validation failure');
+    }
 
-      // Fallback to template if FrontMatterGenerator fails
-      if (!this.settings.defaultParentTaskTemplate) {
-        throw new Error('No default parent task template configured and FrontMatterGenerator failed');
-      }
+    // Use the configured template for template variable processing
+    try {
       return await this.generateFromTemplate(this.settings.defaultParentTaskTemplate, taskData, 'task');
+    } catch (error) {
+      console.error('Failed to generate parent task content from template:', error);
+      throw new Error(`Failed to generate parent task content from template: ${error.message}`);
     }
   }
 
@@ -1221,13 +1275,13 @@ export default class TaskSyncPlugin extends Plugin {
       const areaFileName = createSafeFileName(areaData.name);
       const areaPath = `${this.settings.areasFolder}/${areaFileName}`;
 
-      // Use template if configured, otherwise use default
-      let areaContent: string;
-      if (this.settings.defaultAreaTemplate) {
-        areaContent = await this.generateFromTemplate(this.settings.defaultAreaTemplate, areaData, 'area');
-      } else {
-        areaContent = this.generateAreaContent(areaData);
+      // Templates are mandatory - this should never happen due to settings validation
+      if (!this.settings.defaultAreaTemplate) {
+        throw new Error('No default area template configured - this indicates a settings validation failure');
       }
+
+      // Use the configured template
+      const areaContent = await this.generateFromTemplate(this.settings.defaultAreaTemplate, areaData, 'area');
 
       await this.app.vault.create(areaPath, areaContent);
       console.log('Area created successfully:', areaPath);
@@ -1254,13 +1308,13 @@ export default class TaskSyncPlugin extends Plugin {
       const projectFileName = createSafeFileName(projectData.name);
       const projectPath = `${this.settings.projectsFolder}/${projectFileName}`;
 
-      // Use template if configured, otherwise use default
-      let projectContent: string;
-      if (this.settings.defaultProjectTemplate) {
-        projectContent = await this.generateFromTemplate(this.settings.defaultProjectTemplate, projectData, 'project');
-      } else {
-        projectContent = this.generateProjectContent(projectData);
+      // Templates are mandatory - this should never happen due to settings validation
+      if (!this.settings.defaultProjectTemplate) {
+        throw new Error('No default project template configured - this indicates a settings validation failure');
       }
+
+      // Use the configured template
+      const projectContent = await this.generateFromTemplate(this.settings.defaultProjectTemplate, projectData, 'project');
 
       await this.app.vault.create(projectPath, projectContent);
       console.log('Project created successfully:', projectPath);
@@ -1373,33 +1427,82 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
+   * Generate content from template with proper base embedding for todo promotion
+   */
+  private async generateFromTemplateForTodoPromotion(templateName: string, data: any, entityType?: 'task' | 'project' | 'area'): Promise<string> {
+    try {
+
+      const templatePath = `${this.settings.templateFolder}/${templateName}`;
+      let templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+
+      // Also check if the file actually exists on disk, not just in Obsidian's cache
+      const fileExistsOnDisk = await this.app.vault.adapter.exists(templatePath);
+
+      if (!templateFile || !(templateFile instanceof TFile) || !fileExistsOnDisk) {
+        console.warn(`Template not found: ${templatePath}, creating it...`);
+
+        // Try to create the missing template
+        if (entityType === 'task' && templateName === this.settings.defaultTaskTemplate) {
+          await this.templateManager.createTaskTemplate(templateName);
+        } else if (entityType === 'task' && templateName === this.settings.defaultParentTaskTemplate) {
+          await this.templateManager.createParentTaskTemplate(templateName);
+        } else if (entityType === 'area' && templateName === this.settings.defaultAreaTemplate) {
+          await this.templateManager.createAreaTemplate(templateName);
+        } else if (entityType === 'project' && templateName === this.settings.defaultProjectTemplate) {
+          await this.templateManager.createProjectTemplate(templateName);
+        } else {
+          // Unknown template, can't create it
+          throw new Error(`Template not found: ${templatePath}`);
+        }
+
+        // Wait for Obsidian to process the new file and retry multiple times
+        let retries = 0;
+        const maxRetries = 10;
+        while (retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+          templateFile = this.app.vault.getAbstractFileByPath(templatePath);
+          if (templateFile && templateFile instanceof TFile) {
+            break;
+          }
+          retries++;
+        }
+
+        if (!templateFile || !(templateFile instanceof TFile)) {
+          throw new Error(`Failed to create template after ${maxRetries} retries: ${templatePath}`);
+        }
+      }
+
+      let templateContent = await this.app.vault.read(templateFile);
+
+      // Replace template variables with front-matter property replacement for todo promotion
+      templateContent = this.processTemplateVariablesForTodoPromotion(templateContent, data);
+
+      // Ensure proper base embedding (only for projects and areas, not tasks)
+      if (entityType !== 'task') {
+        templateContent = this.ensureProperBaseEmbedding(templateContent, data);
+      }
+
+      return templateContent;
+    } catch (error) {
+      console.error(`Failed to process template ${templateName} for todo promotion:`, error);
+      // For tasks, re-throw to let the calling method handle fallback
+      if (entityType === 'task') {
+        throw error;
+      }
+      // For projects and areas, fall back to default generation
+      if (data.hasOwnProperty('areas')) {
+        return this.generateProjectContent(data as ProjectCreateData);
+      } else {
+        return this.generateAreaContent(data as AreaCreateData);
+      }
+    }
+  }
+
+  /**
    * Process template variables with {{tasks}} syntax support
    */
   private processTemplateVariables(content: string, data: any): string {
     let processedContent = content;
-
-    // Handle front-matter fields specifically for tasks
-    if (data.name && processedContent.includes('Title: \'\'')) {
-      processedContent = processedContent.replace('Title: \'\'', `Title: '${data.name}'`);
-    } else if (data.name && processedContent.includes('Title: ""')) {
-      processedContent = processedContent.replace('Title: ""', `Title: "${data.name}"`);
-    } else if (data.name && processedContent.includes('Title:')) {
-      // Handle cases where Title is empty without quotes
-      processedContent = processedContent.replace(/^Title:\s*$/m, `Title: '${data.name}'`);
-    }
-
-    // Handle Type field - replace any existing Type value with the provided one
-    if (data.type) {
-      // First try to replace empty Type fields
-      if (processedContent.includes('Type: \'\'')) {
-        processedContent = processedContent.replace('Type: \'\'', `Type: ${data.type}`);
-      } else if (processedContent.includes('Type: ""')) {
-        processedContent = processedContent.replace('Type: ""', `Type: ${data.type}`);
-      } else if (processedContent.includes('Type:')) {
-        // Replace any Type field value, including existing non-empty values
-        processedContent = processedContent.replace(/^Type:\s*.*$/m, `Type: ${data.type}`);
-      }
-    }
 
     // Replace common variables
     if (data.name) {
@@ -1426,11 +1529,6 @@ export default class TaskSyncPlugin extends Plugin {
       // Also handle standalone {{areas}} replacement for content (not properties)
       const areasStr = areasArray.join(', ');
       processedContent = processedContent.replace(/\{\{areas\}\}/g, areasStr);
-
-      // Also update the Areas field in YAML front-matter if it's an empty array
-      if (processedContent.includes('Areas: []')) {
-        processedContent = processedContent.replace('Areas: []', areasYaml);
-      }
     }
 
     // Replace task-specific variables
@@ -1450,16 +1548,19 @@ export default class TaskSyncPlugin extends Plugin {
       processedContent = processedContent.replace(/\{\{status\}\}/g, data.status);
     }
 
+    // Handle Project field - replace template variables only
     if (data.project) {
       processedContent = processedContent.replace(/\{\{project\}\}/g, data.project);
     }
 
+    // Handle Parent task field - replace template variables only
     if (data.parentTask) {
       processedContent = processedContent.replace(/\{\{parentTask\}\}/g, data.parentTask);
     }
 
-    if (data.subTasks) {
-      const subTasksStr = Array.isArray(data.subTasks) ? data.subTasks.join(', ') : data.subTasks;
+    // Handle Sub-tasks field - replace template variables only
+    if (data.subTasks && Array.isArray(data.subTasks) && data.subTasks.length > 0) {
+      const subTasksStr = data.subTasks.join(', ');
       processedContent = processedContent.replace(/\{\{subTasks\}\}/g, subTasksStr);
     }
 
@@ -1468,8 +1569,14 @@ export default class TaskSyncPlugin extends Plugin {
       processedContent = processedContent.replace(/\{\{tags\}\}/g, tagsStr);
     }
 
+    // Handle Done field - replace template variables only
     if (data.done !== undefined) {
       processedContent = processedContent.replace(/\{\{done\}\}/g, data.done.toString());
+    }
+
+    // Handle Status field - replace template variables only
+    if (data.status) {
+      processedContent = processedContent.replace(/\{\{status\}\}/g, data.status);
     }
 
     // Replace {{tasks}} with appropriate base embed
@@ -1486,6 +1593,131 @@ export default class TaskSyncPlugin extends Plugin {
     // Process Templater syntax if enabled
     if (this.settings.useTemplater) {
       processedContent = this.processTemplaterSyntax(processedContent, data);
+    }
+
+    return processedContent;
+  }
+
+  /**
+   * Process template variables for todo promotion with front-matter property replacement
+   */
+  private processTemplateVariablesForTodoPromotion(content: string, data: any): string {
+    // First, process regular template variables
+    let processedContent = this.processTemplateVariables(content, data);
+
+    // Then, handle front-matter property replacement specifically for todo promotion
+
+    // Handle Title field - replace empty Title properties with actual value
+    if (data.name && processedContent.includes('Title: \'\'')) {
+      processedContent = processedContent.replace('Title: \'\'', `Title: '${data.name}'`);
+    } else if (data.name && processedContent.includes('Title: ""')) {
+      processedContent = processedContent.replace('Title: ""', `Title: "${data.name}"`);
+    } else if (data.name && processedContent.includes('Title:')) {
+      // Handle cases where Title is empty without quotes
+      processedContent = processedContent.replace(/^Title:\s*$/m, `Title: '${data.name}'`);
+    }
+
+    // Handle Type field - replace any existing Type value with the provided one
+    if (data.type) {
+      // First try to replace empty Type fields
+      if (processedContent.includes('Type: \'\'')) {
+        processedContent = processedContent.replace('Type: \'\'', `Type: ${data.type}`);
+      } else if (processedContent.includes('Type: ""')) {
+        processedContent = processedContent.replace('Type: ""', `Type: ${data.type}`);
+      } else if (processedContent.includes('Type:')) {
+        // Replace any existing Type field value
+        processedContent = processedContent.replace(/^Type:\s*.*$/m, `Type: ${data.type}`);
+      }
+    }
+
+    // Handle Areas field - replace empty Areas properties with actual value
+    if (data.areas) {
+      const areasArray = Array.isArray(data.areas) ? data.areas : data.areas.split(',').map((s: string) => s.trim());
+      const yamlArray = areasArray.map((area: string) => `  - ${area}`).join('\n');
+      const areasYaml = `Areas:\n${yamlArray}`;
+
+      // Also update the Areas field in YAML front-matter if it's an empty array
+      if (processedContent.includes('Areas: []')) {
+        processedContent = processedContent.replace('Areas: []', areasYaml);
+      }
+    }
+
+    // Handle Project field - replace empty Project properties with actual value
+    if (data.project) {
+      // Replace front-matter properties - handle both empty and existing values
+      const projectLink = `'[[${data.project}]]'`;
+      if (processedContent.includes('Project: \'\'')) {
+        processedContent = processedContent.replace('Project: \'\'', `Project: ${projectLink}`);
+      } else if (processedContent.includes('Project: ""')) {
+        processedContent = processedContent.replace('Project: ""', `Project: ${projectLink}`);
+      } else if (processedContent.includes('Project:')) {
+        // Replace any existing Project field value
+        processedContent = processedContent.replace(/^Project:\s*.*$/m, `Project: ${projectLink}`);
+      }
+    }
+
+    // Handle Parent task field - replace empty Parent task properties with actual value
+    if (data.parentTask) {
+      // Replace front-matter properties - handle both empty and existing values
+      const parentTaskLink = data.parentTask.startsWith('[[') ? `'${data.parentTask}'` : `'[[${data.parentTask}]]'`;
+      if (processedContent.includes('Parent task: \'\'')) {
+        processedContent = processedContent.replace('Parent task: \'\'', `Parent task: ${parentTaskLink}`);
+      } else if (processedContent.includes('Parent task: ""')) {
+        processedContent = processedContent.replace('Parent task: ""', `Parent task: ${parentTaskLink}`);
+      } else if (processedContent.includes('Parent task:')) {
+        // Replace any existing Parent task field value
+        processedContent = processedContent.replace(/^Parent task:\s*.*$/m, `Parent task: ${parentTaskLink}`);
+      }
+    }
+
+    // Handle Sub-tasks field - replace empty Sub-tasks properties with actual value
+    if (data.subTasks && Array.isArray(data.subTasks) && data.subTasks.length > 0) {
+      console.log(`Processing sub-tasks for todo promotion: ${JSON.stringify(data.subTasks)}`);
+      // Replace front-matter properties - convert to YAML array with links
+      const subTasksArray = data.subTasks.map((task: string) => `  - '[[${task}]]'`).join('\n');
+      const subTasksYaml = `Sub-tasks:\n${subTasksArray}`;
+
+      console.log(`Generated sub-tasks YAML: ${subTasksYaml}`);
+
+      if (processedContent.includes('Sub-tasks: []')) {
+        console.log('Replacing Sub-tasks: [] with sub-tasks array');
+        processedContent = processedContent.replace('Sub-tasks: []', subTasksYaml);
+      } else if (processedContent.includes('Sub-tasks:')) {
+        console.log('Replacing existing Sub-tasks field');
+        // Replace any existing Sub-tasks field value
+        processedContent = processedContent.replace(/^Sub-tasks:\s*.*$/m, subTasksYaml);
+      }
+    } else {
+      console.log(`No sub-tasks to process: subTasks=${JSON.stringify(data.subTasks)}`);
+    }
+
+    // Handle Done field - replace empty Done properties with actual value
+    if (data.done !== undefined) {
+      // Replace front-matter properties - handle both empty and existing values
+      const doneValue = data.done.toString();
+      if (processedContent.includes('Done: false') && data.done === true) {
+        processedContent = processedContent.replace('Done: false', `Done: ${doneValue}`);
+      } else if (processedContent.includes('Done: true') && data.done === false) {
+        processedContent = processedContent.replace('Done: true', `Done: ${doneValue}`);
+      } else if (processedContent.includes('Done:')) {
+        // Replace any existing Done field value
+        processedContent = processedContent.replace(/^Done:\s*.*$/m, `Done: ${doneValue}`);
+      }
+    }
+
+    // Handle Status field - replace empty Status properties with actual value
+    if (data.status) {
+      // Replace front-matter properties - handle both empty and existing values
+      if (processedContent.includes('Status: \'\'')) {
+        processedContent = processedContent.replace('Status: \'\'', `Status: ${data.status}`);
+      } else if (processedContent.includes('Status: ""')) {
+        processedContent = processedContent.replace('Status: ""', `Status: ${data.status}`);
+      } else if (processedContent.includes('Status: Backlog') && data.status !== 'Backlog') {
+        processedContent = processedContent.replace('Status: Backlog', `Status: ${data.status}`);
+      } else if (processedContent.includes('Status:')) {
+        // Replace any existing Status field value
+        processedContent = processedContent.replace(/^Status:\s*.*$/m, `Status: ${data.status}`);
+      }
     }
 
     return processedContent;

@@ -97,45 +97,53 @@ This task was created from a template!
     expect(taskContent).toContain('Status: In Progress');
   });
 
-  test('should require template configuration for task creation', async () => {
+  test('should prevent empty template settings through validation', async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Ensure no template is configured
+    // Try to set template to empty string - validation should reset it to default
+    const templateAfterValidation = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      if (plugin) {
+        // Try to set empty template
+        plugin.settings.defaultTaskTemplate = '';
+        await plugin.saveSettings(); // This should trigger validation and reset to default
+
+        // Return the template setting after validation
+        return plugin.settings.defaultTaskTemplate;
+      }
+      return null;
+    });
+
+    // Validation should have reset the empty template to the default value
+    expect(templateAfterValidation).toBe('Task.md');
+
+    // Task creation should work normally with the validated template setting
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
-        plugin.settings.defaultTaskTemplate = '';
-        await plugin.saveSettings();
+        await plugin.createTask({
+          name: 'Validation Test Task',
+          category: 'Bug',
+          priority: 'Low',
+          areas: [],
+          done: false,
+          status: 'Backlog',
+          tags: [],
+          description: 'This task should create successfully'
+        });
       }
     });
 
-    // Try to create a task - this should fail without a template
-    let errorOccurred = false;
-    try {
-      await context.page.evaluate(async () => {
-        const app = (window as any).app;
-        const plugin = app.plugins.plugins['obsidian-task-sync'];
-        if (plugin) {
-          await plugin.createTask({
-            name: 'Should Fail Task',
-            category: 'Bug',
-            priority: 'Low',
-            areas: [],
-            done: false,
-            status: 'Backlog',
-            tags: [],
-            description: 'This task should fail to create'
-          });
-        }
-      });
-    } catch (error) {
-      errorOccurred = true;
-      expect(error.message).toContain('No default task template configured');
-    }
+    // Verify the task was created
+    const taskExists = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      return await app.vault.adapter.exists('Tasks/Validation Test Task.md');
+    });
 
-    expect(errorOccurred).toBe(true);
+    expect(taskExists).toBe(true);
   });
 
   test('should process template variables correctly', async () => {
@@ -146,8 +154,8 @@ This task was created from a template!
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const templateContent = `---
+Type: Task
 Title: {{name}}
-Type: {{type}}
 Category: {{category}}
 Priority: {{priority}}
 Areas: {{areas}}
