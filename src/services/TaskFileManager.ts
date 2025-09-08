@@ -4,7 +4,7 @@
  * Handles task file creation, status changes, project/area assignments, and task-specific operations
  */
 
-import { App, Vault } from 'obsidian';
+import { App, Vault, TFile } from 'obsidian';
 import { TaskSyncSettings } from '../main';
 import { FileManager, FileCreationData } from './FileManager';
 import { PROPERTY_REGISTRY, PROPERTY_SETS } from './base-definitions/BaseConfigurations';
@@ -37,14 +37,20 @@ export class TaskFileManager extends FileManager {
   /**
    * Create a task file with proper front-matter structure
    * @param data - Task creation data
-   * @param content - File content that may contain {{tasks}} variable
+   * @param content - Optional file content that may contain {{tasks}} variable. If not provided, reads from template.
    * @returns Path of the created task file
    */
   async createTaskFile(data: TaskCreationData, content?: string): Promise<string> {
     const taskFolder = this.settings.tasksFolder;
 
+    // Get content from template if not provided
+    let fileContent = content;
+    if (!fileContent) {
+      fileContent = await this.getTaskTemplateContent(data);
+    }
+
     // Process {{tasks}} variable in content before creating file
-    const processedContent = this.processTasksVariable(content || '', data.title);
+    const processedContent = this.processTasksVariable(fileContent, data.title);
 
     const filePath = await this.createFile(taskFolder, data.title, processedContent);
     const frontMatterData = this.generateTaskFrontMatterObject(data);
@@ -52,6 +58,62 @@ export class TaskFileManager extends FileManager {
     await this.updateFrontMatter(filePath, frontMatterData);
 
     return filePath;
+  }
+
+  /**
+   * Get template content for task creation
+   * @param data - Task creation data to determine template type
+   * @returns Template content or default content if template not found
+   */
+  private async getTaskTemplateContent(data: TaskCreationData): Promise<string> {
+    // Determine if this is a parent task (has sub-tasks)
+    const isParentTask = data.subTasks && data.subTasks.length > 0;
+    const templateType = isParentTask ? 'parentTask' : 'task';
+
+    // Try to read template content
+    const templateContent = await this.readTemplate(templateType);
+    if (templateContent) {
+      return templateContent;
+    }
+
+    // Fallback content if template doesn't exist
+    if (isParentTask) {
+      return [
+        '',
+        '',
+        '## Sub-tasks',
+        '',
+        '{{tasks}}',
+        ''
+      ].join('\n');
+    }
+
+    // For regular tasks, return empty content (front-matter will be added separately)
+    return '';
+  }
+
+  /**
+   * Read template content from file
+   * @param templateType - Type of template to read
+   * @returns Template content or null if not found
+   */
+  private async readTemplate(templateType: 'task' | 'parentTask'): Promise<string | null> {
+    const templateFileName = templateType === 'parentTask'
+      ? this.settings.defaultParentTaskTemplate
+      : this.settings.defaultTaskTemplate;
+
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    try {
+      const templateFile = this.vault.getAbstractFileByPath(templatePath);
+      if (templateFile instanceof TFile) {
+        return await this.vault.read(templateFile);
+      }
+    } catch (error) {
+      console.warn(`Could not read template ${templatePath}:`, error);
+    }
+
+    return null;
   }
 
   /**

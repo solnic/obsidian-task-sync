@@ -31,17 +31,88 @@ export class ProjectFileManager extends FileManager {
   /**
    * Create a project file with proper front-matter structure
    * @param data - Project creation data
-   * @param content - File content
+   * @param content - Optional file content. If not provided, reads from template.
    * @returns Path of the created project file
    */
   async createProjectFile(data: ProjectCreationData, content?: string): Promise<string> {
     const projectFolder = this.settings.projectsFolder;
-    const filePath = await this.createFile(projectFolder, data.title, content || '');
+
+    // Get content from template if not provided
+    let fileContent = content;
+    if (!fileContent) {
+      fileContent = await this.getProjectTemplateContent(data);
+    }
+
+    // Process {{tasks}} variable in content
+    const processedContent = this.processTasksVariable(fileContent, data.title);
+
+    const filePath = await this.createFile(projectFolder, data.title, processedContent);
     const frontMatterData = this.generateProjectFrontMatterObject(data);
 
     await this.updateFrontMatter(filePath, frontMatterData);
 
     return filePath;
+  }
+
+  /**
+   * Get template content for project creation
+   * @param data - Project creation data
+   * @returns Template content or default content if template not found
+   */
+  private async getProjectTemplateContent(data: ProjectCreationData): Promise<string> {
+    // Try to read template content
+    const templateContent = await this.readTemplate();
+    if (templateContent) {
+      return templateContent;
+    }
+
+    // Fallback content if template doesn't exist
+    return [
+      '',
+      '## Notes',
+      '',
+      data.description || '',
+      '',
+      '## Tasks',
+      '',
+      '{{tasks}}',
+      ''
+    ].join('\n');
+  }
+
+  /**
+   * Read template content from file
+   * @returns Template content or null if not found
+   */
+  private async readTemplate(): Promise<string | null> {
+    const templateFileName = this.settings.defaultProjectTemplate;
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    try {
+      const templateFile = this.vault.getAbstractFileByPath(templatePath);
+      if (templateFile instanceof TFile) {
+        return await this.vault.read(templateFile);
+      }
+    } catch (error) {
+      console.warn(`Could not read template ${templatePath}:`, error);
+    }
+
+    return null;
+  }
+
+  /**
+   * Process {{tasks}} variable in content and replace with appropriate base embed
+   * @param content - Content that may contain {{tasks}} variable
+   * @param projectName - Name of the project for base embed
+   * @returns Processed content with {{tasks}} replaced
+   */
+  private processTasksVariable(content: string, projectName: string): string {
+    if (!content.includes('{{tasks}}')) {
+      return content;
+    }
+
+    const baseEmbed = `![[${this.settings.basesFolder}/${projectName}.base]]`;
+    return content.replace(/\{\{tasks\}\}/g, baseEmbed);
   }
 
   /**
@@ -138,7 +209,7 @@ export class ProjectFileManager extends FileManager {
       await this.app.fileManager.processFrontMatter(file as TFile, (frontmatter) => {
         // Clear existing properties
         Object.keys(frontmatter).forEach(key => delete frontmatter[key]);
-        
+
         // Add properties in correct order
         for (const fieldName of propertyOrder) {
           const value = updatedFrontMatter[fieldName];

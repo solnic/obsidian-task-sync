@@ -588,7 +588,7 @@ export async function createTestTaskFile(
       const taskName = frontmatter.Title || frontmatter.title || filename;
 
       const taskData = {
-        name: taskName,
+        title: taskName,
         description: content || 'Test task description',
         // Map frontmatter properties to task data
         type: frontmatter.Type || frontmatter.type || 'Task',

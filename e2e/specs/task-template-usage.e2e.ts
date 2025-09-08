@@ -61,7 +61,7 @@ This task was created from a template!
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
         await plugin.createTask({
-          name: 'Template Test Task',
+          title: 'Template Test Task',
           category: 'Feature',
           priority: 'High',
           areas: ['Development'],
@@ -120,7 +120,7 @@ This task was created from a template!
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
         await plugin.createTask({
-          name: 'Validation Test Task',
+          title: 'Validation Test Task',
           category: 'Bug',
           priority: 'Low',
           areas: [],
@@ -187,7 +187,7 @@ tags: []
       const plugin = app.plugins.plugins['obsidian-task-sync'];
       if (plugin) {
         await plugin.createTask({
-          name: 'Parent Task Test',
+          title: 'Parent Task Test',
           category: 'Feature',
           priority: 'High',
           areas: ['Development'],

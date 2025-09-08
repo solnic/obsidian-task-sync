@@ -10,7 +10,7 @@ import { ProjectFileManager } from './services/ProjectFileManager';
 import { TaskCreateModal } from './components/modals/TaskCreateModal';
 import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
 import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
-import { sanitizeFileName, createSafeFileName } from './utils/fileNameSanitizer';
+
 import { TaskSyncSettingTab } from './components/ui/settings';
 import type { TaskSyncSettings, TaskType, TaskTypeColor } from './components/ui/settings';
 import { EventManager } from './events';
@@ -564,25 +564,8 @@ export default class TaskSyncPlugin extends Plugin {
       // Convert old taskData format to TaskCreationData format
       const taskCreationData = this.mapToTaskCreationData(taskData);
 
-      // Determine content based on parent task status
-      const isParentTask = taskData.subTasks && taskData.subTasks.length > 0;
-      let content = '';
-
-      if (isParentTask) {
-        // For parent tasks, generate content with sub-tasks base using {{tasks}} variable
-        content = [
-          '',
-          '',
-          '## Sub-tasks',
-          '',
-          '{{tasks}}',
-          ''
-        ].join('\n');
-      }
-      // For regular tasks, leave content empty (no {{description}} handling)
-
-      // Use TaskFileManager to create the task file (it will process {{tasks}} variable)
-      const taskPath = await this.taskFileManager.createTaskFile(taskCreationData, content);
+      // Use TaskFileManager to create the task file (it will handle template content and {{tasks}} variable)
+      const taskPath = await this.taskFileManager.createTaskFile(taskCreationData);
       console.log('Task created successfully:', taskPath);
     } catch (error) {
       console.error('Failed to create task:', error);
@@ -613,13 +596,14 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async createArea(areaData: AreaCreateData): Promise<void> {
     try {
-      const areaFileName = createSafeFileName(areaData.name);
-      const areaPath = `${this.settings.areasFolder}/${areaFileName}`;
+      // Convert to AreaCreationData format for AreaFileManager
+      const areaCreationData = {
+        title: areaData.name,
+        description: areaData.description
+      };
 
-      // Generate area content using the existing method
-      const areaContent = await this.generateAreaContent(areaData);
-
-      await this.app.vault.create(areaPath, areaContent);
+      // Use AreaFileManager to create the area file (it will handle template content and {{tasks}} variable)
+      const areaPath = await this.areaFileManager.createAreaFile(areaCreationData);
       console.log('Area created successfully:', areaPath);
 
       // Create individual base if enabled
@@ -641,13 +625,15 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async createProject(projectData: ProjectCreateData): Promise<void> {
     try {
-      const projectFileName = createSafeFileName(projectData.name);
-      const projectPath = `${this.settings.projectsFolder}/${projectFileName}`;
+      // Convert to ProjectCreationData format for ProjectFileManager
+      const projectCreationData = {
+        title: projectData.name,
+        description: projectData.description,
+        areas: projectData.areas
+      };
 
-      // Generate project content using the existing method
-      const projectContent = await this.generateProjectContent(projectData);
-
-      await this.app.vault.create(projectPath, projectContent);
+      // Use ProjectFileManager to create the project file (it will handle template content and {{tasks}} variable)
+      const projectPath = await this.projectFileManager.createProjectFile(projectCreationData);
       console.log('Project created successfully:', projectPath);
 
       // Create individual base if enabled
@@ -664,85 +650,7 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
-  /**
-   * Generate default area content
-   */
-  private async generateAreaContent(areaData: AreaCreateData): Promise<string> {
-    // Try to read template first
-    const templateContent = await this.templateManager.readTemplate('area');
 
-    let content: string;
-    if (templateContent) {
-      // Use template content as-is, only process {{tasks}} variable
-      content = templateContent;
-    } else {
-      // Generate basic area content with {{tasks}} variable
-      content = [
-        '---',
-        `Name: ${areaData.name}`,
-        'Type: Area',
-        '---',
-        '',
-        '## Notes',
-        '',
-        areaData.description || '',
-        '',
-        '## Tasks',
-        '',
-        '{{tasks}}',
-        ''
-      ].join('\n');
-    }
-
-    // Process {{tasks}} variable using TaskFileManager
-    const processedContent = this.taskFileManager.processTasksVariable(content, areaData.name);
-
-    return processedContent;
-  }
-
-  /**
-   * Generate default project content
-   */
-  private async generateProjectContent(projectData: ProjectCreateData): Promise<string> {
-    // Try to read template first
-    const templateContent = await this.templateManager.readTemplate('project');
-
-    let content: string;
-    if (templateContent) {
-      // Use template content as-is, only process {{tasks}} variable
-      content = templateContent;
-    } else {
-      // Format areas as YAML array
-      const areasArray = Array.isArray(projectData.areas) ? projectData.areas :
-        (projectData.areas ? projectData.areas.split(',').map(s => s.trim()) : []);
-      const areasYaml = areasArray.length > 0 ?
-        areasArray.map(area => `  - ${area}`).join('\n') : '  []';
-
-      // Generate basic project content with {{tasks}} variable
-      content = [
-        '---',
-        `Name: ${projectData.name}`,
-        `Areas:`,
-        areasYaml,
-        'Type: Project',
-        '---',
-        '',
-        '## Notes',
-        '',
-        projectData.description || '',
-        '',
-        '## Tasks',
-        '',
-        '{{tasks}}',
-        ''
-      ].join('\n');
-    }
-
-    // Process {{tasks}} variable using TaskFileManager
-    const processedContent = this.taskFileManager.processTasksVariable(content, projectData.name);
-
-    return processedContent;
-  }
 
   // Base Management Methods
 

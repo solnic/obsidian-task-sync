@@ -30,17 +30,88 @@ export class AreaFileManager extends FileManager {
   /**
    * Create an area file with proper front-matter structure
    * @param data - Area creation data
-   * @param content - File content
+   * @param content - Optional file content. If not provided, reads from template.
    * @returns Path of the created area file
    */
   async createAreaFile(data: AreaCreationData, content?: string): Promise<string> {
     const areaFolder = this.settings.areasFolder;
-    const filePath = await this.createFile(areaFolder, data.title, content || '');
+
+    // Get content from template if not provided
+    let fileContent = content;
+    if (!fileContent) {
+      fileContent = await this.getAreaTemplateContent(data);
+    }
+
+    // Process {{tasks}} variable in content
+    const processedContent = this.processTasksVariable(fileContent, data.title);
+
+    const filePath = await this.createFile(areaFolder, data.title, processedContent);
     const frontMatterData = this.generateAreaFrontMatterObject(data);
 
     await this.updateFrontMatter(filePath, frontMatterData);
 
     return filePath;
+  }
+
+  /**
+   * Get template content for area creation
+   * @param data - Area creation data
+   * @returns Template content or default content if template not found
+   */
+  private async getAreaTemplateContent(data: AreaCreationData): Promise<string> {
+    // Try to read template content
+    const templateContent = await this.readTemplate();
+    if (templateContent) {
+      return templateContent;
+    }
+
+    // Fallback content if template doesn't exist
+    return [
+      '',
+      '## Notes',
+      '',
+      data.description || '',
+      '',
+      '## Tasks',
+      '',
+      '{{tasks}}',
+      ''
+    ].join('\n');
+  }
+
+  /**
+   * Read template content from file
+   * @returns Template content or null if not found
+   */
+  private async readTemplate(): Promise<string | null> {
+    const templateFileName = this.settings.defaultAreaTemplate;
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    try {
+      const templateFile = this.vault.getAbstractFileByPath(templatePath);
+      if (templateFile instanceof TFile) {
+        return await this.vault.read(templateFile);
+      }
+    } catch (error) {
+      console.warn(`Could not read template ${templatePath}:`, error);
+    }
+
+    return null;
+  }
+
+  /**
+   * Process {{tasks}} variable in content and replace with appropriate base embed
+   * @param content - Content that may contain {{tasks}} variable
+   * @param areaName - Name of the area for base embed
+   * @returns Processed content with {{tasks}} replaced
+   */
+  private processTasksVariable(content: string, areaName: string): string {
+    if (!content.includes('{{tasks}}')) {
+      return content;
+    }
+
+    const baseEmbed = `![[${this.settings.basesFolder}/${areaName}.base]]`;
+    return content.replace(/\{\{tasks\}\}/g, baseEmbed);
   }
 
   /**
@@ -137,7 +208,7 @@ export class AreaFileManager extends FileManager {
       await this.app.fileManager.processFrontMatter(file as TFile, (frontmatter) => {
         // Clear existing properties
         Object.keys(frontmatter).forEach(key => delete frontmatter[key]);
-        
+
         // Add properties in correct order
         for (const fieldName of propertyOrder) {
           const value = updatedFrontMatter[fieldName];
