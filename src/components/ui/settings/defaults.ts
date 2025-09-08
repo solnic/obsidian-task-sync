@@ -3,6 +3,7 @@
  */
 
 import { TaskSyncSettings } from './types';
+import { PROPERTY_SETS } from '../../../services/base-definitions/BaseConfigurations';
 
 export const DEFAULT_SETTINGS: TaskSyncSettings = {
   tasksFolder: 'Tasks',
@@ -45,7 +46,7 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   projectBasesEnabled: true,
   autoSyncAreaProjectBases: true,
   // Task property ordering defaults
-  taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'SUB_TASKS', 'TAGS'],
+  taskPropertyOrder: [...PROPERTY_SETS.TASK_FRONTMATTER],
   // GitHub integration defaults
   githubIntegration: {
     enabled: false,

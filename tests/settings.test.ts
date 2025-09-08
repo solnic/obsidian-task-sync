@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { TaskSyncSettings } from '../src/main';
 import { validateFolderPath } from '../src/components/ui/settings';
 import { DEFAULT_SETTINGS } from '../src/components/ui/settings/defaults';
+import { PROPERTY_SETS } from '../src/services/base-definitions/BaseConfigurations';
 
 describe('TaskSync Settings', () => {
   describe('Settings Interface', () => {
@@ -29,7 +30,7 @@ describe('TaskSync Settings', () => {
       expect(Array.isArray(DEFAULT_SETTINGS.taskStatuses)).toBe(true);
       expect(DEFAULT_SETTINGS.taskStatuses).toHaveLength(3);
       expect(Array.isArray(DEFAULT_SETTINGS.taskPropertyOrder)).toBe(true);
-      expect(DEFAULT_SETTINGS.taskPropertyOrder).toHaveLength(10);
+      expect(DEFAULT_SETTINGS.taskPropertyOrder).toHaveLength(PROPERTY_SETS.TASK_FRONTMATTER.length);
     });
 
     it('should allow partial settings objects', () => {

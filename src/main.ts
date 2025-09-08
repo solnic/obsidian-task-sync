@@ -329,6 +329,27 @@ export default class TaskSyncPlugin extends Plugin {
     if (!this.settings.taskPropertyOrder) {
       this.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
       console.log('Task Sync: Migrated taskPropertyOrder setting to default order');
+    } else {
+      // Check if CATEGORY is missing from existing property order and add it
+      const { PROPERTY_SETS } = require('./services/base-definitions/BaseConfigurations');
+      const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
+      const currentOrder = this.settings.taskPropertyOrder;
+
+      // If CATEGORY is missing, add it after TYPE
+      if (!currentOrder.includes('CATEGORY') && currentOrder.includes('TYPE')) {
+        const typeIndex = currentOrder.indexOf('TYPE');
+        const newOrder = [...currentOrder];
+        newOrder.splice(typeIndex + 1, 0, 'CATEGORY');
+        this.settings.taskPropertyOrder = newOrder;
+        console.log('Task Sync: Added missing CATEGORY property to taskPropertyOrder');
+      }
+
+      // Ensure all required properties are present
+      const missingProperties = requiredProperties.filter((prop: any) => !currentOrder.includes(prop));
+      if (missingProperties.length > 0) {
+        this.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
+        console.log('Task Sync: Reset taskPropertyOrder due to missing properties:', missingProperties);
+      }
     }
 
     // Migrate taskTypes setting for existing users
@@ -1687,7 +1708,7 @@ export default class TaskSyncPlugin extends Plugin {
    * Get the current front-matter schema for a file type
    */
   private getFrontMatterSchema(type: 'task' | 'project' | 'area') {
-    const { generateTaskFrontMatter, generateProjectFrontMatter, generateAreaFrontMatter } = require('./services/base-definitions/BaseConfigurations');
+    const { generateProjectFrontMatter, generateAreaFrontMatter } = require('./services/base-definitions/BaseConfigurations');
 
     let properties;
     switch (type) {
@@ -1702,19 +1723,21 @@ export default class TaskSyncPlugin extends Plugin {
         properties = generateAreaFrontMatter();
         break;
       default:
-        return {};
+        return { schema: {}, propertyOrder: [] };
     }
 
     // Convert property definitions to schema objects
     const schema: Record<string, any> = {};
+    const propertyOrder: string[] = [];
     properties.forEach((prop: any) => {
       schema[prop.name] = {
         type: prop.type,
         ...(prop.default !== undefined && { default: prop.default }),
         ...(prop.link && { link: prop.link })
       };
+      propertyOrder.push(prop.name);
     });
-    return schema;
+    return { schema, propertyOrder };
   }
 
 
@@ -1770,9 +1793,8 @@ export default class TaskSyncPlugin extends Plugin {
   /**
    * Check if property order matches the expected schema order
    */
-  private isPropertyOrderCorrect(content: string, schema: Record<string, any>): boolean {
+  private isPropertyOrderCorrect(content: string, schema: Record<string, any>, expectedOrder: string[]): boolean {
     const currentOrder = this.extractPropertyOrder(content);
-    const expectedOrder = Object.keys(schema);
 
     // Filter current order to only include properties that are in the schema
     const currentSchemaProperties = currentOrder.filter(prop => prop in schema);
@@ -1832,11 +1854,12 @@ export default class TaskSyncPlugin extends Plugin {
       }
 
       // Get current schema for this file type
-      const currentSchema = this.getFrontMatterSchema(type);
-      if (!currentSchema) {
+      const schemaResult = this.getFrontMatterSchema(type);
+      if (!schemaResult || !schemaResult.schema) {
         console.warn(`Task Sync: No schema found for file type: ${type}`);
         return;
       }
+      const { schema: currentSchema, propertyOrder } = schemaResult;
 
       let hasChanges = false;
       let propertiesChanged = 0;
@@ -1875,7 +1898,7 @@ export default class TaskSyncPlugin extends Plugin {
       }
 
       // Check if property order matches schema
-      if (!hasChanges && !this.isPropertyOrderCorrect(content, currentSchema)) {
+      if (!hasChanges && !this.isPropertyOrderCorrect(content, currentSchema, propertyOrder)) {
         console.log(`Task Sync: Property order needs updating in ${filePath}`);
         hasChanges = true;
         propertiesChanged++; // Count order change as one property change
@@ -1886,8 +1909,8 @@ export default class TaskSyncPlugin extends Plugin {
         // Regenerate the front-matter section
         const frontMatterLines = ['---'];
 
-        // Include ALL fields from the schema, regardless of value
-        for (const [fieldName] of Object.entries(currentSchema)) {
+        // Include ALL fields from the schema in the correct order
+        for (const fieldName of propertyOrder) {
           const value = updatedFrontMatter[fieldName];
           frontMatterLines.push(`${fieldName}: ${value}`);
         }
@@ -2020,17 +2043,18 @@ export default class TaskSyncPlugin extends Plugin {
       updatedFrontMatter.Type = 'Task';
 
       // Get the current schema for proper property ordering
-      const currentSchema = this.getFrontMatterSchema('task');
-      if (!currentSchema) {
+      const schemaResult = this.getFrontMatterSchema('task');
+      if (!schemaResult || !schemaResult.schema) {
         console.warn('Task Sync: No schema found for task type during migration');
         return content;
       }
+      const { schema: currentSchema, propertyOrder } = schemaResult;
 
       // Regenerate the front-matter section with proper ordering and types
       const frontMatterLines = ['---'];
 
       // Include ALL fields from the schema in the correct order
-      for (const [fieldName] of Object.entries(currentSchema)) {
+      for (const fieldName of propertyOrder) {
         const value = updatedFrontMatter[fieldName];
         if (value !== undefined && value !== null) {
           // Format the value properly for YAML

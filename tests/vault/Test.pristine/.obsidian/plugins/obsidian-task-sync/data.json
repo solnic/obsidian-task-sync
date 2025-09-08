@@ -13,27 +13,78 @@
   "autoGenerateBases": true,
   "autoUpdateBaseViews": true,
   "taskTypes": [
-    { "name": "Task", "color": "blue" },
-    { "name": "Bug", "color": "red" },
-    { "name": "Feature", "color": "green" },
-    { "name": "Improvement", "color": "purple" },
-    { "name": "Chore", "color": "gray" }
+    {
+      "name": "Task",
+      "color": "blue"
+    },
+    {
+      "name": "Bug",
+      "color": "red"
+    },
+    {
+      "name": "Feature",
+      "color": "green"
+    },
+    {
+      "name": "Improvement",
+      "color": "purple"
+    },
+    {
+      "name": "Chore",
+      "color": "gray"
+    }
   ],
   "taskPriorities": [
-    { "name": "Low", "color": "green" },
-    { "name": "Medium", "color": "yellow" },
-    { "name": "High", "color": "orange" },
-    { "name": "Urgent", "color": "red" }
+    {
+      "name": "Low",
+      "color": "green"
+    },
+    {
+      "name": "Medium",
+      "color": "yellow"
+    },
+    {
+      "name": "High",
+      "color": "orange"
+    },
+    {
+      "name": "Urgent",
+      "color": "red"
+    }
   ],
   "taskStatuses": [
-    { "name": "Backlog", "color": "gray", "isDone": false },
-    { "name": "In Progress", "color": "blue", "isDone": false },
-    { "name": "Done", "color": "green", "isDone": true }
+    {
+      "name": "Backlog",
+      "color": "gray",
+      "isDone": false
+    },
+    {
+      "name": "In Progress",
+      "color": "blue",
+      "isDone": false
+    },
+    {
+      "name": "Done",
+      "color": "green",
+      "isDone": true
+    }
   ],
   "areaBasesEnabled": true,
   "projectBasesEnabled": true,
   "autoSyncAreaProjectBases": true,
-  "taskPropertyOrder": ["TITLE", "TYPE", "PRIORITY", "AREAS", "PROJECT", "DONE", "STATUS", "PARENT_TASK", "SUB_TASKS", "TAGS"],
+  "taskPropertyOrder": [
+    "TITLE",
+    "TYPE",
+    "CATEGORY",
+    "PRIORITY",
+    "AREAS",
+    "PROJECT",
+    "DONE",
+    "STATUS",
+    "PARENT_TASK",
+    "SUB_TASKS",
+    "TAGS"
+  ],
   "githubIntegration": {
     "enabled": false,
     "personalAccessToken": "",
