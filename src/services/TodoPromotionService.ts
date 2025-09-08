@@ -124,7 +124,7 @@ export class TodoPromotionService {
         done: todoWithParent.completed,
         status: todoWithParent.completed ? 'Done' : 'Backlog',
         tags: [] as string[],
-        // Set parent task if exists (FrontMatterGenerator will handle link formatting)
+        // Set parent task if exists (TaskFileManager will handle link formatting)
         ...(parentTaskName ? { parentTask: parentTaskName } : {}),
         // Set context-specific fields
         ...(context.type === 'project' && context.name ? { project: context.name } : {}),

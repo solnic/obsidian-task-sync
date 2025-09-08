@@ -20,4 +20,4 @@ export {
   SORT_CONFIGS
 } from './BaseConfigurations';
 
-export * from './FrontMatterGenerator';
+
