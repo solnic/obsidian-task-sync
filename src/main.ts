@@ -1502,8 +1502,8 @@ export default class TaskSyncPlugin extends Plugin {
     try {
       console.log('Task Sync: Starting template file updates...');
 
-      // Update task templates
-      await this.updateTaskTemplates(results);
+      // Update each template type using explicit paths from settings
+      await this.updateSpecificTemplateFiles(results);
 
       console.log(`Task Sync: Updated ${results.templatesUpdated} template files`);
     } catch (error) {
@@ -1513,54 +1513,112 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
-   * Update task template files to match current property order
+   * Update specific template files using explicit paths from settings
    */
-  private async updateTaskTemplates(results: any): Promise<void> {
+  private async updateSpecificTemplateFiles(results: any): Promise<void> {
     try {
-      const templateFiles = this.app.vault.getMarkdownFiles().filter(file =>
-        file.path.startsWith(this.settings.templateFolder + '/') &&
-        file.path.endsWith('.md')
-      );
+      // Update Task template
+      await this.updateOrCreateTaskTemplate(results);
 
-      for (const file of templateFiles) {
-        const content = await this.app.vault.read(file);
+      // Update Area template (create only, don't modify existing)
+      await this.updateOrCreateAreaTemplate(results);
 
-        // Check if this is a task template (has task-like front-matter)
-        if (this.isTaskTemplate(content)) {
-          const updatedContent = await this.updateTaskTemplateContent(content);
-          if (updatedContent !== content) {
-            await this.app.vault.modify(file, updatedContent);
-            results.templatesUpdated++;
-            console.log(`Task Sync: Updated template ${file.path}`);
-          }
-        }
-      }
+      // Update Project template (create only, don't modify existing)
+      await this.updateOrCreateProjectTemplate(results);
+
+      // Update Parent Task template
+      await this.updateOrCreateParentTaskTemplate(results);
+
     } catch (error) {
-      console.error('Task Sync: Failed to update task templates:', error);
-      results.errors.push(`Failed to update task templates: ${error.message}`);
+      console.error('Task Sync: Failed to update specific template files:', error);
+      results.errors.push(`Failed to update specific template files: ${error.message}`);
     }
   }
 
   /**
-   * Check if a template file is a task template
+   * Update or create Task template
    */
-  private isTaskTemplate(content: string): boolean {
-    // Check if the template has task-like properties in front-matter
-    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!frontMatterMatch) {
-      return false;
+  private async updateOrCreateTaskTemplate(results: any): Promise<void> {
+    const templatePath = `${this.settings.templateFolder}/${this.settings.defaultTaskTemplate}`;
+    const file = this.app.vault.getAbstractFileByPath(templatePath);
+
+    if (file && file instanceof TFile) {
+      // Update existing task template with property reordering
+      const content = await this.app.vault.read(file);
+      const updatedContent = await this.reorderTaskTemplateProperties(content);
+      if (updatedContent !== content) {
+        await this.app.vault.modify(file, updatedContent);
+        results.templatesUpdated++;
+        console.log(`Task Sync: Updated task template ${templatePath}`);
+      }
+    } else {
+      // Create missing task template
+      await this.templateManager.createTaskTemplate();
+      results.templatesUpdated++;
+      console.log(`Task Sync: Created missing task template ${templatePath}`);
     }
-
-    const frontMatterText = frontMatterMatch[1];
-    const taskProperties = ['Title', 'Type', 'Priority', 'Status', 'Done'];
-
-    return taskProperties.some(prop => frontMatterText.includes(`${prop}:`));
   }
 
   /**
-   * Update task template content to match current property order
+   * Update or create Area template (create only, don't modify existing)
    */
-  private async updateTaskTemplateContent(content: string): Promise<string> {
+  private async updateOrCreateAreaTemplate(results: any): Promise<void> {
+    const templatePath = `${this.settings.templateFolder}/${this.settings.defaultAreaTemplate}`;
+    const file = this.app.vault.getAbstractFileByPath(templatePath);
+
+    if (!file) {
+      // Create missing area template
+      await this.templateManager.createAreaTemplate();
+      results.templatesUpdated++;
+      console.log(`Task Sync: Created missing area template ${templatePath}`);
+    }
+    // Don't modify existing area templates to preserve their structure
+  }
+
+  /**
+   * Update or create Project template (create only, don't modify existing)
+   */
+  private async updateOrCreateProjectTemplate(results: any): Promise<void> {
+    const templatePath = `${this.settings.templateFolder}/${this.settings.defaultProjectTemplate}`;
+    const file = this.app.vault.getAbstractFileByPath(templatePath);
+
+    if (!file) {
+      // Create missing project template
+      await this.templateManager.createProjectTemplate();
+      results.templatesUpdated++;
+      console.log(`Task Sync: Created missing project template ${templatePath}`);
+    }
+    // Don't modify existing project templates to preserve their structure
+  }
+
+  /**
+   * Update or create Parent Task template
+   */
+  private async updateOrCreateParentTaskTemplate(results: any): Promise<void> {
+    const templatePath = `${this.settings.templateFolder}/${this.settings.defaultParentTaskTemplate}`;
+    const file = this.app.vault.getAbstractFileByPath(templatePath);
+
+    if (file && file instanceof TFile) {
+      // Update existing parent task template with property reordering
+      const content = await this.app.vault.read(file);
+      const updatedContent = await this.reorderTaskTemplateProperties(content);
+      if (updatedContent !== content) {
+        await this.app.vault.modify(file, updatedContent);
+        results.templatesUpdated++;
+        console.log(`Task Sync: Updated parent task template ${templatePath}`);
+      }
+    } else {
+      // Create missing parent task template
+      await this.templateManager.createParentTaskTemplate();
+      results.templatesUpdated++;
+      console.log(`Task Sync: Created missing parent task template ${templatePath}`);
+    }
+  }
+
+  /**
+   * Reorder properties in task template content to match current property order
+   */
+  private async reorderTaskTemplateProperties(content: string): Promise<string> {
     const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
     if (!frontMatterMatch) {
       return content;
@@ -1602,6 +1660,30 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
+   * Get task properties in the custom order from settings
+   */
+  private getTaskPropertiesInOrder() {
+    const { PROPERTY_REGISTRY, PROPERTY_SETS } = require('./services/base-definitions/BaseConfigurations');
+
+    // Get property order from settings or use default
+    const propertyOrder = this.settings.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
+
+    // Validate property order - ensure all required properties are present
+    const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
+    const isValidOrder = requiredProperties.every((prop: any) => propertyOrder.includes(prop)) &&
+      propertyOrder.every((prop: any) => requiredProperties.includes(prop as typeof requiredProperties[number]));
+
+    // Use validated order or fall back to default
+    const finalPropertyOrder = isValidOrder ? propertyOrder : requiredProperties;
+
+    // Convert property keys to property definitions in the correct order
+    return finalPropertyOrder.map((propertyKey: any) => {
+      const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+      return { ...prop };
+    }).filter((prop: any) => prop); // Filter out any undefined properties
+  }
+
+  /**
    * Get the current front-matter schema for a file type
    */
   private getFrontMatterSchema(type: 'task' | 'project' | 'area') {
@@ -1635,29 +1717,7 @@ export default class TaskSyncPlugin extends Plugin {
     return schema;
   }
 
-  /**
-   * Get task properties in the custom order from settings
-   */
-  private getTaskPropertiesInOrder() {
-    const { PROPERTY_REGISTRY, PROPERTY_SETS } = require('./services/base-definitions/BaseConfigurations');
 
-    // Get property order from settings or use default
-    const propertyOrder = this.settings.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
-
-    // Validate property order - ensure all required properties are present
-    const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
-    const isValidOrder = requiredProperties.every((prop: any) => propertyOrder.includes(prop)) &&
-      propertyOrder.every((prop: any) => requiredProperties.includes(prop as typeof requiredProperties[number]));
-
-    // Use validated order or fall back to default
-    const finalPropertyOrder = isValidOrder ? propertyOrder : requiredProperties;
-
-    // Convert property keys to property definitions in the correct order
-    return finalPropertyOrder.map((propertyKey: any) => {
-      const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
-      return { ...prop };
-    }).filter((prop: any) => prop); // Filter out any undefined properties
-  }
 
   /**
    * Extract front-matter data from file content
