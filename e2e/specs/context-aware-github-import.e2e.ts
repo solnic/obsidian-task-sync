@@ -5,16 +5,13 @@
 
 import { test, expect, describe } from 'vitest';
 import { createTestFolders } from '../helpers/task-sync-setup';
-import {
-  setupE2ETestHooks,
-  executeCommand
-} from '../helpers/shared-context';
+import { setupE2ETestHooks } from '../helpers/shared-context';
+import { toggleSidebar } from '../helpers/plugin-setup';
 import {
   configureGitHubIntegration,
   openGitHubIssuesView,
   waitForGitHubViewContent,
   stubGitHubApiResponses,
-  restoreGitHubApiMethods,
   clickIssueImportButton,
   waitForIssueImportComplete
 } from '../helpers/github-integration-helpers';
@@ -22,12 +19,12 @@ import {
 describe('Context-Aware GitHub Import', () => {
   const context = setupE2ETestHooks();
 
-  test('should import GitHub issue to project with correct label mapping', async () => {
-    console.log('🧪 Starting real GitHub import to project test');
-
+  beforeEach(async () => {
     await createTestFolders(context.page);
+    await toggleSidebar(context.page, 'right', true);
+  });
 
-    // Create a test project file
+  test('should import GitHub issue to project with correct label mapping', async () => {
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const projectContent = `---
@@ -145,13 +142,9 @@ This is a test project for context-aware importing.
 
     expect(contextInfo.type).toBe('project');
     expect(contextInfo.name).toBe('Test Project');
-
-    console.log('✅ Real GitHub import to project test completed successfully');
   });
 
   test('should import GitHub issue to area with enhancement label mapping', async () => {
-    console.log('🧪 Starting real GitHub import to area test');
-
     await createTestFolders(context.page);
 
     // Create a test area file
@@ -272,13 +265,9 @@ This is a test area for context-aware importing.
 
     expect(contextInfo.type).toBe('area');
     expect(contextInfo.name).toBe('Development');
-
-    console.log('✅ Real GitHub import to area test completed successfully');
   });
 
   test('should import with no context and fallback task type', async () => {
-    console.log('🧪 Starting no context import test');
-
     await createTestFolders(context.page);
 
     // Create a regular note file
@@ -395,7 +384,5 @@ This is just a regular note, not in a project or area folder.
 
     expect(contextInfo.type).toBe('none');
     expect(contextInfo.name).toBeUndefined();
-
-    console.log('✅ No context import test completed successfully');
   });
 });

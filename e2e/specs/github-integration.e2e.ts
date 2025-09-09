@@ -12,7 +12,6 @@ import {
   toggleGitHubIntegration,
   configureGitHubToken,
   configureGitHubIntegration,
-  getGitHubViewStructure,
   openGitHubIssuesView
 } from '../helpers/github-integration-helpers';
 

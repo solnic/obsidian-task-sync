@@ -9,6 +9,7 @@ import {
   setupE2ETestHooks,
   executeCommand
 } from '../helpers/shared-context';
+import { toggleSidebar } from '../helpers/plugin-setup';
 import {
   configureGitHubIntegration,
   openGitHubIssuesView,
@@ -22,11 +23,12 @@ import {
 describe('GitHub Import Status Persistence', () => {
   const context = setupE2ETestHooks();
 
-  test('should preserve import status after plugin restart', async () => {
-    console.log('🧪 Starting import status persistence test');
-
+  beforeEach(async () => {
     await createTestFolders(context.page);
+    await toggleSidebar(context.page, 'right', true);
+  });
 
+  test('should preserve import status after plugin restart', async () => {
     // Stub GitHub API responses with test data
     const mockIssues = [
       {
