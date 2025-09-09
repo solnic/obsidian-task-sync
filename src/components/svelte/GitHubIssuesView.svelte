@@ -2,9 +2,11 @@
   import { onMount } from "svelte";
   import { getPluginContext } from "./context";
   import ContextWidget from "./ContextWidget.svelte";
+  import FilterButton from "./FilterButton.svelte";
   import type {
     GitHubIssue,
     GitHubRepository,
+    GitHubOrganization,
   } from "../../services/GitHubService";
   import type { GitHubIntegrationSettings } from "../ui/settings/types";
   import type { TaskImportConfig } from "../../types/integrations";
@@ -26,7 +28,9 @@
   // State
   let issues = $state<GitHubIssue[]>([]);
   let repositories = $state<GitHubRepository[]>([]);
+  let organizations = $state<GitHubOrganization[]>([]);
   let currentRepository = $state(settings.githubIntegration.defaultRepository);
+  let currentOrganization = $state<string | null>(null);
   let currentState = $state<"open" | "closed" | "all">(
     settings.githubIntegration.issueFilters.state
   );
@@ -46,8 +50,17 @@
     return filtered;
   });
 
+  let filteredRepositories = $derived.by(() => {
+    if (!currentOrganization) {
+      return repositories;
+    }
+    return repositories.filter((repo) =>
+      repo.full_name.startsWith(currentOrganization + "/")
+    );
+  });
+
   let sortedRepositories = $derived.by(() => {
-    return [...repositories].sort((a, b) => {
+    return [...filteredRepositories].sort((a, b) => {
       // Sort by org first, then by name
       const aOrg = a.full_name.split("/")[0];
       const bOrg = b.full_name.split("/")[0];
@@ -59,6 +72,15 @@
       }
       return aName.localeCompare(bName);
     });
+  });
+
+  let availableOrganizations = $derived.by(() => {
+    const orgSet = new Set<string>();
+    repositories.forEach((repo) => {
+      const org = repo.full_name.split("/")[0];
+      orgSet.add(org);
+    });
+    return Array.from(orgSet).sort();
   });
 
   onMount(() => {
@@ -164,6 +186,17 @@
     currentState = state;
   }
 
+  function setOrganizationFilter(org: string | null): void {
+    currentOrganization = org;
+    // Reset repository selection when changing organization
+    if (org && !currentRepository.startsWith(org + "/")) {
+      const firstRepoInOrg = filteredRepositories[0];
+      if (firstRepoInOrg) {
+        setRepository(firstRepoInOrg.full_name);
+      }
+    }
+  }
+
   async function refresh(): Promise<void> {
     await loadRepositories();
     if (currentRepository) {
@@ -252,24 +285,38 @@
       </div>
     </div>
 
-    <!-- Repository selector -->
-    <div class="repository-selector">
-      <select
-        bind:value={currentRepository}
-        onchange={() => setRepository(currentRepository)}
-        data-testid="repository-select"
-      >
-        {#each sortedRepositories as repo}
-          <option value={repo.full_name}>{repo.full_name}</option>
-        {/each}
-        {#if currentRepository && !sortedRepositories.find((r) => r.full_name === currentRepository)}
-          <option value={currentRepository}>{currentRepository}</option>
-        {/if}
-      </select>
-    </div>
-
     <!-- Issue filters -->
     <div class="issue-filters">
+      <!-- Organization filter -->
+      <div class="filter-row">
+        <FilterButton
+          label="Organization"
+          currentValue={currentOrganization || "All Organizations"}
+          options={["All Organizations", ...availableOrganizations]}
+          onselect={(value) =>
+            setOrganizationFilter(value === "All Organizations" ? null : value)}
+          placeholder="All Organizations"
+          testId="organization-filter"
+        />
+      </div>
+
+      <!-- Repository filter -->
+      <div class="filter-row">
+        <select
+          bind:value={currentRepository}
+          onchange={() => setRepository(currentRepository)}
+          data-testid="repository-select"
+          class="repository-select"
+        >
+          {#each sortedRepositories as repo}
+            <option value={repo.full_name}>{repo.full_name}</option>
+          {/each}
+          {#if currentRepository && !sortedRepositories.find((r) => r.full_name === currentRepository)}
+            <option value={currentRepository}>{currentRepository}</option>
+          {/if}
+        </select>
+      </div>
+
       <!-- State filters -->
       <div class="state-filters">
         <button

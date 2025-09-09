@@ -41,6 +41,13 @@ export interface GitHubRepository {
   private: boolean;
 }
 
+export interface GitHubOrganization {
+  id: number;
+  login: string;
+  description: string | null;
+  avatar_url: string;
+}
+
 // GitHubService now uses the full TaskSyncSettings to access all plugin configuration
 
 /**
@@ -225,6 +232,48 @@ export class GitHubService {
 
     try {
       const response = await this.octokit.rest.repos.listForAuthenticatedUser({
+        sort: "updated",
+        per_page: 100,
+      });
+
+      return response.data as GitHubRepository[];
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch organizations for the authenticated user
+   */
+  async fetchOrganizations(): Promise<GitHubOrganization[]> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    try {
+      const response = await this.octokit.rest.orgs.listForAuthenticatedUser({
+        per_page: 100,
+      });
+
+      return response.data as GitHubOrganization[];
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch repositories for a specific organization
+   */
+  async fetchRepositoriesForOrganization(
+    org: string
+  ): Promise<GitHubRepository[]> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    try {
+      const response = await this.octokit.rest.repos.listForOrg({
+        org,
         sort: "updated",
         per_page: 100,
       });

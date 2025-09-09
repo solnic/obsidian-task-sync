@@ -1660,6 +1660,22 @@ Provides consistent styling for all UI components
   gap: 8px;
 }
 
+.filter-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.repository-select {
+  width: 200px;
+  padding: 4px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 12px;
+}
+
 .state-filters {
   display: flex;
   gap: 4px;
@@ -2132,6 +2148,57 @@ Provides consistent styling for all UI components
 
 .task-sync-button-label {
   color: var(--text-normal);
+}
+
+/* Filter Button Styles */
+.task-sync-filter-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  height: 32px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.task-sync-filter-button:hover:not(:disabled):not(.active) {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+}
+
+.task-sync-filter-button:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent-hover);
+}
+
+.task-sync-filter-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Active state */
+.task-sync-filter-button.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+/* Variant: State (for GitHub View state filters) */
+.task-sync-filter-button--state {
+  padding: 4px 8px;
+  font-size: 11px;
+  height: auto;
+  min-width: 60px;
 }
 
 .task-sync-more-button {
