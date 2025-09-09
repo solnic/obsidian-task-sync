@@ -1,33 +1,57 @@
-import { Plugin, TFile, MarkdownView, Notice, WorkspaceLeaf, Modal, App } from 'obsidian';
-import { VaultScanner } from './services/VaultScannerService';
-import { BaseManager } from './services/BaseManager';
-import { PluginStorageService } from './services/PluginStorageService';
-import { FileChangeListener } from './services/FileChangeListener';
-import { TemplateManager } from './services/TemplateManager';
-import { TaskFileManager } from './services/TaskFileManager';
-import { AreaFileManager } from './services/AreaFileManager';
-import { ProjectFileManager } from './services/ProjectFileManager';
-import { TaskCreateModalWrapper } from './components/svelte/TaskCreateModalWrapper';
-import type { TaskCreateData } from './components/modals/TaskCreateModal';
-import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
-import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
+import {
+  Plugin,
+  TFile,
+  MarkdownView,
+  Notice,
+  WorkspaceLeaf,
+  Modal,
+  App,
+} from "obsidian";
+import { VaultScanner } from "./services/VaultScannerService";
+import { BaseManager } from "./services/BaseManager";
+import { PluginStorageService } from "./services/PluginStorageService";
+import { FileChangeListener } from "./services/FileChangeListener";
+import { TemplateManager } from "./services/TemplateManager";
+import { TaskFileManager } from "./services/TaskFileManager";
+import { AreaFileManager } from "./services/AreaFileManager";
+import { ProjectFileManager } from "./services/ProjectFileManager";
+import { TaskCreateModalWrapper } from "./components/svelte/TaskCreateModalWrapper";
+import type { TaskCreateData } from "./components/modals/TaskCreateModal";
+import {
+  AreaCreateModal,
+  AreaCreateData,
+} from "./components/modals/AreaCreateModal";
+import {
+  ProjectCreateModal,
+  ProjectCreateData,
+} from "./components/modals/ProjectCreateModal";
 
-import { TaskSyncSettingTab } from './components/ui/settings';
-import type { TaskSyncSettings, TaskType, TaskTypeColor } from './components/ui/settings';
-import { EventManager } from './events';
-import { StatusDoneHandler } from './events/handlers';
-import { TaskPropertyHandler } from './events/handlers/TaskPropertyHandler';
-import { AreaPropertyHandler } from './events/handlers/AreaPropertyHandler';
-import { ProjectPropertyHandler } from './events/handlers/ProjectPropertyHandler';
-import { EntityCacheHandler } from './events/handlers/EntityCacheHandler';
-import { DEFAULT_SETTINGS, TASK_TYPE_COLORS, validateFolderPath } from './components/ui/settings';
-import { GitHubService } from './services/GitHubService';
-import { TaskImportManager } from './services/TaskImportManager';
-import { ImportStatusService } from './services/ImportStatusService';
-import { GitHubIssuesView, GITHUB_ISSUES_VIEW_TYPE } from './views/GitHubIssuesView';
-import { TaskImportConfig } from './types/integrations';
-import { TodoPromotionService } from './services/TodoPromotionService';
-
+import { TaskSyncSettingTab } from "./components/ui/settings";
+import type {
+  TaskSyncSettings,
+  TaskType,
+  TaskTypeColor,
+} from "./components/ui/settings";
+import { EventManager } from "./events";
+import { StatusDoneHandler } from "./events/handlers";
+import { TaskPropertyHandler } from "./events/handlers/TaskPropertyHandler";
+import { AreaPropertyHandler } from "./events/handlers/AreaPropertyHandler";
+import { ProjectPropertyHandler } from "./events/handlers/ProjectPropertyHandler";
+import { EntityCacheHandler } from "./events/handlers/EntityCacheHandler";
+import {
+  DEFAULT_SETTINGS,
+  TASK_TYPE_COLORS,
+  validateFolderPath,
+} from "./components/ui/settings";
+import { GitHubService } from "./services/GitHubService";
+import { TaskImportManager } from "./services/TaskImportManager";
+import { ImportStatusService } from "./services/ImportStatusService";
+import {
+  GitHubIssuesView,
+  GITHUB_ISSUES_VIEW_TYPE,
+} from "./views/GitHubIssuesView";
+import { TaskImportConfig } from "./types/integrations";
+import { TodoPromotionService } from "./services/TodoPromotionService";
 
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
@@ -35,7 +59,7 @@ export { TASK_TYPE_COLORS };
 
 // File context interface for context-aware modal
 export interface FileContext {
-  type: 'project' | 'area' | 'none';
+  type: "project" | "area" | "none";
   name?: string;
   path?: string;
 }
@@ -76,32 +100,52 @@ export default class TaskSyncPlugin extends Plugin {
   todoPromotionService: TodoPromotionService;
 
   // Global context system
-  private currentContext: FileContext = { type: 'none' };
+  private currentContext: FileContext = { type: "none" };
 
   async onload() {
-    console.log('Loading Task Sync Plugin');
+    console.log("Loading Task Sync Plugin");
 
     // Load settings
     await this.loadSettings();
 
     // Initialize services
-    console.log('🔧 Initializing services with settings:', {
+    console.log("🔧 Initializing services with settings:", {
       taskTypes: this.settings.taskTypes,
-      githubIntegration: this.settings.githubIntegration
+      githubIntegration: this.settings.githubIntegration,
     });
 
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
-    this.templateManager = new TemplateManager(this.app, this.app.vault, this.settings);
+    this.templateManager = new TemplateManager(
+      this.app,
+      this.app.vault,
+      this.settings
+    );
     this.storageService = new PluginStorageService(this.app, this);
     this.githubService = new GitHubService(this.settings);
 
     // Initialize import services
-    this.taskImportManager = new TaskImportManager(this.app, this.app.vault, this.settings);
+    this.taskImportManager = new TaskImportManager(
+      this.app,
+      this.app.vault,
+      this.settings
+    );
     this.importStatusService = new ImportStatusService(this);
-    this.taskFileManager = new TaskFileManager(this.app, this.app.vault, this.settings);
-    this.areaFileManager = new AreaFileManager(this.app, this.app.vault, this.settings);
-    this.projectFileManager = new ProjectFileManager(this.app, this.app.vault, this.settings);
+    this.taskFileManager = new TaskFileManager(
+      this.app,
+      this.app.vault,
+      this.settings
+    );
+    this.areaFileManager = new AreaFileManager(
+      this.app,
+      this.app.vault,
+      this.settings
+    );
+    this.projectFileManager = new ProjectFileManager(
+      this.app,
+      this.app.vault,
+      this.settings
+    );
 
     // Initialize TodoPromotionService
     this.todoPromotionService = new TodoPromotionService(
@@ -120,7 +164,10 @@ export default class TaskSyncPlugin extends Plugin {
     await this.importStatusService.initialize();
 
     // Wire up GitHub service with import dependencies
-    this.githubService.setImportDependencies(this.taskImportManager, this.importStatusService);
+    this.githubService.setImportDependencies(
+      this.taskImportManager,
+      this.importStatusService
+    );
 
     // Initialize storage service
     await this.storageService.initialize();
@@ -133,9 +180,21 @@ export default class TaskSyncPlugin extends Plugin {
     this.statusDoneHandler = new StatusDoneHandler(this.app, this.settings);
     this.taskPropertyHandler = new TaskPropertyHandler(this.app, this.settings);
     this.areaPropertyHandler = new AreaPropertyHandler(this.app, this.settings);
-    this.projectPropertyHandler = new ProjectPropertyHandler(this.app, this.settings);
-    this.entityCacheHandler = new EntityCacheHandler(this.app, this.settings, this.storageService);
-    this.fileChangeListener = new FileChangeListener(this.app, this.app.vault, this.eventManager, this.settings);
+    this.projectPropertyHandler = new ProjectPropertyHandler(
+      this.app,
+      this.settings
+    );
+    this.entityCacheHandler = new EntityCacheHandler(
+      this.app,
+      this.settings,
+      this.storageService
+    );
+    this.fileChangeListener = new FileChangeListener(
+      this.app,
+      this.app.vault,
+      this.eventManager,
+      this.settings
+    );
 
     // Register event handlers
     this.eventManager.registerHandler(this.statusDoneHandler);
@@ -156,16 +215,17 @@ export default class TaskSyncPlugin extends Plugin {
     // Register GitHub Issues view
     this.registerView(
       GITHUB_ISSUES_VIEW_TYPE,
-      (leaf) => new GitHubIssuesView(
-        leaf,
-        this.githubService,
-        { githubIntegration: this.settings.githubIntegration },
-        {
-          taskImportManager: this.taskImportManager,
-          importStatusService: this.importStatusService,
-          getDefaultImportConfig: () => this.getDefaultImportConfig()
-        }
-      )
+      (leaf) =>
+        new GitHubIssuesView(
+          leaf,
+          this.githubService,
+          { githubIntegration: this.settings.githubIntegration },
+          {
+            taskImportManager: this.taskImportManager,
+            importStatusService: this.importStatusService,
+            getDefaultImportConfig: () => this.getDefaultImportConfig(),
+          }
+        )
     );
 
     // Create GitHub Issues view in right sidebar if it doesn't exist
@@ -178,83 +238,83 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Add commands
     this.addCommand({
-      id: 'add-task',
-      name: 'Add Task',
+      id: "add-task",
+      name: "Add Task",
       callback: () => {
         this.openTaskCreateModal();
-      }
+      },
     });
 
     this.addCommand({
-      id: 'refresh',
-      name: 'Refresh',
+      id: "refresh",
+      name: "Refresh",
       callback: async () => {
         await this.refresh();
-      }
+      },
     });
 
     this.addCommand({
-      id: 'refresh-base-views',
-      name: 'Refresh Base Views',
+      id: "refresh-base-views",
+      name: "Refresh Base Views",
       callback: async () => {
         await this.refreshBaseViews();
-      }
+      },
     });
 
     this.addCommand({
-      id: 'create-area',
-      name: 'Create Area',
+      id: "create-area",
+      name: "Create Area",
       callback: () => {
         this.openAreaCreateModal();
-      }
+      },
     });
 
     this.addCommand({
-      id: 'create-project',
-      name: 'Create Project',
+      id: "create-project",
+      name: "Create Project",
       callback: () => {
         this.openProjectCreateModal();
-      }
+      },
     });
 
     this.addCommand({
-      id: 'promote-todo-to-task',
-      name: 'Promote Todo to Task',
+      id: "promote-todo-to-task",
+      name: "Promote Todo to Task",
       callback: async () => {
         const result = await this.todoPromotionService.promoteTodoToTask();
         new Notice(result.message);
-      }
+      },
     });
 
     this.addCommand({
-      id: 'revert-promoted-todo',
-      name: 'Revert Promoted Todo',
+      id: "revert-promoted-todo",
+      name: "Revert Promoted Todo",
       callback: async () => {
         const result = await this.todoPromotionService.revertPromotedTodo();
         new Notice(result.message);
-      }
+      },
     });
 
     // GitHub Import Commands
     this.addCommand({
-      id: 'import-github-issue',
-      name: 'Import GitHub Issue',
+      id: "import-github-issue",
+      name: "Import GitHub Issue",
       callback: async () => {
         await this.importGitHubIssue();
-      }
+      },
     });
 
     this.addCommand({
-      id: 'import-all-github-issues',
-      name: 'Import All GitHub Issues',
+      id: "import-all-github-issues",
+      name: "Import All GitHub Issues",
       callback: async () => {
         await this.importAllGitHubIssues();
-      }
+      },
     });
   }
 
   async onunload() {
-    console.log('Unloading Task Sync Plugin');
+    console.log("Unloading Task Sync Plugin");
 
     if (this.importStatusService) {
       await this.importStatusService.onUnload();
@@ -276,107 +336,104 @@ export default class TaskSyncPlugin extends Plugin {
   async loadSettings() {
     try {
       const loadedData = await this.loadData();
-      console.log('🔧 Loaded data from storage:', loadedData);
-      console.log('🔧 DEFAULT_SETTINGS.taskTypes:', DEFAULT_SETTINGS.taskTypes);
+      console.log("🔧 Loaded data from storage:", loadedData);
+      console.log("🔧 DEFAULT_SETTINGS.taskTypes:", DEFAULT_SETTINGS.taskTypes);
 
       this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
-      console.log('🔧 Final settings after merge:', {
+      console.log("🔧 Final settings after merge:", {
         taskTypes: this.settings.taskTypes,
-        githubIntegration: this.settings.githubIntegration
+        githubIntegration: this.settings.githubIntegration,
       });
 
       // Validate settings
       this.validateSettings();
     } catch (error) {
-      console.error('Task Sync: Failed to load settings:', error);
+      console.error("Task Sync: Failed to load settings:", error);
       this.settings = { ...DEFAULT_SETTINGS };
-      console.log('🔧 Using fallback DEFAULT_SETTINGS:', {
-        taskTypes: this.settings.taskTypes
+      console.log("🔧 Using fallback DEFAULT_SETTINGS:", {
+        taskTypes: this.settings.taskTypes,
       });
     }
   }
 
   async saveSettings() {
-    try {
-      // Validate settings before saving
-      this.validateSettings();
+    this.validateSettings();
 
-      await this.saveData(this.settings);
+    await this.saveData(this.settings);
 
-      // Update event system with new settings
-      if (this.statusDoneHandler) {
-        this.statusDoneHandler.updateSettings(this.settings);
-      }
-      if (this.taskPropertyHandler) {
-        this.taskPropertyHandler.updateSettings(this.settings);
-      }
-      if (this.areaPropertyHandler) {
-        this.areaPropertyHandler.updateSettings(this.settings);
-      }
-      if (this.projectPropertyHandler) {
-        this.projectPropertyHandler.updateSettings(this.settings);
-      }
-      if (this.statusDoneHandler || this.taskPropertyHandler || this.areaPropertyHandler || this.projectPropertyHandler) {
-        console.log('Task Sync: Event system updated with new settings');
-      }
+    if (this.statusDoneHandler) {
+      this.statusDoneHandler.updateSettings(this.settings);
+    }
 
-      // Update GitHub service with new settings
-      if (this.githubService) {
-        this.githubService.updateSettings(this.settings);
-      }
+    if (this.taskPropertyHandler) {
+      this.taskPropertyHandler.updateSettings(this.settings);
+    }
 
-      // Update TaskImportManager with new settings
-      if (this.taskImportManager) {
-        this.taskImportManager.updateSettings(this.settings);
-      }
+    if (this.areaPropertyHandler) {
+      this.areaPropertyHandler.updateSettings(this.settings);
+    }
 
-      // Update GitHub Issues view if it's open
-      const githubLeaves = this.app.workspace.getLeavesOfType(GITHUB_ISSUES_VIEW_TYPE);
-      githubLeaves.forEach(leaf => {
-        const view = leaf.view as GitHubIssuesView;
-        if (view && view.updateSettings) {
-          view.updateSettings({ githubIntegration: this.settings.githubIntegration });
-        }
-      });
+    if (this.projectPropertyHandler) {
+      this.projectPropertyHandler.updateSettings(this.settings);
+    }
 
-      // Update TemplateManager with new settings and handle template updates
-      if (this.templateManager) {
-        this.templateManager.updateSettings(this.settings);
-        await this.templateManager.updateTemplatesOnSettingsChange();
-        console.log('Task Sync: TemplateManager updated with new settings');
-      }
+    if (this.githubService) {
+      this.githubService.updateSettings(this.settings);
+    }
 
-      // Update BaseManager with new settings
-      if (this.baseManager) {
-        this.baseManager.updateSettings(this.settings);
-        console.log('Task Sync: BaseManager updated with new settings');
-      }
+    if (this.taskImportManager) {
+      this.taskImportManager.updateSettings(this.settings);
+    }
 
-      // Update file managers with new settings
-      if (this.taskFileManager) {
-        this.taskFileManager.updateSettings(this.settings);
-      }
-      if (this.areaFileManager) {
-        this.areaFileManager.updateSettings(this.settings);
-      }
-      if (this.projectFileManager) {
-        this.projectFileManager.updateSettings(this.settings);
-      }
+    const githubLeaves = this.app.workspace.getLeavesOfType(
+      GITHUB_ISSUES_VIEW_TYPE
+    );
 
-      // Note: FileChangeListener will get updated settings automatically since it references this.settings
-    } catch (error) {
-      console.error('Task Sync: Failed to save settings:', error);
-      throw error;
+    githubLeaves.forEach((leaf) => {
+      const view = leaf.view as GitHubIssuesView;
+      if (view && view.updateSettings) {
+        view.updateSettings({
+          githubIntegration: this.settings.githubIntegration,
+        });
+      }
+    });
+
+    if (this.templateManager) {
+      this.templateManager.updateSettings(this.settings);
+      await this.templateManager.updateTemplatesOnSettingsChange();
+    }
+
+    if (this.baseManager) {
+      this.baseManager.updateSettings(this.settings);
+    }
+
+    if (this.taskFileManager) {
+      this.taskFileManager.updateSettings(this.settings);
+    }
+
+    if (this.areaFileManager) {
+      this.areaFileManager.updateSettings(this.settings);
+    }
+
+    if (this.projectFileManager) {
+      this.projectFileManager.updateSettings(this.settings);
     }
   }
 
   private validateSettings() {
     // Validate folder names (allow empty strings but ensure they're strings)
-    const folderFields = ['tasksFolder', 'projectsFolder', 'areasFolder', 'templateFolder'];
-    folderFields.forEach(field => {
-      const folderPath = this.settings[field as keyof TaskSyncSettings] as string;
+    const folderFields = [
+      "tasksFolder",
+      "projectsFolder",
+      "areasFolder",
+      "templateFolder",
+    ];
+    folderFields.forEach((field) => {
+      const folderPath = this.settings[
+        field as keyof TaskSyncSettings
+      ] as string;
 
-      if (typeof folderPath !== 'string') {
+      if (typeof folderPath !== "string") {
         console.warn(`Task Sync: Invalid ${field}, using default`);
         (this.settings as any)[field] = (DEFAULT_SETTINGS as any)[field];
         return;
@@ -392,18 +449,29 @@ export default class TaskSyncPlugin extends Plugin {
     });
 
     // Validate template settings - these are MANDATORY and cannot be empty
-    const templateFields = ['defaultTaskTemplate', 'defaultProjectTemplate', 'defaultAreaTemplate', 'defaultParentTaskTemplate'];
-    templateFields.forEach(field => {
-      const templateName = this.settings[field as keyof TaskSyncSettings] as string;
+    const templateFields = [
+      "defaultTaskTemplate",
+      "defaultProjectTemplate",
+      "defaultAreaTemplate",
+      "defaultParentTaskTemplate",
+    ];
+    templateFields.forEach((field) => {
+      const templateName = this.settings[
+        field as keyof TaskSyncSettings
+      ] as string;
 
-      if (!templateName || typeof templateName !== 'string' || templateName.trim() === '') {
-        console.warn(`Task Sync: Template setting ${field} is empty or invalid, using default`);
+      if (
+        !templateName ||
+        typeof templateName !== "string" ||
+        templateName.trim() === ""
+      ) {
+        console.warn(
+          `Task Sync: Template setting ${field} is empty or invalid, using default`
+        );
         (this.settings as any)[field] = (DEFAULT_SETTINGS as any)[field];
       }
     });
   }
-
-
 
   // UI Methods
   private async openTaskCreateModal(): Promise<void> {
@@ -423,7 +491,7 @@ export default class TaskSyncPlugin extends Plugin {
       );
       modal.open();
     } catch (error) {
-      console.error('Failed to open task creation modal:', error);
+      console.error("Failed to open task creation modal:", error);
     }
   }
 
@@ -442,7 +510,7 @@ export default class TaskSyncPlugin extends Plugin {
       });
       modal.open();
     } catch (error) {
-      console.error('Failed to open area creation modal:', error);
+      console.error("Failed to open area creation modal:", error);
     }
   }
 
@@ -461,40 +529,42 @@ export default class TaskSyncPlugin extends Plugin {
       });
       modal.open();
     } catch (error) {
-      console.error('Failed to open project creation modal:', error);
+      console.error("Failed to open project creation modal:", error);
     }
   }
-
-
 
   /**
    * Initialize GitHub Issues view in the right sidebar if it doesn't already exist
    */
   private async initializeGitHubIssuesView(): Promise<void> {
     try {
-      console.log('🔧 Initializing GitHub Issues view...');
+      console.log("🔧 Initializing GitHub Issues view...");
 
       // Check if GitHub Issues view already exists
-      const existingLeaves = this.app.workspace.getLeavesOfType(GITHUB_ISSUES_VIEW_TYPE);
-      console.log(`🔧 Found ${existingLeaves.length} existing GitHub Issues views`);
+      const existingLeaves = this.app.workspace.getLeavesOfType(
+        GITHUB_ISSUES_VIEW_TYPE
+      );
+      console.log(
+        `🔧 Found ${existingLeaves.length} existing GitHub Issues views`
+      );
 
       if (existingLeaves.length > 0) {
-        console.log('✅ GitHub Issues view already exists, skipping creation');
+        console.log("✅ GitHub Issues view already exists, skipping creation");
         return; // View already exists
       }
 
-      console.log('🔧 Creating GitHub Issues view in right sidebar...');
+      console.log("🔧 Creating GitHub Issues view in right sidebar...");
 
       // Create the view in the right sidebar
       const rightLeaf = this.app.workspace.getRightLeaf(false);
       await rightLeaf.setViewState({
         type: GITHUB_ISSUES_VIEW_TYPE,
-        active: false // Don't make it active by default
+        active: false, // Don't make it active by default
       });
 
-      console.log('✅ GitHub Issues view created successfully');
+      console.log("✅ GitHub Issues view created successfully");
     } catch (error) {
-      console.error('❌ Failed to initialize GitHub Issues view:', error);
+      console.error("❌ Failed to initialize GitHub Issues view:", error);
     }
   }
 
@@ -502,31 +572,31 @@ export default class TaskSyncPlugin extends Plugin {
     const activeFile = this.app.workspace.getActiveFile();
 
     if (!activeFile) {
-      return { type: 'none' };
+      return { type: "none" };
     }
 
     const filePath = activeFile.path;
     const fileName = activeFile.name;
 
     // Check if file is in projects folder
-    if (filePath.startsWith(this.settings.projectsFolder + '/')) {
+    if (filePath.startsWith(this.settings.projectsFolder + "/")) {
       return {
-        type: 'project',
-        name: fileName.replace('.md', ''),
-        path: filePath
+        type: "project",
+        name: fileName.replace(".md", ""),
+        path: filePath,
       };
     }
 
     // Check if file is in areas folder
-    if (filePath.startsWith(this.settings.areasFolder + '/')) {
+    if (filePath.startsWith(this.settings.areasFolder + "/")) {
       return {
-        type: 'area',
-        name: fileName.replace('.md', ''),
-        path: filePath
+        type: "area",
+        name: fileName.replace(".md", ""),
+        path: filePath,
       };
     }
 
-    return { type: 'none' };
+    return { type: "none" };
   }
 
   /**
@@ -535,14 +605,14 @@ export default class TaskSyncPlugin extends Plugin {
   private initializeContextTracking(): void {
     // Update context when active file changes
     this.registerEvent(
-      this.app.workspace.on('active-leaf-change', () => {
+      this.app.workspace.on("active-leaf-change", () => {
         this.updateCurrentContext();
       })
     );
 
     // Update context when file is opened
     this.registerEvent(
-      this.app.workspace.on('file-open', () => {
+      this.app.workspace.on("file-open", () => {
         this.updateCurrentContext();
       })
     );
@@ -558,10 +628,12 @@ export default class TaskSyncPlugin extends Plugin {
     const newContext = this.detectCurrentFileContext();
 
     // Only update if context actually changed
-    if (this.currentContext.type !== newContext.type ||
-      this.currentContext.name !== newContext.name) {
+    if (
+      this.currentContext.type !== newContext.type ||
+      this.currentContext.name !== newContext.name
+    ) {
       this.currentContext = newContext;
-      console.log('🔄 Context updated:', this.currentContext);
+      console.log("🔄 Context updated:", this.currentContext);
     }
   }
 
@@ -582,10 +654,13 @@ export default class TaskSyncPlugin extends Plugin {
 
       // Use TaskFileManager to create the task file, passing content (or description for backward compatibility)
       const content = taskData.content || taskData.description;
-      const taskPath = await this.taskFileManager.createTaskFile(taskCreationData, content);
-      console.log('Task created successfully:', taskPath);
+      const taskPath = await this.taskFileManager.createTaskFile(
+        taskCreationData,
+        content
+      );
+      console.log("Task created successfully:", taskPath);
     } catch (error) {
-      console.error('Failed to create task:', error);
+      console.error("Failed to create task:", error);
       throw error;
     }
   }
@@ -603,7 +678,7 @@ export default class TaskSyncPlugin extends Plugin {
       done: taskData.done,
       status: taskData.status,
       parentTask: taskData.parentTask,
-      tags: taskData.tags
+      tags: taskData.tags,
     };
   }
 
@@ -615,23 +690,28 @@ export default class TaskSyncPlugin extends Plugin {
       // Convert to AreaCreationData format for AreaFileManager
       const areaCreationData = {
         title: areaData.name,
-        description: areaData.description
+        description: areaData.description,
       };
 
       // Use AreaFileManager to create the area file (it will handle template content and {{tasks}} variable)
-      const areaPath = await this.areaFileManager.createAreaFile(areaCreationData);
-      console.log('Area created successfully:', areaPath);
+      const areaPath = await this.areaFileManager.createAreaFile(
+        areaCreationData
+      );
+      console.log("Area created successfully:", areaPath);
 
       // Create individual base if enabled
-      if (this.settings.areaBasesEnabled && this.settings.autoSyncAreaProjectBases) {
+      if (
+        this.settings.areaBasesEnabled &&
+        this.settings.autoSyncAreaProjectBases
+      ) {
         await this.baseManager.createOrUpdateAreaBase({
           name: areaData.name,
           path: areaPath,
-          type: 'area'
+          type: "area",
         });
       }
     } catch (error) {
-      console.error('Failed to create area:', error);
+      console.error("Failed to create area:", error);
       throw error;
     }
   }
@@ -645,28 +725,31 @@ export default class TaskSyncPlugin extends Plugin {
       const projectCreationData = {
         title: projectData.name,
         description: projectData.description,
-        areas: projectData.areas
+        areas: projectData.areas,
       };
 
       // Use ProjectFileManager to create the project file (it will handle template content and {{tasks}} variable)
-      const projectPath = await this.projectFileManager.createProjectFile(projectCreationData);
-      console.log('Project created successfully:', projectPath);
+      const projectPath = await this.projectFileManager.createProjectFile(
+        projectCreationData
+      );
+      console.log("Project created successfully:", projectPath);
 
       // Create individual base if enabled
-      if (this.settings.projectBasesEnabled && this.settings.autoSyncAreaProjectBases) {
+      if (
+        this.settings.projectBasesEnabled &&
+        this.settings.autoSyncAreaProjectBases
+      ) {
         await this.baseManager.createOrUpdateProjectBase({
           name: projectData.name,
           path: projectPath,
-          type: 'project'
+          type: "project",
         });
       }
     } catch (error) {
-      console.error('Failed to create project:', error);
+      console.error("Failed to create project:", error);
       throw error;
     }
   }
-
-
 
   // Base Management Methods
 
@@ -680,10 +763,10 @@ export default class TaskSyncPlugin extends Plugin {
         propertiesUpdated: 0,
         basesRegenerated: 0,
         templatesUpdated: 0,
-        errors: [] as string[]
+        errors: [] as string[],
       };
 
-      console.log('Task Sync: Starting comprehensive refresh...');
+      console.log("Task Sync: Starting comprehensive refresh...");
 
       // 2. Update task/project/area file properties
       await this.updateFileProperties(results);
@@ -698,9 +781,9 @@ export default class TaskSyncPlugin extends Plugin {
       // 5. Provide feedback
       this.showRefreshResults(results);
 
-      console.log('Task Sync: Refresh completed successfully');
+      console.log("Task Sync: Refresh completed successfully");
     } catch (error) {
-      console.error('Task Sync: Refresh failed:', error);
+      console.error("Task Sync: Refresh failed:", error);
       throw error;
     }
   }
@@ -710,7 +793,7 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async updateFileProperties(results: any): Promise<void> {
     try {
-      console.log('Task Sync: Starting file property updates...');
+      console.log("Task Sync: Starting file property updates...");
 
       // Update task files using TaskFileManager
       await this.updateTaskFiles(results);
@@ -721,9 +804,11 @@ export default class TaskSyncPlugin extends Plugin {
       // Update area files using AreaFileManager
       await this.updateAreaFiles(results);
 
-      console.log(`Task Sync: Updated properties in ${results.filesUpdated} files (${results.propertiesUpdated} properties changed)`);
+      console.log(
+        `Task Sync: Updated properties in ${results.filesUpdated} files (${results.propertiesUpdated} properties changed)`
+      );
     } catch (error) {
-      console.error('Task Sync: Failed to update file properties:', error);
+      console.error("Task Sync: Failed to update file properties:", error);
       results.errors.push(`Failed to update file properties: ${error.message}`);
     }
   }
@@ -736,21 +821,27 @@ export default class TaskSyncPlugin extends Plugin {
       const taskFiles = await this.vaultScanner.scanTasksFolder();
       for (const filePath of taskFiles) {
         try {
-          const updateResult = await this.taskFileManager.updateTaskFileProperties(filePath);
+          const updateResult =
+            await this.taskFileManager.updateTaskFileProperties(filePath);
           if (updateResult.hasChanges) {
             results.filesUpdated++;
             results.propertiesUpdated += updateResult.propertiesChanged;
-            console.log(`Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`);
+            console.log(
+              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`
+            );
           } else {
             console.log(`Task Sync: No changes needed for ${filePath}`);
           }
         } catch (error) {
-          console.error(`Task Sync: Failed to update task file ${filePath}:`, error);
+          console.error(
+            `Task Sync: Failed to update task file ${filePath}:`,
+            error
+          );
           results.errors.push(`Failed to update ${filePath}: ${error.message}`);
         }
       }
     } catch (error) {
-      console.error('Task Sync: Failed to update task files:', error);
+      console.error("Task Sync: Failed to update task files:", error);
       results.errors.push(`Failed to update task files: ${error.message}`);
     }
   }
@@ -763,21 +854,27 @@ export default class TaskSyncPlugin extends Plugin {
       const projectFiles = await this.vaultScanner.scanProjectsFolder();
       for (const filePath of projectFiles) {
         try {
-          const updateResult = await this.projectFileManager.updateFileProperties(filePath);
+          const updateResult =
+            await this.projectFileManager.updateFileProperties(filePath);
           if (updateResult.hasChanges) {
             results.filesUpdated++;
             results.propertiesUpdated += updateResult.propertiesChanged;
-            console.log(`Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`);
+            console.log(
+              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`
+            );
           } else {
             console.log(`Task Sync: No changes needed for ${filePath}`);
           }
         } catch (error) {
-          console.error(`Task Sync: Failed to update project file ${filePath}:`, error);
+          console.error(
+            `Task Sync: Failed to update project file ${filePath}:`,
+            error
+          );
           results.errors.push(`Failed to update ${filePath}: ${error.message}`);
         }
       }
     } catch (error) {
-      console.error('Task Sync: Failed to update project files:', error);
+      console.error("Task Sync: Failed to update project files:", error);
       results.errors.push(`Failed to update project files: ${error.message}`);
     }
   }
@@ -790,21 +887,28 @@ export default class TaskSyncPlugin extends Plugin {
       const areaFiles = await this.vaultScanner.scanAreasFolder();
       for (const filePath of areaFiles) {
         try {
-          const updateResult = await this.areaFileManager.updateFileProperties(filePath);
+          const updateResult = await this.areaFileManager.updateFileProperties(
+            filePath
+          );
           if (updateResult.hasChanges) {
             results.filesUpdated++;
             results.propertiesUpdated += updateResult.propertiesChanged;
-            console.log(`Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`);
+            console.log(
+              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`
+            );
           } else {
             console.log(`Task Sync: No changes needed for ${filePath}`);
           }
         } catch (error) {
-          console.error(`Task Sync: Failed to update area file ${filePath}:`, error);
+          console.error(
+            `Task Sync: Failed to update area file ${filePath}:`,
+            error
+          );
           results.errors.push(`Failed to update ${filePath}: ${error.message}`);
         }
       }
     } catch (error) {
-      console.error('Task Sync: Failed to update area files:', error);
+      console.error("Task Sync: Failed to update area files:", error);
       results.errors.push(`Failed to update area files: ${error.message}`);
     }
   }
@@ -814,14 +918,16 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async updateTemplateFiles(results: any): Promise<void> {
     try {
-      console.log('Task Sync: Starting template file updates...');
+      console.log("Task Sync: Starting template file updates...");
 
       // Update each template type using explicit paths from settings
       await this.updateSpecificTemplateFiles(results);
 
-      console.log(`Task Sync: Updated ${results.templatesUpdated} template files`);
+      console.log(
+        `Task Sync: Updated ${results.templatesUpdated} template files`
+      );
     } catch (error) {
-      console.error('Task Sync: Failed to update template files:', error);
+      console.error("Task Sync: Failed to update template files:", error);
       results.errors.push(`Failed to update template files: ${error.message}`);
     }
   }
@@ -842,10 +948,14 @@ export default class TaskSyncPlugin extends Plugin {
 
       // Update Parent Task template
       await this.updateOrCreateParentTaskTemplate(results);
-
     } catch (error) {
-      console.error('Task Sync: Failed to update specific template files:', error);
-      results.errors.push(`Failed to update specific template files: ${error.message}`);
+      console.error(
+        "Task Sync: Failed to update specific template files:",
+        error
+      );
+      results.errors.push(
+        `Failed to update specific template files: ${error.message}`
+      );
     }
   }
 
@@ -859,7 +969,8 @@ export default class TaskSyncPlugin extends Plugin {
     if (file && file instanceof TFile) {
       // Update existing task template with property reordering
       const content = await this.app.vault.read(file);
-      const updatedContent = await this.taskFileManager.reorderTaskTemplateProperties(content);
+      const updatedContent =
+        await this.taskFileManager.reorderTaskTemplateProperties(content);
       if (updatedContent !== content) {
         await this.app.vault.modify(file, updatedContent);
         results.templatesUpdated++;
@@ -900,7 +1011,9 @@ export default class TaskSyncPlugin extends Plugin {
       // Create missing project template
       await this.templateManager.createProjectTemplate();
       results.templatesUpdated++;
-      console.log(`Task Sync: Created missing project template ${templatePath}`);
+      console.log(
+        `Task Sync: Created missing project template ${templatePath}`
+      );
     }
     // Don't modify existing project templates to preserve their structure
   }
@@ -915,7 +1028,8 @@ export default class TaskSyncPlugin extends Plugin {
     if (file && file instanceof TFile) {
       // Update existing parent task template with property reordering
       const content = await this.app.vault.read(file);
-      const updatedContent = await this.taskFileManager.reorderTaskTemplateProperties(content);
+      const updatedContent =
+        await this.taskFileManager.reorderTaskTemplateProperties(content);
       if (updatedContent !== content) {
         await this.app.vault.modify(file, updatedContent);
         results.templatesUpdated++;
@@ -925,13 +1039,11 @@ export default class TaskSyncPlugin extends Plugin {
       // Create missing parent task template
       await this.templateManager.createParentTaskTemplate();
       results.templatesUpdated++;
-      console.log(`Task Sync: Created missing parent task template ${templatePath}`);
+      console.log(
+        `Task Sync: Created missing parent task template ${templatePath}`
+      );
     }
   }
-
-
-
-
 
   // ============================================================================
   // REMOVED COMPLEX PROPERTY ORDERING METHODS - MOVED TO FILE MANAGERS
@@ -965,9 +1077,15 @@ export default class TaskSyncPlugin extends Plugin {
    * Show refresh results to the user
    */
   private showRefreshResults(results: any): void {
-    const { filesUpdated, propertiesUpdated, basesRegenerated, templatesUpdated, errors } = results;
+    const {
+      filesUpdated,
+      propertiesUpdated,
+      basesRegenerated,
+      templatesUpdated,
+      errors,
+    } = results;
 
-    let message = 'Refresh completed!\n\n';
+    let message = "Refresh completed!\n\n";
     message += `• Files updated: ${filesUpdated}\n`;
     message += `• Properties updated: ${propertiesUpdated}\n`;
     message += `• Templates updated: ${templatesUpdated}\n`;
@@ -982,7 +1100,7 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Show a notice to the user
     new Notice(message, 5000);
-    console.log('Task Sync: Refresh results:', results);
+    console.log("Task Sync: Refresh results:", results);
   }
 
   /**
@@ -1001,17 +1119,17 @@ export default class TaskSyncPlugin extends Plugin {
       // Ensure base embedding in project and area files that don't have individual bases
       for (const item of projectsAndAreas) {
         const shouldHaveIndividualBase =
-          (item.type === 'area' && this.settings.areaBasesEnabled) ||
-          (item.type === 'project' && this.settings.projectBasesEnabled);
+          (item.type === "area" && this.settings.areaBasesEnabled) ||
+          (item.type === "project" && this.settings.projectBasesEnabled);
 
         if (!shouldHaveIndividualBase) {
           await this.baseManager.ensureBaseEmbedding(item.path);
         }
       }
 
-      console.log('Task Sync: Bases regenerated successfully');
+      console.log("Task Sync: Bases regenerated successfully");
     } catch (error) {
-      console.error('Task Sync: Failed to regenerate bases:', error);
+      console.error("Task Sync: Failed to regenerate bases:", error);
     }
   }
 
@@ -1027,7 +1145,7 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async importGitHubIssue(): Promise<void> {
     if (!this.githubService.isEnabled()) {
-      new Notice('GitHub integration is not enabled or configured');
+      new Notice("GitHub integration is not enabled or configured");
       return;
     }
 
@@ -1041,7 +1159,7 @@ export default class TaskSyncPlugin extends Plugin {
 
       const issue = await this.fetchIssueFromUrl(issueUrl);
       if (!issue) {
-        new Notice('Failed to fetch GitHub issue');
+        new Notice("Failed to fetch GitHub issue");
         return;
       }
 
@@ -1060,7 +1178,7 @@ export default class TaskSyncPlugin extends Plugin {
         new Notice(`Failed to import issue: ${result.error}`);
       }
     } catch (error: any) {
-      console.error('Failed to import GitHub issue:', error);
+      console.error("Failed to import GitHub issue:", error);
       new Notice(`Error importing issue: ${error.message}`);
     }
   }
@@ -1070,22 +1188,22 @@ export default class TaskSyncPlugin extends Plugin {
    */
   private async importAllGitHubIssues(): Promise<void> {
     if (!this.githubService.isEnabled()) {
-      new Notice('GitHub integration is not enabled or configured');
+      new Notice("GitHub integration is not enabled or configured");
       return;
     }
 
     try {
       const repository = this.settings.githubIntegration.defaultRepository;
       if (!repository) {
-        new Notice('No default repository configured');
+        new Notice("No default repository configured");
         return;
       }
 
-      new Notice('Fetching GitHub issues...');
+      new Notice("Fetching GitHub issues...");
 
       const issues = await this.githubService.fetchIssues(repository);
       if (issues.length === 0) {
-        new Notice('No issues found in repository');
+        new Notice("No issues found in repository");
         return;
       }
 
@@ -1098,7 +1216,10 @@ export default class TaskSyncPlugin extends Plugin {
 
       for (const issue of issues) {
         try {
-          const result = await this.githubService.importIssueAsTask(issue, config);
+          const result = await this.githubService.importIssueAsTask(
+            issue,
+            config
+          );
 
           if (result.success) {
             if (result.skipped) {
@@ -1108,7 +1229,10 @@ export default class TaskSyncPlugin extends Plugin {
             }
           } else {
             failed++;
-            console.error(`Failed to import issue ${issue.number}:`, result.error);
+            console.error(
+              `Failed to import issue ${issue.number}:`,
+              result.error
+            );
           }
         } catch (error: any) {
           failed++;
@@ -1116,9 +1240,11 @@ export default class TaskSyncPlugin extends Plugin {
         }
       }
 
-      new Notice(`Import complete: ${imported} imported, ${skipped} skipped, ${failed} failed`);
+      new Notice(
+        `Import complete: ${imported} imported, ${skipped} skipped, ${failed} failed`
+      );
     } catch (error: any) {
-      console.error('Failed to import GitHub issues:', error);
+      console.error("Failed to import GitHub issues:", error);
       new Notice(`Error importing issues: ${error.message}`);
     }
   }
@@ -1137,34 +1263,38 @@ export default class TaskSyncPlugin extends Plugin {
 
         onOpen() {
           const { contentEl } = this;
-          contentEl.createEl('h2', { text: 'Import GitHub Issue' });
+          contentEl.createEl("h2", { text: "Import GitHub Issue" });
 
-          const inputEl = contentEl.createEl('input', {
-            type: 'text',
-            placeholder: 'https://github.com/owner/repo/issues/123'
+          const inputEl = contentEl.createEl("input", {
+            type: "text",
+            placeholder: "https://github.com/owner/repo/issues/123",
           });
-          inputEl.style.width = '100%';
-          inputEl.style.marginBottom = '10px';
+          inputEl.style.width = "100%";
+          inputEl.style.marginBottom = "10px";
 
           const buttonContainer = contentEl.createDiv();
-          buttonContainer.style.textAlign = 'right';
+          buttonContainer.style.textAlign = "right";
 
-          const cancelBtn = buttonContainer.createEl('button', { text: 'Cancel' });
-          cancelBtn.style.marginRight = '10px';
+          const cancelBtn = buttonContainer.createEl("button", {
+            text: "Cancel",
+          });
+          cancelBtn.style.marginRight = "10px";
           cancelBtn.onclick = () => {
             this.result = null;
             this.close();
           };
 
-          const importBtn = buttonContainer.createEl('button', { text: 'Import' });
+          const importBtn = buttonContainer.createEl("button", {
+            text: "Import",
+          });
           importBtn.onclick = () => {
             this.result = inputEl.value.trim();
             this.close();
           };
 
           inputEl.focus();
-          inputEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+          inputEl.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
               this.result = inputEl.value.trim();
               this.close();
             }
@@ -1188,7 +1318,7 @@ export default class TaskSyncPlugin extends Plugin {
       // Parse GitHub issue URL
       const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/issues\/(\d+)/);
       if (!match) {
-        new Notice('Invalid GitHub issue URL format');
+        new Notice("Invalid GitHub issue URL format");
         return null;
       }
 
@@ -1198,7 +1328,7 @@ export default class TaskSyncPlugin extends Plugin {
       // Fetch all issues and find the specific one
       // In a full implementation, you'd want to fetch the specific issue directly
       const issues = await this.githubService.fetchIssues(repository);
-      const issue = issues.find(i => i.number === parseInt(issueNumber));
+      const issue = issues.find((i) => i.number === parseInt(issueNumber));
 
       if (!issue) {
         new Notice(`Issue #${issueNumber} not found in ${repository}`);
@@ -1207,7 +1337,7 @@ export default class TaskSyncPlugin extends Plugin {
 
       return issue;
     } catch (error: any) {
-      console.error('Error fetching issue from URL:', error);
+      console.error("Error fetching issue from URL:", error);
       return null;
     }
   }
@@ -1222,13 +1352,13 @@ export default class TaskSyncPlugin extends Plugin {
     const config: TaskImportConfig = {
       // Don't set taskType here - let label mapping handle it
       importLabelsAsTags: true,
-      preserveAssignee: true
+      preserveAssignee: true,
     };
 
     // Apply context-specific configuration
-    if (context.type === 'project' && context.name) {
+    if (context.type === "project" && context.name) {
       config.targetProject = context.name;
-    } else if (context.type === 'area' && context.name) {
+    } else if (context.type === "area" && context.name) {
       config.targetArea = context.name;
     }
 
@@ -1240,15 +1370,12 @@ export default class TaskSyncPlugin extends Plugin {
    */
   async syncAreaProjectBases(): Promise<void> {
     try {
-      console.log('Syncing area and project bases...');
+      console.log("Syncing area and project bases...");
       await this.baseManager.syncAreaProjectBases();
-      console.log('Area and project bases synced successfully');
+      console.log("Area and project bases synced successfully");
     } catch (error) {
-      console.error('Failed to sync area and project bases:', error);
+      console.error("Failed to sync area and project bases:", error);
       throw error;
     }
   }
 }
-
-
-

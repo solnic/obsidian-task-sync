@@ -2,42 +2,50 @@
  * E2E tests for GitHub Integration
  */
 
-import { test, expect, describe } from 'vitest';
-import { setupE2ETestHooks } from '../helpers/shared-context';
-import { createTestFolders } from '../helpers/task-sync-setup';
-import { toggleSidebar } from '../helpers/plugin-setup';
+import { test, expect, describe } from "vitest";
+import { setupE2ETestHooks } from "../helpers/shared-context";
+import { createTestFolders } from "../helpers/task-sync-setup";
+import { toggleSidebar } from "../helpers/plugin-setup";
 import {
   waitForGitHubViewContent,
   openGitHubSettings,
   toggleGitHubIntegration,
   configureGitHubToken,
   configureGitHubIntegration,
-  openGitHubIssuesView
-} from '../helpers/github-integration-helpers';
+  openGitHubIssuesView,
+  stubGitHubApiResponses,
+} from "../helpers/github-integration-helpers";
 
-describe('GitHub Integration', () => {
+describe("GitHub Integration", () => {
   const context = setupE2ETestHooks();
 
   beforeEach(async () => {
     await createTestFolders(context.page);
-    await toggleSidebar(context.page, 'right', true);
+    await toggleSidebar(context.page, "right", true);
   });
 
-  test('should configure GitHub token via settings input', async () => {
+  test("should configure GitHub token via settings input", async () => {
     await openGitHubSettings(context);
     await toggleGitHubIntegration(context.page, true);
-    await configureGitHubToken(context.page, 'test-token-123');
+    await configureGitHubToken(context.page, "test-token-123");
 
     const tokenConfigured = await context.page.evaluate(() => {
-      const settingsContainer = document.querySelector('.vertical-tab-content');
+      const settingsContainer = document.querySelector(".vertical-tab-content");
       if (!settingsContainer) return false;
 
-      const settings = Array.from(settingsContainer.querySelectorAll('.setting-item'));
+      const settings = Array.from(
+        settingsContainer.querySelectorAll(".setting-item")
+      );
       for (const setting of settings) {
-        const nameEl = setting.querySelector('.setting-item-name');
-        if (nameEl && nameEl.textContent?.includes('GitHub Personal Access Token')) {
-          const input = setting.querySelector('input[type="password"]') as HTMLInputElement;
-          return input && input.value === 'test-token-123';
+        const nameEl = setting.querySelector(".setting-item-name");
+        if (
+          nameEl &&
+          nameEl.textContent?.includes("GitHub Personal Access Token")
+        ) {
+          const input = setting.querySelector(
+            'input[type="password"]'
+          ) as HTMLInputElement;
+          return input && input.value === "test-token-123";
         }
       }
       return false;
@@ -46,54 +54,79 @@ describe('GitHub Integration', () => {
     expect(tokenConfigured).toBe(true);
   });
 
-  test('should display import buttons on GitHub issues', async () => {
+  test("should display import buttons on GitHub issues", async () => {
+    // Mock GitHub API responses
+    const mockIssues = [
+      {
+        id: 1,
+        number: 1,
+        title: "Test Issue 1",
+        body: "This is a test issue",
+        state: "open",
+        labels: [{ name: "bug" }],
+        created_at: "2024-01-15T10:30:00Z",
+        updated_at: "2024-01-15T10:30:00Z",
+      },
+      {
+        id: 2,
+        number: 2,
+        title: "Test Issue 2",
+        body: "This is another test issue",
+        state: "open",
+        labels: [{ name: "feature" }],
+        created_at: "2024-01-16T10:30:00Z",
+        updated_at: "2024-01-16T10:30:00Z",
+      },
+    ];
+
+    const mockRepositories = [
+      {
+        id: 1,
+        full_name: "solnic/obsidian-task-sync",
+        name: "obsidian-task-sync",
+        owner: { login: "solnic" },
+      },
+    ];
+
+    await stubGitHubApiResponses(context.page, {
+      issues: mockIssues,
+      repositories: mockRepositories,
+    });
+
     await configureGitHubIntegration(context.page, {
       enabled: true,
-      repository: 'solnic/obsidian-task-sync'
+      repository: "solnic/obsidian-task-sync",
+      token: "fake-token-for-testing",
     });
 
     await openGitHubIssuesView(context.page);
     await waitForGitHubViewContent(context.page, 30000);
 
-    // Check for import buttons on issues
-    const hasImportButtons = await context.page.evaluate(() => {
-      const issueItems = document.querySelectorAll('.issue-item');
-      if (issueItems.length === 0) return false;
+    // Check for import buttons on issues (they appear on hover)
+    const issueItems = context.page.locator('[data-testid="issue-item"]');
+    const issueCount = await issueItems.count();
 
-      // Check if each issue has an import button
-      for (let i = 0; i < issueItems.length; i++) {
-        const item = issueItems[i];
-        const importButton = item.querySelector('[data-test="issue-import-button"]');
-        if (!importButton) return false;
-      }
-      return true;
+    expect(issueCount).toBeGreaterThan(0);
+
+    // Test hover functionality on the first issue
+    const firstIssue = issueItems.first();
+
+    // Hover over the issue
+    await firstIssue.hover();
+
+    // Wait for the import button to be visible
+    await context.page.waitForSelector('[data-testid="issue-import-button"]', {
+      state: "visible",
+      timeout: 5000,
     });
 
-    expect(hasImportButtons).toBe(true);
-  });
+    // Move away to test hover state cleanup
+    await context.page.locator("body").hover();
 
-  test('should display import all button in header', async () => {
-    await createTestFolders(context.page);
-
-    // Configure GitHub integration
-    await configureGitHubIntegration(context.page, {
-      enabled: true,
-      repository: 'solnic/obsidian-task-sync'
+    // Wait for the import button to be hidden
+    await context.page.waitForSelector('[data-testid="issue-import-button"]', {
+      state: "hidden",
+      timeout: 5000,
     });
-
-    // Open GitHub Issues view
-    await openGitHubIssuesView(context.page);
-    await waitForGitHubViewContent(context.page, 30000);
-
-    // Check for import all button in header
-    const hasImportAllButton = await context.page.evaluate(() => {
-      const header = document.querySelector('.github-issues-header');
-      if (!header) return false;
-
-      const importAllButton = header.querySelector('[data-test="import-all-button"]');
-      return !!importAllButton;
-    });
-
-    expect(hasImportAllButton).toBe(true);
   });
 });

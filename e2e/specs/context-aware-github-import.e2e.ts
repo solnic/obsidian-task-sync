@@ -3,58 +3,71 @@
  * Tests that GitHub issues are actually imported to the correct area/project with proper label mapping
  */
 
-import { test, expect, describe } from 'vitest';
-import { createTestFolders } from '../helpers/task-sync-setup';
-import { setupE2ETestHooks, openFile } from '../helpers/shared-context';
-import { toggleSidebar } from '../helpers/plugin-setup';
-import { createProject, createArea } from '../helpers/entity-helpers';
+import { test, expect, describe } from "vitest";
+import { createTestFolders } from "../helpers/task-sync-setup";
+import { setupE2ETestHooks, openFile } from "../helpers/shared-context";
+import { toggleSidebar } from "../helpers/plugin-setup";
+import { createProject, createArea } from "../helpers/entity-helpers";
 import {
   configureGitHubIntegration,
   openGitHubIssuesView,
   waitForGitHubViewContent,
   stubGitHubApiResponses,
   clickIssueImportButton,
-  waitForIssueImportComplete
-} from '../helpers/github-integration-helpers';
+  waitForIssueImportComplete,
+} from "../helpers/github-integration-helpers";
 
-describe('Context-Aware GitHub Import', () => {
+describe("Context-Aware GitHub Import", () => {
   const context = setupE2ETestHooks();
 
   beforeEach(async () => {
     await createTestFolders(context.page);
-    await toggleSidebar(context.page, 'right', true);
+    await toggleSidebar(context.page, "right", true);
   });
 
-  test('should import GitHub issue to project with correct label mapping', async () => {
+  test("should import GitHub issue to project with correct label mapping", async () => {
     const project = await createProject(context, {
-      name: 'Test Project',
-      description: 'This is a test project for context-aware importing.'
+      name: "Test Project",
+      description: "This is a test project for context-aware importing.",
     });
 
     await openFile(context, project.filePath);
+
+    const mockRepositories = [
+      {
+        id: 1,
+        name: "obsidian-task-sync",
+        full_name: "solnic/obsidian-task-sync",
+        description: "Task sync plugin for Obsidian",
+        html_url: "https://github.com/solnic/obsidian-task-sync",
+      },
+    ];
 
     const mockIssues = [
       {
         id: 123456,
         number: 123,
-        title: 'Fix login error when user has special characters',
-        body: 'Users with special characters in their username cannot log in properly.',
-        labels: [{ name: 'bug' }, { name: 'urgent' }],
-        assignee: { login: 'testuser' },
-        state: 'open',
-        html_url: 'https://github.com/solnic/obsidian-task-sync/issues/123',
-        created_at: '2024-01-15T10:30:00Z',
-        updated_at: '2024-01-15T10:30:00Z'
-      }
+        title: "Fix login error when user has special characters",
+        body: "Users with special characters in their username cannot log in properly.",
+        labels: [{ name: "bug" }, { name: "urgent" }],
+        assignee: { login: "testuser" },
+        state: "open",
+        html_url: "https://github.com/solnic/obsidian-task-sync/issues/123",
+        created_at: "2024-01-15T10:30:00Z",
+        updated_at: "2024-01-15T10:30:00Z",
+      },
     ];
 
-    await stubGitHubApiResponses(context.page, { issues: mockIssues });
+    await stubGitHubApiResponses(context.page, {
+      repositories: mockRepositories,
+      issues: mockIssues,
+    });
 
     // Configure GitHub integration
     await configureGitHubIntegration(context.page, {
       enabled: true,
-      repository: 'solnic/obsidian-task-sync',
-      token: 'fake-token-for-testing'
+      repository: "solnic/obsidian-task-sync",
+      token: "fake-token-for-testing",
     });
 
     // Open GitHub Issues view through UI
@@ -63,11 +76,16 @@ describe('Context-Aware GitHub Import', () => {
 
     // Verify the issue appears in the UI
     const issueVisible = await context.page.evaluate(() => {
-      const issueItems = document.querySelectorAll('.issue-item');
+      const issueItems = document.querySelectorAll(
+        '[data-testid="issue-item"]'
+      );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
-        const issueText = item.textContent || '';
-        if (issueText.includes('#123') && issueText.includes('Fix login error when user has special characters')) {
+        const issueText = item.textContent || "";
+        if (
+          issueText.includes("#123") &&
+          issueText.includes("Fix login error when user has special characters")
+        ) {
           return true;
         }
       }
@@ -88,7 +106,10 @@ describe('Context-Aware GitHub Import', () => {
       const files = app.vault.getMarkdownFiles();
 
       for (const file of files) {
-        if (file.path.startsWith('Tasks/') && file.name.includes('Fix login error')) {
+        if (
+          file.path.startsWith("Tasks/") &&
+          file.name.includes("Fix login error")
+        ) {
           return file.path;
         }
       }
@@ -96,7 +117,7 @@ describe('Context-Aware GitHub Import', () => {
     });
 
     expect(taskPath).toBeTruthy();
-    expect(taskPath).toContain('Tasks/');
+    expect(taskPath).toContain("Tasks/");
 
     // Verify the task file has correct properties
     const taskContent = await context.page.evaluate(async (path) => {
@@ -109,29 +130,31 @@ describe('Context-Aware GitHub Import', () => {
     }, taskPath);
 
     expect(taskContent).toBeTruthy();
-    expect(taskContent).toContain('Title: Fix login error when user has special characters');
-    expect(taskContent).toContain('Type: Task'); // Type is always 'Task' for task entities
-    expect(taskContent).toContain('Category: Bug'); // Label mapping should work for Category
+    expect(taskContent).toContain(
+      "Title: Fix login error when user has special characters"
+    );
+    expect(taskContent).toContain("Type: Task"); // Type is always 'Task' for task entities
+    expect(taskContent).toContain("Category: Bug"); // Label mapping should work for Category
     expect(taskContent).toContain("Project: '[[Test Project]]'"); // Should be assigned to project with note linking
-    expect(taskContent).toContain('bug'); // Should include original labels as tags
+    expect(taskContent).toContain("bug"); // Should include original labels as tags
 
     // Verify context was correctly detected during import
     const contextInfo = await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       return plugin.getCurrentContext();
     });
 
-    expect(contextInfo.type).toBe('project');
-    expect(contextInfo.name).toBe('Test Project');
+    expect(contextInfo.type).toBe("project");
+    expect(contextInfo.name).toBe("Test Project");
   });
 
-  test('should import GitHub issue to area with enhancement label mapping', async () => {
+  test("should import GitHub issue to area with enhancement label mapping", async () => {
     await createTestFolders(context.page);
 
     const area = await createArea(context, {
-      name: 'Development',
-      description: 'This is a test area for context-aware importing.'
+      name: "Development",
+      description: "This is a test area for context-aware importing.",
     });
 
     await openFile(context, area.filePath);
@@ -140,28 +163,41 @@ describe('Context-Aware GitHub Import', () => {
     await context.page.waitForTimeout(500);
 
     // Stub GitHub API responses with test data
+    const mockRepositories = [
+      {
+        id: 1,
+        name: "obsidian-task-sync",
+        full_name: "solnic/obsidian-task-sync",
+        description: "Task sync plugin for Obsidian",
+        html_url: "https://github.com/solnic/obsidian-task-sync",
+      },
+    ];
+
     const mockIssues = [
       {
         id: 456789,
         number: 456,
-        title: 'Add dark mode support',
-        body: 'Users have requested dark mode support for better usability.',
-        labels: [{ name: 'enhancement' }, { name: 'ui' }],
+        title: "Add dark mode support",
+        body: "Users have requested dark mode support for better usability.",
+        labels: [{ name: "enhancement" }, { name: "ui" }],
         assignee: null as any,
-        state: 'open',
-        html_url: 'https://github.com/solnic/obsidian-task-sync/issues/456',
-        created_at: '2024-01-15T10:30:00Z',
-        updated_at: '2024-01-15T10:30:00Z'
-      }
+        state: "open",
+        html_url: "https://github.com/solnic/obsidian-task-sync/issues/456",
+        created_at: "2024-01-15T10:30:00Z",
+        updated_at: "2024-01-15T10:30:00Z",
+      },
     ];
 
-    await stubGitHubApiResponses(context.page, { issues: mockIssues });
+    await stubGitHubApiResponses(context.page, {
+      repositories: mockRepositories,
+      issues: mockIssues,
+    });
 
     // Configure GitHub integration
     await configureGitHubIntegration(context.page, {
       enabled: true,
-      repository: 'solnic/obsidian-task-sync',
-      token: 'fake-token-for-testing'
+      repository: "solnic/obsidian-task-sync",
+      token: "fake-token-for-testing",
     });
 
     // Open GitHub Issues view through UI
@@ -170,11 +206,16 @@ describe('Context-Aware GitHub Import', () => {
 
     // Verify the issue appears in the UI
     const issueVisible = await context.page.evaluate(() => {
-      const issueItems = document.querySelectorAll('.issue-item');
+      const issueItems = document.querySelectorAll(
+        '[data-testid="issue-item"]'
+      );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
-        const issueText = item.textContent || '';
-        if (issueText.includes('#456') && issueText.includes('Add dark mode support')) {
+        const issueText = item.textContent || "";
+        if (
+          issueText.includes("#456") &&
+          issueText.includes("Add dark mode support")
+        ) {
           return true;
         }
       }
@@ -195,7 +236,10 @@ describe('Context-Aware GitHub Import', () => {
       const files = app.vault.getMarkdownFiles();
 
       for (const file of files) {
-        if (file.path.startsWith('Tasks/') && file.name.includes('Add dark mode support')) {
+        if (
+          file.path.startsWith("Tasks/") &&
+          file.name.includes("Add dark mode support")
+        ) {
           return file.path;
         }
       }
@@ -203,7 +247,7 @@ describe('Context-Aware GitHub Import', () => {
     });
 
     expect(taskPath).toBeTruthy();
-    expect(taskPath).toContain('Tasks/');
+    expect(taskPath).toContain("Tasks/");
 
     // Verify the task file has correct properties
     const taskContent = await context.page.evaluate(async (path) => {
@@ -216,24 +260,24 @@ describe('Context-Aware GitHub Import', () => {
     }, taskPath);
 
     expect(taskContent).toBeTruthy();
-    expect(taskContent).toContain('Title: Add dark mode support');
-    expect(taskContent).toContain('Type: Task'); // Type is always 'Task' for task entities
-    expect(taskContent).toContain('Category: Feature'); // enhancement label should map to Feature category
+    expect(taskContent).toContain("Title: Add dark mode support");
+    expect(taskContent).toContain("Type: Task"); // Type is always 'Task' for task entities
+    expect(taskContent).toContain("Category: Feature"); // enhancement label should map to Feature category
     expect(taskContent).toContain("- '[[Development]]'"); // Should be assigned to area with note linking
-    expect(taskContent).toContain('enhancement'); // Should include original labels as tags
+    expect(taskContent).toContain("enhancement"); // Should include original labels as tags
 
     // Verify context was correctly detected during import
     const contextInfo = await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       return plugin.getCurrentContext();
     });
 
-    expect(contextInfo.type).toBe('area');
-    expect(contextInfo.name).toBe('Development');
+    expect(contextInfo.type).toBe("area");
+    expect(contextInfo.name).toBe("Development");
   });
 
-  test('should import with no context and fallback task type', async () => {
+  test("should import with no context and fallback task type", async () => {
     await createTestFolders(context.page);
 
     // Create a regular note file
@@ -241,37 +285,50 @@ describe('Context-Aware GitHub Import', () => {
 
     await context.page.evaluate(async (content: string) => {
       const app = (window as any).app;
-      await app.vault.create('Notes/Regular Note.md', content);
+      await app.vault.create("Notes/Regular Note.md", content);
     }, noteContent);
 
-    await openFile(context, 'Notes/Regular Note.md');
+    await openFile(context, "Notes/Regular Note.md");
 
     // Wait for context to be set
     await context.page.waitForTimeout(500);
 
     // Stub GitHub API responses with test data
+    const mockRepositories = [
+      {
+        id: 1,
+        name: "obsidian-task-sync",
+        full_name: "solnic/obsidian-task-sync",
+        description: "Task sync plugin for Obsidian",
+        html_url: "https://github.com/solnic/obsidian-task-sync",
+      },
+    ];
+
     const mockIssues = [
       {
         id: 789012,
         number: 789,
-        title: 'Update documentation',
-        body: 'The documentation needs to be updated with latest changes.',
-        labels: [{ name: 'documentation' }, { name: 'help-wanted' }],
+        title: "Update documentation",
+        body: "The documentation needs to be updated with latest changes.",
+        labels: [{ name: "documentation" }, { name: "help-wanted" }],
         assignee: null as any,
-        state: 'open',
-        html_url: 'https://github.com/solnic/obsidian-task-sync/issues/789',
-        created_at: '2024-01-15T10:30:00Z',
-        updated_at: '2024-01-15T10:30:00Z'
-      }
+        state: "open",
+        html_url: "https://github.com/solnic/obsidian-task-sync/issues/789",
+        created_at: "2024-01-15T10:30:00Z",
+        updated_at: "2024-01-15T10:30:00Z",
+      },
     ];
 
-    await stubGitHubApiResponses(context.page, { issues: mockIssues });
+    await stubGitHubApiResponses(context.page, {
+      repositories: mockRepositories,
+      issues: mockIssues,
+    });
 
     // Configure GitHub integration
     await configureGitHubIntegration(context.page, {
       enabled: true,
-      repository: 'solnic/obsidian-task-sync',
-      token: 'fake-token-for-testing'
+      repository: "solnic/obsidian-task-sync",
+      token: "fake-token-for-testing",
     });
 
     // Open GitHub Issues view through UI
@@ -280,11 +337,16 @@ describe('Context-Aware GitHub Import', () => {
 
     // Verify the issue appears in the UI
     const issueVisible = await context.page.evaluate(() => {
-      const issueItems = document.querySelectorAll('.issue-item');
+      const issueItems = document.querySelectorAll(
+        '[data-testid="issue-item"]'
+      );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
-        const issueText = item.textContent || '';
-        if (issueText.includes('#789') && issueText.includes('Update documentation')) {
+        const issueText = item.textContent || "";
+        if (
+          issueText.includes("#789") &&
+          issueText.includes("Update documentation")
+        ) {
           return true;
         }
       }
@@ -305,7 +367,10 @@ describe('Context-Aware GitHub Import', () => {
       const files = app.vault.getMarkdownFiles();
 
       for (const file of files) {
-        if (file.path.startsWith('Tasks/') && file.name.includes('Update documentation')) {
+        if (
+          file.path.startsWith("Tasks/") &&
+          file.name.includes("Update documentation")
+        ) {
           return file.path;
         }
       }
@@ -313,7 +378,7 @@ describe('Context-Aware GitHub Import', () => {
     });
 
     expect(taskPath).toBeTruthy();
-    expect(taskPath).toContain('Tasks/');
+    expect(taskPath).toContain("Tasks/");
 
     // Verify the task file has correct properties
     const taskContent = await context.page.evaluate(async (path) => {
@@ -326,20 +391,22 @@ describe('Context-Aware GitHub Import', () => {
     }, taskPath);
 
     expect(taskContent).toBeTruthy();
-    expect(taskContent).toContain('Title: Update documentation');
-    expect(taskContent).toContain('Type: Task'); // Type is always 'Task' for task entities
+    expect(taskContent).toContain("Title: Update documentation");
+    expect(taskContent).toContain("Type: Task"); // Type is always 'Task' for task entities
     // Should fallback to first available task category since 'documentation' doesn't map to anything
-    expect(taskContent).toMatch(/Category: (Task|Bug|Feature|Improvement|Chore)/);
-    expect(taskContent).toContain('documentation'); // Should include original labels as tags
+    expect(taskContent).toMatch(
+      /Category: (Task|Bug|Feature|Improvement|Chore)/
+    );
+    expect(taskContent).toContain("documentation"); // Should include original labels as tags
 
     // Verify context was correctly detected during import (should be none)
     const contextInfo = await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       return plugin.getCurrentContext();
     });
 
-    expect(contextInfo.type).toBe('none');
+    expect(contextInfo.type).toBe("none");
     expect(contextInfo.name).toBeUndefined();
   });
 });

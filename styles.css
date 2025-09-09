@@ -1610,23 +1610,32 @@ Provides consistent styling for all UI components
 }
 
 .tab-item {
-  padding: 4px 12px;
-  border-radius: 4px;
+  padding: 6px 12px;
+  border-radius: 4px 4px 0 0;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--text-muted);
   transition: all 0.2s ease;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-bottom: none;
+  position: relative;
 }
 
 .tab-item.active {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
+  background: var(--background-primary);
+  color: var(--text-accent);
+  border-color: var(--background-modifier-border);
+  border-bottom: 1px solid var(--background-primary);
+  margin-bottom: -1px;
+  z-index: 1;
 }
 
 .tab-item:hover:not(.active) {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
+  border-color: var(--background-modifier-border-hover);
 }
 
 /* Repository Selector */
@@ -1766,20 +1775,24 @@ Provides consistent styling for all UI components
   background: var(--background-primary);
   cursor: pointer;
   transition: all 0.2s ease;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  position: relative;
+  overflow: hidden;
 }
 
-.issue-item:hover {
+.issue-item.hovered {
   background: var(--background-modifier-hover);
   border-color: var(--background-modifier-border-hover);
+}
+
+.issue-item.hovered .issue-content {
+  opacity: 0.6;
+  filter: blur(1px);
 }
 
 .issue-content {
   flex: 1;
   min-width: 0;
+  transition: all 0.2s ease;
 }
 
 .issue-actions {
@@ -1787,6 +1800,30 @@ Provides consistent styling for all UI components
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* Import overlay that appears on hover */
+.import-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(var(--background-primary-rgb), 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.import-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
 }
 
 .issue-title {
@@ -1827,40 +1864,46 @@ Provides consistent styling for all UI components
 
 /* Import Button */
 .import-button {
-  padding: 4px 8px;
+  padding: 8px 16px;
   border: 1px solid var(--interactive-accent);
   background: var(--interactive-accent);
   color: var(--text-on-accent);
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 11px;
+  font-size: 0.875rem;
   font-weight: 500;
   transition: all 0.2s ease;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .import-button:hover {
   background: var(--interactive-accent-hover);
   border-color: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* Import Status Indicators */
 .import-status {
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.875rem;
   font-weight: 500;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .import-status.imported {
   background: var(--color-green);
   color: var(--text-on-accent);
+  border: 1px solid var(--color-green);
 }
 
 .import-status.importing {
   background: var(--color-orange);
   color: var(--text-on-accent);
+  border: 1px solid var(--color-orange);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
