@@ -61,7 +61,7 @@ describe('Context-Aware Task Modal', () => {
     await context.page.keyboard.press('Enter');
 
     // Wait for modal to appear
-    await waitForElementVisible(context.page, '.task-sync-create-task');
+    await waitForElementVisible(context.page, '.task-sync-create-task-linear');
 
     // Check modal title includes project context
     const title = await context.page.textContent('.modal-title');

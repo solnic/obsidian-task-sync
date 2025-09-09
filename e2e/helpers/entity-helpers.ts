@@ -43,7 +43,7 @@ export async function createTask(
       status: props.status || 'Backlog',
       parentTask: props.parentTask,
       tags: props.tags || [],
-      description: content
+      content: content
     };
 
     // Create the task using the plugin API (this will trigger automatic caching)

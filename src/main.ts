@@ -7,7 +7,8 @@ import { TemplateManager } from './services/TemplateManager';
 import { TaskFileManager } from './services/TaskFileManager';
 import { AreaFileManager } from './services/AreaFileManager';
 import { ProjectFileManager } from './services/ProjectFileManager';
-import { TaskCreateModal } from './components/modals/TaskCreateModal';
+import { TaskCreateModalWrapper } from './components/svelte/TaskCreateModalWrapper';
+import type { TaskCreateData } from './components/modals/TaskCreateModal';
 import { AreaCreateModal, AreaCreateData } from './components/modals/AreaCreateModal';
 import { ProjectCreateModal, ProjectCreateData } from './components/modals/ProjectCreateModal';
 
@@ -408,14 +409,18 @@ export default class TaskSyncPlugin extends Plugin {
   private async openTaskCreateModal(): Promise<void> {
     try {
       const context = this.detectCurrentFileContext();
-      const modal = new TaskCreateModal(this.app, this, context);
-      modal.onSubmit(async (taskData) => {
-        await this.createTask(taskData);
-        // Refresh base views if auto-update is enabled
-        if (this.settings.autoUpdateBaseViews) {
-          await this.refreshBaseViews();
+      const modal = new TaskCreateModalWrapper(
+        this,
+        context,
+        {},
+        async (taskData) => {
+          await this.createTask(taskData);
+          // Refresh base views if auto-update is enabled
+          if (this.settings.autoUpdateBaseViews) {
+            await this.refreshBaseViews();
+          }
         }
-      });
+      );
       modal.open();
     } catch (error) {
       console.error('Failed to open task creation modal:', error);
@@ -575,8 +580,9 @@ export default class TaskSyncPlugin extends Plugin {
       // Convert old taskData format to TaskCreationData format
       const taskCreationData = this.mapToTaskCreationData(taskData);
 
-      // Use TaskFileManager to create the task file, passing description as content
-      const taskPath = await this.taskFileManager.createTaskFile(taskCreationData, taskData.description);
+      // Use TaskFileManager to create the task file, passing content (or description for backward compatibility)
+      const content = taskData.content || taskData.description;
+      const taskPath = await this.taskFileManager.createTaskFile(taskCreationData, content);
       console.log('Task created successfully:', taskPath);
     } catch (error) {
       console.error('Failed to create task:', error);

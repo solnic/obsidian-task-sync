@@ -1188,13 +1188,244 @@ Provides consistent styling for all UI components
   background: var(--text-muted);
 }
 
+/* Linear-style Task Create Modal */
+.task-sync-create-task .modal-content {
+  padding: 0;
+  max-width: 800px;
+  min-height: 500px;
+}
 
+.task-sync-linear-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 400px;
+}
+
+/* Title Section */
+.task-sync-title-section {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.task-sync-context-info {
+  margin-bottom: 12px;
+}
+
+.task-sync-context-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  background: var(--background-modifier-accent);
+  color: var(--text-muted);
+  border-radius: 6px;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.task-sync-title-container {
+  position: relative;
+}
+
+.task-sync-title-input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-size: 1.5em;
+  font-weight: 600;
+  color: var(--text-normal);
+  padding: 8px 0;
+  outline: none;
+}
+
+.task-sync-title-input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Content Section */
+.task-sync-content-section {
+  flex: 1;
+  padding: 16px 24px;
+  min-height: 150px;
+}
+
+.task-sync-content-editor {
+  width: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: 1em;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+  font-family: var(--font-text);
+}
+
+.task-sync-content-editor::placeholder {
+  color: var(--text-muted);
+}
+
+/* Toolbar Section */
+.task-sync-toolbar {
+  display: flex;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.task-sync-badge-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-sync-input-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-sync-field-label {
+  font-size: 0.85em;
+  color: var(--text-muted);
+  font-weight: 500;
+  min-width: fit-content;
+}
+
+.task-sync-clickable-badge {
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.task-sync-clickable-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.task-sync-placeholder-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 500;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  border: 1px dashed var(--background-modifier-border-hover);
+}
+
+.task-sync-toolbar-input {
+  min-width: 120px;
+  max-width: 200px;
+  padding: 4px 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.9em;
+}
+
+.task-sync-toolbar-input:focus {
+  border-color: var(--interactive-accent);
+  outline: none;
+}
 
 .task-sync-button-group {
   display: flex;
   gap: 0.5rem;
   justify-content: flex-end;
   margin-top: 1rem;
+}
+
+/* Badge Selector Menu */
+.task-sync-selector-menu {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 8px;
+  min-width: 150px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.task-sync-selector-item {
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.1s ease;
+}
+
+.task-sync-selector-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.task-sync-no-priority {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Autocomplete */
+.task-sync-autocomplete {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+/* Action Buttons */
+.task-sync-action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.task-sync-cancel-button {
+  padding: 8px 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.1s ease;
+}
+
+.task-sync-cancel-button:hover {
+  background: var(--background-modifier-hover);
+}
+
+.task-sync-submit-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  cursor: pointer;
+  font-size: 0.9em;
+  font-weight: 500;
+  transition: all 0.1s ease;
+}
+
+.task-sync-submit-button:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.task-sync-submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .task-sync-dashboard {
