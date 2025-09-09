@@ -259,26 +259,49 @@ export async function cleanupAllWorkerContexts(): Promise<void> {
 }
 
 /**
- * Clean up old screenshots for a specific test to avoid accumulation
+ * Clean up old debug artifacts for a specific test to avoid accumulation
+ * Note: Global setup now cleans entire debug directory, but this provides per-test cleanup
  */
-async function cleanupOldScreenshots(screenshotsDir: string, testName: string): Promise<void> {
+async function cleanupOldTestArtifacts(testName: string): Promise<void> {
   try {
-    const files = await fs.promises.readdir(screenshotsDir);
-    const testScreenshots = files.filter(file =>
-      file.startsWith(`test-failure-${testName}`) && file.endsWith('.png')
-    );
+    const baseDebugDir = path.join(process.cwd(), 'e2e', 'debug');
+    const screenshotsDir = path.join(process.cwd(), 'e2e', 'screenshots');
 
-    // Remove old screenshots for this test
-    for (const file of testScreenshots) {
-      try {
-        await fs.promises.unlink(path.join(screenshotsDir, file));
-        console.log(`🗑️ Removed old screenshot: ${file}`);
-      } catch (error) {
-        console.warn(`⚠️ Could not remove old screenshot ${file}: ${error.message}`);
+    // Clean up old debug directories for this test
+    if (fs.existsSync(baseDebugDir)) {
+      const entries = await fs.promises.readdir(baseDebugDir, { withFileTypes: true });
+      const testDebugDirs = entries.filter(entry =>
+        entry.isDirectory() && entry.name.startsWith(`test-failure-${testName}`)
+      );
+
+      for (const dir of testDebugDirs) {
+        try {
+          await fs.promises.rm(path.join(baseDebugDir, dir.name), { recursive: true, force: true });
+          console.log(`🗑️ Removed old debug directory: ${dir.name}`);
+        } catch (error) {
+          console.warn(`⚠️ Could not remove old debug directory ${dir.name}: ${error.message}`);
+        }
+      }
+    }
+
+    // Clean up old screenshots for this test
+    if (fs.existsSync(screenshotsDir)) {
+      const files = await fs.promises.readdir(screenshotsDir);
+      const testScreenshots = files.filter(file =>
+        file.startsWith(`test-failure-${testName}`) && file.endsWith('.png')
+      );
+
+      for (const file of testScreenshots) {
+        try {
+          await fs.promises.unlink(path.join(screenshotsDir, file));
+          console.log(`🗑️ Removed old screenshot: ${file}`);
+        } catch (error) {
+          console.warn(`⚠️ Could not remove old screenshot ${file}: ${error.message}`);
+        }
       }
     }
   } catch (error) {
-    console.warn(`⚠️ Could not clean up old screenshots: ${error.message}`);
+    console.warn(`⚠️ Could not clean up old test artifacts: ${error.message}`);
   }
 }
 
@@ -287,15 +310,17 @@ async function cleanupOldScreenshots(screenshotsDir: string, testName: string): 
  */
 export async function captureScreenshotOnFailure(context: SharedTestContext, name: string): Promise<void> {
   try {
-    const screenshotsDir = path.join(process.cwd(), 'e2e', 'screenshots');
-    await fs.promises.mkdir(screenshotsDir, { recursive: true });
+    // Create test-specific directory structure in debug folder
+    const baseDebugDir = path.join(process.cwd(), 'e2e', 'debug');
+    const testDebugDir = path.join(baseDebugDir, name);
+    await fs.promises.mkdir(testDebugDir, { recursive: true });
 
-    // Clean up old screenshots for this test first
-    await cleanupOldScreenshots(screenshotsDir, name.replace('test-failure-', ''));
+    // Clean up old artifacts for this test first
+    await cleanupOldTestArtifacts(name.replace('test-failure-', ''));
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `${name}-${timestamp}-${context.workerId}.png`;
-    const screenshotPath = path.join(screenshotsDir, filename);
+    const filename = `screenshot-${timestamp}-${context.workerId}.png`;
+    const screenshotPath = path.join(testDebugDir, filename);
 
     console.log(`📸 Attempting to capture screenshot: ${screenshotPath}`);
 
@@ -394,30 +419,23 @@ export async function captureScreenshotOnFailure(context: SharedTestContext, nam
 }
 
 /**
- * Clean up old debug directories for a specific test
+ * Copy vault state for debugging failed tests
  */
-async function cleanupOldDebugInfo(baseDebugDir: string, testName: string): Promise<void> {
+async function copyVaultForDebug(context: SharedTestContext, debugDir: string): Promise<void> {
   try {
-    if (!fs.existsSync(baseDebugDir)) {
-      return;
-    }
+    const vaultDebugPath = path.join(debugDir, 'vault');
 
-    const entries = await fs.promises.readdir(baseDebugDir, { withFileTypes: true });
-    const testDebugDirs = entries.filter(entry =>
-      entry.isDirectory() && entry.name.startsWith(`test-failure-${testName}`)
-    );
+    // Copy the entire vault directory
+    await copyDirectory(context.vaultPath, vaultDebugPath);
+    console.log(`📁 Vault state copied to: ${vaultDebugPath}`);
 
-    // Remove old debug directories for this test
-    for (const dir of testDebugDirs) {
-      try {
-        await fs.promises.rm(path.join(baseDebugDir, dir.name), { recursive: true, force: true });
-        console.log(`🗑️ Removed old debug directory: ${dir.name}`);
-      } catch (error) {
-        console.warn(`⚠️ Could not remove old debug directory ${dir.name}: ${error.message}`);
-      }
-    }
+    // Also copy the Obsidian data directory for complete state
+    const dataDebugPath = path.join(debugDir, 'obsidian-data');
+    await copyDirectory(context.dataPath, dataDebugPath);
+    console.log(`📁 Obsidian data copied to: ${dataDebugPath}`);
+
   } catch (error) {
-    console.warn(`⚠️ Could not clean up old debug info: ${error.message}`);
+    console.warn(`⚠️ Failed to copy vault state: ${error.message}`);
   }
 }
 
@@ -429,15 +447,56 @@ export async function captureFullDebugInfo(context: SharedTestContext, name: str
     const baseDebugDir = path.join(process.cwd(), 'e2e', 'debug');
 
     // Clean up old debug info for this test first
-    await cleanupOldDebugInfo(baseDebugDir, name.replace('test-failure-', ''));
+    await cleanupOldTestArtifacts(name.replace('test-failure-', ''));
 
+    // Use test name without timestamp for consistent directory structure
     const debugDir = path.join(baseDebugDir, name);
     await fs.promises.mkdir(debugDir, { recursive: true });
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
-    // Capture screenshot
-    await captureScreenshotOnFailure(context, name);
+    // Capture screenshot directly in the debug directory
+    try {
+      const filename = `screenshot-${timestamp}-${context.workerId}.png`;
+      const screenshotPath = path.join(debugDir, filename);
+
+      console.log(`📸 Attempting to capture screenshot: ${screenshotPath}`);
+
+      // Check if page is still available
+      if (!context.page || context.page.isClosed()) {
+        console.warn(`⚠️ Page is not available or closed, trying Electron windows`);
+
+        // Try Electron windows directly
+        try {
+          const windows = context.electronApp.windows();
+          if (windows.length > 0) {
+            await windows[0].screenshot({
+              path: screenshotPath,
+              type: 'png',
+              timeout: 10000
+            });
+            console.log(`📸 Page screenshot captured: ${screenshotPath}`);
+          } else {
+            console.warn(`⚠️ No Electron windows available for screenshot`);
+          }
+        } catch (electronError) {
+          console.warn(`⚠️ Electron screenshot failed: ${electronError.message}`);
+        }
+      } else {
+        // Use Playwright page screenshot
+        await context.page.screenshot({
+          path: screenshotPath,
+          fullPage: true,
+          timeout: 10000
+        });
+        console.log(`📸 Page screenshot captured: ${screenshotPath}`);
+      }
+    } catch (screenshotError) {
+      console.warn(`⚠️ Screenshot capture failed: ${screenshotError.message}`);
+    }
+
+    // Copy vault state for debugging
+    await copyVaultForDebug(context, debugDir);
 
     // Capture console logs if available
     try {
@@ -885,44 +944,33 @@ export function setupE2ETestHooks(): SharedTestContext {
     // Clean up test name for file system
     testName = testName.replace(/[^a-zA-Z0-9\s]/g, '-').replace(/\s+/g, '-');
 
-    // For Vitest, we need to use a different approach to detect failures
-    // We'll use the onTestFailed callback if available, or check for uncaught errors
-    let testFailed = false;
+    // Check if test failed by looking at the test context state
+    const testFailed = (testContext as any)?.state === 'fail' ||
+      (testContext as any)?.result?.state === 'fail' ||
+      (testContext as any)?.task?.result?.state === 'fail';
 
-    // Check if there's a failure callback in the test context
-    if ((testContext as any)?.onTestFailed) {
-      // Set up failure detection using Vitest's callback
-      (testContext as any).onTestFailed(async (error: any) => {
-        testFailed = true;
-        console.log(`📸 Test failed (via onTestFailed): ${testName}, error: ${error?.message}`);
-        console.log(`📊 Console logs captured: ${consoleLogs.length} entries`);
+    if (testFailed) {
+      console.log(`📸 Test failed: ${testName}`);
+      console.log(`📊 Console logs captured: ${consoleLogs.length} entries`);
 
+      try {
+        // Capture all debug info BEFORE cleanup
+        await captureFullDebugInfo(context, `test-failure-${testName}`, consoleLogs);
+        console.log(`✅ Full debug info captured successfully`);
+      } catch (captureError) {
+        console.error(`❌ Failed to capture debug info: ${captureError.message}`);
+
+        // Try a simpler screenshot capture as fallback
         try {
-          // Always capture screenshot first (most important for debugging)
-          await captureScreenshotOnFailure(context, `test-failure-${testName}`);
-          console.log(`✅ Screenshot captured successfully`);
-
-          // Then capture full debug info
-          await captureFullDebugInfo(context, `test-failure-${testName}`, consoleLogs);
-          console.log(`✅ Full debug info captured successfully`);
-        } catch (captureError) {
-          console.error(`❌ Failed to capture debug info: ${captureError.message}`);
-
-          // Try a simpler screenshot capture as fallback
-          try {
-            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const fallbackPath = `e2e/screenshots/fallback-${testName}-${timestamp}.png`;
-            await context.page.screenshot({ path: fallbackPath, fullPage: true });
-            console.log(`📸 Fallback screenshot saved: ${fallbackPath}`);
-          } catch (fallbackError) {
-            console.error(`❌ Even fallback screenshot failed: ${fallbackError.message}`);
-          }
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const fallbackPath = `e2e/debug/fallback-${testName}-${timestamp}.png`;
+          await context.page.screenshot({ path: fallbackPath, fullPage: true });
+          console.log(`📸 Fallback screenshot saved: ${fallbackPath}`);
+        } catch (fallbackError) {
+          console.error(`❌ Even fallback screenshot failed: ${fallbackError.message}`);
         }
-      });
-    }
-
-    // If no failure was detected through callbacks, assume test passed
-    if (!testFailed) {
+      }
+    } else {
       console.log(`✅ Test passed: ${testName}`);
     }
 

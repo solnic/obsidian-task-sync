@@ -62,36 +62,33 @@ async function killExistingElectronProcesses(): Promise<void> {
 }
 
 /**
- * Clean up old screenshots from previous test runs
+ * Clean up old debug artifacts from previous test runs
  */
-async function cleanupScreenshots(): Promise<void> {
+async function cleanupDebugArtifacts(): Promise<void> {
   try {
-    console.log('🧹 Cleaning up old screenshots...');
+    console.log('🧹 Cleaning up old debug artifacts...');
+
+    // Clean up screenshots
     const screenshotsDir = path.join(process.cwd(), 'e2e/screenshots');
-
     if (fs.existsSync(screenshotsDir)) {
-      const files = await fs.promises.readdir(screenshotsDir);
-      let cleanedCount = 0;
-
-      for (const file of files) {
-        if (file.endsWith('.png') || file.endsWith('.jpg') || file.endsWith('.jpeg')) {
-          const filePath = path.join(screenshotsDir, file);
-          try {
-            await fs.promises.unlink(filePath);
-            cleanedCount++;
-          } catch (error) {
-            console.log(`⚠️ Could not delete screenshot ${file}:`, error.message);
-          }
-        }
-      }
-
-      console.log(`✅ Cleaned up ${cleanedCount} old screenshots`);
-    } else {
-      console.log('📁 Screenshots directory does not exist, creating it...');
-      await fs.promises.mkdir(screenshotsDir, { recursive: true });
+      await fs.promises.rm(screenshotsDir, { recursive: true, force: true });
+      console.log('🗑️ Removed entire screenshots directory');
     }
+    await fs.promises.mkdir(screenshotsDir, { recursive: true });
+    console.log('📁 Created fresh screenshots directory');
+
+    // Clean up debug directory
+    const debugDir = path.join(process.cwd(), 'e2e/debug');
+    if (fs.existsSync(debugDir)) {
+      await fs.promises.rm(debugDir, { recursive: true, force: true });
+      console.log('🗑️ Removed entire debug directory');
+    }
+    await fs.promises.mkdir(debugDir, { recursive: true });
+    console.log('📁 Created fresh debug directory');
+
+    console.log('✅ Debug artifacts cleanup completed');
   } catch (error) {
-    console.log('⚠️ Error cleaning up screenshots:', error.message);
+    console.log('⚠️ Error cleaning up debug artifacts:', error.message);
   }
 }
 
@@ -102,8 +99,8 @@ export default async function globalSetup() {
     // Kill any existing Electron processes first
     await killExistingElectronProcesses();
 
-    // Clean up old screenshots from previous runs
-    await cleanupScreenshots();
+    // Clean up old debug artifacts from previous runs
+    await cleanupDebugArtifacts();
 
     // Build the plugin before running e2e tests
     console.log('🔨 Building plugin for e2e tests...');

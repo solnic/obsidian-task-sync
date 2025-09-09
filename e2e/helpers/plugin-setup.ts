@@ -75,6 +75,28 @@ export async function resetObsidianUI(page: Page): Promise<void> {
       }
     });
 
+    // Toggle sidebars to maximize workspace width for better rendering
+    await page.evaluate(() => {
+      try {
+        const app = (window as any).app;
+        if (app?.workspace) {
+          // Close left sidebar if open
+          if (app.workspace.leftSplit?.collapsed === false) {
+            app.workspace.leftSplit.collapse();
+            console.log('🔧 Collapsed left sidebar for full width');
+          }
+
+          // Close right sidebar if open
+          if (app.workspace.rightSplit?.collapsed === false) {
+            app.workspace.rightSplit.collapse();
+            console.log('🔧 Collapsed right sidebar for full width');
+          }
+        }
+      } catch (error) {
+        console.warn('Error toggling sidebars:', error);
+      }
+    });
+
     console.log('✅ Obsidian UI reset completed');
   } catch (error) {
     console.warn(`⚠️ Error during UI reset: ${error.message}`);
