@@ -11,7 +11,7 @@ import {
   configureGitHubIntegration,
   openGitHubIssuesView,
   waitForGitHubViewContent,
-  stubGitHubApiResponses,
+  stubGitHubWithFixtures,
   clickIssueImportButton,
   waitForIssueImportComplete,
 } from "../helpers/github-integration-helpers";
@@ -25,34 +25,10 @@ describe("GitHub Import Status Persistence", () => {
   });
 
   test("should preserve import status after plugin restart", async () => {
-    const mockRepositories = [
-      {
-        id: 1,
-        name: "obsidian-task-sync",
-        full_name: "solnic/obsidian-task-sync",
-        description: "Task sync plugin for Obsidian",
-        html_url: "https://github.com/solnic/obsidian-task-sync",
-      },
-    ];
-
-    const mockIssues = [
-      {
-        id: 999888,
-        number: 999,
-        title: "Test import persistence issue",
-        body: "This issue tests that import status is preserved across restarts.",
-        labels: [{ name: "test" }],
-        assignee: null as any,
-        state: "open",
-        html_url: "https://github.com/solnic/obsidian-task-sync/issues/999",
-        created_at: "2024-01-15T10:30:00Z",
-        updated_at: "2024-01-15T10:30:00Z",
-      },
-    ];
-
-    await stubGitHubApiResponses(context.page, {
-      repositories: mockRepositories,
-      issues: mockIssues,
+    // Use fixture-based stubbing for better maintainability
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "persistence-test",
     });
 
     // Configure GitHub integration
@@ -165,9 +141,10 @@ describe("GitHub Import Status Persistence", () => {
 
     expect(importStatusAfterRestart).toBe(true);
 
-    await stubGitHubApiResponses(context.page, {
-      repositories: mockRepositories,
-      issues: mockIssues,
+    // Re-stub the APIs after plugin restart
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "persistence-test",
     });
 
     await context.page.evaluate(() => {

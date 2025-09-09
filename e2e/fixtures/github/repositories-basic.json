@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "name": "obsidian-task-sync",
+    "full_name": "solnic/obsidian-task-sync",
+    "description": "Task sync plugin for Obsidian",
+    "html_url": "https://github.com/solnic/obsidian-task-sync",
+    "private": false,
+    "owner": {
+      "login": "solnic",
+      "id": 1234,
+      "avatar_url": "https://avatars.githubusercontent.com/u/1234?v=4",
+      "html_url": "https://github.com/solnic"
+    },
+    "default_branch": "main",
+    "created_at": "2024-01-01T00:00:00Z",
+    "updated_at": "2024-01-15T10:30:00Z",
+    "pushed_at": "2024-01-15T10:30:00Z"
+  }
+]

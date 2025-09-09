@@ -1,6 +1,7 @@
 import type { Page } from "playwright";
 import { type SharedTestContext } from "./shared-context";
 import { openTaskSyncSettings } from "./task-sync-setup";
+import { stubAPI, restoreAPI, stubMultipleAPIs } from "./api-stubbing";
 
 /**
  * GitHub Integration helpers for e2e tests
@@ -405,8 +406,10 @@ export async function configureGitHubRepository(
 }
 
 /**
- * Stub GitHub API responses for testing
+ * Stub GitHub API responses for testing using fixtures
  * This mocks the external GitHub API calls while keeping all internal plugin logic real
+ *
+ * @deprecated Use stubAPI or stubMultipleAPIs instead for better fixture management
  */
 export async function stubGitHubApiResponses(
   page: Page,
@@ -415,66 +418,96 @@ export async function stubGitHubApiResponses(
     repositories?: any[];
   }
 ): Promise<void> {
-  await page.evaluate(async (data) => {
-    const app = (window as any).app;
-    const plugin = app.plugins.plugins["obsidian-task-sync"];
+  const stubConfig: Record<string, Record<string, string>> = {};
 
-    if (!plugin || !plugin.githubService) {
-      throw new Error("Task Sync plugin or GitHub service not found");
+  // For backward compatibility, we'll create temporary fixtures
+  // In practice, tests should use predefined fixtures
+  if (mockData.issues || mockData.repositories) {
+    stubConfig.github = {};
+
+    if (mockData.issues) {
+      // Use the new stubbing system but with inline data
+      await page.evaluate(async (data) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+        if (!plugin || !plugin.githubService) {
+          throw new Error("Task Sync plugin or GitHub service not found");
+        }
+
+        // Store original method if not already stored
+        if (!plugin.githubService._originalFetchIssues) {
+          plugin.githubService._originalFetchIssues =
+            plugin.githubService.fetchIssues;
+        }
+
+        // Stub fetchIssues method
+        plugin.githubService.fetchIssues = async (repository: string) => {
+          return data.issues;
+        };
+      }, mockData);
     }
 
-    // Store original methods
-    const originalFetchIssues = plugin.githubService.fetchIssues;
-    const originalFetchRepositories = plugin.githubService.fetchRepositories;
+    if (mockData.repositories) {
+      await page.evaluate(async (data) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-    // Stub fetchIssues method
-    if (data.issues) {
-      plugin.githubService.fetchIssues = async (repository: string) => {
-        return data.issues;
-      };
+        if (!plugin || !plugin.githubService) {
+          throw new Error("Task Sync plugin or GitHub service not found");
+        }
+
+        // Store original method if not already stored
+        if (!plugin.githubService._originalFetchRepositories) {
+          plugin.githubService._originalFetchRepositories =
+            plugin.githubService.fetchRepositories;
+        }
+
+        // Stub fetchRepositories method
+        plugin.githubService.fetchRepositories = async () => {
+          return data.repositories;
+        };
+      }, mockData);
     }
-
-    // Stub fetchRepositories method
-    if (data.repositories) {
-      plugin.githubService.fetchRepositories = async () => {
-        return data.repositories;
-      };
-    }
-
-    // Store original methods for potential restoration
-    (plugin.githubService as any)._originalFetchIssues = originalFetchIssues;
-    (plugin.githubService as any)._originalFetchRepositories =
-      originalFetchRepositories;
-  }, mockData);
+  }
 }
 
 /**
  * Restore original GitHub API methods (cleanup after stubbing)
+ *
+ * @deprecated Use restoreAPI("github") instead for better fixture management
  */
 export async function restoreGitHubApiMethods(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    const app = (window as any).app;
-    const plugin = app.plugins.plugins["obsidian-task-sync"];
+  await restoreAPI(page, "github");
+}
 
-    if (!plugin || !plugin.githubService) {
-      return;
-    }
+/**
+ * Stub GitHub API using fixture files
+ *
+ * @example
+ * await stubGitHubWithFixtures(page, {
+ *   issues: "issues-basic",
+ *   repositories: "repositories-basic"
+ * });
+ */
+export async function stubGitHubWithFixtures(
+  page: Page,
+  fixtures: {
+    issues?: string;
+    repositories?: string;
+  }
+): Promise<void> {
+  const stubConfig: Record<string, string> = {};
 
-    // Restore original methods if they were stored
-    if ((plugin.githubService as any)._originalFetchIssues) {
-      plugin.githubService.fetchIssues = (
-        plugin.githubService as any
-      )._originalFetchIssues;
-      delete (plugin.githubService as any)._originalFetchIssues;
-    }
+  if (fixtures.issues) {
+    stubConfig.fetchIssues = fixtures.issues;
+  }
 
-    if ((plugin.githubService as any)._originalFetchRepositories) {
-      plugin.githubService.fetchRepositories = (
-        plugin.githubService as any
-      )._originalFetchRepositories;
-      delete (plugin.githubService as any)._originalFetchRepositories;
-    }
-  });
+  if (fixtures.repositories) {
+    stubConfig.fetchRepositories = fixtures.repositories;
+  }
+
+  await stubMultipleAPIs(page, { github: stubConfig });
 }
 
 /**
