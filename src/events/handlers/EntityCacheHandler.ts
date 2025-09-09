@@ -3,15 +3,15 @@
  * Handles TASK_CREATED, PROJECT_CREATED, AREA_CREATED events to cache entities in storage
  */
 
-import { App, TFile } from 'obsidian';
+import { App, TFile } from "obsidian";
 import {
   EventHandler,
   EventType,
   PluginEvent,
-  TaskEventData
-} from '../EventTypes';
-import { TaskSyncSettings } from '../../main';
-import { PluginStorageService } from '../../services/PluginStorageService';
+  TaskEventData,
+} from "../EventTypes";
+import { TaskSyncSettings } from "../../main";
+import { PluginStorageService } from "../../services/PluginStorageService";
 
 /**
  * Handler that automatically caches entities when they are created
@@ -21,7 +21,7 @@ export class EntityCacheHandler implements EventHandler {
     private app: App,
     private settings: TaskSyncSettings,
     private storageService: PluginStorageService
-  ) { }
+  ) {}
 
   /**
    * Update the settings reference for this handler
@@ -37,7 +37,7 @@ export class EntityCacheHandler implements EventHandler {
     return [
       EventType.TASK_CREATED,
       EventType.PROJECT_CREATED,
-      EventType.AREA_CREATED
+      EventType.AREA_CREATED,
     ];
   }
 
@@ -60,7 +60,10 @@ export class EntityCacheHandler implements EventHandler {
           break;
       }
     } catch (error) {
-      console.error(`EntityCacheHandler: Error caching entity for ${data.filePath}:`, error);
+      console.error(
+        `EntityCacheHandler: Error caching entity for ${data.filePath}:`,
+        error
+      );
     }
   }
 
@@ -83,21 +86,20 @@ export class EntityCacheHandler implements EventHandler {
       id: this.generateId(),
       name: frontmatter.Title || frontmatter.Name || file.basename,
       filePath: data.filePath,
-      type: frontmatter.Type || 'Task',
+      type: frontmatter.Type || "Task",
       priority: frontmatter.Priority,
       areas: this.normalizeArrayProperty(frontmatter.Areas),
       project: frontmatter.Project,
       done: frontmatter.Done || false,
       status: frontmatter.Status,
-      parentTask: frontmatter['Parent task'],
-      subTasks: this.normalizeArrayProperty(frontmatter['Sub-tasks']),
+      parentTask: frontmatter["Parent task"],
+      subTasks: this.normalizeArrayProperty(frontmatter["Sub-tasks"]),
       tags: this.normalizeArrayProperty(frontmatter.tags),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     await this.storageService.cacheTask(task as any);
-    console.log(`EntityCacheHandler: Cached task: ${task.name} (${task.filePath})`);
   }
 
   /**
@@ -106,7 +108,9 @@ export class EntityCacheHandler implements EventHandler {
   private async cacheProject(data: TaskEventData): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(data.filePath);
     if (!(file instanceof TFile)) {
-      console.warn(`EntityCacheHandler: Project file not found: ${data.filePath}`);
+      console.warn(
+        `EntityCacheHandler: Project file not found: ${data.filePath}`
+      );
       return;
     }
 
@@ -119,14 +123,13 @@ export class EntityCacheHandler implements EventHandler {
       id: this.generateId(),
       name: frontmatter.Name || file.basename,
       filePath: data.filePath,
-      type: frontmatter.Type || 'Project',
+      type: frontmatter.Type || "Project",
       areas: this.normalizeArrayProperty(frontmatter.Areas),
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     await this.storageService.cacheProject(project as any);
-    console.log(`EntityCacheHandler: Cached project: ${project.name} (${project.filePath})`);
   }
 
   /**
@@ -148,13 +151,12 @@ export class EntityCacheHandler implements EventHandler {
       id: this.generateId(),
       name: frontmatter.Name || file.basename,
       filePath: data.filePath,
-      type: frontmatter.Type || 'Area',
+      type: frontmatter.Type || "Area",
       createdAt: new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     await this.storageService.cacheArea(area as any);
-    console.log(`EntityCacheHandler: Cached area: ${area.name} (${area.filePath})`);
   }
 
   /**
@@ -163,7 +165,11 @@ export class EntityCacheHandler implements EventHandler {
   private normalizeArrayProperty(value: any): string[] {
     if (!value) return [];
     if (Array.isArray(value)) return value.map(String);
-    if (typeof value === 'string') return value.split(',').map(s => s.trim()).filter(Boolean);
+    if (typeof value === "string")
+      return value
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
     return [String(value)];
   }
 

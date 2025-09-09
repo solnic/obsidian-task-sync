@@ -3,9 +3,15 @@
  * Monitors file changes using Obsidian's vault API and emits relevant events
  */
 
-import { App, TFile, Vault, parseFrontMatterEntry } from 'obsidian';
-import { EventManager, EventType, StatusChangedEventData, DoneChangedEventData, TaskEventData } from '../events';
-import { TaskSyncSettings } from '../components/ui/settings';
+import { App, TFile, Vault, parseFrontMatterEntry } from "obsidian";
+import {
+  EventManager,
+  EventType,
+  StatusChangedEventData,
+  DoneChangedEventData,
+  TaskEventData,
+} from "../events";
+import { TaskSyncSettings } from "../components/ui/settings";
 
 /**
  * Interface for tracking file state
@@ -29,7 +35,7 @@ export class FileChangeListener {
     private vault: Vault,
     private eventManager: EventManager,
     private settings: TaskSyncSettings
-  ) { }
+  ) {}
 
   /**
    * Initialize the file change listener
@@ -39,19 +45,19 @@ export class FileChangeListener {
       return;
     }
 
-    console.log('FileChangeListener: Initializing...');
+    console.log("FileChangeListener: Initializing...");
 
     // Register vault event listeners
-    this.vault.on('modify', this.onFileModified.bind(this));
-    this.vault.on('create', this.onFileCreated.bind(this));
-    this.vault.on('delete', this.onFileDeleted.bind(this));
-    this.vault.on('rename', this.onFileRenamed.bind(this));
+    this.vault.on("modify", this.onFileModified.bind(this));
+    this.vault.on("create", this.onFileCreated.bind(this));
+    this.vault.on("delete", this.onFileDeleted.bind(this));
+    this.vault.on("rename", this.onFileRenamed.bind(this));
 
     // Initialize file states for existing files
     await this.initializeFileStates();
 
     this.isInitialized = true;
-    console.log('FileChangeListener: Initialized successfully');
+    console.log("FileChangeListener: Initialized successfully");
   }
 
   /**
@@ -62,20 +68,20 @@ export class FileChangeListener {
       return;
     }
 
-    console.log('FileChangeListener: Cleaning up...');
+    console.log("FileChangeListener: Cleaning up...");
 
     // Remove vault event listeners
-    this.vault.off('modify', this.onFileModified.bind(this));
-    this.vault.off('create', this.onFileCreated.bind(this));
-    this.vault.off('delete', this.onFileDeleted.bind(this));
-    this.vault.off('rename', this.onFileRenamed.bind(this));
+    this.vault.off("modify", this.onFileModified.bind(this));
+    this.vault.off("create", this.onFileCreated.bind(this));
+    this.vault.off("delete", this.onFileDeleted.bind(this));
+    this.vault.off("rename", this.onFileRenamed.bind(this));
 
     // Clear state
     this.fileStates.clear();
     this.processingFiles.clear();
     this.isInitialized = false;
 
-    console.log('FileChangeListener: Cleanup complete');
+    console.log("FileChangeListener: Cleanup complete");
   }
 
   /**
@@ -91,11 +97,16 @@ export class FileChangeListener {
           this.fileStates.set(file.path, fileState);
         }
       } catch (error) {
-        console.error(`FileChangeListener: Error initializing state for ${file.path}:`, error);
+        console.error(
+          `FileChangeListener: Error initializing state for ${file.path}:`,
+          error
+        );
       }
     }
 
-    console.log(`FileChangeListener: Initialized ${this.fileStates.size} file states`);
+    console.log(
+      `FileChangeListener: Initialized ${this.fileStates.size} file states`
+    );
   }
 
   /**
@@ -104,7 +115,7 @@ export class FileChangeListener {
   private getRelevantFiles(): TFile[] {
     const allFiles = this.vault.getMarkdownFiles();
 
-    return allFiles.filter(file => {
+    return allFiles.filter((file) => {
       // Ensure we only process actual files, not directories
       if (!(file instanceof TFile)) {
         return false;
@@ -112,9 +123,9 @@ export class FileChangeListener {
 
       const path = file.path;
       return (
-        path.startsWith(this.settings.tasksFolder + '/') ||
-        path.startsWith(this.settings.projectsFolder + '/') ||
-        path.startsWith(this.settings.areasFolder + '/')
+        path.startsWith(this.settings.tasksFolder + "/") ||
+        path.startsWith(this.settings.projectsFolder + "/") ||
+        path.startsWith(this.settings.areasFolder + "/")
       );
     });
   }
@@ -125,8 +136,7 @@ export class FileChangeListener {
   private async createFileState(file: TFile): Promise<FileState | null> {
     try {
       // Additional check for file extension
-      if (!file.path.endsWith('.md')) {
-        console.warn(`FileChangeListener: Skipping non-markdown file: ${file.path}`);
+      if (!file.path.endsWith(".md")) {
         return null;
       }
 
@@ -136,15 +146,18 @@ export class FileChangeListener {
       return {
         path: file.path,
         frontmatter,
-        lastModified: file.stat.mtime
+        lastModified: file.stat.mtime,
       };
     } catch (error) {
       // Check if this is a directory error
-      if (error.code === 'EISDIR') {
+      if (error.code === "EISDIR") {
         console.warn(`FileChangeListener: Skipping directory: ${file.path}`);
         return null;
       }
-      console.error(`FileChangeListener: Error creating file state for ${file.path}:`, error);
+      console.error(
+        `FileChangeListener: Error creating file state for ${file.path}:`,
+        error
+      );
       return null;
     }
   }
@@ -165,9 +178,9 @@ export class FileChangeListener {
       const frontmatter: Record<string, any> = {};
 
       // Parse each line of frontmatter
-      const lines = frontmatterText.split('\n');
+      const lines = frontmatterText.split("\n");
       for (const line of lines) {
-        const colonIndex = line.indexOf(':');
+        const colonIndex = line.indexOf(":");
         if (colonIndex !== -1) {
           const key = line.substring(0, colonIndex).trim();
           const value = line.substring(colonIndex + 1).trim();
@@ -176,12 +189,12 @@ export class FileChangeListener {
           let parsedValue: any = value;
 
           // Handle boolean values
-          if (value === 'true') {
+          if (value === "true") {
             parsedValue = true;
-          } else if (value === 'false') {
+          } else if (value === "false") {
             parsedValue = false;
-          } else if (value === '') {
-            parsedValue = '';
+          } else if (value === "") {
+            parsedValue = "";
           } else {
             parsedValue = value;
           }
@@ -191,7 +204,7 @@ export class FileChangeListener {
       }
       return frontmatter;
     } catch (error) {
-      console.error('FileChangeListener: Error parsing frontmatter:', error);
+      console.error("FileChangeListener: Error parsing frontmatter:", error);
       return {};
     }
   }
@@ -225,9 +238,11 @@ export class FileChangeListener {
 
       // Update stored state
       this.fileStates.set(file.path, newFileState);
-
     } catch (error) {
-      console.error(`FileChangeListener: Error processing file modification for ${file.path}:`, error);
+      console.error(
+        `FileChangeListener: Error processing file modification for ${file.path}:`,
+        error
+      );
     } finally {
       this.processingFiles.delete(file.path);
     }
@@ -251,18 +266,23 @@ export class FileChangeListener {
         const eventData: TaskEventData = {
           filePath: file.path,
           taskName: file.basename,
-          frontmatter: fileState.frontmatter
+          frontmatter: fileState.frontmatter,
         };
 
         await this.eventManager.emit(
-          entityType === 'task' ? EventType.TASK_CREATED :
-            entityType === 'project' ? EventType.PROJECT_CREATED :
-              EventType.AREA_CREATED,
+          entityType === "task"
+            ? EventType.TASK_CREATED
+            : entityType === "project"
+            ? EventType.PROJECT_CREATED
+            : EventType.AREA_CREATED,
           eventData
         );
       }
     } catch (error) {
-      console.error(`FileChangeListener: Error processing file creation for ${file.path}:`, error);
+      console.error(
+        `FileChangeListener: Error processing file creation for ${file.path}:`,
+        error
+      );
     }
   }
 
@@ -282,13 +302,15 @@ export class FileChangeListener {
         const eventData: TaskEventData = {
           filePath: file.path,
           taskName: file.basename,
-          frontmatter: oldFileState.frontmatter
+          frontmatter: oldFileState.frontmatter,
         };
 
         await this.eventManager.emit(
-          entityType === 'task' ? EventType.TASK_DELETED :
-            entityType === 'project' ? EventType.PROJECT_DELETED :
-              EventType.AREA_DELETED,
+          entityType === "task"
+            ? EventType.TASK_DELETED
+            : entityType === "project"
+            ? EventType.PROJECT_DELETED
+            : EventType.AREA_DELETED,
           eventData
         );
 
@@ -296,7 +318,10 @@ export class FileChangeListener {
         this.fileStates.delete(file.path);
       }
     } catch (error) {
-      console.error(`FileChangeListener: Error processing file deletion for ${file.path}:`, error);
+      console.error(
+        `FileChangeListener: Error processing file deletion for ${file.path}:`,
+        error
+      );
     }
   }
 
@@ -322,14 +347,20 @@ export class FileChangeListener {
         }
       }
     } catch (error) {
-      console.error(`FileChangeListener: Error processing file rename from ${oldPath} to ${file.path}:`, error);
+      console.error(
+        `FileChangeListener: Error processing file rename from ${oldPath} to ${file.path}:`,
+        error
+      );
     }
   }
 
   /**
    * Compare old and new file states and emit appropriate events
    */
-  private async compareAndEmitEvents(oldState: FileState, newState: FileState): Promise<void> {
+  private async compareAndEmitEvents(
+    oldState: FileState,
+    newState: FileState
+  ): Promise<void> {
     const oldFrontmatter = oldState.frontmatter;
     const newFrontmatter = newState.frontmatter;
 
@@ -343,7 +374,7 @@ export class FileChangeListener {
         oldStatus,
         newStatus,
         frontmatter: newFrontmatter,
-        entityType: this.getEntityType(newState.path)
+        entityType: this.getEntityType(newState.path),
       };
 
       await this.eventManager.emit(EventType.STATUS_CHANGED, eventData);
@@ -359,7 +390,7 @@ export class FileChangeListener {
         oldDone,
         newDone,
         frontmatter: newFrontmatter,
-        entityType: this.getEntityType(newState.path)
+        entityType: this.getEntityType(newState.path),
       };
 
       await this.eventManager.emit(EventType.DONE_CHANGED, eventData);
@@ -378,31 +409,31 @@ export class FileChangeListener {
    */
   private isRelevantPath(path: string): boolean {
     return (
-      path.startsWith(this.settings.tasksFolder + '/') ||
-      path.startsWith(this.settings.projectsFolder + '/') ||
-      path.startsWith(this.settings.areasFolder + '/')
+      path.startsWith(this.settings.tasksFolder + "/") ||
+      path.startsWith(this.settings.projectsFolder + "/") ||
+      path.startsWith(this.settings.areasFolder + "/")
     );
   }
 
   /**
    * Get the entity type based on file path
    */
-  private getEntityType(path: string): 'task' | 'project' | 'area' {
-    if (path.startsWith(this.settings.tasksFolder + '/')) {
-      return 'task';
-    } else if (path.startsWith(this.settings.projectsFolder + '/')) {
+  private getEntityType(path: string): "task" | "project" | "area" {
+    if (path.startsWith(this.settings.tasksFolder + "/")) {
+      return "task";
+    } else if (path.startsWith(this.settings.projectsFolder + "/")) {
       // Check if this is a task file within a project folder
       // Task files in projects are typically in a "Tasks" subfolder
-      if (path.includes('/Tasks/')) {
-        return 'task';
+      if (path.includes("/Tasks/")) {
+        return "task";
       }
-      return 'project';
+      return "project";
     } else {
       // Check if this is a task file within an area folder
-      if (path.includes('/Tasks/')) {
-        return 'task';
+      if (path.includes("/Tasks/")) {
+        return "task";
       }
-      return 'area';
+      return "area";
     }
   }
 
@@ -412,9 +443,7 @@ export class FileChangeListener {
   getStats(): { trackedFiles: number; processingFiles: number } {
     return {
       trackedFiles: this.fileStates.size,
-      processingFiles: this.processingFiles.size
+      processingFiles: this.processingFiles.size,
     };
   }
-
-
 }
