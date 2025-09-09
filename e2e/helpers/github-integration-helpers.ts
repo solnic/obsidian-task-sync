@@ -167,30 +167,11 @@ export async function waitForGitHubView(page: Page, timeout: number = 10000): Pr
  * Wait for GitHub view content to load
  */
 export async function waitForGitHubViewContent(page: Page, timeout: number = 15000): Promise<void> {
-
-  // First ensure the view exists
   await waitForGitHubView(page, Math.min(timeout / 3, 10000));
 
-
-  // Take a screenshot before waiting for content
-  await page.screenshot({
-    path: `e2e/screenshots/github-view-before-wait-${Date.now()}.png`,
-    fullPage: true
-  });
-
-  // Wait a bit for any async rendering to complete
-  await new Promise(resolve => setTimeout(resolve, 200));
-
-  // Take another screenshot after the delay
-  await page.screenshot({
-    path: `e2e/screenshots/github-view-after-delay-${Date.now()}.png`,
-    fullPage: true
-  });
-
-  // Then wait for content to load
   await page.waitForFunction(() => {
-    // Look for the view content container directly, not the tab element
     const viewElement = document.querySelector('.github-issues-view');
+
     if (!viewElement) {
       return false;
     }
@@ -201,11 +182,6 @@ export async function waitForGitHubViewContent(page: Page, timeout: number = 150
 
     return hasHeader && hasContent && hasText;
   }, { timeout: Math.max(timeout - 10000, 10000) }).catch(async (error) => {
-    // Take a screenshot on failure
-    await page.screenshot({
-      path: `e2e/screenshots/github-view-timeout-failure-${Date.now()}.png`,
-      fullPage: true
-    });
     throw error;
   });
 }
@@ -227,39 +203,14 @@ export async function waitForGitHubSettings(page: Page, timeout: number = 5000):
  * Open GitHub integration settings
  */
 export async function openGitHubSettings(context: SharedTestContext): Promise<void> {
-  // Take a screenshot before opening settings
-  await context.page.screenshot({
-    path: `e2e/screenshots/before-open-settings-${Date.now()}.png`,
-    fullPage: true
-  });
-
   await openTaskSyncSettings(context);
-
-  // Take a screenshot after opening Task Sync settings
-  await context.page.screenshot({
-    path: `e2e/screenshots/after-open-task-sync-settings-${Date.now()}.png`,
-    fullPage: true
-  });
-
   await waitForGitHubSettings(context.page);
-
-  // Take a screenshot after GitHub settings are visible
-  await context.page.screenshot({
-    path: `e2e/screenshots/after-github-settings-visible-${Date.now()}.png`,
-    fullPage: true
-  });
 }
 
 /**
  * Toggle GitHub integration setting
  */
 export async function toggleGitHubIntegration(page: Page, enabled: boolean): Promise<void> {
-  // Take a screenshot before toggling
-  await page.screenshot({
-    path: `e2e/screenshots/before-toggle-${enabled ? 'enable' : 'disable'}-${Date.now()}.png`,
-    fullPage: true
-  });
-
   const toggleClicked = await page.evaluate((shouldEnable) => {
     const settingsContainer = document.querySelector('.vertical-tab-content');
     if (!settingsContainer) return false;
@@ -285,29 +236,13 @@ export async function toggleGitHubIntegration(page: Page, enabled: boolean): Pro
   }, enabled);
 
   if (!toggleClicked) {
-    // Take a screenshot on failure
-    await page.screenshot({
-      path: `e2e/screenshots/toggle-failed-${Date.now()}.png`,
-      fullPage: true
-    });
     throw new Error('Could not find GitHub integration toggle');
   }
 
   // Wait for additional settings to appear/disappear
   if (enabled) {
     await page.waitForTimeout(1000);
-    await page.screenshot({
-      path: `e2e/screenshots/after-toggle-wait-${Date.now()}.png`,
-      fullPage: true
-    });
-
     await waitForGitHubTokenSettings(page, 10000); // Increase timeout to 10 seconds
-
-    // Take a screenshot after settings appear
-    await page.screenshot({
-      path: `e2e/screenshots/after-toggle-enable-${Date.now()}.png`,
-      fullPage: true
-    });
   }
 }
 
@@ -315,63 +250,24 @@ export async function toggleGitHubIntegration(page: Page, enabled: boolean): Pro
  * Wait for GitHub token settings to appear
  */
 export async function waitForGitHubTokenSettings(page: Page, timeout: number = 5000): Promise<void> {
-  try {
-    await page.waitForFunction(() => {
-      const settingsContainer = document.querySelector('.vertical-tab-content');
-      if (!settingsContainer) {
-        return false;
-      }
+  await page.waitForFunction(() => {
+    const settingsContainer = document.querySelector('.vertical-tab-content');
+    if (!settingsContainer) {
+      return false;
+    }
 
-      const text = settingsContainer.textContent || '';
-      const hasToken = text.includes('GitHub Personal Access Token');
-      const hasRepo = text.includes('Default Repository');
+    const text = settingsContainer.textContent || '';
+    const hasToken = text.includes('GitHub Personal Access Token');
+    const hasRepo = text.includes('Default Repository');
 
-      return hasToken && hasRepo;
-    }, { timeout });
-
-  } catch (error) {
-
-    // Take a screenshot on timeout
-    await page.screenshot({
-      path: `e2e/screenshots/token-settings-timeout-${Date.now()}.png`,
-      fullPage: true
-    });
-
-    // Debug what settings are actually present
-    const settingsDebug = await page.evaluate(() => {
-      const settingsContainer = document.querySelector('.vertical-tab-content');
-      if (!settingsContainer) {
-        return { error: 'No settings container found' };
-      }
-
-      const settings = Array.from(settingsContainer.querySelectorAll('.setting-item'));
-      const settingNames = settings.map(setting => {
-        const nameEl = setting.querySelector('.setting-item-name');
-        return nameEl?.textContent || 'No name';
-      });
-
-      return {
-        containerExists: true,
-        settingsCount: settings.length,
-        settingNames,
-        fullText: settingsContainer.textContent?.substring(0, 1000) || 'No text'
-      };
-    });
-
-    throw error;
-  }
+    return hasToken && hasRepo;
+  }, { timeout });
 }
 
 /**
  * Configure GitHub personal access token
  */
 export async function configureGitHubToken(page: Page, token: string): Promise<void> {
-  await page.screenshot({
-    path: `e2e/screenshots/before-token-config-${Date.now()}.png`,
-    fullPage: true
-  });
-
-  // First, let's debug what settings are actually available
   const settingsDebugInfo = await page.evaluate(() => {
     const settingsContainer = document.querySelector('.vertical-tab-content');
     if (!settingsContainer) {
@@ -412,12 +308,6 @@ export async function configureGitHubToken(page: Page, token: string): Promise<v
   }, token);
 
   if (!tokenConfigured) {
-    // Take a screenshot on failure
-    await page.screenshot({
-      path: `e2e/screenshots/token-config-failed-${Date.now()}.png`,
-      fullPage: true
-    });
-
     throw new Error('Could not find GitHub token input field');
   }
 }

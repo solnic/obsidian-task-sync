@@ -419,45 +419,17 @@ export async function captureFullDebugInfo(context: SharedTestContext, name: str
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
 
-    // Capture screenshot directly in the debug directory
-    try {
-      const filename = `screenshot-${timestamp}-${context.workerId}.png`;
-      const screenshotPath = path.join(debugDir, filename);
+    const filename = `screenshot-${timestamp}-${context.workerId}.png`;
+    const screenshotPath = path.join(debugDir, filename);
 
-      if (!context.page || context.page.isClosed()) {
-        console.warn(`⚠️ Page is not available or closed, trying Electron windows`);
+    await context.page.screenshot({
+      path: screenshotPath,
+      fullPage: true,
+      timeout: 10000
+    });
 
-        // Try Electron windows directly
-        try {
-          const windows = context.electronApp.windows();
-          if (windows.length > 0) {
-            await windows[0].screenshot({
-              path: screenshotPath,
-              type: 'png',
-              timeout: 10000
-            });
-          } else {
-            console.warn(`⚠️ No Electron windows available for screenshot`);
-          }
-        } catch (electronError) {
-          console.warn(`⚠️ Electron screenshot failed: ${electronError.message}`);
-        }
-      } else {
-        // Use Playwright page screenshot
-        await context.page.screenshot({
-          path: screenshotPath,
-          fullPage: true,
-          timeout: 10000
-        });
-      }
-    } catch (screenshotError) {
-      console.warn(`⚠️ Screenshot capture failed: ${screenshotError.message}`);
-    }
-
-    // Copy vault state for debugging
     await copyVaultForDebug(context, debugDir);
 
-    // Capture console logs if available
     try {
       let logs = consoleLogs || [];
 
@@ -468,7 +440,6 @@ export async function captureFullDebugInfo(context: SharedTestContext, name: str
 
       const logsPath = path.join(debugDir, `console-logs-${timestamp}.json`);
       await fs.promises.writeFile(logsPath, JSON.stringify(logs, null, 2));
-      console.log(`📝 Console logs captured: ${logsPath} (${logs.length} entries)`);
     } catch (error) {
       console.warn(`⚠️ Console logs capture failed: ${error.message}`);
     }
@@ -497,6 +468,63 @@ export async function captureFullDebugInfo(context: SharedTestContext, name: str
       await fs.promises.writeFile(statePath, JSON.stringify(appState, null, 2));
     } catch (error) {
       console.warn(`⚠️ App state capture failed: ${error.message}`);
+    }
+
+    // Capture complete HTML structure of the Obsidian electron app
+    try {
+      if (!context.page || context.page.isClosed()) {
+        console.warn(`⚠️ Page is not available for HTML structure capture`);
+      } else {
+        const htmlStructure = await context.page.evaluate(() => {
+          // Capture the complete DOM structure
+          const htmlContent = document.documentElement.outerHTML;
+
+          // Also capture useful metadata about the page state
+          const metadata = {
+            url: window.location.href,
+            title: document.title,
+            readyState: document.readyState,
+            viewport: {
+              width: window.innerWidth,
+              height: window.innerHeight,
+              scrollX: window.scrollX,
+              scrollY: window.scrollY
+            },
+            documentElement: {
+              scrollWidth: document.documentElement.scrollWidth,
+              scrollHeight: document.documentElement.scrollHeight,
+              clientWidth: document.documentElement.clientWidth,
+              clientHeight: document.documentElement.clientHeight
+            },
+            activeElement: document.activeElement ? {
+              tagName: document.activeElement.tagName,
+              className: document.activeElement.className,
+              id: document.activeElement.id
+            } : null,
+            visibleElements: {
+              modals: document.querySelectorAll('.modal-container, .modal-backdrop').length,
+              sidebars: document.querySelectorAll('.workspace-ribbon, .side-dock-ribbon').length,
+              leaves: document.querySelectorAll('.workspace-leaf').length,
+              views: document.querySelectorAll('[data-type]').length
+            }
+          };
+
+          return { htmlContent, metadata };
+        });
+
+        // Save the complete HTML structure
+        const htmlPath = path.join(debugDir, `html-structure-${timestamp}.html`);
+        await fs.promises.writeFile(htmlPath, htmlStructure.htmlContent, 'utf8');
+
+        // Save the metadata separately for easier analysis
+        const metadataPath = path.join(debugDir, `html-metadata-${timestamp}.json`);
+        await fs.promises.writeFile(metadataPath, JSON.stringify(htmlStructure.metadata, null, 2));
+
+        console.log(`🌐 HTML structure captured: ${htmlPath} (${Math.round(htmlStructure.htmlContent.length / 1024)}KB)`);
+        console.log(`📋 HTML metadata captured: ${metadataPath}`);
+      }
+    } catch (error) {
+      console.warn(`⚠️ HTML structure capture failed: ${error.message}`);
     }
 
   } catch (error) {
