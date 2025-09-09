@@ -70,7 +70,7 @@ describe("Context-Aware Task Modal", () => {
     await context.page.keyboard.press("Enter");
 
     // Wait for modal to appear
-    await waitForElementVisible(context.page, ".task-sync-container");
+    await waitForElementVisible(context.page, ".task-sync-modal-container");
 
     // Check modal title includes project context
     const title = await context.page.textContent(".modal-title");
@@ -79,7 +79,7 @@ describe("Context-Aware Task Modal", () => {
     // Check that context info is shown
     const contextInfoVisible = await isElementVisible(
       context.page,
-      ".task-sync-context-info"
+      ".task-sync-context-badge"
     );
     expect(contextInfoVisible).toBe(true);
   });
@@ -93,7 +93,7 @@ describe("Context-Aware Task Modal", () => {
     await context.page.keyboard.press("Enter");
 
     // Wait for modal to appear
-    await waitForElementVisible(context.page, ".task-sync-container");
+    await waitForElementVisible(context.page, ".task-sync-modal-container");
 
     // Check that form fields are present
     const titleInput = await isElementVisible(
@@ -104,7 +104,7 @@ describe("Context-Aware Task Modal", () => {
 
     const contentTextarea = await isElementVisible(
       context.page,
-      ".task-sync-content-editor"
+      ".task-sync-description-input"
     );
     expect(contentTextarea).toBe(true);
 
@@ -118,13 +118,7 @@ describe("Context-Aware Task Modal", () => {
     );
     expect(statusBadge).toBe(true);
 
-    // Check toolbar inputs
-    const projectInput = await isElementVisible(
-      context.page,
-      'input[placeholder="Project"]'
-    );
-    expect(projectInput).toBe(true);
-
+    // Check toolbar inputs (now in property badges)
     const areasInput = await isElementVisible(
       context.page,
       'input[placeholder="Areas"]'
@@ -141,33 +135,35 @@ describe("Context-Aware Task Modal", () => {
     await context.page.keyboard.press("Enter");
 
     // Wait for modal to appear
-    await waitForElementVisible(context.page, ".task-sync-container");
+    await waitForElementVisible(context.page, ".task-sync-modal-container");
 
     // Check that modal has proper structure
     const modalVisible = await isElementVisible(
       context.page,
-      ".task-sync-container"
+      ".task-sync-modal-container"
     );
     expect(modalVisible).toBe(true);
 
-    // Check that form actions have proper styling
+    // Check that form actions have proper styling (now in header)
     const cancelButtonVisible = await isElementVisible(
       context.page,
-      "button.mod-cancel"
+      ".task-sync-save-draft"
     );
     const submitButtonVisible = await isElementVisible(
       context.page,
-      "button.mod-cta"
+      ".task-sync-create-button"
     );
 
     expect(cancelButtonVisible).toBe(true);
     expect(submitButtonVisible).toBe(true);
 
     // Check button text
-    const cancelText = await context.page.textContent("button.mod-cancel");
-    const submitText = await context.page.textContent("button.mod-cta");
+    const cancelText = await context.page.textContent(".task-sync-save-draft");
+    const submitText = await context.page.textContent(
+      ".task-sync-create-button"
+    );
 
-    expect(cancelText).toBe("Cancel");
-    expect(submitText).toBe("Create task");
+    expect(cancelText).toBe("Save as draft");
+    expect(submitText).toBe("Create issue");
   });
 });

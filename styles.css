@@ -1195,31 +1195,84 @@ Provides consistent styling for all UI components
   min-height: 500px;
 }
 
-.task-sync-linear-container {
+.task-sync-modal-container {
   display: flex;
   flex-direction: column;
   height: 100%;
-  min-height: 400px;
+  min-height: 500px;
+  background: var(--background-primary);
 }
 
-/* Title Section */
-.task-sync-title-section {
-  padding: 20px 24px 16px;
+/* Header */
+.task-sync-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.task-sync-context-info {
-  margin-bottom: 12px;
+.task-sync-context-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: var(--background-secondary);
+  border-radius: 6px;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
-.task-sync-context-badge {
-  display: inline-block;
-  padding: 4px 8px;
-  background: var(--background-modifier-accent);
-  color: var(--text-muted);
+.task-sync-context-icon {
+  font-size: 1em;
+}
+
+.task-sync-header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.task-sync-save-draft {
+  padding: 6px 12px;
+  border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
-  font-size: 0.8em;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  font-size: 0.9em;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.task-sync-save-draft:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.task-sync-create-button {
+  padding: 6px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 0.9em;
   font-weight: 500;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.task-sync-create-button:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* Main content */
+.task-sync-main-content {
+  flex: 1;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .task-sync-title-container {
@@ -1230,11 +1283,12 @@ Provides consistent styling for all UI components
   width: 100%;
   border: none;
   background: transparent;
-  font-size: 1.5em;
+  font-size: 1.8em;
   font-weight: 600;
   color: var(--text-normal);
-  padding: 8px 0;
+  padding: 0;
   outline: none;
+  line-height: 1.2;
 }
 
 .task-sync-title-input::placeholder {
@@ -1242,15 +1296,14 @@ Provides consistent styling for all UI components
   font-weight: 400;
 }
 
-/* Content Section */
-.task-sync-content-section {
+.task-sync-description-container {
   flex: 1;
-  padding: 16px 24px;
-  min-height: 150px;
+  min-height: 120px;
 }
 
-.task-sync-content-editor {
+.task-sync-description-input {
   width: 100%;
+  height: 100%;
   border: none;
   background: transparent;
   color: var(--text-normal);
@@ -1259,68 +1312,111 @@ Provides consistent styling for all UI components
   resize: none;
   outline: none;
   font-family: var(--font-text);
+  padding: 0;
 }
 
-.task-sync-content-editor::placeholder {
+.task-sync-description-input::placeholder {
   color: var(--text-muted);
 }
 
-/* Toolbar Section */
-.task-sync-toolbar {
-  display: flex;
-  gap: 12px;
-  padding: 16px 24px;
+/* Properties toolbar */
+.task-sync-properties-toolbar {
   border-top: 1px solid var(--background-modifier-border);
+  padding: 16px 24px;
   background: var(--background-secondary);
-  align-items: center;
-  flex-wrap: nowrap;
-  overflow-x: auto;
 }
 
-.task-sync-badge-selector {
+.task-sync-property-badges {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.task-sync-property-badge {
   display: flex;
   align-items: center;
   gap: 6px;
-}
-
-.task-sync-input-field {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.task-sync-field-label {
-  font-size: 0.85em;
-  color: var(--text-muted);
-  font-weight: 500;
-  min-width: fit-content;
-}
-
-.task-sync-clickable-badge {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
   cursor: pointer;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition: all 0.1s ease;
+  font-size: 0.85em;
 }
 
-.task-sync-clickable-badge:hover {
+.task-sync-property-badge:hover {
+  background: var(--background-modifier-hover);
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.task-sync-placeholder-badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 12px;
-  font-size: 0.75em;
-  font-weight: 500;
-  background: var(--background-modifier-border);
+.task-sync-badge-icon {
+  font-size: 0.9em;
+}
+
+.task-sync-badge-input {
+  border: none;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: 0.85em;
+  outline: none;
+  min-width: 80px;
+}
+
+.task-sync-badge-input::placeholder {
   color: var(--text-muted);
-  border: 1px dashed var(--background-modifier-border-hover);
 }
 
-.task-sync-toolbar-input {
-  min-width: 120px;
-  max-width: 200px;
-  padding: 4px 8px;
+.task-sync-more-properties {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.task-sync-more-properties:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.task-sync-more-icon {
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+/* Additional properties */
+.task-sync-additional-properties {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-sync-property-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-sync-property-field label {
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.task-sync-field-input {
+  padding: 8px 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   background: var(--background-primary);
@@ -1328,9 +1424,29 @@ Provides consistent styling for all UI components
   font-size: 0.9em;
 }
 
-.task-sync-toolbar-input:focus {
+.task-sync-field-input:focus {
   border-color: var(--interactive-accent);
   outline: none;
+}
+
+/* Footer */
+.task-sync-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  align-items: center;
+}
+
+.task-sync-create-more {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+}
+
+.task-sync-create-more input[type="checkbox"] {
+  margin: 0;
 }
 
 .task-sync-button-group {
