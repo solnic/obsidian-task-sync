@@ -404,7 +404,7 @@ export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskNam
         filters: {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
-            `"Parent task".contains(link("${parentTaskName}"))`
+            `note["Parent task"] == link("${parentTaskName}")`
           ]
         },
         order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
@@ -417,7 +417,7 @@ export function generateParentTaskBase(settings: TaskSyncSettings, parentTaskNam
         filters: {
           or: [
             `file.name == "${parentTaskName}"`,
-            `"Parent task".contains(link("${parentTaskName}"))`
+            `note["Parent task"] == link("${parentTaskName}")`
           ]
         },
         order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
