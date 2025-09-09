@@ -901,6 +901,19 @@ Provides consistent styling for all UI components
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
+/* Task Status Badge Styles */
+.task-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
 .task-type-blue {
   background-color: #3b82f6;
 }
@@ -938,6 +951,88 @@ Provides consistent styling for all UI components
 }
 
 .task-type-indigo {
+  background-color: #6366f1;
+}
+
+/* Task Priority Colors */
+.task-priority-blue {
+  background-color: #3b82f6;
+}
+
+.task-priority-red {
+  background-color: #ef4444;
+}
+
+.task-priority-green {
+  background-color: #10b981;
+}
+
+.task-priority-yellow {
+  background-color: #f59e0b;
+}
+
+.task-priority-purple {
+  background-color: #8b5cf6;
+}
+
+.task-priority-orange {
+  background-color: #f97316;
+}
+
+.task-priority-pink {
+  background-color: #ec4899;
+}
+
+.task-priority-gray {
+  background-color: #6b7280;
+}
+
+.task-priority-teal {
+  background-color: #14b8a6;
+}
+
+.task-priority-indigo {
+  background-color: #6366f1;
+}
+
+/* Task Status Colors */
+.task-status-blue {
+  background-color: #3b82f6;
+}
+
+.task-status-red {
+  background-color: #ef4444;
+}
+
+.task-status-green {
+  background-color: #10b981;
+}
+
+.task-status-yellow {
+  background-color: #f59e0b;
+}
+
+.task-status-purple {
+  background-color: #8b5cf6;
+}
+
+.task-status-orange {
+  background-color: #f97316;
+}
+
+.task-status-pink {
+  background-color: #ec4899;
+}
+
+.task-status-gray {
+  background-color: #6b7280;
+}
+
+.task-status-teal {
+  background-color: #14b8a6;
+}
+
+.task-status-indigo {
   background-color: #6366f1;
 }
 
@@ -1205,78 +1300,37 @@ Provides consistent styling for all UI components
 
 /* Header */
 .task-sync-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 24px;
+  padding: 20px 32px 16px;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.task-sync-context-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: var(--background-secondary);
-  border-radius: 6px;
-  font-size: 0.85em;
+.task-sync-breadcrumb-title {
+  font-size: 1.1em;
   font-weight: 500;
-  color: var(--text-muted);
-}
-
-.task-sync-context-icon {
-  font-size: 1em;
-}
-
-.task-sync-header-actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.task-sync-save-draft {
-  padding: 6px 12px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  background: var(--background-primary);
-  color: var(--text-muted);
-  font-size: 0.9em;
-  cursor: pointer;
-  transition: all 0.1s ease;
-}
-
-.task-sync-save-draft:hover {
-  background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.task-sync-create-button {
-  padding: 6px 16px;
-  border: none;
-  border-radius: 6px;
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  font-size: 0.9em;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.1s ease;
+.task-sync-breadcrumb-segment {
+  color: var(--text-muted);
 }
 
-.task-sync-create-button:hover {
-  background: var(--interactive-accent-hover);
+.task-sync-breadcrumb-separator {
+  margin: 0 8px;
+  color: var(--text-faint);
+}
+
+.task-sync-breadcrumb-current {
+  color: var(--text-normal);
+  font-weight: 600;
 }
 
 /* Main content */
 .task-sync-main-content {
   flex: 1;
-  padding: 24px;
+  padding: 24px 32px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-.task-sync-title-container {
-  position: relative;
+  gap: 20px;
 }
 
 .task-sync-title-input {
@@ -1296,14 +1350,8 @@ Provides consistent styling for all UI components
   font-weight: 400;
 }
 
-.task-sync-description-container {
-  flex: 1;
-  min-height: 120px;
-}
-
 .task-sync-description-input {
   width: 100%;
-  height: 100%;
   border: none;
   background: transparent;
   color: var(--text-normal);
@@ -1313,6 +1361,7 @@ Provides consistent styling for all UI components
   outline: none;
   font-family: var(--font-text);
   padding: 0;
+  min-height: 200px;
 }
 
 .task-sync-description-input::placeholder {
@@ -1321,132 +1370,86 @@ Provides consistent styling for all UI components
 
 /* Properties toolbar */
 .task-sync-properties-toolbar {
-  border-top: 1px solid var(--background-modifier-border);
-  padding: 16px 24px;
-  background: var(--background-secondary);
+  padding: 20px 32px;
 }
 
 .task-sync-property-badges {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
   flex-wrap: wrap;
 }
 
 .task-sync-property-badge {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-primary);
   cursor: pointer;
   transition: all 0.1s ease;
-  font-size: 0.85em;
-}
-
-.task-sync-property-badge:hover {
-  background: var(--background-modifier-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.task-sync-badge-icon {
-  font-size: 0.9em;
-}
-
-.task-sync-badge-input {
-  border: none;
-  background: transparent;
-  color: var(--text-normal);
-  font-size: 0.85em;
-  outline: none;
   min-width: 80px;
 }
 
-.task-sync-badge-input::placeholder {
-  color: var(--text-muted);
+.task-sync-property-badge:hover {
+  transform: translateY(-1px);
 }
 
-.task-sync-more-properties {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  background: var(--background-primary);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.1s ease;
-}
-
-.task-sync-more-properties:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-}
-
-.task-sync-more-icon {
-  font-size: 1.2em;
-  font-weight: bold;
-}
-
-/* Additional properties */
-.task-sync-additional-properties {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--background-modifier-border);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.task-sync-property-field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.task-sync-property-field label {
-  font-size: 0.85em;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.task-sync-field-input {
+.task-sync-property-input {
   padding: 8px 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   background: var(--background-primary);
   color: var(--text-normal);
   font-size: 0.9em;
+  min-width: 120px;
 }
 
-.task-sync-field-input:focus {
+.task-sync-property-input:focus {
   border-color: var(--interactive-accent);
   outline: none;
 }
 
-/* Footer */
-.task-sync-modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid var(--background-modifier-border);
-  display: flex;
-  align-items: center;
-}
-
-.task-sync-create-more {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.9em;
+.task-sync-property-input::placeholder {
   color: var(--text-muted);
 }
 
-.task-sync-create-more input[type="checkbox"] {
-  margin: 0;
+/* Footer */
+.task-sync-modal-footer {
+  padding: 20px 32px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.task-sync-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.task-sync-cancel-button {
+  padding: 8px 16px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: all 0.1s ease;
+}
+
+.task-sync-cancel-button:hover {
+  background: var(--background-modifier-hover);
+}
+
+.task-sync-create-button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.task-sync-create-button:hover {
+  background: var(--interactive-accent-hover);
 }
 
 .task-sync-button-group {
