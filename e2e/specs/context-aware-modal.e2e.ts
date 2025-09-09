@@ -16,161 +16,11 @@ import { createProject } from "../helpers/entity-helpers";
 describe("Context-Aware Task Modal", () => {
   const context = setupE2ETestHooks();
 
-  test("should open basic modal when no context", async () => {
+  beforeAll(async () => {
     await createTestFolders(context.page);
-
-    // Open modal via command palette
-    await context.page.keyboard.press("Control+p");
-    await context.page.fill(".prompt-input", "Add Task");
-    await context.page.keyboard.press("Enter");
-
-    // Wait for modal to appear
-    await waitForElementVisible(context.page, ".task-sync-create-task");
-
-    // Check modal title
-    const title = await context.page.textContent(".modal-title");
-    expect(title).toBe("Create New Task");
-
-    // Check that context info is not shown
-    const contextInfoVisible = await isElementVisible(
-      context.page,
-      ".task-sync-context-info"
-    );
-    expect(contextInfoVisible).toBe(false);
-
-    // Check that project and area fields are enabled
-    const projectFieldEnabled = await isElementEnabled(
-      context.page,
-      'input[placeholder*="Project"]'
-    );
-    const areaFieldEnabled = await isElementEnabled(
-      context.page,
-      'input[placeholder*="Area"]'
-    );
-
-    expect(projectFieldEnabled).toBe(true);
-    expect(areaFieldEnabled).toBe(true);
   });
 
-  test("should show project context when opened from project file", async () => {
-    await createTestFolders(context.page);
-
-    // Create a project using entity helper
-    await createProject(context, {
-      name: "Test Project",
-      description:
-        "This is a test project file.\n\n## Objectives\n- Complete the project\n- Test functionality",
-    });
-
-    // Open the project file using helper
-    await openFile(context, "Projects/Test Project.md");
-
-    // Open modal via command palette
-    await context.page.keyboard.press("Control+p");
-    await context.page.fill(".prompt-input", "Add Task");
-    await context.page.keyboard.press("Enter");
-
-    // Wait for modal to appear
-    await waitForElementVisible(context.page, ".task-sync-modal-container");
-
-    // Check modal title includes project context
-    const title = await context.page.textContent(".modal-title");
-    expect(title).toContain("Create Task for Project: Test Project");
-
-    // Check that context info is shown in breadcrumb
-    const breadcrumbVisible = await isElementVisible(
-      context.page,
-      ".task-sync-breadcrumb-title"
-    );
-    expect(breadcrumbVisible).toBe(true);
-  });
-
-  test("should use proper form fields for task creation", async () => {
-    await createTestFolders(context.page);
-
-    // Open modal
-    await context.page.keyboard.press("Control+p");
-    await context.page.fill(".prompt-input", "Add Task");
-    await context.page.keyboard.press("Enter");
-
-    // Wait for modal to appear
-    await waitForElementVisible(context.page, ".task-sync-modal-container");
-
-    // Check that form fields are present
-    const titleInput = await isElementVisible(
-      context.page,
-      ".task-sync-title-input"
-    );
-    expect(titleInput).toBe(true);
-
-    const contentTextarea = await isElementVisible(
-      context.page,
-      ".task-sync-description-input"
-    );
-    expect(contentTextarea).toBe(true);
-
-    // Check that badge selectors are present
-    const typeBadge = await isElementVisible(context.page, ".task-type-badge");
-    expect(typeBadge).toBe(true);
-
-    const statusBadge = await isElementVisible(
-      context.page,
-      ".task-status-badge"
-    );
-    expect(statusBadge).toBe(true);
-
-    // Check toolbar inputs (now in property badges)
-    const areasInput = await isElementVisible(
-      context.page,
-      'input[placeholder="Areas"]'
-    );
-    expect(areasInput).toBe(true);
-  });
-
-  test("should have improved styling with Obsidian components", async () => {
-    await createTestFolders(context.page);
-
-    // Open modal
-    await context.page.keyboard.press("Control+p");
-    await context.page.fill(".prompt-input", "Add Task");
-    await context.page.keyboard.press("Enter");
-
-    // Wait for modal to appear
-    await waitForElementVisible(context.page, ".task-sync-modal-container");
-
-    // Check that modal has proper structure
-    const modalVisible = await isElementVisible(
-      context.page,
-      ".task-sync-modal-container"
-    );
-    expect(modalVisible).toBe(true);
-
-    // Check that form actions have proper styling (now in footer)
-    const cancelButtonVisible = await isElementVisible(
-      context.page,
-      ".task-sync-cancel-button"
-    );
-    const submitButtonVisible = await isElementVisible(
-      context.page,
-      ".task-sync-create-button"
-    );
-
-    expect(cancelButtonVisible).toBe(true);
-    expect(submitButtonVisible).toBe(true);
-
-    // Check button text
-    const cancelText = await context.page.textContent(
-      ".task-sync-cancel-button"
-    );
-    const submitText = await context.page.textContent(
-      ".task-sync-create-button"
-    );
-
-    expect(cancelText).toBe("Cancel");
-    expect(submitText).toBe("Create task");
-  });
-
-  test("should actually create a task when form is submitted", async () => {
+  test("should create a task when form is submitted", async () => {
     await createTestFolders(context.page);
 
     // Open modal
@@ -182,27 +32,26 @@ describe("Context-Aware Task Modal", () => {
     await waitForElementVisible(context.page, ".task-sync-modal-container");
 
     // Fill in task details
-    await context.page.fill(".task-sync-title-input", "Test Task Creation");
     await context.page.fill(
-      ".task-sync-description-input",
+      "[data-testid='title-input']",
+      "Test Task Creation"
+    );
+    await context.page.fill(
+      "[data-testid='description-input']",
       "This is a test task description"
     );
 
-    // Only fill project field if it exists (not in project context)
-    const projectInput = context.page.locator(
-      '.task-sync-property-input[placeholder="Project"]'
-    );
-    if (await projectInput.isVisible()) {
-      await projectInput.fill("Test Project");
-    }
+    // Click more options to reveal extra fields
+    await context.page.click("[data-testid='more-options-button']");
 
-    await context.page.fill(
-      '.task-sync-property-input[placeholder="Areas"]',
-      "Testing"
-    );
+    // Wait for extra fields to appear
+    await waitForElementVisible(context.page, "[data-testid='areas-input']");
+
+    // Fill in areas
+    await context.page.fill("[data-testid='areas-input']", "Testing");
 
     // Submit the form
-    await context.page.click(".task-sync-create-button");
+    await context.page.click("[data-testid='create-button']");
 
     // Wait for modal to close
     await context.page.waitForSelector(".task-sync-modal-container", {

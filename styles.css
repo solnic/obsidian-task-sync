@@ -886,6 +886,8 @@ Provides consistent styling for all UI components
   letter-spacing: 0.5px;
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  min-width: 60px;
+  text-align: center;
 }
 
 /* Task Priority Badge Styles */
@@ -899,6 +901,8 @@ Provides consistent styling for all UI components
   letter-spacing: 0.5px;
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  min-width: 60px;
+  text-align: center;
 }
 
 /* Task Status Badge Styles */
@@ -912,6 +916,23 @@ Provides consistent styling for all UI components
   letter-spacing: 0.5px;
   color: white;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Placeholder Badge Styles */
+.task-sync-placeholder-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.75em;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  background-color: var(--background-modifier-border);
+  min-width: 60px;
+  text-align: center;
 }
 
 .task-type-blue {
@@ -1298,39 +1319,15 @@ Provides consistent styling for all UI components
   background: var(--background-primary);
 }
 
-/* Header */
-.task-sync-modal-header {
-  padding: 20px 32px 16px;
-  border-bottom: 1px solid var(--background-modifier-border);
-}
 
-.task-sync-breadcrumb-title {
-  font-size: 1.1em;
-  font-weight: 500;
-  color: var(--text-normal);
-}
-
-.task-sync-breadcrumb-segment {
-  color: var(--text-muted);
-}
-
-.task-sync-breadcrumb-separator {
-  margin: 0 8px;
-  color: var(--text-faint);
-}
-
-.task-sync-breadcrumb-current {
-  color: var(--text-normal);
-  font-weight: 600;
-}
 
 /* Main content */
 .task-sync-main-content {
   flex: 1;
-  padding: 24px 32px;
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .task-sync-title-input {
@@ -1370,7 +1367,7 @@ Provides consistent styling for all UI components
 
 /* Properties toolbar */
 .task-sync-properties-toolbar {
-  padding: 20px 32px;
+  padding: 16px 24px 0;
 }
 
 .task-sync-property-badges {
@@ -1383,7 +1380,6 @@ Provides consistent styling for all UI components
 .task-sync-property-badge {
   cursor: pointer;
   transition: all 0.1s ease;
-  min-width: 80px;
 }
 
 .task-sync-property-badge:hover {
@@ -1411,7 +1407,7 @@ Provides consistent styling for all UI components
 
 /* Footer */
 .task-sync-modal-footer {
-  padding: 20px 32px;
+  padding: 16px 24px 24px;
   border-top: 1px solid var(--background-modifier-border);
 }
 
@@ -1911,4 +1907,282 @@ Provides consistent styling for all UI components
 
 .github-issues-content::-webkit-scrollbar-thumb:hover {
   background: var(--background-modifier-border-hover);
+}
+
+/* Linear-inspired Task Create Modal Styles */
+.task-sync-modal {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 90vw;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.task-sync-modal-header {
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--background-primary);
+}
+
+.task-sync-modal-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-normal);
+  margin: 0;
+}
+
+.task-sync-breadcrumb {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.task-sync-breadcrumb-separator {
+  color: var(--text-faint);
+}
+
+.task-sync-close-button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 16px;
+}
+
+.task-sync-close-button:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.task-sync-modal-content {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.task-sync-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.task-sync-title-input {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 16px;
+  color: var(--text-normal);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.task-sync-title-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.task-sync-title-input::placeholder {
+  color: var(--text-faint);
+}
+
+.task-sync-description-area {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  min-height: 120px;
+  resize: vertical;
+  font-family: var(--font-text);
+  font-size: 14px;
+  color: var(--text-normal);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.task-sync-description-area:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.task-sync-description-area::placeholder {
+  color: var(--text-faint);
+}
+
+/* Linear-inspired Properties Toolbar */
+.task-sync-properties-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.task-sync-property-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.task-sync-property-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  height: 32px;
+  box-sizing: border-box;
+  white-space: nowrap;
+}
+
+.task-sync-property-button:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--background-modifier-border-hover);
+}
+
+.task-sync-property-button:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent-hover);
+}
+
+.task-sync-color-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.task-sync-text-button {
+  min-width: 100px;
+  justify-content: flex-start;
+}
+
+.task-sync-button-label {
+  color: var(--text-normal);
+}
+
+.task-sync-more-button {
+  min-width: 32px;
+  justify-content: center;
+  padding: 8px;
+}
+
+.task-sync-more-dots {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+}
+
+.task-sync-more-button:hover .task-sync-more-dots {
+  color: var(--text-normal);
+}
+
+/* Extra fields section */
+.task-sync-extra-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0 0;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.task-sync-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.task-sync-field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.task-sync-field-input {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text-normal);
+  height: 32px;
+  box-sizing: border-box;
+}
+
+.task-sync-field-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 1px var(--interactive-accent-hover);
+}
+
+.task-sync-field-input::placeholder {
+  color: var(--text-faint);
+}
+
+.task-sync-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--background-modifier-border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  background: var(--background-primary);
+}
+
+.task-sync-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  color: var(--text-normal);
+}
+
+.task-sync-button:hover {
+  background: var(--background-modifier-hover);
+}
+
+.task-sync-button.mod-cta {
+  background: var(--interactive-accent);
+  border-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.task-sync-button.mod-cta:hover {
+  background: var(--interactive-accent-hover);
+  border-color: var(--interactive-accent-hover);
 }

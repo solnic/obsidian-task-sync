@@ -90,6 +90,9 @@
     ...initialData,
   });
 
+  // UI state
+  let showExtraFields = $state(false);
+
   // Context-aware pre-filling
   $effect(() => {
     if (context.type === "project" && context.name) {
@@ -161,8 +164,18 @@
       plugin.settings.taskTypes[0];
 
     categoryBadgeEl.innerHTML = "";
-    const badge = createTypeBadge(selectedType, "task-sync-clickable-badge");
-    categoryBadgeEl.appendChild(badge);
+
+    // Create color dot
+    const dot = document.createElement("span");
+    dot.className = "task-sync-color-dot";
+    dot.style.backgroundColor = selectedType.color;
+
+    // Create label
+    const label = document.createElement("span");
+    label.textContent = selectedType.name;
+
+    categoryBadgeEl.appendChild(dot);
+    categoryBadgeEl.appendChild(label);
   }
 
   function updatePriorityBadge() {
@@ -173,17 +186,26 @@
 
     priorityBadgeEl.innerHTML = "";
     if (selectedPriority) {
-      const badge = createPriorityBadge(
-        selectedPriority,
-        "task-sync-clickable-badge"
-      );
-      priorityBadgeEl.appendChild(badge);
+      // Create color dot
+      const dot = document.createElement("span");
+      dot.className = "task-sync-color-dot";
+      dot.style.backgroundColor = selectedPriority.color;
+
+      // Create label
+      const label = document.createElement("span");
+      label.textContent = selectedPriority.name;
+
+      priorityBadgeEl.appendChild(dot);
+      priorityBadgeEl.appendChild(label);
     } else {
-      const placeholder = document.createElement("span");
-      placeholder.textContent = "Set priority";
-      placeholder.className = "task-sync-placeholder-badge";
-      priorityBadgeEl.appendChild(placeholder);
+      const label = document.createElement("span");
+      label.textContent = "Priority";
+      priorityBadgeEl.appendChild(label);
     }
+  }
+
+  function toggleExtraFields() {
+    showExtraFields = !showExtraFields;
   }
 
   function updateStatusBadge() {
@@ -193,11 +215,18 @@
       plugin.settings.taskStatuses[0];
 
     statusBadgeEl.innerHTML = "";
-    const badge = createStatusBadge(
-      selectedStatus,
-      "task-sync-clickable-badge"
-    );
-    statusBadgeEl.appendChild(badge);
+
+    // Create color dot
+    const dot = document.createElement("span");
+    dot.className = "task-sync-color-dot";
+    dot.style.backgroundColor = selectedStatus.color;
+
+    // Create label
+    const label = document.createElement("span");
+    label.textContent = selectedStatus.name;
+
+    statusBadgeEl.appendChild(dot);
+    statusBadgeEl.appendChild(label);
   }
 
   function handleCategoryClick() {
@@ -208,6 +237,31 @@
   function handlePriorityClick() {
     // Create dropdown menu for priority selection
     showPrioritySelector();
+  }
+
+  function handleProjectClick() {
+    // Create dropdown menu for project selection
+    showProjectSelector();
+  }
+
+  function showProjectSelector() {
+    if (!projectSuggestions.length) return;
+
+    const projectButton = document.querySelector(
+      ".task-sync-text-button"
+    ) as HTMLElement;
+    if (!projectButton) return;
+
+    const menu = createSelectorMenu(projectButton);
+
+    projectSuggestions.forEach((projectName) => {
+      const item = menu.createDiv("task-sync-selector-item");
+      item.textContent = projectName;
+      item.addEventListener("click", () => {
+        formData.project = projectName;
+        menu.remove();
+      });
+    });
   }
 
   function handleStatusClick() {
@@ -331,27 +385,6 @@
 </script>
 
 <div class="task-sync-modal-container">
-  <!-- Simple header with breadcrumb-style title -->
-  <div class="task-sync-modal-header">
-    <div class="task-sync-breadcrumb-title">
-      {#if context.type === "project"}
-        <span class="task-sync-breadcrumb-segment">Projects</span>
-        <span class="task-sync-breadcrumb-separator">/</span>
-        <span class="task-sync-breadcrumb-segment">{context.name}</span>
-        <span class="task-sync-breadcrumb-separator">/</span>
-        <span class="task-sync-breadcrumb-current">New Task</span>
-      {:else if context.type === "area"}
-        <span class="task-sync-breadcrumb-segment">Areas</span>
-        <span class="task-sync-breadcrumb-separator">/</span>
-        <span class="task-sync-breadcrumb-segment">{context.name}</span>
-        <span class="task-sync-breadcrumb-separator">/</span>
-        <span class="task-sync-breadcrumb-current">New Task</span>
-      {:else}
-        <span class="task-sync-breadcrumb-current">New Task</span>
-      {/if}
-    </div>
-  </div>
-
   <!-- Main content area -->
   <div class="task-sync-main-content">
     <!-- Title input -->
@@ -361,6 +394,7 @@
       type="text"
       placeholder="Task title"
       class="task-sync-title-input"
+      data-testid="title-input"
     />
 
     <!-- Description textarea -->
@@ -369,84 +403,119 @@
       bind:value={formData.content}
       placeholder="Add description..."
       class="task-sync-description-input"
+      data-testid="description-input"
       rows="8"
     ></textarea>
   </div>
 
   <!-- Properties toolbar -->
   <div class="task-sync-properties-toolbar">
-    <!-- Property badges row -->
-    <div class="task-sync-property-badges">
-      <!-- Status Badge (FIRST) -->
-      <div
+    <!-- Main property controls row -->
+    <div class="task-sync-property-controls">
+      <!-- Status Button -->
+      <button
+        type="button"
         bind:this={statusBadgeEl}
         onclick={handleStatusClick}
-        role="button"
-        tabindex="0"
-        onkeydown={(e) => e.key === "Enter" && handleStatusClick()}
-        class="task-sync-property-badge"
-      ></div>
+        class="task-sync-property-button"
+        data-testid="status-badge"
+        aria-label="Select status"
+      ></button>
 
-      <!-- Priority Badge -->
-      <div
-        bind:this={priorityBadgeEl}
-        onclick={handlePriorityClick}
-        role="button"
-        tabindex="0"
-        onkeydown={(e) => e.key === "Enter" && handlePriorityClick()}
-        class="task-sync-property-badge"
-      ></div>
-
-      <!-- Type Badge -->
-      <div
+      <!-- Type Button -->
+      <button
+        type="button"
         bind:this={categoryBadgeEl}
         onclick={handleCategoryClick}
-        role="button"
-        tabindex="0"
-        onkeydown={(e) => e.key === "Enter" && handleCategoryClick()}
-        class="task-sync-property-badge"
-      ></div>
+        class="task-sync-property-button"
+        data-testid="type-badge"
+        aria-label="Select type"
+      ></button>
 
-      <!-- Project Input (only if not in project context) -->
+      <!-- Priority Button -->
+      <button
+        type="button"
+        bind:this={priorityBadgeEl}
+        onclick={handlePriorityClick}
+        class="task-sync-property-button"
+        data-testid="priority-badge"
+        aria-label="Select priority"
+      ></button>
+
+      <!-- Project Button (only if not in project context) -->
       {#if context.type !== "project"}
-        <input
-          bind:this={projectInput}
-          bind:value={formData.project}
-          type="text"
-          placeholder="Project"
-          class="task-sync-property-input"
-        />
+        <button
+          type="button"
+          onclick={handleProjectClick}
+          class="task-sync-property-button task-sync-text-button"
+          data-testid="project-button"
+        >
+          <span class="task-sync-button-label">
+            {formData.project || "Project"}
+          </span>
+        </button>
       {/if}
 
-      <!-- Areas Input (only if not in area context) -->
-      {#if context.type !== "area"}
-        <input
-          bind:this={areasInput}
-          value={formData.areas.join(", ")}
-          oninput={handleAreasChange}
-          type="text"
-          placeholder="Areas"
-          class="task-sync-property-input"
-        />
-      {/if}
-
-      <!-- Parent Task Input -->
-      <input
-        bind:value={formData.parentTask}
-        type="text"
-        placeholder="Parent task (optional)"
-        class="task-sync-property-input"
-      />
-
-      <!-- Tags Input -->
-      <input
-        value={formData.tags.join(", ")}
-        oninput={handleTagsChange}
-        type="text"
-        placeholder="Tags"
-        class="task-sync-property-input"
-      />
+      <!-- More options button -->
+      <button
+        type="button"
+        onclick={toggleExtraFields}
+        class="task-sync-property-button task-sync-more-button"
+        data-testid="more-options-button"
+        title="More options"
+      >
+        <span class="task-sync-more-dots">⋯</span>
+      </button>
     </div>
+
+    <!-- Extra fields (collapsible) -->
+    {#if showExtraFields}
+      <div class="task-sync-extra-fields">
+        <!-- Areas Input (only if not in area context) -->
+        {#if context.type !== "area"}
+          <div class="task-sync-field-group">
+            <label class="task-sync-field-label" for="areas-input">Areas</label>
+            <input
+              id="areas-input"
+              bind:this={areasInput}
+              value={formData.areas.join(", ")}
+              oninput={handleAreasChange}
+              type="text"
+              placeholder="Enter areas..."
+              class="task-sync-field-input"
+              data-testid="areas-input"
+            />
+          </div>
+        {/if}
+
+        <!-- Parent Task Input -->
+        <div class="task-sync-field-group">
+          <label class="task-sync-field-label" for="parent-task-input"
+            >Parent Task</label
+          >
+          <input
+            id="parent-task-input"
+            bind:value={formData.parentTask}
+            type="text"
+            placeholder="Link to parent task..."
+            class="task-sync-field-input"
+          />
+        </div>
+
+        <!-- Tags Input -->
+        <div class="task-sync-field-group">
+          <label class="task-sync-field-label" for="tags-input">Tags</label>
+          <input
+            id="tags-input"
+            value={formData.tags.join(", ")}
+            oninput={handleTagsChange}
+            type="text"
+            placeholder="Enter tags..."
+            class="task-sync-field-input"
+          />
+        </div>
+      </div>
+    {/if}
   </div>
 
   <!-- Footer with action buttons -->
@@ -455,13 +524,15 @@
       <button
         type="button"
         class="task-sync-cancel-button"
+        data-testid="cancel-button"
         onclick={handleCancel}
       >
         Cancel
       </button>
       <button
         type="button"
-        class="task-sync-create-button"
+        class="task-sync-create-button mod-cta"
+        data-testid="create-button"
         onclick={handleSubmit}
       >
         Create task
