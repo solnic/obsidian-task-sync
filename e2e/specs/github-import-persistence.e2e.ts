@@ -129,9 +129,9 @@ describe("GitHub Import Status Persistence", () => {
     // Verify import status is recorded by checking if task file exists
     const importStatusBeforeRestart = await context.page.evaluate(() => {
       const app = (window as any).app;
-      // Check if the task file exists in the vault
+      // Check if the task file exists in the vault (using the actual issue title)
       const taskFile = app.vault.getAbstractFileByPath(
-        "Tasks/Test GitHub Issue.md"
+        "Tasks/Test import persistence issue.md"
       );
       return taskFile !== null;
     });
@@ -158,7 +158,7 @@ describe("GitHub Import Status Persistence", () => {
       const app = (window as any).app;
       // Check if the task file still exists in the vault after restart
       const taskFile = app.vault.getAbstractFileByPath(
-        "Tasks/Test GitHub Issue.md"
+        "Tasks/Test import persistence issue.md"
       );
       return taskFile !== null;
     });
