@@ -21,6 +21,8 @@
     "test:headless-detection": "node scripts/test-headless-detection.js",
     "test:xvfb": "node scripts/test-xvfb-electron.js",
     "validate:headless": "node scripts/validate-headless-setup.js",
+    "dev:obsidian:open_test_vault": "bash scripts/dev-obsidian-open-test-vault.sh",
+    "dev:obsidian:install": "bash scripts/dev-obsidian-install.sh",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [
