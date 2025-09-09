@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { getPluginContext } from "./context";
+  import ContextWidget from "./ContextWidget.svelte";
   import type {
     GitHubIssue,
     GitHubRepository,
@@ -244,6 +245,9 @@
 </script>
 
 <div class="github-issues-view" data-type="github-issues">
+  <!-- Context Widget -->
+  <ContextWidget />
+
   <!-- Header Section -->
   <div class="github-issues-header">
     <!-- Tab header -->

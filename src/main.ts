@@ -52,6 +52,7 @@ import {
 } from "./views/GitHubIssuesView";
 import { TaskImportConfig } from "./types/integrations";
 import { TodoPromotionService } from "./services/TodoPromotionService";
+import { initializeContextStore } from "./components/svelte/context";
 
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
@@ -208,6 +209,9 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize context tracking system
     this.initializeContextTracking();
+
+    // Initialize Svelte context store
+    initializeContextStore(this);
 
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
