@@ -45,12 +45,12 @@ import {
 } from "./components/ui/settings";
 import { GitHubService } from "./services/GitHubService";
 import { TaskImportManager } from "./services/TaskImportManager";
-import { ImportStatusService } from "./services/ImportStatusService";
 import {
   GitHubIssuesView,
   GITHUB_ISSUES_VIEW_TYPE,
 } from "./views/GitHubIssuesView";
 import { TaskImportConfig } from "./types/integrations";
+import { taskStore } from "./stores/taskStore";
 import { TodoPromotionService } from "./services/TodoPromotionService";
 import { initializeContextStore } from "./components/svelte/context";
 
@@ -94,7 +94,6 @@ export default class TaskSyncPlugin extends Plugin {
   entityCacheHandler: EntityCacheHandler;
   githubService: GitHubService;
   taskImportManager: TaskImportManager;
-  importStatusService: ImportStatusService;
   taskFileManager: TaskFileManager;
   areaFileManager: AreaFileManager;
   projectFileManager: ProjectFileManager;
@@ -131,7 +130,6 @@ export default class TaskSyncPlugin extends Plugin {
       this.app.vault,
       this.settings
     );
-    this.importStatusService = new ImportStatusService(this);
     this.taskFileManager = new TaskFileManager(
       this.app,
       this.app.vault,
@@ -161,14 +159,11 @@ export default class TaskSyncPlugin extends Plugin {
       () => this.refreshBaseViews()
     );
 
-    // Initialize import status service with persisted data
-    await this.importStatusService.initialize();
+    // Initialize task store
+    taskStore.initialize(this.app, this.settings.tasksFolder);
 
     // Wire up GitHub service with import dependencies
-    this.githubService.setImportDependencies(
-      this.taskImportManager,
-      this.importStatusService
-    );
+    this.githubService.setImportDependencies(this.taskImportManager);
 
     // Initialize storage service
     await this.storageService.initialize();
@@ -226,7 +221,6 @@ export default class TaskSyncPlugin extends Plugin {
           { githubIntegration: this.settings.githubIntegration },
           {
             taskImportManager: this.taskImportManager,
-            importStatusService: this.importStatusService,
             getDefaultImportConfig: () => this.getDefaultImportConfig(),
           }
         )
@@ -320,9 +314,7 @@ export default class TaskSyncPlugin extends Plugin {
   async onunload() {
     console.log("Unloading Task Sync Plugin");
 
-    if (this.importStatusService) {
-      await this.importStatusService.onUnload();
-    }
+    // Task store cleanup is handled automatically
 
     if (this.storageService) {
       await this.storageService.onUnload();

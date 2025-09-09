@@ -3,133 +3,159 @@
  * Tests transformation and import logic without Obsidian APIs
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { ExternalTaskData, TaskImportConfig, ImportResult } from '../../../src/types/integrations';
-import type { GitHubIssue } from '../../../src/services/GitHubService';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import type {
+  ExternalTaskData,
+  TaskImportConfig,
+  ImportResult,
+} from "../../../src/types/integrations";
+import type { GitHubIssue } from "../../../src/services/GitHubService";
 
 // Mock TaskImportManager for testing
 const mockTaskImportManager = {
-  createTaskFromData: vi.fn()
+  createTaskFromData: vi.fn(),
 };
 
-// Mock ImportStatusService for testing
-const mockImportStatusService = {
-  isTaskImported: vi.fn(),
-  recordImport: vi.fn()
-};
+// Mock task store for testing
+vi.mock("../../../src/stores/taskStore", () => ({
+  taskStore: {
+    isTaskImported: vi.fn(),
+    initialize: vi.fn(),
+    clear: vi.fn(),
+  },
+}));
 
 // Mock settings - using full TaskSyncSettings structure
 const mockSettings = {
-  tasksFolder: 'Tasks',
-  projectsFolder: 'Projects',
-  areasFolder: 'Areas',
-  templateFolder: 'Templates',
+  tasksFolder: "Tasks",
+  projectsFolder: "Projects",
+  areasFolder: "Areas",
+  templateFolder: "Templates",
   useTemplater: false,
-  defaultTaskTemplate: 'Task.md',
-  defaultProjectTemplate: 'project-template.md',
-  defaultAreaTemplate: 'area-template.md',
-  defaultParentTaskTemplate: 'parent-task-template.md',
-  basesFolder: 'Bases',
-  tasksBaseFile: 'Tasks.base',
+  defaultTaskTemplate: "Task.md",
+  defaultProjectTemplate: "project-template.md",
+  defaultAreaTemplate: "area-template.md",
+  defaultParentTaskTemplate: "parent-task-template.md",
+  basesFolder: "Bases",
+  tasksBaseFile: "Tasks.base",
   autoGenerateBases: true,
   autoUpdateBaseViews: true,
   taskTypes: [
-    { name: 'Bug', color: '#ff4444' },
-    { name: 'Feature', color: '#44ff44' },
-    { name: 'Improvement', color: '#4444ff' },
-    { name: 'Chore', color: '#ffff44' },
-    { name: 'Task', color: '#888888' }
+    { name: "Bug", color: "#ff4444" },
+    { name: "Feature", color: "#44ff44" },
+    { name: "Improvement", color: "#4444ff" },
+    { name: "Chore", color: "#ffff44" },
+    { name: "Task", color: "#888888" },
   ],
   taskPriorities: [
-    { name: 'Low', color: 'green' },
-    { name: 'Medium', color: 'yellow' },
-    { name: 'High', color: 'orange' },
-    { name: 'Urgent', color: 'red' }
+    { name: "Low", color: "green" },
+    { name: "Medium", color: "yellow" },
+    { name: "High", color: "orange" },
+    { name: "Urgent", color: "red" },
   ],
   taskStatuses: [
-    { name: 'Backlog', color: 'gray', isDone: false, isInProgress: false },
-    { name: 'In Progress', color: 'blue', isDone: false, isInProgress: true },
-    { name: 'Done', color: 'green', isDone: true, isInProgress: false }
+    { name: "Backlog", color: "gray", isDone: false, isInProgress: false },
+    { name: "In Progress", color: "blue", isDone: false, isInProgress: true },
+    { name: "Done", color: "green", isDone: true, isInProgress: false },
   ],
   areaBasesEnabled: true,
   projectBasesEnabled: true,
   autoSyncAreaProjectBases: true,
-  taskPropertyOrder: ['TITLE', 'TYPE', 'PRIORITY', 'AREAS', 'PROJECT', 'DONE', 'STATUS', 'PARENT_TASK', 'TAGS'],
+  taskPropertyOrder: [
+    "TITLE",
+    "TYPE",
+    "PRIORITY",
+    "AREAS",
+    "PROJECT",
+    "DONE",
+    "STATUS",
+    "PARENT_TASK",
+    "TAGS",
+  ],
   githubIntegration: {
     enabled: true,
-    personalAccessToken: 'test-token',
-    repositories: ['owner/repo'],
-    defaultRepository: 'owner/repo',
+    personalAccessToken: "test-token",
+    repositories: ["owner/repo"],
+    defaultRepository: "owner/repo",
     issueFilters: {
-      state: 'open' as const,
-      assignee: '',
-      labels: [] as string[]
+      state: "open" as const,
+      assignee: "",
+      labels: [] as string[],
     },
     labelTypeMapping: {
-      'bug': 'Bug',
-      'enhancement': 'Feature'
-    }
-  }
+      bug: "Bug",
+      enhancement: "Feature",
+    },
+  },
 };
 
-describe('GitHubService Import Functionality - Pure Logic', () => {
+describe("GitHubService Import Functionality - Pure Logic", () => {
   let githubService: any;
+  let mockTaskStore: any;
 
   beforeEach(async () => {
     vi.clearAllMocks();
 
     // Import the service fresh for each test
-    const { GitHubService } = await import('../../../src/services/GitHubService');
+    const { GitHubService } = await import(
+      "../../../src/services/GitHubService"
+    );
+    const { taskStore } = await import("../../../src/stores/taskStore");
+
     githubService = new GitHubService(mockSettings);
+    mockTaskStore = taskStore;
 
     // Inject mock dependencies for testing import functionality
     githubService.taskImportManager = mockTaskImportManager;
-    githubService.importStatusService = mockImportStatusService;
   });
 
-  it('should transform GitHub issue to ExternalTaskData', () => {
+  it("should transform GitHub issue to ExternalTaskData", () => {
     const githubIssue: GitHubIssue = {
       id: 123,
       number: 456,
-      title: 'Fix login bug',
-      body: 'Users cannot login with special characters',
-      state: 'open',
-      assignee: { login: 'developer' },
-      labels: [{ name: 'bug' }, { name: 'priority:high' }],
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-02T00:00:00Z',
-      html_url: 'https://github.com/owner/repo/issues/456'
+      title: "Fix login bug",
+      body: "Users cannot login with special characters",
+      state: "open",
+      assignee: { login: "developer" },
+      labels: [{ name: "bug" }, { name: "priority:high" }],
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-02T00:00:00Z",
+      html_url: "https://github.com/owner/repo/issues/456",
     };
 
     const taskData = githubService.transformIssueToTaskData(githubIssue);
 
-    expect(taskData.id).toBe('github-123');
-    expect(taskData.title).toBe('Fix login bug');
-    expect(taskData.description).toBe('Users cannot login with special characters');
-    expect(taskData.status).toBe('open');
-    expect(taskData.assignee).toBe('developer');
-    expect(taskData.labels).toEqual(['bug', 'priority:high']);
-    expect(taskData.externalUrl).toBe('https://github.com/owner/repo/issues/456');
-    expect(taskData.sourceType).toBe('github');
+    expect(taskData.id).toBe("github-123");
+    expect(taskData.title).toBe("Fix login bug");
+    expect(taskData.description).toBe(
+      "Users cannot login with special characters"
+    );
+    expect(taskData.status).toBe("open");
+    expect(taskData.assignee).toBe("developer");
+    expect(taskData.labels).toEqual(["bug", "priority:high"]);
+    expect(taskData.externalUrl).toBe(
+      "https://github.com/owner/repo/issues/456"
+    );
+    expect(taskData.sourceType).toBe("github");
     expect(taskData.sourceData).toEqual({
       number: 456,
-      state: 'open',
-      id: 123
+      state: "open",
+      id: 123,
     });
   });
 
-  it('should handle GitHub issue with null body and assignee', () => {
+  it("should handle GitHub issue with null body and assignee", () => {
     const githubIssue: GitHubIssue = {
       id: 789,
       number: 101,
-      title: 'Update documentation',
+      title: "Update documentation",
       body: null,
-      state: 'closed',
+      state: "closed",
       assignee: null,
       labels: [],
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      html_url: 'https://github.com/owner/repo/issues/101'
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      html_url: "https://github.com/owner/repo/issues/101",
     };
 
     const taskData = githubService.transformIssueToTaskData(githubIssue);
@@ -139,102 +165,103 @@ describe('GitHubService Import Functionality - Pure Logic', () => {
     expect(taskData.labels).toEqual([]);
   });
 
-  it('should extract priority from GitHub labels', () => {
+  it("should extract priority from GitHub labels", () => {
     const labelsWithPriority = [
-      { name: 'bug' },
-      { name: 'priority:urgent' },
-      { name: 'frontend' }
+      { name: "bug" },
+      { name: "priority:urgent" },
+      { name: "frontend" },
     ];
 
-    const priority = githubService.extractPriorityFromLabels(labelsWithPriority);
-    expect(priority).toBe('Urgent');
+    const priority =
+      githubService.extractPriorityFromLabels(labelsWithPriority);
+    expect(priority).toBe("Urgent");
   });
 
-  it('should handle labels without priority', () => {
+  it("should handle labels without priority", () => {
     const labelsWithoutPriority = [
-      { name: 'bug' },
-      { name: 'frontend' },
-      { name: 'enhancement' }
+      { name: "bug" },
+      { name: "frontend" },
+      { name: "enhancement" },
     ];
 
-    const priority = githubService.extractPriorityFromLabels(labelsWithoutPriority);
+    const priority = githubService.extractPriorityFromLabels(
+      labelsWithoutPriority
+    );
     expect(priority).toBeUndefined();
   });
 
-  it('should import GitHub issue as task successfully', async () => {
+  it("should import GitHub issue as task successfully", async () => {
     const githubIssue: GitHubIssue = {
       id: 999,
       number: 888,
-      title: 'New feature request',
-      body: 'Add user dashboard functionality',
-      state: 'open',
-      assignee: { login: 'product-manager' },
-      labels: [{ name: 'enhancement' }, { name: 'priority:medium' }],
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      html_url: 'https://github.com/owner/repo/issues/888'
+      title: "New feature request",
+      body: "Add user dashboard functionality",
+      state: "open",
+      assignee: { login: "product-manager" },
+      labels: [{ name: "enhancement" }, { name: "priority:medium" }],
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      html_url: "https://github.com/owner/repo/issues/888",
     };
 
     const config: TaskImportConfig = {
-      targetArea: 'Product',
-      taskType: 'Feature',
-      importLabelsAsTags: true
+      targetArea: "Product",
+      taskType: "Feature",
+      importLabelsAsTags: true,
     };
 
     // Mock successful task creation
-    mockTaskImportManager.createTaskFromData.mockResolvedValue('Areas/Product/Tasks/New feature request.md');
-    mockImportStatusService.isTaskImported.mockReturnValue(false);
+    mockTaskImportManager.createTaskFromData.mockResolvedValue(
+      "Areas/Product/Tasks/New feature request.md"
+    );
+    mockTaskStore.isTaskImported.mockReturnValue(false);
 
     const result = await githubService.importIssueAsTask(githubIssue, config);
 
     expect(result.success).toBe(true);
-    expect(result.taskPath).toBe('Areas/Product/Tasks/New feature request.md');
+    expect(result.taskPath).toBe("Areas/Product/Tasks/New feature request.md");
     expect(result.error).toBeUndefined();
 
     // Verify TaskImportManager was called with correct data
     expect(mockTaskImportManager.createTaskFromData).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: 'github-999',
-        title: 'New feature request',
-        sourceType: 'github'
+        id: "github-999",
+        title: "New feature request",
+        sourceType: "github",
       }),
       config
     );
 
-    // Verify import was recorded
-    expect(mockImportStatusService.recordImport).toHaveBeenCalledWith(
-      expect.objectContaining({
-        externalId: 'github-999',
-        externalSource: 'github',
-        taskPath: 'Areas/Product/Tasks/New feature request.md'
-      })
-    );
+    // Task store will automatically pick up the new task via file watchers
+    // No explicit recording needed
   });
 
-  it('should map GitHub labels to task types', async () => {
+  it("should map GitHub labels to task types", async () => {
     const githubIssue: GitHubIssue = {
       id: 555,
       number: 666,
-      title: 'Bug fix needed',
-      body: 'Fix critical bug',
-      state: 'open',
+      title: "Bug fix needed",
+      body: "Fix critical bug",
+      state: "open",
       assignee: null,
-      labels: [{ name: 'bug' }, { name: 'priority:high' }],
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      html_url: 'https://github.com/owner/repo/issues/666'
+      labels: [{ name: "bug" }, { name: "priority:high" }],
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      html_url: "https://github.com/owner/repo/issues/666",
     };
 
     // Mock label mapping configuration
-    const labelMapping = { 'bug': 'Bug', 'enhancement': 'Feature' };
+    const labelMapping = { bug: "Bug", enhancement: "Feature" };
     githubService.setLabelTypeMapping(labelMapping);
 
     const config: TaskImportConfig = {
-      targetArea: 'Development'
+      targetArea: "Development",
     };
 
-    mockTaskImportManager.createTaskFromData.mockResolvedValue('Areas/Development/Tasks/Bug fix needed.md');
-    mockImportStatusService.isTaskImported.mockReturnValue(false);
+    mockTaskImportManager.createTaskFromData.mockResolvedValue(
+      "Areas/Development/Tasks/Bug fix needed.md"
+    );
+    mockTaskStore.isTaskImported.mockReturnValue(false);
 
     const result = await githubService.importIssueAsTask(githubIssue, config);
 
@@ -243,95 +270,105 @@ describe('GitHubService Import Functionality - Pure Logic', () => {
     // Verify TaskImportManager was called with mapped task type
     expect(mockTaskImportManager.createTaskFromData).toHaveBeenCalledWith(
       expect.objectContaining({
-        id: 'github-555',
-        title: 'Bug fix needed',
-        sourceType: 'github'
+        id: "github-555",
+        title: "Bug fix needed",
+        sourceType: "github",
       }),
       expect.objectContaining({
-        taskType: 'Bug', // Should be mapped from 'bug' label
-        targetArea: 'Development'
+        taskType: "Bug", // Should be mapped from 'bug' label
+        targetArea: "Development",
       })
     );
   });
 
-  it('should handle import failure gracefully', async () => {
+  it("should handle import failure gracefully", async () => {
     const githubIssue: GitHubIssue = {
       id: 111,
       number: 222,
-      title: 'Failing task',
-      body: 'This will fail',
-      state: 'open',
+      title: "Failing task",
+      body: "This will fail",
+      state: "open",
       assignee: null,
       labels: [],
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      html_url: 'https://github.com/owner/repo/issues/222'
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      html_url: "https://github.com/owner/repo/issues/222",
     };
 
     const config: TaskImportConfig = {
-      taskType: 'Task'
+      taskType: "Task",
     };
 
     // Mock task creation failure
-    mockTaskImportManager.createTaskFromData.mockRejectedValue(new Error('Task already exists'));
-    mockImportStatusService.isTaskImported.mockReturnValue(false);
+    mockTaskImportManager.createTaskFromData.mockRejectedValue(
+      new Error("Task already exists")
+    );
+    mockTaskStore.isTaskImported.mockReturnValue(false);
 
     const result = await githubService.importIssueAsTask(githubIssue, config);
 
     expect(result.success).toBe(false);
-    expect(result.error).toBe('Task already exists');
+    expect(result.error).toBe("Task already exists");
     expect(result.taskPath).toBeUndefined();
 
-    // Verify import was not recorded on failure
-    expect(mockImportStatusService.recordImport).not.toHaveBeenCalled();
+    // Task store will not be updated on failure (no file created)
   });
 
-  it('should skip already imported tasks', async () => {
+  it("should skip already imported tasks", async () => {
     const githubIssue: GitHubIssue = {
       id: 333,
       number: 444,
-      title: 'Already imported',
-      body: 'This task was already imported',
-      state: 'open',
+      title: "Already imported",
+      body: "This task was already imported",
+      state: "open",
       assignee: null,
       labels: [],
-      created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z',
-      html_url: 'https://github.com/owner/repo/issues/444'
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      html_url: "https://github.com/owner/repo/issues/444",
     };
 
     const config: TaskImportConfig = {
-      taskType: 'Task'
+      taskType: "Task",
     };
 
     // Mock task already imported
-    mockImportStatusService.isTaskImported.mockReturnValue(true);
+    mockTaskStore.isTaskImported.mockReturnValue(true);
 
     const result = await githubService.importIssueAsTask(githubIssue, config);
 
     expect(result.success).toBe(true);
     expect(result.skipped).toBe(true);
-    expect(result.reason).toBe('Task already imported');
+    expect(result.reason).toBe("Task already imported");
 
     // Verify TaskImportManager was not called
     expect(mockTaskImportManager.createTaskFromData).not.toHaveBeenCalled();
   });
 
-  it('should handle different GitHub issue states', () => {
+  it("should handle different GitHub issue states", () => {
     const openIssue: GitHubIssue = {
-      id: 1, number: 1, title: 'Open', body: null, state: 'open',
-      assignee: null, labels: [], created_at: '2023-01-01T00:00:00Z',
-      updated_at: '2023-01-01T00:00:00Z', html_url: 'https://github.com/test'
+      id: 1,
+      number: 1,
+      title: "Open",
+      body: null,
+      state: "open",
+      assignee: null,
+      labels: [],
+      created_at: "2023-01-01T00:00:00Z",
+      updated_at: "2023-01-01T00:00:00Z",
+      html_url: "https://github.com/test",
     };
 
     const closedIssue: GitHubIssue = {
-      ...openIssue, id: 2, state: 'closed'
+      ...openIssue,
+      id: 2,
+      state: "closed",
     };
 
     const openTaskData = githubService.transformIssueToTaskData(openIssue);
     const closedTaskData = githubService.transformIssueToTaskData(closedIssue);
 
-    expect(openTaskData.status).toBe('open');
-    expect(closedTaskData.status).toBe('closed');
+    expect(openTaskData.status).toBe("open");
+    expect(closedTaskData.status).toBe("closed");
   });
 });

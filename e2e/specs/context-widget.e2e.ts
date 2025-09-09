@@ -17,6 +17,9 @@ describe("ContextWidget", () => {
 
   beforeAll(async () => {
     await createTestFolders(context.page);
+  });
+
+  beforeEach(async () => {
     await toggleSidebar(context.page, "right", true);
   });
 

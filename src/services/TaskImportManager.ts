@@ -3,18 +3,18 @@
  * Handles importing external tasks into Obsidian with proper organization and formatting
  */
 
-import { App, Vault, TFile } from 'obsidian';
-import { ExternalTaskData, TaskImportConfig } from '../types/integrations';
-import { TaskSyncSettings } from '../components/ui/settings/types';
-import { sanitizeFileName } from '../utils/fileNameSanitizer';
-import matter from 'gray-matter';
+import { App, Vault, TFile } from "obsidian";
+import { ExternalTaskData, TaskImportConfig } from "../types/integrations";
+import { TaskSyncSettings } from "../components/ui/settings/types";
+import { sanitizeFileName } from "../utils/fileNameSanitizer";
+import matter from "gray-matter";
 
 export class TaskImportManager {
   constructor(
     private app: App,
     private vault: Vault,
     private settings: TaskSyncSettings
-  ) { }
+  ) {}
 
   /**
    * Update settings reference (for when settings are changed)
@@ -94,13 +94,13 @@ export class TaskImportManager {
     frontMatter.Title = taskData.title;
 
     // Type is always 'Task' for task entities
-    frontMatter.Type = 'Task';
+    frontMatter.Type = "Task";
 
     // Category from config or default
-    frontMatter.Category = config.taskType || 'Task';
+    frontMatter.Category = config.taskType || "Task";
 
     // Priority - extract from external data or labels
-    frontMatter.Priority = this.extractPriority(taskData) || 'Low';
+    frontMatter.Priority = this.extractPriority(taskData) || "Low";
 
     // Areas - from config (using Obsidian note linking syntax)
     frontMatter.Areas = config.targetArea ? [`[[${config.targetArea}]]`] : [];
@@ -117,7 +117,7 @@ export class TaskImportManager {
     frontMatter.Status = this.mapExternalStatus(taskData.status);
 
     // Parent task - empty for imports
-    frontMatter['Parent task'] = '';
+    frontMatter["Parent task"] = "";
 
     // Tags - from labels if configured
     if (config.importLabelsAsTags && taskData.labels) {
@@ -126,6 +126,13 @@ export class TaskImportManager {
       frontMatter.tags = [];
     }
 
+    // Source - internal tracking for imported tasks
+    frontMatter.source = {
+      name: taskData.sourceType,
+      key: taskData.id,
+      url: taskData.externalUrl,
+    };
+
     return frontMatter;
   }
 
@@ -133,20 +140,24 @@ export class TaskImportManager {
    * Generate task content body with external reference
    */
   generateTaskContent(taskData: ExternalTaskData): string {
-    let content = '';
+    let content = "";
 
     // Add description if available
     if (taskData.description) {
-      content += taskData.description + '\n\n';
+      content += taskData.description + "\n\n";
     }
 
     // Add external reference section
-    content += '## External Reference\n\n';
+    content += "## External Reference\n\n";
     content += `**Source:** ${taskData.sourceType}\n`;
     content += `**External ID:** ${taskData.id}\n`;
     content += `**URL:** [View in ${taskData.sourceType}](${taskData.externalUrl})\n`;
-    content += `**Created:** ${taskData.createdAt.toISOString().split('T')[0]}\n`;
-    content += `**Updated:** ${taskData.updatedAt.toISOString().split('T')[0]}\n`;
+    content += `**Created:** ${
+      taskData.createdAt.toISOString().split("T")[0]
+    }\n`;
+    content += `**Updated:** ${
+      taskData.updatedAt.toISOString().split("T")[0]
+    }\n`;
 
     // Add assignee if available
     if (taskData.assignee) {
@@ -155,7 +166,7 @@ export class TaskImportManager {
 
     // Add labels if available
     if (taskData.labels && taskData.labels.length > 0) {
-      content += `**Labels:** ${taskData.labels.join(', ')}\n`;
+      content += `**Labels:** ${taskData.labels.join(", ")}\n`;
     }
 
     return content;
@@ -181,8 +192,8 @@ export class TaskImportManager {
     // Check labels for priority indicators
     if (taskData.labels) {
       for (const label of taskData.labels) {
-        if (label.toLowerCase().includes('priority:')) {
-          const priority = label.split(':')[1]?.trim();
+        if (label.toLowerCase().includes("priority:")) {
+          const priority = label.split(":")[1]?.trim();
           if (priority) {
             return this.normalizePriority(priority);
           }
@@ -190,17 +201,17 @@ export class TaskImportManager {
 
         // Check for common priority labels
         const lowerLabel = label.toLowerCase();
-        if (lowerLabel.includes('urgent') || lowerLabel.includes('critical')) {
-          return 'Urgent';
+        if (lowerLabel.includes("urgent") || lowerLabel.includes("critical")) {
+          return "Urgent";
         }
-        if (lowerLabel.includes('high')) {
-          return 'High';
+        if (lowerLabel.includes("high")) {
+          return "High";
         }
-        if (lowerLabel.includes('medium')) {
-          return 'Medium';
+        if (lowerLabel.includes("medium")) {
+          return "Medium";
         }
-        if (lowerLabel.includes('low')) {
-          return 'Low';
+        if (lowerLabel.includes("low")) {
+          return "Low";
         }
       }
     }
@@ -214,17 +225,17 @@ export class TaskImportManager {
   private normalizePriority(priority: string): string {
     const normalized = priority.toLowerCase();
 
-    if (normalized.includes('urgent') || normalized.includes('critical')) {
-      return 'Urgent';
+    if (normalized.includes("urgent") || normalized.includes("critical")) {
+      return "Urgent";
     }
-    if (normalized.includes('high')) {
-      return 'High';
+    if (normalized.includes("high")) {
+      return "High";
     }
-    if (normalized.includes('medium') || normalized.includes('normal')) {
-      return 'Medium';
+    if (normalized.includes("medium") || normalized.includes("normal")) {
+      return "Medium";
     }
-    if (normalized.includes('low')) {
-      return 'Low';
+    if (normalized.includes("low")) {
+      return "Low";
     }
 
     // Capitalize first letter for unknown priorities
@@ -238,23 +249,23 @@ export class TaskImportManager {
     const status = externalStatus.toLowerCase();
 
     switch (status) {
-      case 'open':
-      case 'todo':
-      case 'new':
-        return 'todo';
-      case 'in_progress':
-      case 'in-progress':
-      case 'working':
-        return 'in-progress';
-      case 'closed':
-      case 'done':
-      case 'completed':
-        return 'done';
-      case 'cancelled':
-      case 'canceled':
-        return 'cancelled';
+      case "open":
+      case "todo":
+      case "new":
+        return "todo";
+      case "in_progress":
+      case "in-progress":
+      case "working":
+        return "in-progress";
+      case "closed":
+      case "done":
+      case "completed":
+        return "done";
+      case "cancelled":
+      case "canceled":
+        return "cancelled";
       default:
-        return 'todo';
+        return "todo";
     }
   }
 
@@ -273,7 +284,7 @@ export class TaskImportManager {
       await this.vault.createFolder(folderPath);
     } catch (error: any) {
       // If the error is that the folder already exists, that's fine
-      if (error.message && error.message.includes('already exists')) {
+      if (error.message && error.message.includes("already exists")) {
         return;
       }
       // Re-throw other errors

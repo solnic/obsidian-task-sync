@@ -14,12 +14,11 @@ import {
   ExternalTaskData,
   TaskImportConfig,
   ImportResult,
-  ImportedTaskMetadata,
 } from "../types/integrations";
 import { TaskImportManager } from "./TaskImportManager";
-import { ImportStatusService } from "./ImportStatusService";
 import { GitHubLabelTypeMapper } from "./GitHubLabelTypeMapper";
 import { LabelTypeMapper } from "../types/label-mapping";
+import { taskStore } from "../stores/taskStore";
 
 export interface GitHubIssue {
   id: number;
@@ -54,7 +53,6 @@ export class GitHubService {
 
   // Import functionality dependencies (injected for testing)
   public taskImportManager?: TaskImportManager;
-  public importStatusService?: ImportStatusService;
 
   constructor(settings: TaskSyncSettings) {
     this.settings = settings;
@@ -73,12 +71,8 @@ export class GitHubService {
   /**
    * Set import dependencies (for dependency injection)
    */
-  setImportDependencies(
-    taskImportManager: TaskImportManager,
-    importStatusService: ImportStatusService
-  ): void {
+  setImportDependencies(taskImportManager: TaskImportManager): void {
     this.taskImportManager = taskImportManager;
-    this.importStatusService = importStatusService;
   }
 
   /**
@@ -276,7 +270,7 @@ export class GitHubService {
     issue: GitHubIssue,
     config: TaskImportConfig
   ): Promise<ImportResult> {
-    if (!this.taskImportManager || !this.importStatusService) {
+    if (!this.taskImportManager) {
       const error =
         "Import dependencies not initialized. Call setImportDependencies() first.";
       throw new Error(error);
@@ -285,13 +279,8 @@ export class GitHubService {
     try {
       const taskData = this.transformIssueToTaskData(issue);
 
-      // Check if task is already imported
-      if (
-        this.importStatusService.isTaskImported(
-          taskData.id,
-          taskData.sourceType
-        )
-      ) {
+      // Check if task is already imported using task store
+      if (taskStore.isTaskImported(taskData.sourceType, taskData.id)) {
         return {
           success: true,
           skipped: true,
@@ -308,19 +297,7 @@ export class GitHubService {
         enhancedConfig
       );
 
-      // Record the import
-      const importMetadata: ImportedTaskMetadata = {
-        externalId: taskData.id,
-        externalSource: taskData.sourceType,
-        taskPath,
-        importedAt: new Date(),
-        lastSyncedAt: new Date(),
-        externalUrl: taskData.externalUrl,
-        importConfig: config,
-      };
-
-      this.importStatusService.recordImport(importMetadata);
-
+      // Task store will automatically pick up the new task via file watchers
       return {
         success: true,
         taskPath,

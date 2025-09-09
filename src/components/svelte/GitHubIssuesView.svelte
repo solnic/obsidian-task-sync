@@ -8,13 +8,13 @@
   } from "../../services/GitHubService";
   import type { GitHubIntegrationSettings } from "../ui/settings/types";
   import type { TaskImportConfig } from "../../types/integrations";
+  import { taskStore } from "../../stores/taskStore";
 
   interface Props {
     githubService: any;
     settings: { githubIntegration: GitHubIntegrationSettings };
     dependencies: {
       taskImportManager: any;
-      importStatusService: any;
       getDefaultImportConfig: () => TaskImportConfig;
     };
   }
@@ -139,15 +139,10 @@
     try {
       issues = await githubService.fetchIssues(currentRepository);
 
-      // Load import status for all issues
+      // Load import status for all issues using task store
       const importedNumbers = new Set<number>();
       for (const issue of issues) {
-        if (
-          dependencies.importStatusService.isTaskImported(
-            `github-${issue.id}`,
-            "github"
-          )
-        ) {
+        if (taskStore.isTaskImported("github", `github-${issue.id}`)) {
           importedNumbers.add(issue.number);
         }
       }
@@ -366,11 +361,10 @@
 
               <!-- Import overlay -->
               {#if hoveredIssue === issue.number}
-                {@const isImported =
-                  dependencies.importStatusService.isTaskImported(
-                    `github-${issue.id}`,
-                    "github"
-                  )}
+                {@const isImported = taskStore.isTaskImported(
+                  "github",
+                  `github-${issue.id}`
+                )}
                 {@const isImporting = importingIssues.has(issue.number)}
                 <div class="import-overlay">
                   <div class="import-actions">

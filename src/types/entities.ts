@@ -3,7 +3,7 @@
  * Implements GTD (Getting Things Done) methodology with hierarchical organization
  */
 
-import { PROPERTY_REGISTRY } from '../services/base-definitions/BaseConfigurations';
+import { PROPERTY_REGISTRY } from "../services/base-definitions/BaseConfigurations";
 
 // Base interface for all entities
 export interface BaseEntity {
@@ -17,19 +17,29 @@ export interface BaseEntity {
 
 // Task status enumeration
 export enum TaskStatus {
-  TODO = 'todo',
-  IN_PROGRESS = 'in-progress',
-  WAITING = 'waiting',
-  DONE = 'done',
-  CANCELLED = 'cancelled'
+  TODO = "todo",
+  IN_PROGRESS = "in-progress",
+  WAITING = "waiting",
+  DONE = "done",
+  CANCELLED = "cancelled",
 }
 
 // Task priority levels
 export enum TaskPriority {
-  LOW = 'low',
-  MEDIUM = 'medium',
-  HIGH = 'high',
-  URGENT = 'urgent'
+  LOW = "low",
+  MEDIUM = "medium",
+  HIGH = "high",
+  URGENT = "urgent",
+}
+
+// External source tracking for imported tasks
+export interface TaskSource {
+  /** Source system name (e.g., 'github', 'linear') */
+  name: string;
+  /** External identifier in the source system */
+  key: string;
+  /** Optional URL to the external task */
+  url?: string;
 }
 
 // Task entity - core unit of work
@@ -64,33 +74,36 @@ export interface Task extends BaseEntity {
   estimatedDuration?: number; // In minutes
   actualDuration?: number; // In minutes
 
+  // External source tracking
+  source?: TaskSource;
+
   // Configuration
   frontmatter: [
-    'TYPE',
-    'TITLE',
-    'CATEGORY',
-    'PRIORITY',
-    'AREAS',
-    'PROJECT',
-    'DONE',
-    'STATUS',
-    'PARENT_TASK',
-    'TAGS'
+    "TYPE",
+    "TITLE",
+    "CATEGORY",
+    "PRIORITY",
+    "AREAS",
+    "PROJECT",
+    "DONE",
+    "STATUS",
+    "PARENT_TASK",
+    "TAGS"
   ];
 
   base: [
-    'TITLE',
-    'TYPE',
-    'CATEGORY',
-    'PRIORITY',
-    'AREAS',
-    'PROJECT',
-    'DONE',
-    'STATUS',
-    'PARENT_TASK',
-    'TAGS',
-    'CREATED_AT',
-    'UPDATED_AT'
+    "TITLE",
+    "TYPE",
+    "CATEGORY",
+    "PRIORITY",
+    "AREAS",
+    "PROJECT",
+    "DONE",
+    "STATUS",
+    "PARENT_TASK",
+    "TAGS",
+    "CREATED_AT",
+    "UPDATED_AT"
   ];
 
   // Template and automation
@@ -101,7 +114,7 @@ export interface Task extends BaseEntity {
 // Recurring task configuration
 export interface RecurringConfig {
   enabled: boolean;
-  pattern: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'custom';
+  pattern: "daily" | "weekly" | "monthly" | "yearly" | "custom";
   interval: number; // For custom patterns
   endDate?: Date;
   lastGenerated?: Date;
@@ -113,7 +126,7 @@ export interface Project extends BaseEntity {
   areaId?: string;
 
   // Status and progress
-  status: 'active' | 'on-hold' | 'completed' | 'cancelled';
+  status: "active" | "on-hold" | "completed" | "cancelled";
   progress: number; // 0-100 percentage
 
   // Scheduling
@@ -140,11 +153,7 @@ export interface Project extends BaseEntity {
   successCriteria: string[];
 
   // Configuration
-  frontmatter: [
-    'TYPE',
-    'TITLE',
-    'AREAS'
-  ];
+  frontmatter: ["TYPE", "TITLE", "AREAS"];
 }
 
 // Area entity - life/work area for organizing projects
@@ -172,17 +181,13 @@ export interface Area extends BaseEntity {
   isActive: boolean;
 
   // Configuration
-  frontmatter: [
-    'TYPE',
-    'TITLE',
-    'PROJECTS'
-  ];
+  frontmatter: ["TYPE", "TITLE", "PROJECTS"];
 }
 
 // Template entity for creating new tasks/projects/areas
 export interface Template extends BaseEntity {
   // Template type
-  type: 'task' | 'project' | 'area' | 'parent-task';
+  type: "task" | "project" | "area" | "parent-task";
 
   // Template content
   content: string; // Markdown template with variables
@@ -200,7 +205,7 @@ export interface Template extends BaseEntity {
 // Template variable definition
 export interface TemplateVariable {
   name: string;
-  type: 'text' | 'date' | 'select' | 'boolean' | 'number';
+  type: "text" | "date" | "select" | "boolean" | "number";
   description?: string;
   required: boolean;
   defaultValue?: any;
@@ -214,14 +219,14 @@ export interface BaseFile extends BaseEntity {
   fileExists: boolean;
 
   // Base file configuration
-  viewType: 'kanban' | 'list' | 'calendar' | 'timeline';
+  viewType: "kanban" | "list" | "calendar" | "timeline";
   filters: BaseFileFilter[];
   sorting: BaseFileSorting;
   grouping?: BaseFileGrouping;
 
   // Content
   entityIds: string[]; // Tasks, projects, or areas to include
-  entityType: 'task' | 'project' | 'area';
+  entityType: "task" | "project" | "area";
 
   // Auto-generation settings
   autoGenerate: boolean;
@@ -232,7 +237,15 @@ export interface BaseFile extends BaseEntity {
 // Base file filter configuration
 export interface BaseFileFilter {
   field: string;
-  operator: 'equals' | 'contains' | 'startsWith' | 'endsWith' | 'greaterThan' | 'lessThan' | 'in' | 'notIn';
+  operator:
+    | "equals"
+    | "contains"
+    | "startsWith"
+    | "endsWith"
+    | "greaterThan"
+    | "lessThan"
+    | "in"
+    | "notIn";
   value: any;
   enabled: boolean;
 }
@@ -240,10 +253,10 @@ export interface BaseFileFilter {
 // Base file sorting configuration
 export interface BaseFileSorting {
   field: string;
-  direction: 'asc' | 'desc';
+  direction: "asc" | "desc";
   secondary?: {
     field: string;
-    direction: 'asc' | 'desc';
+    direction: "asc" | "desc";
   };
 }
 

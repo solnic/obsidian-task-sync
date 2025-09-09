@@ -126,17 +126,14 @@ describe("GitHub Import Status Persistence", () => {
 
     expect(hasImportedStatus).toBe(true);
 
-    // Verify import status is recorded in the service before restart
+    // Verify import status is recorded by checking if task file exists
     const importStatusBeforeRestart = await context.page.evaluate(() => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin && plugin.importStatusService) {
-        return plugin.importStatusService.isTaskImported(
-          "github-999888",
-          "github"
-        );
-      }
-      return false;
+      // Check if the task file exists in the vault
+      const taskFile = app.vault.getAbstractFileByPath(
+        "Tasks/Test GitHub Issue.md"
+      );
+      return taskFile !== null;
     });
 
     expect(importStatusBeforeRestart).toBe(true);
@@ -156,17 +153,14 @@ describe("GitHub Import Status Persistence", () => {
     // Wait for plugin to fully initialize
     await context.page.waitForTimeout(3000);
 
-    // Verify import status is still recorded after restart
+    // Verify import status is still recorded after restart by checking task file
     const importStatusAfterRestart = await context.page.evaluate(() => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin && plugin.importStatusService) {
-        return plugin.importStatusService.isTaskImported(
-          "github-999888",
-          "github"
-        );
-      }
-      return false;
+      // Check if the task file still exists in the vault after restart
+      const taskFile = app.vault.getAbstractFileByPath(
+        "Tasks/Test GitHub Issue.md"
+      );
+      return taskFile !== null;
     });
 
     expect(importStatusAfterRestart).toBe(true);

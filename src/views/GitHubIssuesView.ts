@@ -7,7 +7,6 @@ import { ItemView, WorkspaceLeaf } from "obsidian";
 import { GitHubService } from "../services/GitHubService";
 import { GitHubIntegrationSettings } from "../components/ui/settings/types";
 import { TaskImportManager } from "../services/TaskImportManager";
-import { ImportStatusService } from "../services/ImportStatusService";
 import { TaskImportConfig } from "../types/integrations";
 import GitHubIssuesViewSvelte from "../components/svelte/GitHubIssuesView.svelte";
 import type { SvelteComponent } from "svelte";
@@ -20,7 +19,6 @@ export interface GitHubIssuesViewSettings {
 
 export interface GitHubIssuesViewDependencies {
   taskImportManager: TaskImportManager;
-  importStatusService: ImportStatusService;
   getDefaultImportConfig: () => TaskImportConfig;
 }
 
