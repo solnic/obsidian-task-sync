@@ -95,6 +95,22 @@ describe('GitHub Import Status Persistence', () => {
 
     expect(hasImportedStatus).toBe(true);
 
+    // Verify import status is recorded in the service before restart
+    const importStatusBeforeRestart = await context.page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      if (plugin && plugin.importStatusService) {
+        return plugin.importStatusService.isTaskImported('github-999888', 'github');
+      }
+      return false;
+    });
+
+    expect(importStatusBeforeRestart).toBe(true);
+
+    // Wait for any pending save operations to complete
+    await context.page.waitForTimeout(1000);
+
+    // Restart the plugin
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const pluginManager = app.plugins;
@@ -103,7 +119,20 @@ describe('GitHub Import Status Persistence', () => {
       await pluginManager.enablePlugin('obsidian-task-sync');
     });
 
-    await context.page.waitForTimeout(2000);
+    // Wait for plugin to fully initialize
+    await context.page.waitForTimeout(3000);
+
+    // Verify import status is still recorded after restart
+    const importStatusAfterRestart = await context.page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      if (plugin && plugin.importStatusService) {
+        return plugin.importStatusService.isTaskImported('github-999888', 'github');
+      }
+      return false;
+    });
+
+    expect(importStatusAfterRestart).toBe(true);
 
     await stubGitHubApiResponses(context.page, { issues: mockIssues });
 

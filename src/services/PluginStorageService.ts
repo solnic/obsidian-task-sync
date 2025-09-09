@@ -106,6 +106,13 @@ export class PluginStorageService {
     }
   }
 
+  /**
+   * Save storage data on plugin unload (public method for main.ts)
+   */
+  async onUnload(): Promise<void> {
+    await this.saveData();
+  }
+
   // ============================================================================
   // PROMOTED TODO TRACKING
   // ============================================================================

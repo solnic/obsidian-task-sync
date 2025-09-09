@@ -170,7 +170,6 @@ async function resetVaultToPristineState(vaultPath: string, dataPath: string): P
     await fs.promises.mkdir(pluginDir, { recursive: true });
     await copyDirectoryContents(tempPluginDir, pluginDir);
     await fs.promises.rm(tempPluginDir, { recursive: true, force: true });
-    console.log(`📋 Restored plugin files`);
   }
 }
 

@@ -252,10 +252,17 @@ export default class TaskSyncPlugin extends Plugin {
     });
   }
 
-  onunload() {
+  async onunload() {
     console.log('Unloading Task Sync Plugin');
 
-    // Cleanup event system
+    if (this.importStatusService) {
+      await this.importStatusService.onUnload();
+    }
+
+    if (this.storageService) {
+      await this.storageService.onUnload();
+    }
+
     if (this.fileChangeListener) {
       this.fileChangeListener.cleanup();
     }

@@ -1,8 +1,6 @@
 import { defineConfig } from 'vitest/config';
-import * as fs from 'fs';
 import { config } from 'dotenv';
 
-// Load environment variables early
 config();
 
 const isCI = process.env.CI === 'true';
@@ -26,7 +24,7 @@ export default defineConfig({
         isolate: true
       }
     },
-    reporter: isCI ? ['verbose', 'junit'] : 'default',
+    reporter: isCI ? ['verbose', 'junit'] : 'verbose',
     outputFile: isCI ? {
       junit: './test-results/junit.xml'
     } : undefined,

@@ -36,16 +36,22 @@ export class ImportStatusService {
    * Save import data to plugin storage
    */
   private async saveData(): Promise<void> {
-    try {
-      const existingData = await this.plugin.loadData() || {};
-      const updatedData = {
-        ...existingData,
-        [this.STORAGE_KEY]: this.exportImports()
-      };
-      await this.plugin.saveData(updatedData);
-    } catch (error) {
-      console.error('❌ ImportStatusService: Failed to save import data:', error);
-    }
+    const existingData = await this.plugin.loadData() || {};
+    const exportedImports = this.exportImports();
+
+    const updatedData = {
+      ...existingData,
+      [this.STORAGE_KEY]: exportedImports
+    };
+
+    await this.plugin.saveData(updatedData);
+  }
+
+  /**
+   * Save import data on plugin unload (public method for main.ts)
+   */
+  async onUnload(): Promise<void> {
+    await this.saveData();
   }
 
   /**
