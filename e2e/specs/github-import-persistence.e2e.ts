@@ -5,7 +5,7 @@
 
 import { test, expect, describe } from "vitest";
 import { createTestFolders } from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 import { toggleSidebar } from "../helpers/plugin-setup";
 import {
   configureGitHubIntegration,

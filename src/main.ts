@@ -1,12 +1,4 @@
-import {
-  Plugin,
-  TFile,
-  MarkdownView,
-  Notice,
-  WorkspaceLeaf,
-  Modal,
-  App,
-} from "obsidian";
+import { Plugin, TFile, Notice, Modal, App } from "obsidian";
 import { VaultScanner } from "./services/VaultScannerService";
 import { BaseManager } from "./services/BaseManager";
 import { PluginStorageService } from "./services/PluginStorageService";
@@ -16,7 +8,6 @@ import { TaskFileManager } from "./services/TaskFileManager";
 import { AreaFileManager } from "./services/AreaFileManager";
 import { ProjectFileManager } from "./services/ProjectFileManager";
 import { TaskCreateModalWrapper } from "./components/svelte/TaskCreateModalWrapper";
-import type { TaskCreateData } from "./components/modals/TaskCreateModal";
 import {
   AreaCreateModal,
   AreaCreateData,
@@ -49,6 +40,7 @@ import {
   GitHubIssuesView,
   GITHUB_ISSUES_VIEW_TYPE,
 } from "./views/GitHubIssuesView";
+import { ContextTabView, CONTEXT_TAB_VIEW_TYPE } from "./views/ContextTabView";
 import { TaskImportConfig } from "./types/integrations";
 import { taskStore } from "./stores/taskStore";
 import { TodoPromotionService } from "./services/TodoPromotionService";
@@ -60,7 +52,7 @@ export { TASK_TYPE_COLORS };
 
 // File context interface for context-aware modal
 export interface FileContext {
-  type: "project" | "area" | "none";
+  type: "project" | "area" | "task" | "none";
   name?: string;
   path?: string;
 }
@@ -226,9 +218,16 @@ export default class TaskSyncPlugin extends Plugin {
         )
     );
 
+    // Register Context Tab view
+    this.registerView(
+      CONTEXT_TAB_VIEW_TYPE,
+      (leaf) => new ContextTabView(leaf)
+    );
+
     // Create GitHub Issues view in right sidebar if it doesn't exist
     this.app.workspace.onLayoutReady(() => {
       this.initializeGitHubIssuesView();
+      this.initializeContextTabView();
     });
 
     // Note: Removed automatic folder creation - Obsidian handles this automatically
@@ -307,6 +306,14 @@ export default class TaskSyncPlugin extends Plugin {
       name: "Import All GitHub Issues",
       callback: async () => {
         await this.importAllGitHubIssues();
+      },
+    });
+
+    this.addCommand({
+      id: "open-context-tab",
+      name: "Open Context Tab",
+      callback: () => {
+        this.activateContextTabView();
       },
     });
   }
@@ -564,6 +571,67 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
+  /**
+   * Initialize Context Tab view in the right sidebar if it doesn't already exist
+   */
+  private async initializeContextTabView(): Promise<void> {
+    try {
+      console.log("🔧 Initializing Context Tab view...");
+
+      // Check if Context Tab view already exists
+      const existingLeaves = this.app.workspace.getLeavesOfType(
+        CONTEXT_TAB_VIEW_TYPE
+      );
+      console.log(
+        `🔧 Found ${existingLeaves.length} existing Context Tab views`
+      );
+
+      if (existingLeaves.length > 0) {
+        console.log("✅ Context Tab view already exists, skipping creation");
+        return; // View already exists
+      }
+
+      console.log("🔧 Creating Context Tab view in right sidebar...");
+
+      // Create the view in the right sidebar
+      const rightLeaf = this.app.workspace.getRightLeaf(false);
+      await rightLeaf.setViewState({
+        type: CONTEXT_TAB_VIEW_TYPE,
+        active: false, // Don't make it active by default
+      });
+
+      console.log("✅ Context Tab view created successfully");
+    } catch (error) {
+      console.error("❌ Failed to initialize Context Tab view:", error);
+    }
+  }
+
+  /**
+   * Activate the Context Tab view (bring it to focus)
+   */
+  private async activateContextTabView(): Promise<void> {
+    try {
+      // Check if Context Tab view already exists
+      const existingLeaves = this.app.workspace.getLeavesOfType(
+        CONTEXT_TAB_VIEW_TYPE
+      );
+
+      if (existingLeaves.length > 0) {
+        // Activate existing view
+        this.app.workspace.revealLeaf(existingLeaves[0]);
+      } else {
+        // Create new view in right sidebar
+        const rightLeaf = this.app.workspace.getRightLeaf(false);
+        await rightLeaf.setViewState({
+          type: CONTEXT_TAB_VIEW_TYPE,
+          active: true,
+        });
+      }
+    } catch (error) {
+      console.error("❌ Failed to activate Context Tab view:", error);
+    }
+  }
+
   private detectCurrentFileContext(): FileContext {
     const activeFile = this.app.workspace.getActiveFile();
 
@@ -587,6 +655,15 @@ export default class TaskSyncPlugin extends Plugin {
     if (filePath.startsWith(this.settings.areasFolder + "/")) {
       return {
         type: "area",
+        name: fileName.replace(".md", ""),
+        path: filePath,
+      };
+    }
+
+    // Check if file is in tasks folder
+    if (filePath.startsWith(this.settings.tasksFolder + "/")) {
+      return {
+        type: "task",
         name: fileName.replace(".md", ""),
         path: filePath,
       };

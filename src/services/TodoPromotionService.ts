@@ -4,13 +4,16 @@
  * Encapsulates all todo detection, promotion, and reversion logic
  */
 
-import { App, MarkdownView, TFile, Notice } from 'obsidian';
-import { TaskSyncSettings } from '../main';
-import { PluginStorageService } from './PluginStorageService';
-import { TaskFileManager } from './TaskFileManager';
-import { BaseManager } from './BaseManager';
-import { TemplateManager } from './TemplateManager';
-import { createSafeFileName, sanitizeFileName } from '../utils/fileNameSanitizer';
+import { App, MarkdownView, TFile, Notice } from "obsidian";
+import { TaskSyncSettings } from "../main";
+import { PluginStorageService } from "./PluginStorageService";
+import { TaskFileManager } from "./TaskFileManager";
+import { BaseManager } from "./BaseManager";
+import { TemplateManager } from "./TemplateManager";
+import {
+  createSafeFileName,
+  sanitizeFileName,
+} from "../utils/fileNameSanitizer";
 
 // Todo item detection interface
 export interface TodoItem {
@@ -28,7 +31,7 @@ export interface TodoItemWithParent extends TodoItem {
 
 // File context interface for context-aware promotion
 export interface FileContext {
-  type: 'project' | 'area' | 'none';
+  type: "project" | "area" | "task" | "none";
   name?: string;
   path?: string;
 }
@@ -59,7 +62,7 @@ export class TodoPromotionService {
     private createTaskCallback: (taskData: any) => Promise<void>,
     private detectCurrentFileContextCallback: () => FileContext,
     private refreshBaseViewsCallback: () => Promise<void>
-  ) { }
+  ) {}
 
   /**
    * Promote a todo item under cursor to a task
@@ -71,7 +74,7 @@ export class TodoPromotionService {
       if (!todoWithParent) {
         return {
           success: false,
-          message: 'No todo item found under cursor'
+          message: "No todo item found under cursor",
         };
       }
 
@@ -88,18 +91,26 @@ export class TodoPromotionService {
       if (todoWithParent.parentTodo) {
         const parentTaskData = {
           title: todoWithParent.parentTodo.text,
-          category: this.settings.taskTypes[0]?.name || 'Task',
+          category: this.settings.taskTypes[0]?.name || "Task",
           done: todoWithParent.parentTodo.completed,
-          status: todoWithParent.parentTodo.completed ? 'Done' : 'Backlog',
+          status: todoWithParent.parentTodo.completed ? "Done" : "Backlog",
           tags: [] as string[],
           // Set context-specific fields
-          ...(context.type === 'project' && context.name ? { project: context.name } : {}),
-          ...(context.type === 'area' && context.name ? { areas: [context.name] } : {})
+          ...(context.type === "project" && context.name
+            ? { project: context.name }
+            : {}),
+          ...(context.type === "area" && context.name
+            ? { areas: [context.name] }
+            : {}),
         };
 
         // Check if parent task already exists
-        const parentTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(todoWithParent.parentTodo.text)}`;
-        const parentExists = await this.app.vault.adapter.exists(parentTaskPath);
+        const parentTaskPath = `${
+          this.settings.tasksFolder
+        }/${createSafeFileName(todoWithParent.parentTodo.text)}`;
+        const parentExists = await this.app.vault.adapter.exists(
+          parentTaskPath
+        );
 
         if (!parentExists) {
           await this.createTaskCallback(parentTaskData);
@@ -107,9 +118,11 @@ export class TodoPromotionService {
 
           // Create base for parent task to show related tasks
           try {
-            await this.baseManager.createOrUpdateParentTaskBase(todoWithParent.parentTodo.text);
+            await this.baseManager.createOrUpdateParentTaskBase(
+              todoWithParent.parentTodo.text
+            );
           } catch (error) {
-            console.error('Failed to create parent task base:', error);
+            console.error("Failed to create parent task base:", error);
           }
         }
 
@@ -117,18 +130,25 @@ export class TodoPromotionService {
       }
 
       // Create the main task
-      console.log('TodoPromotionService: Creating task with title:', todoWithParent.text);
+      console.log(
+        "TodoPromotionService: Creating task with title:",
+        todoWithParent.text
+      );
       const taskData = {
         title: todoWithParent.text,
-        category: this.settings.taskTypes[0]?.name || 'Task',
+        category: this.settings.taskTypes[0]?.name || "Task",
         done: todoWithParent.completed,
-        status: todoWithParent.completed ? 'Done' : 'Backlog',
+        status: todoWithParent.completed ? "Done" : "Backlog",
         tags: [] as string[],
         // Set parent task if exists (TaskFileManager will handle link formatting)
         ...(parentTaskName ? { parentTask: parentTaskName } : {}),
         // Set context-specific fields
-        ...(context.type === 'project' && context.name ? { project: context.name } : {}),
-        ...(context.type === 'area' && context.name ? { areas: [context.name] } : {})
+        ...(context.type === "project" && context.name
+          ? { project: context.name }
+          : {}),
+        ...(context.type === "area" && context.name
+          ? { areas: [context.name] }
+          : {}),
       };
 
       await this.createTaskCallback(taskData);
@@ -138,15 +158,19 @@ export class TodoPromotionService {
         for (const childTodo of childTodos) {
           const childTaskData = {
             title: childTodo.text,
-            category: this.settings.taskTypes[0]?.name || 'Task',
+            category: this.settings.taskTypes[0]?.name || "Task",
             done: childTodo.completed,
-            status: childTodo.completed ? 'Done' : 'Backlog',
+            status: childTodo.completed ? "Done" : "Backlog",
             tags: [] as string[],
             // Set the current todo as parent (TaskFileManager will handle link formatting)
             parentTask: todoWithParent.text,
             // Set context-specific fields
-            ...(context.type === 'project' && context.name ? { project: context.name } : {}),
-            ...(context.type === 'area' && context.name ? { areas: [context.name] } : {})
+            ...(context.type === "project" && context.name
+              ? { project: context.name }
+              : {}),
+            ...(context.type === "area" && context.name
+              ? { areas: [context.name] }
+              : {}),
           };
 
           await this.createTaskCallback(childTaskData);
@@ -154,9 +178,11 @@ export class TodoPromotionService {
 
         // Create base for parent task to show related tasks
         try {
-          await this.baseManager.createOrUpdateParentTaskBase(todoWithParent.text);
+          await this.baseManager.createOrUpdateParentTaskBase(
+            todoWithParent.text
+          );
         } catch (error) {
-          console.error('Failed to create parent task base:', error);
+          console.error("Failed to create parent task base:", error);
         }
       }
 
@@ -178,16 +204,17 @@ export class TodoPromotionService {
       return {
         success: true,
         message,
-        taskPath: `${this.settings.tasksFolder}/${createSafeFileName(todoWithParent.text)}`,
+        taskPath: `${this.settings.tasksFolder}/${createSafeFileName(
+          todoWithParent.text
+        )}`,
         childTasksCount: childTodos.length,
-        parentTaskName
+        parentTaskName,
       };
-
     } catch (error) {
-      console.error('Failed to promote todo to task:', error);
+      console.error("Failed to promote todo to task:", error);
       return {
         success: false,
-        message: 'Failed to promote todo to task'
+        message: "Failed to promote todo to task",
       };
     }
   }
@@ -201,17 +228,19 @@ export class TodoPromotionService {
       if (!activeFile) {
         return {
           success: false,
-          message: 'No active file found'
+          message: "No active file found",
         };
       }
 
       // Get promoted todos for the current file
-      const promotedTodos = this.storageService.getPromotedTodosForFile(activeFile.path);
+      const promotedTodos = this.storageService.getPromotedTodosForFile(
+        activeFile.path
+      );
 
       if (promotedTodos.length === 0) {
         return {
           success: false,
-          message: 'No promoted todos found in this file'
+          message: "No promoted todos found in this file",
         };
       }
 
@@ -223,21 +252,23 @@ export class TodoPromotionService {
           await this.storageService.revertPromotedTodo(promotedTodo.id);
           revertedCount++;
         } catch (error) {
-          console.error(`Failed to revert promoted todo ${promotedTodo.id}:`, error);
+          console.error(
+            `Failed to revert promoted todo ${promotedTodo.id}:`,
+            error
+          );
         }
       }
 
       return {
         success: true,
         message: `Reverted ${revertedCount} promoted todo(s)`,
-        revertedCount
+        revertedCount,
       };
-
     } catch (error) {
-      console.error('Failed to revert promoted todo:', error);
+      console.error("Failed to revert promoted todo:", error);
       return {
         success: false,
-        message: 'Failed to revert promoted todo'
+        message: "Failed to revert promoted todo",
       };
     }
   }
@@ -270,14 +301,19 @@ export class TodoPromotionService {
 
     const [, indentation, listMarker, checkboxState, text] = match;
 
-    console.log('TodoPromotionService: Detected todo text:', text, 'trimmed:', text.trim());
+    console.log(
+      "TodoPromotionService: Detected todo text:",
+      text,
+      "trimmed:",
+      text.trim()
+    );
 
     return {
       text: text.trim(),
-      completed: checkboxState.toLowerCase() === 'x',
+      completed: checkboxState.toLowerCase() === "x",
       indentation,
       listMarker,
-      lineNumber: cursor.line
+      lineNumber: cursor.line,
     };
   }
 
@@ -294,7 +330,7 @@ export class TodoPromotionService {
 
     return {
       ...currentTodo,
-      parentTodo
+      parentTodo,
     };
   }
 
@@ -330,10 +366,10 @@ export class TodoPromotionService {
         if (indentLevel < currentIndentLevel) {
           return {
             text: text.trim(),
-            completed: checkboxState.toLowerCase() === 'x',
+            completed: checkboxState.toLowerCase() === "x",
             indentation,
             listMarker,
-            lineNumber: lineNum
+            lineNumber: lineNum,
           };
         }
       }
@@ -358,11 +394,15 @@ export class TodoPromotionService {
     const totalLines = editor.lineCount();
 
     // Look forward from parent line to find child todos
-    for (let lineNum = parentTodo.lineNumber + 1; lineNum < totalLines; lineNum++) {
+    for (
+      let lineNum = parentTodo.lineNumber + 1;
+      lineNum < totalLines;
+      lineNum++
+    ) {
       const line = editor.getLine(lineNum);
 
       // Skip empty lines
-      if (line.trim() === '') {
+      if (line.trim() === "") {
         continue;
       }
 
@@ -377,10 +417,10 @@ export class TodoPromotionService {
         if (indentLevel > parentIndentLevel) {
           childTodos.push({
             text: text.trim(),
-            completed: checkboxState.toLowerCase() === 'x',
+            completed: checkboxState.toLowerCase() === "x",
             indentation,
             listMarker,
-            lineNumber: lineNum
+            lineNumber: lineNum,
           });
         } else {
           // If we hit a todo with same or less indentation, we've reached the end of children
@@ -398,22 +438,23 @@ export class TodoPromotionService {
     return childTodos;
   }
 
-
-
   /**
    * Replace todo lines with links to the created tasks
    */
-  private async replaceTodoLinesWithLinks(todoWithParent: TodoItemWithParent, childTodos: TodoItem[]): Promise<void> {
+  private async replaceTodoLinesWithLinks(
+    todoWithParent: TodoItemWithParent,
+    childTodos: TodoItem[]
+  ): Promise<void> {
     const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!markdownView) {
-      throw new Error('No active markdown view found');
+      throw new Error("No active markdown view found");
     }
     const editor = markdownView.editor;
 
     // Get current file path for tracking
     const activeFile = markdownView.file;
     if (!activeFile) {
-      throw new Error('No active file found');
+      throw new Error("No active file found");
     }
 
     // Keep the todo format but link to the task to indicate promotion
@@ -433,8 +474,11 @@ export class TodoPromotionService {
       const parentLine = editor.getLine(todoWithParent.parentTodo.lineNumber);
       // Only replace if it's still a todo (not already a link)
       // Check for checkboxes but exclude lines that already contain links
-      const hasCheckbox = parentLine.includes('[ ]') || parentLine.includes('[x]') || parentLine.includes('[X]');
-      const hasLink = parentLine.includes('[[') && parentLine.includes(']]');
+      const hasCheckbox =
+        parentLine.includes("[ ]") ||
+        parentLine.includes("[x]") ||
+        parentLine.includes("[X]");
+      const hasLink = parentLine.includes("[[") && parentLine.includes("]]");
       if (hasCheckbox && !hasLink) {
         let parentReplacementLine: string;
         if (todoWithParent.parentTodo.completed) {
@@ -442,7 +486,10 @@ export class TodoPromotionService {
         } else {
           parentReplacementLine = `${todoWithParent.parentTodo.indentation}${todoWithParent.parentTodo.listMarker} [ ] [[${todoWithParent.parentTodo.text}]]`;
         }
-        editor.setLine(todoWithParent.parentTodo.lineNumber, parentReplacementLine);
+        editor.setLine(
+          todoWithParent.parentTodo.lineNumber,
+          parentReplacementLine
+        );
       }
     }
 
@@ -451,8 +498,12 @@ export class TodoPromotionService {
       for (const childTodo of childTodos) {
         const originalChildLine = editor.getLine(childTodo.lineNumber);
         // Only replace if it's still a todo (not already a link)
-        const hasCheckbox = originalChildLine.includes('[ ]') || originalChildLine.includes('[x]') || originalChildLine.includes('[X]');
-        const hasLink = originalChildLine.includes('[[') && originalChildLine.includes(']]');
+        const hasCheckbox =
+          originalChildLine.includes("[ ]") ||
+          originalChildLine.includes("[x]") ||
+          originalChildLine.includes("[X]");
+        const hasLink =
+          originalChildLine.includes("[[") && originalChildLine.includes("]]");
         if (hasCheckbox && !hasLink) {
           let childReplacementLine: string;
           if (childTodo.completed) {
@@ -469,22 +520,27 @@ export class TodoPromotionService {
   /**
    * Track the promoted todos in storage
    */
-  private async trackPromotedTodos(todoWithParent: TodoItemWithParent, childTodos: TodoItem[]): Promise<void> {
+  private async trackPromotedTodos(
+    todoWithParent: TodoItemWithParent,
+    childTodos: TodoItem[]
+  ): Promise<void> {
     const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!markdownView) {
-      throw new Error('No active markdown view found');
+      throw new Error("No active markdown view found");
     }
 
     const activeFile = markdownView.file;
     if (!activeFile) {
-      throw new Error('No active file found');
+      throw new Error("No active file found");
     }
 
     const editor = markdownView.editor;
 
     // Track the main promoted todo
     const originalLine = editor.getLine(todoWithParent.lineNumber);
-    const taskPath = `${this.settings.tasksFolder}/${createSafeFileName(todoWithParent.text)}`;
+    const taskPath = `${this.settings.tasksFolder}/${createSafeFileName(
+      todoWithParent.text
+    )}`;
     await this.storageService.trackPromotedTodo(
       todoWithParent.text,
       originalLine,
@@ -492,20 +548,27 @@ export class TodoPromotionService {
       todoWithParent.lineNumber,
       todoWithParent.text,
       taskPath,
-      todoWithParent.parentTodo ? {
-        text: todoWithParent.parentTodo.text,
-        lineNumber: todoWithParent.parentTodo.lineNumber,
-        taskName: todoWithParent.parentTodo.text
-      } : undefined
+      todoWithParent.parentTodo
+        ? {
+            text: todoWithParent.parentTodo.text,
+            lineNumber: todoWithParent.parentTodo.lineNumber,
+            taskName: todoWithParent.parentTodo.text,
+          }
+        : undefined
     );
 
     // Track the parent todo promotion if it exists
     if (todoWithParent.parentTodo) {
       const parentLine = editor.getLine(todoWithParent.parentTodo.lineNumber);
-      const hasCheckbox = parentLine.includes('[ ]') || parentLine.includes('[x]') || parentLine.includes('[X]');
-      const hasLink = parentLine.includes('[[') && parentLine.includes(']]');
+      const hasCheckbox =
+        parentLine.includes("[ ]") ||
+        parentLine.includes("[x]") ||
+        parentLine.includes("[X]");
+      const hasLink = parentLine.includes("[[") && parentLine.includes("]]");
       if (hasCheckbox && !hasLink) {
-        const parentTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(todoWithParent.parentTodo.text)}`;
+        const parentTaskPath = `${
+          this.settings.tasksFolder
+        }/${createSafeFileName(todoWithParent.parentTodo.text)}`;
         await this.storageService.trackPromotedTodo(
           todoWithParent.parentTodo.text,
           parentLine,
@@ -520,10 +583,16 @@ export class TodoPromotionService {
     // Track child todo promotions
     for (const childTodo of childTodos) {
       const originalChildLine = editor.getLine(childTodo.lineNumber);
-      const hasCheckbox = originalChildLine.includes('[ ]') || originalChildLine.includes('[x]') || originalChildLine.includes('[X]');
-      const hasLink = originalChildLine.includes('[[') && originalChildLine.includes(']]');
+      const hasCheckbox =
+        originalChildLine.includes("[ ]") ||
+        originalChildLine.includes("[x]") ||
+        originalChildLine.includes("[X]");
+      const hasLink =
+        originalChildLine.includes("[[") && originalChildLine.includes("]]");
       if (hasCheckbox && !hasLink) {
-        const childTaskPath = `${this.settings.tasksFolder}/${createSafeFileName(childTodo.text)}`;
+        const childTaskPath = `${
+          this.settings.tasksFolder
+        }/${createSafeFileName(childTodo.text)}`;
         await this.storageService.trackPromotedTodo(
           childTodo.text,
           originalChildLine,
@@ -534,7 +603,7 @@ export class TodoPromotionService {
           {
             text: todoWithParent.text,
             lineNumber: todoWithParent.lineNumber,
-            taskName: todoWithParent.text
+            taskName: todoWithParent.text,
           }
         );
       }

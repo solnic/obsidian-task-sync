@@ -3,8 +3,6 @@
  * Implements GTD (Getting Things Done) methodology with hierarchical organization
  */
 
-import { PROPERTY_REGISTRY } from "../services/base-definitions/BaseConfigurations";
-
 // Base interface for all entities
 export interface BaseEntity {
   id: string;
