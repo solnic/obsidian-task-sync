@@ -1,16 +1,13 @@
 /**
  * E2E Test Helpers for Entity Creation
- * Provides high-level helpers that leverage main.ts APIs for creating tasks, areas, and projects
- * with smart waiting for base file creation and proper event handling
+ * Leverages the plugin's automatic entity caching system
  */
 
 import type { SharedTestContext } from './shared-context';
 
 /**
  * Create a task using the plugin's createTask API
- * @param context Test context
- * @param props Task properties
- * @param content Optional task content (default: empty string)
+ * Returns the cached entity from the plugin's storage service
  */
 export async function createTask(
   context: SharedTestContext,
@@ -26,7 +23,7 @@ export async function createTask(
     tags?: string[];
   },
   content: string = ''
-): Promise<string> {
+): Promise<any> {
   return await context.page.evaluate(async ({ props, content }) => {
     const app = (window as any).app;
     const plugin = app.plugins.plugins['obsidian-task-sync'];
@@ -49,19 +46,27 @@ export async function createTask(
       description: content
     };
 
-    // Create the task using the plugin API
+    // Create the task using the plugin API (this will trigger automatic caching)
     await plugin.createTask(taskData);
 
-    // Return the expected file path
-    const sanitizedTitle = props.title.replace(/[<>:"/\\|?*]/g, '-');
-    return `Tasks/${sanitizedTitle}.md`;
+    // Wait a bit for the event system to process the creation
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Get the cached task from storage service
+    const cachedTasks = plugin.storageService.getCachedTasks();
+    const createdTask = cachedTasks.find((t: any) => t.name === props.title);
+
+    if (!createdTask) {
+      throw new Error(`Task "${props.title}" was not found in cache after creation`);
+    }
+
+    return createdTask;
   }, { props, content });
 }
 
 /**
- * Create an area using the plugin's createArea API with smart waiting for base creation
- * @param context Test context
- * @param props Area properties
+ * Create an area using the plugin's createArea API
+ * Returns the cached entity from the plugin's storage service
  */
 export async function createArea(
   context: SharedTestContext,
@@ -69,8 +74,8 @@ export async function createArea(
     name: string;
     description?: string;
   }
-): Promise<string> {
-  const areaPath = await context.page.evaluate(async ({ props }) => {
+): Promise<any> {
+  return await context.page.evaluate(async ({ props }) => {
     const app = (window as any).app;
     const plugin = app.plugins.plugins['obsidian-task-sync'];
 
@@ -84,24 +89,27 @@ export async function createArea(
       description: props.description || ''
     };
 
-    // Create the area using the plugin API
+    // Create the area using the plugin API (this will trigger automatic caching)
     await plugin.createArea(areaData);
 
-    // Return the expected file path
-    const sanitizedName = props.name.replace(/[<>:"/\\|?*]/g, '-');
-    return `Areas/${sanitizedName}.md`;
+    // Wait a bit for the event system to process the creation
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Get the cached area from storage service
+    const cachedAreas = plugin.storageService.getCachedAreas();
+    const createdArea = cachedAreas.find((a: any) => a.name === props.name);
+
+    if (!createdArea) {
+      throw new Error(`Area "${props.name}" was not found in cache after creation`);
+    }
+
+    return createdArea;
   }, { props });
-
-  // Smart wait for base file creation if area bases are enabled
-  await waitForBaseFileCreation(context, props.name, 'area');
-
-  return areaPath;
 }
 
 /**
- * Create a project using the plugin's createProject API with smart waiting for base creation
- * @param context Test context
- * @param props Project properties
+ * Create a project using the plugin's createProject API
+ * Returns the cached entity from the plugin's storage service
  */
 export async function createProject(
   context: SharedTestContext,
@@ -110,8 +118,8 @@ export async function createProject(
     description?: string;
     areas?: string[];
   }
-): Promise<string> {
-  const projectPath = await context.page.evaluate(async ({ props }) => {
+): Promise<any> {
+  return await context.page.evaluate(async ({ props }) => {
     const app = (window as any).app;
     const plugin = app.plugins.plugins['obsidian-task-sync'];
 
@@ -126,122 +134,20 @@ export async function createProject(
       areas: props.areas || []
     };
 
-    // Create the project using the plugin API
+    // Create the project using the plugin API (this will trigger automatic caching)
     await plugin.createProject(projectData);
 
-    // Return the expected file path
-    const sanitizedName = props.name.replace(/[<>:"/\\|?*]/g, '-');
-    return `Projects/${sanitizedName}.md`;
+    // Wait a bit for the event system to process the creation
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // Get the cached project from storage service
+    const cachedProjects = plugin.storageService.getCachedProjects();
+    const createdProject = cachedProjects.find((p: any) => p.name === props.name);
+
+    if (!createdProject) {
+      throw new Error(`Project "${props.name}" was not found in cache after creation`);
+    }
+
+    return createdProject;
   }, { props });
-
-  // Smart wait for base file creation if project bases are enabled
-  await waitForBaseFileCreation(context, props.name, 'project');
-
-  return projectPath;
-}
-
-/**
- * Smart wait for base file creation
- * Waits for the corresponding base file to be created when areas/projects/parent tasks are created
- * @param context Test context
- * @param entityName Name of the entity (area, project, or parent task)
- * @param entityType Type of entity ('area', 'project', 'parent-task')
- */
-async function waitForBaseFileCreation(
-  context: SharedTestContext,
-  entityName: string,
-  entityType: 'area' | 'project' | 'parent-task' = 'area'
-): Promise<void> {
-  // Check if bases are enabled and wait for base file creation
-  const baseFileCreated = await context.page.evaluate(async ({ name, type }) => {
-    const app = (window as any).app;
-    const plugin = app.plugins.plugins['obsidian-task-sync'];
-
-    if (!plugin) {
-      return false;
-    }
-
-    // Check if the relevant bases are enabled
-    const areaBasesEnabled = plugin.settings.areaBasesEnabled;
-    const projectBasesEnabled = plugin.settings.projectBasesEnabled;
-
-    if (type === 'area' && !areaBasesEnabled) {
-      return true; // No area bases to wait for
-    }
-    if (type === 'project' && !projectBasesEnabled) {
-      return true; // No project bases to wait for
-    }
-    // Parent task bases are always created when needed
-
-    // Sanitize the name for file path
-    const sanitizedName = name.replace(/[<>:"/\\|?*]/g, '-');
-    const baseFilePath = `${plugin.settings.basesFolder}/${sanitizedName}.base`;
-
-    // Wait for the base file to exist
-    let attempts = 0;
-    const maxAttempts = 50; // 5 seconds with 100ms intervals
-
-    while (attempts < maxAttempts) {
-      const baseFile = app.vault.getAbstractFileByPath(baseFilePath);
-      if (baseFile) {
-        console.log(`Base file created: ${baseFilePath}`);
-        return true;
-      }
-
-      // Wait 100ms before next attempt
-      await new Promise(resolve => setTimeout(resolve, 100));
-      attempts++;
-    }
-
-    console.warn(`Base file not created within timeout: ${baseFilePath}`);
-    return false;
-  }, { name: entityName, type: entityType });
-
-  if (!baseFileCreated) {
-    console.warn(`Base file creation timeout for ${entityType}: ${entityName}`);
-  }
-}
-
-/**
- * Create a parent task using the plugin's createTask API with smart waiting for base creation
- * Parent tasks are tasks that can have child tasks and automatically get base files created
- * @param context Test context
- * @param props Parent task properties
- * @param content Optional task content (default: empty string)
- */
-export async function createParentTask(
-  context: SharedTestContext,
-  props: {
-    title: string;
-    category?: string;
-    priority?: string;
-    areas?: string[];
-    project?: string;
-    done?: boolean;
-    status?: string;
-    tags?: string[];
-  },
-  content: string = ''
-): Promise<string> {
-  // Ensure the task will be treated as a parent task by using 'Feature' category
-  // or by including 'Epic' in the title (based on TaskFileManager logic)
-  const parentProps = {
-    ...props,
-    category: props.category || 'Feature' // Feature category triggers parent task behavior
-  };
-
-  // For parent tasks, append {{tasks}} section to custom content
-  let finalContent: string | undefined = undefined;
-
-  if (content) {
-    // Simply append the {{tasks}} section to the custom content
-    finalContent = content + '\n\n## Related Tasks\n\n{{tasks}}';
-  }
-
-  const taskPath = await createTask(context, parentProps, finalContent);
-
-  // Smart wait for parent task base file creation
-  await waitForBaseFileCreation(context, props.title, 'parent-task');
-
-  return taskPath;
 }

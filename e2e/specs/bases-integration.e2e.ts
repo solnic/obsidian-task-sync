@@ -1,7 +1,7 @@
 import { test, expect, describe } from 'vitest';
 import { createTestFolders, waitForTaskSyncPlugin } from '../helpers/task-sync-setup';
-import { setupE2ETestHooks } from '../helpers/shared-context';
-import { createTask, createArea, createParentTask } from '../helpers/entity-helpers';
+import { setupE2ETestHooks, openFile, waitForBaseView } from '../helpers/shared-context';
+import { createTask, createArea } from '../helpers/entity-helpers';
 
 describe('Bases Integration UI', () => {
   const context = setupE2ETestHooks();
@@ -23,104 +23,6 @@ describe('Bases Integration UI', () => {
         await plugin.saveSettings();
       }
     });
-  }
-
-  /**
-   * Helper to wait for base view to load properly
-   */
-  async function waitForBaseView(timeout = 15000) {
-    console.log('Waiting for base view to load...');
-
-    // Wait for the base view container
-    await context.page.waitForSelector('.bases-view', { timeout });
-    console.log('Base view container found');
-
-    // Wait for the table structure to be present
-    await context.page.waitForSelector('.bases-table-container', { timeout: 5000 });
-    console.log('Base table container found');
-
-    // Wait for the table body to be present (it might be hidden if empty)
-    try {
-      await context.page.waitForSelector('.bases-tbody', { timeout: 5000 });
-      console.log('Base table body found');
-    } catch {
-      // Table body might be hidden if empty, check for "No results" message
-      const noResults = await context.page.locator('text=No results').isVisible();
-      if (noResults) {
-        console.log('Base table is empty (No results message visible)');
-      } else {
-        console.log('Base table body not found and no "No results" message');
-      }
-    }
-
-    // Wait for either data rows or a stable empty state
-    let hasData = false;
-    try {
-      await context.page.waitForSelector('.bases-tbody .bases-tr', { timeout: 3000 });
-      hasData = true;
-      console.log('Base table has data rows');
-    } catch {
-      // Check if there's a "No results" message indicating empty state
-      const noResults = await context.page.locator('text=No results').isVisible();
-      if (noResults) {
-        console.log('Base table is empty (No results message confirmed)');
-      } else {
-        console.log('Base table appears to be empty (no data rows found)');
-      }
-    }
-
-    // Additional wait for content to stabilize and render
-    await context.page.waitForTimeout(2000);
-
-    // Verify the base view is actually visible and rendered
-    const isVisible = await context.page.locator('.bases-view').isVisible();
-    if (!isVisible) {
-      throw new Error('Base view is not visible after waiting');
-    }
-
-    console.log(`Base view loaded successfully (has data: ${hasData})`);
-  }
-
-  /**
-   * Helper to open a file and wait for it to load properly
-   */
-  async function openFile(filePath: string) {
-    console.log(`Opening file: ${filePath}`);
-
-    // Open the file
-    await context.page.evaluate(async (path) => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(path);
-      if (!file) {
-        throw new Error(`File not found: ${path}`);
-      }
-
-      // Get the active leaf and open the file
-      const leaf = app.workspace.getLeaf();
-      await leaf.openFile(file);
-
-      // Wait for the file to be set as active
-      await new Promise(resolve => {
-        const checkActive = () => {
-          if (app.workspace.getActiveFile()?.path === path) {
-            resolve(true);
-          } else {
-            setTimeout(checkActive, 50);
-          }
-        };
-        checkActive();
-      });
-
-      console.log(`File opened and active: ${path}`);
-    }, filePath);
-
-    // Wait for the file content to be visible in the DOM
-    await context.page.waitForSelector('.markdown-source-view, .markdown-preview-view', { timeout: 5000 });
-
-    // Additional wait for content to stabilize
-    await context.page.waitForTimeout(1000);
-
-    console.log(`File content loaded: ${filePath}`);
   }
 
   test('should display tasks correctly in area base UI', async () => {
@@ -160,19 +62,12 @@ describe('Bases Integration UI', () => {
       tags: ['documentation']
     }, 'Update the project documentation.');
 
-    // Open the area file
-    await openFile('Areas/Development.md');
+    await openFile(context, 'Areas/Development.md');
+    await waitForBaseView(context);
 
-    // Wait for the base view to load
-    await waitForBaseView();
-
-    // Verify the base view is visible
-    const baseViewExists = await context.page.locator('.bases-view').isVisible();
-    expect(baseViewExists).toBe(true);
-
-    // Check that all tasks appear in the main Tasks view
     const allTaskTitles = await context.page.locator('.bases-view .bases-table-cell .internal-link').allTextContents();
     const allTaskText = allTaskTitles.join(' ');
+
     expect(allTaskText).toContain('Fix Login Bug');
     expect(allTaskText).toContain('Add User Dashboard');
     expect(allTaskText).toContain('Update Documentation');
@@ -188,14 +83,14 @@ describe('Bases Integration UI', () => {
     });
 
     // Create a parent task using the helper (this will automatically create the parent task base)
-    await createParentTask(context, {
+    const epicTask = await createTask(context, {
       title: 'Epic Feature Development',
       category: 'Feature',
       priority: 'High',
       areas: ['Development'],
       status: 'In Progress',
       tags: ['epic', 'feature']
-    }, 'Large feature development epic with multiple sub-tasks.');
+    }, '{{tasks}}');
 
     // Create child tasks that reference the parent task
     await createTask(context, {
@@ -218,11 +113,9 @@ describe('Bases Integration UI', () => {
       tags: ['backend', 'api']
     }, 'Implement the backend API for the epic feature.');
 
-
-
     // Test 1: Open parent task and verify child tasks appear in its base
-    await openFile('Tasks/Epic Feature Development.md');
-    await waitForBaseView();
+    await openFile(context, epicTask.filePath);
+    await waitForBaseView(context);
 
     // Verify the parent task base shows child tasks
     const parentBaseView = context.page.locator('.bases-view');
@@ -235,8 +128,8 @@ describe('Bases Integration UI', () => {
     expect(childTaskText).toContain('Implement Backend API');
 
     // Test 2: Open area and verify only parent task appears (child tasks filtered out)
-    await openFile('Areas/Development.md');
-    await waitForBaseView();
+    await openFile(context, 'Areas/Development.md');
+    await waitForBaseView(context);
 
     const areaBaseView = context.page.locator('.bases-view');
     expect(await areaBaseView.isVisible()).toBe(true);
@@ -335,14 +228,10 @@ Test the mobile application functionality.
     });
 
     // Open the project file
-    await openFile('Projects/Mobile App.md');
+    await openFile(context, 'Projects/Mobile App.md');
 
     // Wait for the base view to load
-    await waitForBaseView();
-
-    // Verify the base view is visible
-    const baseViewExists = await context.page.locator('.bases-view').isVisible();
-    expect(baseViewExists).toBe(true);
+    await waitForBaseView(context);
 
     // Check that all project tasks appear in the base view
     const taskTitles = await context.page.locator('.bases-view .bases-table-cell .internal-link').allTextContents();
@@ -432,11 +321,8 @@ Refactor legacy code for better maintainability.
       }
     });
 
-    // Open the area file
-    await openFile('Areas/Development.md');
-
-    // Wait for the base view to load
-    await waitForBaseView();
+    await openFile(context, 'Areas/Development.md');
+    await waitForBaseView(context);
 
     // Verify the base view is visible
     const baseViewExists = await context.page.locator('.bases-view').isVisible();

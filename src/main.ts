@@ -18,6 +18,7 @@ import { StatusDoneHandler } from './events/handlers';
 import { TaskPropertyHandler } from './events/handlers/TaskPropertyHandler';
 import { AreaPropertyHandler } from './events/handlers/AreaPropertyHandler';
 import { ProjectPropertyHandler } from './events/handlers/ProjectPropertyHandler';
+import { EntityCacheHandler } from './events/handlers/EntityCacheHandler';
 import { DEFAULT_SETTINGS, TASK_TYPE_COLORS, validateFolderPath } from './components/ui/settings';
 import { GitHubService } from './services/GitHubService';
 import { TaskImportManager } from './services/TaskImportManager';
@@ -64,6 +65,7 @@ export default class TaskSyncPlugin extends Plugin {
   taskPropertyHandler: TaskPropertyHandler;
   areaPropertyHandler: AreaPropertyHandler;
   projectPropertyHandler: ProjectPropertyHandler;
+  entityCacheHandler: EntityCacheHandler;
   githubService: GitHubService;
   taskImportManager: TaskImportManager;
   importStatusService: ImportStatusService;
@@ -131,6 +133,7 @@ export default class TaskSyncPlugin extends Plugin {
     this.taskPropertyHandler = new TaskPropertyHandler(this.app, this.settings);
     this.areaPropertyHandler = new AreaPropertyHandler(this.app, this.settings);
     this.projectPropertyHandler = new ProjectPropertyHandler(this.app, this.settings);
+    this.entityCacheHandler = new EntityCacheHandler(this.app, this.settings, this.storageService);
     this.fileChangeListener = new FileChangeListener(this.app, this.app.vault, this.eventManager, this.settings);
 
     // Register event handlers
@@ -138,6 +141,7 @@ export default class TaskSyncPlugin extends Plugin {
     this.eventManager.registerHandler(this.taskPropertyHandler);
     this.eventManager.registerHandler(this.areaPropertyHandler);
     this.eventManager.registerHandler(this.projectPropertyHandler);
+    this.eventManager.registerHandler(this.entityCacheHandler);
 
     // Initialize file change listener
     await this.fileChangeListener.initialize();

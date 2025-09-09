@@ -4,3 +4,4 @@
  */
 
 export * from './StatusDoneHandler';
+export * from './EntityCacheHandler';

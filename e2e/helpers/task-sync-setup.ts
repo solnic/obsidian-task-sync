@@ -43,14 +43,10 @@ export async function setupObsidianElectron(
 
   let appPath: string;
   if (fs.existsSync(appExtractedMainJs)) {
-    // New structure with extracted app - use the extracted main.js with dependencies
     appPath = appExtractedMainJs;
-    console.log('🔧 Using extracted app structure with dependencies');
   } else if (fs.existsSync(mainJsPath)) {
-    // Old structure with main.js
     appPath = mainJsPath;
   } else if (fs.existsSync(appAsarPath)) {
-    // New structure with app.asar - use the binary with app.asar
     appPath = obsidianBinaryPath;
   } else if (fs.existsSync(obsidianBinaryPath)) {
     // Fallback to binary

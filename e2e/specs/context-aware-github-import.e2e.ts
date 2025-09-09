@@ -5,8 +5,9 @@
 
 import { test, expect, describe } from 'vitest';
 import { createTestFolders } from '../helpers/task-sync-setup';
-import { setupE2ETestHooks } from '../helpers/shared-context';
+import { setupE2ETestHooks, openFile } from '../helpers/shared-context';
 import { toggleSidebar } from '../helpers/plugin-setup';
+import { createProject, createArea } from '../helpers/entity-helpers';
 import {
   configureGitHubIntegration,
   openGitHubIssuesView,
@@ -25,32 +26,13 @@ describe('Context-Aware GitHub Import', () => {
   });
 
   test('should import GitHub issue to project with correct label mapping', async () => {
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const projectContent = `---
-Type: Project
----
-
-# Test Project
-
-This is a test project for context-aware importing.
-`;
-      await app.vault.create('Projects/Test Project.md', projectContent);
+    const project = await createProject(context, {
+      name: 'Test Project',
+      description: 'This is a test project for context-aware importing.'
     });
 
-    // Open the project file to set context
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath('Projects/Test Project.md');
-      if (file) {
-        await app.workspace.getLeaf().openFile(file);
-      }
-    });
+    await openFile(context, project.filePath);
 
-    // Wait for context to be set
-    await context.page.waitForTimeout(500);
-
-    // Stub GitHub API responses with test data
     const mockIssues = [
       {
         id: 123456,
@@ -134,10 +116,10 @@ This is a test project for context-aware importing.
     expect(taskContent).toContain('bug'); // Should include original labels as tags
 
     // Verify context was correctly detected during import
-    const contextInfo = await context.page.evaluate(() => {
+    const contextInfo = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
-      return plugin ? plugin.getCurrentContext() : null;
+      return plugin.getCurrentContext();
     });
 
     expect(contextInfo.type).toBe('project');
@@ -147,28 +129,12 @@ This is a test project for context-aware importing.
   test('should import GitHub issue to area with enhancement label mapping', async () => {
     await createTestFolders(context.page);
 
-    // Create a test area file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const areaContent = `---
-Type: Area
----
-
-# Development
-
-This is a test area for context-aware importing.
-`;
-      await app.vault.create('Areas/Development.md', areaContent);
+    const area = await createArea(context, {
+      name: 'Development',
+      description: 'This is a test area for context-aware importing.'
     });
 
-    // Open the area file to set context
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath('Areas/Development.md');
-      if (file) {
-        await app.workspace.getLeaf().openFile(file);
-      }
-    });
+    await openFile(context, area.filePath);
 
     // Wait for context to be set
     await context.page.waitForTimeout(500);
@@ -257,10 +223,10 @@ This is a test area for context-aware importing.
     expect(taskContent).toContain('enhancement'); // Should include original labels as tags
 
     // Verify context was correctly detected during import
-    const contextInfo = await context.page.evaluate(() => {
+    const contextInfo = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
-      return plugin ? plugin.getCurrentContext() : null;
+      return plugin.getCurrentContext();
     });
 
     expect(contextInfo.type).toBe('area');
@@ -271,23 +237,14 @@ This is a test area for context-aware importing.
     await createTestFolders(context.page);
 
     // Create a regular note file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const noteContent = `# Regular Note
+    const noteContent = `This is just a regular note, not in a project or area folder.`;
 
-This is just a regular note, not in a project or area folder.
-`;
-      await app.vault.create('Notes/Regular Note.md', noteContent);
-    });
-
-    // Open the regular note file
-    await context.page.evaluate(async () => {
+    await context.page.evaluate(async (content: string) => {
       const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath('Notes/Regular Note.md');
-      if (file) {
-        await app.workspace.getLeaf().openFile(file);
-      }
-    });
+      await app.vault.create('Notes/Regular Note.md', content);
+    }, noteContent);
+
+    await openFile(context, 'Notes/Regular Note.md');
 
     // Wait for context to be set
     await context.page.waitForTimeout(500);
@@ -376,10 +333,10 @@ This is just a regular note, not in a project or area folder.
     expect(taskContent).toContain('documentation'); // Should include original labels as tags
 
     // Verify context was correctly detected during import (should be none)
-    const contextInfo = await context.page.evaluate(() => {
+    const contextInfo = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
-      return plugin ? plugin.getCurrentContext() : null;
+      return plugin.getCurrentContext();
     });
 
     expect(contextInfo.type).toBe('none');

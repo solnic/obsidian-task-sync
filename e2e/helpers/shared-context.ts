@@ -240,7 +240,6 @@ export async function cleanupAllWorkerContexts(): Promise<void> {
 async function cleanupOldTestArtifacts(testName: string): Promise<void> {
   try {
     const baseDebugDir = path.join(process.cwd(), 'e2e', 'debug');
-    const screenshotsDir = path.join(process.cwd(), 'e2e', 'screenshots');
 
     // Clean up old debug directories for this test
     if (fs.existsSync(baseDebugDir)) {
@@ -254,22 +253,6 @@ async function cleanupOldTestArtifacts(testName: string): Promise<void> {
           await fs.promises.rm(path.join(baseDebugDir, dir.name), { recursive: true, force: true });
         } catch (error) {
           console.warn(`⚠️ Could not remove old debug directory ${dir.name}: ${error.message}`);
-        }
-      }
-    }
-
-    // Clean up old screenshots for this test
-    if (fs.existsSync(screenshotsDir)) {
-      const files = await fs.promises.readdir(screenshotsDir);
-      const testScreenshots = files.filter(file =>
-        file.startsWith(`test-failure-${testName}`) && file.endsWith('.png')
-      );
-
-      for (const file of testScreenshots) {
-        try {
-          await fs.promises.unlink(path.join(screenshotsDir, file));
-        } catch (error) {
-          console.warn(`⚠️ Could not remove old screenshot ${file}: ${error.message}`);
         }
       }
     }
@@ -982,4 +965,42 @@ export function setupE2ETestHooks(): SharedTestContext {
       return true;
     }
   });
+}
+
+/**
+ * Helper to open a file and wait for it to load properly
+ */
+export async function openFile(context: SharedTestContext, filePath: string) {
+  await context.page.evaluate(async (path) => {
+    const app = (window as any).app;
+    const file = app.vault.getAbstractFileByPath(path);
+
+    if (!file) {
+      throw new Error(`File not found: ${path}`);
+    }
+
+    const leaf = app.workspace.getLeaf();
+    await leaf.openFile(file);
+
+    await new Promise(resolve => {
+      const checkActive = () => {
+        if (app.workspace.getActiveFile()?.path === path) {
+          resolve(true);
+        } else {
+          setTimeout(checkActive, 50);
+        }
+      };
+      checkActive();
+    });
+  }, filePath);
+
+  await context.page.waitForSelector('.markdown-source-view, .markdown-preview-view', { timeout: 5000 });
+}
+
+/**
+ * Helper to wait for base view to load properly
+ */
+export async function waitForBaseView(context: SharedTestContext, timeout = 5000) {
+  await context.page.waitForSelector('.bases-view', { timeout });
+  await context.page.waitForSelector('.bases-table-container', { timeout: 5000 });
 }
