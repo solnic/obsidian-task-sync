@@ -8,6 +8,7 @@ import {
   createTestFolders,
   openTaskSyncSettings,
   scrollToSettingsSection,
+  scrollToAddTaskTypeSection,
   waitForTaskSyncPlugin
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks, captureScreenshotOnFailure } from '../helpers/shared-context';
@@ -73,10 +74,10 @@ describe('Task Type Configuration', () => {
   test('should add new task type', { timeout: 15000 }, async () => {
     await createTestFolders(context.page);
     await openTaskSyncSettingsWrapper();
-    await scrollToTaskTypesSection();
+    await scrollToAddTaskTypeSection(context.page);
 
     // Find the add new task type section
-    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Category' });
     expect(await addSection.isVisible()).toBe(true);
 
     // Find the input field within the add section
@@ -84,7 +85,7 @@ describe('Task Type Configuration', () => {
     await newTypeInput.fill('Epic');
 
     // Find and click the add button
-    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Category' });
     await addButton.click();
 
     // Wait for the new task type to appear
@@ -100,17 +101,17 @@ describe('Task Type Configuration', () => {
   test('should prevent adding duplicate task types', { timeout: 15000 }, async () => {
     await createTestFolders(context.page);
     await openTaskSyncSettingsWrapper();
-    await scrollToTaskTypesSection();
+    await scrollToAddTaskTypeSection(context.page);
 
     // Find the add new task type section
-    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Category' });
 
     // Try to add existing task type
     const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('Bug'); // Bug already exists
 
     // Try to click add button - it should not create a duplicate
-    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Category' });
     await addButton.click();
 
     // Wait a moment for any potential duplicate to appear, then check
@@ -125,17 +126,17 @@ describe('Task Type Configuration', () => {
   test('should prevent adding empty task type', { timeout: 15000 }, async () => {
     await createTestFolders(context.page);
     await openTaskSyncSettingsWrapper();
-    await scrollToTaskTypesSection();
+    await scrollToAddTaskTypeSection(context.page);
 
     // Find the add new task type section
-    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Category' });
 
     // Try to add empty task type
     const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('   '); // Only spaces
 
     // Try to click add button - it should not create an empty task type
-    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Category' });
     await addButton.click();
 
     // Wait a moment for any potential empty task type to appear, then check
@@ -150,14 +151,14 @@ describe('Task Type Configuration', () => {
   test('should remove task type', { timeout: 15000 }, async () => {
     await createTestFolders(context.page);
     await openTaskSyncSettingsWrapper();
-    await scrollToTaskTypesSection();
+    await scrollToAddTaskTypeSection(context.page);
 
     // First add a new task type to remove
-    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Category' });
     const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('Story');
 
-    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Category' });
     await addButton.click();
 
     // Wait for the Story task type to appear
@@ -242,13 +243,13 @@ Test area for sync testing.
     // Capture screenshot after opening settings
     await captureScreenshotOnFailure(context, 'after-opening-settings');
 
-    await scrollToTaskTypesSection();
+    await scrollToAddTaskTypeSection(context.page);
 
     // Capture screenshot after scrolling to task types
     await captureScreenshotOnFailure(context, 'after-scrolling-to-task-types');
 
     // Add a new task type
-    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Category' });
 
     // Check if add section exists
     const addSectionExists = await addSection.count() > 0;
@@ -256,13 +257,13 @@ Test area for sync testing.
 
     if (!addSectionExists) {
       await captureScreenshotOnFailure(context, 'add-section-not-found');
-      throw new Error('Add New Task Type section not found');
+      throw new Error('Add New Task Category section not found');
     }
 
     const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('Research');
 
-    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Category' });
     await addButton.click();
 
     // Capture screenshot after clicking add button
@@ -347,14 +348,14 @@ Area for testing sync functionality.
     await captureScreenshotOnFailure(context, 'create-remove-test-before-settings');
 
     await openTaskSyncSettingsWrapper();
-    await scrollToTaskTypesSection();
+    await scrollToAddTaskTypeSection(context.page);
 
     // Capture screenshot after opening settings
     await captureScreenshotOnFailure(context, 'create-remove-test-after-settings');
 
     // STEP 1: Add a new task type called "Epic"
     console.log('📝 Step 1: Adding Epic task type...');
-    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Category' });
 
     // Check if add section exists
     const addSectionExists = await addSection.count() > 0;
@@ -362,13 +363,13 @@ Area for testing sync functionality.
 
     if (!addSectionExists) {
       await captureScreenshotOnFailure(context, 'add-section-not-found');
-      throw new Error('Add New Task Type section not found');
+      throw new Error('Add New Task Category section not found');
     }
 
     const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('Epic');
 
-    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Category' });
     await addButton.click();
 
     // Capture screenshot after adding Epic
@@ -515,14 +516,14 @@ Area for testing sync functionality.
   test('should handle special characters in task type names', { timeout: 15000 }, async () => {
     await createTestFolders(context.page);
     await openTaskSyncSettingsWrapper();
-    await scrollToTaskTypesSection();
+    await scrollToAddTaskTypeSection(context.page);
 
     // Add task type with special characters
-    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Type' });
+    const addSection = context.page.locator('.setting-item').filter({ hasText: 'Add New Task Category' });
     const newTypeInput = addSection.locator('input[placeholder*="Epic, Story, Research"]');
     await newTypeInput.fill('User Story (UI/UX)');
 
-    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Type' });
+    const addButton = addSection.locator('button').filter({ hasText: 'Add Task Category' });
     await addButton.click();
 
     // Wait for the new task type to appear
