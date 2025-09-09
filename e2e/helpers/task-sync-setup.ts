@@ -49,15 +49,12 @@ export async function setupObsidianElectron(
   } else if (fs.existsSync(mainJsPath)) {
     // Old structure with main.js
     appPath = mainJsPath;
-    console.log('🔧 Using legacy main.js structure');
   } else if (fs.existsSync(appAsarPath)) {
     // New structure with app.asar - use the binary with app.asar
     appPath = obsidianBinaryPath;
-    console.log('🔧 Using native binary structure');
   } else if (fs.existsSync(obsidianBinaryPath)) {
     // Fallback to binary
     appPath = obsidianBinaryPath;
-    console.log('🔧 Using fallback binary');
   } else {
     throw new Error(
       `Unpacked Obsidian not found. Checked: ${appExtractedMainJs}, ${mainJsPath}, ${appAsarPath}, ${obsidianBinaryPath}. ` +
@@ -68,16 +65,12 @@ export async function setupObsidianElectron(
   const resolvedVaultPath = path.resolve(vaultPath);
   const userDataDir = path.resolve(dataDir);
 
-  console.log("🚀 Launching Obsidian with Task Sync plugin...");
-
   // Determine if we should run in headless mode
   const isHeadless = process.env.E2E_HEADLESS === 'false' ? false :
     (process.env.CI === 'true' ||
       process.env.E2E_HEADLESS === 'true' ||
       process.env.DISPLAY === undefined ||
       process.env.DISPLAY === '');
-
-  console.log(`🖥️ Running in ${isHeadless ? 'headless' : 'windowed'} mode`);
 
   // Prepare launch arguments for Electron
   const launchArgs = [
@@ -132,12 +125,6 @@ export async function setupObsidianElectron(
     }
   });
 
-  console.log("✅ Obsidian launched successfully");
-
-  // Get the first window with increased timeout
-  console.log("⏳ Waiting for first window...");
-
-  // Add debugging to see what windows are available
   let page;
   try {
     // Wait a bit for the app to initialize
@@ -145,13 +132,9 @@ export async function setupObsidianElectron(
 
     // Check if any windows exist
     const windows = electronApp.windows();
-    console.log(`🔍 Found ${windows.length} windows`);
-
     if (windows.length > 0) {
       page = windows[0];
-      console.log("✅ Using existing window");
     } else {
-      console.log("⏳ No windows found, waiting for first window...");
       page = await electronApp.firstWindow({ timeout: 30000 });
     }
   } catch (windowError) {
@@ -163,15 +146,10 @@ export async function setupObsidianElectron(
 
     if (windows.length > 0) {
       page = windows[0];
-      console.log("✅ Using fallback window");
     } else {
       throw new Error(`No windows available. Original error: ${windowError.message}`);
     }
   }
-  console.log("📱 Got main window, title:", await page.title());
-
-  // Wait for Obsidian to be fully loaded
-  console.log("⏳ Waiting for Obsidian app to be ready...");
   try {
     await page.waitForFunction(() => {
       const app = (window as any).app;
@@ -207,8 +185,6 @@ export async function setupObsidianElectron(
     console.log("🔍 Current Obsidian state:", JSON.stringify(currentState, null, 2));
     throw error;
   }
-
-  console.log("✅ Obsidian app object is ready");
 
   // Enable plugins
   await page.evaluate(() => {
@@ -248,7 +224,6 @@ export async function setupObsidianElectron(
   await page.evaluate(async () => {
     try {
       await (window as any).app.plugins.enablePlugin('obsidian-task-sync');
-      console.log("✅ Task Sync plugin enabled");
     } catch (error) {
       console.log("⚠️ Plugin enable error:", error.message);
     }
@@ -263,7 +238,6 @@ export async function setupObsidianElectron(
         (window as any).app.plugins !== undefined &&
         (window as any).app.plugins.plugins['obsidian-task-sync'] !== undefined;
     }, { timeout: 30000 });
-    console.log("✅ Task Sync plugin verified as loaded");
   } catch (error) {
     const availablePlugins = await page.evaluate(() => {
       if (typeof (window as any).app !== 'undefined' && (window as any).app.plugins) {
@@ -540,24 +514,17 @@ export async function createTestFolders(page: Page): Promise<void> {
       const app = (window as any).app;
       const folders = ['Tasks', 'Projects', 'Areas', 'Templates', 'Notes'];
 
-      console.log('🔧 Starting folder creation...');
-
       for (const folder of folders) {
         try {
           const exists = await app.vault.adapter.exists(folder);
           if (!exists) {
             await app.vault.createFolder(folder);
-            console.log(`✅ Created folder: ${folder}`);
           } else {
-            console.log(`📁 Folder already exists: ${folder}`);
           }
         } catch (error) {
           console.log(`❌ Error creating folder ${folder}:`, error.message);
-          // Don't throw, continue with other folders
         }
       }
-
-      console.log('✅ Folder creation completed');
     });
   } catch (error) {
     console.error('❌ createTestFolders failed:', error.message);
@@ -844,6 +811,20 @@ export async function scrollToSettingsSection(page: Page, sectionName: string): 
   await section.scrollIntoViewIfNeeded();
   // Wait for the section to be visible after scrolling
   await section.waitFor({ state: 'visible', timeout: 5000 });
+}
+
+/**
+ * Scroll to the "Add New Task Category" section specifically
+ */
+export async function scrollToAddTaskTypeSection(page: Page): Promise<void> {
+  // First scroll to the Task Categories section
+  await scrollToSettingsSection(page, 'Task Categories');
+
+  // Then scroll specifically to the "Add New Task Category" setting
+  const addSection = page.locator('.setting-item').filter({ hasText: 'Add New Task Category' });
+  await addSection.scrollIntoViewIfNeeded();
+  // Wait for the add section to be visible after scrolling
+  await addSection.waitFor({ state: 'visible', timeout: 5000 });
 }
 
 /**
