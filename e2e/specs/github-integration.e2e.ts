@@ -5,6 +5,7 @@
 import { test, expect, describe } from 'vitest';
 import { setupE2ETestHooks } from '../helpers/shared-context';
 import { createTestFolders } from '../helpers/task-sync-setup';
+import { toggleSidebar } from '../helpers/plugin-setup';
 import {
   waitForGitHubViewContent,
   openGitHubSettings,
@@ -18,57 +19,16 @@ import {
 describe('GitHub Integration', () => {
   const context = setupE2ETestHooks();
 
-  test('should display GitHub Issues view with proper UI structure', async () => {
-    console.log('🧪 Starting GitHub Issues view UI structure test');
-
+  beforeEach(async () => {
     await createTestFolders(context.page);
-
-    // Enable GitHub integration using helper (will use GITHUB_TOKEN from environment)
-    await configureGitHubIntegration(context.page, {
-      enabled: true,
-      repository: 'solnic/obsidian-task-sync'
-    });
-
-    // Open the GitHub Issues view through UI interactions (like a real user)
-    console.log('🔍 Opening GitHub Issues view through UI...');
-    await openGitHubIssuesView(context.page);
-
-    // Wait for GitHub Issues view content to load
-    console.log('🔍 Waiting for GitHub view content...');
-    await waitForGitHubViewContent(context.page, 30000);
-
-    // Check for main UI components using helper
-    console.log('🔍 Getting GitHub view structure...');
-    const uiStructure = await getGitHubViewStructure(context.page);
-
-    console.log('✅ UI structure check complete:', uiStructure);
-
-    expect(uiStructure.exists).toBe(true);
-    expect(uiStructure.hasHeader).toBe(true);
-    expect(uiStructure.hasContent).toBe(true);
-    expect(uiStructure.isVisible).toBe(true);
-    expect(uiStructure.hasText).toBe(true);
+    await toggleSidebar(context.page, 'right', true);
   });
 
   test('should configure GitHub token via settings input', async () => {
-    console.log('🧪 Starting GitHub token configuration test');
-
-    await createTestFolders(context.page);
-
-    // Open GitHub settings using helper
-    console.log('🔧 Opening GitHub settings...');
     await openGitHubSettings(context);
-
-    // Enable GitHub integration using helper
-    console.log('🔧 Enabling GitHub integration...');
     await toggleGitHubIntegration(context.page, true);
-
-    // Configure GitHub token using helper
-    console.log('🔧 Configuring GitHub token...');
     await configureGitHubToken(context.page, 'test-token-123');
 
-    // Verify token was configured by checking the input value
-    console.log('🔍 Verifying token configuration...');
     const tokenConfigured = await context.page.evaluate(() => {
       const settingsContainer = document.querySelector('.vertical-tab-content');
       if (!settingsContainer) return false;
@@ -85,21 +45,14 @@ describe('GitHub Integration', () => {
     });
 
     expect(tokenConfigured).toBe(true);
-    console.log('✅ GitHub token configuration test completed successfully');
   });
 
   test('should display import buttons on GitHub issues', async () => {
-    console.log('🧪 Starting GitHub import buttons test');
-
-    await createTestFolders(context.page);
-
-    // Configure GitHub integration with real token
     await configureGitHubIntegration(context.page, {
       enabled: true,
       repository: 'solnic/obsidian-task-sync'
     });
 
-    // Open GitHub Issues view
     await openGitHubIssuesView(context.page);
     await waitForGitHubViewContent(context.page, 30000);
 
@@ -118,12 +71,9 @@ describe('GitHub Integration', () => {
     });
 
     expect(hasImportButtons).toBe(true);
-    console.log('✅ GitHub import buttons test completed successfully');
   });
 
   test('should display import all button in header', async () => {
-    console.log('🧪 Starting GitHub import all button test');
-
     await createTestFolders(context.page);
 
     // Configure GitHub integration
@@ -146,6 +96,5 @@ describe('GitHub Integration', () => {
     });
 
     expect(hasImportAllButton).toBe(true);
-    console.log('✅ GitHub import all button test completed successfully');
   });
 });

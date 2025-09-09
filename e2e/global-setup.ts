@@ -61,7 +61,6 @@ async function cleanupDebugArtifacts(): Promise<void> {
 
     if (fs.existsSync(debugDir)) {
       await fs.promises.rm(debugDir, { recursive: true, force: true });
-      console.log('🗑️ Removed entire debug directory');
     }
 
     await fs.promises.mkdir(debugDir, { recursive: true });

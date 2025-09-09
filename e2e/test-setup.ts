@@ -26,7 +26,6 @@ const debugDir = path.join(process.cwd(), 'e2e', 'debug');
 try {
   fs.mkdirSync(screenshotsDir, { recursive: true });
   fs.mkdirSync(debugDir, { recursive: true });
-  console.log('📁 Created e2e directories for screenshots and debug info');
 } catch (error) {
   console.warn('⚠️ Failed to create e2e directories:', error.message);
 }

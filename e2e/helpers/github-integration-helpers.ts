@@ -13,8 +13,6 @@ import { openTaskSyncSettings } from './task-sync-setup';
  * Dismiss any visible notices that might block UI interactions
  */
 export async function dismissNotices(page: Page): Promise<void> {
-  console.log('🔍 Dismissing any visible notices...');
-
   // Wait a bit for notices to appear
   await page.waitForTimeout(100);
 
@@ -23,7 +21,6 @@ export async function dismissNotices(page: Page): Promise<void> {
   const noticeCount = await notices.count();
 
   if (noticeCount > 0) {
-    console.log(`🔍 Found ${noticeCount} notices to dismiss`);
     for (let i = 0; i < noticeCount; i++) {
       try {
         const notice = notices.nth(i);
@@ -33,23 +30,18 @@ export async function dismissNotices(page: Page): Promise<void> {
         }
       } catch (error) {
         // Ignore errors when dismissing notices
-        console.log('⚠️ Could not dismiss notice:', error.message);
       }
     }
   }
 
   // Wait for notices to disappear
   await page.waitForTimeout(300);
-  console.log('✅ Notices dismissed');
 }
 
 /**
  * Open GitHub Issues view through UI interactions (like a real user)
  */
 export async function openGitHubIssuesView(page: Page): Promise<void> {
-  console.log('🔍 Opening GitHub Issues view through UI...');
-
-  // First dismiss any notices that might block interactions
   await dismissNotices(page);
 
   // First ensure the view exists (but not active)
@@ -61,7 +53,6 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
       // Check if view already exists
       const existingLeaves = app.workspace.getLeavesOfType('github-issues');
       if (existingLeaves.length === 0) {
-        console.log('🔧 Creating GitHub Issues view...');
         // Create the view in the right sidebar (but don't force it active)
         const rightLeaf = app.workspace.getRightLeaf(false);
         await rightLeaf.setViewState({
@@ -76,9 +67,6 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, 500));
 
   // Now open the right sidebar and activate the GitHub Issues tab through UI
-  console.log('🔍 Opening right sidebar...');
-
-  // Click on the right sidebar to open it
   const rightSidebarToggle = page.locator('.workspace-ribbon.mod-right .side-dock-ribbon-action').first();
   if (await rightSidebarToggle.isVisible()) {
     await rightSidebarToggle.click();
@@ -86,15 +74,12 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
   }
 
   // Look for the GitHub Issues tab and click it
-  console.log('🔍 Looking for GitHub Issues tab...');
   const githubTab = page.locator('.workspace-tab-header').filter({ hasText: 'Task Sync' });
 
   if (await githubTab.isVisible()) {
-    console.log('🔍 Found GitHub Issues tab, clicking it...');
     await githubTab.click();
     await new Promise(resolve => setTimeout(resolve, 500));
   } else {
-    console.log('⚠️ GitHub Issues tab not found, trying alternative approach...');
 
     // Alternative: use command palette to open the view
     await page.keyboard.press('Control+p');
@@ -103,14 +88,12 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 
-  console.log('✅ GitHub Issues view should now be open');
 }
 
 /**
  * Wait for GitHub Issues view to appear and be ready
  */
 export async function waitForGitHubView(page: Page, timeout: number = 10000): Promise<void> {
-  console.log('🔍 Waiting for GitHub view to appear...');
 
   // First, ensure the plugin has initialized the view
   await page.waitForFunction(() => {
@@ -118,8 +101,6 @@ export async function waitForGitHubView(page: Page, timeout: number = 10000): Pr
     const plugin = app?.plugins?.plugins?.['obsidian-task-sync'];
     return plugin !== undefined;
   }, { timeout: 5000 });
-
-  console.log('✅ Plugin found, checking for GitHub view...');
 
   // Force view creation if it doesn't exist
   await page.evaluate(async () => {
@@ -130,15 +111,12 @@ export async function waitForGitHubView(page: Page, timeout: number = 10000): Pr
       // Check if view already exists
       const existingLeaves = app.workspace.getLeavesOfType('github-issues');
       if (existingLeaves.length === 0) {
-        console.log('🔧 Creating GitHub Issues view...');
         // Create the view in the right sidebar (but don't force it active)
         const rightLeaf = app.workspace.getRightLeaf(false);
         await rightLeaf.setViewState({
           type: 'github-issues',
           active: false
         });
-      } else {
-        console.log('✅ GitHub Issues view already exists');
       }
     }
   });
@@ -148,14 +126,12 @@ export async function waitForGitHubView(page: Page, timeout: number = 10000): Pr
     // Check for data-type attribute (primary)
     let viewElement = document.querySelector('[data-type="github-issues"]');
     if (viewElement) {
-      console.log('✅ Found GitHub view by data-type');
       return true;
     }
 
     // Fallback: check for class-based selector
     viewElement = document.querySelector('.github-issues-view');
     if (viewElement) {
-      console.log('✅ Found GitHub view by class');
       return true;
     }
 
@@ -164,16 +140,13 @@ export async function waitForGitHubView(page: Page, timeout: number = 10000): Pr
     if (workspace) {
       const leaves = workspace.getLeavesOfType('github-issues');
       if (leaves && leaves.length > 0) {
-        console.log('✅ Found GitHub view in workspace leaves');
         return true;
       }
     }
 
-    console.log('❌ GitHub view not found yet');
     return false;
   }, { timeout });
 
-  console.log('🔍 Waiting for GitHub view to be visible...');
 
   // Then wait for it to be visible (may take additional time for Obsidian to render)
   await page.waitForFunction(() => {
@@ -181,28 +154,23 @@ export async function waitForGitHubView(page: Page, timeout: number = 10000): Pr
       document.querySelector('.github-issues-view');
 
     if (!viewElement) {
-      console.log('❌ View element not found');
       return false;
     }
 
     const isVisible = (viewElement as HTMLElement).offsetParent !== null;
-    console.log(`🔍 View visibility: ${isVisible}`);
     return isVisible;
   }, { timeout: 5000 });
 
-  console.log('✅ GitHub view is ready and visible');
 }
 
 /**
  * Wait for GitHub view content to load
  */
 export async function waitForGitHubViewContent(page: Page, timeout: number = 15000): Promise<void> {
-  console.log('🔍 Waiting for GitHub view content to load...');
 
   // First ensure the view exists
   await waitForGitHubView(page, Math.min(timeout / 3, 10000));
 
-  console.log('🔍 Waiting for view content elements...');
 
   // Take a screenshot before waiting for content
   await page.screenshot({
@@ -224,16 +192,12 @@ export async function waitForGitHubViewContent(page: Page, timeout: number = 150
     // Look for the view content container directly, not the tab element
     const viewElement = document.querySelector('.github-issues-view');
     if (!viewElement) {
-      console.log('❌ View element not found');
       return false;
     }
 
     const hasHeader = viewElement.querySelector('.github-issues-header') !== null;
     const hasContent = viewElement.querySelector('.github-issues-content') !== null;
     const hasText = viewElement.textContent !== null && viewElement.textContent.length > 0;
-
-    console.log(`🔍 Content check - Header: ${hasHeader}, Content: ${hasContent}, Text: ${hasText}`);
-    console.log(`🔍 View text content: "${viewElement.textContent?.substring(0, 100)}..."`);
 
     return hasHeader && hasContent && hasText;
   }, { timeout: Math.max(timeout - 10000, 10000) }).catch(async (error) => {
@@ -244,8 +208,6 @@ export async function waitForGitHubViewContent(page: Page, timeout: number = 150
     });
     throw error;
   });
-
-  console.log('✅ GitHub view content loaded successfully');
 }
 
 /**
@@ -265,8 +227,6 @@ export async function waitForGitHubSettings(page: Page, timeout: number = 5000):
  * Open GitHub integration settings
  */
 export async function openGitHubSettings(context: SharedTestContext): Promise<void> {
-  console.log('🔧 Opening GitHub settings...');
-
   // Take a screenshot before opening settings
   await context.page.screenshot({
     path: `e2e/screenshots/before-open-settings-${Date.now()}.png`,
@@ -288,16 +248,12 @@ export async function openGitHubSettings(context: SharedTestContext): Promise<vo
     path: `e2e/screenshots/after-github-settings-visible-${Date.now()}.png`,
     fullPage: true
   });
-
-  console.log('✅ GitHub settings opened');
 }
 
 /**
  * Toggle GitHub integration setting
  */
 export async function toggleGitHubIntegration(page: Page, enabled: boolean): Promise<void> {
-  console.log(`🔧 Toggling GitHub integration to: ${enabled}`);
-
   // Take a screenshot before toggling
   await page.screenshot({
     path: `e2e/screenshots/before-toggle-${enabled ? 'enable' : 'disable'}-${Date.now()}.png`,
@@ -317,12 +273,9 @@ export async function toggleGitHubIntegration(page: Page, enabled: boolean): Pro
 
         if (toggle && checkbox) {
           const isCurrentlyEnabled = checkbox.checked;
-          console.log(`🔍 Current state: ${isCurrentlyEnabled}, Target state: ${shouldEnable}`);
           if (isCurrentlyEnabled !== shouldEnable) {
             toggle.click();
-            console.log('🔧 Clicked toggle');
           } else {
-            console.log('🔍 Already in desired state');
           }
           return true;
         }
@@ -342,12 +295,7 @@ export async function toggleGitHubIntegration(page: Page, enabled: boolean): Pro
 
   // Wait for additional settings to appear/disappear
   if (enabled) {
-    console.log('🔍 Waiting for GitHub token settings to appear...');
-
-    // Wait a bit for the section to be recreated
     await page.waitForTimeout(1000);
-
-    // Take a screenshot after waiting
     await page.screenshot({
       path: `e2e/screenshots/after-toggle-wait-${Date.now()}.png`,
       fullPage: true
@@ -361,21 +309,16 @@ export async function toggleGitHubIntegration(page: Page, enabled: boolean): Pro
       fullPage: true
     });
   }
-
-  console.log('✅ GitHub integration toggle completed');
 }
 
 /**
  * Wait for GitHub token settings to appear
  */
 export async function waitForGitHubTokenSettings(page: Page, timeout: number = 5000): Promise<void> {
-  console.log(`🔍 Waiting for GitHub token settings to appear (timeout: ${timeout}ms)...`);
-
   try {
     await page.waitForFunction(() => {
       const settingsContainer = document.querySelector('.vertical-tab-content');
       if (!settingsContainer) {
-        console.log('❌ No settings container found');
         return false;
       }
 
@@ -383,15 +326,10 @@ export async function waitForGitHubTokenSettings(page: Page, timeout: number = 5
       const hasToken = text.includes('GitHub Personal Access Token');
       const hasRepo = text.includes('Default Repository');
 
-      console.log(`🔍 Settings check - Token: ${hasToken}, Repo: ${hasRepo}`);
-      console.log(`🔍 Settings text preview: "${text.substring(0, 200)}..."`);
-
       return hasToken && hasRepo;
     }, { timeout });
 
-    console.log('✅ GitHub token settings appeared');
   } catch (error) {
-    console.error('❌ Timeout waiting for GitHub token settings');
 
     // Take a screenshot on timeout
     await page.screenshot({
@@ -420,7 +358,6 @@ export async function waitForGitHubTokenSettings(page: Page, timeout: number = 5
       };
     });
 
-    console.error('❌ Settings debug info:', JSON.stringify(settingsDebug, null, 2));
     throw error;
   }
 }
@@ -429,9 +366,6 @@ export async function waitForGitHubTokenSettings(page: Page, timeout: number = 5
  * Configure GitHub personal access token
  */
 export async function configureGitHubToken(page: Page, token: string): Promise<void> {
-  console.log('🔧 Configuring GitHub token...');
-
-  // Take a screenshot before attempting to configure token
   await page.screenshot({
     path: `e2e/screenshots/before-token-config-${Date.now()}.png`,
     fullPage: true
@@ -457,8 +391,6 @@ export async function configureGitHubToken(page: Page, token: string): Promise<v
       containerHTML: settingsContainer.innerHTML.substring(0, 500)
     };
   });
-
-  console.log('🔍 Settings debug info:', JSON.stringify(settingsDebugInfo, null, 2));
 
   const tokenConfigured = await page.evaluate((tokenValue) => {
     const settingsContainer = document.querySelector('.vertical-tab-content');
@@ -486,12 +418,8 @@ export async function configureGitHubToken(page: Page, token: string): Promise<v
       fullPage: true
     });
 
-    console.error('❌ Could not find GitHub token input field');
-    console.error('❌ Available settings:', settingsDebugInfo);
     throw new Error('Could not find GitHub token input field');
   }
-
-  console.log('✅ GitHub token configured successfully');
 }
 
 /**
@@ -533,8 +461,6 @@ export async function stubGitHubApiResponses(
     repositories?: any[];
   }
 ): Promise<void> {
-  console.log('🔧 Stubbing GitHub API responses for testing...');
-
   await page.evaluate(async (data) => {
     const app = (window as any).app;
     const plugin = app.plugins.plugins['obsidian-task-sync'];
@@ -550,7 +476,6 @@ export async function stubGitHubApiResponses(
     // Stub fetchIssues method
     if (data.issues) {
       plugin.githubService.fetchIssues = async (repository: string) => {
-        console.log(`🔧 Stubbed fetchIssues called for repository: ${repository}`);
         return data.issues;
       };
     }
@@ -558,7 +483,6 @@ export async function stubGitHubApiResponses(
     // Stub fetchRepositories method
     if (data.repositories) {
       plugin.githubService.fetchRepositories = async () => {
-        console.log('🔧 Stubbed fetchRepositories called');
         return data.repositories;
       };
     }
@@ -566,19 +490,13 @@ export async function stubGitHubApiResponses(
     // Store original methods for potential restoration
     (plugin.githubService as any)._originalFetchIssues = originalFetchIssues;
     (plugin.githubService as any)._originalFetchRepositories = originalFetchRepositories;
-
-    console.log('✅ GitHub API responses stubbed successfully');
   }, mockData);
-
-  console.log('✅ GitHub API stubbing completed');
 }
 
 /**
  * Restore original GitHub API methods (cleanup after stubbing)
  */
 export async function restoreGitHubApiMethods(page: Page): Promise<void> {
-  console.log('🔧 Restoring original GitHub API methods...');
-
   await page.evaluate(async () => {
     const app = (window as any).app;
     const plugin = app.plugins.plugins['obsidian-task-sync'];
@@ -597,11 +515,7 @@ export async function restoreGitHubApiMethods(page: Page): Promise<void> {
       plugin.githubService.fetchRepositories = (plugin.githubService as any)._originalFetchRepositories;
       delete (plugin.githubService as any)._originalFetchRepositories;
     }
-
-    console.log('✅ Original GitHub API methods restored');
   });
-
-  console.log('✅ GitHub API restoration completed');
 }
 
 /**
@@ -616,14 +530,8 @@ export async function configureGitHubIntegration(
     repository?: string;
   }
 ): Promise<void> {
-  console.log(`🔧 Configuring GitHub integration: enabled=${config.enabled}, repository=${config.repository}`);
-
   // Use environment token as fallback if no token provided
   const tokenToUse = config.token || process.env.GITHUB_TOKEN || '';
-
-  if (!tokenToUse && config.enabled) {
-    console.warn('⚠️ No GitHub token provided and GITHUB_TOKEN environment variable not set');
-  }
 
   await page.evaluate(async (configuration) => {
     const app = (window as any).app;
@@ -632,8 +540,6 @@ export async function configureGitHubIntegration(
     if (!plugin) {
       throw new Error('Task Sync plugin not found');
     }
-
-    console.log('🔧 Updating plugin settings...');
 
     const oldSettings = { ...plugin.settings.githubIntegration };
 
@@ -644,12 +550,7 @@ export async function configureGitHubIntegration(
       ...(configuration.repository && { defaultRepository: configuration.repository })
     };
 
-    console.log('🔧 Old settings:', oldSettings);
-    console.log('🔧 New settings:', plugin.settings.githubIntegration);
-
     await plugin.saveSettings();
-
-    console.log('✅ GitHub integration settings saved');
   }, { ...config, token: tokenToUse });
 
   // Wait a bit for settings to propagate
@@ -657,16 +558,12 @@ export async function configureGitHubIntegration(
 
   // Ensure the GitHub view is created/updated after settings change
   await ensureGitHubViewExists(page);
-
-  console.log('✅ GitHub integration configured');
 }
 
 /**
  * Ensure GitHub view exists and is properly initialized
  */
 export async function ensureGitHubViewExists(page: Page): Promise<void> {
-  console.log('🔧 Ensuring GitHub view exists...');
-
   await page.evaluate(async () => {
     const app = (window as any).app;
     const plugin = app?.plugins?.plugins?.['obsidian-task-sync'];
@@ -678,8 +575,6 @@ export async function ensureGitHubViewExists(page: Page): Promise<void> {
     // Check if view already exists
     const existingLeaves = app.workspace.getLeavesOfType('github-issues');
     if (existingLeaves.length === 0) {
-      console.log('🔧 Creating GitHub Issues view...');
-      // Create the view in the right sidebar (but don't force it active)
       const rightLeaf = app.workspace.getRightLeaf(false);
       await rightLeaf.setViewState({
         type: 'github-issues',
@@ -694,24 +589,17 @@ export async function ensureGitHubViewExists(page: Page): Promise<void> {
       if (newLeaves.length > 0) {
         const view = newLeaves[0].view;
         if (view && view.onOpen && typeof view.onOpen === 'function') {
-          console.log('🔧 Manually calling onOpen() for GitHub view...');
           await view.onOpen();
-          console.log('✅ onOpen() called successfully');
         }
       }
     } else {
-      console.log('✅ GitHub Issues view already exists');
-
-      // Update existing views with new settings
       existingLeaves.forEach((leaf: any) => {
         const view = leaf.view;
         if (view && view.updateSettings) {
           view.updateSettings(plugin.settings);
         }
 
-        // Also try to call onOpen if it hasn't been called
         if (view && view.onOpen && typeof view.onOpen === 'function') {
-          console.log('🔧 Manually calling onOpen() for existing GitHub view...');
           view.onOpen().catch((error: any) => {
             console.warn('⚠️ Error calling onOpen():', error);
           });
@@ -719,27 +607,17 @@ export async function ensureGitHubViewExists(page: Page): Promise<void> {
       });
     }
   });
-
-  console.log('✅ GitHub view ensured');
 }
 
 /**
  * Wait for GitHub view to show disabled state
  */
 export async function waitForGitHubDisabledState(page: Page, timeout: number = 5000): Promise<void> {
-  console.log('🔍 Waiting for GitHub view disabled state...');
-
-  // First ensure the view exists
   await waitForGitHubView(page, timeout);
-
-  console.log('🔍 Checking for disabled state content...');
-
-  // Then wait for disabled state content
   await page.waitForFunction(() => {
     const viewElement = document.querySelector('[data-type="github-issues"]') ||
       document.querySelector('.github-issues-view');
     if (!viewElement) {
-      console.log('❌ View element not found for disabled state check');
       return false;
     }
 
@@ -747,12 +625,8 @@ export async function waitForGitHubDisabledState(page: Page, timeout: number = 5
     const hasDisabledText = text.includes('GitHub integration is not enabled') ||
       text.includes('Please configure it in settings');
 
-    console.log(`🔍 Disabled state check - Text: "${text.substring(0, 100)}...", Has disabled text: ${hasDisabledText}`);
-
     return hasDisabledText;
   }, { timeout });
-
-  console.log('✅ GitHub view showing disabled state');
 }
 
 /**
@@ -829,20 +703,12 @@ export async function debugGitHubViewState(page: Page): Promise<void> {
 
     return { pluginInfo, leavesInfo, domInfo };
   });
-
-  console.log('🔍 GitHub View Debug Info:');
-  console.log('Plugin:', JSON.stringify(debugInfo.pluginInfo, null, 2));
-  console.log('Leaves:', JSON.stringify(debugInfo.leavesInfo, null, 2));
-  console.log('DOM:', JSON.stringify(debugInfo.domInfo, null, 2));
 }
 
 /**
  * Click import button for a specific GitHub issue in the UI
  */
 export async function clickIssueImportButton(page: Page, issueNumber: number): Promise<void> {
-  console.log(`🔍 Looking for import button for issue #${issueNumber}...`);
-
-  // Wait for the issue to appear in the list
   await page.waitForFunction((targetIssueNumber) => {
     const issueItems = document.querySelectorAll('.issue-item');
     for (let i = 0; i < issueItems.length; i++) {
@@ -866,7 +732,6 @@ export async function clickIssueImportButton(page: Page, issueNumber: number): P
         const importButton = item.querySelector('[data-test="issue-import-button"]') as HTMLButtonElement;
         if (importButton) {
           importButton.click();
-          console.log(`🔧 Clicked import button for issue #${targetIssueNumber}`);
           return true;
         }
       }
@@ -877,16 +742,12 @@ export async function clickIssueImportButton(page: Page, issueNumber: number): P
   if (!clicked) {
     throw new Error(`Could not find or click import button for issue #${issueNumber}`);
   }
-
-  console.log(`✅ Successfully clicked import button for issue #${issueNumber}`);
 }
 
 /**
  * Wait for issue import to complete (button changes to "Imported" state)
  */
 export async function waitForIssueImportComplete(page: Page, issueNumber: number, timeout: number = 10000): Promise<void> {
-  console.log(`🔍 Waiting for issue #${issueNumber} import to complete...`);
-
   await page.waitForFunction((targetIssueNumber) => {
     const issueItems = document.querySelectorAll('.issue-item');
     for (let i = 0; i < issueItems.length; i++) {
@@ -899,8 +760,6 @@ export async function waitForIssueImportComplete(page: Page, issueNumber: number
     }
     return false;
   }, issueNumber, { timeout });
-
-  console.log(`✅ Issue #${issueNumber} import completed`);
 }
 
 /**
@@ -913,9 +772,6 @@ export async function getGitHubViewStructure(page: Page): Promise<{
   isVisible: boolean;
   hasText: boolean;
 }> {
-  console.log('🔍 Getting GitHub view structure...');
-
-  // First debug the current state
   await debugGitHubViewState(page);
 
   const result = await page.evaluate(() => {
@@ -949,6 +805,5 @@ export async function getGitHubViewStructure(page: Page): Promise<{
     };
   });
 
-  console.log('🔍 View structure result:', JSON.stringify(result, null, 2));
   return result;
 }

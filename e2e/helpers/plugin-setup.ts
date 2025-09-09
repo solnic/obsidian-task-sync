@@ -70,27 +70,30 @@ export async function resetObsidianUI(page: Page): Promise<void> {
     }
   });
 
-  // Toggle sidebars to maximize workspace width for better rendering
-  await page.evaluate(() => {
-    try {
-      const app = (window as any).app;
-      if (app?.workspace) {
-        // Close left sidebar if open
-        if (app.workspace.leftSplit?.collapsed === false) {
+  await toggleSidebar(page, 'left', false);
+  await toggleSidebar(page, 'right', false);
+}
+
+export async function toggleSidebar(page: Page, sidebar: 'left' | 'right', open: boolean): Promise<void> {
+  await page.evaluate(async ({ sidebar, open }) => {
+    const app = (window as any).app;
+
+    if (app?.workspace) {
+      if (sidebar === 'left') {
+        if (open) {
+          app.workspace.leftSplit.expand();
+        } else {
           app.workspace.leftSplit.collapse();
         }
-
-        // Close right sidebar if open
-        if (app.workspace.rightSplit?.collapsed === false) {
+      } else if (sidebar === 'right') {
+        if (open) {
+          app.workspace.rightSplit.expand();
+        } else {
           app.workspace.rightSplit.collapse();
         }
       }
-    } catch (error) {
-      console.warn('Error toggling sidebars:', error);
     }
-  });
-
-  await page.waitForTimeout(500); // Increased final wait time for headless mode
+  }, { sidebar, open });
 }
 
 /**
