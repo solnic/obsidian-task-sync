@@ -302,13 +302,7 @@ Test area for sync testing.
       return false;
     });
 
-    console.log(`📝 Research task type in plugin settings: ${hasResearchTaskType}`);
     expect(hasResearchTaskType).toBe(true);
-
-    console.log('✅ Test completed successfully - Research task type was added and base sync was triggered');
-
-    // Note: We skip closing settings here to prevent test hangs
-    // The afterEach hook will handle cleanup
   });
 
   test('should trigger base sync when task type is created and removed', { timeout: 30000 }, async () => {
@@ -506,11 +500,6 @@ Area for testing sync functionality.
 
     expect(baseContent).not.toContain('name: Epics');
     expect(baseContent).not.toContain('Category == "Epic"');
-
-    console.log('✅ Test completed successfully - Epic task type was created, synced, removed, and base sync was triggered for both operations');
-
-    // Note: We skip closing settings here to prevent test hangs
-    // The afterEach hook will handle cleanup
   });
 
   test('should handle special characters in task type names', { timeout: 15000 }, async () => {
@@ -531,6 +520,4 @@ Area for testing sync functionality.
     await userStorySetting.waitFor({ state: 'visible', timeout: 5000 });
     expect(await userStorySetting.isVisible()).toBe(true);
   });
-
-
 });

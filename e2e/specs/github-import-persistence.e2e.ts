@@ -15,7 +15,6 @@ import {
   openGitHubIssuesView,
   waitForGitHubViewContent,
   stubGitHubApiResponses,
-  restoreGitHubApiMethods,
   clickIssueImportButton,
   waitForIssueImportComplete
 } from '../helpers/github-integration-helpers';

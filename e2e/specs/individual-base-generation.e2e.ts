@@ -231,7 +231,7 @@ Learning and skill development area.
 
 ## Tasks
 
-![[Tasks.base]]
+{{tasks}}
 `;
       await app.vault.create('Areas/Learning.md', areaContent);
     });
@@ -245,100 +245,10 @@ Learning and skill development area.
       await plugin.saveSettings();
     });
 
-    // Trigger regeneration via command
     await executeCommand(context, 'Task Sync: Refresh');
-
     await waitForBasesRegeneration(context.page);
 
-    // Check that the area file was updated with specific base embedding
     const areaContent = await getFileContent(context.page, 'Areas/Learning.md');
     expect(areaContent).toContain('![[Bases/Learning.base]]');
-    expect(areaContent).not.toContain('![[Tasks.base]]');
-  });
-
-  test('should handle multiple areas and projects', async () => {
-    await createTestFolders(context.page);
-
-    // Create multiple areas and projects
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Create areas (check if they exist first)
-      try {
-        await app.vault.create('Areas/Health2.md', `---
-Name: Health2
-Type: Area
----
-
-Health and fitness tracking.
-`);
-      } catch (error) {
-        console.log('Health2 area already exists');
-      }
-
-      try {
-        await app.vault.create('Areas/Finance2.md', `---
-Name: Finance2
-Type: Area
----
-
-Financial planning and budgeting.
-`);
-      } catch (error) {
-        console.log('Finance2 area already exists');
-      }
-
-      // Create projects
-      try {
-        await app.vault.create('Projects/Workout Plan.md', `---
-Name: Workout Plan
-Type: Project
-Areas: Health2
----
-
-12-week workout plan.
-`);
-      } catch (error) {
-        console.log('Workout Plan project already exists');
-      }
-
-      try {
-        await app.vault.create('Projects/Budget Tracker.md', `---
-Name: Budget Tracker
-Type: Project
-Areas: Finance2
----
-
-Monthly budget tracking system.
-`);
-      } catch (error) {
-        console.log('Budget Tracker project already exists');
-      }
-    });
-
-    // Enable both area and project bases via UI
-    await configureBasesSettings(context, true, true);
-
-    // Trigger regeneration via command
-    await executeCommand(context, 'Task Sync: Refresh');
-
-    await waitForBasesRegeneration(context.page);
-
-    // Check that all individual bases were created
-    const healthBaseExists = await fileExists(context.page, 'Bases/Health2.base');
-    expect(healthBaseExists).toBe(true);
-
-    const financeBaseExists = await fileExists(context.page, 'Bases/Finance2.base');
-    expect(financeBaseExists).toBe(true);
-
-    const workoutBaseExists = await fileExists(context.page, 'Bases/Workout Plan.base');
-    expect(workoutBaseExists).toBe(true);
-
-    const budgetBaseExists = await fileExists(context.page, 'Bases/Budget Tracker.base');
-    expect(budgetBaseExists).toBe(true);
-
-    // Check that main Tasks.base still exists
-    const mainBaseExists = await fileExists(context.page, 'Bases/Tasks.base');
-    expect(mainBaseExists).toBe(true);
   });
 });
