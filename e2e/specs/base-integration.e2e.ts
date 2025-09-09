@@ -11,6 +11,7 @@ import {
   waitForTaskSyncPlugin
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
+import { createProject, createArea } from '../helpers/entity-helpers';
 
 describe('Bases Integration', () => {
   const context = setupE2ETestHooks();
@@ -42,31 +43,15 @@ describe('Bases Integration', () => {
     // Wait for plugin to be ready
     await waitForTaskSyncPlugin(context.page);
 
-    // Create test project and area files first
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
+    // Create test project and area files using entity helpers
+    await createProject(context, {
+      name: 'Test Project',
+      description: 'This is a test project for bases integration.'
+    });
 
-      // Create a test project file
-      await app.vault.create('Projects/Test Project.md', `---
-Name: Test Project
-Type: Project
----
-
-# Test Project
-
-This is a test project for bases integration.
-`);
-
-      // Create a test area file
-      await app.vault.create('Areas/Test Area.md', `---
-Name: Test Area
-Type: Area
----
-
-# Test Area
-
-This is a test area for bases integration.
-`);
+    await createArea(context, {
+      name: 'Test Area',
+      description: 'This is a test area for bases integration.'
     });
 
     // Wait for metadata cache to update

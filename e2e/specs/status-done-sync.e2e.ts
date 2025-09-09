@@ -6,6 +6,7 @@
 import { test, expect, describe } from 'vitest';
 import { setupE2ETestHooks } from '../helpers/shared-context';
 import { createTestFolders, waitForTaskSyncPlugin } from '../helpers/task-sync-setup';
+import { createTask } from '../helpers/entity-helpers';
 
 const context = setupE2ETestHooks();
 
@@ -15,24 +16,16 @@ describe('Status and Done Field Synchronization', () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a task with initial status
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      await app.vault.create('Tasks/Test Task.md', `---
-Title: Test Task
-Type: Task
-Priority: Medium
-Areas: Development
-Project: Test Project
-Done: false
-Status: Backlog
-Parent task:
-tags: test
----
-
-This is a test task for status/done synchronization.`);
-    });
+    // Create a task with initial status using entity helper
+    await createTask(context, {
+      title: 'Test Task',
+      priority: 'Medium',
+      areas: ['Development'],
+      project: 'Test Project',
+      done: false,
+      status: 'Backlog',
+      tags: ['test']
+    }, 'This is a test task for status/done synchronization.');
 
     // Wait for file to be created and processed
     await context.page.waitForTimeout(500);
@@ -67,24 +60,16 @@ This is a test task for status/done synchronization.`);
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a task with done status
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      await app.vault.create('Tasks/Completed Task.md', `---
-Title: Completed Task
-Type: Task
-Priority: High
-Areas: Development
-Project: Test Project
-Done: true
-Status: Done
-Parent task:
-tags: test
----
-
-This task was completed but needs to be reopened.`);
-    });
+    // Create a task with done status using entity helper
+    await createTask(context, {
+      title: 'Completed Task',
+      priority: 'High',
+      areas: ['Development'],
+      project: 'Test Project',
+      done: true,
+      status: 'Done',
+      tags: ['test']
+    }, 'This task was completed but needs to be reopened.');
 
     // Wait for file to be created and processed
     await context.page.waitForTimeout(500);
@@ -119,24 +104,16 @@ This task was completed but needs to be reopened.`);
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a task with non-done status
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      await app.vault.create('Tasks/Active Task.md', `---
-Title: Active Task
-Type: Task
-Priority: Low
-Areas: Development
-Project: Test Project
-Done: false
-Status: In Progress
-Parent task:
-tags: test
----
-
-This task is in progress but will be marked as done.`);
-    });
+    // Create a task with non-done status using entity helper
+    await createTask(context, {
+      title: 'Active Task',
+      priority: 'Low',
+      areas: ['Development'],
+      project: 'Test Project',
+      done: false,
+      status: 'In Progress',
+      tags: ['test']
+    }, 'This task is in progress but will be marked as done.');
 
     // Wait for file to be created and processed
     await context.page.waitForTimeout(500);
@@ -172,24 +149,16 @@ This task is in progress but will be marked as done.`);
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a task with done status
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      await app.vault.create('Tasks/Finished Task.md', `---
-Title: Finished Task
-Type: Task
-Priority: Medium
-Areas: Development
-Project: Test Project
-Done: true
-Status: Done
-Parent task:
-tags: test
----
-
-This task was finished but needs to be reopened.`);
-    });
+    // Create a task with done status using entity helper
+    await createTask(context, {
+      title: 'Finished Task',
+      priority: 'Medium',
+      areas: ['Development'],
+      project: 'Test Project',
+      done: true,
+      status: 'Done',
+      tags: ['test']
+    }, 'This task was finished but needs to be reopened.');
 
     // Wait for file to be created and processed
     await context.page.waitForTimeout(500);
@@ -225,24 +194,16 @@ This task was finished but needs to be reopened.`);
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a task
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      await app.vault.create('Tasks/Loop Test Task.md', `---
-Title: Loop Test Task
-Type: Task
-Priority: High
-Areas: Development
-Project: Test Project
-Done: false
-Status: Backlog
-Parent task:
-tags: test
----
-
-This task tests that we don't create infinite loops.`);
-    });
+    // Create a task using entity helper
+    await createTask(context, {
+      title: 'Loop Test Task',
+      priority: 'High',
+      areas: ['Development'],
+      project: 'Test Project',
+      done: false,
+      status: 'Backlog',
+      tags: ['test']
+    }, 'This task tests that we don\'t create infinite loops.');
 
     // Wait for file to be created and processed
     await context.page.waitForTimeout(500);

@@ -10,6 +10,7 @@ import {
   waitForTaskSyncPlugin
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks } from '../helpers/shared-context';
+import { createTask } from '../helpers/entity-helpers';
 
 describe('TaskFileManager Service', () => {
   const context = setupE2ETestHooks();
@@ -106,24 +107,17 @@ This is the task description.`;
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a test task file with content
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const taskContent = `---
-Title: Content Test Task
-Type: Task
----
-
-## Description
+    // Create a test task file with content using entity helper
+    await createTask(context, {
+      title: 'Content Test Task'
+    }, `## Description
 
 This is the main content of the task.
 
 ## Notes
 
 - Note 1
-- Note 2`;
-      await app.vault.create('Tasks/Content Test Task.md', taskContent);
-    });
+- Note 2`);
 
     // Test extracting file content
     const fileContent = await context.page.evaluate(async () => {
@@ -224,18 +218,11 @@ Task content here.`;
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a test task file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const taskContent = `---
-Title: Project Assignment Test
-Type: Task
-Project: Old Project
----
-
-Task content here.`;
-      await app.vault.create('Tasks/Project Assignment Test.md', taskContent);
-    });
+    // Create a test task file using entity helper
+    await createTask(context, {
+      title: 'Project Assignment Test',
+      project: 'Old Project'
+    }, 'Task content here.');
 
     // Test assigning to a new project
     await context.page.evaluate(async () => {
@@ -260,19 +247,11 @@ Task content here.`;
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a test task file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const taskContent = `---
-Title: Areas Assignment Test
-Type: Task
-Areas:
-  - Development
----
-
-Task content here.`;
-      await app.vault.create('Tasks/Areas Assignment Test.md', taskContent);
-    });
+    // Create a test task file using entity helper
+    await createTask(context, {
+      title: 'Areas Assignment Test',
+      areas: ['Development']
+    }, 'Task content here.');
 
     // Test assigning to new areas
     await context.page.evaluate(async () => {
@@ -300,18 +279,11 @@ Task content here.`;
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create a test task file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const taskContent = `---
-Title: Property Update Test
-Type: Task
-Priority: Low
----
-
-Task content here.`;
-      await app.vault.create('Tasks/Property Update Test.md', taskContent);
-    });
+    // Create a test task file using entity helper
+    await createTask(context, {
+      title: 'Property Update Test',
+      priority: 'Low'
+    }, 'Task content here.');
 
     // Test updating a specific property
     await context.page.evaluate(async () => {

@@ -8,7 +8,7 @@ import {
   fileExists,
   createTestFolders
 } from '../helpers/task-sync-setup';
-import { setupE2ETestHooks, executeCommand } from '../helpers/shared-context';
+import { setupE2ETestHooks, executeCommand, openFile } from '../helpers/shared-context';
 
 describe('Todo Promotion E2E', () => {
   const context = setupE2ETestHooks();
@@ -23,18 +23,8 @@ describe('Todo Promotion E2E', () => {
       await app.vault.create('Areas/Personal.md', testContent);
     });
 
-    // Open the file
-    await context.page.keyboard.press('Control+O');
-    await context.page.waitForSelector('.prompt-input', { timeout: 5000 });
-
-    // Type the filename to search for it
-    await context.page.keyboard.type('Personal.md');
-    await context.page.keyboard.press('Enter');
-    await context.page.waitForTimeout(1000);
-
-    // Click on the editor to focus it and position cursor on the todo line
-    await context.page.click('.cm-editor');
-    await context.page.waitForTimeout(500);
+    // Open the file using helper
+    await openFile(context, 'Areas/Personal.md');
 
     // Position cursor on the todo line explicitly using keyboard navigation
     await context.page.keyboard.press('Control+Home'); // Go to beginning of document
@@ -64,16 +54,8 @@ describe('Todo Promotion E2E', () => {
       await app.vault.create('Projects/Documentation.md', testContent);
     });
 
-    // Open the file
-    await context.page.keyboard.press('Control+O');
-    await context.page.waitForTimeout(500);
-    await context.page.keyboard.type('Documentation.md');
-    await context.page.keyboard.press('Enter');
-    await context.page.waitForTimeout(1000);
-
-    // Click on the editor to focus it
-    await context.page.click('.cm-editor');
-    await context.page.waitForTimeout(500);
+    // Open the file using helper
+    await openFile(context, 'Projects/Documentation.md');
 
     // Position cursor on the todo line explicitly using keyboard navigation
     await context.page.keyboard.press('Control+Home'); // Go to beginning of document
@@ -103,16 +85,8 @@ describe('Todo Promotion E2E', () => {
       await app.vault.create('Areas/Work.md', testContent);
     });
 
-    // Open the file
-    await context.page.keyboard.press('Control+O');
-    await context.page.waitForTimeout(500);
-    await context.page.keyboard.type('Work.md');
-    await context.page.keyboard.press('Enter');
-    await context.page.waitForTimeout(1000);
-
-    // Click on the editor to focus it
-    await context.page.click('.cm-editor');
-    await context.page.waitForTimeout(500);
+    // Open the file using helper
+    await openFile(context, 'Areas/Work.md');
 
     // Position cursor on the todo line explicitly using keyboard navigation
     await context.page.keyboard.press('Control+Home'); // Go to beginning of document
@@ -142,16 +116,8 @@ describe('Todo Promotion E2E', () => {
       await app.vault.create('Areas/Test.md', testContent);
     });
 
-    // Open the file
-    await context.page.keyboard.press('Control+O');
-    await context.page.waitForTimeout(500);
-    await context.page.keyboard.type('Test.md');
-    await context.page.keyboard.press('Enter');
-    await context.page.waitForTimeout(1000);
-
-    // Click on the editor to focus it
-    await context.page.click('.cm-editor');
-    await context.page.waitForTimeout(500);
+    // Open the file using helper
+    await openFile(context, 'Areas/Test.md');
 
     // Position cursor on the todo line explicitly using keyboard navigation
     await context.page.keyboard.press('Control+Home'); // Go to beginning of document
@@ -176,16 +142,8 @@ describe('Todo Promotion E2E', () => {
       await app.vault.create('Areas/Mixed.md', testContent);
     });
 
-    // Open the file
-    await context.page.keyboard.press('Control+O');
-    await context.page.waitForTimeout(500);
-    await context.page.keyboard.type('Mixed.md');
-    await context.page.keyboard.press('Enter');
-    await context.page.waitForTimeout(1000);
-
-    // Click on the editor to focus it
-    await context.page.click('.cm-editor');
-    await context.page.waitForTimeout(500);
+    // Open the file using helper
+    await openFile(context, 'Areas/Mixed.md');
 
     // Position cursor on the todo line explicitly using keyboard navigation
     await context.page.keyboard.press('Control+Home'); // Go to beginning of document
@@ -214,16 +172,10 @@ describe('Todo Promotion E2E', () => {
       await app.vault.create('Areas/Work.md', testContent);
     });
 
-    // Open the file
-    await context.page.keyboard.press('Control+O');
-    await context.page.waitForTimeout(500);
-    await context.page.keyboard.type('Work.md');
-    await context.page.keyboard.press('Enter');
-    await context.page.waitForTimeout(1000);
+    // Open the file using helper
+    await openFile(context, 'Areas/Work.md');
 
-    // Click on the editor and position cursor
-    await context.page.click('.cm-editor');
-    await context.page.waitForTimeout(500);
+    // Position cursor
     await context.page.keyboard.press('Control+Home');
     await context.page.waitForTimeout(200);
 
@@ -251,16 +203,10 @@ describe('Todo Promotion E2E', () => {
       await app.vault.create('Projects/Website Redesign.md', testContent);
     });
 
-    // Open the file
-    await context.page.keyboard.press('Control+O');
-    await context.page.waitForTimeout(500);
-    await context.page.keyboard.type('Website Redesign.md');
-    await context.page.keyboard.press('Enter');
-    await context.page.waitForTimeout(1000);
+    // Open the file using helper
+    await openFile(context, 'Projects/Website Redesign.md');
 
-    // Click on the editor and position cursor
-    await context.page.click('.cm-editor');
-    await context.page.waitForTimeout(500);
+    // Position cursor
     await context.page.keyboard.press('Control+Home');
     await context.page.waitForTimeout(200);
 
@@ -290,16 +236,10 @@ describe('Todo Promotion E2E', () => {
       await app.vault.create('Areas/Nested.md', testContent);
     });
 
-    // Open the file
-    await context.page.keyboard.press('Control+O');
-    await context.page.waitForTimeout(500);
-    await context.page.keyboard.type('Nested.md');
-    await context.page.keyboard.press('Enter');
-    await context.page.waitForTimeout(1000);
+    // Open the file using helper
+    await openFile(context, 'Areas/Nested.md');
 
-    // Click on the editor and position cursor on parent todo
-    await context.page.click('.cm-editor');
-    await context.page.waitForTimeout(500);
+    // Position cursor on parent todo
     await context.page.keyboard.press('Control+Home');
     await context.page.waitForTimeout(200);
 
@@ -346,16 +286,10 @@ describe('Todo Promotion E2E', () => {
       await app.vault.create('Areas/DoubleLink.md', testContent);
     });
 
-    // Open the file
-    await context.page.keyboard.press('Control+O');
-    await context.page.waitForTimeout(500);
-    await context.page.keyboard.type('DoubleLink.md');
-    await context.page.keyboard.press('Enter');
-    await context.page.waitForTimeout(1000);
+    // Open the file using helper
+    await openFile(context, 'Areas/DoubleLink.md');
 
-    // Click on the editor and position cursor on parent todo
-    await context.page.click('.cm-editor');
-    await context.page.waitForTimeout(500);
+    // Position cursor on parent todo
     await context.page.keyboard.press('Control+Home');
     await context.page.waitForTimeout(200);
 
@@ -397,16 +331,10 @@ describe('Todo Promotion E2E', () => {
       await app.vault.create('Areas/SubTask.md', testContent);
     });
 
-    // Open the file
-    await context.page.keyboard.press('Control+O');
-    await context.page.waitForTimeout(500);
-    await context.page.keyboard.type('SubTask.md');
-    await context.page.keyboard.press('Enter');
-    await context.page.waitForTimeout(1000);
+    // Open the file using helper
+    await openFile(context, 'Areas/SubTask.md');
 
-    // Click on the editor and position cursor on sub-todo
-    await context.page.click('.cm-editor');
-    await context.page.waitForTimeout(500);
+    // Position cursor on sub-todo
     await context.page.keyboard.press('Control+Home');
     await context.page.keyboard.press('ArrowDown'); // Move to sub-task line
     await context.page.waitForTimeout(200);

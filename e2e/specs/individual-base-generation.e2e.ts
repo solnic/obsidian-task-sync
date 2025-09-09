@@ -12,6 +12,7 @@ import {
   configureBasesSettings
 } from '../helpers/task-sync-setup';
 import { setupE2ETestHooks, executeCommand } from '../helpers/shared-context';
+import { createArea, createProject } from '../helpers/entity-helpers';
 
 describe('Individual Base Generation', () => {
   const context = setupE2ETestHooks();
@@ -19,23 +20,10 @@ describe('Individual Base Generation', () => {
   test('should generate individual area base with correct structure', async () => {
     await createTestFolders(context.page);
 
-    // Create an area file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const areaContent = `---
-Name: Health
-Type: Area
----
-
-## Notes
-
-This is a health area for tracking fitness and wellness.
-
-## Tasks
-
-![[Health.base]]
-`;
-      await app.vault.create('Areas/Health.md', areaContent);
+    // Create an area file using entity helper
+    await createArea(context, {
+      name: 'Health',
+      description: '## Notes\n\nThis is a health area for tracking fitness and wellness.\n\n## Tasks\n\n![[Bases/Health.base]]'
     });
 
     // Wait for metadata cache to update
@@ -87,24 +75,11 @@ This is a health area for tracking fitness and wellness.
   test('should generate individual project base with correct structure', async () => {
     await createTestFolders(context.page);
 
-    // Create a project file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const projectContent = `---
-Name: Website Redesign
-Type: Project
-Areas: Work
----
-
-## Notes
-
-This is a website redesign project.
-
-## Tasks
-
-![[Website-Redesign.base]]
-`;
-      await app.vault.create('Projects/Website Redesign.md', projectContent);
+    // Create a project file using entity helper
+    await createProject(context, {
+      name: 'Website Redesign',
+      areas: ['Work'],
+      description: '## Notes\n\nThis is a website redesign project.\n\n## Tasks\n\n![[Bases/Website Redesign.base]]'
     });
 
     // Enable project bases via UI and trigger regeneration
@@ -154,19 +129,10 @@ This is a website redesign project.
   test('should respect area bases enabled setting', async () => {
     await createTestFolders(context.page);
 
-    // Create an area file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const areaContent = `---
-Name: Finance
-Type: Area
----
-
-## Notes
-
-Finance area for budgeting and investments.
-`;
-      await app.vault.create('Areas/Finance.md', areaContent);
+    // Create an area file using entity helper
+    await createArea(context, {
+      name: 'Finance',
+      description: '## Notes\n\nFinance area for budgeting and investments.'
     });
 
     // Disable area bases and enable project bases via UI
@@ -185,20 +151,11 @@ Finance area for budgeting and investments.
   test('should respect project bases enabled setting', async () => {
     await createTestFolders(context.page);
 
-    // Create a project file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const projectContent = `---
-Name: Mobile App
-Type: Project
-Areas: Technology
----
-
-## Notes
-
-Mobile app development project.
-`;
-      await app.vault.create('Projects/Mobile App.md', projectContent);
+    // Create a project file using entity helper
+    await createProject(context, {
+      name: 'Mobile App',
+      areas: ['Technology'],
+      description: '## Notes\n\nMobile app development project.'
     });
 
     // Enable area bases and disable project bases via UI

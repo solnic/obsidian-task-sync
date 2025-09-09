@@ -10,7 +10,8 @@ import {
   elementHasClass,
   waitForElementVisible
 } from '../helpers/task-sync-setup';
-import { setupE2ETestHooks } from '../helpers/shared-context';
+import { setupE2ETestHooks, openFile } from '../helpers/shared-context';
+import { createProject } from '../helpers/entity-helpers';
 
 describe('Context-Aware Task Modal', () => {
   const context = setupE2ETestHooks();
@@ -45,27 +46,14 @@ describe('Context-Aware Task Modal', () => {
   test('should show project context when opened from project file', async () => {
     await createTestFolders(context.page);
 
-    // Create a project file first
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      await app.vault.create('Projects/Test Project.md', `# Test Project
-
-This is a test project file.
-
-## Objectives
-- Complete the project
-- Test functionality
-`);
+    // Create a project using entity helper
+    await createProject(context, {
+      name: 'Test Project',
+      description: 'This is a test project file.\n\n## Objectives\n- Complete the project\n- Test functionality'
     });
 
-    // Open the project file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath('Projects/Test Project.md');
-      if (file) {
-        await app.workspace.getLeaf().openFile(file);
-      }
-    });
+    // Open the project file using helper
+    await openFile(context, 'Projects/Test Project.md');
 
     // Open modal via command palette
     await context.page.keyboard.press('Control+p');
