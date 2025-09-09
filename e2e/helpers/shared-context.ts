@@ -45,8 +45,6 @@ export async function getSharedTestContext(): Promise<SharedTestContext> {
     return existingContext;
   }
 
-  console.log(`🔧 Creating test environment for ${workerId}`);
-
   // Create isolated environment for this worker
   const { testId, vaultPath, dataPath } = await createIsolatedTestEnvironment(workerId);
 
@@ -55,9 +53,7 @@ export async function getSharedTestContext(): Promise<SharedTestContext> {
   let electronApp: any, page: any;
 
   try {
-    console.log(`🔧 Setting up Obsidian Electron for ${workerId}...`);
     const result = await setupObsidianElectron(vaultPath, dataPath);
-    console.log(`🔧 Obsidian Electron setup completed for ${workerId}`);
     electronApp = result.electronApp;
     page = result.page;
   } catch (setupError) {
@@ -95,7 +91,6 @@ export async function getSharedTestContext(): Promise<SharedTestContext> {
 
   // Store context for this worker
   workerContexts.set(workerId, context);
-  console.log(`✅ Test environment ready for ${workerId}`);
 
   return context;
 }
@@ -116,9 +111,8 @@ export async function resetSharedTestContext(): Promise<void> {
  */
 export async function cleanupTestState(): Promise<void> {
   const context = await getSharedTestContext();
-  await resetObsidianUI(context.page);
 
-  // Perform complete vault reset to pristine state
+  await resetObsidianUI(context.page);
   await resetVaultToPristineState(context.vaultPath, context.dataPath);
 }
 
@@ -127,69 +121,56 @@ export async function cleanupTestState(): Promise<void> {
  * Preserves plugin files to avoid rebuilding
  */
 async function resetVaultToPristineState(vaultPath: string, dataPath: string): Promise<void> {
-  try {
-    console.log(`🔄 Resetting vault to pristine state: ${vaultPath}`);
+  // Step 1: Preserve plugin files before vault reset
+  const pluginDir = path.join(vaultPath, '.obsidian', 'plugins', 'obsidian-task-sync');
+  const tempPluginDir = path.join(path.dirname(vaultPath), 'temp-plugin-backup');
 
-    // Step 1: Preserve plugin files before vault reset
-    const pluginDir = path.join(vaultPath, '.obsidian', 'plugins', 'obsidian-task-sync');
-    const tempPluginDir = path.join(path.dirname(vaultPath), 'temp-plugin-backup');
+  let pluginFilesExist = false;
+  if (fs.existsSync(pluginDir)) {
+    await copyDirectory(pluginDir, tempPluginDir);
+    pluginFilesExist = true;
+  }
 
-    let pluginFilesExist = false;
-    if (fs.existsSync(pluginDir)) {
-      await copyDirectory(pluginDir, tempPluginDir);
-      pluginFilesExist = true;
-      console.log(`📋 Backed up plugin files to temp location`);
-    }
+  // Step 2: Clear vault contents (except .obsidian directory initially)
+  await clearDirectoryContents(vaultPath, ['.obsidian']);
 
-    // Step 2: Clear vault contents (except .obsidian directory initially)
-    await clearDirectoryContents(vaultPath, ['.obsidian']);
+  // Step 3: Restore pristine vault contents
+  const pristineVaultPath = path.resolve('./tests/vault/Test.pristine');
+  if (fs.existsSync(pristineVaultPath)) {
+    await copyDirectoryContents(pristineVaultPath, vaultPath);
+  } else {
+    console.warn(`⚠️ Pristine vault not found at ${pristineVaultPath}`);
+  }
 
-    // Step 3: Restore pristine vault contents
-    const pristineVaultPath = path.resolve('./tests/vault/Test.pristine');
-    if (fs.existsSync(pristineVaultPath)) {
-      await copyDirectoryContents(pristineVaultPath, vaultPath);
-      console.log(`📋 Restored pristine vault contents`);
-    } else {
-      console.warn(`⚠️ Pristine vault not found at ${pristineVaultPath}`);
-    }
+  // Step 4: Reset data directory
+  await clearDirectoryContents(dataPath);
+  const pristineDataPath = path.resolve('./e2e/obsidian-data.pristine');
+  if (fs.existsSync(pristineDataPath)) {
+    await copyDirectoryContents(pristineDataPath, dataPath);
 
-    // Step 4: Reset data directory
-    await clearDirectoryContents(dataPath);
-    const pristineDataPath = path.resolve('./e2e/obsidian-data.pristine');
-    if (fs.existsSync(pristineDataPath)) {
-      await copyDirectoryContents(pristineDataPath, dataPath);
-
-      // Update obsidian.json to point to the correct vault path
-      const obsidianJsonPath = path.join(dataPath, 'obsidian.json');
-      if (fs.existsSync(obsidianJsonPath)) {
-        try {
-          const obsidianConfig = JSON.parse(await fs.promises.readFile(obsidianJsonPath, 'utf8'));
-          if (obsidianConfig.vaults) {
-            for (const vaultId in obsidianConfig.vaults) {
-              obsidianConfig.vaults[vaultId].path = vaultPath;
-            }
+    // Update obsidian.json to point to the correct vault path
+    const obsidianJsonPath = path.join(dataPath, 'obsidian.json');
+    if (fs.existsSync(obsidianJsonPath)) {
+      try {
+        const obsidianConfig = JSON.parse(await fs.promises.readFile(obsidianJsonPath, 'utf8'));
+        if (obsidianConfig.vaults) {
+          for (const vaultId in obsidianConfig.vaults) {
+            obsidianConfig.vaults[vaultId].path = vaultPath;
           }
-          await fs.promises.writeFile(obsidianJsonPath, JSON.stringify(obsidianConfig, null, 2));
-        } catch (error) {
-          console.warn(`⚠️ Failed to update obsidian.json: ${error.message}`);
         }
+        await fs.promises.writeFile(obsidianJsonPath, JSON.stringify(obsidianConfig, null, 2));
+      } catch (error) {
+        console.warn(`⚠️ Failed to update obsidian.json: ${error.message}`);
       }
-      console.log(`📋 Restored pristine data directory`);
     }
+  }
 
-    // Step 5: Restore plugin files
-    if (pluginFilesExist) {
-      await fs.promises.mkdir(pluginDir, { recursive: true });
-      await copyDirectoryContents(tempPluginDir, pluginDir);
-      await fs.promises.rm(tempPluginDir, { recursive: true, force: true });
-      console.log(`📋 Restored plugin files`);
-    }
-
-    console.log(`✅ Vault reset to pristine state completed`);
-
-  } catch (error) {
-    console.error(`❌ Failed to reset vault to pristine state: ${error.message}`);
-    throw error;
+  // Step 5: Restore plugin files
+  if (pluginFilesExist) {
+    await fs.promises.mkdir(pluginDir, { recursive: true });
+    await copyDirectoryContents(tempPluginDir, pluginDir);
+    await fs.promises.rm(tempPluginDir, { recursive: true, force: true });
+    console.log(`📋 Restored plugin files`);
   }
 }
 
@@ -202,8 +183,6 @@ export async function cleanupAllWorkerContexts(): Promise<void> {
 
   for (const [workerId, context] of workerContexts.entries()) {
     try {
-      console.log(`🧹 Cleaning up ${workerId}...`);
-
       // Close Electron app for this worker
       if (context.electronApp) {
         try {
@@ -217,13 +196,11 @@ export async function cleanupAllWorkerContexts(): Promise<void> {
 
           // Try graceful close first
           await context.electronApp.close();
-          console.log(`✅ Gracefully closed Electron app for ${workerId}`);
 
           // If we have a PID and the process is still running, force kill it
           if (pid) {
             try {
               process.kill(pid, 0); // Check if process still exists
-              console.log(`🔪 Force killing remaining process ${pid} for ${workerId}`);
               process.kill(pid, 'SIGTERM');
 
               // Give it a moment to terminate
@@ -233,7 +210,6 @@ export async function cleanupAllWorkerContexts(): Promise<void> {
               try {
                 process.kill(pid, 0);
                 process.kill(pid, 'SIGKILL');
-                console.log(`💀 Force killed process ${pid} for ${workerId}`);
               } catch {
                 // Process already terminated
               }
@@ -255,7 +231,6 @@ export async function cleanupAllWorkerContexts(): Promise<void> {
   }
 
   workerContexts.clear();
-  console.log('✅ All worker contexts cleaned up');
 }
 
 /**
@@ -277,7 +252,6 @@ async function cleanupOldTestArtifacts(testName: string): Promise<void> {
       for (const dir of testDebugDirs) {
         try {
           await fs.promises.rm(path.join(baseDebugDir, dir.name), { recursive: true, force: true });
-          console.log(`🗑️ Removed old debug directory: ${dir.name}`);
         } catch (error) {
           console.warn(`⚠️ Could not remove old debug directory ${dir.name}: ${error.message}`);
         }
@@ -294,7 +268,6 @@ async function cleanupOldTestArtifacts(testName: string): Promise<void> {
       for (const file of testScreenshots) {
         try {
           await fs.promises.unlink(path.join(screenshotsDir, file));
-          console.log(`🗑️ Removed old screenshot: ${file}`);
         } catch (error) {
           console.warn(`⚠️ Could not remove old screenshot ${file}: ${error.message}`);
         }
@@ -322,13 +295,10 @@ export async function captureScreenshotOnFailure(context: SharedTestContext, nam
     const filename = `screenshot-${timestamp}-${context.workerId}.png`;
     const screenshotPath = path.join(testDebugDir, filename);
 
-    console.log(`📸 Attempting to capture screenshot: ${screenshotPath}`);
-
     // Check if page is still available
     if (!context.page || context.page.isClosed()) {
       console.warn(`⚠️ Page is not available or closed, trying Electron windows`);
 
-      // Try Electron windows directly
       try {
         const windows = context.electronApp.windows();
         if (windows.length > 0) {
@@ -338,7 +308,6 @@ export async function captureScreenshotOnFailure(context: SharedTestContext, nam
             type: 'png',
             timeout: 10000
           });
-          console.log(`📸 Electron window screenshot captured: ${appScreenshotPath}`);
           return;
         }
       } catch (electronError) {
@@ -356,7 +325,6 @@ export async function captureScreenshotOnFailure(context: SharedTestContext, nam
           type: 'png',
           timeout: 10000
         });
-        console.log(`📸 Page screenshot captured: ${screenshotPath}`);
         return;
       } catch (pageError) {
         console.warn(`⚠️ Page screenshot failed: ${pageError.message}`);
@@ -371,7 +339,6 @@ export async function captureScreenshotOnFailure(context: SharedTestContext, nam
               type: 'png',
               timeout: 10000
             });
-            console.log(`📸 Electron window screenshot captured: ${appScreenshotPath}`);
             return;
           } else {
             console.warn(`⚠️ No Electron windows available for screenshot`);
@@ -409,7 +376,6 @@ export async function captureScreenshotOnFailure(context: SharedTestContext, nam
 
       const debugPath = screenshotPath.replace('.png', '-debug.json');
       await fs.promises.writeFile(debugPath, JSON.stringify(debugInfo, null, 2));
-      console.log(`📝 Debug info captured: ${debugPath}`);
     } catch (debugError) {
       console.warn(`⚠️ Debug info capture failed: ${debugError.message}`);
     }
@@ -427,12 +393,10 @@ async function copyVaultForDebug(context: SharedTestContext, debugDir: string): 
 
     // Copy the entire vault directory
     await copyDirectory(context.vaultPath, vaultDebugPath);
-    console.log(`📁 Vault state copied to: ${vaultDebugPath}`);
 
     // Also copy the Obsidian data directory for complete state
     const dataDebugPath = path.join(debugDir, 'obsidian-data');
     await copyDirectory(context.dataPath, dataDebugPath);
-    console.log(`📁 Obsidian data copied to: ${dataDebugPath}`);
 
   } catch (error) {
     console.warn(`⚠️ Failed to copy vault state: ${error.message}`);
@@ -460,9 +424,6 @@ export async function captureFullDebugInfo(context: SharedTestContext, name: str
       const filename = `screenshot-${timestamp}-${context.workerId}.png`;
       const screenshotPath = path.join(debugDir, filename);
 
-      console.log(`📸 Attempting to capture screenshot: ${screenshotPath}`);
-
-      // Check if page is still available
       if (!context.page || context.page.isClosed()) {
         console.warn(`⚠️ Page is not available or closed, trying Electron windows`);
 
@@ -475,7 +436,6 @@ export async function captureFullDebugInfo(context: SharedTestContext, name: str
               type: 'png',
               timeout: 10000
             });
-            console.log(`📸 Page screenshot captured: ${screenshotPath}`);
           } else {
             console.warn(`⚠️ No Electron windows available for screenshot`);
           }
@@ -489,7 +449,6 @@ export async function captureFullDebugInfo(context: SharedTestContext, name: str
           fullPage: true,
           timeout: 10000
         });
-        console.log(`📸 Page screenshot captured: ${screenshotPath}`);
       }
     } catch (screenshotError) {
       console.warn(`⚠️ Screenshot capture failed: ${screenshotError.message}`);
@@ -536,7 +495,6 @@ export async function captureFullDebugInfo(context: SharedTestContext, name: str
 
       const statePath = path.join(debugDir, `app-state-${timestamp}.json`);
       await fs.promises.writeFile(statePath, JSON.stringify(appState, null, 2));
-      console.log(`📝 App state captured: ${statePath}`);
     } catch (error) {
       console.warn(`⚠️ App state capture failed: ${error.message}`);
     }
@@ -651,7 +609,6 @@ export async function createIsolatedTestEnvironment(workerId?: string): Promise<
         }
 
         await fs.promises.writeFile(obsidianJsonPath, JSON.stringify(obsidianConfig, null, 2));
-        console.log(`📝 Updated obsidian.json vault path to: ${vaultPath}`);
       } catch (error) {
         console.warn(`⚠️ Failed to update obsidian.json vault path: ${error.message}`);
       }
@@ -704,7 +661,6 @@ async function copyBuiltPluginToTestEnvironment(vaultPath: string): Promise<void
 
       if (fs.existsSync(srcPath)) {
         await fs.promises.copyFile(srcPath, destPath);
-        console.log(`📋 Copied ${file} to test environment`);
       } else {
         console.warn(`⚠️ Built file ${file} not found at ${srcPath}`);
       }
@@ -795,8 +751,6 @@ async function clearDirectoryContents(dirPath: string, preservePaths: string[] =
  */
 async function resetPluginSettings(page: Page): Promise<void> {
   try {
-    console.log('🔄 Resetting plugin settings to pristine state...');
-
     await page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins['obsidian-task-sync'];
@@ -860,13 +814,11 @@ async function resetPluginSettings(page: Page): Promise<void> {
         };
 
         await plugin.saveSettings();
-        console.log('🔄 Plugin settings reset to defaults');
       } else {
         console.warn('⚠️ Plugin not found during settings reset');
       }
     });
 
-    console.log('✅ Plugin settings reset completed');
   } catch (error) {
     console.error(`❌ Failed to reset plugin settings: ${error.message}`);
     // Don't throw - this is a cleanup operation that shouldn't fail tests
@@ -895,10 +847,8 @@ export function setupE2ETestHooks(): SharedTestContext {
   let currentTestName = 'unknown-test';
 
   beforeAll(async () => {
-    console.log('🔧 Starting beforeAll hook...');
     try {
       context = await getSharedTestContext();
-      console.log('🔧 beforeAll hook completed successfully');
     } catch (error) {
       console.error('❌ beforeAll hook failed:', error.message);
       throw error;
@@ -950,13 +900,9 @@ export function setupE2ETestHooks(): SharedTestContext {
       (testContext as any)?.task?.result?.state === 'fail';
 
     if (testFailed) {
-      console.log(`📸 Test failed: ${testName}`);
-      console.log(`📊 Console logs captured: ${consoleLogs.length} entries`);
-
       try {
         // Capture all debug info BEFORE cleanup
         await captureFullDebugInfo(context, `test-failure-${testName}`, consoleLogs);
-        console.log(`✅ Full debug info captured successfully`);
       } catch (captureError) {
         console.error(`❌ Failed to capture debug info: ${captureError.message}`);
 
@@ -964,17 +910,15 @@ export function setupE2ETestHooks(): SharedTestContext {
         try {
           const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
           const fallbackPath = `e2e/debug/fallback-${testName}-${timestamp}.png`;
+
           await context.page.screenshot({ path: fallbackPath, fullPage: true });
-          console.log(`📸 Fallback screenshot saved: ${fallbackPath}`);
         } catch (fallbackError) {
           console.error(`❌ Even fallback screenshot failed: ${fallbackError.message}`);
         }
       }
-    } else {
-      console.log(`✅ Test passed: ${testName}`);
     }
 
-    await cleanupTestState();
+    await resetVaultToPristineState(context.vaultPath, context.dataPath);
   });
 
   afterAll(async () => {

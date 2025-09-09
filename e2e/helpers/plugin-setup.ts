@@ -7,101 +7,88 @@ import type { Page } from 'playwright';
  * Improved for headless mode stability
  */
 export async function resetObsidianUI(page: Page): Promise<void> {
-  try {
-    console.log('🔧 Resetting Obsidian UI state...');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(200);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
 
-    // Multiple escape presses with shorter waits to prevent hangs
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(200);
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
+  // Force close any open modals
+  await page.evaluate(() => {
+    const modals = document.querySelectorAll('.modal-container, .modal-backdrop, .suggester-container, .prompt, .modal');
 
-    // Force close any open modals
-    await page.evaluate(() => {
-      const modals = document.querySelectorAll('.modal-container, .modal-backdrop, .suggester-container, .prompt, .modal');
-      console.log(`Found ${modals.length} modals to close`);
+    modals.forEach((modal) => {
+      try {
+        const closeButton = modal.querySelector('.modal-close-button, .modal-close, .close, [aria-label="Close"]');
+        if (closeButton) {
+          (closeButton as HTMLElement).click();
+        } else {
+          modal.remove();
+        }
+      } catch (error) {
+        console.warn('Error closing modal:', error);
+      }
+    });
+  });
 
-      modals.forEach((modal) => {
+  // Wait briefly for modals to close
+  await page.waitForTimeout(500);
+
+  // Final cleanup
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+
+  // Force remove any remaining modals and reset focus
+  await page.evaluate(() => {
+    try {
+      const modals = document.querySelectorAll('.modal-container, .modal-backdrop, .suggester-container, .prompt');
+      modals.forEach(modal => {
         try {
-          const closeButton = modal.querySelector('.modal-close-button, .modal-close, .close, [aria-label="Close"]');
-          if (closeButton) {
-            (closeButton as HTMLElement).click();
-          } else {
-            modal.remove();
-          }
+          modal.remove();
         } catch (error) {
-          console.warn('Error closing modal:', error);
+          console.warn('Error removing modal:', error);
         }
       });
-    });
 
-    // Wait briefly for modals to close
-    await page.waitForTimeout(500);
-
-    // Final cleanup
-    await page.keyboard.press('Escape');
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(300);
-
-    // Force remove any remaining modals and reset focus
-    await page.evaluate(() => {
-      try {
-        const modals = document.querySelectorAll('.modal-container, .modal-backdrop, .suggester-container, .prompt');
-        modals.forEach(modal => {
-          try {
-            modal.remove();
-          } catch (error) {
-            console.warn('Error removing modal:', error);
-          }
-        });
-
-        if (document.activeElement && document.activeElement !== document.body) {
-          try {
-            (document.activeElement as HTMLElement).blur();
-          } catch (error) {
-            console.warn('Error blurring active element:', error);
-          }
+      if (document.activeElement && document.activeElement !== document.body) {
+        try {
+          (document.activeElement as HTMLElement).blur();
+        } catch (error) {
+          console.warn('Error blurring active element:', error);
         }
-
-        if (window.getSelection) {
-          try {
-            window.getSelection()?.removeAllRanges();
-          } catch (error) {
-            console.warn('Error clearing selection:', error);
-          }
-        }
-      } catch (error) {
-        console.warn('Error in final UI cleanup:', error);
       }
-    });
 
-    // Toggle sidebars to maximize workspace width for better rendering
-    await page.evaluate(() => {
-      try {
-        const app = (window as any).app;
-        if (app?.workspace) {
-          // Close left sidebar if open
-          if (app.workspace.leftSplit?.collapsed === false) {
-            app.workspace.leftSplit.collapse();
-            console.log('🔧 Collapsed left sidebar for full width');
-          }
-
-          // Close right sidebar if open
-          if (app.workspace.rightSplit?.collapsed === false) {
-            app.workspace.rightSplit.collapse();
-            console.log('🔧 Collapsed right sidebar for full width');
-          }
+      if (window.getSelection) {
+        try {
+          window.getSelection()?.removeAllRanges();
+        } catch (error) {
+          console.warn('Error clearing selection:', error);
         }
-      } catch (error) {
-        console.warn('Error toggling sidebars:', error);
       }
-    });
+    } catch (error) {
+      console.warn('Error in final UI cleanup:', error);
+    }
+  });
 
-    console.log('✅ Obsidian UI reset completed');
-  } catch (error) {
-    console.warn(`⚠️ Error during UI reset: ${error.message}`);
-    // Don't throw error to prevent test hangs
-  }
+  // Toggle sidebars to maximize workspace width for better rendering
+  await page.evaluate(() => {
+    try {
+      const app = (window as any).app;
+      if (app?.workspace) {
+        // Close left sidebar if open
+        if (app.workspace.leftSplit?.collapsed === false) {
+          app.workspace.leftSplit.collapse();
+        }
+
+        // Close right sidebar if open
+        if (app.workspace.rightSplit?.collapsed === false) {
+          app.workspace.rightSplit.collapse();
+        }
+      }
+    } catch (error) {
+      console.warn('Error toggling sidebars:', error);
+    }
+  });
 
   await page.waitForTimeout(500); // Increased final wait time for headless mode
 }
