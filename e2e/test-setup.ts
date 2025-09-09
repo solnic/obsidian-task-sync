@@ -19,18 +19,14 @@ try {
   console.warn('⚠️ Failed to load .env file:', error.message);
 }
 
-// Ensure screenshots and debug directories exist
-const screenshotsDir = path.join(process.cwd(), 'e2e', 'screenshots');
 const debugDir = path.join(process.cwd(), 'e2e', 'debug');
 
 try {
-  fs.mkdirSync(screenshotsDir, { recursive: true });
   fs.mkdirSync(debugDir, { recursive: true });
 } catch (error) {
   console.warn('⚠️ Failed to create e2e directories:', error.message);
 }
 
-// Add cleanup for old screenshots/debug files (keep last 10 runs)
 try {
   const cleanupOldFiles = (dir: string, maxFiles: number = 50) => {
     if (!fs.existsSync(dir)) return;
@@ -57,7 +53,6 @@ try {
     });
   };
 
-  cleanupOldFiles(screenshotsDir);
   cleanupOldFiles(debugDir);
 } catch (error) {
   // Ignore cleanup errors
