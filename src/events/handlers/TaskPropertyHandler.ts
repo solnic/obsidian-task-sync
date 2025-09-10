@@ -12,16 +12,12 @@ import {
 } from "../EventTypes";
 import { TaskSyncSettings } from "../../main";
 import { PROPERTY_REGISTRY } from "../../services/base-definitions/BaseConfigurations";
-import matter from "gray-matter";
 
 /**
  * Handler that sets default property values for newly created tasks
  */
 export class TaskPropertyHandler implements EventHandler {
-  constructor(
-    private app: App,
-    private settings: TaskSyncSettings,
-  ) {}
+  constructor(private app: App, private settings: TaskSyncSettings) {}
 
   /**
    * Update the settings reference for this handler
@@ -72,13 +68,12 @@ export class TaskPropertyHandler implements EventHandler {
         return false;
       }
 
-      const content = await this.app.vault.read(file);
-      const parsed = matter(content);
-      const frontmatterData = parsed.data || {};
+      const cache = this.app.metadataCache.getFileCache(file);
+      const frontmatterData = cache?.frontmatter || {};
 
       // Get all configured task type names
       const configuredTaskTypes = this.settings.taskTypes.map(
-        (taskType) => taskType.name,
+        (taskType) => taskType.name
       );
 
       // Only process files that already have a valid configured task type
@@ -87,7 +82,7 @@ export class TaskPropertyHandler implements EventHandler {
     } catch (error) {
       console.error(
         `TaskPropertyHandler: Error checking Type property for ${filePath}:`,
-        error,
+        error
       );
       return false;
     }

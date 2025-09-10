@@ -2,6 +2,7 @@
   import { getPluginContext } from "./context";
   import type { FileContext } from "../../main";
   import ContextWidget from "./ContextWidget.svelte";
+  import { TFile } from "obsidian";
 
   // Props
   interface Props {
@@ -160,13 +161,11 @@
           context.path
         );
       } else {
-        // Try to determine type from file content
+        // Try to determine type from file content using Obsidian's metadata cache
         const file = plugin.app.vault.getAbstractFileByPath(context.path);
-        if (file && file instanceof plugin.app.vault.adapter.constructor) {
-          const content = await plugin.app.vault.read(file as any);
-          const matter = await import("gray-matter");
-          const parsed = matter.default(content);
-          frontMatter = parsed.data || {};
+        if (file && file instanceof TFile) {
+          const cache = plugin.app.metadataCache.getFileCache(file);
+          frontMatter = cache?.frontmatter || {};
         } else {
           throw new Error("File not found");
         }

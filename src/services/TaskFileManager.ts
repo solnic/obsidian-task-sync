@@ -68,19 +68,9 @@ export class TaskFileManager extends FileManager {
 
     // If this is a parent task, create the corresponding base file
     if (this.shouldUseParentTaskTemplate(data)) {
-      try {
-        // Import BaseManager to create parent task base
-        const { BaseManager } = await import("./BaseManager");
-        const baseManager = new BaseManager(
-          this.app,
-          this.vault,
-          this.settings
-        );
-        await baseManager.createOrUpdateParentTaskBase(data.title);
-      } catch (error) {
-        console.error("Failed to create parent task base:", error);
-        // Don't fail the task creation if base creation fails
-      }
+      const { BaseManager } = await import("./BaseManager");
+      const baseManager = new BaseManager(this.app, this.vault, this.settings);
+      await baseManager.createOrUpdateParentTaskBase(data.title);
     }
 
     return filePath;
@@ -99,8 +89,8 @@ export class TaskFileManager extends FileManager {
     const templateType = shouldUseParentTemplate ? "parentTask" : "task";
 
     // Try to read template content
-    const templateContent = await this.readTemplate(templateType);
-    if (templateContent) {
+    try {
+      const templateContent = await this.readTaskTemplate(templateType);
       // Check if template has meaningful content (not just front-matter)
       const hasContentAfterFrontMatter =
         this.hasContentAfterFrontMatter(templateContent);
@@ -113,10 +103,10 @@ export class TaskFileManager extends FileManager {
       }
       // Otherwise use the template as-is (empty content)
       return templateContent;
+    } catch (error) {
+      // Template doesn't exist - use description if available
+      return data.description || "";
     }
-
-    // Fallback content if template doesn't exist - use description if available
-    return data.description || "";
   }
 
   /**
@@ -152,28 +142,18 @@ export class TaskFileManager extends FileManager {
   /**
    * Read template content from file
    * @param templateType - Type of template to read
-   * @returns Template content or null if not found
+   * @returns Template content
+   * @throws Error if template file is not found
    */
-  private async readTemplate(
+  private async readTaskTemplate(
     templateType: "task" | "parentTask"
-  ): Promise<string | null> {
+  ): Promise<string> {
     const templateFileName =
       templateType === "parentTask"
         ? this.settings.defaultParentTaskTemplate
         : this.settings.defaultTaskTemplate;
 
-    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
-
-    try {
-      const templateFile = this.vault.getAbstractFileByPath(templatePath);
-      if (templateFile instanceof TFile) {
-        return await this.vault.read(templateFile);
-      }
-    } catch (error) {
-      console.warn(`Could not read template ${templatePath}:`, error);
-    }
-
-    return null;
+    return await this.readTemplate(templateFileName);
   }
 
   /**
@@ -209,21 +189,6 @@ export class TaskFileManager extends FileManager {
       .slice(frontMatterEndIndex + 1)
       .join("\n");
     return contentAfterFrontMatter.trim().length > 0;
-  }
-
-  /**
-   * Process {{tasks}} variable in content and replace with appropriate base embed
-   * @param content - Content that may contain {{tasks}} variable
-   * @param taskName - Name of the task for base embed
-   * @returns Processed content with {{tasks}} replaced
-   */
-  public processTasksVariable(content: string, taskName: string): string {
-    if (!content.includes("{{tasks}}")) {
-      return content;
-    }
-
-    const baseEmbed = `![[${this.settings.basesFolder}/${taskName}.base]]`;
-    return content.replace(/\{\{tasks\}\}/g, baseEmbed);
   }
 
   /**
@@ -285,88 +250,34 @@ export class TaskFileManager extends FileManager {
   /**
    * Load a Task entity from an Obsidian TFile
    * @param file - The TFile to load
-   * @returns Task entity or null if invalid
+   * @returns Task entity
+   * @throws Error if file is not a valid task
    */
-  async loadEntity(file: TFile): Promise<Task | null> {
-    try {
-      // Wait for metadata cache to be ready for this file
-      const frontMatter = await this.waitForMetadataCache(file);
+  async loadEntity(file: TFile): Promise<Task> {
+    const frontMatter = await this.waitForMetadataCache(file);
 
-      // Check if this is a valid task file
-      if (frontMatter.Type !== "Task") {
-        return null;
-      }
-
-      // Create Task entity from front-matter
-      return {
-        id: this.generateId(),
-        file,
-        filePath: file.path,
-        title: frontMatter.Title || file.basename,
-        type: frontMatter.Type,
-        category: frontMatter.Category,
-        priority: frontMatter.Priority,
-        status: frontMatter.Status,
-        done: frontMatter.Done || false,
-        parentTask: frontMatter["Parent task"],
-        project: frontMatter.Project,
-        areas: Array.isArray(frontMatter.Areas) ? frontMatter.Areas : [],
-        tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
-        source: frontMatter.source,
-      };
-    } catch (error) {
-      console.warn(`Failed to load task from ${file.path}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Wait for metadata cache to have front-matter for the given file
-   */
-  private async waitForMetadataCache(file: TFile): Promise<any> {
-    // First try to get from cache immediately
-    let frontMatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
-
-    if (frontMatter && Object.keys(frontMatter).length > 0) {
-      return frontMatter;
+    if (frontMatter.Type !== "Task") {
+      throw new Error(
+        `File ${file.path} is not a valid task (Type: ${frontMatter.Type})`
+      );
     }
 
-    // If not available, wait for metadata cache to be updated
-    return new Promise((resolve) => {
-      const checkCache = () => {
-        const cache = this.app.metadataCache.getFileCache(file);
-        if (cache?.frontmatter && Object.keys(cache.frontmatter).length > 0) {
-          resolve(cache.frontmatter);
-          return true;
-        }
-        return false;
-      };
-
-      // Check immediately in case it was just updated
-      if (checkCache()) return;
-
-      // Listen for metadata cache changes
-      const onMetadataChange = (changedFile: TFile) => {
-        if (changedFile.path === file.path && checkCache()) {
-          this.app.metadataCache.off("changed", onMetadataChange);
-        }
-      };
-
-      this.app.metadataCache.on("changed", onMetadataChange);
-
-      // Fallback timeout to prevent hanging
-      setTimeout(() => {
-        this.app.metadataCache.off("changed", onMetadataChange);
-        resolve(this.app.metadataCache.getFileCache(file)?.frontmatter || {});
-      }, 1000);
-    });
-  }
-
-  /**
-   * Generate a unique ID for entities
-   */
-  private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+    return {
+      id: this.generateId(),
+      file,
+      filePath: file.path,
+      title: frontMatter.Title,
+      type: frontMatter.Type,
+      category: frontMatter.Category,
+      priority: frontMatter.Priority,
+      status: frontMatter.Status,
+      done: frontMatter.Done,
+      parentTask: frontMatter["Parent task"],
+      project: frontMatter.Project,
+      areas: frontMatter.Areas,
+      tags: frontMatter.tags,
+      source: frontMatter.source,
+    };
   }
 
   /**
@@ -598,27 +509,17 @@ export class TaskFileManager extends FileManager {
   async updateTaskFileProperties(
     filePath: string
   ): Promise<{ hasChanges: boolean; propertiesChanged: number }> {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (!file) {
-      throw new Error(`File not found: ${filePath}`);
-    }
-
-    const fullContent = await this.vault.read(file as any);
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+    const fullContent = await this.vault.read(file);
 
     // Extract existing front-matter
     const existingFrontMatter = this.extractFrontMatterData(fullContent);
-    if (!existingFrontMatter) {
-      // No front-matter exists, skip this file
-      return { hasChanges: false, propertiesChanged: 0 };
-    }
 
     // Check if file has correct Type property for tasks
     if (existingFrontMatter.Type && existingFrontMatter.Type !== "Task") {
-      // Skip files that are not tasks
-      console.log(
-        `Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Task, found: ${existingFrontMatter.Type})`
+      throw new Error(
+        `File ${filePath} is not a task (Type: ${existingFrontMatter.Type})`
       );
-      return { hasChanges: false, propertiesChanged: 0 };
     }
 
     // Get current schema for tasks
@@ -767,7 +668,7 @@ export class TaskFileManager extends FileManager {
    * @returns Array of task file paths
    */
   async getAllTaskFiles(): Promise<string[]> {
-    const taskFolder = this.settings.tasksFolder || "Tasks";
+    const taskFolder = this.settings.tasksFolder;
     const allFiles = this.app.vault.getMarkdownFiles();
 
     return allFiles

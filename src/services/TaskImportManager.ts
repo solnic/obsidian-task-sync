@@ -7,13 +7,12 @@ import { App, Vault, TFile } from "obsidian";
 import { ExternalTaskData, TaskImportConfig } from "../types/integrations";
 import { TaskSyncSettings } from "../components/ui/settings/types";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
-import matter from "gray-matter";
 
 export class TaskImportManager {
   constructor(
     private app: App,
     private vault: Vault,
-    private settings: TaskSyncSettings,
+    private settings: TaskSyncSettings
   ) {}
 
   /**
@@ -28,7 +27,7 @@ export class TaskImportManager {
    */
   async createTaskFromData(
     taskData: ExternalTaskData,
-    config: TaskImportConfig,
+    config: TaskImportConfig
   ): Promise<string> {
     const taskName = this.sanitizeTaskName(taskData.title);
     const taskFolder = this.determineTaskFolder(config);
@@ -73,12 +72,40 @@ export class TaskImportManager {
    */
   private generateCompleteTaskContent(
     taskData: ExternalTaskData,
-    config: TaskImportConfig,
+    config: TaskImportConfig
   ): string {
     const frontMatterData = this.generateTaskFrontMatter(taskData, config);
     const content = this.generateTaskContent(taskData);
 
-    return matter.stringify(content, frontMatterData);
+    return this.generateFrontMatterString(frontMatterData) + "\n\n" + content;
+  }
+
+  /**
+   * Generate front-matter string from data object
+   */
+  private generateFrontMatterString(
+    frontMatterData: Record<string, any>
+  ): string {
+    const frontMatterLines = ["---"];
+    for (const [key, value] of Object.entries(frontMatterData)) {
+      if (Array.isArray(value)) {
+        frontMatterLines.push(
+          `${key}: [${value.map((v) => `"${v}"`).join(", ")}]`
+        );
+      } else if (typeof value === "string") {
+        frontMatterLines.push(`${key}: "${value}"`);
+      } else if (typeof value === "object" && value !== null) {
+        // Handle nested objects like source
+        frontMatterLines.push(`${key}:`);
+        for (const [subKey, subValue] of Object.entries(value)) {
+          frontMatterLines.push(`  ${subKey}: "${subValue}"`);
+        }
+      } else {
+        frontMatterLines.push(`${key}: ${value}`);
+      }
+    }
+    frontMatterLines.push("---");
+    return frontMatterLines.join("\n");
   }
 
   /**
@@ -86,7 +113,7 @@ export class TaskImportManager {
    */
   generateTaskFrontMatter(
     taskData: ExternalTaskData,
-    config: TaskImportConfig,
+    config: TaskImportConfig
   ): Record<string, any> {
     const frontMatter: Record<string, any> = {};
 

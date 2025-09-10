@@ -7,7 +7,6 @@
 import { App, Vault, TFile, normalizePath } from "obsidian";
 import { TaskSyncSettings } from "../main";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
-import matter from "gray-matter";
 
 /**
  * Interface for file creation data
@@ -42,7 +41,7 @@ export abstract class FileManager {
   protected async createFile(
     folderPath: string,
     fileName: string,
-    content: string,
+    content: string
   ): Promise<string> {
     const sanitizedName = sanitizeFileName(fileName);
     const filePath = normalizePath(`${folderPath}/${sanitizedName}.md`);
@@ -59,35 +58,28 @@ export abstract class FileManager {
   }
 
   /**
-   * Load and parse front-matter from a file
+   * Load and parse front-matter from a file using Obsidian's metadata cache
    * @param filePath - Path to the file
    * @returns Parsed front-matter object
    */
   async loadFrontMatter(filePath: string): Promise<Record<string, any>> {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (!file || !(file instanceof TFile)) {
-      throw new Error(`File not found: ${filePath}`);
-    }
-
-    const content = await this.vault.read(file);
-    const parsed = matter(content);
-    return parsed.data || {};
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+    const cache = this.app.metadataCache.getFileCache(file);
+    return cache.frontmatter;
   }
 
   /**
-   * Extract file content after front-matter
+   * Extract file content after front-matter using Obsidian API
    * @param filePath - Path to the file
    * @returns Content after front-matter
    */
   async getFileContent(filePath: string): Promise<string> {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (!file || !(file instanceof TFile)) {
-      throw new Error(`File not found: ${filePath}`);
-    }
-
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
     const content = await this.vault.read(file);
-    const parsed = matter(content);
-    return parsed.content || "";
+
+    // Extract content after front-matter manually
+    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---\n?/);
+    return content.substring(frontMatterMatch[0].length);
   }
 
   /**
@@ -97,13 +89,9 @@ export abstract class FileManager {
    */
   async updateFrontMatter(
     filePath: string,
-    updates: Record<string, any>,
+    updates: Record<string, any>
   ): Promise<void> {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (!file || !(file instanceof TFile)) {
-      throw new Error(`File not found: ${filePath}`);
-    }
-
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
     await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
       Object.assign(frontmatter, updates);
     });
@@ -118,13 +106,9 @@ export abstract class FileManager {
   async updateProperty(
     filePath: string,
     propertyKey: string,
-    value: any,
+    value: any
   ): Promise<void> {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (!file || !(file instanceof TFile)) {
-      throw new Error(`File not found: ${filePath}`);
-    }
-
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
     await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
       frontmatter[propertyKey] = value;
     });
@@ -145,11 +129,7 @@ export abstract class FileManager {
    * @param filePath - Path to the file to delete
    */
   async deleteFile(filePath: string): Promise<void> {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (!file || !(file instanceof TFile)) {
-      throw new Error(`File not found: ${filePath}`);
-    }
-
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
     await this.vault.delete(file);
   }
 
@@ -159,11 +139,7 @@ export abstract class FileManager {
    * @param newPath - New file path
    */
   async renameFile(oldPath: string, newPath: string): Promise<void> {
-    const file = this.app.vault.getAbstractFileByPath(oldPath);
-    if (!file || !(file instanceof TFile)) {
-      throw new Error(`File not found: ${oldPath}`);
-    }
-
+    const file = this.app.vault.getAbstractFileByPath(oldPath) as TFile;
     await this.vault.rename(file, newPath);
   }
 
@@ -173,11 +149,7 @@ export abstract class FileManager {
    * @param targetPath - Target file path
    */
   async copyFile(sourcePath: string, targetPath: string): Promise<void> {
-    const file = this.app.vault.getAbstractFileByPath(sourcePath);
-    if (!file || !(file instanceof TFile)) {
-      throw new Error(`File not found: ${sourcePath}`);
-    }
-
+    const file = this.app.vault.getAbstractFileByPath(sourcePath) as TFile;
     await this.vault.copy(file, targetPath);
   }
 
@@ -187,11 +159,7 @@ export abstract class FileManager {
    * @returns Last modification time
    */
   async getFileModTime(filePath: string): Promise<number> {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (!file || !(file instanceof TFile)) {
-      throw new Error(`File not found: ${filePath}`);
-    }
-
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
     return file.stat.mtime;
   }
 
@@ -201,12 +169,47 @@ export abstract class FileManager {
    * @returns File size in bytes
    */
   async getFileSize(filePath: string): Promise<number> {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (!file || !(file instanceof TFile)) {
-      throw new Error(`File not found: ${filePath}`);
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+    return file.stat.size;
+  }
+
+  /**
+   * Update settings reference (for when settings are changed)
+   */
+  updateSettings(newSettings: TaskSyncSettings): void {
+    this.settings = newSettings;
+  }
+
+  /**
+   * Read template content from file
+   * @param templateFileName - Name of the template file
+   * @returns Template content
+   * @throws Error if template file is not found or cannot be read
+   */
+  protected async readTemplate(templateFileName: string): Promise<string> {
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+    const templateFile = this.vault.getAbstractFileByPath(templatePath);
+
+    if (!(templateFile instanceof TFile)) {
+      throw new Error(`Template file not found: ${templatePath}`);
     }
 
-    return file.stat.size;
+    return await this.vault.read(templateFile);
+  }
+
+  /**
+   * Process {{tasks}} variable in content and replace with appropriate base embed
+   * @param content - Content that may contain {{tasks}} variable
+   * @param entityName - Name of the entity for base embed
+   * @returns Processed content with {{tasks}} replaced
+   */
+  protected processTasksVariable(content: string, entityName: string): string {
+    if (!content.includes("{{tasks}}")) {
+      return content;
+    }
+
+    const baseEmbed = `![[${this.settings.basesFolder}/${entityName}.base]]`;
+    return content.replace(/\{\{tasks\}\}/g, baseEmbed);
   }
 
   /**
@@ -216,10 +219,63 @@ export abstract class FileManager {
   abstract createEntityFile(data: FileCreationData): Promise<string>;
 
   /**
-   * Update settings reference (for when settings are changed)
+   * Abstract method for getting properties in order
+   * Must be implemented by concrete classes
    */
-  updateSettings(newSettings: TaskSyncSettings): void {
-    this.settings = newSettings;
+  abstract getPropertiesInOrder(): any[];
+
+  /**
+   * Abstract method for updating file properties
+   * Must be implemented by concrete classes
+   */
+  abstract updateFileProperties(
+    filePath: string
+  ): Promise<{ hasChanges: boolean; propertiesChanged: number }>;
+
+  /**
+   * Wait for metadata cache to have front-matter for the given file
+   * Common method used by all file managers to ensure metadata cache is ready
+   */
+  protected async waitForMetadataCache(file: TFile): Promise<any> {
+    let frontMatter = this.app.metadataCache.getFileCache(file).frontmatter;
+
+    if (frontMatter && Object.keys(frontMatter).length > 0) {
+      return frontMatter;
+    }
+
+    return new Promise((resolve) => {
+      const checkCache = () => {
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (cache.frontmatter && Object.keys(cache.frontmatter).length > 0) {
+          resolve(cache.frontmatter);
+          return true;
+        }
+        return false;
+      };
+
+      if (checkCache()) return;
+
+      const onMetadataChange = (changedFile: TFile) => {
+        if (changedFile.path === file.path && checkCache()) {
+          this.app.metadataCache.off("changed", onMetadataChange);
+        }
+      };
+
+      this.app.metadataCache.on("changed", onMetadataChange);
+
+      setTimeout(() => {
+        this.app.metadataCache.off("changed", onMetadataChange);
+        resolve(this.app.metadataCache.getFileCache(file).frontmatter);
+      }, 1000);
+    });
+  }
+
+  /**
+   * Generate a unique ID for entities
+   * Common method used by all file managers for entity ID generation
+   */
+  protected generateId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).substring(2);
   }
 
   // ============================================================================
@@ -232,7 +288,7 @@ export abstract class FileManager {
    * @returns Parsed front-matter data or null if not found
    */
   protected extractFrontMatterData(
-    content: string,
+    content: string
   ): Record<string, any> | null {
     const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
     if (!frontMatterMatch) {
@@ -290,13 +346,13 @@ export abstract class FileManager {
   protected isPropertyOrderCorrect(
     content: string,
     schema: Record<string, any>,
-    expectedOrder: string[],
+    expectedOrder: string[]
   ): boolean {
     const currentOrder = this.extractPropertyOrder(content);
 
     // Filter current order to only include properties that are in the schema
     const currentSchemaProperties = currentOrder.filter(
-      (prop) => prop in schema,
+      (prop) => prop in schema
     );
 
     // Compare the order of schema properties
@@ -336,18 +392,4 @@ export abstract class FileManager {
     }
     return value.toString();
   }
-
-  /**
-   * Abstract method to get properties in order for specific file type
-   * Must be implemented by subclasses
-   */
-  abstract getPropertiesInOrder(): any[];
-
-  /**
-   * Abstract method to update file properties with correct ordering
-   * Must be implemented by subclasses
-   */
-  abstract updateFileProperties(
-    filePath: string,
-  ): Promise<{ hasChanges: boolean; propertiesChanged: number }>;
 }

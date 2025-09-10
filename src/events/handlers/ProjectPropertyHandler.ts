@@ -11,16 +11,12 @@ import {
   TaskEventData,
 } from "../EventTypes";
 import { TaskSyncSettings } from "../../main";
-import matter from "gray-matter";
 
 /**
  * Handler that sets default property values for newly created projects
  */
 export class ProjectPropertyHandler implements EventHandler {
-  constructor(
-    private app: App,
-    private settings: TaskSyncSettings,
-  ) {}
+  constructor(private app: App, private settings: TaskSyncSettings) {}
 
   /**
    * Update the settings reference for this handler
@@ -71,9 +67,8 @@ export class ProjectPropertyHandler implements EventHandler {
         return false;
       }
 
-      const content = await this.app.vault.read(file);
-      const parsed = matter(content);
-      const frontmatterData = parsed.data || {};
+      const cache = this.app.metadataCache.getFileCache(file);
+      const frontmatterData = cache?.frontmatter || {};
 
       // Only process files that already have the correct Type property
       // Skip files with no Type property - they should not be processed by this handler
@@ -81,7 +76,7 @@ export class ProjectPropertyHandler implements EventHandler {
     } catch (error) {
       console.error(
         `ProjectPropertyHandler: Error checking Type property for ${filePath}:`,
-        error,
+        error
       );
       return false;
     }
@@ -91,58 +86,37 @@ export class ProjectPropertyHandler implements EventHandler {
    * Set default property values for null/empty properties in a project file
    */
   private async setDefaultProperties(filePath: string): Promise<void> {
-    try {
-      const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (!(file instanceof TFile)) {
-        console.error(`ProjectPropertyHandler: File not found: ${filePath}`);
-        return;
-      }
-
-      const content = await this.app.vault.read(file);
-      const updatedContent = this.updatePropertiesInContent(content, filePath);
-
-      if (updatedContent !== content) {
-        await this.app.vault.modify(file, updatedContent);
-        console.log(
-          `ProjectPropertyHandler: Updated default properties in ${filePath}`,
-        );
-      }
-    } catch (error) {
-      console.error(
-        `ProjectPropertyHandler: Error setting default properties for ${filePath}:`,
-        error,
-      );
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof TFile)) {
+      throw new Error(`File not found: ${filePath}`);
     }
+
+    await this.updatePropertiesInContent(filePath);
+    console.log(
+      `ProjectPropertyHandler: Updated default properties in ${filePath}`
+    );
   }
 
   /**
    * Update properties in file content, setting defaults for null/empty values
    */
-  private updatePropertiesInContent(content: string, filePath: string): string {
-    // Parse YAML using gray-matter to check actual values
-    try {
-      const parsed = matter(content);
-      const frontmatterData = parsed.data || {};
+  private async updatePropertiesInContent(filePath: string): Promise<void> {
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+    if (!file) {
+      throw new Error(`File not found: ${filePath}`);
+    }
 
+    await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
       // Check and update each property for projects
       // Note: Type property is never set by handlers - only by templates
-      if (!frontmatterData.Name || frontmatterData.Name === "") {
-        frontmatterData.Name = this.getDefaultName(filePath);
+      if (!frontmatter.Name || frontmatter.Name === "") {
+        frontmatter.Name = this.getDefaultName(filePath);
       }
       // Only set default if Areas is missing or null, not if it's an empty array
-      if (
-        frontmatterData.Areas === undefined ||
-        frontmatterData.Areas === null
-      ) {
-        frontmatterData.Areas = this.getDefaultAreas();
+      if (frontmatter.Areas === undefined || frontmatter.Areas === null) {
+        frontmatter.Areas = this.getDefaultAreas();
       }
-
-      // Use gray-matter to regenerate the content with updated front-matter
-      return matter.stringify(parsed.content, frontmatterData);
-    } catch (error) {
-      console.error("ProjectPropertyHandler: Error parsing YAML:", error);
-      return content;
-    }
+    });
   }
 
   /**

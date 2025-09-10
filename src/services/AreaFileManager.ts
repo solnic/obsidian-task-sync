@@ -69,137 +69,57 @@ export class AreaFileManager extends FileManager {
     data: AreaCreationData
   ): Promise<string> {
     // Try to read template content
-    const templateContent = await this.readTemplate();
-    if (templateContent) {
-      return templateContent;
-    }
-
-    // Fallback content if template doesn't exist
-    return [
-      "",
-      "## Notes",
-      "",
-      data.description || "",
-      "",
-      "## Tasks",
-      "",
-      "{{tasks}}",
-      "",
-    ].join("\n");
-  }
-
-  /**
-   * Read template content from file
-   * @returns Template content or null if not found
-   */
-  private async readTemplate(): Promise<string | null> {
-    const templateFileName = this.settings.defaultAreaTemplate;
-    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
-
     try {
-      const templateFile = this.vault.getAbstractFileByPath(templatePath);
-      if (templateFile instanceof TFile) {
-        return await this.vault.read(templateFile);
-      }
+      return await this.readAreaTemplate();
     } catch (error) {
-      console.warn(`Could not read template ${templatePath}:`, error);
+      // Template doesn't exist - use default content
+      return [
+        "",
+        "## Notes",
+        "",
+        data.description || "",
+        "",
+        "## Tasks",
+        "",
+        "{{tasks}}",
+        "",
+      ].join("\n");
     }
-
-    return null;
   }
 
   /**
-   * Process {{tasks}} variable in content and replace with appropriate base embed
-   * @param content - Content that may contain {{tasks}} variable
-   * @param areaName - Name of the area for base embed
-   * @returns Processed content with {{tasks}} replaced
+   * Read area template content from file
+   * @returns Template content
+   * @throws Error if template file is not found
    */
-  private processTasksVariable(content: string, areaName: string): string {
-    if (!content.includes("{{tasks}}")) {
-      return content;
-    }
-
-    const baseEmbed = `![[${this.settings.basesFolder}/${areaName}.base]]`;
-    return content.replace(/\{\{tasks\}\}/g, baseEmbed);
+  private async readAreaTemplate(): Promise<string> {
+    const templateFileName = this.settings.defaultAreaTemplate;
+    return await this.readTemplate(templateFileName);
   }
 
   /**
    * Load an Area entity from an Obsidian TFile
    * @param file - The TFile to load
-   * @returns Area entity or null if invalid
+   * @returns Area entity
+   * @throws Error if file is not a valid area
    */
-  async loadEntity(file: TFile): Promise<Area | null> {
-    try {
-      // Wait for metadata cache to be ready for this file
-      const frontMatter = await this.waitForMetadataCache(file);
+  async loadEntity(file: TFile): Promise<Area> {
+    const frontMatter = await this.waitForMetadataCache(file);
 
-      // Check if this is a valid area file
-      if (frontMatter.Type !== "Area") {
-        return null;
-      }
-
-      // Create Area entity from front-matter
-      return {
-        id: this.generateId(),
-        file,
-        filePath: file.path,
-        name: frontMatter.Name || file.basename,
-        type: frontMatter.Type,
-        tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
-      };
-    } catch (error) {
-      console.warn(`Failed to load area from ${file.path}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Wait for metadata cache to have front-matter for the given file
-   */
-  private async waitForMetadataCache(file: TFile): Promise<any> {
-    // First try to get from cache immediately
-    let frontMatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
-
-    if (frontMatter && Object.keys(frontMatter).length > 0) {
-      return frontMatter;
+    if (frontMatter.Type !== "Area") {
+      throw new Error(
+        `File ${file.path} is not a valid area (Type: ${frontMatter.Type})`
+      );
     }
 
-    // If not available, wait for metadata cache to be updated
-    return new Promise((resolve) => {
-      const checkCache = () => {
-        const cache = this.app.metadataCache.getFileCache(file);
-        if (cache?.frontmatter && Object.keys(cache.frontmatter).length > 0) {
-          resolve(cache.frontmatter);
-          return true;
-        }
-        return false;
-      };
-
-      // Check immediately in case it was just updated
-      if (checkCache()) return;
-
-      // Listen for metadata cache changes
-      const onMetadataChange = (changedFile: TFile) => {
-        if (changedFile.path === file.path && checkCache()) {
-          this.app.metadataCache.off("changed", onMetadataChange);
-        }
-      };
-
-      this.app.metadataCache.on("changed", onMetadataChange);
-
-      // Fallback timeout to prevent hanging
-      setTimeout(() => {
-        this.app.metadataCache.off("changed", onMetadataChange);
-        resolve(this.app.metadataCache.getFileCache(file)?.frontmatter || {});
-      }, 1000);
-    });
-  }
-
-  /**
-   * Generate a unique ID for entities
-   */
-  private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+    return {
+      id: this.generateId(),
+      file,
+      filePath: file.path,
+      name: frontMatter.Name,
+      type: frontMatter.Type,
+      tags: frontMatter.tags,
+    };
   }
 
   /**
@@ -237,17 +157,14 @@ export class AreaFileManager extends FileManager {
       file as TFile
     )?.frontmatter;
     if (!existingFrontMatter) {
-      // No front-matter exists, skip this file
-      return { hasChanges: false, propertiesChanged: 0 };
+      throw new Error(`File ${filePath} has no front-matter`);
     }
 
     // Check if file has correct Type property for areas
     if (existingFrontMatter.Type && existingFrontMatter.Type !== "Area") {
-      // Skip files that are not areas
-      console.log(
-        `Area FileManager: Skipping file with incorrect Type property: ${filePath} (expected: Area, found: ${existingFrontMatter.Type})`
+      throw new Error(
+        `File ${filePath} is not an area (Type: ${existingFrontMatter.Type})`
       );
-      return { hasChanges: false, propertiesChanged: 0 };
     }
 
     // Get current schema for areas
@@ -272,8 +189,10 @@ export class AreaFileManager extends FileManager {
     for (const [fieldName, fieldConfig] of Object.entries(currentSchema)) {
       if (!(fieldName in updatedFrontMatter)) {
         const config = fieldConfig as any;
-        updatedFrontMatter[fieldName] =
-          config.default !== undefined ? config.default : "";
+        if (config.default === undefined) {
+          throw new Error(`Property ${fieldName} has no default value defined`);
+        }
+        updatedFrontMatter[fieldName] = config.default;
         hasChanges = true;
         propertiesChanged++;
       }

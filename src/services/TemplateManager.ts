@@ -12,14 +12,33 @@ import {
   generateProjectFrontMatter as getProjectPropertyDefinitions,
   generateTaskFrontMatter as getTaskPropertyDefinitions,
 } from "./base-definitions/BaseConfigurations";
-import matter from "gray-matter";
 
 export class TemplateManager {
   constructor(
     private app: App,
     private vault: Vault,
-    private settings: TaskSyncSettings,
+    private settings: TaskSyncSettings
   ) {}
+
+  /**
+   * Generate front-matter string from data object
+   */
+  private generateFrontMatter(frontMatterData: Record<string, any>): string {
+    const frontMatterLines = ["---"];
+    for (const [key, value] of Object.entries(frontMatterData)) {
+      if (Array.isArray(value)) {
+        frontMatterLines.push(
+          `${key}: [${value.map((v) => `"${v}"`).join(", ")}]`
+        );
+      } else if (typeof value === "string") {
+        frontMatterLines.push(`${key}: "${value}"`);
+      } else {
+        frontMatterLines.push(`${key}: ${value}`);
+      }
+    }
+    frontMatterLines.push("---");
+    return frontMatterLines.join("\n");
+  }
 
   /**
    * Update settings reference (for when settings are changed)
@@ -36,12 +55,13 @@ export class TemplateManager {
     try {
       // Create task template if missing
       const taskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultTaskTemplate}`;
-      const taskTemplateExists =
-        await this.app.vault.adapter.exists(taskTemplatePath);
+      const taskTemplateExists = await this.app.vault.adapter.exists(
+        taskTemplatePath
+      );
 
       if (!taskTemplateExists) {
         console.log(
-          `Task Sync: Task template '${this.settings.defaultTaskTemplate}' not found, creating it...`,
+          `Task Sync: Task template '${this.settings.defaultTaskTemplate}' not found, creating it...`
         );
         try {
           await this.createTaskTemplate(this.settings.defaultTaskTemplate);
@@ -53,12 +73,13 @@ export class TemplateManager {
 
       // Create area template if missing
       const areaTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultAreaTemplate}`;
-      const areaTemplateExists =
-        await this.app.vault.adapter.exists(areaTemplatePath);
+      const areaTemplateExists = await this.app.vault.adapter.exists(
+        areaTemplatePath
+      );
 
       if (!areaTemplateExists) {
         console.log(
-          `Task Sync: Area template '${this.settings.defaultAreaTemplate}' not found, creating it...`,
+          `Task Sync: Area template '${this.settings.defaultAreaTemplate}' not found, creating it...`
         );
         try {
           await this.createAreaTemplate(this.settings.defaultAreaTemplate);
@@ -70,19 +91,20 @@ export class TemplateManager {
 
       // Create project template if missing
       const projectTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultProjectTemplate}`;
-      const projectTemplateExists =
-        await this.app.vault.adapter.exists(projectTemplatePath);
+      const projectTemplateExists = await this.app.vault.adapter.exists(
+        projectTemplatePath
+      );
 
       if (!projectTemplateExists) {
         console.log(
-          `Task Sync: Project template '${this.settings.defaultProjectTemplate}' not found, creating it...`,
+          `Task Sync: Project template '${this.settings.defaultProjectTemplate}' not found, creating it...`
         );
         try {
           await this.createProjectTemplate(
-            this.settings.defaultProjectTemplate,
+            this.settings.defaultProjectTemplate
           );
           console.log(
-            `Task Sync: Created project template: ${projectTemplatePath}`,
+            `Task Sync: Created project template: ${projectTemplatePath}`
           );
         } catch (error) {
           console.error(`Task Sync: Failed to create project template:`, error);
@@ -92,24 +114,24 @@ export class TemplateManager {
       // Create parent task template if missing
       const parentTaskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultParentTaskTemplate}`;
       const parentTaskTemplateExists = await this.app.vault.adapter.exists(
-        parentTaskTemplatePath,
+        parentTaskTemplatePath
       );
 
       if (!parentTaskTemplateExists) {
         console.log(
-          `Task Sync: Parent task template '${this.settings.defaultParentTaskTemplate}' not found, creating it...`,
+          `Task Sync: Parent task template '${this.settings.defaultParentTaskTemplate}' not found, creating it...`
         );
         try {
           await this.createParentTaskTemplate(
-            this.settings.defaultParentTaskTemplate,
+            this.settings.defaultParentTaskTemplate
           );
           console.log(
-            `Task Sync: Created parent task template: ${parentTaskTemplatePath}`,
+            `Task Sync: Created parent task template: ${parentTaskTemplatePath}`
           );
         } catch (error) {
           console.error(
             `Task Sync: Failed to create parent task template:`,
-            error,
+            error
           );
         }
       }
@@ -134,7 +156,7 @@ export class TemplateManager {
     } catch (error) {
       console.error(
         "Task Sync: Failed to update templates on settings change:",
-        error,
+        error
       );
     }
   }
@@ -143,7 +165,7 @@ export class TemplateManager {
    * Read template content from file
    */
   async readTemplate(
-    templateType: "task" | "area" | "project" | "parentTask",
+    templateType: "task" | "area" | "project" | "parentTask"
   ): Promise<string | null> {
     let templateFileName: string;
 
@@ -189,7 +211,7 @@ export class TemplateManager {
     const fileExists = await this.vault.adapter.exists(templatePath);
     if (fileExists) {
       throw new Error(
-        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`,
+        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`
       );
     }
 
@@ -217,9 +239,7 @@ export class TemplateManager {
     const isValidOrder =
       requiredProperties.every((prop) => propertyOrder.includes(prop)) &&
       propertyOrder.every((prop) =>
-        requiredProperties.includes(
-          prop as (typeof requiredProperties)[number],
-        ),
+        requiredProperties.includes(prop as (typeof requiredProperties)[number])
       );
 
     // Use validated order or fall back to default
@@ -253,9 +273,7 @@ export class TemplateManager {
       }
     }
 
-    // Use gray-matter to generate the front-matter with default values
-    // Only {{tasks}} variable is supported, no other template variables
-    return matter.stringify("", frontMatterData);
+    return this.generateFrontMatter(frontMatterData);
   }
 
   /**
@@ -269,7 +287,7 @@ export class TemplateManager {
     const fileExists = await this.vault.adapter.exists(templatePath);
     if (fileExists) {
       throw new Error(
-        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`,
+        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`
       );
     }
 
@@ -313,9 +331,7 @@ export class TemplateManager {
     // Always set Type to 'Area' for area templates
     frontMatterData.Type = "Area";
 
-    // Use gray-matter to generate the front-matter with default values
-    // Only {{tasks}} variable is supported, no other template variables
-    return matter.stringify("", frontMatterData);
+    return this.generateFrontMatter(frontMatterData);
   }
 
   /**
@@ -329,7 +345,7 @@ export class TemplateManager {
     const fileExists = await this.vault.adapter.exists(templatePath);
     if (fileExists) {
       throw new Error(
-        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`,
+        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`
       );
     }
 
@@ -373,9 +389,7 @@ export class TemplateManager {
     // Always set Type to 'Project' for project templates
     frontMatterData.Type = "Project";
 
-    // Use gray-matter to generate the front-matter with default values
-    // Only {{tasks}} variable is supported, no other template variables
-    return matter.stringify("", frontMatterData);
+    return this.generateFrontMatter(frontMatterData);
   }
 
   /**
@@ -390,7 +404,7 @@ export class TemplateManager {
     const fileExists = await this.vault.adapter.exists(templatePath);
     if (fileExists) {
       throw new Error(
-        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`,
+        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`
       );
     }
 
@@ -431,9 +445,7 @@ export class TemplateManager {
       }
     }
 
-    // Use gray-matter to generate the front-matter with clean structure
-    // Only {{tasks}} variable is supported, no other template variables
-    const baseContent = matter.stringify("", frontMatterData);
+    const baseContent = this.generateFrontMatter(frontMatterData);
 
     // Add embedded base for related tasks using {{tasks}} variable
     return baseContent + "\n\n## Related Tasks\n\n{{tasks}}";

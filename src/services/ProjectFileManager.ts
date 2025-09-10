@@ -70,138 +70,58 @@ export class ProjectFileManager extends FileManager {
     data: ProjectCreationData
   ): Promise<string> {
     // Try to read template content
-    const templateContent = await this.readTemplate();
-    if (templateContent) {
-      return templateContent;
-    }
-
-    // Fallback content if template doesn't exist
-    return [
-      "",
-      "## Notes",
-      "",
-      data.description || "",
-      "",
-      "## Tasks",
-      "",
-      "{{tasks}}",
-      "",
-    ].join("\n");
-  }
-
-  /**
-   * Read template content from file
-   * @returns Template content or null if not found
-   */
-  private async readTemplate(): Promise<string | null> {
-    const templateFileName = this.settings.defaultProjectTemplate;
-    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
-
     try {
-      const templateFile = this.vault.getAbstractFileByPath(templatePath);
-      if (templateFile instanceof TFile) {
-        return await this.vault.read(templateFile);
-      }
+      return await this.readProjectTemplate();
     } catch (error) {
-      console.warn(`Could not read template ${templatePath}:`, error);
+      // Template doesn't exist - use default content
+      return [
+        "",
+        "## Notes",
+        "",
+        data.description || "",
+        "",
+        "## Tasks",
+        "",
+        "{{tasks}}",
+        "",
+      ].join("\n");
     }
-
-    return null;
   }
 
   /**
-   * Process {{tasks}} variable in content and replace with appropriate base embed
-   * @param content - Content that may contain {{tasks}} variable
-   * @param projectName - Name of the project for base embed
-   * @returns Processed content with {{tasks}} replaced
+   * Read project template content from file
+   * @returns Template content
+   * @throws Error if template file is not found
    */
-  private processTasksVariable(content: string, projectName: string): string {
-    if (!content.includes("{{tasks}}")) {
-      return content;
-    }
-
-    const baseEmbed = `![[${this.settings.basesFolder}/${projectName}.base]]`;
-    return content.replace(/\{\{tasks\}\}/g, baseEmbed);
+  private async readProjectTemplate(): Promise<string> {
+    const templateFileName = this.settings.defaultProjectTemplate;
+    return await this.readTemplate(templateFileName);
   }
 
   /**
    * Load a Project entity from an Obsidian TFile
    * @param file - The TFile to load
-   * @returns Project entity or null if invalid
+   * @returns Project entity
+   * @throws Error if file is not a valid project
    */
-  async loadEntity(file: TFile): Promise<Project | null> {
-    try {
-      // Wait for metadata cache to be ready for this file
-      const frontMatter = await this.waitForMetadataCache(file);
+  async loadEntity(file: TFile): Promise<Project> {
+    const frontMatter = await this.waitForMetadataCache(file);
 
-      // Check if this is a valid project file
-      if (frontMatter.Type !== "Project") {
-        return null;
-      }
-
-      // Create Project entity from front-matter
-      return {
-        id: this.generateId(),
-        file,
-        filePath: file.path,
-        name: frontMatter.Name || file.basename,
-        type: frontMatter.Type,
-        areas: Array.isArray(frontMatter.Areas) ? frontMatter.Areas : [],
-        tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
-      };
-    } catch (error) {
-      console.warn(`Failed to load project from ${file.path}:`, error);
-      return null;
-    }
-  }
-
-  /**
-   * Wait for metadata cache to have front-matter for the given file
-   */
-  private async waitForMetadataCache(file: TFile): Promise<any> {
-    // First try to get from cache immediately
-    let frontMatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
-
-    if (frontMatter && Object.keys(frontMatter).length > 0) {
-      return frontMatter;
+    if (frontMatter.Type !== "Project") {
+      throw new Error(
+        `File ${file.path} is not a valid project (Type: ${frontMatter.Type})`
+      );
     }
 
-    // If not available, wait for metadata cache to be updated
-    return new Promise((resolve) => {
-      const checkCache = () => {
-        const cache = this.app.metadataCache.getFileCache(file);
-        if (cache?.frontmatter && Object.keys(cache.frontmatter).length > 0) {
-          resolve(cache.frontmatter);
-          return true;
-        }
-        return false;
-      };
-
-      // Check immediately in case it was just updated
-      if (checkCache()) return;
-
-      // Listen for metadata cache changes
-      const onMetadataChange = (changedFile: TFile) => {
-        if (changedFile.path === file.path && checkCache()) {
-          this.app.metadataCache.off("changed", onMetadataChange);
-        }
-      };
-
-      this.app.metadataCache.on("changed", onMetadataChange);
-
-      // Fallback timeout to prevent hanging
-      setTimeout(() => {
-        this.app.metadataCache.off("changed", onMetadataChange);
-        resolve(this.app.metadataCache.getFileCache(file)?.frontmatter || {});
-      }, 1000);
-    });
-  }
-
-  /**
-   * Generate a unique ID for entities
-   */
-  private generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+    return {
+      id: this.generateId(),
+      file,
+      filePath: file.path,
+      name: frontMatter.Name,
+      type: frontMatter.Type,
+      areas: frontMatter.Areas,
+      tags: frontMatter.tags,
+    };
   }
 
   /**
@@ -239,17 +159,14 @@ export class ProjectFileManager extends FileManager {
       file as TFile
     )?.frontmatter;
     if (!existingFrontMatter) {
-      // No front-matter exists, skip this file
-      return { hasChanges: false, propertiesChanged: 0 };
+      throw new Error(`File ${filePath} has no front-matter`);
     }
 
     // Check if file has correct Type property for projects
     if (existingFrontMatter.Type && existingFrontMatter.Type !== "Project") {
-      // Skip files that are not projects
-      console.log(
-        `Project FileManager: Skipping file with incorrect Type property: ${filePath} (expected: Project, found: ${existingFrontMatter.Type})`
+      throw new Error(
+        `File ${filePath} is not a project (Type: ${existingFrontMatter.Type})`
       );
-      return { hasChanges: false, propertiesChanged: 0 };
     }
 
     // Get current schema for projects

@@ -206,9 +206,12 @@ export abstract class EntityStore<T extends BaseEntity> {
     const entities: T[] = [];
 
     for (const file of entityFiles) {
-      const entityData = await this.parseFileToEntity(file);
-      if (entityData) {
+      try {
+        const entityData = await this.parseFileToEntity(file);
         entities.push(entityData);
+      } catch (error) {
+        // Skip files that are not valid entities (e.g., wrong Type property)
+        console.debug(`Skipping file ${file.path}: ${error.message}`);
       }
     }
 
@@ -218,7 +221,7 @@ export abstract class EntityStore<T extends BaseEntity> {
   /**
    * Parse a file and extract entity data using file manager
    */
-  private async parseFileToEntity(file: TFile): Promise<T | null> {
+  private async parseFileToEntity(file: TFile): Promise<T> {
     if (!this.fileManager) {
       throw new Error(
         `No file manager available for parsing ${this.storageKey} entity`
