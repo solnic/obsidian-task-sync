@@ -4,6 +4,7 @@ import {
   getFileContent,
   fileExists,
   waitForTaskSyncPlugin,
+  verifyAreaProperties,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 

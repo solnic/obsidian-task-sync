@@ -29,31 +29,9 @@ export async function createTask(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (!plugin) {
-        throw new Error("Task Sync plugin not found");
-      }
-
-      // Convert props to the format expected by createTask
-      const taskData = {
-        title: props.title,
-        category: props.category,
-        priority: props.priority,
-        areas: props.areas?.join(", ") || "",
-        project: props.project,
-        done: props.done || false,
-        status: props.status || "Backlog",
-        parentTask: props.parentTask,
-        tags: props.tags || [],
-        content: content,
-      };
-
-      // Create the task using the plugin API (this will trigger automatic caching)
-      await plugin.createTask(taskData);
-
-      // Wait for store refresh operations to complete
+      await plugin.createTask(Object.assign(props, { content }));
       await plugin.waitForStoreRefresh();
 
-      // Get the cached task from task store
       const cachedTasks = plugin.getCachedTasks();
       const createdTask = cachedTasks.find((t: any) => t.title === props.title);
 
@@ -89,19 +67,9 @@ export async function createArea(
         throw new Error("Task Sync plugin not found");
       }
 
-      // Convert props to the format expected by createArea
-      const areaData = {
-        name: props.name,
-        description: props.description || "",
-      };
-
-      // Create the area using the plugin API (this will trigger automatic caching)
-      await plugin.createArea(areaData);
-
-      // Wait for store refresh operations to complete
+      await plugin.createArea(props);
       await plugin.waitForStoreRefresh();
 
-      // Get the cached area from area store
       const cachedAreas = plugin.getCachedAreas();
       const createdArea = cachedAreas.find((a: any) => a.name === props.name);
 
@@ -138,23 +106,9 @@ export async function createProject(
         throw new Error("Task Sync plugin not found");
       }
 
-      // Convert props to the format expected by createProject
-      const projectData = {
-        name: props.name,
-        description: props.description || "",
-        areas: props.areas || [],
-      };
-
-      // Create the project using the plugin API (this will trigger automatic caching)
-      await plugin.createProject(projectData);
-
-      // Give a small delay for file system events to be processed
-      await new Promise((resolve) => setTimeout(resolve, 50));
-
-      // Wait for store refresh operations to complete
+      await plugin.createProject(props);
       await plugin.waitForStoreRefresh();
 
-      // Get the cached project from project store
       const cachedProjects = plugin.getCachedProjects();
       const createdProject = cachedProjects.find(
         (p: any) => p.name === props.name

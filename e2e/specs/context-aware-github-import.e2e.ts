@@ -107,15 +107,23 @@ describe("Context-Aware GitHub Import", () => {
     });
 
     // Verify tags include original labels
-    const taskContent = await context.page.evaluate(async (path) => {
+    const taskProperties = await context.page.evaluate(async (path) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(path);
       if (!file) return null;
 
       const content = await app.vault.read(file);
-      return content;
+      const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (!frontMatterMatch) return {};
+
+      try {
+        const yaml = (window as any).require("js-yaml");
+        return yaml.load(frontMatterMatch[1]) || {};
+      } catch (error) {
+        return {};
+      }
     }, taskPath);
-    expect(taskContent).toContain("bug"); // Should include original labels as tags
+    expect(taskProperties.tags).toContain("bug"); // Should include original labels as tags
 
     // Verify context was correctly detected during import
     const contextInfo = await context.page.evaluate(async () => {
@@ -212,15 +220,23 @@ describe("Context-Aware GitHub Import", () => {
     });
 
     // Verify tags include original labels
-    const taskContent = await context.page.evaluate(async (path) => {
+    const taskProperties = await context.page.evaluate(async (path) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(path);
       if (!file) return null;
 
       const content = await app.vault.read(file);
-      return content;
+      const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (!frontMatterMatch) return {};
+
+      try {
+        const yaml = (window as any).require("js-yaml");
+        return yaml.load(frontMatterMatch[1]) || {};
+      } catch (error) {
+        return {};
+      }
     }, taskPath);
-    expect(taskContent).toContain("enhancement"); // Should include original labels as tags
+    expect(taskProperties.tags).toContain("enhancement"); // Should include original labels as tags
 
     // Verify context was correctly detected during import
     const contextInfo = await context.page.evaluate(async () => {
@@ -312,23 +328,35 @@ describe("Context-Aware GitHub Import", () => {
     expect(taskPath).toContain("Tasks/");
 
     // Verify the task file has correct properties
-    const taskContent = await context.page.evaluate(async (path) => {
+    await verifyTaskProperties(context.page, taskPath, {
+      Title: "Update documentation",
+      Type: "Task", // Type is always 'Task' for task entities
+    });
+
+    // Verify category is one of the available task categories since 'documentation' doesn't map to anything
+    const taskProperties = await context.page.evaluate(async (path) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(path);
       if (!file) return null;
 
       const content = await app.vault.read(file);
-      return content;
+      const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (!frontMatterMatch) return {};
+
+      try {
+        const yaml = (window as any).require("js-yaml");
+        return yaml.load(frontMatterMatch[1]) || {};
+      } catch (error) {
+        return {};
+      }
     }, taskPath);
 
-    expect(taskContent).toBeTruthy();
-    expect(taskContent).toContain('Title: "Update documentation"');
-    expect(taskContent).toContain('Type: "Task"'); // Type is always 'Task' for task entities
-    // Should fallback to first available task category since 'documentation' doesn't map to anything
-    expect(taskContent).toMatch(
-      /Category: "(Task|Bug|Feature|Improvement|Chore)"/
+    expect(taskProperties.Category).toMatch(
+      /^(Task|Bug|Feature|Improvement|Chore)$/
     );
-    expect(taskContent).toContain("documentation"); // Should include original labels as tags
+
+    // Verify tags include original labels
+    expect(taskProperties.tags).toContain("documentation");
 
     // Verify context was correctly detected during import (should be none)
     const contextInfo = await context.page.evaluate(async () => {

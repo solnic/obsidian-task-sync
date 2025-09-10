@@ -8,6 +8,7 @@ import {
   createTestFolders,
   getFileContent,
   fileExists,
+  verifyProjectProperties,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
 
@@ -62,19 +63,19 @@ describe("Project Creation", () => {
 
     // Fill in project name
     const nameInput = context.page.locator(
-      'input[placeholder*="Website Redesign, Learn Spanish"]',
+      'input[placeholder*="Website Redesign, Learn Spanish"]'
     );
     await nameInput.fill("Test Project");
 
     // Fill in areas
     const areasInput = context.page.locator(
-      'input[placeholder*="Work, Learning"]',
+      'input[placeholder*="Work, Learning"]'
     );
     await areasInput.fill("Work, Development");
 
     // Fill in description
     const descriptionInput = context.page.locator(
-      'textarea[placeholder*="Brief description"]',
+      'textarea[placeholder*="Brief description"]'
     );
     await descriptionInput.fill("This is a test project for e2e testing");
 
@@ -85,20 +86,22 @@ describe("Project Creation", () => {
     // Check if project file was created
     const projectFileExists = await fileExists(
       context.page,
-      "Projects/Test Project.md",
+      "Projects/Test Project.md"
     );
     expect(projectFileExists).toBe(true);
 
-    // Check project file content
+    // Check project file content using property verification
+    await verifyProjectProperties(context.page, "Projects/Test Project.md", {
+      Name: "Test Project",
+      Type: "Project",
+      Areas: ["Work", "Development"], // Areas should be split into array format
+    });
+
+    // Check that description and base embed are in the content
     const projectContent = await getFileContent(
       context.page,
-      "Projects/Test Project.md",
+      "Projects/Test Project.md"
     );
-    expect(projectContent).toContain("Name: Test Project");
-    expect(projectContent).toContain("Type: Project");
-    // Areas should be split into array format
-    expect(projectContent).toContain("- Work");
-    expect(projectContent).toContain("- Development");
     expect(projectContent).toContain("This is a test project for e2e testing");
     expect(projectContent).toContain("![[Bases/Test Project.base]]");
   });
@@ -125,13 +128,13 @@ describe("Project Creation", () => {
 
     // Fill in project name
     const nameInput = context.page.locator(
-      'input[placeholder*="Website Redesign, Learn Spanish"]',
+      'input[placeholder*="Website Redesign, Learn Spanish"]'
     );
     await nameInput.fill("Website Redesign");
 
     // Fill in areas
     const areasInput = context.page.locator(
-      'input[placeholder*="Work, Learning"]',
+      'input[placeholder*="Work, Learning"]'
     );
     await areasInput.fill("Work");
 
@@ -142,14 +145,14 @@ describe("Project Creation", () => {
     // Check if individual project base was created
     const baseFileExists = await fileExists(
       context.page,
-      "Bases/Website Redesign.base",
+      "Bases/Website Redesign.base"
     );
     expect(baseFileExists).toBe(true);
 
     // Check base file content
     const baseContent = await getFileContent(
       context.page,
-      "Bases/Website Redesign.base",
+      "Bases/Website Redesign.base"
     );
     expect(baseContent).toContain("properties:");
     expect(baseContent).toContain("name: Title");
@@ -204,7 +207,7 @@ describe("Project Creation", () => {
 
     // Fill in project name with special characters
     const nameInput = context.page.locator(
-      'input[placeholder*="Website Redesign, Learn Spanish"]',
+      'input[placeholder*="Website Redesign, Learn Spanish"]'
     );
     await nameInput.fill("Mobile App (iOS & Android)");
 
@@ -215,7 +218,7 @@ describe("Project Creation", () => {
     // Check if project file was created with original name
     const projectFileExists = await fileExists(
       context.page,
-      "Projects/Mobile App (iOS & Android).md",
+      "Projects/Mobile App (iOS & Android).md"
     );
     expect(projectFileExists).toBe(true);
 
@@ -224,7 +227,7 @@ describe("Project Creation", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Projects/Mobile App (iOS & Android).md",
+        "Projects/Mobile App (iOS & Android).md"
       );
     });
 
@@ -268,14 +271,14 @@ Build a modern e-commerce platform with React and Node.js
       try {
         await app.vault.create(
           "Templates/project-template.md",
-          templateContent,
+          templateContent
         );
       } catch (error) {
         console.log("Template creation error:", error);
         // If file already exists, modify it instead
         if (error.message.includes("already exists")) {
           const existingFile = app.vault.getAbstractFileByPath(
-            "Templates/project-template.md",
+            "Templates/project-template.md"
           );
           if (existingFile) {
             await app.vault.modify(existingFile, templateContent);
@@ -303,20 +306,20 @@ Build a modern e-commerce platform with React and Node.js
 
     // Fill in project information
     const nameInput = context.page.locator(
-      'input[placeholder*="Website Redesign, Learn Spanish"]',
+      'input[placeholder*="Website Redesign, Learn Spanish"]'
     );
     await nameInput.fill("E-commerce Platform");
 
     const areasInput = context.page.locator(
-      'input[placeholder*="Work, Learning"]',
+      'input[placeholder*="Work, Learning"]'
     );
     await areasInput.fill("Work, Technology");
 
     const descriptionInput = context.page.locator(
-      'textarea[placeholder*="Brief description"]',
+      'textarea[placeholder*="Brief description"]'
     );
     await descriptionInput.fill(
-      "Build a modern e-commerce platform with React and Node.js",
+      "Build a modern e-commerce platform with React and Node.js"
     );
 
     // Click create button
@@ -326,24 +329,31 @@ Build a modern e-commerce platform with React and Node.js
     // Check if project file was created
     const projectFileExists = await fileExists(
       context.page,
-      "Projects/E-commerce Platform.md",
+      "Projects/E-commerce Platform.md"
     );
     expect(projectFileExists).toBe(true);
 
     // Check project file content uses template
-    const projectContent = await getFileContent(
+    await verifyProjectProperties(
       context.page,
       "Projects/E-commerce Platform.md",
+      {
+        Status: "Planning",
+        Areas: ["Work", "Technology"],
+      }
     );
-    expect(projectContent).toContain("Status: Planning");
+
+    // Check that template content is present
+    const projectContent = await getFileContent(
+      context.page,
+      "Projects/E-commerce Platform.md"
+    );
     expect(projectContent).toContain("## Overview");
     expect(projectContent).toContain("## Objectives");
     expect(projectContent).toContain("## Milestones");
     expect(projectContent).toContain(
-      "Build a modern e-commerce platform with React and Node.js",
+      "Build a modern e-commerce platform with React and Node.js"
     );
-    expect(projectContent).toContain("- Work");
-    expect(projectContent).toContain("- Technology");
     expect(projectContent).toContain("![[Bases/E-commerce Platform.base]]");
   });
 
@@ -358,7 +368,7 @@ Build a modern e-commerce platform with React and Node.js
 
     // Fill in only project name
     const nameInput = context.page.locator(
-      'input[placeholder*="Website Redesign, Learn Spanish"]',
+      'input[placeholder*="Website Redesign, Learn Spanish"]'
     );
     await nameInput.fill("Simple Project");
 
@@ -369,17 +379,15 @@ Build a modern e-commerce platform with React and Node.js
     // Check if project file was created
     const projectFileExists = await fileExists(
       context.page,
-      "Projects/Simple Project.md",
+      "Projects/Simple Project.md"
     );
     expect(projectFileExists).toBe(true);
 
-    // Check project file content
-    const projectContent = await getFileContent(
-      context.page,
-      "Projects/Simple Project.md",
-    );
-    expect(projectContent).toContain("Name: Simple Project");
-    expect(projectContent).toContain("Type: Project");
-    expect(projectContent).toContain("Areas:"); // Should be empty but present
+    // Check project file content using property verification
+    await verifyProjectProperties(context.page, "Projects/Simple Project.md", {
+      Name: "Simple Project",
+      Type: "Project",
+      Areas: [], // Should be empty but present
+    });
   });
 });

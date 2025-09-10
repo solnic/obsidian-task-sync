@@ -3,6 +3,8 @@ import {
   createTestFolders,
   getFileContent,
   fileExists,
+  verifyProjectProperties,
+  verifyAreaProperties,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
@@ -45,7 +47,7 @@ Additional project notes here.
       try {
         await app.vault.create(
           "Templates/project-tasks-template.md",
-          templateContent,
+          templateContent
         );
       } catch (error) {
         console.log("Template creation error:", error);
@@ -80,26 +82,34 @@ Additional project notes here.
     // Check if project file was created
     const projectExists = await fileExists(
       context.page,
-      "Projects/Mobile App Development.md",
+      "Projects/Mobile App Development.md"
     );
     expect(projectExists).toBe(true);
 
     // Check project file content
     const projectContent = await getFileContent(
       context.page,
-      "Projects/Mobile App Development.md",
+      "Projects/Mobile App Development.md"
     );
 
     // Verify {{tasks}} was replaced with specific base embed
     expect(projectContent).toContain("![[Bases/Mobile App Development.base]]");
     expect(projectContent).not.toContain("{{tasks}}");
 
-    // Verify other variables were processed
-    expect(projectContent).toContain("Name: Mobile App Development");
-    expect(projectContent).toContain("- Technology");
-    expect(projectContent).toContain("- Business");
+    // Verify project properties were processed correctly
+    await verifyProjectProperties(
+      context.page,
+      "Projects/Mobile App Development.md",
+      {
+        Name: "Mobile App Development",
+        Type: "Project",
+        Areas: ["Technology", "Business"],
+      }
+    );
+
+    // Verify description content is present
     expect(projectContent).toContain(
-      "Building a cross-platform mobile application",
+      "Building a cross-platform mobile application"
     );
   });
 
@@ -136,7 +146,7 @@ Links and resources for this area.
       try {
         await app.vault.create(
           "Templates/area-tasks-template.md",
-          templateContent,
+          templateContent
         );
       } catch (error) {
         console.log("Template creation error:", error);
@@ -170,22 +180,27 @@ Links and resources for this area.
     // Check if area file was created
     const areaExists = await fileExists(
       context.page,
-      "Areas/Health & Wellness.md",
+      "Areas/Health & Wellness.md"
     );
     expect(areaExists).toBe(true);
 
     // Check area file content
     const areaContent = await getFileContent(
       context.page,
-      "Areas/Health & Wellness.md",
+      "Areas/Health & Wellness.md"
     );
 
     // Verify {{tasks}} was replaced with specific base embed
     expect(areaContent).toContain("![[Bases/Health & Wellness.base]]");
     expect(areaContent).not.toContain("{{tasks}}");
 
-    // Verify other variables were processed
-    expect(areaContent).toContain("Name: Health & Wellness");
+    // Verify area properties were processed correctly
+    await verifyAreaProperties(context.page, "Areas/Health & Wellness.md", {
+      Name: "Health & Wellness",
+      Type: "Area",
+    });
+
+    // Verify description content is present
     expect(areaContent).toContain("Maintaining physical and mental health");
   });
 
@@ -206,7 +221,7 @@ Type: Project
       try {
         await app.vault.create(
           "Templates/simple-project-template.md",
-          templateContent,
+          templateContent
         );
       } catch (error) {
         console.log("Template creation error:", error);
@@ -251,7 +266,7 @@ Type: Project
     // Check project file content
     const projectContent = await getFileContent(
       context.page,
-      "Projects/Test Project.md",
+      "Projects/Test Project.md"
     );
 
     // Count base embeds - should only have one

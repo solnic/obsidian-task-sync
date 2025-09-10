@@ -8,6 +8,7 @@ import {
   createTestFolders,
   fileExists,
   waitForTaskSyncPlugin,
+  verifyTaskProperties,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
@@ -15,11 +16,12 @@ import { createTask } from "../helpers/entity-helpers";
 describe("TaskFileManager Service", () => {
   const context = setupE2ETestHooks();
 
-  test("should create task file with sanitized name and proper front-matter", async () => {
+  beforeAll(async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
+  });
 
-    // Test creating a task file with invalid characters in the name
+  test("should create task file with sanitized name and proper front-matter", async () => {
     const taskData = {
       title: "Fix: Bug/Issue #123",
       priority: "High",
@@ -46,68 +48,41 @@ describe("TaskFileManager Service", () => {
     const taskExists = await fileExists(context.page, taskPath);
     expect(taskExists).toBe(true);
 
-    // Verify the task front-matter has proper structure using API
-    const frontMatter = await context.page.evaluate(async (path) => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(path);
-    }, taskPath);
-
-    expect(frontMatter.Title).toBe(taskData.title);
-    expect(frontMatter.Type).toBe("Task");
-    expect(frontMatter.Priority).toBe(taskData.priority);
-    expect(frontMatter.Areas).toEqual(["[[Development]]"]);
-    expect(frontMatter.Project).toBe("[[Website Redesign]]");
-    expect(frontMatter.Done).toBe(taskData.done);
-    expect(frontMatter.Status).toBe(taskData.status);
+    // Verify the task front-matter has proper structure using helper
+    await verifyTaskProperties(context.page, taskPath, {
+      Title: taskData.title,
+      Type: "Task",
+      Priority: taskData.priority,
+      Areas: ["[[Development]]"],
+      Project: "[[Website Redesign]]",
+      Done: taskData.done,
+      Status: taskData.status,
+    });
   });
 
   test("should load front-matter from existing task file", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create a test task file first
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const taskContent = `---
-Title: Test Task
-Type: Feature
-Priority: Medium
-Areas:
-  - '[[Development]]'
-  - '[[Testing]]'
-Project: '[[Test Project]]'
-Done: false
-Status: Todo
----
-
-This is the task description.`;
-      await app.vault.create("Tasks/Test Task.md", taskContent);
+    await createTask(context, {
+      title: "Test Task",
+      priority: "Medium",
+      areas: ["Development", "Testing"],
+      project: "Test Project",
+      done: false,
+      status: "Todo",
     });
 
-    // Test loading front-matter
-    const frontMatter = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-      const taskFileManager = plugin.taskFileManager;
-      return await taskFileManager.loadFrontMatter("Tasks/Test Task.md");
+    // Test loading front-matter using helper
+    await verifyTaskProperties(context.page, "Tasks/Test Task.md", {
+      Title: "Test Task",
+      Type: "Task",
+      Priority: "Medium",
+      Areas: ["[[Development]]", "[[Testing]]"],
+      Project: "[[Test Project]]",
+      Done: false,
+      Status: "Todo",
     });
-
-    expect(frontMatter.Title).toBe("Test Task");
-    expect(frontMatter.Type).toBe("Feature");
-    expect(frontMatter.Priority).toBe("Medium");
-    expect(frontMatter.Areas).toEqual(["[[Development]]", "[[Testing]]"]);
-    expect(frontMatter.Project).toBe("[[Test Project]]");
-    expect(frontMatter.Done).toBe(false);
-    expect(frontMatter.Status).toBe("Todo");
   });
 
   test("should extract file content after front-matter", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create a test task file with content using entity helper
     await createTask(
       context,
       {
@@ -123,7 +98,6 @@ This is the main content of the task.
 - Note 2`
     );
 
-    // Test extracting file content
     const fileContent = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -142,24 +116,12 @@ This is the main content of the task.
   });
 
   test("should change task status using Done property", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create a test task file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const taskContent = `---
-Title: Status Test Task
-Type: Task
-Done: false
-Status: Todo
----
-
-Task content here.`;
-      await app.vault.create("Tasks/Status Test Task.md", taskContent);
+    await createTask(context, {
+      title: "Status Test Task",
+      done: false,
+      status: "Todo",
     });
 
-    // Test changing task status via Done property
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -168,37 +130,16 @@ Task content here.`;
       await taskFileManager.changeTaskStatus("Tasks/Status Test Task.md", true);
     });
 
-    // Wait a moment for the update to be processed
-    await context.page.waitForTimeout(200);
-
-    // Verify the status was changed using API
-    const frontMatter = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Status Test Task.md"
-      );
+    await verifyTaskProperties(context.page, "Tasks/Status Test Task.md", {
+      Done: true,
     });
-
-    expect(frontMatter.Done).toBe(true);
   });
 
   test("should change task status using Status property", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create a test task file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const taskContent = `---
-Title: Status String Test Task
-Type: Task
-Done: false
-Status: Todo
----
-
-Task content here.`;
-      await app.vault.create("Tasks/Status String Test Task.md", taskContent);
+    await createTask(context, {
+      title: "Status String Test Task",
+      done: false,
+      status: "Todo",
     });
 
     // Test changing task status via Status property
@@ -213,26 +154,16 @@ Task content here.`;
       );
     });
 
-    // Wait a moment for the change to be processed
-    await context.page.waitForTimeout(100);
-
-    // Verify the status was changed using API
-    const frontMatter = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Status String Test Task.md"
-      );
-    });
-
-    expect(frontMatter.Status).toBe("Completed");
+    await verifyTaskProperties(
+      context.page,
+      "Tasks/Status String Test Task.md",
+      {
+        Status: "Completed",
+      }
+    );
   });
 
   test("should assign task to project", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create a test task file using entity helper
     await createTask(
       context,
       {
@@ -254,23 +185,16 @@ Task content here.`;
       );
     });
 
-    // Verify the project was changed using API
-    const frontMatter = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Project Assignment Test.md"
-      );
-    });
-
-    expect(frontMatter.Project).toBe("[[New Project]]");
+    await verifyTaskProperties(
+      context.page,
+      "Tasks/Project Assignment Test.md",
+      {
+        Project: "[[New Project]]",
+      }
+    );
   });
 
   test("should assign task to areas", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create a test task file using entity helper
     await createTask(
       context,
       {
@@ -292,25 +216,12 @@ Task content here.`;
       ]);
     });
 
-    // Wait a moment for the update to be processed
-    await context.page.waitForTimeout(200);
-
-    // Verify the areas were changed using API
-    const frontMatter = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Areas Assignment Test.md"
-      );
+    await verifyTaskProperties(context.page, "Tasks/Areas Assignment Test.md", {
+      Areas: ["[[Testing]]", "[[Documentation]]"],
     });
-
-    expect(frontMatter.Areas).toEqual(["[[Testing]]", "[[Documentation]]"]);
   });
 
   test("should update specific front-matter property", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // Create a test task file using entity helper
     await createTask(
       context,
@@ -334,19 +245,9 @@ Task content here.`;
       );
     });
 
-    // Wait a moment for the update to be processed
-    await context.page.waitForTimeout(100);
-
-    // Verify the property was updated using API
-    const frontMatter = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Property Update Test.md"
-      );
+    await verifyTaskProperties(context.page, "Tasks/Property Update Test.md", {
+      Priority: "Critical",
     });
-
-    expect(frontMatter.Priority).toBe("Critical");
   });
 
   test("should create task with description as file content, not just in front-matter", async () => {

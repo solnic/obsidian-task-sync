@@ -4,6 +4,7 @@ import {
   getFileContent,
   fileExists,
   waitForTaskSyncPlugin,
+  verifyTaskProperties,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
@@ -77,25 +78,21 @@ This task was created from a template!
     // Check if task file was created
     const taskFileExists = await fileExists(
       context.page,
-      "Tasks/Template Test Task.md",
+      "Tasks/Template Test Task.md"
     );
     expect(taskFileExists).toBe(true);
-
-    // Check task file content
-    const taskContent = await getFileContent(
-      context.page,
-      "Tasks/Template Test Task.md",
-    );
 
     // Verify task was created with correct front-matter (templates are not used in task creation)
     // The plugin creates tasks with front-matter only, not template content
 
-    // Verify template variables were processed
-    expect(taskContent).toContain("Title: Template Test Task");
-    expect(taskContent).toContain("Type: Task");
-    expect(taskContent).toContain("Category: Feature");
-    expect(taskContent).toContain("Priority: High");
-    expect(taskContent).toContain("Status: In Progress");
+    // Verify task properties were processed correctly
+    await verifyTaskProperties(context.page, "Tasks/Template Test Task.md", {
+      Title: "Template Test Task",
+      Type: "Task",
+      Category: "Feature",
+      Priority: "High",
+      Status: "In Progress",
+    });
   });
 
   test("should prevent empty template settings through validation", async () => {
@@ -173,7 +170,7 @@ tags: []
       try {
         await app.vault.create(
           "Templates/TasksVariableTest.md",
-          templateContent,
+          templateContent
         );
       } catch (error) {
         console.log("Template creation error:", error);
@@ -215,7 +212,7 @@ tags: []
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Parent Task Test.md",
+        "Tasks/Parent Task Test.md"
       );
     });
 
@@ -225,7 +222,7 @@ tags: []
     // Check template content was processed correctly
     const taskContent = await getFileContent(
       context.page,
-      "Tasks/Parent Task Test.md",
+      "Tasks/Parent Task Test.md"
     );
     expect(taskContent).toContain("## Sub tasks");
     expect(taskContent).toContain("![[Bases/Parent Task Test.base]]");
