@@ -12,7 +12,7 @@ import {
   configureGitHubIntegration,
   openGitHubIssuesView,
   waitForGitHubViewContent,
-  stubGitHubApiResponses,
+  stubGitHubWithFixtures,
   clickIssueImportButton,
   waitForIssueImportComplete,
 } from "../helpers/github-integration-helpers";
@@ -33,34 +33,10 @@ describe("Context-Aware GitHub Import", () => {
 
     await openFile(context, project.filePath);
 
-    const mockRepositories = [
-      {
-        id: 1,
-        name: "obsidian-task-sync",
-        full_name: "solnic/obsidian-task-sync",
-        description: "Task sync plugin for Obsidian",
-        html_url: "https://github.com/solnic/obsidian-task-sync",
-      },
-    ];
-
-    const mockIssues = [
-      {
-        id: 123456,
-        number: 123,
-        title: "Fix login error when user has special characters",
-        body: "Users with special characters in their username cannot log in properly.",
-        labels: [{ name: "bug" }, { name: "urgent" }],
-        assignee: { login: "testuser" },
-        state: "open",
-        html_url: "https://github.com/solnic/obsidian-task-sync/issues/123",
-        created_at: "2024-01-15T10:30:00Z",
-        updated_at: "2024-01-15T10:30:00Z",
-      },
-    ];
-
-    await stubGitHubApiResponses(context.page, {
-      repositories: mockRepositories,
-      issues: mockIssues,
+    // Use fixture-based stubbing for better maintainability
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "context-aware-bug",
     });
 
     // Configure GitHub integration
@@ -162,35 +138,10 @@ describe("Context-Aware GitHub Import", () => {
     // Wait for context to be set
     await context.page.waitForTimeout(500);
 
-    // Stub GitHub API responses with test data
-    const mockRepositories = [
-      {
-        id: 1,
-        name: "obsidian-task-sync",
-        full_name: "solnic/obsidian-task-sync",
-        description: "Task sync plugin for Obsidian",
-        html_url: "https://github.com/solnic/obsidian-task-sync",
-      },
-    ];
-
-    const mockIssues = [
-      {
-        id: 456789,
-        number: 456,
-        title: "Add dark mode support",
-        body: "Users have requested dark mode support for better usability.",
-        labels: [{ name: "enhancement" }, { name: "ui" }],
-        assignee: null as any,
-        state: "open",
-        html_url: "https://github.com/solnic/obsidian-task-sync/issues/456",
-        created_at: "2024-01-15T10:30:00Z",
-        updated_at: "2024-01-15T10:30:00Z",
-      },
-    ];
-
-    await stubGitHubApiResponses(context.page, {
-      repositories: mockRepositories,
-      issues: mockIssues,
+    // Use fixture-based stubbing for better maintainability
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "context-aware-enhancement",
     });
 
     // Configure GitHub integration
@@ -293,35 +244,10 @@ describe("Context-Aware GitHub Import", () => {
     // Wait for context to be set
     await context.page.waitForTimeout(500);
 
-    // Stub GitHub API responses with test data
-    const mockRepositories = [
-      {
-        id: 1,
-        name: "obsidian-task-sync",
-        full_name: "solnic/obsidian-task-sync",
-        description: "Task sync plugin for Obsidian",
-        html_url: "https://github.com/solnic/obsidian-task-sync",
-      },
-    ];
-
-    const mockIssues = [
-      {
-        id: 789012,
-        number: 789,
-        title: "Update documentation",
-        body: "The documentation needs to be updated with latest changes.",
-        labels: [{ name: "documentation" }, { name: "help-wanted" }],
-        assignee: null as any,
-        state: "open",
-        html_url: "https://github.com/solnic/obsidian-task-sync/issues/789",
-        created_at: "2024-01-15T10:30:00Z",
-        updated_at: "2024-01-15T10:30:00Z",
-      },
-    ];
-
-    await stubGitHubApiResponses(context.page, {
-      repositories: mockRepositories,
-      issues: mockIssues,
+    // Use fixture-based stubbing for better maintainability
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "context-aware-documentation",
     });
 
     // Configure GitHub integration

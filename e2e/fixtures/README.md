@@ -10,6 +10,9 @@ e2e/fixtures/
 │   ├── issues-basic.json
 │   ├── issues-multiple.json
 │   ├── persistence-test.json
+│   ├── pull-requests-basic.json
+│   ├── pull-requests-detailed.json
+│   ├── pull-requests-multiple.json
 │   ├── repositories-basic.json
 │   └── repositories-multiple.json
 └── README.md
@@ -38,6 +41,7 @@ import { stubMultipleAPIs } from "../helpers/api-stubbing";
 await stubMultipleAPIs(page, {
   github: {
     fetchIssues: "issues-multiple",
+    fetchPullRequests: "pull-requests-basic",
     fetchRepositories: "repositories-basic"
   }
 });
@@ -52,6 +56,7 @@ import { stubGitHubWithFixtures } from "../helpers/github-integration-helpers";
 
 await stubGitHubWithFixtures(page, {
   issues: "issues-basic",
+  pullRequests: "pull-requests-basic",
   repositories: "repositories-basic"
 });
 ```
@@ -73,6 +78,12 @@ await restoreAPI(page, "github");
 - **`issues-basic.json`** - Single test issue for basic functionality
 - **`issues-multiple.json`** - Multiple issues with different labels and assignees
 - **`persistence-test.json`** - Specific issue for testing import persistence
+
+### GitHub Pull Requests
+
+- **`pull-requests-basic.json`** - Single test pull request for basic functionality
+- **`pull-requests-multiple.json`** - Multiple pull requests with different states and labels
+- **`pull-requests-detailed.json`** - Detailed pull request with assignees and reviewers
 
 ### GitHub Repositories
 

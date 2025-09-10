@@ -5,6 +5,7 @@
   import FilterButton from "./FilterButton.svelte";
   import type {
     GitHubIssue,
+    GitHubPullRequest,
     GitHubRepository,
     GitHubOrganization,
   } from "../../services/GitHubService";
@@ -26,7 +27,9 @@
   const { plugin } = getPluginContext();
 
   // State
+  let activeTab = $state<"issues" | "pull-requests">("issues");
   let issues = $state<GitHubIssue[]>([]);
+  let pullRequests = $state<GitHubPullRequest[]>([]);
   let repositories = $state<GitHubRepository[]>([]);
   let organizations = $state<GitHubOrganization[]>([]);
   let currentRepository = $state(settings.githubIntegration.defaultRepository);
@@ -39,13 +42,24 @@
   let isLoading = $state(false);
   let importingIssues = $state(new Set<number>());
   let importedIssues = $state(new Set<number>());
+  let importingPullRequests = $state(new Set<number>());
+  let importedPullRequests = $state(new Set<number>());
   let hoveredIssue = $state<number | null>(null);
+  let hoveredPullRequest = $state<number | null>(null);
 
   // Computed
   let filteredIssues = $derived.by(() => {
     let filtered = filterIssues(currentState);
     if (searchQuery) {
       filtered = searchIssues(searchQuery, filtered);
+    }
+    return filtered;
+  });
+
+  let filteredPullRequests = $derived.by(() => {
+    let filtered = filterPullRequests(currentState);
+    if (searchQuery) {
+      filtered = searchPullRequests(searchQuery, filtered);
     }
     return filtered;
   });
@@ -97,11 +111,31 @@
     }
   });
 
+  function setActiveTab(tab: "issues" | "pull-requests"): void {
+    activeTab = tab;
+    if (
+      tab === "pull-requests" &&
+      pullRequests.length === 0 &&
+      currentRepository
+    ) {
+      loadPullRequests();
+    }
+  }
+
   function filterIssues(state: "open" | "closed" | "all"): GitHubIssue[] {
     if (state === "all") {
       return issues;
     }
     return issues.filter((issue) => issue.state === state);
+  }
+
+  function filterPullRequests(
+    state: "open" | "closed" | "all"
+  ): GitHubPullRequest[] {
+    if (state === "all") {
+      return pullRequests;
+    }
+    return pullRequests.filter((pr) => pr.state === state);
   }
 
   function searchIssues(
@@ -115,6 +149,20 @@
       (issue) =>
         issue.title.toLowerCase().includes(lowerQuery) ||
         (issue.body && issue.body.toLowerCase().includes(lowerQuery))
+    );
+  }
+
+  function searchPullRequests(
+    query: string,
+    prList?: GitHubPullRequest[]
+  ): GitHubPullRequest[] {
+    const searchIn = prList || pullRequests;
+    const lowerQuery = query.toLowerCase();
+
+    return searchIn.filter(
+      (pr) =>
+        pr.title.toLowerCase().includes(lowerQuery) ||
+        (pr.body && pr.body.toLowerCase().includes(lowerQuery))
     );
   }
 
@@ -177,9 +225,39 @@
     }
   }
 
+  async function loadPullRequests(): Promise<void> {
+    if (!currentRepository || !githubService.isEnabled()) {
+      return;
+    }
+
+    isLoading = true;
+    error = null;
+
+    try {
+      pullRequests = await githubService.fetchPullRequests(currentRepository);
+
+      // Load import status for all pull requests using task store
+      const importedNumbers = new Set<number>();
+      for (const pr of pullRequests) {
+        if (taskStore.isTaskImported("github", `github-pr-${pr.id}`)) {
+          importedNumbers.add(pr.number);
+        }
+      }
+      importedPullRequests = importedNumbers;
+
+      isLoading = false;
+    } catch (err: any) {
+      error = err.message || "Failed to load pull requests";
+      isLoading = false;
+    }
+  }
+
   async function setRepository(repository: string): Promise<void> {
     currentRepository = repository;
     await loadIssues();
+    if (activeTab === "pull-requests") {
+      await loadPullRequests();
+    }
   }
 
   function setStateFilter(state: "open" | "closed"): void {
@@ -201,6 +279,9 @@
     await loadRepositories();
     if (currentRepository) {
       await loadIssues();
+      if (activeTab === "pull-requests") {
+        await loadPullRequests();
+      }
     }
   }
 
@@ -251,6 +332,53 @@
     }
   }
 
+  async function importPullRequest(pr: GitHubPullRequest): Promise<void> {
+    if (!githubService.isEnabled()) {
+      plugin.app.workspace.trigger(
+        "notice",
+        "GitHub service not available. Please check your configuration."
+      );
+      return;
+    }
+
+    try {
+      importingPullRequests.add(pr.number);
+      importingPullRequests = new Set(importingPullRequests); // Trigger reactivity
+
+      const config = dependencies.getDefaultImportConfig();
+      const result = await githubService.importPullRequestAsTask(pr, config);
+
+      if (result.success) {
+        if (result.skipped) {
+          plugin.app.workspace.trigger(
+            "notice",
+            `Pull request already imported: ${result.reason}`
+          );
+        } else {
+          plugin.app.workspace.trigger(
+            "notice",
+            `Successfully imported: ${pr.title}`
+          );
+        }
+        importedPullRequests.add(pr.number);
+        importedPullRequests = new Set(importedPullRequests); // Trigger reactivity
+      } else {
+        plugin.app.workspace.trigger(
+          "notice",
+          `Failed to import pull request: ${result.error}`
+        );
+      }
+    } catch (err: any) {
+      plugin.app.workspace.trigger(
+        "notice",
+        `Failed to import pull request: ${err.message}`
+      );
+    } finally {
+      importingPullRequests.delete(pr.number);
+      importingPullRequests = new Set(importingPullRequests); // Trigger reactivity
+    }
+  }
+
   function updateSettings(newSettings: {
     githubIntegration: GitHubIntegrationSettings;
   }): void {
@@ -280,9 +408,24 @@
   <div class="github-issues-header">
     <!-- Tab header -->
     <div class="tab-header">
-      <div class="tab-item active" data-tab="issues" data-testid="issues-tab">
+      <button
+        class="tab-item {activeTab === 'issues' ? 'active' : ''}"
+        data-tab="issues"
+        data-testid="issues-tab"
+        onclick={() => setActiveTab("issues")}
+        type="button"
+      >
         Issues
-      </div>
+      </button>
+      <button
+        class="tab-item {activeTab === 'pull-requests' ? 'active' : ''}"
+        data-tab="pull-requests"
+        data-testid="pull-requests-tab"
+        onclick={() => setActiveTab("pull-requests")}
+        type="button"
+      >
+        Pull Requests
+      </button>
     </div>
 
     <!-- Issue filters -->
@@ -341,7 +484,9 @@
       <input
         type="text"
         class="search-input"
-        placeholder="Search issues..."
+        placeholder="Search {activeTab === 'issues'
+          ? 'issues'
+          : 'pull requests'}..."
         bind:value={searchQuery}
         data-testid="search-input"
       />
@@ -369,8 +514,10 @@
         {error}
       </div>
     {:else if isLoading}
-      <div class="loading-indicator">Loading issues...</div>
-    {:else}
+      <div class="loading-indicator">
+        Loading {activeTab === "issues" ? "issues" : "pull requests"}...
+      </div>
+    {:else if activeTab === "issues"}
       <div class="issues-list">
         {#if filteredIssues.length === 0}
           <div class="empty-message">No issues found.</div>
@@ -435,6 +582,87 @@
                         title="Import this issue as a task"
                         onclick={() => importIssue(issue)}
                         data-testid="issue-import-button"
+                      >
+                        Import
+                      </button>
+                    {/if}
+                  </div>
+                </div>
+              {/if}
+            </div>
+          {/each}
+        {/if}
+      </div>
+    {:else if activeTab === "pull-requests"}
+      <div class="pull-requests-list">
+        {#if filteredPullRequests.length === 0}
+          <div class="empty-message">No pull requests found.</div>
+        {:else}
+          {#each filteredPullRequests as pr}
+            <div
+              class="issue-item {hoveredPullRequest === pr.number
+                ? 'hovered'
+                : ''} {importedPullRequests.has(pr.number) ? 'imported' : ''}"
+              onmouseenter={() => (hoveredPullRequest = pr.number)}
+              onmouseleave={() => (hoveredPullRequest = null)}
+              data-testid="pr-item"
+              data-imported={importedPullRequests.has(pr.number)}
+              role="listitem"
+            >
+              <div class="issue-content">
+                <div class="issue-title">{pr.title}</div>
+                <div class="issue-number">#{pr.number}</div>
+                <div class="issue-meta">
+                  {#if pr.assignee}
+                    Assigned to {pr.assignee.login} •
+                  {/if}
+                  {pr.state}
+                  {#if pr.merged_at}
+                    (merged)
+                  {:else if pr.draft}
+                    (draft)
+                  {/if}
+                  • {new Date(pr.created_at).toLocaleDateString()}
+                  • {pr.head.ref} → {pr.base.ref}
+                </div>
+                {#if pr.labels.length > 0}
+                  <div class="issue-labels">
+                    {#each pr.labels as label}
+                      <span class="issue-label">{label.name}</span>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+
+              <!-- Import overlay -->
+              {#if hoveredPullRequest === pr.number}
+                {@const isImported = taskStore.isTaskImported(
+                  "github",
+                  `github-pr-${pr.id}`
+                )}
+                {@const isImporting = importingPullRequests.has(pr.number)}
+                <div class="import-overlay">
+                  <div class="import-actions">
+                    {#if isImported}
+                      <span
+                        class="import-status imported"
+                        data-testid="imported-indicator"
+                      >
+                        ✓ Imported
+                      </span>
+                    {:else if isImporting}
+                      <span
+                        class="import-status importing"
+                        data-testid="importing-indicator"
+                      >
+                        ⏳ Importing...
+                      </span>
+                    {:else}
+                      <button
+                        class="import-button"
+                        title="Import this pull request as a task"
+                        onclick={() => importPullRequest(pr)}
+                        data-testid="pr-import-button"
                       >
                         Import
                       </button>

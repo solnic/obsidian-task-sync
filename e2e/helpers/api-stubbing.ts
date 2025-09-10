@@ -106,6 +106,7 @@ async function stubGitHubAPI(
         listRepositories: "fetchRepositories",
         fetchIssues: "fetchIssues",
         fetchRepositories: "fetchRepositories",
+        fetchPullRequests: "fetchPullRequests",
       };
 
       const mappedMethod = methodMap[methodName];

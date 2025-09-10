@@ -1638,6 +1638,27 @@ Provides consistent styling for all UI components
   border-color: var(--background-modifier-border-hover);
 }
 
+/* Tab button specific styles */
+button.tab-item {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-bottom: none;
+  outline: none;
+  font-family: inherit;
+}
+
+button.tab-item:focus {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: -2px;
+}
+
+button.tab-item.active {
+  background: var(--background-primary);
+  color: var(--text-accent);
+  border-color: var(--background-modifier-border);
+  border-bottom: 1px solid var(--background-primary);
+}
+
 /* Repository Selector */
 .repository-selector {
   margin-bottom: 8px;
@@ -1779,6 +1800,13 @@ Provides consistent styling for all UI components
 
 /* Issues List */
 .issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Pull Requests List */
+.pull-requests-list {
   display: flex;
   flex-direction: column;
   gap: 8px;

@@ -33,6 +33,39 @@ export interface GitHubIssue {
   html_url: string;
 }
 
+export interface GitHubPullRequest {
+  id: number;
+  number: number;
+  title: string;
+  body: string | null;
+  state: "open" | "closed";
+  assignee: { login: string } | null;
+  assignees: Array<{ login: string }>;
+  labels: Array<{ name: string }>;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  merged_at: string | null;
+  html_url: string;
+  diff_url: string;
+  patch_url: string;
+  head: {
+    label: string;
+    ref: string;
+    sha: string;
+    user: { login: string };
+  };
+  base: {
+    label: string;
+    ref: string;
+    sha: string;
+    user: { login: string };
+  };
+  user: { login: string };
+  requested_reviewers: Array<{ login: string }>;
+  draft: boolean;
+}
+
 export interface GitHubRepository {
   id: number;
   name: string;
@@ -223,6 +256,35 @@ export class GitHubService {
   }
 
   /**
+   * Fetch pull requests from a GitHub repository
+   */
+  async fetchPullRequests(repository: string): Promise<GitHubPullRequest[]> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    if (!this.validateRepository(repository)) {
+      throw new Error("Invalid repository format. Expected: owner/repo");
+    }
+
+    const [owner, repo] = repository.split("/");
+    const filters = this.settings.githubIntegration.issueFilters;
+
+    try {
+      const response = await this.octokit.rest.pulls.list({
+        owner,
+        repo,
+        state: filters.state,
+        per_page: 100,
+      });
+
+      return response.data as GitHubPullRequest[];
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
    * Fetch repositories for the authenticated user
    */
   async fetchRepositories(): Promise<GitHubRepository[]> {
@@ -360,6 +422,56 @@ export class GitHubService {
   }
 
   /**
+   * Import GitHub pull request as Obsidian task
+   */
+  async importPullRequestAsTask(
+    pullRequest: GitHubPullRequest,
+    config: TaskImportConfig
+  ): Promise<ImportResult> {
+    if (!this.taskImportManager) {
+      const error =
+        "Import dependencies not initialized. Call setImportDependencies() first.";
+      throw new Error(error);
+    }
+
+    try {
+      const taskData = this.transformPullRequestToTaskData(pullRequest);
+
+      // Check if task is already imported using task store
+      if (taskStore.isTaskImported(taskData.sourceType, taskData.id)) {
+        return {
+          success: true,
+          skipped: true,
+          reason: "Task already imported",
+        };
+      }
+
+      // Enhance config with label-based task type mapping
+      const enhancedConfig = this.enhanceConfigWithLabelMapping(
+        pullRequest,
+        config
+      );
+
+      // Create the task
+      const taskPath = await this.taskImportManager.createTaskFromData(
+        taskData,
+        enhancedConfig
+      );
+
+      // Task store will automatically pick up the new task via file watchers
+      return {
+        success: true,
+        taskPath,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  /**
    * Transform GitHub issue to standardized external task data
    */
   transformIssueToTaskData(issue: GitHubIssue): ExternalTaskData {
@@ -379,6 +491,46 @@ export class GitHubService {
         number: issue.number,
         state: issue.state,
         id: issue.id,
+      },
+    };
+  }
+
+  /**
+   * Transform GitHub pull request to standardized external task data
+   */
+  transformPullRequestToTaskData(
+    pullRequest: GitHubPullRequest
+  ): ExternalTaskData {
+    // Determine status based on PR state
+    let status: string = pullRequest.state;
+    if (pullRequest.merged_at) {
+      status = "merged";
+    } else if (pullRequest.draft) {
+      status = "draft";
+    }
+
+    return {
+      id: `github-pr-${pullRequest.id}`,
+      title: pullRequest.title,
+      description: pullRequest.body || undefined,
+      status: status,
+      priority: this.extractPriorityFromLabels(pullRequest.labels),
+      assignee: pullRequest.assignee?.login,
+      labels: pullRequest.labels.map((label) => label.name),
+      createdAt: new Date(pullRequest.created_at),
+      updatedAt: new Date(pullRequest.updated_at),
+      externalUrl: pullRequest.html_url,
+      sourceType: "github",
+      sourceData: {
+        number: pullRequest.number,
+        state: pullRequest.state,
+        id: pullRequest.id,
+        merged_at: pullRequest.merged_at,
+        draft: pullRequest.draft,
+        head: pullRequest.head,
+        base: pullRequest.base,
+        user: pullRequest.user,
+        requested_reviewers: pullRequest.requested_reviewers,
       },
     };
   }

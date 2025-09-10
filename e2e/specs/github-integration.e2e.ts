@@ -13,7 +13,7 @@ import {
   configureGitHubToken,
   configureGitHubIntegration,
   openGitHubIssuesView,
-  stubGitHubApiResponses,
+  stubGitHubWithFixtures,
 } from "../helpers/github-integration-helpers";
 
 describe("GitHub Integration", () => {
@@ -55,42 +55,10 @@ describe("GitHub Integration", () => {
   });
 
   test("should display import buttons on GitHub issues", async () => {
-    // Mock GitHub API responses
-    const mockIssues = [
-      {
-        id: 1,
-        number: 1,
-        title: "Test Issue 1",
-        body: "This is a test issue",
-        state: "open",
-        labels: [{ name: "bug" }],
-        created_at: "2024-01-15T10:30:00Z",
-        updated_at: "2024-01-15T10:30:00Z",
-      },
-      {
-        id: 2,
-        number: 2,
-        title: "Test Issue 2",
-        body: "This is another test issue",
-        state: "open",
-        labels: [{ name: "feature" }],
-        created_at: "2024-01-16T10:30:00Z",
-        updated_at: "2024-01-16T10:30:00Z",
-      },
-    ];
-
-    const mockRepositories = [
-      {
-        id: 1,
-        full_name: "solnic/obsidian-task-sync",
-        name: "obsidian-task-sync",
-        owner: { login: "solnic" },
-      },
-    ];
-
-    await stubGitHubApiResponses(context.page, {
-      issues: mockIssues,
-      repositories: mockRepositories,
+    // Use fixture-based stubbing for better maintainability
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "integration-test",
     });
 
     await configureGitHubIntegration(context.page, {

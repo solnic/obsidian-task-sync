@@ -406,82 +406,6 @@ export async function configureGitHubRepository(
 }
 
 /**
- * Stub GitHub API responses for testing using fixtures
- * This mocks the external GitHub API calls while keeping all internal plugin logic real
- *
- * @deprecated Use stubAPI or stubMultipleAPIs instead for better fixture management
- */
-export async function stubGitHubApiResponses(
-  page: Page,
-  mockData: {
-    issues?: any[];
-    repositories?: any[];
-  }
-): Promise<void> {
-  const stubConfig: Record<string, Record<string, string>> = {};
-
-  // For backward compatibility, we'll create temporary fixtures
-  // In practice, tests should use predefined fixtures
-  if (mockData.issues || mockData.repositories) {
-    stubConfig.github = {};
-
-    if (mockData.issues) {
-      // Use the new stubbing system but with inline data
-      await page.evaluate(async (data) => {
-        const app = (window as any).app;
-        const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-        if (!plugin || !plugin.githubService) {
-          throw new Error("Task Sync plugin or GitHub service not found");
-        }
-
-        // Store original method if not already stored
-        if (!plugin.githubService._originalFetchIssues) {
-          plugin.githubService._originalFetchIssues =
-            plugin.githubService.fetchIssues;
-        }
-
-        // Stub fetchIssues method
-        plugin.githubService.fetchIssues = async (repository: string) => {
-          return data.issues;
-        };
-      }, mockData);
-    }
-
-    if (mockData.repositories) {
-      await page.evaluate(async (data) => {
-        const app = (window as any).app;
-        const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-        if (!plugin || !plugin.githubService) {
-          throw new Error("Task Sync plugin or GitHub service not found");
-        }
-
-        // Store original method if not already stored
-        if (!plugin.githubService._originalFetchRepositories) {
-          plugin.githubService._originalFetchRepositories =
-            plugin.githubService.fetchRepositories;
-        }
-
-        // Stub fetchRepositories method
-        plugin.githubService.fetchRepositories = async () => {
-          return data.repositories;
-        };
-      }, mockData);
-    }
-  }
-}
-
-/**
- * Restore original GitHub API methods (cleanup after stubbing)
- *
- * @deprecated Use restoreAPI("github") instead for better fixture management
- */
-export async function restoreGitHubApiMethods(page: Page): Promise<void> {
-  await restoreAPI(page, "github");
-}
-
-/**
  * Stub GitHub API using fixture files
  *
  * @example
@@ -494,6 +418,7 @@ export async function stubGitHubWithFixtures(
   page: Page,
   fixtures: {
     issues?: string;
+    pullRequests?: string;
     repositories?: string;
   }
 ): Promise<void> {
@@ -501,6 +426,10 @@ export async function stubGitHubWithFixtures(
 
   if (fixtures.issues) {
     stubConfig.fetchIssues = fixtures.issues;
+  }
+
+  if (fixtures.pullRequests) {
+    stubConfig.fetchPullRequests = fixtures.pullRequests;
   }
 
   if (fixtures.repositories) {
