@@ -234,8 +234,10 @@ export class ProjectFileManager extends FileManager {
 
     const fullContent = await this.vault.read(file as any);
 
-    // Extract existing front-matter
-    const existingFrontMatter = this.extractFrontMatterData(fullContent);
+    // Extract existing front-matter using Obsidian's metadata cache
+    const existingFrontMatter = this.app.metadataCache.getFileCache(
+      file as TFile
+    )?.frontmatter;
     if (!existingFrontMatter) {
       // No front-matter exists, skip this file
       return { hasChanges: false, propertiesChanged: 0 };
@@ -271,7 +273,11 @@ export class ProjectFileManager extends FileManager {
     // Add missing fields with default values
     for (const [fieldName, fieldConfig] of Object.entries(currentSchema)) {
       if (!(fieldName in updatedFrontMatter)) {
-        updatedFrontMatter[fieldName] = (fieldConfig as any).default || "";
+        const config = fieldConfig as any;
+        if (config.default === undefined) {
+          throw new Error(`Property ${fieldName} has no default value defined`);
+        }
+        updatedFrontMatter[fieldName] = config.default;
         hasChanges = true;
         propertiesChanged++;
       }

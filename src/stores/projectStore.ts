@@ -4,7 +4,6 @@
  */
 
 import { derived } from "svelte/store";
-import { TFile } from "obsidian";
 import { EntityStore } from "./EntityStore";
 import { Project } from "../types/entities";
 

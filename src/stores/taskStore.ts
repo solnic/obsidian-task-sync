@@ -5,7 +5,7 @@
 
 import { derived, get } from "svelte/store";
 import { EntityStore } from "./EntityStore";
-import { Task, TaskSource } from "../types/entities";
+import { Task } from "../types/entities";
 
 class TaskStore extends EntityStore<Task> {
   constructor() {
