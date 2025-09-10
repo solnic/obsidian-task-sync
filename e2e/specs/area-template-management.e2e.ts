@@ -48,7 +48,7 @@ describe("Area Template Management", () => {
 
     // Should have clean empty values (empty strings render with quotes in YAML)
     expect(templateContent).toMatch(/Name:\s*['"]?['"]?\s*$/m);
-    expect(templateContent).toMatch(/Type:\s*Area\s*$/m);
+    expect(templateContent).toMatch(/Type:\s*['"]?Area['"]?\s*$/m);
   });
 
   test("should handle existing template file conflict", async () => {
@@ -196,6 +196,6 @@ describe("Area Template Management", () => {
 
     // Check that values are empty (empty strings render with quotes in YAML)
     expect(lines[nameLineIndex]).toMatch(/^Name:\s*['"]?['"]?\s*$/);
-    expect(lines[typeLineIndex]).toMatch(/^Type:\s*Area\s*$/);
+    expect(lines[typeLineIndex]).toMatch(/^Type:\s*['"]?Area['"]?\s*$/);
   });
 });

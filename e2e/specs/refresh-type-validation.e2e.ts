@@ -4,6 +4,11 @@ import {
   waitForTaskSyncPlugin,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+import {
+  createTask,
+  createArea,
+  createProject,
+} from "../helpers/entity-helpers";
 
 describe("Refresh Type Validation", () => {
   const context = setupE2ETestHooks();
@@ -24,30 +29,20 @@ describe("Refresh Type Validation", () => {
       }
     });
 
-    // Create files with mixed Type properties
+    // Create valid entities using helpers
+    await createProject(context, {
+      name: "Valid Project",
+      description: "Valid project file.",
+    });
+
+    await createArea(context, {
+      name: "Valid Area",
+      description: "Valid area file.",
+    });
+
+    // Create invalid files with wrong Type properties (manual creation for testing validation)
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-
-      // Valid files that should get bases
-      await app.vault.create(
-        "Projects/Valid Project.md",
-        `---
-Name: Valid Project
-Type: Project
----
-
-Valid project file.`,
-      );
-
-      await app.vault.create(
-        "Areas/Valid Area.md",
-        `---
-Name: Valid Area
-Type: Area
----
-
-Valid area file.`,
-      );
 
       // Invalid files that should NOT get bases (wrong Type)
       await app.vault.create(
@@ -57,7 +52,7 @@ Name: Invalid Project
 Type: Area
 ---
 
-Invalid project file.`,
+Invalid project file.`
       );
 
       await app.vault.create(
@@ -67,7 +62,7 @@ Name: Invalid Area
 Type: Project
 ---
 
-Invalid area file.`,
+Invalid area file.`
       );
     });
 
@@ -111,22 +106,20 @@ Invalid area file.`,
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create task files with different Type scenarios
+    // Create valid task using helper
+    await createTask(
+      context,
+      {
+        title: "Valid Task",
+        category: "Task",
+        status: "Backlog",
+      },
+      "Valid task file."
+    );
+
+    // Create invalid task files for testing validation (manual creation)
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-
-      // Valid task with Type property
-      await app.vault.create(
-        "Tasks/Valid Task.md",
-        `---
-Title: Valid Task
-Type: Task
-Category: Task
-Status: Backlog
----
-
-Valid task file.`,
-      );
 
       // Task without Type property (should be skipped by property handlers)
       await app.vault.create(
@@ -136,7 +129,7 @@ Title: No Type Task
 Status: Backlog
 ---
 
-Task without Type property.`,
+Task without Type property.`
       );
 
       // Invalid task with wrong Type property
@@ -148,7 +141,7 @@ Type: Project
 Status: Backlog
 ---
 
-Task with wrong Type property.`,
+Task with wrong Type property.`
       );
     });
 
@@ -174,7 +167,7 @@ Task with wrong Type property.`,
       const wasSkipped = consoleLogs.some(
         (log) =>
           log.includes("Skipping file with incorrect Type property") &&
-          log.includes(filename),
+          log.includes(filename)
       );
       expect(wasSkipped).toBe(false);
     }
@@ -183,9 +176,9 @@ Task with wrong Type property.`,
     expect(
       consoleLogs.some(
         (log) =>
-          log.includes("Skipping file with incorrect Type property") &&
-          log.includes("Wrong Type Task.md"),
-      ),
+          log.includes("is not a valid task") &&
+          log.includes("Wrong Type Task.md")
+      )
     ).toBe(true);
 
     // Should add Type property to files without it (during refresh, files without Type get the Type property added)
@@ -193,8 +186,8 @@ Task with wrong Type property.`,
       consoleLogs.some(
         (log) =>
           log.includes("Added missing field 'Type' to") &&
-          log.includes("No Type Task.md"),
-      ),
+          log.includes("No Type Task.md")
+      )
     ).toBe(true);
   });
 
@@ -202,36 +195,41 @@ Task with wrong Type property.`,
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
-    // Create task files without Status field
+    // Create task files that will be missing Status field after manual front-matter modification
+    await createTask(
+      context,
+      {
+        title: "Task Without Status",
+        category: "Task",
+        done: false,
+      },
+      "This task is missing the Status field."
+    );
+
+    await createTask(
+      context,
+      {
+        title: "Another Task",
+        category: "Task",
+        priority: "High",
+        done: false,
+      },
+      "Another task missing Status field."
+    );
+
+    // Remove Status field from both tasks to test refresh functionality
     await context.page.evaluate(async () => {
       const app = (window as any).app;
 
-      // Task with minimal front-matter (missing Status)
-      await app.vault.create(
-        "Tasks/Task Without Status.md",
-        `---
-Title: Task Without Status
-Type: Task
-Category: Task
-Done: false
----
-
-This task is missing the Status field.`,
-      );
-
-      // Task with some fields but missing Status
-      await app.vault.create(
-        "Tasks/Another Task.md",
-        `---
-Title: Another Task
-Type: Task
-Category: Task
-Priority: High
-Done: false
----
-
-Another task missing Status field.`,
-      );
+      const files = ["Tasks/Task Without Status.md", "Tasks/Another Task.md"];
+      for (const filePath of files) {
+        const file = app.vault.getAbstractFileByPath(filePath);
+        if (file) {
+          const content = await app.vault.read(file);
+          const updatedContent = content.replace(/Status: [^\n]+\n/g, "");
+          await app.vault.modify(file, updatedContent);
+        }
+      }
     });
 
     // Execute refresh command
@@ -254,8 +252,9 @@ Another task missing Status field.`,
 
       for (const filePath of files) {
         try {
-          const frontMatter =
-            await plugin.taskFileManager.loadFrontMatter(filePath);
+          const frontMatter = await plugin.taskFileManager.loadFrontMatter(
+            filePath
+          );
           const hasStatus = frontMatter.Status !== undefined;
           const statusValue = frontMatter.Status || "";
 

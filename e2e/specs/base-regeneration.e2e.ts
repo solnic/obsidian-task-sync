@@ -15,6 +15,7 @@ import {
   fillSetting,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+import { createArea, createProject } from "../helpers/entity-helpers";
 
 describe("Base Regeneration", () => {
   const context = setupE2ETestHooks();
@@ -27,45 +28,28 @@ describe("Base Regeneration", () => {
       await waitForTaskSyncPlugin(context.page);
 
       // Create the numbered folder structure first
-      await context.page.evaluate(async () => {
-        const app = (window as any).app;
-
-        // Create the numbered folder if it doesn't exist
-        try {
-          await app.vault.createFolder("2. Areas");
-        } catch (error) {
-          // Folder might already exist
-        }
-
-        await app.vault.create(
-          "2. Areas/Task Sync.md",
-          `---
-Name: Task Sync
-Type: Area
----
-
-This is the Task Sync area for managing plugin development.
+      await createArea(context, {
+        name: "Task Sync",
+        description: `This is the Task Sync area for managing plugin development.
 
 ## Tasks
 
-![[Tasks.base]]
-`,
-        );
+![[Tasks.base]]`,
       });
 
       // Configure settings via UI
-      await fillSetting(context, "General", "Areas Folder", "2. Areas");
+      await fillSetting(context, "General", "Areas Folder", "Areas");
       await toggleSetting(
         context,
         "Bases Integration",
         "Enable Area Bases",
-        true,
+        true
       );
       await toggleSetting(
         context,
         "Bases Integration",
         "Auto-Sync Area/Project Bases",
-        true,
+        true
       );
 
       // Trigger regeneration via command
@@ -81,11 +65,11 @@ This is the Task Sync area for managing plugin development.
       // Check that the filter syntax is correct
       const baseContent = await getFileContent(
         context.page,
-        "Bases/Task Sync.base",
+        "Bases/Task Sync.base"
       );
       expect(baseContent).toContain('Areas.contains(link("Task Sync"))');
       expect(baseContent).not.toContain('Areas.contains(link("Task Sync.md"))');
-    },
+    }
   );
 
   test(
@@ -96,24 +80,14 @@ This is the Task Sync area for managing plugin development.
       await waitForTaskSyncPlugin(context.page);
 
       // Create a project using the default folder structure
-      await context.page.evaluate(async () => {
-        const app = (window as any).app;
-
-        await app.vault.create(
-          "Projects/Website Redesign.md",
-          `---
-Name: Website Redesign
-Type: Project
-Areas: Work
----
-
-Website redesign project for the company.
+      await createProject(context, {
+        name: "Website Redesign",
+        areas: ["Work"],
+        description: `Website redesign project for the company.
 
 ## Tasks
 
-![[Tasks.base]]
-`,
-        );
+![[Tasks.base]]`,
       });
 
       // Configure settings via UI
@@ -121,13 +95,13 @@ Website redesign project for the company.
         context,
         "Bases Integration",
         "Enable Project Bases",
-        true,
+        true
       );
       await toggleSetting(
         context,
         "Bases Integration",
         "Auto-Sync Area/Project Bases",
-        true,
+        true
       );
 
       // Trigger regeneration via command
@@ -178,22 +152,22 @@ Website redesign project for the company.
       // Check that the project base was created
       const baseExists = await fileExists(
         context.page,
-        "Bases/Website Redesign.base",
+        "Bases/Website Redesign.base"
       );
       expect(baseExists).toBe(true);
 
       // Check that the filter syntax is correct
       const baseContent = await getFileContent(
         context.page,
-        "Bases/Website Redesign.base",
+        "Bases/Website Redesign.base"
       );
       expect(baseContent).toContain(
-        'Project.contains(link("Website Redesign"))',
+        'Project.contains(link("Website Redesign"))'
       );
       expect(baseContent).not.toContain(
-        'Project.contains(link("Website Redesign.md"))',
+        'Project.contains(link("Website Redesign.md"))'
       );
-    },
+    }
   );
 
   test(
@@ -216,7 +190,7 @@ Website redesign project for the company.
       // Check that type formula is correct (using formulas section)
       const baseContent = await getFileContent(
         context.page,
-        "Bases/Tasks.base",
+        "Bases/Tasks.base"
       );
       expect(baseContent).toContain("formulas:");
       expect(baseContent).toContain("Title: link(file.name, Title)");
@@ -235,7 +209,7 @@ Website redesign project for the company.
       expect(baseContent).not.toContain("<span");
       expect(baseContent).not.toContain("task-type-badge");
       expect(baseContent).not.toContain("note.Type Badge");
-    },
+    }
   );
 
   test(
@@ -246,38 +220,15 @@ Website redesign project for the company.
       await waitForTaskSyncPlugin(context.page);
 
       // Create both area and project
-      await context.page.evaluate(async () => {
-        const app = (window as any).app;
+      await createArea(context, {
+        name: "Health & Fitness",
+        description: "Health and fitness tracking area.",
+      });
 
-        // Create the numbered folder if it doesn't exist
-        try {
-          await app.vault.createFolder("2. Areas");
-        } catch (error) {
-          // Folder might already exist
-        }
-
-        await app.vault.create(
-          "Areas/Health & Fitness.md",
-          `---
-Name: Health & Fitness
-Type: Area
----
-
-Health and fitness tracking area.
-`,
-        );
-
-        await app.vault.create(
-          "Projects/Marathon Training.md",
-          `---
-Name: Marathon Training
-Type: Project
-Areas: Health & Fitness
----
-
-Marathon training project.
-`,
-        );
+      await createProject(context, {
+        name: "Marathon Training",
+        areas: ["Health & Fitness"],
+        description: "Marathon training project.",
       });
 
       // Configure settings via UI
@@ -285,19 +236,19 @@ Marathon training project.
         context,
         "Bases Integration",
         "Enable Area Bases",
-        true,
+        true
       );
       await toggleSetting(
         context,
         "Bases Integration",
         "Enable Project Bases",
-        true,
+        true
       );
       await toggleSetting(
         context,
         "Bases Integration",
         "Auto-Sync Area/Project Bases",
-        true,
+        true
       );
 
       // Use the refresh command
@@ -309,34 +260,34 @@ Marathon training project.
       // Check that both bases were created with correct syntax
       const areaBaseExists = await fileExists(
         context.page,
-        "Bases/Health & Fitness.base",
+        "Bases/Health & Fitness.base"
       );
       expect(areaBaseExists).toBe(true);
 
       const projectBaseExists = await fileExists(
         context.page,
-        "Bases/Marathon Training.base",
+        "Bases/Marathon Training.base"
       );
       expect(projectBaseExists).toBe(true);
 
       // Check area base syntax
       const areaBaseContent = await getFileContent(
         context.page,
-        "Bases/Health & Fitness.base",
+        "Bases/Health & Fitness.base"
       );
       expect(areaBaseContent).toContain(
-        'Areas.contains(link("Health & Fitness"))',
+        'Areas.contains(link("Health & Fitness"))'
       );
 
       // Check project base syntax
       const projectBaseContent = await getFileContent(
         context.page,
-        "Bases/Marathon Training.base",
+        "Bases/Marathon Training.base"
       );
       expect(projectBaseContent).toContain(
-        'Project.contains(link("Marathon Training"))',
+        'Project.contains(link("Marathon Training"))'
       );
-    },
+    }
   );
 
   test(
@@ -347,38 +298,15 @@ Marathon training project.
       await waitForTaskSyncPlugin(context.page);
 
       // Create files with special characters
-      await context.page.evaluate(async () => {
-        const app = (window as any).app;
+      await createArea(context, {
+        name: "R&D (Research)",
+        description: "Research and development area.",
+      });
 
-        // Create the numbered folder if it doesn't exist
-        try {
-          await app.vault.createFolder("2. Areas");
-        } catch (error) {
-          // Folder might already exist
-        }
-
-        await app.vault.create(
-          "Areas/R&D (Research).md",
-          `---
-Name: R&D (Research)
-Type: Area
----
-
-Research and development area.
-`,
-        );
-
-        await app.vault.create(
-          "Projects/API v2.0 Development.md",
-          `---
-Name: API v2.0 Development
-Type: Project
-Areas: R&D (Research)
----
-
-API version 2.0 development project.
-`,
-        );
+      await createProject(context, {
+        name: "API v2.0 Development",
+        areas: ["R&D (Research)"],
+        description: "API version 2.0 development project.",
       });
 
       // Configure settings via UI
@@ -386,19 +314,19 @@ API version 2.0 development project.
         context,
         "Bases Integration",
         "Enable Area Bases",
-        true,
+        true
       );
       await toggleSetting(
         context,
         "Bases Integration",
         "Enable Project Bases",
-        true,
+        true
       );
       await toggleSetting(
         context,
         "Bases Integration",
         "Auto-Sync Area/Project Bases",
-        true,
+        true
       );
 
       // Trigger regeneration via command
@@ -410,32 +338,32 @@ API version 2.0 development project.
       // Check that bases were created
       const areaBaseExists = await fileExists(
         context.page,
-        "Bases/R&D (Research).base",
+        "Bases/R&D (Research).base"
       );
       expect(areaBaseExists).toBe(true);
 
       const projectBaseExists = await fileExists(
         context.page,
-        "Bases/API v2.0 Development.base",
+        "Bases/API v2.0 Development.base"
       );
       expect(projectBaseExists).toBe(true);
 
       // Check that special characters are handled correctly in filters
       const areaBaseContent = await getFileContent(
         context.page,
-        "Bases/R&D (Research).base",
+        "Bases/R&D (Research).base"
       );
       expect(areaBaseContent).toContain(
-        'Areas.contains(link("R&D (Research)"))',
+        'Areas.contains(link("R&D (Research)"))'
       );
 
       const projectBaseContent = await getFileContent(
         context.page,
-        "Bases/API v2.0 Development.base",
+        "Bases/API v2.0 Development.base"
       );
       expect(projectBaseContent).toContain(
-        'Project.contains(link("API v2.0 Development"))',
+        'Project.contains(link("API v2.0 Development"))'
       );
-    },
+    }
   );
 });

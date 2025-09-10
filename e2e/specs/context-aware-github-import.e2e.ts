@@ -4,7 +4,10 @@
  */
 
 import { test, expect, describe } from "vitest";
-import { createTestFolders } from "../helpers/task-sync-setup";
+import {
+  createTestFolders,
+  verifyTaskProperties,
+} from "../helpers/task-sync-setup";
 import { setupE2ETestHooks, openFile } from "../helpers/shared-context";
 import { toggleSidebar } from "../helpers/plugin-setup";
 import { createProject, createArea } from "../helpers/entity-helpers";
@@ -53,7 +56,7 @@ describe("Context-Aware GitHub Import", () => {
     // Verify the issue appears in the UI
     const issueVisible = await context.page.evaluate(() => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]',
+        '[data-testid="issue-item"]'
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
@@ -96,6 +99,14 @@ describe("Context-Aware GitHub Import", () => {
     expect(taskPath).toContain("Tasks/");
 
     // Verify the task file has correct properties
+    await verifyTaskProperties(context.page, taskPath, {
+      Title: "Fix login error when user has special characters",
+      Type: "Task", // Type is always 'Task' for task entities
+      Category: "Bug", // Label mapping should work for Category
+      Project: "[[Test Project]]", // Should be assigned to project with note linking
+    });
+
+    // Verify tags include original labels
     const taskContent = await context.page.evaluate(async (path) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(path);
@@ -104,14 +115,6 @@ describe("Context-Aware GitHub Import", () => {
       const content = await app.vault.read(file);
       return content;
     }, taskPath);
-
-    expect(taskContent).toBeTruthy();
-    expect(taskContent).toContain(
-      "Title: Fix login error when user has special characters",
-    );
-    expect(taskContent).toContain("Type: Task"); // Type is always 'Task' for task entities
-    expect(taskContent).toContain("Category: Bug"); // Label mapping should work for Category
-    expect(taskContent).toContain("Project: '[[Test Project]]'"); // Should be assigned to project with note linking
     expect(taskContent).toContain("bug"); // Should include original labels as tags
 
     // Verify context was correctly detected during import
@@ -158,7 +161,7 @@ describe("Context-Aware GitHub Import", () => {
     // Verify the issue appears in the UI
     const issueVisible = await context.page.evaluate(() => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]',
+        '[data-testid="issue-item"]'
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
@@ -201,6 +204,14 @@ describe("Context-Aware GitHub Import", () => {
     expect(taskPath).toContain("Tasks/");
 
     // Verify the task file has correct properties
+    await verifyTaskProperties(context.page, taskPath, {
+      Title: "Add dark mode support",
+      Type: "Task", // Type is always 'Task' for task entities
+      Category: "Feature", // enhancement label should map to Feature category
+      Areas: ["[[Development]]"], // Should be assigned to area with note linking
+    });
+
+    // Verify tags include original labels
     const taskContent = await context.page.evaluate(async (path) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(path);
@@ -209,12 +220,6 @@ describe("Context-Aware GitHub Import", () => {
       const content = await app.vault.read(file);
       return content;
     }, taskPath);
-
-    expect(taskContent).toBeTruthy();
-    expect(taskContent).toContain("Title: Add dark mode support");
-    expect(taskContent).toContain("Type: Task"); // Type is always 'Task' for task entities
-    expect(taskContent).toContain("Category: Feature"); // enhancement label should map to Feature category
-    expect(taskContent).toContain("- '[[Development]]'"); // Should be assigned to area with note linking
     expect(taskContent).toContain("enhancement"); // Should include original labels as tags
 
     // Verify context was correctly detected during import
@@ -264,7 +269,7 @@ describe("Context-Aware GitHub Import", () => {
     // Verify the issue appears in the UI
     const issueVisible = await context.page.evaluate(() => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]',
+        '[data-testid="issue-item"]'
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
@@ -317,11 +322,11 @@ describe("Context-Aware GitHub Import", () => {
     }, taskPath);
 
     expect(taskContent).toBeTruthy();
-    expect(taskContent).toContain("Title: Update documentation");
-    expect(taskContent).toContain("Type: Task"); // Type is always 'Task' for task entities
+    expect(taskContent).toContain('Title: "Update documentation"');
+    expect(taskContent).toContain('Type: "Task"'); // Type is always 'Task' for task entities
     // Should fallback to first available task category since 'documentation' doesn't map to anything
     expect(taskContent).toMatch(
-      /Category: (Task|Bug|Feature|Improvement|Chore)/,
+      /Category: "(Task|Bug|Feature|Improvement|Chore)"/
     );
     expect(taskContent).toContain("documentation"); // Should include original labels as tags
 

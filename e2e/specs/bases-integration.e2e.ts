@@ -8,7 +8,11 @@ import {
   openFile,
   waitForBaseView,
 } from "../helpers/shared-context";
-import { createTask, createArea } from "../helpers/entity-helpers";
+import {
+  createTask,
+  createArea,
+  createProject,
+} from "../helpers/entity-helpers";
 
 describe("Bases Integration UI", () => {
   const context = setupE2ETestHooks();
@@ -52,7 +56,7 @@ describe("Bases Integration UI", () => {
         status: "In Progress",
         tags: ["bug", "authentication"],
       },
-      "Fix the login authentication issue.",
+      "Fix the login authentication issue."
     );
 
     await createTask(
@@ -65,7 +69,7 @@ describe("Bases Integration UI", () => {
         status: "Backlog",
         tags: ["feature", "ui"],
       },
-      "Create a user dashboard with analytics.",
+      "Create a user dashboard with analytics."
     );
 
     await createTask(
@@ -78,7 +82,7 @@ describe("Bases Integration UI", () => {
         status: "Backlog",
         tags: ["documentation"],
       },
-      "Update the project documentation.",
+      "Update the project documentation."
     );
 
     await openFile(context, "Areas/Development.md");
@@ -114,7 +118,7 @@ describe("Bases Integration UI", () => {
         status: "In Progress",
         tags: ["epic", "feature"],
       },
-      "{{tasks}}",
+      "{{tasks}}"
     );
 
     // Create child tasks that reference the parent task
@@ -129,7 +133,7 @@ describe("Bases Integration UI", () => {
         parentTask: "Epic Feature Development",
         tags: ["design", "ui"],
       },
-      "Design the UI components for the epic feature.",
+      "Design the UI components for the epic feature."
     );
 
     await createTask(
@@ -143,7 +147,7 @@ describe("Bases Integration UI", () => {
         parentTask: "Epic Feature Development",
         tags: ["backend", "api"],
       },
-      "Implement the backend API for the epic feature.",
+      "Implement the backend API for the epic feature."
     );
 
     // Test 1: Open parent task and verify child tasks appear in its base
@@ -185,87 +189,58 @@ describe("Bases Integration UI", () => {
   test("should display project tasks correctly in project base UI", async () => {
     await setupTest();
 
-    // Create a project with base embedding
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      await app.vault.create(
-        "Projects/Mobile App.md",
-        `---
-Name: Mobile App
-Type: Project
-Areas: ["[[Development]]"]
----
-
-# Mobile App Project
-
-Mobile application development project.
-
-![[Bases/Mobile App.base]]
-`,
-      );
+    // Create a project using helper
+    await createProject(context, {
+      name: "Mobile App",
+      description: "Mobile application development project.",
+      areas: ["Development"],
     });
 
-    // Create tasks assigned to the project
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
+    // Create tasks assigned to the project using helpers
+    await createTask(
+      context,
+      {
+        title: "Mobile Login Screen",
+        category: "Feature",
+        priority: "High",
+        areas: ["Development"],
+        project: "Mobile App",
+        done: false,
+        status: "In Progress",
+        tags: ["mobile", "ui"],
+      },
+      "Create the login screen for mobile app."
+    );
 
-      await app.vault.create(
-        "Tasks/Mobile Login Screen.md",
-        `---
-Title: Mobile Login Screen
-Type: Task
-Category: Feature
-Priority: High
-Areas: ["[[Development]]"]
-Project: "[[Mobile App]]"
-Done: false
-Status: In Progress
-Parent task:
-tags: [mobile, ui]
----
+    await createTask(
+      context,
+      {
+        title: "Mobile API Integration",
+        category: "Task",
+        priority: "Medium",
+        areas: ["Development"],
+        project: "Mobile App",
+        done: true,
+        status: "Done",
+        tags: ["mobile", "api"],
+      },
+      "Integrate mobile app with backend API."
+    );
 
-Create the login screen for mobile app.
-`,
-      );
-
-      await app.vault.create(
-        "Tasks/Mobile API Integration.md",
-        `---
-Title: Mobile API Integration
-Type: Task
-Category: Task
-Priority: Medium
-Areas: ["[[Development]]"]
-Project: "[[Mobile App]]"
-Done: true
-Status: Done
-Parent task:
-tags: [mobile, api]
----
-
-Integrate mobile app with backend API.
-`,
-      );
-
-      await app.vault.create(
-        "Tasks/Mobile Testing.md",
-        `---
-Title: Mobile Testing
-Type: Task
-Category: Bug
-Priority: High
-Areas: ["[[Development]]"]
-Project: "[[Mobile App]]"
-Done: false
-Status: Backlog
-Parent task:
-tags: [mobile, testing]
----
-
-Test the mobile application functionality.
-`,
-      );
-    });
+    await createTask(
+      context,
+      {
+        title: "Mobile Testing",
+        category: "Bug",
+        priority: "High",
+        areas: ["Development"],
+        project: "Mobile App",
+        done: false,
+        status: "Backlog",
+        tags: ["mobile", "testing"],
+      },
+      "Test the mobile application functionality."
+    );
 
     // Regenerate bases to create the project base
     await context.page.evaluate(async () => {
@@ -295,85 +270,54 @@ Test the mobile application functionality.
   test("should filter tasks correctly by task type in base UI views", async () => {
     await setupTest();
 
-    // Create an area with base embedding
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      await app.vault.create(
-        "Areas/Development.md",
-        `---
-Name: Development
-Type: Area
-Areas: []
----
-
-# Development Area
-
-![[Bases/Development.base]]
-`,
-      );
+    // Create an area using helper
+    await createArea(context, {
+      name: "Engineering",
+      description: "Engineering Area",
     });
 
-    // Create tasks of different types
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
+    // Create tasks of different types using helpers
+    await createTask(
+      context,
+      {
+        title: "Critical Bug Fix",
+        category: "Bug",
+        priority: "Urgent",
+        areas: ["Engineering"],
+        done: false,
+        status: "In Progress",
+        tags: ["bug", "critical"],
+      },
+      "Fix critical production bug."
+    );
 
-      await app.vault.create(
-        "Tasks/Critical Bug Fix.md",
-        `---
-Title: Critical Bug Fix
-Type: Task
-Category: Bug
-Priority: Urgent
-Areas: ["[[Development]]"]
-Project:
-Done: false
-Status: In Progress
-Parent task:
-tags: [bug, critical]
----
+    await createTask(
+      context,
+      {
+        title: "New Feature Request",
+        category: "Feature",
+        priority: "Low",
+        areas: ["Engineering"],
+        done: false,
+        status: "Backlog",
+        tags: ["feature", "enhancement"],
+      },
+      "Implement new feature based on user feedback."
+    );
 
-Fix critical production bug.
-`,
-      );
-
-      await app.vault.create(
-        "Tasks/New Feature Request.md",
-        `---
-Title: New Feature Request
-Type: Task
-Category: Feature
-Priority: Low
-Areas: ["[[Development]]"]
-Project:
-Done: false
-Status: Backlog
-Parent task:
-tags: [feature, enhancement]
----
-
-Implement new feature based on user feedback.
-`,
-      );
-
-      await app.vault.create(
-        "Tasks/Code Refactoring.md",
-        `---
-Title: Code Refactoring
-Type: Task
-Category: Improvement
-Priority: Medium
-Areas: ["[[Development]]"]
-Project:
-Done: false
-Status: Backlog
-Parent task:
-tags: [refactor, improvement]
----
-
-Refactor legacy code for better maintainability.
-`,
-      );
-    });
+    await createTask(
+      context,
+      {
+        title: "Code Refactoring",
+        category: "Improvement",
+        priority: "Medium",
+        areas: ["Engineering"],
+        done: false,
+        status: "Backlog",
+        tags: ["refactor", "improvement"],
+      },
+      "Refactor legacy code for better maintainability."
+    );
 
     // Regenerate bases to create the area base with type-specific views
     await context.page.evaluate(async () => {

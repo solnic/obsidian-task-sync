@@ -65,9 +65,7 @@ export abstract class FileManager {
   async loadFrontMatter(filePath: string): Promise<any> {
     const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
 
-    await this.waitForMetadataCache(file).then((cache) => {
-      return cache.frontMatter;
-    });
+    return await this.waitForMetadataCache(file);
   }
 
   /**
@@ -239,7 +237,8 @@ export abstract class FileManager {
    * Common method used by all file managers to ensure metadata cache is ready
    */
   protected async waitForMetadataCache(file: TFile): Promise<any> {
-    let frontMatter = this.app.metadataCache.getFileCache(file).frontmatter;
+    const cache = this.app.metadataCache.getFileCache(file);
+    let frontMatter = cache?.frontmatter;
 
     if (frontMatter && Object.keys(frontMatter).length > 0) {
       return frontMatter;
@@ -248,7 +247,7 @@ export abstract class FileManager {
     return new Promise((resolve) => {
       const checkCache = () => {
         const cache = this.app.metadataCache.getFileCache(file);
-        if (cache.frontmatter && Object.keys(cache.frontmatter).length > 0) {
+        if (cache?.frontmatter && Object.keys(cache.frontmatter).length > 0) {
           resolve(cache.frontmatter);
           return true;
         }
@@ -267,7 +266,8 @@ export abstract class FileManager {
 
       setTimeout(() => {
         this.app.metadataCache.off("changed", onMetadataChange);
-        resolve(this.app.metadataCache.getFileCache(file).frontmatter);
+        const finalCache = this.app.metadataCache.getFileCache(file);
+        resolve(finalCache?.frontmatter || {});
       }, 1000);
     });
   }

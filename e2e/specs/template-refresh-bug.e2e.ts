@@ -106,15 +106,15 @@ tags: {{tags}}
     // Get original template contents before refresh
     const originalAreaContent = await getFileContent(
       context.page,
-      "Templates/Area.md",
+      "Templates/Area.md"
     );
     const originalProjectContent = await getFileContent(
       context.page,
-      "Templates/Project.md",
+      "Templates/Project.md"
     );
     const originalTaskContent = await getFileContent(
       context.page,
-      "Templates/Task.md",
+      "Templates/Task.md"
     );
 
     console.log("Original Area template:", originalAreaContent);
@@ -130,15 +130,15 @@ tags: {{tags}}
     // Get template contents after refresh
     const afterAreaContent = await getFileContent(
       context.page,
-      "Templates/Area.md",
+      "Templates/Area.md"
     );
     const afterProjectContent = await getFileContent(
       context.page,
-      "Templates/Project.md",
+      "Templates/Project.md"
     );
     const afterTaskContent = await getFileContent(
       context.page,
-      "Templates/Task.md",
+      "Templates/Task.md"
     );
 
     console.log("After refresh Area template:", afterAreaContent);
@@ -192,13 +192,13 @@ tags: {{tags}}
 
     // Verify templates don't exist yet
     expect(await fileExists(context.page, "Templates/MissingArea.md")).toBe(
-      false,
+      false
     );
     expect(await fileExists(context.page, "Templates/MissingProject.md")).toBe(
-      false,
+      false
     );
     expect(await fileExists(context.page, "Templates/MissingTask.md")).toBe(
-      false,
+      false
     );
 
     // Execute refresh command - this should create missing templates
@@ -209,45 +209,45 @@ tags: {{tags}}
 
     // Verify templates were created
     expect(await fileExists(context.page, "Templates/MissingArea.md")).toBe(
-      true,
+      true
     );
     expect(await fileExists(context.page, "Templates/MissingProject.md")).toBe(
-      true,
+      true
     );
     expect(await fileExists(context.page, "Templates/MissingTask.md")).toBe(
-      true,
+      true
     );
 
     // Verify they have correct content structure
     const areaContent = await getFileContent(
       context.page,
-      "Templates/MissingArea.md",
+      "Templates/MissingArea.md"
     );
     const projectContent = await getFileContent(
       context.page,
-      "Templates/MissingProject.md",
+      "Templates/MissingProject.md"
     );
     const taskContent = await getFileContent(
       context.page,
-      "Templates/MissingTask.md",
+      "Templates/MissingTask.md"
     );
 
     // Area template should have area-specific properties only
     expect(areaContent).toContain("Name:");
-    expect(areaContent).toContain("Type: Area");
+    expect(areaContent).toContain('Type: "Area"');
     expect(areaContent).not.toContain("Title:");
     expect(areaContent).not.toContain("Category:");
 
     // Project template should have project-specific properties only
     expect(projectContent).toContain("Name:");
-    expect(projectContent).toContain("Type: Project");
+    expect(projectContent).toContain('Type: "Project"');
     expect(projectContent).toContain("Areas:");
     expect(projectContent).not.toContain("Title:");
     expect(projectContent).not.toContain("Category:");
 
     // Task template should have task-specific properties
     expect(taskContent).toContain("Title:");
-    expect(taskContent).toContain("Type: Task");
+    expect(taskContent).toContain('Type: "Task"');
     expect(taskContent).toContain("Category:");
     expect(taskContent).toContain("Priority:");
   });

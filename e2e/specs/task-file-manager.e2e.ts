@@ -120,7 +120,7 @@ This is the main content of the task.
 ## Notes
 
 - Note 1
-- Note 2`,
+- Note 2`
     );
 
     // Test extracting file content
@@ -176,7 +176,7 @@ Task content here.`;
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Status Test Task.md",
+        "Tasks/Status Test Task.md"
       );
     });
 
@@ -209,16 +209,19 @@ Task content here.`;
       const taskFileManager = plugin.taskFileManager;
       await taskFileManager.changeTaskStatus(
         "Tasks/Status String Test Task.md",
-        "Completed",
+        "Completed"
       );
     });
+
+    // Wait a moment for the change to be processed
+    await context.page.waitForTimeout(100);
 
     // Verify the status was changed using API
     const frontMatter = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Status String Test Task.md",
+        "Tasks/Status String Test Task.md"
       );
     });
 
@@ -236,7 +239,7 @@ Task content here.`;
         title: "Project Assignment Test",
         project: "Old Project",
       },
-      "Task content here.",
+      "Task content here."
     );
 
     // Test assigning to a new project
@@ -247,7 +250,7 @@ Task content here.`;
       const taskFileManager = plugin.taskFileManager;
       await taskFileManager.assignToProject(
         "Tasks/Project Assignment Test.md",
-        "New Project",
+        "New Project"
       );
     });
 
@@ -256,7 +259,7 @@ Task content here.`;
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Project Assignment Test.md",
+        "Tasks/Project Assignment Test.md"
       );
     });
 
@@ -274,7 +277,7 @@ Task content here.`;
         title: "Areas Assignment Test",
         areas: ["Development"],
       },
-      "Task content here.",
+      "Task content here."
     );
 
     // Test assigning to new areas
@@ -297,7 +300,7 @@ Task content here.`;
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Areas Assignment Test.md",
+        "Tasks/Areas Assignment Test.md"
       );
     });
 
@@ -315,7 +318,7 @@ Task content here.`;
         title: "Property Update Test",
         priority: "Low",
       },
-      "Task content here.",
+      "Task content here."
     );
 
     // Test updating a specific property
@@ -327,7 +330,7 @@ Task content here.`;
       await taskFileManager.updateProperty(
         "Tasks/Property Update Test.md",
         "Priority",
-        "Critical",
+        "Critical"
       );
     });
 
@@ -339,7 +342,7 @@ Task content here.`;
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Property Update Test.md",
+        "Tasks/Property Update Test.md"
       );
     });
 
@@ -368,7 +371,7 @@ Task content here.`;
 
         return await taskFileManager.createTaskFile(data, content);
       },
-      { data: taskData, content: description },
+      { data: taskData, content: description }
     );
 
     // Verify the task file was created
@@ -387,18 +390,18 @@ Task content here.`;
 
     // Verify the description appears as file content (after front-matter)
     expect(fullContent).toContain(
-      "This is a detailed task description that should appear as the file content.",
+      "This is a detailed task description that should appear as the file content."
     );
 
     // Verify the description is not just in front-matter but in the body
     const lines = fullContent.split("\n");
     const frontMatterEndIndex = lines.findIndex(
-      (line: string, index: number) => index > 0 && line === "---",
+      (line: string, index: number) => index > 0 && line === "---"
     );
     const bodyContent = lines.slice(frontMatterEndIndex + 1).join("\n");
 
     expect(bodyContent.trim()).toContain(
-      "This is a detailed task description that should appear as the file content.",
+      "This is a detailed task description that should appear as the file content."
     );
   });
 });

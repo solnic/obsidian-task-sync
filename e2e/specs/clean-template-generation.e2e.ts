@@ -11,6 +11,7 @@ import {
   fileExists,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks } from "../helpers/shared-context";
+import { createTask } from "../helpers/entity-helpers";
 
 describe("Clean Template Generation", () => {
   const context = setupE2ETestHooks();
@@ -32,14 +33,14 @@ describe("Clean Template Generation", () => {
     // Verify the template file was created
     const templateExists = await fileExists(
       context.page,
-      "Templates/Clean Task.md",
+      "Templates/Clean Task.md"
     );
     expect(templateExists).toBe(true);
 
     // Verify the template has proper front-matter structure with defaults
     const templateContent = await getFileContent(
       context.page,
-      "Templates/Clean Task.md",
+      "Templates/Clean Task.md"
     );
 
     // Should have front-matter structure with configured default values
@@ -55,10 +56,10 @@ describe("Clean Template Generation", () => {
 
     expect(templateContent).toContain("tags:");
 
-    // Should have configured default values
-    expect(templateContent).toContain("Priority: Low");
+    // Should have configured default values (values are quoted in YAML)
+    expect(templateContent).toContain('Priority: "Low"');
     expect(templateContent).toContain("Done: false");
-    expect(templateContent).toContain("Status: Backlog");
+    expect(templateContent).toContain('Status: "Backlog"');
 
     // Arrays should be empty
     expect(templateContent).toContain("Areas: []");
@@ -79,7 +80,7 @@ describe("Clean Template Generation", () => {
 
       if (plugin && plugin.templateManager) {
         await plugin.templateManager.createTaskTemplate(
-          "Clean Task Template.md",
+          "Clean Task Template.md"
         );
       }
     });
@@ -87,38 +88,26 @@ describe("Clean Template Generation", () => {
     // Get the template content
     const templateContent = await getFileContent(
       context.page,
-      "Templates/Clean Task Template.md",
+      "Templates/Clean Task Template.md"
     );
 
-    // Create a task using the template content (simulating user copying template)
+    // Create a task using the entity helper (this will test that the TaskPropertyHandler properly processes it)
     const taskName = "Task from Clean Template";
-    const taskPath = `Tasks/${taskName}.md`;
-
-    // Use the template content but with a title filled in
-    // Handle both empty quotes and no quotes in Title field
-    const taskContent = templateContent?.replace(
-      /Title:\s*['"]?['"]?\s*$/m,
-      `Title: ${taskName}`,
-    );
-
-    // Create the task file
-    await context.page.evaluate(
-      async ({ path, content }: { path: string; content: string }) => {
-        const app = (window as any).app;
-        await app.vault.create(path, content);
-      },
-      { path: taskPath, content: taskContent },
-    );
+    await createTask(context, {
+      title: taskName,
+    });
 
     // Wait for the TaskPropertyHandler to process the file
     await context.page.waitForTimeout(1000);
 
     // Verify the file was updated with default values by the handler using API
-    const frontMatter = await context.page.evaluate(async (path) => {
+    const frontMatter = await context.page.evaluate(async (taskName) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(path);
-    }, taskPath);
+      return await plugin.taskFileManager.loadFrontMatter(
+        `Tasks/${taskName}.md`
+      );
+    }, taskName);
 
     expect(frontMatter.Type).toBe("Task"); // Should be set by handler
     expect(frontMatter.Done).toBe(false); // Should be set by handler

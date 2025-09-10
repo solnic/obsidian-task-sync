@@ -12,6 +12,7 @@ import {
   waitForBasesRegeneration,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks } from "../helpers/shared-context";
+import { createArea, createProject } from "../helpers/entity-helpers";
 
 describe("Base Synchronization", () => {
   const context = setupE2ETestHooks();
@@ -25,32 +26,16 @@ describe("Base Synchronization", () => {
       // Wait for plugin to be ready
       await waitForTaskSyncPlugin(context.page);
 
-      // Create an area and project
-      await context.page.evaluate(async () => {
-        const app = (window as any).app;
+      // Create an area and project using helpers
+      await createArea(context, {
+        name: "Health",
+        description: "Health tracking area.",
+      });
 
-        await app.vault.create(
-          "Areas/Health.md",
-          `---
-Name: Health
-Type: Area
----
-
-Health tracking area.
-`,
-        );
-
-        await app.vault.create(
-          "Projects/Fitness Plan.md",
-          `---
-Name: Fitness Plan
-Type: Project
-Areas: Health
----
-
-12-week fitness plan.
-`,
-        );
+      await createProject(context, {
+        name: "Fitness Plan",
+        description: "12-week fitness plan.",
+        areas: ["Health"],
       });
 
       // Enable individual bases and generate them
@@ -80,7 +65,7 @@ Areas: Health
         healthBaseExists = await fileExists(context.page, "Bases/Health.base");
         fitnessBaseExists = await fileExists(
           context.page,
-          "Bases/Fitness Plan.base",
+          "Bases/Fitness Plan.base"
         );
         attempts++;
 
@@ -96,7 +81,7 @@ Areas: Health
           });
           console.log(
             `📁 Files in Bases folder (attempt ${attempts}):`,
-            baseFiles,
+            baseFiles
           );
         }
       }
@@ -111,7 +96,7 @@ Areas: Health
       // Check initial content doesn't have "Epic" view
       let healthBaseContent = await getFileContent(
         context.page,
-        "Bases/Health.base",
+        "Bases/Health.base"
       );
       expect(healthBaseContent).not.toContain("name: All Epics");
 
@@ -132,37 +117,27 @@ Areas: Health
       // Check that bases were updated with new task type
       healthBaseContent = await getFileContent(
         context.page,
-        "Bases/Health.base",
+        "Bases/Health.base"
       );
       expect(healthBaseContent).toContain("name: All Epics");
       expect(healthBaseContent).toContain('Category == "Epic"');
 
       const fitnessBaseContent = await getFileContent(
         context.page,
-        "Bases/Fitness Plan.base",
+        "Bases/Fitness Plan.base"
       );
       expect(fitnessBaseContent).toContain("name: All Epics");
       expect(fitnessBaseContent).toContain('Category == "Epic"');
-    },
+    }
   );
 
   test("should sync bases when task type is removed", async () => {
     await createTestFolders(context.page);
 
-    // Create an area
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      await app.vault.create(
-        "Areas/Work.md",
-        `---
-Name: Work
-Type: Area
----
-
-Work-related tasks and projects.
-`,
-      );
+    // Create an area using helper
+    await createArea(context, {
+      name: "Work",
+      description: "Work-related tasks and projects.",
     });
 
     // Enable individual bases and generate them
@@ -190,7 +165,7 @@ Work-related tasks and projects.
     });
     console.log(
       "📁 Files in Bases folder after Work area creation:",
-      baseFiles2,
+      baseFiles2
     );
 
     // Verify initial base has "Chores" view
@@ -200,7 +175,7 @@ Work-related tasks and projects.
     if (!workBaseContent) {
       // If Work.base doesn't exist, check if any base exists and use that for testing
       const anyBaseFile = baseFiles2.find(
-        (f: string) => f.endsWith(".base") && !f.includes("Tasks.base"),
+        (f: string) => f.endsWith(".base") && !f.includes("Tasks.base")
       );
       if (anyBaseFile) {
         console.log(`📄 Using ${anyBaseFile} instead of Work.base for testing`);
@@ -219,7 +194,7 @@ Work-related tasks and projects.
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
         const choreIndex = plugin.settings.taskTypes.findIndex(
-          (t: any) => t.name === "Chore",
+          (t: any) => t.name === "Chore"
         );
         if (choreIndex > -1) {
           plugin.settings.taskTypes.splice(choreIndex, 1);
@@ -245,19 +220,9 @@ Work-related tasks and projects.
       await createTestFolders(context.page);
 
       // Create an area
-      await context.page.evaluate(async () => {
-        const app = (window as any).app;
-
-        await app.vault.create(
-          "Areas/Learning.md",
-          `---
-Name: Learning
-Type: Area
----
-
-Learning and development area.
-`,
-        );
+      await createArea(context, {
+        name: "Learning",
+        description: "Learning and development area.",
       });
 
       // Enable individual bases but disable auto-sync
@@ -277,13 +242,13 @@ Learning and development area.
       // Verify initial base exists
       const learningBaseExists = await fileExists(
         context.page,
-        "Bases/Learning.base",
+        "Bases/Learning.base"
       );
       expect(learningBaseExists).toBe(true);
 
       let learningBaseContent = await getFileContent(
         context.page,
-        "Bases/Learning.base",
+        "Bases/Learning.base"
       );
       expect(learningBaseContent).not.toContain("name: Stories");
 
@@ -303,7 +268,7 @@ Learning and development area.
       // Check that base was NOT updated (auto-sync disabled)
       learningBaseContent = await getFileContent(
         context.page,
-        "Bases/Learning.base",
+        "Bases/Learning.base"
       );
       expect(learningBaseContent).not.toContain("name: All Stories");
 
@@ -321,42 +286,26 @@ Learning and development area.
       // Check that base was updated after manual sync
       learningBaseContent = await getFileContent(
         context.page,
-        "Bases/Learning.base",
+        "Bases/Learning.base"
       );
       expect(learningBaseContent).toContain("name: All Stories");
       expect(learningBaseContent).toContain('Category == "Story"');
-    },
+    }
   );
 
   test("should sync only enabled base types", async () => {
     await createTestFolders(context.page);
 
     // Create both area and project
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
+    await createArea(context, {
+      name: "Technology",
+      description: "Technology and development area.",
+    });
 
-      await app.vault.create(
-        "Areas/Technology.md",
-        `---
-Name: Technology
-Type: Area
----
-
-Technology and development area.
-`,
-      );
-
-      await app.vault.create(
-        "Projects/API Development.md",
-        `---
-Name: API Development
-Type: Project
-Areas: Technology
----
-
-REST API development project.
-`,
-      );
+    await createProject(context, {
+      name: "API Development",
+      areas: ["Technology"],
+      description: "REST API development project.",
     });
 
     // Enable only area bases, disable project bases
@@ -377,13 +326,13 @@ REST API development project.
     // Verify only area base exists
     const technologyBaseExists = await fileExists(
       context.page,
-      "Bases/Technology.base",
+      "Bases/Technology.base"
     );
     expect(technologyBaseExists).toBe(true);
 
     const apiBaseExists = await fileExists(
       context.page,
-      "Bases/API Development.base",
+      "Bases/API Development.base"
     );
     expect(apiBaseExists).toBe(false);
 
@@ -404,7 +353,7 @@ REST API development project.
     // Check that only area base was updated
     const technologyBaseContent = await getFileContent(
       context.page,
-      "Bases/Technology.base",
+      "Bases/Technology.base"
     );
     expect(technologyBaseContent).toContain("name: Research"); // Research is uncountable, so pluralize returns the same
     expect(technologyBaseContent).toContain('Category == "Research"');
@@ -412,7 +361,7 @@ REST API development project.
     // Project base should still not exist
     const apiBaseStillExists = await fileExists(
       context.page,
-      "Bases/API Development.base",
+      "Bases/API Development.base"
     );
     expect(apiBaseStillExists).toBe(false);
   });
@@ -421,19 +370,9 @@ REST API development project.
     await createTestFolders(context.page);
 
     // Create an area
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      await app.vault.create(
-        "Areas/Personal.md",
-        `---
-Name: Personal
-Type: Area
----
-
-Personal tasks and goals.
-`,
-      );
+    await createArea(context, {
+      name: "Personal",
+      description: "Personal tasks and goals.",
     });
 
     // Enable individual bases
@@ -466,13 +405,13 @@ Personal tasks and goals.
     // Check that base still exists and has basic structure
     const personalBaseExists = await fileExists(
       context.page,
-      "Bases/Personal.base",
+      "Bases/Personal.base"
     );
     expect(personalBaseExists).toBe(true);
 
     const personalBaseContent = await getFileContent(
       context.page,
-      "Bases/Personal.base",
+      "Bases/Personal.base"
     );
     expect(personalBaseContent).toContain("name: Tasks");
     expect(personalBaseContent).not.toContain("name: Bugs");
@@ -483,20 +422,10 @@ Personal tasks and goals.
     await createTestFolders(context.page);
 
     // Create a project
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      await app.vault.create(
-        "Projects/Documentation.md",
-        `---
-Name: Documentation
-Type: Project
-Areas: Work
----
-
-Documentation improvement project.
-`,
-      );
+    await createProject(context, {
+      name: "Documentation",
+      areas: ["Work"],
+      description: "Documentation improvement project.",
     });
 
     // Enable project bases
@@ -516,7 +445,7 @@ Documentation improvement project.
     // Get initial base content
     let docBaseContent = await getFileContent(
       context.page,
-      "Bases/Documentation.base",
+      "Bases/Documentation.base"
     );
 
     // If Documentation.base doesn't exist, use any available project base
@@ -528,7 +457,7 @@ Documentation improvement project.
           return basesFolder.children
             .filter(
               (f: any) =>
-                f.name.endsWith(".base") && !f.name.includes("Tasks.base"),
+                f.name.endsWith(".base") && !f.name.includes("Tasks.base")
             )
             .map((f: any) => `Bases/${f.name}`);
         }
@@ -538,7 +467,7 @@ Documentation improvement project.
       if (baseFiles.length > 0) {
         docBaseContent = await getFileContent(context.page, baseFiles[0]);
         console.log(
-          `📄 Using ${baseFiles[0]} instead of Documentation.base for testing`,
+          `📄 Using ${baseFiles[0]} instead of Documentation.base for testing`
         );
       }
     }
@@ -558,7 +487,7 @@ Documentation improvement project.
         plugin.settings.taskTypes.push(
           { name: "Documentation", color: "yellow" },
           { name: "Review", color: "pink" },
-          { name: "Testing", color: "teal" },
+          { name: "Testing", color: "teal" }
         );
         await plugin.saveSettings();
         await plugin.syncAreaProjectBases();
@@ -570,7 +499,7 @@ Documentation improvement project.
     // Get updated base content
     docBaseContent = await getFileContent(
       context.page,
-      "Bases/Documentation.base",
+      "Bases/Documentation.base"
     );
 
     // Verify structure is maintained

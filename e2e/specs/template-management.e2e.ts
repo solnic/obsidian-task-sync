@@ -27,12 +27,12 @@ describe("Template Management", () => {
     // Verify the template has proper structure
     const templateContent = await getFileContent(
       context.page,
-      "Templates/Task.md",
+      "Templates/Task.md"
     );
     expect(templateContent).toContain("---");
     expect(templateContent).toContain("Title:");
     expect(templateContent).toContain("Type:");
-    expect(templateContent).toContain("Priority: Low");
+    expect(templateContent).toContain('Priority: "Low"');
     // Only {{tasks}} variable is supported, no {{description}}
   });
 
@@ -87,14 +87,14 @@ describe("Template Management", () => {
     // Check if custom template was created
     const templateExists = await fileExists(
       context.page,
-      "Templates/Custom Task.md",
+      "Templates/Custom Task.md"
     );
     expect(templateExists).toBe(true);
 
     // Verify the content is still correct
     const templateContent = await getFileContent(
       context.page,
-      "Templates/Custom Task.md",
+      "Templates/Custom Task.md"
     );
     expect(templateContent).toContain("Title: ");
     // Only {{tasks}} variable is supported, no {{description}}
@@ -121,17 +121,17 @@ describe("Template Management", () => {
       const taskTemplateSetting = settings.find((setting) =>
         setting
           .querySelector(".setting-item-name")
-          ?.textContent?.includes("Default Task Template"),
+          ?.textContent?.includes("Default Task Template")
       );
 
       if (taskTemplateSetting) {
         const input = taskTemplateSetting.querySelector(
-          'input[type="text"]',
+          'input[type="text"]'
         ) as HTMLInputElement;
         if (input) {
           console.log(
             "Found Default Task Template input, current value:",
-            input.value,
+            input.value
           );
           // Clear the input and set new value
           input.value = "";
@@ -155,7 +155,7 @@ describe("Template Management", () => {
     const createTemplateButtonExists = await context.page.evaluate(() => {
       const buttons = Array.from(document.querySelectorAll("button"));
       return buttons.some((button) =>
-        button.textContent?.includes("Create Template"),
+        button.textContent?.includes("Create Template")
       );
     });
     expect(createTemplateButtonExists).toBe(true);
@@ -169,7 +169,7 @@ describe("Template Management", () => {
           button
             .closest(".setting-item")
             ?.querySelector(".setting-item-name")
-            ?.textContent?.includes("Task"),
+            ?.textContent?.includes("Task")
       );
       if (createButton) {
         console.log("Clicking Create Template button for tasks");
@@ -189,7 +189,7 @@ describe("Template Management", () => {
     // Verify the custom template was created with the correct name
     const templateExists = await fileExists(
       context.page,
-      "Templates/CustomTask.md",
+      "Templates/CustomTask.md"
     );
     expect(templateExists).toBe(true);
   });
