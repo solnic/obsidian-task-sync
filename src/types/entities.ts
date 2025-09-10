@@ -3,183 +3,60 @@
  * Implements GTD (Getting Things Done) methodology with hierarchical organization
  */
 
+import { TFile } from "obsidian";
+
 // Base interface for all entities
 export interface BaseEntity {
   id: string;
-  name: string;
-  description?: string;
-  createdAt: Date;
-  updatedAt: Date;
-  metadata?: Record<string, any>;
-}
-
-// Task status enumeration
-export enum TaskStatus {
-  TODO = "todo",
-  IN_PROGRESS = "in-progress",
-  WAITING = "waiting",
-  DONE = "done",
-  CANCELLED = "cancelled",
-}
-
-// Task priority levels
-export enum TaskPriority {
-  LOW = "low",
-  MEDIUM = "medium",
-  HIGH = "high",
-  URGENT = "urgent",
+  file?: TFile; // Obsidian file reference
+  filePath?: string; // Path to the file in vault
 }
 
 // External source tracking for imported tasks
 export interface TaskSource {
-  /** Source system name (e.g., 'github', 'linear') */
+  /** Source system name (e.g., 'github', 'linear', 'todo-promotion') */
   name: string;
   /** External identifier in the source system */
   key: string;
   /** Optional URL to the external task */
   url?: string;
+  /** Additional metadata for the source */
+  metadata?: Record<string, any>;
 }
 
-// Task entity - core unit of work
+// Task entity - core system properties
 export interface Task extends BaseEntity {
-  // Core properties
-  status: TaskStatus;
-  priority: TaskPriority;
+  // Front-matter properties (frontmatter: true)
+  title: string; // TITLE (from Title front-matter property)
+  type?: string; // TYPE
+  category?: string; // CATEGORY
+  priority?: string; // PRIORITY
+  status?: string; // STATUS
+  done?: boolean; // DONE
+  parentTask?: string; // PARENT_TASK
+  project?: string; // PROJECT
+  areas?: string[]; // AREAS
+  tags?: string[]; // TAGS
 
-  // Scheduling
-  deadline?: Date;
-  scheduledDate?: Date;
-  completedAt?: Date;
-
-  // Hierarchy and organization
-  projectId?: string;
-  areaId?: string;
-  parentTaskId?: string; // For subtasks
-
-  // Content and context
-  content?: string; // Full markdown content
-  tags: string[];
-
-  // File system integration
-  filePath?: string; // Path to the task file in vault
-  fileExists: boolean;
-
-  // Dependencies and relationships
-  dependsOn: string[]; // Task IDs this task depends on
-  blocks: string[]; // Task IDs this task blocks
-
-  // Tracking and metrics
-  estimatedDuration?: number; // In minutes
-  actualDuration?: number; // In minutes
-
-  // External source tracking
-  source?: TaskSource;
-
-  // Configuration
-  frontmatter: [
-    "TYPE",
-    "TITLE",
-    "CATEGORY",
-    "PRIORITY",
-    "AREAS",
-    "PROJECT",
-    "DONE",
-    "STATUS",
-    "PARENT_TASK",
-    "TAGS",
-  ];
-
-  base: [
-    "TITLE",
-    "TYPE",
-    "CATEGORY",
-    "PRIORITY",
-    "AREAS",
-    "PROJECT",
-    "DONE",
-    "STATUS",
-    "PARENT_TASK",
-    "TAGS",
-    "CREATED_AT",
-    "UPDATED_AT",
-  ];
-
-  // Template and automation
-  templateId?: string;
-  recurring?: RecurringConfig;
+  // Internal attributes (not front-matter)
+  source?: TaskSource; // External source tracking
 }
 
-// Recurring task configuration
-export interface RecurringConfig {
-  enabled: boolean;
-  pattern: "daily" | "weekly" | "monthly" | "yearly" | "custom";
-  interval: number; // For custom patterns
-  endDate?: Date;
-  lastGenerated?: Date;
-}
-
-// Project entity - collection of related tasks
+// Project entity - core system properties
 export interface Project extends BaseEntity {
-  // Organization
-  areaId?: string;
-
-  // Status and progress
-  status: "active" | "on-hold" | "completed" | "cancelled";
-  progress: number; // 0-100 percentage
-
-  // Scheduling
-  startDate?: Date;
-  deadline?: Date;
-  completedAt?: Date;
-
-  // Content and context
-  content?: string; // Full markdown content
-  tags: string[];
-
-  // File system integration
-  filePath?: string;
-  fileExists: boolean;
-
-  // Task management
-  taskIds: string[]; // Tasks belonging to this project
-
-  // Template and automation
-  templateId?: string;
-
-  // Goals and outcomes
-  objectives: string[];
-  successCriteria: string[];
-
-  // Configuration
-  frontmatter: ["TYPE", "TITLE", "AREAS"];
+  // Front-matter properties (frontmatter: true)
+  name: string; // NAME (from Name front-matter property)
+  type?: string; // TYPE
+  areas?: string[]; // AREAS
+  tags?: string[]; // TAGS
 }
 
-// Area entity - life/work area for organizing projects
+// Area entity - core system properties
 export interface Area extends BaseEntity {
-  // Content and context
-  content?: string; // Full markdown content
-  tags: string[];
-
-  // File system integration
-  filePath?: string;
-  fileExists: boolean;
-
-  // Organization
-  projectIds: string[]; // Projects in this area
-
-  // Goals and vision
-  purpose?: string;
-  vision?: string;
-  goals: string[];
-
-  // Template and automation
-  templateId?: string;
-
-  // Status
-  isActive: boolean;
-
-  // Configuration
-  frontmatter: ["TYPE", "TITLE", "PROJECTS"];
+  // Front-matter properties (frontmatter: true)
+  name: string; // NAME (from Name front-matter property)
+  type?: string; // TYPE
+  tags?: string[]; // TAGS
 }
 
 // Template entity for creating new tasks/projects/areas

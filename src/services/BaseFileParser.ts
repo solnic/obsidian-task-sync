@@ -18,11 +18,8 @@ export class BaseFileParser {
 
     const baseFile: Partial<BaseFile> = {
       id: this.generateId(),
-      name: this.extractNameFromPath(filePath),
       filePath,
       fileExists: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
       entityIds: [],
       autoGenerate: false,
       autoUpdate: false,
@@ -51,7 +48,6 @@ export class BaseFileParser {
 
     // Add frontmatter
     lines.push("---");
-    lines.push(`title: ${baseFile.name}`);
     lines.push(`view: ${baseFile.viewType}`);
     lines.push(`type: ${baseFile.entityType}`);
     if (baseFile.autoGenerate) {
@@ -62,12 +58,6 @@ export class BaseFileParser {
     }
     lines.push("---");
     lines.push("");
-
-    // Add description
-    if (baseFile.description) {
-      lines.push(baseFile.description);
-      lines.push("");
-    }
 
     // Build base configuration object
     const config: Record<string, any> = {
@@ -178,10 +168,10 @@ export class BaseFileParser {
    */
   private parseFrontmatterData(
     data: Record<string, any>,
-    baseFile: Partial<BaseFile>,
+    baseFile: Partial<BaseFile>
   ): void {
     if (data.title) {
-      baseFile.name = String(data.title);
+      // Skip name property as it's not part of BaseFile interface
     }
     if (data.view) {
       baseFile.viewType = this.parseViewTypeValue(data.view);
@@ -196,7 +186,7 @@ export class BaseFileParser {
       baseFile.autoUpdate = Boolean(data["auto-update"]);
     }
     if (data.description) {
-      baseFile.description = String(data.description);
+      // Skip description property as it's not part of BaseFile interface
     }
   }
 
@@ -205,7 +195,7 @@ export class BaseFileParser {
    */
   private parseMarkdownContent(
     content: string,
-    baseFile: Partial<BaseFile>,
+    baseFile: Partial<BaseFile>
   ): void {
     // Extract base configuration from ```base code blocks
     const baseCodeBlockRegex = /```base\s*\n([\s\S]*?)\n```/g;
@@ -222,7 +212,7 @@ export class BaseFileParser {
    */
   private parseBaseConfiguration(
     yamlContent: string,
-    baseFile: Partial<BaseFile>,
+    baseFile: Partial<BaseFile>
   ): void {
     try {
       const config = yaml.load(yamlContent) as Record<string, any>;
@@ -274,7 +264,7 @@ export class BaseFileParser {
   }
 
   private parseViewTypeValue(
-    value: any,
+    value: any
   ): "kanban" | "list" | "calendar" | "timeline" {
     const viewType = String(value).toLowerCase();
 

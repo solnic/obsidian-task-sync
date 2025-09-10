@@ -22,7 +22,7 @@ export async function createTask(
     parentTask?: string;
     tags?: string[];
   },
-  content: string = "",
+  content: string = ""
 ): Promise<any> {
   return await context.page.evaluate(
     async ({ props, content }) => {
@@ -53,19 +53,19 @@ export async function createTask(
       // Wait a bit for the event system to process the creation
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Get the cached task from storage service
-      const cachedTasks = plugin.storageService.getCachedTasks();
-      const createdTask = cachedTasks.find((t: any) => t.name === props.title);
+      // Get the cached task from task store
+      const cachedTasks = plugin.getCachedTasks();
+      const createdTask = cachedTasks.find((t: any) => t.title === props.title);
 
       if (!createdTask) {
         throw new Error(
-          `Task "${props.title}" was not found in cache after creation`,
+          `Task "${props.title}" was not found in cache after creation`
         );
       }
 
       return createdTask;
     },
-    { props, content },
+    { props, content }
   );
 }
 
@@ -78,7 +78,7 @@ export async function createArea(
   props: {
     name: string;
     description?: string;
-  },
+  }
 ): Promise<any> {
   return await context.page.evaluate(
     async ({ props }) => {
@@ -101,19 +101,19 @@ export async function createArea(
       // Wait a bit for the event system to process the creation
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Get the cached area from storage service
-      const cachedAreas = plugin.storageService.getCachedAreas();
+      // Get the cached area from area store
+      const cachedAreas = plugin.getCachedAreas();
       const createdArea = cachedAreas.find((a: any) => a.name === props.name);
 
       if (!createdArea) {
         throw new Error(
-          `Area "${props.name}" was not found in cache after creation`,
+          `Area "${props.name}" was not found in cache after creation`
         );
       }
 
       return createdArea;
     },
-    { props },
+    { props }
   );
 }
 
@@ -127,7 +127,7 @@ export async function createProject(
     name: string;
     description?: string;
     areas?: string[];
-  },
+  }
 ): Promise<any> {
   return await context.page.evaluate(
     async ({ props }) => {
@@ -151,20 +151,20 @@ export async function createProject(
       // Wait a bit for the event system to process the creation
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Get the cached project from storage service
-      const cachedProjects = plugin.storageService.getCachedProjects();
+      // Get the cached project from project store
+      const cachedProjects = plugin.getCachedProjects();
       const createdProject = cachedProjects.find(
-        (p: any) => p.name === props.name,
+        (p: any) => p.name === props.name
       );
 
       if (!createdProject) {
         throw new Error(
-          `Project "${props.name}" was not found in cache after creation`,
+          `Project "${props.name}" was not found in cache after creation`
         );
       }
 
       return createdProject;
     },
-    { props },
+    { props }
   );
 }

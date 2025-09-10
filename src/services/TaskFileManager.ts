@@ -11,6 +11,7 @@ import {
   PROPERTY_REGISTRY,
   PROPERTY_SETS,
 } from "./base-definitions/BaseConfigurations";
+import { Task } from "../types/entities";
 
 /**
  * Interface for task creation data
@@ -43,7 +44,7 @@ export class TaskFileManager extends FileManager {
    */
   async createTaskFile(
     data: TaskCreationData,
-    content?: string,
+    content?: string
   ): Promise<string> {
     const taskFolder = this.settings.tasksFolder;
 
@@ -59,7 +60,7 @@ export class TaskFileManager extends FileManager {
     const filePath = await this.createFile(
       taskFolder,
       data.title,
-      processedContent,
+      processedContent
     );
     const frontMatterData = this.generateTaskFrontMatterObject(data);
 
@@ -73,7 +74,7 @@ export class TaskFileManager extends FileManager {
         const baseManager = new BaseManager(
           this.app,
           this.vault,
-          this.settings,
+          this.settings
         );
         await baseManager.createOrUpdateParentTaskBase(data.title);
       } catch (error) {
@@ -91,7 +92,7 @@ export class TaskFileManager extends FileManager {
    * @returns Template content or default content if template not found
    */
   private async getTaskTemplateContent(
-    data: TaskCreationData,
+    data: TaskCreationData
   ): Promise<string> {
     // Determine if this should be a parent task based on task data
     const shouldUseParentTemplate = this.shouldUseParentTaskTemplate(data);
@@ -154,7 +155,7 @@ export class TaskFileManager extends FileManager {
    * @returns Template content or null if not found
    */
   private async readTemplate(
-    templateType: "task" | "parentTask",
+    templateType: "task" | "parentTask"
   ): Promise<string | null> {
     const templateFileName =
       templateType === "parentTask"
@@ -231,7 +232,7 @@ export class TaskFileManager extends FileManager {
    * @returns Front-matter object with all required properties
    */
   private generateTaskFrontMatterObject(
-    data: TaskCreationData,
+    data: TaskCreationData
   ): Record<string, any> {
     const frontMatterData: Record<string, any> = {};
 
@@ -282,6 +283,52 @@ export class TaskFileManager extends FileManager {
   }
 
   /**
+   * Load a Task entity from an Obsidian TFile
+   * @param file - The TFile to load
+   * @returns Task entity or null if invalid
+   */
+  async loadEntity(file: TFile): Promise<Task | null> {
+    try {
+      // Use Obsidian's metadata cache to get front-matter
+      const cache = this.app.metadataCache.getFileCache(file);
+      const frontMatter = cache?.frontmatter || {};
+
+      // Check if this is a valid task file
+      if (frontMatter.Type !== "Task") {
+        return null;
+      }
+
+      // Create Task entity from front-matter
+      return {
+        id: this.generateId(),
+        file,
+        filePath: file.path,
+        title: frontMatter.Title || file.basename,
+        type: frontMatter.Type,
+        category: frontMatter.Category,
+        priority: frontMatter.Priority,
+        status: frontMatter.Status,
+        done: frontMatter.Done || false,
+        parentTask: frontMatter["Parent task"],
+        project: frontMatter.Project,
+        areas: Array.isArray(frontMatter.Areas) ? frontMatter.Areas : [],
+        tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
+        source: frontMatter.source,
+      };
+    } catch (error) {
+      console.warn(`Failed to load task from ${file.path}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Generate a unique ID for entities
+   */
+  private generateId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+  }
+
+  /**
    * Implementation of abstract createEntityFile method
    * @param data - File creation data
    * @returns Path of the created file
@@ -307,7 +354,7 @@ export class TaskFileManager extends FileManager {
    */
   async changeTaskStatus(
     filePath: string,
-    status: boolean | string,
+    status: boolean | string
   ): Promise<void> {
     if (typeof status === "boolean") {
       await this.updateProperty(filePath, "Done", status);
@@ -387,7 +434,7 @@ export class TaskFileManager extends FileManager {
     const currentFrontMatter = await this.loadFrontMatter(filePath);
     const currentTags = currentFrontMatter.tags || [];
     const newTags = currentTags.filter(
-      (tag: string) => !tagsToRemove.includes(tag),
+      (tag: string) => !tagsToRemove.includes(tag)
     );
     await this.updateProperty(filePath, "tags", newTags);
   }
@@ -420,9 +467,7 @@ export class TaskFileManager extends FileManager {
     const isValidOrder =
       requiredProperties.every((prop: any) => propertyOrder.includes(prop)) &&
       propertyOrder.every((prop: any) =>
-        requiredProperties.includes(
-          prop as (typeof requiredProperties)[number],
-        ),
+        requiredProperties.includes(prop as (typeof requiredProperties)[number])
       );
 
     // Use validated order or fall back to default
@@ -447,7 +492,7 @@ export class TaskFileManager extends FileManager {
    */
   async reorderTaskTemplateProperties(content: string): Promise<string> {
     const frontMatterMatch = content.match(
-      /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/,
+      /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/
     );
     if (!frontMatterMatch) {
       return content;
@@ -499,7 +544,7 @@ export class TaskFileManager extends FileManager {
    * Implementation of abstract method from FileManager
    */
   async updateFileProperties(
-    filePath: string,
+    filePath: string
   ): Promise<{ hasChanges: boolean; propertiesChanged: number }> {
     return this.updateTaskFileProperties(filePath);
   }
@@ -510,7 +555,7 @@ export class TaskFileManager extends FileManager {
    * @returns Object with hasChanges and propertiesChanged count
    */
   async updateTaskFileProperties(
-    filePath: string,
+    filePath: string
   ): Promise<{ hasChanges: boolean; propertiesChanged: number }> {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (!file) {
@@ -530,7 +575,7 @@ export class TaskFileManager extends FileManager {
     if (existingFrontMatter.Type && existingFrontMatter.Type !== "Task") {
       // Skip files that are not tasks
       console.log(
-        `Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Task, found: ${existingFrontMatter.Type})`,
+        `Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Task, found: ${existingFrontMatter.Type})`
       );
       return { hasChanges: false, propertiesChanged: 0 };
     }
@@ -562,7 +607,7 @@ export class TaskFileManager extends FileManager {
         // Add any field that's defined in the schema
         updatedFrontMatter[fieldName] = config.default || "";
         console.log(
-          `Task Sync: Added missing field '${fieldName}' to ${filePath}`,
+          `Task Sync: Added missing field '${fieldName}' to ${filePath}`
         );
         hasChanges = true;
         propertiesChanged++;
@@ -604,7 +649,7 @@ export class TaskFileManager extends FileManager {
           const value = updatedFrontMatter[fieldName];
           if (value !== undefined) {
             frontMatterLines.push(
-              `${fieldName}: ${this.formatPropertyValue(value)}`,
+              `${fieldName}: ${this.formatPropertyValue(value)}`
             );
           }
         }
@@ -620,7 +665,7 @@ export class TaskFileManager extends FileManager {
 
         // Extract body content (everything after front-matter)
         const frontMatterMatch = fullContent.match(
-          /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/,
+          /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/
         );
         const bodyContent = frontMatterMatch ? frontMatterMatch[2] : "";
 

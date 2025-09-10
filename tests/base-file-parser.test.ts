@@ -39,12 +39,11 @@ group:
 
       const result = parser.parseBaseFile(content, "/path/to/test.base.md");
 
-      expect(result.name).toBe("Test Base");
+      expect(result.filePath).toBe("/path/to/test.base.md");
       expect(result.viewType).toBe("list"); // Should use code block value over frontmatter
       expect(result.entityType).toBe("project"); // Should use code block value over frontmatter
       expect(result.autoGenerate).toBe(true);
       expect(result.autoUpdate).toBe(false);
-      expect(result.description).toBe("Test description");
       expect(result.filters).toHaveLength(1);
       expect(result.filters[0]).toEqual({
         field: "status",
@@ -72,7 +71,7 @@ Just a description.
 
       const result = parser.parseBaseFile(content, "/path/to/minimal.base.md");
 
-      expect(result.name).toBe("Minimal Base");
+      expect(result.filePath).toBe("/path/to/minimal.base.md");
       expect(result.viewType).toBe("kanban"); // default
       expect(result.entityType).toBe("task"); // default
       expect(result.autoGenerate).toBe(false);
@@ -165,11 +164,11 @@ group:
 
       const result = parser.generateBaseFile(baseFile, entities);
 
-      expect(result).toContain("title: Generated Base");
+      expect(result).toContain("view: kanban");
       expect(result).toContain("view: kanban");
       expect(result).toContain("type: task");
       expect(result).toContain("auto-generate: true");
-      expect(result).toContain("A generated base file");
+      expect(result).toContain("## Items");
       expect(result).toContain("```base");
       expect(result).toContain("field: status");
       expect(result).toContain("operator: equals");

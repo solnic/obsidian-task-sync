@@ -8,6 +8,7 @@ import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../main";
 import { FileManager, FileCreationData } from "./FileManager";
 import { generateProjectFrontMatter } from "./base-definitions/BaseConfigurations";
+import { Project } from "../types/entities";
 
 /**
  * Interface for project creation data
@@ -35,7 +36,7 @@ export class ProjectFileManager extends FileManager {
    */
   async createProjectFile(
     data: ProjectCreationData,
-    content?: string,
+    content?: string
   ): Promise<string> {
     const projectFolder = this.settings.projectsFolder;
 
@@ -51,7 +52,7 @@ export class ProjectFileManager extends FileManager {
     const filePath = await this.createFile(
       projectFolder,
       data.title,
-      processedContent,
+      processedContent
     );
     const frontMatterData = this.generateProjectFrontMatterObject(data);
 
@@ -66,7 +67,7 @@ export class ProjectFileManager extends FileManager {
    * @returns Template content or default content if template not found
    */
   private async getProjectTemplateContent(
-    data: ProjectCreationData,
+    data: ProjectCreationData
   ): Promise<string> {
     // Try to read template content
     const templateContent = await this.readTemplate();
@@ -124,6 +125,45 @@ export class ProjectFileManager extends FileManager {
   }
 
   /**
+   * Load a Project entity from an Obsidian TFile
+   * @param file - The TFile to load
+   * @returns Project entity or null if invalid
+   */
+  async loadEntity(file: TFile): Promise<Project | null> {
+    try {
+      // Use Obsidian's metadata cache to get front-matter
+      const cache = this.app.metadataCache.getFileCache(file);
+      const frontMatter = cache?.frontmatter || {};
+
+      // Check if this is a valid project file
+      if (frontMatter.Type !== "Project") {
+        return null;
+      }
+
+      // Create Project entity from front-matter
+      return {
+        id: this.generateId(),
+        file,
+        filePath: file.path,
+        name: frontMatter.Name || file.basename,
+        type: frontMatter.Type,
+        areas: Array.isArray(frontMatter.Areas) ? frontMatter.Areas : [],
+        tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
+      };
+    } catch (error) {
+      console.warn(`Failed to load project from ${file.path}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Generate a unique ID for entities
+   */
+  private generateId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+  }
+
+  /**
    * Implementation of abstract method from FileManager
    */
   async createEntityFile(data: FileCreationData): Promise<string> {
@@ -144,7 +184,7 @@ export class ProjectFileManager extends FileManager {
    * @returns Object with hasChanges and propertiesChanged count
    */
   async updateFileProperties(
-    filePath: string,
+    filePath: string
   ): Promise<{ hasChanges: boolean; propertiesChanged: number }> {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (!file) {
@@ -164,7 +204,7 @@ export class ProjectFileManager extends FileManager {
     if (existingFrontMatter.Type && existingFrontMatter.Type !== "Project") {
       // Skip files that are not projects
       console.log(
-        `Project FileManager: Skipping file with incorrect Type property: ${filePath} (expected: Project, found: ${existingFrontMatter.Type})`,
+        `Project FileManager: Skipping file with incorrect Type property: ${filePath} (expected: Project, found: ${existingFrontMatter.Type})`
       );
       return { hasChanges: false, propertiesChanged: 0 };
     }
@@ -241,7 +281,7 @@ export class ProjectFileManager extends FileManager {
               frontmatter[key] = value;
             }
           }
-        },
+        }
       );
     }
 
@@ -254,13 +294,13 @@ export class ProjectFileManager extends FileManager {
    * @returns Front-matter object
    */
   private generateProjectFrontMatterObject(
-    data: ProjectCreationData,
+    data: ProjectCreationData
   ): Record<string, any> {
     const areas = Array.isArray(data.areas)
       ? data.areas
       : data.areas
-        ? data.areas.split(",").map((s) => s.trim())
-        : [];
+      ? data.areas.split(",").map((s) => s.trim())
+      : [];
 
     return {
       Name: data.title,

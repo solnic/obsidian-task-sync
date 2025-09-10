@@ -8,6 +8,7 @@ import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../main";
 import { FileManager, FileCreationData } from "./FileManager";
 import { generateAreaFrontMatter } from "./base-definitions/BaseConfigurations";
+import { Area } from "../types/entities";
 
 /**
  * Interface for area creation data
@@ -34,7 +35,7 @@ export class AreaFileManager extends FileManager {
    */
   async createAreaFile(
     data: AreaCreationData,
-    content?: string,
+    content?: string
   ): Promise<string> {
     const areaFolder = this.settings.areasFolder;
 
@@ -50,7 +51,7 @@ export class AreaFileManager extends FileManager {
     const filePath = await this.createFile(
       areaFolder,
       data.title,
-      processedContent,
+      processedContent
     );
     const frontMatterData = this.generateAreaFrontMatterObject(data);
 
@@ -65,7 +66,7 @@ export class AreaFileManager extends FileManager {
    * @returns Template content or default content if template not found
    */
   private async getAreaTemplateContent(
-    data: AreaCreationData,
+    data: AreaCreationData
   ): Promise<string> {
     // Try to read template content
     const templateContent = await this.readTemplate();
@@ -123,6 +124,44 @@ export class AreaFileManager extends FileManager {
   }
 
   /**
+   * Load an Area entity from an Obsidian TFile
+   * @param file - The TFile to load
+   * @returns Area entity or null if invalid
+   */
+  async loadEntity(file: TFile): Promise<Area | null> {
+    try {
+      // Use Obsidian's metadata cache to get front-matter
+      const cache = this.app.metadataCache.getFileCache(file);
+      const frontMatter = cache?.frontmatter || {};
+
+      // Check if this is a valid area file
+      if (frontMatter.Type !== "Area") {
+        return null;
+      }
+
+      // Create Area entity from front-matter
+      return {
+        id: this.generateId(),
+        file,
+        filePath: file.path,
+        name: frontMatter.Name || file.basename,
+        type: frontMatter.Type,
+        tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
+      };
+    } catch (error) {
+      console.warn(`Failed to load area from ${file.path}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Generate a unique ID for entities
+   */
+  private generateId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+  }
+
+  /**
    * Implementation of abstract method from FileManager
    */
   async createEntityFile(data: FileCreationData): Promise<string> {
@@ -143,7 +182,7 @@ export class AreaFileManager extends FileManager {
    * @returns Object with hasChanges and propertiesChanged count
    */
   async updateFileProperties(
-    filePath: string,
+    filePath: string
   ): Promise<{ hasChanges: boolean; propertiesChanged: number }> {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (!file) {
@@ -163,7 +202,7 @@ export class AreaFileManager extends FileManager {
     if (existingFrontMatter.Type && existingFrontMatter.Type !== "Area") {
       // Skip files that are not areas
       console.log(
-        `Area FileManager: Skipping file with incorrect Type property: ${filePath} (expected: Area, found: ${existingFrontMatter.Type})`,
+        `Area FileManager: Skipping file with incorrect Type property: ${filePath} (expected: Area, found: ${existingFrontMatter.Type})`
       );
       return { hasChanges: false, propertiesChanged: 0 };
     }
@@ -240,7 +279,7 @@ export class AreaFileManager extends FileManager {
               frontmatter[key] = value;
             }
           }
-        },
+        }
       );
     }
 
@@ -253,7 +292,7 @@ export class AreaFileManager extends FileManager {
    * @returns Front-matter object
    */
   private generateAreaFrontMatterObject(
-    data: AreaCreationData,
+    data: AreaCreationData
   ): Record<string, any> {
     return {
       Name: data.title,

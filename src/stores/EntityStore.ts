@@ -1,0 +1,316 @@
+/**
+ * Abstract Entity Store - Base class for all entity stores
+ * Provides common functionality for entity management including persistence, CRUD operations, and reactive updates
+ */
+
+import { writable, get, type Writable, type Readable } from "svelte/store";
+import { App, TFile, Plugin } from "obsidian";
+import { BaseEntity } from "../types/entities";
+
+export interface EntityStoreState<T> {
+  entities: T[];
+  loading: boolean;
+  error: string | null;
+  lastUpdated: Date | null;
+}
+
+export interface EntityPersistenceData<T> {
+  entities: T[];
+  lastSync: Date;
+}
+
+export abstract class EntityStore<T extends BaseEntity> {
+  protected app: App | null = null;
+  protected plugin: Plugin | null = null;
+  protected folder = "";
+  protected storageKey = "";
+  protected fileManager?: any; // File manager for loading entities
+
+  // Core store
+  protected _store: Writable<EntityStoreState<T>>;
+
+  // Public store interface
+  public subscribe: Readable<EntityStoreState<T>>["subscribe"];
+
+  constructor(storageKey: string) {
+    this.storageKey = storageKey;
+    this._store = writable<EntityStoreState<T>>({
+      entities: [],
+      loading: false,
+      error: null,
+      lastUpdated: null,
+    });
+    this.subscribe = this._store.subscribe;
+  }
+
+  /**
+   * Initialize the store with Obsidian app instance and plugin
+   */
+  initialize(app: App, plugin: Plugin, folder: string, fileManager?: any) {
+    this.app = app;
+    this.plugin = plugin;
+    this.fileManager = fileManager;
+    this.folder = folder;
+
+    // Load persisted data first
+    this.loadPersistedData();
+
+    // Set up file system watchers for reactive updates
+    this.setupFileWatchers();
+
+    // Initial load from file system
+    this.refreshEntities();
+  }
+
+  /**
+   * Refresh all entities from the file system
+   */
+  async refreshEntities() {
+    if (!this.app) return;
+
+    this._store.update((state) => ({ ...state, loading: true, error: null }));
+
+    try {
+      const entities = await this.loadAllEntities();
+      this._store.update((state) => ({
+        ...state,
+        entities,
+        loading: false,
+        lastUpdated: new Date(),
+      }));
+
+      // Persist the updated entities
+      await this.persistData();
+    } catch (error) {
+      this._store.update((state) => ({
+        ...state,
+        loading: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : `Failed to load ${this.storageKey}s`,
+      }));
+    }
+  }
+
+  /**
+   * Add or update an entity in the store
+   */
+  async upsertEntity(entity: T): Promise<void> {
+    this._store.update((state) => {
+      const existingIndex = state.entities.findIndex(
+        (e) => e.filePath === entity.filePath
+      );
+
+      let updatedEntities: T[];
+      if (existingIndex !== -1) {
+        updatedEntities = [...state.entities];
+        updatedEntities[existingIndex] = entity;
+      } else {
+        updatedEntities = [...state.entities, entity];
+      }
+
+      return {
+        ...state,
+        entities: updatedEntities,
+        lastUpdated: new Date(),
+      };
+    });
+
+    await this.persistData();
+  }
+
+  /**
+   * Remove an entity from the store
+   */
+  async removeEntity(filePath: string): Promise<void> {
+    this._store.update((state) => ({
+      ...state,
+      entities: state.entities.filter((e) => e.filePath !== filePath),
+      lastUpdated: new Date(),
+    }));
+
+    await this.persistData();
+  }
+
+  /**
+   * Get all entities
+   */
+  getEntities(): T[] {
+    const state = get(this._store);
+    return [...state.entities];
+  }
+
+  /**
+   * Save store data to plugin storage
+   */
+  async saveData(): Promise<void> {
+    await this.persistData();
+  }
+
+  /**
+   * Find an entity by file path
+   */
+  findEntityByPath(filePath: string): T | null {
+    const state = get(this._store);
+    return state.entities.find((e) => e.filePath === filePath) || null;
+  }
+
+  /**
+   * Load all entities from the file system
+   */
+  private async loadAllEntities(): Promise<T[]> {
+    if (!this.app) return [];
+
+    const entityFiles = this.app.vault
+      .getMarkdownFiles()
+      .filter((file) => file.path.startsWith(this.folder + "/"));
+
+    const entities: T[] = [];
+
+    for (const file of entityFiles) {
+      try {
+        const entityData = await this.parseFileToEntity(file);
+        if (entityData) {
+          entities.push(entityData);
+        }
+      } catch (error) {
+        console.warn(
+          `Failed to parse ${this.storageKey} file ${file.path}:`,
+          error
+        );
+      }
+    }
+
+    return entities;
+  }
+
+  /**
+   * Parse a file and extract entity data using file manager
+   */
+  private async parseFileToEntity(file: TFile): Promise<T | null> {
+    if (!this.fileManager) {
+      console.warn("No file manager available for parsing entity");
+      return null;
+    }
+
+    try {
+      // Use the file manager's loadEntity method
+      return await this.fileManager.loadEntity(file);
+    } catch (error) {
+      console.warn(`Failed to parse entity file ${file.path}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Set up file system watchers for reactive updates
+   */
+  private setupFileWatchers() {
+    if (!this.app) return;
+
+    // Watch for file changes in the entity folder
+    this.app.vault.on("create", (file) => {
+      if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
+        this.refreshEntities();
+      }
+    });
+
+    this.app.vault.on("delete", (file) => {
+      if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
+        this.removeEntity(file.path);
+      }
+    });
+
+    this.app.vault.on("modify", (file) => {
+      if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
+        this.refreshEntities();
+      }
+    });
+
+    this.app.vault.on("rename", (file, oldPath) => {
+      if (
+        (file instanceof TFile && file.path.startsWith(this.folder + "/")) ||
+        oldPath.startsWith(this.folder + "/")
+      ) {
+        this.refreshEntities();
+      }
+    });
+  }
+
+  /**
+   * Load persisted data from plugin storage
+   */
+  private async loadPersistedData() {
+    if (!this.plugin) return;
+
+    try {
+      const data = await this.plugin.loadData();
+      if (data && data[this.storageKey]) {
+        const persistedData: EntityPersistenceData<T> = data[this.storageKey];
+
+        // Note: We don't restore the entities directly since they contain TFile objects
+        // that can't be serialized. Instead, we'll refresh from the file system.
+        // The persistence is mainly for tracking last sync time and other metadata.
+
+        console.log(`Loaded persisted data for ${this.storageKey}s:`, {
+          lastSync: persistedData.lastSync,
+          entityCount: persistedData.entities?.length || 0,
+        });
+      }
+    } catch (error) {
+      console.error(`Failed to load persisted ${this.storageKey} data:`, error);
+    }
+  }
+
+  /**
+   * Persist current store data to plugin storage
+   */
+  async persistData(): Promise<void> {
+    if (!this.plugin) return;
+
+    try {
+      const state = get(this._store);
+      const existingData = (await this.plugin.loadData()) || {};
+
+      // Create serializable version of entities (without TFile objects)
+      const serializableEntities = state.entities.map((entity) => {
+        const { file, ...rest } = entity;
+        return rest;
+      });
+
+      const persistenceData: EntityPersistenceData<any> = {
+        entities: serializableEntities,
+        lastSync: new Date(),
+      };
+
+      const updatedData = {
+        ...existingData,
+        [this.storageKey]: persistenceData,
+      };
+
+      await this.plugin.saveData(updatedData);
+    } catch (error) {
+      console.error(`Failed to persist ${this.storageKey} data:`, error);
+    }
+  }
+
+  /**
+   * Clear the store (for cleanup)
+   */
+  clear() {
+    this._store.set({
+      entities: [],
+      loading: false,
+      error: null,
+      lastUpdated: null,
+    });
+  }
+
+  /**
+   * Save data on plugin unload
+   */
+  async onUnload(): Promise<void> {
+    await this.persistData();
+  }
+}

@@ -18,6 +18,7 @@ export interface PropertyDefinition {
   source?: string;
   link?: boolean;
   default?: any;
+  frontmatter: boolean; // Whether this property is part of front-matter
 }
 
 export interface ProjectAreaInfo {
@@ -36,14 +37,27 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
     name: "Title",
     type: "string",
     source: "formula.Title",
+    frontmatter: true,
   },
-  TYPE: { key: "type", name: "Type", type: "string", default: "Task" },
-  CATEGORY: { key: "category", name: "Category", type: "string" },
+  TYPE: {
+    key: "type",
+    name: "Type",
+    type: "string",
+    default: "Task",
+    frontmatter: true,
+  },
+  CATEGORY: {
+    key: "category",
+    name: "Category",
+    type: "string",
+    frontmatter: true,
+  },
   PRIORITY: {
     key: "priority",
     name: "Priority",
     type: "string",
     default: "Low",
+    frontmatter: true,
   },
   AREAS: {
     key: "areas",
@@ -51,35 +65,64 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
     type: "array",
     link: true,
     default: [],
+    frontmatter: true,
   },
-  PROJECT: { key: "project", name: "Project", type: "string", link: true },
+  PROJECT: {
+    key: "project",
+    name: "Project",
+    type: "string",
+    link: true,
+    frontmatter: true,
+  },
   PROJECTS: {
     key: "projects",
     name: "Projects",
     type: "array",
     link: true,
     default: [],
+    frontmatter: true,
   },
-  DONE: { key: "done", name: "Done", type: "checkbox", default: false },
-  STATUS: { key: "status", name: "Status", type: "string", default: "Backlog" },
+  DONE: {
+    key: "done",
+    name: "Done",
+    type: "checkbox",
+    default: false,
+    frontmatter: true,
+  },
+  STATUS: {
+    key: "status",
+    name: "Status",
+    type: "string",
+    default: "Backlog",
+    frontmatter: true,
+  },
   PARENT_TASK: {
     key: "parentTask",
     name: "Parent task",
     type: "string",
     link: true,
+    frontmatter: true,
   },
-  TAGS: { key: "tags", name: "tags", type: "array", default: [] },
+  TAGS: {
+    key: "tags",
+    name: "tags",
+    type: "array",
+    default: [],
+    frontmatter: true,
+  },
   CREATED_AT: {
     key: "createdAt",
     name: "Created At",
     type: "string",
     source: "file.ctime",
+    frontmatter: false, // This comes from file system, not front-matter
   },
   UPDATED_AT: {
     key: "updatedAt",
     name: "Updated At",
     type: "string",
     source: "file.mtime",
+    frontmatter: false, // This comes from file system, not front-matter
   },
 };
 
@@ -224,7 +267,7 @@ function resolvePropertySource(propertyKey: string): string {
  * Generate properties section for base YAML
  */
 function generatePropertiesSection(
-  propertyKeys: readonly string[],
+  propertyKeys: readonly string[]
 ): Record<string, any> {
   const properties: Record<string, any> = {};
 
@@ -264,7 +307,7 @@ function resolveViewOrder(propertyKeys: readonly string[]): string[] {
  * Resolve sort configuration from property keys to source values
  */
 function resolveSortConfig(
-  sortConfig: readonly { property: string; direction: "ASC" | "DESC" }[],
+  sortConfig: readonly { property: string; direction: "ASC" | "DESC" }[]
 ): Array<{ property: string; direction: "ASC" | "DESC" }> {
   return sortConfig.map((sort) => ({
     property: resolvePropertySource(sort.property),
@@ -281,7 +324,7 @@ function resolveSortConfig(
  */
 export function generateTasksBase(
   settings: TaskSyncSettings,
-  projectsAndAreas: ProjectAreaInfo[],
+  projectsAndAreas: ProjectAreaInfo[]
 ): string {
   const config = {
     formulas: {
@@ -296,7 +339,10 @@ export function generateTasksBase(
         filters: {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
-            `Areas.contains(link("${projectsAndAreas.find((p) => p.type === "area")?.name || "Task Sync"}"))`,
+            `Areas.contains(link("${
+              projectsAndAreas.find((p) => p.type === "area")?.name ||
+              "Task Sync"
+            }"))`,
             `note["Parent task"].isEmpty()`,
           ],
         },
@@ -316,7 +362,10 @@ export function generateTasksBase(
         filters: {
           and: [
             `file.folder == "${settings.tasksFolder}"`,
-            `Areas.contains(link("${projectsAndAreas.find((p) => p.type === "area")?.name || "Task Sync"}"))`,
+            `Areas.contains(link("${
+              projectsAndAreas.find((p) => p.type === "area")?.name ||
+              "Task Sync"
+            }"))`,
             `Category == "${taskType.name}"`,
             `note["Parent task"].isEmpty()`,
           ],
@@ -332,14 +381,17 @@ export function generateTasksBase(
           filters: {
             and: [
               `file.folder == "${settings.tasksFolder}"`,
-              `Areas.contains(link("${projectsAndAreas.find((p) => p.type === "area")?.name || "Task Sync"}"))`,
+              `Areas.contains(link("${
+                projectsAndAreas.find((p) => p.type === "area")?.name ||
+                "Task Sync"
+              }"))`,
               `Category == "${taskType.name}"`,
               `Priority == "${priority.name}"`,
             ],
           },
           order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
           sort: resolveSortConfig(SORT_CONFIGS.TASK),
-        })),
+        }))
       ),
     ],
   };
@@ -357,7 +409,7 @@ export function generateTasksBase(
  */
 export function generateAreaBase(
   settings: TaskSyncSettings,
-  area: ProjectAreaInfo,
+  area: ProjectAreaInfo
 ): string {
   const config = {
     formulas: {
@@ -415,7 +467,7 @@ export function generateAreaBase(
           },
           order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
           sort: resolveSortConfig(SORT_CONFIGS.AREA),
-        })),
+        }))
       ),
     ],
   };
@@ -433,7 +485,7 @@ export function generateAreaBase(
  */
 export function generateProjectBase(
   settings: TaskSyncSettings,
-  project: ProjectAreaInfo,
+  project: ProjectAreaInfo
 ): string {
   const config = {
     formulas: {
@@ -491,7 +543,7 @@ export function generateProjectBase(
           },
           order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
           sort: resolveSortConfig(SORT_CONFIGS.PROJECT),
-        })),
+        }))
       ),
     ],
   };
@@ -509,7 +561,7 @@ export function generateProjectBase(
  */
 export function generateParentTaskBase(
   settings: TaskSyncSettings,
-  parentTaskName: string,
+  parentTaskName: string
 ): string {
   const config = {
     formulas: {
@@ -573,9 +625,10 @@ export function generateTaskFrontMatter(): PropertyDefinition[] {
  */
 export function generateProjectFrontMatter(): PropertyDefinition[] {
   return [
-    { key: "name", name: "Name", type: "string" }, // Use Name instead of Title for projects
-    { key: "type", name: "Type", type: "string" },
+    { key: "name", name: "Name", type: "string", frontmatter: true }, // Use Name instead of Title for projects
+    { key: "type", name: "Type", type: "string", frontmatter: true },
     PROPERTY_REGISTRY.AREAS,
+    PROPERTY_REGISTRY.TAGS,
   ];
 }
 
@@ -584,8 +637,8 @@ export function generateProjectFrontMatter(): PropertyDefinition[] {
  */
 export function generateAreaFrontMatter(): PropertyDefinition[] {
   return [
-    { key: "name", name: "Name", type: "string" }, // Use Name instead of Title for areas
-    { key: "type", name: "Type", type: "string" },
-    PROPERTY_REGISTRY.PROJECT,
+    { key: "name", name: "Name", type: "string", frontmatter: true }, // Use Name instead of Title for areas
+    { key: "type", name: "Type", type: "string", frontmatter: true },
+    PROPERTY_REGISTRY.TAGS,
   ];
 }
