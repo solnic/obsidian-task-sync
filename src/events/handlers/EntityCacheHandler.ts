@@ -9,6 +9,8 @@ import {
   EventType,
   PluginEvent,
   TaskEventData,
+  StatusChangedEventData,
+  DoneChangedEventData,
 } from "../EventTypes";
 import { TaskSyncSettings } from "../../main";
 import { PluginStorageService } from "../../services/PluginStorageService";
@@ -20,7 +22,7 @@ export class EntityCacheHandler implements EventHandler {
   constructor(
     private app: App,
     private settings: TaskSyncSettings,
-    private storageService: PluginStorageService,
+    private storageService: PluginStorageService
   ) {}
 
   /**
@@ -38,31 +40,38 @@ export class EntityCacheHandler implements EventHandler {
       EventType.TASK_CREATED,
       EventType.PROJECT_CREATED,
       EventType.AREA_CREATED,
+      EventType.STATUS_CHANGED,
+      EventType.DONE_CHANGED,
     ];
   }
 
   /**
-   * Handle entity creation events and cache them
+   * Handle entity creation and update events and cache them
    */
   async handle(event: PluginEvent): Promise<void> {
-    const data = event.data as TaskEventData;
-
     try {
       switch (event.type) {
         case EventType.TASK_CREATED:
-          await this.cacheTask(data);
+          await this.cacheTask(event.data as TaskEventData);
           break;
         case EventType.PROJECT_CREATED:
-          await this.cacheProject(data);
+          await this.cacheProject(event.data as TaskEventData);
           break;
         case EventType.AREA_CREATED:
-          await this.cacheArea(data);
+          await this.cacheArea(event.data as TaskEventData);
+          break;
+        case EventType.STATUS_CHANGED:
+        case EventType.DONE_CHANGED:
+          await this.updateCachedEntity(
+            event.data as StatusChangedEventData | DoneChangedEventData
+          );
           break;
       }
     } catch (error) {
+      const filePath = (event.data as any).filePath || "unknown";
       console.error(
-        `EntityCacheHandler: Error caching entity for ${data.filePath}:`,
-        error,
+        `EntityCacheHandler: Error caching entity for ${filePath}:`,
+        error
       );
     }
   }
@@ -109,7 +118,7 @@ export class EntityCacheHandler implements EventHandler {
     const file = this.app.vault.getAbstractFileByPath(data.filePath);
     if (!(file instanceof TFile)) {
       console.warn(
-        `EntityCacheHandler: Project file not found: ${data.filePath}`,
+        `EntityCacheHandler: Project file not found: ${data.filePath}`
       );
       return;
     }
@@ -157,6 +166,130 @@ export class EntityCacheHandler implements EventHandler {
     };
 
     await this.storageService.cacheArea(area as any);
+  }
+
+  /**
+   * Update cached entity when file properties change
+   */
+  private async updateCachedEntity(
+    data: StatusChangedEventData | DoneChangedEventData
+  ): Promise<void> {
+    const { filePath, frontmatter } = data;
+
+    // Determine entity type from file path
+    const entityType = this.getEntityType(filePath);
+
+    if (entityType === "task") {
+      await this.updateCachedTask(filePath, frontmatter);
+    } else if (entityType === "project") {
+      await this.updateCachedProject(filePath, frontmatter);
+    } else if (entityType === "area") {
+      await this.updateCachedArea(filePath, frontmatter);
+    }
+  }
+
+  /**
+   * Update a cached task with new front-matter data
+   */
+  private async updateCachedTask(
+    filePath: string,
+    frontmatter: Record<string, any>
+  ): Promise<void> {
+    const cachedTasks = this.storageService.getCachedTasks();
+    const taskIndex = cachedTasks.findIndex(
+      (t: any) => t.filePath === filePath
+    );
+
+    if (taskIndex !== -1) {
+      // Update existing cached task
+      const existingTask = cachedTasks[taskIndex] as any;
+      const updatedTask = {
+        ...existingTask,
+        name: frontmatter.Title || frontmatter.Name || existingTask.name,
+        type: frontmatter.Type || existingTask.type,
+        priority: frontmatter.Priority,
+        areas: this.normalizeArrayProperty(frontmatter.Areas),
+        project: frontmatter.Project,
+        done: frontmatter.Done,
+        status: frontmatter.Status,
+        parentTask: frontmatter["Parent task"],
+        subTasks: this.normalizeArrayProperty(frontmatter["Sub-tasks"]),
+        tags: this.normalizeArrayProperty(frontmatter.tags),
+        updatedAt: new Date(),
+      };
+
+      await this.storageService.cacheTask(updatedTask as any);
+      console.log(`EntityCacheHandler: Updated cached task for ${filePath}`);
+    }
+  }
+
+  /**
+   * Update a cached project with new front-matter data
+   */
+  private async updateCachedProject(
+    filePath: string,
+    frontmatter: Record<string, any>
+  ): Promise<void> {
+    const cachedProjects = this.storageService.getCachedProjects();
+    const projectIndex = cachedProjects.findIndex(
+      (p: any) => p.filePath === filePath
+    );
+
+    if (projectIndex !== -1) {
+      // Update existing cached project
+      const existingProject = cachedProjects[projectIndex] as any;
+      const updatedProject = {
+        ...existingProject,
+        name: frontmatter.Name || existingProject.name,
+        type: frontmatter.Type || existingProject.type,
+        areas: this.normalizeArrayProperty(frontmatter.Areas),
+        updatedAt: new Date(),
+      };
+
+      await this.storageService.cacheProject(updatedProject as any);
+      console.log(`EntityCacheHandler: Updated cached project for ${filePath}`);
+    }
+  }
+
+  /**
+   * Update a cached area with new front-matter data
+   */
+  private async updateCachedArea(
+    filePath: string,
+    frontmatter: Record<string, any>
+  ): Promise<void> {
+    const cachedAreas = this.storageService.getCachedAreas();
+    const areaIndex = cachedAreas.findIndex(
+      (a: any) => a.filePath === filePath
+    );
+
+    if (areaIndex !== -1) {
+      // Update existing cached area
+      const existingArea = cachedAreas[areaIndex] as any;
+      const updatedArea = {
+        ...existingArea,
+        name: frontmatter.Name || existingArea.name,
+        type: frontmatter.Type || existingArea.type,
+        updatedAt: new Date(),
+      };
+
+      await this.storageService.cacheArea(updatedArea as any);
+      console.log(`EntityCacheHandler: Updated cached area for ${filePath}`);
+    }
+  }
+
+  /**
+   * Determine entity type from file path
+   */
+  private getEntityType(filePath: string): "task" | "project" | "area" {
+    if (filePath.startsWith(this.settings.tasksFolder + "/")) {
+      return "task";
+    } else if (filePath.startsWith(this.settings.projectsFolder + "/")) {
+      return "project";
+    } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
+      return "area";
+    }
+    return "task"; // Default fallback
   }
 
   /**
