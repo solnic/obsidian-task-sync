@@ -31,7 +31,7 @@ export interface TodoItemWithParent extends TodoItem {
 
 // File context interface for context-aware promotion
 export interface FileContext {
-  type: "project" | "area" | "task" | "none";
+  type: "project" | "area" | "task" | "daily" | "none";
   name?: string;
   path?: string;
 }

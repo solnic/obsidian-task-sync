@@ -1594,59 +1594,7 @@ Provides consistent styling for all UI components
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 0;
-}
-
-.tasks-view-layout {
-  display: flex;
-  height: 100%;
-}
-
-/* Service Switcher */
-.service-switcher {
-  display: flex;
-  flex-direction: column;
-  width: 48px;
-  background: var(--background-secondary);
-  border-right: 1px solid var(--background-modifier-border);
-  padding: 8px 4px;
-  gap: 4px;
-}
-
-.service-button {
-  width: 40px;
-  height: 40px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.service-button:hover {
-  background: var(--background-modifier-hover);
-}
-
-.service-button.active {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-}
-
-.service-button.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.service-icon {
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 1rem;
 }
 
 .service-icon[data-icon="github"]::before {

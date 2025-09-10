@@ -16,7 +16,7 @@ export interface LabelTypeMapper {
    */
   mapLabelsToType(
     labels: string[],
-    availableTypes: string[],
+    availableTypes: string[]
   ): string | undefined;
 
   /**
@@ -62,7 +62,7 @@ import type { TaskImportConfig } from "./integrations";
 
 // Define FileContext here since we can't import it from main
 export interface FileContext {
-  type: "project" | "area" | "none";
+  type: "project" | "area" | "task" | "daily" | "none";
   name?: string;
   path?: string;
 }
@@ -80,7 +80,7 @@ export interface ContextAwareImportService {
    */
   getContextAwareConfig(
     context: FileContext,
-    baseConfig?: Partial<TaskImportConfig>,
+    baseConfig?: Partial<TaskImportConfig>
   ): TaskImportConfig;
 
   /**

@@ -20,9 +20,15 @@
       taskImportManager: any;
       getDefaultImportConfig: () => TaskImportConfig;
     };
+    dayPlanningMode?: boolean;
   }
 
-  let { githubService, settings, dependencies }: Props = $props();
+  let {
+    githubService,
+    settings,
+    dependencies,
+    dayPlanningMode = false,
+  }: Props = $props();
 
   const { plugin } = getPluginContext();
 
@@ -583,11 +589,15 @@
                     {:else}
                       <button
                         class="import-button"
-                        title="Import this issue as a task"
+                        title={dayPlanningMode
+                          ? "Add to today"
+                          : "Import this issue as a task"}
                         onclick={() => importIssue(issue)}
-                        data-testid="issue-import-button"
+                        data-testid={dayPlanningMode
+                          ? "add-to-today-button"
+                          : "issue-import-button"}
                       >
-                        Import
+                        {dayPlanningMode ? "Add to today" : "Import"}
                       </button>
                     {/if}
                   </div>
@@ -664,11 +674,15 @@
                     {:else}
                       <button
                         class="import-button"
-                        title="Import this pull request as a task"
+                        title={dayPlanningMode
+                          ? "Add to today"
+                          : "Import this pull request as a task"}
                         onclick={() => importPullRequest(pr)}
-                        data-testid="pr-import-button"
+                        data-testid={dayPlanningMode
+                          ? "add-to-today-button"
+                          : "pr-import-button"}
                       >
-                        Import
+                        {dayPlanningMode ? "Add to today" : "Import"}
                       </button>
                     {/if}
                   </div>

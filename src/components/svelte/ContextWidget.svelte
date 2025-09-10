@@ -24,6 +24,10 @@
         return `Project: ${context.name}`;
       case "area":
         return `Area: ${context.name}`;
+      case "task":
+        return `Task: ${context.name}`;
+      case "daily":
+        return `Daily Note: ${context.name}`;
       case "none":
         return "No context";
       default:

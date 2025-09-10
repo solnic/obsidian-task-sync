@@ -51,7 +51,7 @@ export { TASK_TYPE_COLORS };
 
 // File context interface for context-aware modal
 export interface FileContext {
-  type: "project" | "area" | "task" | "none";
+  type: "project" | "area" | "task" | "daily" | "none";
   name?: string;
   path?: string;
 }
@@ -665,6 +665,16 @@ export default class TaskSyncPlugin extends Plugin {
 
     const filePath = activeFile.path;
     const fileName = activeFile.name;
+
+    // Check if file is a daily note (format: YYYY-MM-DD anywhere in path or name)
+    const dailyNotePattern = /\b\d{4}-\d{2}-\d{2}\b/;
+    if (dailyNotePattern.test(filePath) || dailyNotePattern.test(fileName)) {
+      return {
+        type: "daily",
+        name: fileName.replace(".md", ""),
+        path: filePath,
+      };
+    }
 
     // Check if file is in projects folder
     if (filePath.startsWith(this.settings.projectsFolder + "/")) {
