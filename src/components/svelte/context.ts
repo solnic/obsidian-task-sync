@@ -39,7 +39,7 @@ export function initializeContextStore(plugin: TaskSyncPlugin): void {
 
   // Register workspace events to update context
   plugin.registerEvent(
-    plugin.app.workspace.on("active-leaf-change", updateContext)
+    plugin.app.workspace.on("active-leaf-change", updateContext),
   );
 
   plugin.registerEvent(plugin.app.workspace.on("file-open", updateContext));

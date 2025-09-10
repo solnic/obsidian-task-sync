@@ -30,16 +30,19 @@ const INVALID_CHARACTERS = /[*"\\/<>:|?#]/g;
  * @param options - Configuration options for sanitization behavior
  * @returns Sanitized file name safe for use in Obsidian
  */
-export function sanitizeFileName(fileName: string, options: SanitizationOptions = {}): string {
+export function sanitizeFileName(
+  fileName: string,
+  options: SanitizationOptions = {},
+): string {
   const {
-    replacement = '-',
+    replacement = "-",
     collapseReplacements = true,
     trimWhitespace = true,
-    maxLength = 255
+    maxLength = 255,
   } = options;
 
-  if (!fileName || typeof fileName !== 'string') {
-    throw new Error('File name must be a non-empty string');
+  if (!fileName || typeof fileName !== "string") {
+    throw new Error("File name must be a non-empty string");
   }
 
   let sanitized = fileName;
@@ -49,8 +52,11 @@ export function sanitizeFileName(fileName: string, options: SanitizationOptions 
 
   // Collapse multiple consecutive replacement characters if enabled
   if (collapseReplacements && replacement) {
-    const escapedReplacement = replacement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const collapseRegex = new RegExp(`${escapedReplacement}{2,}`, 'g');
+    const escapedReplacement = replacement.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&",
+    );
+    const collapseRegex = new RegExp(`${escapedReplacement}{2,}`, "g");
     sanitized = sanitized.replace(collapseRegex, replacement);
   }
 
@@ -61,14 +67,20 @@ export function sanitizeFileName(fileName: string, options: SanitizationOptions 
 
   // Remove leading/trailing replacement characters
   if (replacement) {
-    const escapedReplacement = replacement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const trimRegex = new RegExp(`^${escapedReplacement}+|${escapedReplacement}+$`, 'g');
-    sanitized = sanitized.replace(trimRegex, '');
+    const escapedReplacement = replacement.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      "\\$&",
+    );
+    const trimRegex = new RegExp(
+      `^${escapedReplacement}+|${escapedReplacement}+$`,
+      "g",
+    );
+    sanitized = sanitized.replace(trimRegex, "");
   }
 
   // Ensure the name is not empty after sanitization
   if (!sanitized) {
-    sanitized = 'untitled';
+    sanitized = "untitled";
   }
 
   // Truncate to maximum length if specified
@@ -77,9 +89,12 @@ export function sanitizeFileName(fileName: string, options: SanitizationOptions 
 
     // Remove trailing replacement character if truncation created one
     if (replacement) {
-      const escapedReplacement = replacement.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const escapedReplacement = replacement.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        "\\$&",
+      );
       const trailingRegex = new RegExp(`${escapedReplacement}+$`);
-      sanitized = sanitized.replace(trailingRegex, '');
+      sanitized = sanitized.replace(trailingRegex, "");
     }
   }
 
@@ -94,9 +109,15 @@ export function sanitizeFileName(fileName: string, options: SanitizationOptions 
  * @param options - Sanitization options
  * @returns Complete sanitized file name with extension
  */
-export function createSafeFileName(baseName: string, extension: string = 'md', options: SanitizationOptions = {}): string {
+export function createSafeFileName(
+  baseName: string,
+  extension: string = "md",
+  options: SanitizationOptions = {},
+): string {
   const sanitizedBase = sanitizeFileName(baseName, options);
-  const cleanExtension = extension.startsWith('.') ? extension : `.${extension}`;
+  const cleanExtension = extension.startsWith(".")
+    ? extension
+    : `.${extension}`;
 
   return `${sanitizedBase}${cleanExtension}`;
 }
@@ -107,8 +128,11 @@ export function createSafeFileName(baseName: string, extension: string = 'md', o
  * @param fileName - File name to validate
  * @returns Object with validation result and list of invalid characters found
  */
-export function validateFileName(fileName: string): { isValid: boolean; invalidCharacters: string[] } {
-  if (!fileName || typeof fileName !== 'string') {
+export function validateFileName(fileName: string): {
+  isValid: boolean;
+  invalidCharacters: string[];
+} {
+  if (!fileName || typeof fileName !== "string") {
     return { isValid: false, invalidCharacters: [] };
   }
 
@@ -117,7 +141,7 @@ export function validateFileName(fileName: string): { isValid: boolean; invalidC
 
   return {
     isValid: invalidCharacters.length === 0,
-    invalidCharacters
+    invalidCharacters,
   };
 }
 
@@ -128,7 +152,10 @@ export function validateFileName(fileName: string): { isValid: boolean; invalidC
  * @param options - Sanitization options
  * @returns Object with original name, sanitized preview, and whether changes would be made
  */
-export function previewSanitization(fileName: string, options: SanitizationOptions = {}): {
+export function previewSanitization(
+  fileName: string,
+  options: SanitizationOptions = {},
+): {
   original: string;
   sanitized: string;
   hasChanges: boolean;
@@ -141,6 +168,6 @@ export function previewSanitization(fileName: string, options: SanitizationOptio
     original: fileName,
     sanitized,
     hasChanges: fileName !== sanitized,
-    invalidCharacters: validation.invalidCharacters
+    invalidCharacters: validation.invalidCharacters,
   };
 }

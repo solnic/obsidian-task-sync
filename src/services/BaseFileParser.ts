@@ -4,12 +4,11 @@
  * Uses gray-matter for frontmatter parsing and js-yaml for YAML parsing
  */
 
-import { BaseFile } from '../types';
-import matter from 'gray-matter';
-import * as yaml from 'js-yaml';
+import { BaseFile } from "../types";
+import matter from "gray-matter";
+import * as yaml from "js-yaml";
 
 export class BaseFileParser {
-
   /**
    * Parse a .base file content into a BaseFile object
    */
@@ -26,7 +25,7 @@ export class BaseFileParser {
       updatedAt: new Date(),
       entityIds: [],
       autoGenerate: false,
-      autoUpdate: false
+      autoUpdate: false,
     };
 
     // Parse frontmatter data
@@ -36,10 +35,10 @@ export class BaseFileParser {
     this.parseMarkdownContent(parsed.content, baseFile);
 
     // Set defaults
-    baseFile.viewType = baseFile.viewType || 'kanban';
-    baseFile.entityType = baseFile.entityType || 'task';
+    baseFile.viewType = baseFile.viewType || "kanban";
+    baseFile.entityType = baseFile.entityType || "task";
     baseFile.filters = baseFile.filters || [];
-    baseFile.sorting = baseFile.sorting || { field: 'name', direction: 'asc' };
+    baseFile.sorting = baseFile.sorting || { field: "name", direction: "asc" };
 
     return baseFile as BaseFile;
   }
@@ -51,39 +50,39 @@ export class BaseFileParser {
     const lines: string[] = [];
 
     // Add frontmatter
-    lines.push('---');
+    lines.push("---");
     lines.push(`title: ${baseFile.name}`);
     lines.push(`view: ${baseFile.viewType}`);
     lines.push(`type: ${baseFile.entityType}`);
     if (baseFile.autoGenerate) {
-      lines.push('auto-generate: true');
+      lines.push("auto-generate: true");
     }
     if (baseFile.autoUpdate) {
-      lines.push('auto-update: true');
+      lines.push("auto-update: true");
     }
-    lines.push('---');
-    lines.push('');
+    lines.push("---");
+    lines.push("");
 
     // Add description
     if (baseFile.description) {
       lines.push(baseFile.description);
-      lines.push('');
+      lines.push("");
     }
 
     // Build base configuration object
     const config: Record<string, any> = {
       view: baseFile.viewType,
-      type: baseFile.entityType
+      type: baseFile.entityType,
     };
 
     // Add filters if present
     if (baseFile.filters && baseFile.filters.length > 0) {
       config.filters = baseFile.filters
-        .filter(filter => filter.enabled)
-        .map(filter => ({
+        .filter((filter) => filter.enabled)
+        .map((filter) => ({
           field: filter.field,
           operator: filter.operator,
-          value: filter.value
+          value: filter.value,
         }));
     }
 
@@ -91,13 +90,13 @@ export class BaseFileParser {
     if (baseFile.sorting) {
       config.sort = {
         field: baseFile.sorting.field,
-        direction: baseFile.sorting.direction
+        direction: baseFile.sorting.direction,
       };
 
       if (baseFile.sorting.secondary) {
         config.sort.secondary = {
           field: baseFile.sorting.secondary.field,
-          direction: baseFile.sorting.secondary.direction
+          direction: baseFile.sorting.secondary.direction,
         };
       }
     }
@@ -106,7 +105,7 @@ export class BaseFileParser {
     if (baseFile.grouping) {
       config.group = {
         field: baseFile.grouping.field,
-        showEmpty: baseFile.grouping.showEmpty
+        showEmpty: baseFile.grouping.showEmpty,
       };
 
       if (baseFile.grouping.customOrder) {
@@ -115,20 +114,20 @@ export class BaseFileParser {
     }
 
     // Generate YAML for the base configuration
-    lines.push('```base');
+    lines.push("```base");
     const yamlContent = yaml.dump(config, {
       indent: 2,
       lineWidth: -1,
-      noRefs: true
+      noRefs: true,
     });
     lines.push(yamlContent.trim());
-    lines.push('```');
-    lines.push('');
+    lines.push("```");
+    lines.push("");
 
     // Add entity references
     if (entities && entities.length > 0) {
-      lines.push('## Items');
-      lines.push('');
+      lines.push("## Items");
+      lines.push("");
       for (const entity of entities) {
         if (entity.filePath) {
           lines.push(`- [[${entity.name}]]`);
@@ -136,7 +135,7 @@ export class BaseFileParser {
       }
     }
 
-    return lines.join('\n');
+    return lines.join("\n");
   }
 
   /**
@@ -146,15 +145,15 @@ export class BaseFileParser {
     const errors: string[] = [];
 
     // Check for required sections
-    if (!content.includes('```base')) {
-      errors.push('Missing base configuration block');
+    if (!content.includes("```base")) {
+      errors.push("Missing base configuration block");
     }
 
     // Check for valid view type
     const viewMatch = content.match(/view:\s*([^\s\n]+)/);
     if (viewMatch) {
       const viewType = viewMatch[1];
-      if (!['kanban', 'list', 'calendar', 'timeline'].includes(viewType)) {
+      if (!["kanban", "list", "calendar", "timeline"].includes(viewType)) {
         errors.push(`Invalid view type: ${viewType}`);
       }
     }
@@ -163,21 +162,24 @@ export class BaseFileParser {
     const typeMatch = content.match(/type:\s*([^\s\n]+)/);
     if (typeMatch) {
       const entityType = typeMatch[1];
-      if (!['task', 'project', 'area'].includes(entityType)) {
+      if (!["task", "project", "area"].includes(entityType)) {
         errors.push(`Invalid entity type: ${entityType}`);
       }
     }
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     };
   }
 
   /**
    * Parse frontmatter data object into BaseFile properties
    */
-  private parseFrontmatterData(data: Record<string, any>, baseFile: Partial<BaseFile>): void {
+  private parseFrontmatterData(
+    data: Record<string, any>,
+    baseFile: Partial<BaseFile>,
+  ): void {
     if (data.title) {
       baseFile.name = String(data.title);
     }
@@ -187,11 +189,11 @@ export class BaseFileParser {
     if (data.type) {
       baseFile.entityType = this.parseEntityTypeValue(data.type);
     }
-    if (data['auto-generate'] !== undefined) {
-      baseFile.autoGenerate = Boolean(data['auto-generate']);
+    if (data["auto-generate"] !== undefined) {
+      baseFile.autoGenerate = Boolean(data["auto-generate"]);
     }
-    if (data['auto-update'] !== undefined) {
-      baseFile.autoUpdate = Boolean(data['auto-update']);
+    if (data["auto-update"] !== undefined) {
+      baseFile.autoUpdate = Boolean(data["auto-update"]);
     }
     if (data.description) {
       baseFile.description = String(data.description);
@@ -201,7 +203,10 @@ export class BaseFileParser {
   /**
    * Parse markdown content for base configuration code blocks
    */
-  private parseMarkdownContent(content: string, baseFile: Partial<BaseFile>): void {
+  private parseMarkdownContent(
+    content: string,
+    baseFile: Partial<BaseFile>,
+  ): void {
     // Extract base configuration from ```base code blocks
     const baseCodeBlockRegex = /```base\s*\n([\s\S]*?)\n```/g;
     let match;
@@ -215,7 +220,10 @@ export class BaseFileParser {
   /**
    * Parse base configuration YAML content
    */
-  private parseBaseConfiguration(yamlContent: string, baseFile: Partial<BaseFile>): void {
+  private parseBaseConfiguration(
+    yamlContent: string,
+    baseFile: Partial<BaseFile>,
+  ): void {
     try {
       const config = yaml.load(yamlContent) as Record<string, any>;
 
@@ -228,24 +236,25 @@ export class BaseFileParser {
       }
 
       if (config.filters && Array.isArray(config.filters)) {
-        baseFile.filters = config.filters.map(filter => ({
-          field: String(filter.field || ''),
-          operator: filter.operator || 'equals',
+        baseFile.filters = config.filters.map((filter) => ({
+          field: String(filter.field || ""),
+          operator: filter.operator || "equals",
           value: filter.value,
-          enabled: filter.enabled !== false
+          enabled: filter.enabled !== false,
         }));
       }
 
       if (config.sort) {
         baseFile.sorting = {
-          field: String(config.sort.field || 'name'),
-          direction: (config.sort.direction === 'desc') ? 'desc' : 'asc'
+          field: String(config.sort.field || "name"),
+          direction: config.sort.direction === "desc" ? "desc" : "asc",
         };
 
         if (config.sort.secondary) {
           baseFile.sorting.secondary = {
             field: String(config.sort.secondary.field),
-            direction: (config.sort.secondary.direction === 'desc') ? 'desc' : 'asc'
+            direction:
+              config.sort.secondary.direction === "desc" ? "desc" : "asc",
           };
         }
       }
@@ -256,42 +265,45 @@ export class BaseFileParser {
           showEmpty: config.group.showEmpty !== false,
           customOrder: Array.isArray(config.group.customOrder)
             ? config.group.customOrder.map(String)
-            : undefined
+            : undefined,
         };
       }
     } catch (error) {
-      console.warn('Failed to parse base configuration YAML:', error);
+      console.warn("Failed to parse base configuration YAML:", error);
     }
   }
 
-  private parseViewTypeValue(value: any): 'kanban' | 'list' | 'calendar' | 'timeline' {
+  private parseViewTypeValue(
+    value: any,
+  ): "kanban" | "list" | "calendar" | "timeline" {
     const viewType = String(value).toLowerCase();
 
-    if (['kanban', 'list', 'calendar', 'timeline'].includes(viewType)) {
-      return viewType as 'kanban' | 'list' | 'calendar' | 'timeline';
+    if (["kanban", "list", "calendar", "timeline"].includes(viewType)) {
+      return viewType as "kanban" | "list" | "calendar" | "timeline";
     }
 
-    return 'kanban'; // default
+    return "kanban"; // default
   }
 
-  private parseEntityTypeValue(value: any): 'task' | 'project' | 'area' {
+  private parseEntityTypeValue(value: any): "task" | "project" | "area" {
     const entityType = String(value).toLowerCase();
 
-    if (['task', 'project', 'area'].includes(entityType)) {
-      return entityType as 'task' | 'project' | 'area';
+    if (["task", "project", "area"].includes(entityType)) {
+      return entityType as "task" | "project" | "area";
     }
 
-    return 'task'; // default
+    return "task"; // default
   }
 
-
-
   private extractNameFromPath(filePath: string): string {
-    const fileName = filePath.split('/').pop() || '';
-    return fileName.replace(/\.(base\.)?md$/, '');
+    const fileName = filePath.split("/").pop() || "";
+    return fileName.replace(/\.(base\.)?md$/, "");
   }
 
   private generateId(): string {
-    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    return (
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15)
+    );
   }
 }

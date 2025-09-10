@@ -2,21 +2,38 @@
  * Main settings tab component for the Task Sync plugin
  */
 
-import { App, PluginSettingTab, Setting } from 'obsidian';
-import TaskSyncPlugin from '../../../main';
-import { TaskSyncSettings, ValidationResult, TASK_TYPE_COLORS, TaskTypeColor, TASK_PRIORITY_COLORS, TaskPriorityColor, TASK_STATUS_COLORS, TaskStatusColor, FileSuggestOptions } from './types';
-import { DEFAULT_SETTINGS } from './defaults';
-import { validateFolderPath, validateFileName, validateBaseFileName, validateTemplateFileName, validateGitHubToken } from './validation';
-import { FolderSuggestComponent, FileSuggestComponent } from './suggest';
-import { createTypeBadge } from '../TypeBadge';
-import { createPriorityBadge } from '../PriorityBadge';
-import { createStatusBadge } from '../StatusBadge';
-import { SortablePropertyList } from './SortablePropertyList';
+import { App, PluginSettingTab, Setting } from "obsidian";
+import TaskSyncPlugin from "../../../main";
+import {
+  TaskSyncSettings,
+  ValidationResult,
+  TASK_TYPE_COLORS,
+  TaskTypeColor,
+  TASK_PRIORITY_COLORS,
+  TaskPriorityColor,
+  TASK_STATUS_COLORS,
+  TaskStatusColor,
+  FileSuggestOptions,
+} from "./types";
+import { DEFAULT_SETTINGS } from "./defaults";
+import {
+  validateFolderPath,
+  validateFileName,
+  validateBaseFileName,
+  validateTemplateFileName,
+  validateGitHubToken,
+} from "./validation";
+import { FolderSuggestComponent, FileSuggestComponent } from "./suggest";
+import { createTypeBadge } from "../TypeBadge";
+import { createPriorityBadge } from "../PriorityBadge";
+import { createStatusBadge } from "../StatusBadge";
+import { SortablePropertyList } from "./SortablePropertyList";
 
 export class TaskSyncSettingTab extends PluginSettingTab {
   plugin: TaskSyncPlugin;
   private validationErrors: Map<string, string> = new Map();
-  private suggestComponents: (FolderSuggestComponent | FileSuggestComponent)[] = [];
+  private suggestComponents: (FolderSuggestComponent | FileSuggestComponent)[] =
+    [];
 
   constructor(app: App, plugin: TaskSyncPlugin) {
     super(app, plugin);
@@ -26,9 +43,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
   private loadStyles(): void {
     // Add CSS styles for the settings interface
-    const styleId = 'task-sync-settings-styles';
+    const styleId = "task-sync-settings-styles";
     if (!document.getElementById(styleId)) {
-      const style = document.createElement('style');
+      const style = document.createElement("style");
       style.id = styleId;
       style.textContent = `
         /* Task Sync Settings Styles */
@@ -141,7 +158,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     const { containerEl } = this;
 
     containerEl.empty();
-    containerEl.addClass('task-sync-settings');
+    containerEl.addClass("task-sync-settings");
 
     // Header
     this.createHeader(containerEl);
@@ -151,16 +168,18 @@ export class TaskSyncSettingTab extends PluginSettingTab {
   }
 
   private createHeader(container: HTMLElement): void {
-    const header = container.createDiv('task-sync-settings-header');
-    header.createEl('h2', { text: 'Task Sync Settings' });
-    header.createEl('p', {
-      text: 'Configure your task management system. Changes are saved automatically.',
-      cls: 'task-sync-settings-description'
+    const header = container.createDiv("task-sync-settings-header");
+    header.createEl("h2", { text: "Task Sync Settings" });
+    header.createEl("p", {
+      text: "Configure your task management system. Changes are saved automatically.",
+      cls: "task-sync-settings-description",
     });
   }
 
   private createSectionInterface(container: HTMLElement): void {
-    const sectionsContainer = container.createDiv('task-sync-settings-sections');
+    const sectionsContainer = container.createDiv(
+      "task-sync-settings-sections",
+    );
 
     // Create all sections in order
     this.createGeneralSection(sectionsContainer);
@@ -174,145 +193,222 @@ export class TaskSyncSettingTab extends PluginSettingTab {
   }
 
   private createGeneralSection(container: HTMLElement): void {
-    const section = container.createDiv('task-sync-settings-section');
+    const section = container.createDiv("task-sync-settings-section");
 
     // Section header
-    section.createEl('h2', { text: 'General', cls: 'task-sync-section-header' });
+    section.createEl("h2", {
+      text: "General",
+      cls: "task-sync-section-header",
+    });
 
-    this.createFolderSetting(section, 'tasksFolder', 'Tasks Folder',
-      'Folder where task files will be stored');
+    this.createFolderSetting(
+      section,
+      "tasksFolder",
+      "Tasks Folder",
+      "Folder where task files will be stored",
+    );
 
-    this.createFolderSetting(section, 'projectsFolder', 'Projects Folder',
-      'Folder where project files will be stored');
+    this.createFolderSetting(
+      section,
+      "projectsFolder",
+      "Projects Folder",
+      "Folder where project files will be stored",
+    );
 
-    this.createFolderSetting(section, 'areasFolder', 'Areas Folder',
-      'Folder where area files will be stored');
+    this.createFolderSetting(
+      section,
+      "areasFolder",
+      "Areas Folder",
+      "Folder where area files will be stored",
+    );
   }
 
   private createTemplatesSection(container: HTMLElement): void {
-    const section = container.createDiv('task-sync-settings-section');
+    const section = container.createDiv("task-sync-settings-section");
 
     // Section header
-    section.createEl('h2', { text: 'Templates', cls: 'task-sync-section-header' });
+    section.createEl("h2", {
+      text: "Templates",
+      cls: "task-sync-section-header",
+    });
 
-    this.createFolderSetting(section, 'templateFolder', 'Template Folder',
-      'Folder where templates are stored');
+    this.createFolderSetting(
+      section,
+      "templateFolder",
+      "Template Folder",
+      "Folder where templates are stored",
+    );
 
     new Setting(section)
-      .setName('Use Templater Plugin')
-      .setDesc('Enable integration with Templater plugin for advanced templates')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.useTemplater)
-        .onChange(async (value) => {
-          this.plugin.settings.useTemplater = value;
-          await this.plugin.saveSettings();
-        }));
+      .setName("Use Templater Plugin")
+      .setDesc(
+        "Enable integration with Templater plugin for advanced templates",
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.useTemplater)
+          .onChange(async (value) => {
+            this.plugin.settings.useTemplater = value;
+            await this.plugin.saveSettings();
+          }),
+      );
 
     // Default template settings with file suggestions
-    this.createFileSetting(section, 'defaultTaskTemplate', 'Default Task Template',
-      'Default template to use when creating new tasks', ['.md']);
+    this.createFileSetting(
+      section,
+      "defaultTaskTemplate",
+      "Default Task Template",
+      "Default template to use when creating new tasks",
+      [".md"],
+    );
 
-    this.createFileSetting(section, 'defaultProjectTemplate', 'Default Project Template',
-      'Default template to use when creating new projects', ['.md']);
+    this.createFileSetting(
+      section,
+      "defaultProjectTemplate",
+      "Default Project Template",
+      "Default template to use when creating new projects",
+      [".md"],
+    );
 
-    this.createFileSetting(section, 'defaultAreaTemplate', 'Default Area Template',
-      'Default template to use when creating new areas', ['.md']);
+    this.createFileSetting(
+      section,
+      "defaultAreaTemplate",
+      "Default Area Template",
+      "Default template to use when creating new areas",
+      [".md"],
+    );
 
-    this.createFileSetting(section, 'defaultParentTaskTemplate', 'Default Parent Task Template',
-      'Default template to use when creating new parent tasks', ['.md']);
+    this.createFileSetting(
+      section,
+      "defaultParentTaskTemplate",
+      "Default Parent Task Template",
+      "Default template to use when creating new parent tasks",
+      [".md"],
+    );
 
     // Template creation button
     this.createTemplateCreationButton(section);
   }
 
   private createBasesSection(container: HTMLElement): void {
-    const section = container.createDiv('task-sync-settings-section');
+    const section = container.createDiv("task-sync-settings-section");
 
     // Section header
-    section.createEl('h2', { text: 'Bases Integration', cls: 'task-sync-section-header' });
+    section.createEl("h2", {
+      text: "Bases Integration",
+      cls: "task-sync-section-header",
+    });
 
-    this.createFolderSetting(section, 'basesFolder', 'Bases Folder',
-      'Folder where .base files are stored');
+    this.createFolderSetting(
+      section,
+      "basesFolder",
+      "Bases Folder",
+      "Folder where .base files are stored",
+    );
 
-    this.createFileSetting(section, 'tasksBaseFile', 'Tasks Base File',
-      'Name of the main tasks base file', ['.base']);
-
-    new Setting(section)
-      .setName('Auto Generate Bases')
-      .setDesc('Automatically generate base files when needed')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.autoGenerateBases)
-        .onChange(async (value) => {
-          this.plugin.settings.autoGenerateBases = value;
-          await this.plugin.saveSettings();
-        }));
-
-    new Setting(section)
-      .setName('Auto Update Base Views')
-      .setDesc('Automatically update base views when tasks change')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.autoUpdateBaseViews)
-        .onChange(async (value) => {
-          this.plugin.settings.autoUpdateBaseViews = value;
-          await this.plugin.saveSettings();
-        }));
+    this.createFileSetting(
+      section,
+      "tasksBaseFile",
+      "Tasks Base File",
+      "Name of the main tasks base file",
+      [".base"],
+    );
 
     new Setting(section)
-      .setName('Enable Area Bases')
-      .setDesc('Create individual base files for each area with filtered views')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.areaBasesEnabled)
-        .onChange(async (value) => {
-          this.plugin.settings.areaBasesEnabled = value;
-          await this.plugin.saveSettings();
-
-          // Trigger base sync if enabled
-          if (this.plugin.settings.autoSyncAreaProjectBases) {
-            await this.plugin.syncAreaProjectBases();
-          }
-        }));
+      .setName("Auto Generate Bases")
+      .setDesc("Automatically generate base files when needed")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.autoGenerateBases)
+          .onChange(async (value) => {
+            this.plugin.settings.autoGenerateBases = value;
+            await this.plugin.saveSettings();
+          }),
+      );
 
     new Setting(section)
-      .setName('Enable Project Bases')
-      .setDesc('Create individual base files for each project with filtered views')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.projectBasesEnabled)
-        .onChange(async (value) => {
-          this.plugin.settings.projectBasesEnabled = value;
-          await this.plugin.saveSettings();
-
-          // Trigger base sync if enabled
-          if (this.plugin.settings.autoSyncAreaProjectBases) {
-            await this.plugin.syncAreaProjectBases();
-          }
-        }));
+      .setName("Auto Update Base Views")
+      .setDesc("Automatically update base views when tasks change")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.autoUpdateBaseViews)
+          .onChange(async (value) => {
+            this.plugin.settings.autoUpdateBaseViews = value;
+            await this.plugin.saveSettings();
+          }),
+      );
 
     new Setting(section)
-      .setName('Auto-Sync Area/Project Bases')
-      .setDesc('Automatically update area and project bases when settings change')
-      .addToggle(toggle => toggle
-        .setValue(this.plugin.settings.autoSyncAreaProjectBases)
-        .onChange(async (value) => {
-          this.plugin.settings.autoSyncAreaProjectBases = value;
-          await this.plugin.saveSettings();
-        }));
+      .setName("Enable Area Bases")
+      .setDesc("Create individual base files for each area with filtered views")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.areaBasesEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.areaBasesEnabled = value;
+            await this.plugin.saveSettings();
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          }),
+      );
+
+    new Setting(section)
+      .setName("Enable Project Bases")
+      .setDesc(
+        "Create individual base files for each project with filtered views",
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.projectBasesEnabled)
+          .onChange(async (value) => {
+            this.plugin.settings.projectBasesEnabled = value;
+            await this.plugin.saveSettings();
+
+            // Trigger base sync if enabled
+            if (this.plugin.settings.autoSyncAreaProjectBases) {
+              await this.plugin.syncAreaProjectBases();
+            }
+          }),
+      );
+
+    new Setting(section)
+      .setName("Auto-Sync Area/Project Bases")
+      .setDesc(
+        "Automatically update area and project bases when settings change",
+      )
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.autoSyncAreaProjectBases)
+          .onChange(async (value) => {
+            this.plugin.settings.autoSyncAreaProjectBases = value;
+            await this.plugin.saveSettings();
+          }),
+      );
 
     // Action buttons
     this.createActionButtons(section);
   }
 
   private createTaskPropertyOrderSection(container: HTMLElement): void {
-    const section = container.createDiv('task-sync-settings-section');
+    const section = container.createDiv("task-sync-settings-section");
 
     // Section header
-    section.createEl('h2', { text: 'Task Property Order', cls: 'task-sync-section-header' });
-    section.createEl('p', {
-      text: 'Drag and drop to reorder how properties appear in task front-matter.',
-      cls: 'task-sync-settings-section-desc'
+    section.createEl("h2", {
+      text: "Task Property Order",
+      cls: "task-sync-section-header",
+    });
+    section.createEl("p", {
+      text: "Drag and drop to reorder how properties appear in task front-matter.",
+      cls: "task-sync-settings-section-desc",
     });
 
     // Create sortable property list
-    const propertyOrder = this.plugin.settings.taskPropertyOrder || DEFAULT_SETTINGS.taskPropertyOrder;
+    const propertyOrder =
+      this.plugin.settings.taskPropertyOrder ||
+      DEFAULT_SETTINGS.taskPropertyOrder;
 
     new SortablePropertyList({
       container: section,
@@ -325,7 +421,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         await this.plugin.refresh();
       },
       onReset: async () => {
-        this.plugin.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
+        this.plugin.settings.taskPropertyOrder = [
+          ...DEFAULT_SETTINGS.taskPropertyOrder,
+        ];
         await this.plugin.saveSettings();
 
         // Refresh the section
@@ -334,18 +432,21 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
         // Trigger refresh to update existing files with new property order
         await this.plugin.refresh();
-      }
+      },
     });
   }
 
   private createTaskCategoriesSection(container: HTMLElement): void {
-    const section = container.createDiv('task-sync-settings-section');
+    const section = container.createDiv("task-sync-settings-section");
 
     // Section header
-    section.createEl('h2', { text: 'Task Categories', cls: 'task-sync-section-header' });
-    section.createEl('p', {
-      text: 'Configure the available task categories and their colors.',
-      cls: 'task-sync-settings-section-desc'
+    section.createEl("h2", {
+      text: "Task Categories",
+      cls: "task-sync-section-header",
+    });
+    section.createEl("p", {
+      text: "Configure the available task categories and their colors.",
+      cls: "task-sync-settings-section-desc",
     });
 
     // Create a setting for each task type
@@ -355,14 +456,15 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .setDesc(`Configure the "${taskType.name}" task category`);
 
       // Add type badge preview
-      const badgeContainer = setting.controlEl.createDiv('task-type-preview');
+      const badgeContainer = setting.controlEl.createDiv("task-type-preview");
       const badge = createTypeBadge(taskType);
       badgeContainer.appendChild(badge);
 
       // Add name input
-      setting.addText(text => {
-        text.setValue(taskType.name)
-          .setPlaceholder('Task category name')
+      setting.addText((text) => {
+        text
+          .setValue(taskType.name)
+          .setPlaceholder("Task category name")
           .onChange(async (value) => {
             if (value.trim()) {
               this.plugin.settings.taskTypes[index].name = value.trim();
@@ -381,12 +483,16 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
       // Add color dropdown
-      setting.addDropdown(dropdown => {
-        TASK_TYPE_COLORS.forEach(color => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      setting.addDropdown((dropdown) => {
+        TASK_TYPE_COLORS.forEach((color) => {
+          dropdown.addOption(
+            color,
+            color.charAt(0).toUpperCase() + color.slice(1),
+          );
         });
 
-        dropdown.setValue(taskType.color)
+        dropdown
+          .setValue(taskType.color)
           .onChange(async (value: TaskTypeColor) => {
             this.plugin.settings.taskTypes[index].color = value;
             await this.plugin.saveSettings();
@@ -403,8 +509,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
       // Add delete button (don't allow deleting if it's the last type)
       if (this.plugin.settings.taskTypes.length > 1) {
-        setting.addButton(button => {
-          button.setButtonText('Delete')
+        setting.addButton((button) => {
+          button
+            .setButtonText("Delete")
             .setWarning()
             .onClick(async () => {
               this.plugin.settings.taskTypes.splice(index, 1);
@@ -429,10 +536,13 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
   private recreateTaskCategoriesSection(section: HTMLElement): void {
     // Section header
-    section.createEl('h2', { text: 'Task Categories', cls: 'task-sync-section-header' });
-    section.createEl('p', {
-      text: 'Configure the available task categories and their colors.',
-      cls: 'task-sync-settings-section-desc'
+    section.createEl("h2", {
+      text: "Task Categories",
+      cls: "task-sync-section-header",
+    });
+    section.createEl("p", {
+      text: "Configure the available task categories and their colors.",
+      cls: "task-sync-settings-section-desc",
     });
 
     // Create a setting for each task category
@@ -442,14 +552,15 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .setDesc(`Configure the "${taskType.name}" task category`);
 
       // Add type badge preview
-      const badgeContainer = setting.controlEl.createDiv('task-type-preview');
+      const badgeContainer = setting.controlEl.createDiv("task-type-preview");
       const badge = createTypeBadge(taskType);
       badgeContainer.appendChild(badge);
 
       // Add name input
-      setting.addText(text => {
-        text.setValue(taskType.name)
-          .setPlaceholder('Task category name')
+      setting.addText((text) => {
+        text
+          .setValue(taskType.name)
+          .setPlaceholder("Task category name")
           .onChange(async (value) => {
             if (value.trim()) {
               this.plugin.settings.taskTypes[index].name = value.trim();
@@ -468,12 +579,16 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
       // Add color dropdown
-      setting.addDropdown(dropdown => {
-        TASK_TYPE_COLORS.forEach(color => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      setting.addDropdown((dropdown) => {
+        TASK_TYPE_COLORS.forEach((color) => {
+          dropdown.addOption(
+            color,
+            color.charAt(0).toUpperCase() + color.slice(1),
+          );
         });
 
-        dropdown.setValue(taskType.color)
+        dropdown
+          .setValue(taskType.color)
           .onChange(async (value: TaskTypeColor) => {
             this.plugin.settings.taskTypes[index].color = value;
             await this.plugin.saveSettings();
@@ -490,8 +605,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
       // Add delete button (don't allow deleting if it's the last type)
       if (this.plugin.settings.taskTypes.length > 1) {
-        setting.addButton(button => {
-          button.setButtonText('Delete')
+        setting.addButton((button) => {
+          button
+            .setButtonText("Delete")
             .setWarning()
             .onClick(async () => {
               this.plugin.settings.taskTypes.splice(index, 1);
@@ -515,41 +631,55 @@ export class TaskSyncSettingTab extends PluginSettingTab {
   }
 
   private createAddTaskCategorySection(container: HTMLElement): void {
-    let newTypeName = '';
-    let newTypeColor: TaskTypeColor = 'blue';
+    let newTypeName = "";
+    let newTypeColor: TaskTypeColor = "blue";
 
     new Setting(container)
-      .setName('Add New Task Category')
-      .setDesc('Create a new task category for your workflow')
-      .addText(text => {
-        text.setPlaceholder('e.g., Epic, Story, Research')
-          .onChange((value) => {
-            newTypeName = value.trim();
-          });
+      .setName("Add New Task Category")
+      .setDesc("Create a new task category for your workflow")
+      .addText((text) => {
+        text.setPlaceholder("e.g., Epic, Story, Research").onChange((value) => {
+          newTypeName = value.trim();
+        });
       })
-      .addDropdown(dropdown => {
-        TASK_TYPE_COLORS.forEach(color => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      .addDropdown((dropdown) => {
+        TASK_TYPE_COLORS.forEach((color) => {
+          dropdown.addOption(
+            color,
+            color.charAt(0).toUpperCase() + color.slice(1),
+          );
         });
 
-        dropdown.setValue(newTypeColor)
-          .onChange((value: TaskTypeColor) => {
-            newTypeColor = value;
-          });
+        dropdown.setValue(newTypeColor).onChange((value: TaskTypeColor) => {
+          newTypeColor = value;
+        });
       })
-      .addButton(button => {
-        button.setButtonText('Add Task Category')
+      .addButton((button) => {
+        button
+          .setButtonText("Add Task Category")
           .setCta()
           .onClick(async () => {
-            if (newTypeName && !this.plugin.settings.taskTypes.some(t => t.name === newTypeName)) {
-              this.plugin.settings.taskTypes.push({ name: newTypeName, color: newTypeColor });
+            if (
+              newTypeName &&
+              !this.plugin.settings.taskTypes.some(
+                (t) => t.name === newTypeName,
+              )
+            ) {
+              this.plugin.settings.taskTypes.push({
+                name: newTypeName,
+                color: newTypeColor,
+              });
               await this.plugin.saveSettings();
 
               // Find the task categories section and refresh it
-              const taskCategoriesSection = container.closest('.task-sync-settings-section');
+              const taskCategoriesSection = container.closest(
+                ".task-sync-settings-section",
+              );
               if (taskCategoriesSection) {
                 taskCategoriesSection.empty();
-                this.recreateTaskCategoriesSection(taskCategoriesSection as HTMLElement);
+                this.recreateTaskCategoriesSection(
+                  taskCategoriesSection as HTMLElement,
+                );
               }
 
               // Trigger base sync if enabled
@@ -562,13 +692,16 @@ export class TaskSyncSettingTab extends PluginSettingTab {
   }
 
   private createTaskPrioritiesSection(container: HTMLElement): void {
-    const section = container.createDiv('task-sync-settings-section');
+    const section = container.createDiv("task-sync-settings-section");
 
     // Section header
-    section.createEl('h2', { text: 'Task Priorities', cls: 'task-sync-section-header' });
-    section.createEl('p', {
-      text: 'Configure the available task priorities and their colors.',
-      cls: 'task-sync-settings-section-desc'
+    section.createEl("h2", {
+      text: "Task Priorities",
+      cls: "task-sync-section-header",
+    });
+    section.createEl("p", {
+      text: "Configure the available task priorities and their colors.",
+      cls: "task-sync-settings-section-desc",
     });
 
     // Create a setting for each task priority
@@ -578,14 +711,17 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .setDesc(`Configure the "${taskPriority.name}" task priority`);
 
       // Add priority badge preview
-      const badgeContainer = setting.controlEl.createDiv('task-priority-preview');
+      const badgeContainer = setting.controlEl.createDiv(
+        "task-priority-preview",
+      );
       const badge = createPriorityBadge(taskPriority);
       badgeContainer.appendChild(badge);
 
       // Add name input
-      setting.addText(text => {
-        text.setValue(taskPriority.name)
-          .setPlaceholder('Priority name')
+      setting.addText((text) => {
+        text
+          .setValue(taskPriority.name)
+          .setPlaceholder("Priority name")
           .onChange(async (value) => {
             if (value.trim()) {
               this.plugin.settings.taskPriorities[index].name = value.trim();
@@ -604,12 +740,16 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
       // Add color dropdown
-      setting.addDropdown(dropdown => {
-        TASK_PRIORITY_COLORS.forEach(color => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      setting.addDropdown((dropdown) => {
+        TASK_PRIORITY_COLORS.forEach((color) => {
+          dropdown.addOption(
+            color,
+            color.charAt(0).toUpperCase() + color.slice(1),
+          );
         });
 
-        dropdown.setValue(taskPriority.color)
+        dropdown
+          .setValue(taskPriority.color)
           .onChange(async (value: TaskPriorityColor) => {
             this.plugin.settings.taskPriorities[index].color = value;
             await this.plugin.saveSettings();
@@ -626,8 +766,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
       // Add delete button (don't allow deleting if it's the last priority)
       if (this.plugin.settings.taskPriorities.length > 1) {
-        setting.addButton(button => {
-          button.setButtonText('Delete')
+        setting.addButton((button) => {
+          button
+            .setButtonText("Delete")
             .setWarning()
             .onClick(async () => {
               this.plugin.settings.taskPriorities.splice(index, 1);
@@ -652,10 +793,13 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
   private recreateTaskPrioritiesSection(section: HTMLElement): void {
     // Section header
-    section.createEl('h2', { text: 'Task Priorities', cls: 'task-sync-section-header' });
-    section.createEl('p', {
-      text: 'Configure the available task priorities and their colors.',
-      cls: 'task-sync-settings-section-desc'
+    section.createEl("h2", {
+      text: "Task Priorities",
+      cls: "task-sync-section-header",
+    });
+    section.createEl("p", {
+      text: "Configure the available task priorities and their colors.",
+      cls: "task-sync-settings-section-desc",
     });
 
     // Create a setting for each task priority
@@ -665,14 +809,17 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .setDesc(`Configure the "${taskPriority.name}" task priority`);
 
       // Add priority badge preview
-      const badgeContainer = setting.controlEl.createDiv('task-priority-preview');
+      const badgeContainer = setting.controlEl.createDiv(
+        "task-priority-preview",
+      );
       const badge = createPriorityBadge(taskPriority);
       badgeContainer.appendChild(badge);
 
       // Add name input
-      setting.addText(text => {
-        text.setValue(taskPriority.name)
-          .setPlaceholder('Priority name')
+      setting.addText((text) => {
+        text
+          .setValue(taskPriority.name)
+          .setPlaceholder("Priority name")
           .onChange(async (value) => {
             if (value.trim()) {
               this.plugin.settings.taskPriorities[index].name = value.trim();
@@ -691,12 +838,16 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
       // Add color dropdown
-      setting.addDropdown(dropdown => {
-        TASK_PRIORITY_COLORS.forEach(color => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      setting.addDropdown((dropdown) => {
+        TASK_PRIORITY_COLORS.forEach((color) => {
+          dropdown.addOption(
+            color,
+            color.charAt(0).toUpperCase() + color.slice(1),
+          );
         });
 
-        dropdown.setValue(taskPriority.color)
+        dropdown
+          .setValue(taskPriority.color)
           .onChange(async (value: TaskPriorityColor) => {
             this.plugin.settings.taskPriorities[index].color = value;
             await this.plugin.saveSettings();
@@ -713,8 +864,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
       // Add delete button (don't allow deleting if it's the last priority)
       if (this.plugin.settings.taskPriorities.length > 1) {
-        setting.addButton(button => {
-          button.setButtonText('Delete')
+        setting.addButton((button) => {
+          button
+            .setButtonText("Delete")
             .setWarning()
             .onClick(async () => {
               this.plugin.settings.taskPriorities.splice(index, 1);
@@ -738,41 +890,59 @@ export class TaskSyncSettingTab extends PluginSettingTab {
   }
 
   private createAddTaskPrioritySection(container: HTMLElement): void {
-    let newPriorityName = '';
-    let newPriorityColor: TaskPriorityColor = 'blue';
+    let newPriorityName = "";
+    let newPriorityColor: TaskPriorityColor = "blue";
 
     new Setting(container)
-      .setName('Add New Task Priority')
-      .setDesc('Create a new task priority for your workflow')
-      .addText(text => {
-        text.setPlaceholder('e.g., Critical, Normal, Minor')
+      .setName("Add New Task Priority")
+      .setDesc("Create a new task priority for your workflow")
+      .addText((text) => {
+        text
+          .setPlaceholder("e.g., Critical, Normal, Minor")
           .onChange((value) => {
             newPriorityName = value.trim();
           });
       })
-      .addDropdown(dropdown => {
-        TASK_PRIORITY_COLORS.forEach(color => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      .addDropdown((dropdown) => {
+        TASK_PRIORITY_COLORS.forEach((color) => {
+          dropdown.addOption(
+            color,
+            color.charAt(0).toUpperCase() + color.slice(1),
+          );
         });
 
-        dropdown.setValue(newPriorityColor)
+        dropdown
+          .setValue(newPriorityColor)
           .onChange((value: TaskPriorityColor) => {
             newPriorityColor = value;
           });
       })
-      .addButton(button => {
-        button.setButtonText('Add Priority')
+      .addButton((button) => {
+        button
+          .setButtonText("Add Priority")
           .setCta()
           .onClick(async () => {
-            if (newPriorityName && !this.plugin.settings.taskPriorities.some(p => p.name === newPriorityName)) {
-              this.plugin.settings.taskPriorities.push({ name: newPriorityName, color: newPriorityColor });
+            if (
+              newPriorityName &&
+              !this.plugin.settings.taskPriorities.some(
+                (p) => p.name === newPriorityName,
+              )
+            ) {
+              this.plugin.settings.taskPriorities.push({
+                name: newPriorityName,
+                color: newPriorityColor,
+              });
               await this.plugin.saveSettings();
 
               // Find the task priorities section and refresh it
-              const taskPrioritiesSection = container.closest('.task-sync-settings-section');
+              const taskPrioritiesSection = container.closest(
+                ".task-sync-settings-section",
+              );
               if (taskPrioritiesSection) {
                 taskPrioritiesSection.empty();
-                this.recreateTaskPrioritiesSection(taskPrioritiesSection as HTMLElement);
+                this.recreateTaskPrioritiesSection(
+                  taskPrioritiesSection as HTMLElement,
+                );
               }
 
               // Trigger base sync if enabled
@@ -785,13 +955,16 @@ export class TaskSyncSettingTab extends PluginSettingTab {
   }
 
   private createTaskStatusesSection(container: HTMLElement): void {
-    const section = container.createDiv('task-sync-settings-section');
+    const section = container.createDiv("task-sync-settings-section");
 
     // Section header
-    section.createEl('h2', { text: 'Task Statuses', cls: 'task-sync-section-header' });
-    section.createEl('p', {
-      text: 'Configure the available task statuses, their colors, and which statuses represent completed or in-progress tasks.',
-      cls: 'task-sync-settings-section-desc'
+    section.createEl("h2", {
+      text: "Task Statuses",
+      cls: "task-sync-section-header",
+    });
+    section.createEl("p", {
+      text: "Configure the available task statuses, their colors, and which statuses represent completed or in-progress tasks.",
+      cls: "task-sync-settings-section-desc",
     });
 
     // Create a setting for each task status
@@ -801,14 +974,15 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .setDesc(`Configure the "${taskStatus.name}" task status`);
 
       // Add status badge preview
-      const badgeContainer = setting.controlEl.createDiv('task-status-preview');
+      const badgeContainer = setting.controlEl.createDiv("task-status-preview");
       const badge = createStatusBadge(taskStatus);
       badgeContainer.appendChild(badge);
 
       // Add name input
-      setting.addText(text => {
-        text.setValue(taskStatus.name)
-          .setPlaceholder('Status name')
+      setting.addText((text) => {
+        text
+          .setValue(taskStatus.name)
+          .setPlaceholder("Status name")
           .onChange(async (value) => {
             if (value.trim()) {
               this.plugin.settings.taskStatuses[index].name = value.trim();
@@ -827,12 +1001,16 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
       // Add color dropdown
-      setting.addDropdown(dropdown => {
-        TASK_STATUS_COLORS.forEach(color => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      setting.addDropdown((dropdown) => {
+        TASK_STATUS_COLORS.forEach((color) => {
+          dropdown.addOption(
+            color,
+            color.charAt(0).toUpperCase() + color.slice(1),
+          );
         });
 
-        dropdown.setValue(taskStatus.color)
+        dropdown
+          .setValue(taskStatus.color)
           .onChange(async (value: TaskStatusColor) => {
             this.plugin.settings.taskStatuses[index].color = value;
             await this.plugin.saveSettings();
@@ -848,9 +1026,10 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
       // Add isDone toggle
-      setting.addToggle(toggle => {
-        toggle.setValue(taskStatus.isDone || false)
-          .setTooltip('Mark this status as representing a completed/done state')
+      setting.addToggle((toggle) => {
+        toggle
+          .setValue(taskStatus.isDone || false)
+          .setTooltip("Mark this status as representing a completed/done state")
           .onChange(async (value) => {
             this.plugin.settings.taskStatuses[index].isDone = value;
             await this.plugin.saveSettings();
@@ -863,9 +1042,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
       // Add isInProgress toggle
-      setting.addToggle(toggle => {
-        toggle.setValue(taskStatus.isInProgress || false)
-          .setTooltip('Mark this status as representing an active/in-progress state')
+      setting.addToggle((toggle) => {
+        toggle
+          .setValue(taskStatus.isInProgress || false)
+          .setTooltip(
+            "Mark this status as representing an active/in-progress state",
+          )
           .onChange(async (value) => {
             this.plugin.settings.taskStatuses[index].isInProgress = value;
             await this.plugin.saveSettings();
@@ -879,8 +1061,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
       // Add delete button (don't allow deleting if it's the last status)
       if (this.plugin.settings.taskStatuses.length > 1) {
-        setting.addButton(button => {
-          button.setButtonText('Delete')
+        setting.addButton((button) => {
+          button
+            .setButtonText("Delete")
             .setWarning()
             .onClick(async () => {
               this.plugin.settings.taskStatuses.splice(index, 1);
@@ -905,10 +1088,13 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
   private recreateTaskStatusesSection(section: HTMLElement): void {
     // Section header
-    section.createEl('h2', { text: 'Task Statuses', cls: 'task-sync-section-header' });
-    section.createEl('p', {
-      text: 'Configure the available task statuses, their colors, and which statuses represent completed or in-progress tasks.',
-      cls: 'task-sync-settings-section-desc'
+    section.createEl("h2", {
+      text: "Task Statuses",
+      cls: "task-sync-section-header",
+    });
+    section.createEl("p", {
+      text: "Configure the available task statuses, their colors, and which statuses represent completed or in-progress tasks.",
+      cls: "task-sync-settings-section-desc",
     });
 
     // Create a setting for each task status
@@ -918,14 +1104,15 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .setDesc(`Configure the "${taskStatus.name}" task status`);
 
       // Add status badge preview
-      const badgeContainer = setting.controlEl.createDiv('task-status-preview');
+      const badgeContainer = setting.controlEl.createDiv("task-status-preview");
       const badge = createStatusBadge(taskStatus);
       badgeContainer.appendChild(badge);
 
       // Add name input
-      setting.addText(text => {
-        text.setValue(taskStatus.name)
-          .setPlaceholder('Status name')
+      setting.addText((text) => {
+        text
+          .setValue(taskStatus.name)
+          .setPlaceholder("Status name")
           .onChange(async (value) => {
             if (value.trim()) {
               this.plugin.settings.taskStatuses[index].name = value.trim();
@@ -944,12 +1131,16 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
       // Add color dropdown
-      setting.addDropdown(dropdown => {
-        TASK_STATUS_COLORS.forEach(color => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      setting.addDropdown((dropdown) => {
+        TASK_STATUS_COLORS.forEach((color) => {
+          dropdown.addOption(
+            color,
+            color.charAt(0).toUpperCase() + color.slice(1),
+          );
         });
 
-        dropdown.setValue(taskStatus.color)
+        dropdown
+          .setValue(taskStatus.color)
           .onChange(async (value: TaskStatusColor) => {
             this.plugin.settings.taskStatuses[index].color = value;
             await this.plugin.saveSettings();
@@ -965,9 +1156,10 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
       // Add isDone toggle
-      setting.addToggle(toggle => {
-        toggle.setValue(taskStatus.isDone || false)
-          .setTooltip('Mark this status as representing a completed/done state')
+      setting.addToggle((toggle) => {
+        toggle
+          .setValue(taskStatus.isDone || false)
+          .setTooltip("Mark this status as representing a completed/done state")
           .onChange(async (value) => {
             this.plugin.settings.taskStatuses[index].isDone = value;
             await this.plugin.saveSettings();
@@ -980,9 +1172,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
       // Add isInProgress toggle
-      setting.addToggle(toggle => {
-        toggle.setValue(taskStatus.isInProgress || false)
-          .setTooltip('Mark this status as representing an active/in-progress state')
+      setting.addToggle((toggle) => {
+        toggle
+          .setValue(taskStatus.isInProgress || false)
+          .setTooltip(
+            "Mark this status as representing an active/in-progress state",
+          )
           .onChange(async (value) => {
             this.plugin.settings.taskStatuses[index].isInProgress = value;
             await this.plugin.saveSettings();
@@ -996,8 +1191,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
       // Add delete button (don't allow deleting if it's the last status)
       if (this.plugin.settings.taskStatuses.length > 1) {
-        setting.addButton(button => {
-          button.setButtonText('Delete')
+        setting.addButton((button) => {
+          button
+            .setButtonText("Delete")
             .setWarning()
             .onClick(async () => {
               this.plugin.settings.taskStatuses.splice(index, 1);
@@ -1021,41 +1217,59 @@ export class TaskSyncSettingTab extends PluginSettingTab {
   }
 
   private createAddTaskStatusSection(container: HTMLElement): void {
-    let newStatusName = '';
-    let newStatusColor: TaskStatusColor = 'blue';
+    let newStatusName = "";
+    let newStatusColor: TaskStatusColor = "blue";
 
     new Setting(container)
-      .setName('Add New Task Status')
-      .setDesc('Create a new task status for your workflow')
-      .addText(text => {
-        text.setPlaceholder('e.g., Review, Testing, Blocked')
+      .setName("Add New Task Status")
+      .setDesc("Create a new task status for your workflow")
+      .addText((text) => {
+        text
+          .setPlaceholder("e.g., Review, Testing, Blocked")
           .onChange((value) => {
             newStatusName = value.trim();
           });
       })
-      .addDropdown(dropdown => {
-        TASK_STATUS_COLORS.forEach(color => {
-          dropdown.addOption(color, color.charAt(0).toUpperCase() + color.slice(1));
+      .addDropdown((dropdown) => {
+        TASK_STATUS_COLORS.forEach((color) => {
+          dropdown.addOption(
+            color,
+            color.charAt(0).toUpperCase() + color.slice(1),
+          );
         });
 
-        dropdown.setValue(newStatusColor)
-          .onChange((value: TaskStatusColor) => {
-            newStatusColor = value;
-          });
+        dropdown.setValue(newStatusColor).onChange((value: TaskStatusColor) => {
+          newStatusColor = value;
+        });
       })
-      .addButton(button => {
-        button.setButtonText('Add Status')
+      .addButton((button) => {
+        button
+          .setButtonText("Add Status")
           .setCta()
           .onClick(async () => {
-            if (newStatusName && !this.plugin.settings.taskStatuses.some(s => s.name === newStatusName)) {
-              this.plugin.settings.taskStatuses.push({ name: newStatusName, color: newStatusColor, isDone: false, isInProgress: false });
+            if (
+              newStatusName &&
+              !this.plugin.settings.taskStatuses.some(
+                (s) => s.name === newStatusName,
+              )
+            ) {
+              this.plugin.settings.taskStatuses.push({
+                name: newStatusName,
+                color: newStatusColor,
+                isDone: false,
+                isInProgress: false,
+              });
               await this.plugin.saveSettings();
 
               // Find the task statuses section and refresh it
-              const taskStatusesSection = container.closest('.task-sync-settings-section');
+              const taskStatusesSection = container.closest(
+                ".task-sync-settings-section",
+              );
               if (taskStatusesSection) {
                 taskStatusesSection.empty();
-                this.recreateTaskStatusesSection(taskStatusesSection as HTMLElement);
+                this.recreateTaskStatusesSection(
+                  taskStatusesSection as HTMLElement,
+                );
               }
 
               // Trigger base sync if enabled
@@ -1070,27 +1284,28 @@ export class TaskSyncSettingTab extends PluginSettingTab {
   private createTemplateCreationButton(container: HTMLElement): void {
     // Task template creation
     new Setting(container)
-      .setName('Create Default Task Template')
-      .setDesc('Create the default task template file if it doesn\'t exist')
-      .addButton(button => {
-        button.setButtonText('Create Template')
+      .setName("Create Default Task Template")
+      .setDesc("Create the default task template file if it doesn't exist")
+      .addButton((button) => {
+        button
+          .setButtonText("Create Template")
           .setCta()
           .onClick(async () => {
             button.setDisabled(true);
-            button.setButtonText('Creating...');
+            button.setButtonText("Creating...");
             try {
               await this.plugin.templateManager.createTaskTemplate();
-              button.setButtonText('✓ Created');
+              button.setButtonText("✓ Created");
               setTimeout(() => {
                 button.setDisabled(false);
-                button.setButtonText('Create Template');
+                button.setButtonText("Create Template");
               }, 2000);
             } catch (error) {
-              button.setButtonText('✗ Failed');
-              console.error('Failed to create template:', error);
+              button.setButtonText("✗ Failed");
+              console.error("Failed to create template:", error);
               setTimeout(() => {
                 button.setDisabled(false);
-                button.setButtonText('Create Template');
+                button.setButtonText("Create Template");
               }, 2000);
             }
           });
@@ -1098,27 +1313,28 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
     // Project template creation
     new Setting(container)
-      .setName('Create Default Project Template')
-      .setDesc('Create the default project template file if it doesn\'t exist')
-      .addButton(button => {
-        button.setButtonText('Create Template')
+      .setName("Create Default Project Template")
+      .setDesc("Create the default project template file if it doesn't exist")
+      .addButton((button) => {
+        button
+          .setButtonText("Create Template")
           .setCta()
           .onClick(async () => {
             button.setDisabled(true);
-            button.setButtonText('Creating...');
+            button.setButtonText("Creating...");
             try {
               await this.plugin.templateManager.createProjectTemplate();
-              button.setButtonText('✓ Created');
+              button.setButtonText("✓ Created");
               setTimeout(() => {
                 button.setDisabled(false);
-                button.setButtonText('Create Template');
+                button.setButtonText("Create Template");
               }, 2000);
             } catch (error) {
-              button.setButtonText('✗ Failed');
-              console.error('Failed to create template:', error);
+              button.setButtonText("✗ Failed");
+              console.error("Failed to create template:", error);
               setTimeout(() => {
                 button.setDisabled(false);
-                button.setButtonText('Create Template');
+                button.setButtonText("Create Template");
               }, 2000);
             }
           });
@@ -1126,27 +1342,28 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
     // Area template creation
     new Setting(container)
-      .setName('Create Default Area Template')
-      .setDesc('Create the default area template file if it doesn\'t exist')
-      .addButton(button => {
-        button.setButtonText('Create Template')
+      .setName("Create Default Area Template")
+      .setDesc("Create the default area template file if it doesn't exist")
+      .addButton((button) => {
+        button
+          .setButtonText("Create Template")
           .setCta()
           .onClick(async () => {
             button.setDisabled(true);
-            button.setButtonText('Creating...');
+            button.setButtonText("Creating...");
             try {
               await this.plugin.templateManager.createAreaTemplate();
-              button.setButtonText('✓ Created');
+              button.setButtonText("✓ Created");
               setTimeout(() => {
                 button.setDisabled(false);
-                button.setButtonText('Create Template');
+                button.setButtonText("Create Template");
               }, 2000);
             } catch (error) {
-              button.setButtonText('✗ Failed');
-              console.error('Failed to create template:', error);
+              button.setButtonText("✗ Failed");
+              console.error("Failed to create template:", error);
               setTimeout(() => {
                 button.setDisabled(false);
-                button.setButtonText('Create Template');
+                button.setButtonText("Create Template");
               }, 2000);
             }
           });
@@ -1154,40 +1371,46 @@ export class TaskSyncSettingTab extends PluginSettingTab {
   }
 
   private createActionButtons(container: HTMLElement): void {
-    const actionsContainer = container.createDiv('task-sync-settings-actions');
+    const actionsContainer = container.createDiv("task-sync-settings-actions");
 
-    const refreshButton = actionsContainer.createEl('button', {
-      text: 'Refresh',
-      cls: 'mod-cta'
+    const refreshButton = actionsContainer.createEl("button", {
+      text: "Refresh",
+      cls: "mod-cta",
     });
-    refreshButton.addEventListener('click', async () => {
+    refreshButton.addEventListener("click", async () => {
       refreshButton.disabled = true;
-      refreshButton.setText('Refreshing...');
+      refreshButton.setText("Refreshing...");
       try {
         await this.plugin.refresh();
-        refreshButton.setText('✓ Refreshed');
+        refreshButton.setText("✓ Refreshed");
         setTimeout(() => {
           refreshButton.disabled = false;
-          refreshButton.setText('Refresh');
+          refreshButton.setText("Refresh");
         }, 2000);
       } catch (error) {
-        refreshButton.setText('✗ Failed');
-        console.error('Failed to refresh:', error);
+        refreshButton.setText("✗ Failed");
+        console.error("Failed to refresh:", error);
         setTimeout(() => {
           refreshButton.disabled = false;
-          refreshButton.setText('Refresh');
+          refreshButton.setText("Refresh");
         }, 2000);
       }
     });
   }
 
-  private createFolderSetting(container: HTMLElement, key: keyof TaskSyncSettings, name: string, desc: string): void {
+  private createFolderSetting(
+    container: HTMLElement,
+    key: keyof TaskSyncSettings,
+    name: string,
+    desc: string,
+  ): void {
     const setting = new Setting(container)
       .setName(name)
       .setDesc(desc)
-      .addText(text => {
+      .addText((text) => {
         const defaultValue = DEFAULT_SETTINGS[key] as string;
-        text.setPlaceholder(defaultValue)
+        text
+          .setPlaceholder(defaultValue)
           .setValue(this.plugin.settings[key] as string)
           .onChange(async (value) => {
             const validation = validateFolderPath(value);
@@ -1202,7 +1425,10 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           });
 
         // Add folder suggestion
-        const folderSuggest = new FolderSuggestComponent(this.app, text.inputEl);
+        const folderSuggest = new FolderSuggestComponent(
+          this.app,
+          text.inputEl,
+        );
         folderSuggest.onChange(async (value) => {
           const validation = validateFolderPath(value);
           if (validation.isValid) {
@@ -1220,19 +1446,26 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     this.updateSettingValidation(setting, key);
   }
 
-  private createFileSetting(container: HTMLElement, key: keyof TaskSyncSettings, name: string, desc: string, extensions?: string[]): void {
+  private createFileSetting(
+    container: HTMLElement,
+    key: keyof TaskSyncSettings,
+    name: string,
+    desc: string,
+    extensions?: string[],
+  ): void {
     const setting = new Setting(container)
       .setName(name)
       .setDesc(desc)
-      .addText(text => {
+      .addText((text) => {
         const defaultValue = DEFAULT_SETTINGS[key] as string;
-        text.setPlaceholder(defaultValue)
+        text
+          .setPlaceholder(defaultValue)
           .setValue(this.plugin.settings[key] as string)
           .onChange(async (value) => {
             let validation: ValidationResult;
-            if (key === 'tasksBaseFile') {
+            if (key === "tasksBaseFile") {
               validation = validateBaseFileName(value);
-            } else if (key.includes('Template')) {
+            } else if (key.includes("Template")) {
               validation = validateTemplateFileName(value);
             } else {
               validation = validateFileName(value);
@@ -1250,20 +1483,24 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
         // Add file suggestion
         const fileSuggestOptions: FileSuggestOptions = {
-          fileExtensions: extensions
+          fileExtensions: extensions,
         };
 
         // For template settings, limit suggestions to template folder
-        if (key.includes('Template')) {
+        if (key.includes("Template")) {
           fileSuggestOptions.folderPath = this.plugin.settings.templateFolder;
         }
 
-        const fileSuggest = new FileSuggestComponent(this.app, text.inputEl, fileSuggestOptions);
+        const fileSuggest = new FileSuggestComponent(
+          this.app,
+          text.inputEl,
+          fileSuggestOptions,
+        );
         fileSuggest.onChange(async (value) => {
           let validation: ValidationResult;
-          if (key === 'tasksBaseFile') {
+          if (key === "tasksBaseFile") {
             validation = validateBaseFileName(value);
-          } else if (key.includes('Template')) {
+          } else if (key.includes("Template")) {
             validation = validateTemplateFileName(value);
           } else {
             validation = validateFileName(value);
@@ -1297,31 +1534,36 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     const settingEl = setting.settingEl;
 
     // Remove existing error styling
-    settingEl.removeClass('task-sync-setting-error');
-    const existingError = settingEl.querySelector('.task-sync-validation-error');
+    settingEl.removeClass("task-sync-setting-error");
+    const existingError = settingEl.querySelector(
+      ".task-sync-validation-error",
+    );
     if (existingError) {
       existingError.remove();
     }
 
     if (error) {
       // Add error styling
-      settingEl.addClass('task-sync-setting-error');
-      const errorEl = settingEl.createDiv('task-sync-validation-error');
+      settingEl.addClass("task-sync-setting-error");
+      const errorEl = settingEl.createDiv("task-sync-validation-error");
       errorEl.textContent = error;
     }
   }
 
   private createGitHubIntegrationSection(container: HTMLElement): void {
-    const section = container.createDiv('task-sync-settings-section');
+    const section = container.createDiv("task-sync-settings-section");
 
     // Section header
-    section.createEl('h2', { text: 'Integrations', cls: 'task-sync-section-header' });
+    section.createEl("h2", {
+      text: "Integrations",
+      cls: "task-sync-section-header",
+    });
 
     // GitHub integration toggle
     new Setting(section)
-      .setName('Enable GitHub Integration')
-      .setDesc('Connect to GitHub to browse and import issues as tasks')
-      .addToggle(toggle => {
+      .setName("Enable GitHub Integration")
+      .setDesc("Connect to GitHub to browse and import issues as tasks")
+      .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settings.githubIntegration.enabled)
           .onChange(async (value) => {
@@ -1338,35 +1580,43 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     if (this.plugin.settings.githubIntegration.enabled) {
       // Personal Access Token
       new Setting(section)
-        .setName('GitHub Personal Access Token')
-        .setDesc('Your GitHub PAT for API access. Create one at github.com/settings/tokens')
-        .addText(text => {
+        .setName("GitHub Personal Access Token")
+        .setDesc(
+          "Your GitHub PAT for API access. Create one at github.com/settings/tokens",
+        )
+        .addText((text) => {
           text
-            .setPlaceholder('ghp_...')
-            .setValue(this.plugin.settings.githubIntegration.personalAccessToken)
+            .setPlaceholder("ghp_...")
+            .setValue(
+              this.plugin.settings.githubIntegration.personalAccessToken,
+            )
             .onChange(async (value) => {
               const validation = validateGitHubToken(value);
               if (validation.isValid) {
-                this.plugin.settings.githubIntegration.personalAccessToken = value;
+                this.plugin.settings.githubIntegration.personalAccessToken =
+                  value;
                 await this.plugin.saveSettings();
-                this.clearValidationError('github-token');
+                this.clearValidationError("github-token");
               } else {
-                this.setValidationError('github-token', validation.error || 'Invalid token');
+                this.setValidationError(
+                  "github-token",
+                  validation.error || "Invalid token",
+                );
               }
             });
 
           // Set input type to password for security
-          text.inputEl.type = 'password';
-          text.inputEl.style.fontFamily = 'monospace';
+          text.inputEl.type = "password";
+          text.inputEl.style.fontFamily = "monospace";
         });
 
       // Default repository
       new Setting(section)
-        .setName('Default Repository')
-        .setDesc('Default repository to load issues from (format: owner/repo)')
-        .addText(text => {
+        .setName("Default Repository")
+        .setDesc("Default repository to load issues from (format: owner/repo)")
+        .addText((text) => {
           text
-            .setPlaceholder('owner/repository')
+            .setPlaceholder("owner/repository")
             .setValue(this.plugin.settings.githubIntegration.defaultRepository)
             .onChange(async (value) => {
               this.plugin.settings.githubIntegration.defaultRepository = value;
@@ -1376,29 +1626,34 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
       // Issue filters
       new Setting(section)
-        .setName('Default Issue State')
-        .setDesc('Default state filter for GitHub issues')
-        .addDropdown(dropdown => {
+        .setName("Default Issue State")
+        .setDesc("Default state filter for GitHub issues")
+        .addDropdown((dropdown) => {
           dropdown
-            .addOption('open', 'Open')
-            .addOption('closed', 'Closed')
-            .addOption('all', 'All')
+            .addOption("open", "Open")
+            .addOption("closed", "Closed")
+            .addOption("all", "All")
             .setValue(this.plugin.settings.githubIntegration.issueFilters.state)
-            .onChange(async (value: 'open' | 'closed' | 'all') => {
+            .onChange(async (value: "open" | "closed" | "all") => {
               this.plugin.settings.githubIntegration.issueFilters.state = value;
               await this.plugin.saveSettings();
             });
         });
 
       new Setting(section)
-        .setName('Default Assignee Filter')
-        .setDesc('Default assignee filter (leave empty for all, "me" for your issues)')
-        .addText(text => {
+        .setName("Default Assignee Filter")
+        .setDesc(
+          'Default assignee filter (leave empty for all, "me" for your issues)',
+        )
+        .addText((text) => {
           text
-            .setPlaceholder('me, username, or empty')
-            .setValue(this.plugin.settings.githubIntegration.issueFilters.assignee)
+            .setPlaceholder("me, username, or empty")
+            .setValue(
+              this.plugin.settings.githubIntegration.issueFilters.assignee,
+            )
             .onChange(async (value) => {
-              this.plugin.settings.githubIntegration.issueFilters.assignee = value;
+              this.plugin.settings.githubIntegration.issueFilters.assignee =
+                value;
               await this.plugin.saveSettings();
             });
         });
@@ -1407,7 +1662,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
   hide(): void {
     // Clean up suggest components
-    this.suggestComponents.forEach(component => component.destroy());
+    this.suggestComponents.forEach((component) => component.destroy());
     this.suggestComponents = [];
   }
 }

@@ -1,6 +1,6 @@
-import { Modal } from 'obsidian';
-import type { SvelteComponent } from 'svelte';
-import type TaskSyncPlugin from '../../main';
+import { Modal } from "obsidian";
+import type { SvelteComponent } from "svelte";
+import type TaskSyncPlugin from "../../main";
 
 export abstract class SvelteModal extends Modal {
   protected component: SvelteComponent | null = null;
@@ -14,7 +14,7 @@ export abstract class SvelteModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass('svelte-modal-container');
+    contentEl.addClass("svelte-modal-container");
 
     // Create the Svelte component
     this.component = this.createComponent(contentEl);
@@ -33,17 +33,15 @@ export abstract class SvelteModal extends Modal {
   protected createSvelteComponent<T extends SvelteComponent>(
     ComponentClass: new (options: any) => T,
     container: HTMLElement,
-    props: Record<string, any> = {}
+    props: Record<string, any> = {},
   ): T {
     return new ComponentClass({
       target: container,
       props: {
         ...props,
-        plugin: this.plugin
+        plugin: this.plugin,
       },
-      context: new Map([
-        ['task-sync-plugin', { plugin: this.plugin }]
-      ])
+      context: new Map([["task-sync-plugin", { plugin: this.plugin }]]),
     });
   }
 }

@@ -43,7 +43,7 @@ export class ContextTabView extends ItemView {
     if (!plugin) {
       this.containerEl.createEl("div", {
         text: "Task Sync plugin not found",
-        cls: "context-tab-error"
+        cls: "context-tab-error",
       });
       return;
     }
@@ -71,13 +71,13 @@ export class ContextTabView extends ItemView {
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", () => {
         this.updateContext();
-      })
+      }),
     );
 
     this.registerEvent(
       this.app.workspace.on("file-open", () => {
         this.updateContext();
-      })
+      }),
     );
   }
 
@@ -96,7 +96,7 @@ export class ContextTabView extends ItemView {
     if (!plugin || !this.svelteComponent) return;
 
     const newContext = plugin.getCurrentContext();
-    
+
     // Only update if context actually changed
     if (
       this.currentContext.type !== newContext.type ||
@@ -104,7 +104,7 @@ export class ContextTabView extends ItemView {
       this.currentContext.path !== newContext.path
     ) {
       this.currentContext = newContext;
-      
+
       // Update the Svelte component's context prop
       this.svelteComponent.$set({ context: newContext });
     }

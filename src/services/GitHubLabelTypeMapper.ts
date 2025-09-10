@@ -3,7 +3,7 @@
  * Maps GitHub issue labels to Obsidian task types based on configuration
  */
 
-import { LabelTypeMapper, LabelMappingConfig } from '../types/label-mapping';
+import { LabelTypeMapper, LabelMappingConfig } from "../types/label-mapping";
 
 export class GitHubLabelTypeMapper implements LabelTypeMapper {
   private labelMapping: Record<string, string> = {};
@@ -12,9 +12,9 @@ export class GitHubLabelTypeMapper implements LabelTypeMapper {
   constructor(config?: Partial<LabelMappingConfig>) {
     this.config = {
       labelToTypeMapping: {},
-      defaultTaskType: 'Task',
-      mappingStrategy: 'first-match',
-      ...config
+      defaultTaskType: "Task",
+      mappingStrategy: "first-match",
+      ...config,
     };
 
     this.labelMapping = this.config.labelToTypeMapping;
@@ -24,15 +24,21 @@ export class GitHubLabelTypeMapper implements LabelTypeMapper {
    * Map GitHub labels to a task type
    * Uses configured mapping and strategy to determine the best type
    */
-  mapLabelsToType(labels: string[], availableTypes: string[]): string | undefined {
+  mapLabelsToType(
+    labels: string[],
+    availableTypes: string[],
+  ): string | undefined {
     if (!labels || labels.length === 0) {
       return undefined;
     }
 
     // Normalize labels to lowercase for case-insensitive matching
-    const normalizedLabels = labels.map(label => label.toLowerCase());
+    const normalizedLabels = labels.map((label) => label.toLowerCase());
 
-    if (this.config.mappingStrategy === 'priority-based' && this.config.labelPriority) {
+    if (
+      this.config.mappingStrategy === "priority-based" &&
+      this.config.labelPriority
+    ) {
       return this.mapWithPriority(normalizedLabels, availableTypes);
     } else {
       return this.mapFirstMatch(normalizedLabels, availableTypes);
@@ -82,7 +88,10 @@ export class GitHubLabelTypeMapper implements LabelTypeMapper {
    * Map labels using first-match strategy
    * Returns the first label that has a mapping to an available type
    */
-  private mapFirstMatch(normalizedLabels: string[], availableTypes: string[]): string | undefined {
+  private mapFirstMatch(
+    normalizedLabels: string[],
+    availableTypes: string[],
+  ): string | undefined {
     for (const label of normalizedLabels) {
       const mappedType = this.labelMapping[label];
       if (mappedType && availableTypes.includes(mappedType)) {
@@ -96,7 +105,10 @@ export class GitHubLabelTypeMapper implements LabelTypeMapper {
    * Map labels using priority-based strategy
    * Returns the highest priority label that has a mapping
    */
-  private mapWithPriority(normalizedLabels: string[], availableTypes: string[]): string | undefined {
+  private mapWithPriority(
+    normalizedLabels: string[],
+    availableTypes: string[],
+  ): string | undefined {
     if (!this.config.labelPriority) {
       return this.mapFirstMatch(normalizedLabels, availableTypes);
     }
@@ -122,17 +134,17 @@ export class GitHubLabelTypeMapper implements LabelTypeMapper {
    */
   static getDefaultMappings(): Record<string, string> {
     return {
-      'bug': 'Bug',
-      'enhancement': 'Feature',
-      'feature': 'Feature',
-      'improvement': 'Improvement',
-      'chore': 'Chore',
-      'task': 'Task',
-      'documentation': 'Chore',
-      'refactor': 'Improvement',
-      'performance': 'Improvement',
-      'security': 'Bug',
-      'hotfix': 'Bug'
+      bug: "Bug",
+      enhancement: "Feature",
+      feature: "Feature",
+      improvement: "Improvement",
+      chore: "Chore",
+      task: "Task",
+      documentation: "Chore",
+      refactor: "Improvement",
+      performance: "Improvement",
+      security: "Bug",
+      hotfix: "Bug",
     };
   }
 
@@ -142,35 +154,40 @@ export class GitHubLabelTypeMapper implements LabelTypeMapper {
    */
   static getDefaultPriority(): string[] {
     return [
-      'bug',
-      'security',
-      'hotfix',
-      'feature',
-      'enhancement',
-      'improvement',
-      'performance',
-      'refactor',
-      'chore',
-      'documentation',
-      'task'
+      "bug",
+      "security",
+      "hotfix",
+      "feature",
+      "enhancement",
+      "improvement",
+      "performance",
+      "refactor",
+      "chore",
+      "documentation",
+      "task",
     ];
   }
 
   /**
    * Create a mapper with default GitHub configuration
    */
-  static createWithDefaults(overrides?: Partial<LabelMappingConfig>): GitHubLabelTypeMapper {
+  static createWithDefaults(
+    overrides?: Partial<LabelMappingConfig>,
+  ): GitHubLabelTypeMapper {
     const defaultMappings = GitHubLabelTypeMapper.getDefaultMappings();
 
     // Merge default mappings with any provided overrides
     const customMappings = overrides?.labelToTypeMapping;
-    const mergedMappings = customMappings ? { ...defaultMappings, ...customMappings } : defaultMappings;
+    const mergedMappings = customMappings
+      ? { ...defaultMappings, ...customMappings }
+      : defaultMappings;
 
     const config: LabelMappingConfig = {
       labelToTypeMapping: mergedMappings,
-      defaultTaskType: overrides?.defaultTaskType || 'Task',
-      mappingStrategy: overrides?.mappingStrategy || 'priority-based',
-      labelPriority: overrides?.labelPriority || GitHubLabelTypeMapper.getDefaultPriority()
+      defaultTaskType: overrides?.defaultTaskType || "Task",
+      mappingStrategy: overrides?.mappingStrategy || "priority-based",
+      labelPriority:
+        overrides?.labelPriority || GitHubLabelTypeMapper.getDefaultPriority(),
     };
 
     return new GitHubLabelTypeMapper(config);

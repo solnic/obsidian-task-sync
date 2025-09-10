@@ -2,8 +2,12 @@
  * Autocomplete suggest components for settings
  */
 
-import { App, TFolder, TFile, Setting } from 'obsidian';
-import { FolderSuggestOptions, FileSuggestOptions, ValidationResult } from './types';
+import { App, TFolder, TFile, Setting } from "obsidian";
+import {
+  FolderSuggestOptions,
+  FileSuggestOptions,
+  ValidationResult,
+} from "./types";
 
 /**
  * Creates a folder suggestion input using Obsidian's vault API
@@ -16,7 +20,11 @@ export class FolderSuggestComponent {
   private onChangeCallback?: (value: string) => void;
   private isOpen = false;
 
-  constructor(app: App, inputEl: HTMLInputElement, options: FolderSuggestOptions = {}) {
+  constructor(
+    app: App,
+    inputEl: HTMLInputElement,
+    options: FolderSuggestOptions = {},
+  ) {
     this.app = app;
     this.inputEl = inputEl;
     this.options = options;
@@ -24,10 +32,10 @@ export class FolderSuggestComponent {
   }
 
   private setupEventListeners(): void {
-    this.inputEl.addEventListener('input', this.handleInput.bind(this));
-    this.inputEl.addEventListener('focus', this.handleFocus.bind(this));
-    this.inputEl.addEventListener('blur', this.handleBlur.bind(this));
-    this.inputEl.addEventListener('keydown', this.handleKeydown.bind(this));
+    this.inputEl.addEventListener("input", this.handleInput.bind(this));
+    this.inputEl.addEventListener("focus", this.handleFocus.bind(this));
+    this.inputEl.addEventListener("blur", this.handleBlur.bind(this));
+    this.inputEl.addEventListener("keydown", this.handleKeydown.bind(this));
   }
 
   private handleInput(): void {
@@ -52,18 +60,18 @@ export class FolderSuggestComponent {
     if (!this.isOpen) return;
 
     switch (event.key) {
-      case 'Escape':
+      case "Escape":
         this.hideSuggestions();
         break;
-      case 'ArrowDown':
+      case "ArrowDown":
         event.preventDefault();
         this.selectNextSuggestion();
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         event.preventDefault();
         this.selectPreviousSuggestion();
         break;
-      case 'Enter':
+      case "Enter":
         event.preventDefault();
         this.acceptSelectedSuggestion();
         break;
@@ -87,9 +95,10 @@ export class FolderSuggestComponent {
   }
 
   private getFolderSuggestions(query: string): string[] {
-    const allFolders = this.app.vault.getAllLoadedFiles()
-      .filter(file => file instanceof TFolder)
-      .map(folder => folder.path)
+    const allFolders = this.app.vault
+      .getAllLoadedFiles()
+      .filter((file) => file instanceof TFolder)
+      .map((folder) => folder.path)
       .sort();
 
     if (!query.trim()) {
@@ -97,26 +106,26 @@ export class FolderSuggestComponent {
     }
 
     return allFolders
-      .filter(path => path.toLowerCase().includes(query.toLowerCase()))
+      .filter((path) => path.toLowerCase().includes(query.toLowerCase()))
       .slice(0, 10);
   }
 
   private createSuggestElement(): void {
-    this.suggestEl = document.createElement('div');
-    this.suggestEl.className = 'suggestion-container task-sync-folder-suggest';
+    this.suggestEl = document.createElement("div");
+    this.suggestEl.className = "suggestion-container task-sync-folder-suggest";
 
     // Position relative to input
     const rect = this.inputEl.getBoundingClientRect();
-    this.suggestEl.style.position = 'absolute';
+    this.suggestEl.style.position = "absolute";
     this.suggestEl.style.top = `${rect.bottom + window.scrollY}px`;
     this.suggestEl.style.left = `${rect.left + window.scrollX}px`;
     this.suggestEl.style.width = `${rect.width}px`;
-    this.suggestEl.style.zIndex = '1000';
-    this.suggestEl.style.backgroundColor = 'var(--background-primary)';
-    this.suggestEl.style.border = '1px solid var(--background-modifier-border)';
-    this.suggestEl.style.borderRadius = '4px';
-    this.suggestEl.style.maxHeight = '200px';
-    this.suggestEl.style.overflowY = 'auto';
+    this.suggestEl.style.zIndex = "1000";
+    this.suggestEl.style.backgroundColor = "var(--background-primary)";
+    this.suggestEl.style.border = "1px solid var(--background-modifier-border)";
+    this.suggestEl.style.borderRadius = "4px";
+    this.suggestEl.style.maxHeight = "200px";
+    this.suggestEl.style.overflowY = "auto";
 
     document.body.appendChild(this.suggestEl);
   }
@@ -124,21 +133,21 @@ export class FolderSuggestComponent {
   private renderSuggestions(folders: string[]): void {
     if (!this.suggestEl) return;
 
-    this.suggestEl.innerHTML = '';
+    this.suggestEl.innerHTML = "";
 
     folders.forEach((folder, index) => {
-      const item = document.createElement('div');
-      item.className = 'suggestion-item';
-      item.textContent = folder || '(root)';
-      item.style.padding = '8px 12px';
-      item.style.cursor = 'pointer';
+      const item = document.createElement("div");
+      item.className = "suggestion-item";
+      item.textContent = folder || "(root)";
+      item.style.padding = "8px 12px";
+      item.style.cursor = "pointer";
 
       if (index === 0) {
-        item.classList.add('is-selected');
-        item.style.backgroundColor = 'var(--background-modifier-hover)';
+        item.classList.add("is-selected");
+        item.style.backgroundColor = "var(--background-modifier-hover)";
       }
 
-      item.addEventListener('click', () => {
+      item.addEventListener("click", () => {
         this.inputEl.value = folder;
         this.hideSuggestions();
         if (this.onChangeCallback) {
@@ -146,10 +155,10 @@ export class FolderSuggestComponent {
         }
       });
 
-      item.addEventListener('mouseenter', () => {
+      item.addEventListener("mouseenter", () => {
         this.clearSelection();
-        item.classList.add('is-selected');
-        item.style.backgroundColor = 'var(--background-modifier-hover)';
+        item.classList.add("is-selected");
+        item.style.backgroundColor = "var(--background-modifier-hover)";
       });
 
       this.suggestEl.appendChild(item);
@@ -159,8 +168,8 @@ export class FolderSuggestComponent {
   private selectNextSuggestion(): void {
     if (!this.suggestEl) return;
 
-    const items = this.suggestEl.querySelectorAll('.suggestion-item');
-    const selected = this.suggestEl.querySelector('.is-selected');
+    const items = this.suggestEl.querySelectorAll(".suggestion-item");
+    const selected = this.suggestEl.querySelector(".is-selected");
 
     if (!selected) {
       if (items.length > 0) {
@@ -177,8 +186,8 @@ export class FolderSuggestComponent {
   private selectPreviousSuggestion(): void {
     if (!this.suggestEl) return;
 
-    const items = this.suggestEl.querySelectorAll('.suggestion-item');
-    const selected = this.suggestEl.querySelector('.is-selected');
+    const items = this.suggestEl.querySelectorAll(".suggestion-item");
+    const selected = this.suggestEl.querySelector(".is-selected");
 
     if (!selected) {
       if (items.length > 0) {
@@ -194,25 +203,25 @@ export class FolderSuggestComponent {
 
   private selectItem(item: HTMLElement): void {
     this.clearSelection();
-    item.classList.add('is-selected');
-    item.style.backgroundColor = 'var(--background-modifier-hover)';
+    item.classList.add("is-selected");
+    item.style.backgroundColor = "var(--background-modifier-hover)";
   }
 
   private clearSelection(): void {
     if (!this.suggestEl) return;
 
-    this.suggestEl.querySelectorAll('.suggestion-item').forEach(item => {
-      item.classList.remove('is-selected');
-      (item as HTMLElement).style.backgroundColor = '';
+    this.suggestEl.querySelectorAll(".suggestion-item").forEach((item) => {
+      item.classList.remove("is-selected");
+      (item as HTMLElement).style.backgroundColor = "";
     });
   }
 
   private acceptSelectedSuggestion(): void {
     if (!this.suggestEl) return;
 
-    const selected = this.suggestEl.querySelector('.is-selected');
+    const selected = this.suggestEl.querySelector(".is-selected");
     if (selected) {
-      this.inputEl.value = selected.textContent || '';
+      this.inputEl.value = selected.textContent || "";
       this.hideSuggestions();
       if (this.onChangeCallback) {
         this.onChangeCallback(this.inputEl.value);
@@ -248,7 +257,11 @@ export class FileSuggestComponent {
   private onChangeCallback?: (value: string) => void;
   private isOpen = false;
 
-  constructor(app: App, inputEl: HTMLInputElement, options: FileSuggestOptions = {}) {
+  constructor(
+    app: App,
+    inputEl: HTMLInputElement,
+    options: FileSuggestOptions = {},
+  ) {
     this.app = app;
     this.inputEl = inputEl;
     this.options = options;
@@ -256,10 +269,10 @@ export class FileSuggestComponent {
   }
 
   private setupEventListeners(): void {
-    this.inputEl.addEventListener('input', this.handleInput.bind(this));
-    this.inputEl.addEventListener('focus', this.handleFocus.bind(this));
-    this.inputEl.addEventListener('blur', this.handleBlur.bind(this));
-    this.inputEl.addEventListener('keydown', this.handleKeydown.bind(this));
+    this.inputEl.addEventListener("input", this.handleInput.bind(this));
+    this.inputEl.addEventListener("focus", this.handleFocus.bind(this));
+    this.inputEl.addEventListener("blur", this.handleBlur.bind(this));
+    this.inputEl.addEventListener("keydown", this.handleKeydown.bind(this));
   }
 
   private handleInput(): void {
@@ -284,18 +297,18 @@ export class FileSuggestComponent {
     if (!this.isOpen) return;
 
     switch (event.key) {
-      case 'Escape':
+      case "Escape":
         this.hideSuggestions();
         break;
-      case 'ArrowDown':
+      case "ArrowDown":
         event.preventDefault();
         this.selectNextSuggestion();
         break;
-      case 'ArrowUp':
+      case "ArrowUp":
         event.preventDefault();
         this.selectPreviousSuggestion();
         break;
-      case 'Enter':
+      case "Enter":
         event.preventDefault();
         this.acceptSelectedSuggestion();
         break;
@@ -319,30 +332,31 @@ export class FileSuggestComponent {
   }
 
   private getFileSuggestions(query: string): string[] {
-    let allFiles = this.app.vault.getAllLoadedFiles()
-      .filter(file => file instanceof TFile);
+    let allFiles = this.app.vault
+      .getAllLoadedFiles()
+      .filter((file) => file instanceof TFile);
 
     // Filter by folder path if specified
     if (this.options.folderPath !== undefined) {
       const folderPath = this.options.folderPath;
-      allFiles = allFiles.filter(file => {
+      allFiles = allFiles.filter((file) => {
         // Check if file is in the specified folder or its subfolders
-        if (folderPath === '') {
+        if (folderPath === "") {
           // Empty string means root folder only (no subfolders)
-          return !file.path.includes('/');
+          return !file.path.includes("/");
         } else {
           // Non-empty folder path
-          return file.path.startsWith(folderPath + '/');
+          return file.path.startsWith(folderPath + "/");
         }
       });
     }
 
-    let fileNames = allFiles.map(file => file.name);
+    let fileNames = allFiles.map((file) => file.name);
 
     // Filter by extensions if specified
     if (this.options.fileExtensions && this.options.fileExtensions.length > 0) {
-      fileNames = fileNames.filter(fileName =>
-        this.options.fileExtensions!.some(ext => fileName.endsWith(ext))
+      fileNames = fileNames.filter((fileName) =>
+        this.options.fileExtensions!.some((ext) => fileName.endsWith(ext)),
       );
     }
 
@@ -353,26 +367,26 @@ export class FileSuggestComponent {
     }
 
     return fileNames
-      .filter(name => name.toLowerCase().includes(query.toLowerCase()))
+      .filter((name) => name.toLowerCase().includes(query.toLowerCase()))
       .slice(0, 10);
   }
 
   private createSuggestElement(): void {
-    this.suggestEl = document.createElement('div');
-    this.suggestEl.className = 'suggestion-container task-sync-file-suggest';
+    this.suggestEl = document.createElement("div");
+    this.suggestEl.className = "suggestion-container task-sync-file-suggest";
 
     // Position relative to input
     const rect = this.inputEl.getBoundingClientRect();
-    this.suggestEl.style.position = 'absolute';
+    this.suggestEl.style.position = "absolute";
     this.suggestEl.style.top = `${rect.bottom + window.scrollY}px`;
     this.suggestEl.style.left = `${rect.left + window.scrollX}px`;
     this.suggestEl.style.width = `${rect.width}px`;
-    this.suggestEl.style.zIndex = '1000';
-    this.suggestEl.style.backgroundColor = 'var(--background-primary)';
-    this.suggestEl.style.border = '1px solid var(--background-modifier-border)';
-    this.suggestEl.style.borderRadius = '4px';
-    this.suggestEl.style.maxHeight = '200px';
-    this.suggestEl.style.overflowY = 'auto';
+    this.suggestEl.style.zIndex = "1000";
+    this.suggestEl.style.backgroundColor = "var(--background-primary)";
+    this.suggestEl.style.border = "1px solid var(--background-modifier-border)";
+    this.suggestEl.style.borderRadius = "4px";
+    this.suggestEl.style.maxHeight = "200px";
+    this.suggestEl.style.overflowY = "auto";
 
     document.body.appendChild(this.suggestEl);
   }
@@ -380,21 +394,21 @@ export class FileSuggestComponent {
   private renderSuggestions(files: string[]): void {
     if (!this.suggestEl) return;
 
-    this.suggestEl.innerHTML = '';
+    this.suggestEl.innerHTML = "";
 
     files.forEach((file, index) => {
-      const item = document.createElement('div');
-      item.className = 'suggestion-item';
+      const item = document.createElement("div");
+      item.className = "suggestion-item";
       item.textContent = file;
-      item.style.padding = '8px 12px';
-      item.style.cursor = 'pointer';
+      item.style.padding = "8px 12px";
+      item.style.cursor = "pointer";
 
       if (index === 0) {
-        item.classList.add('is-selected');
-        item.style.backgroundColor = 'var(--background-modifier-hover)';
+        item.classList.add("is-selected");
+        item.style.backgroundColor = "var(--background-modifier-hover)";
       }
 
-      item.addEventListener('click', () => {
+      item.addEventListener("click", () => {
         this.inputEl.value = file;
         this.hideSuggestions();
         if (this.onChangeCallback) {
@@ -402,10 +416,10 @@ export class FileSuggestComponent {
         }
       });
 
-      item.addEventListener('mouseenter', () => {
+      item.addEventListener("mouseenter", () => {
         this.clearSelection();
-        item.classList.add('is-selected');
-        item.style.backgroundColor = 'var(--background-modifier-hover)';
+        item.classList.add("is-selected");
+        item.style.backgroundColor = "var(--background-modifier-hover)";
       });
 
       this.suggestEl.appendChild(item);
@@ -415,8 +429,8 @@ export class FileSuggestComponent {
   private selectNextSuggestion(): void {
     if (!this.suggestEl) return;
 
-    const items = this.suggestEl.querySelectorAll('.suggestion-item');
-    const selected = this.suggestEl.querySelector('.is-selected');
+    const items = this.suggestEl.querySelectorAll(".suggestion-item");
+    const selected = this.suggestEl.querySelector(".is-selected");
 
     if (!selected) {
       if (items.length > 0) {
@@ -433,8 +447,8 @@ export class FileSuggestComponent {
   private selectPreviousSuggestion(): void {
     if (!this.suggestEl) return;
 
-    const items = this.suggestEl.querySelectorAll('.suggestion-item');
-    const selected = this.suggestEl.querySelector('.is-selected');
+    const items = this.suggestEl.querySelectorAll(".suggestion-item");
+    const selected = this.suggestEl.querySelector(".is-selected");
 
     if (!selected) {
       if (items.length > 0) {
@@ -450,25 +464,25 @@ export class FileSuggestComponent {
 
   private selectItem(item: HTMLElement): void {
     this.clearSelection();
-    item.classList.add('is-selected');
-    item.style.backgroundColor = 'var(--background-modifier-hover)';
+    item.classList.add("is-selected");
+    item.style.backgroundColor = "var(--background-modifier-hover)";
   }
 
   private clearSelection(): void {
     if (!this.suggestEl) return;
 
-    this.suggestEl.querySelectorAll('.suggestion-item').forEach(item => {
-      item.classList.remove('is-selected');
-      (item as HTMLElement).style.backgroundColor = '';
+    this.suggestEl.querySelectorAll(".suggestion-item").forEach((item) => {
+      item.classList.remove("is-selected");
+      (item as HTMLElement).style.backgroundColor = "";
     });
   }
 
   private acceptSelectedSuggestion(): void {
     if (!this.suggestEl) return;
 
-    const selected = this.suggestEl.querySelector('.is-selected');
+    const selected = this.suggestEl.querySelector(".is-selected");
     if (selected) {
-      this.inputEl.value = selected.textContent || '';
+      this.inputEl.value = selected.textContent || "";
       this.hideSuggestions();
       if (this.onChangeCallback) {
         this.onChangeCallback(this.inputEl.value);

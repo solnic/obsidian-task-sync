@@ -8,23 +8,23 @@
  */
 export enum EventType {
   // File change events
-  STATUS_CHANGED = 'status-changed',
-  DONE_CHANGED = 'done-changed',
-  TASK_CREATED = 'task-created',
-  TASK_UPDATED = 'task-updated',
-  TASK_DELETED = 'task-deleted',
-  PROJECT_CREATED = 'project-created',
-  PROJECT_UPDATED = 'project-updated',
-  PROJECT_DELETED = 'project-deleted',
-  AREA_CREATED = 'area-created',
-  AREA_UPDATED = 'area-updated',
-  AREA_DELETED = 'area-deleted',
-  
+  STATUS_CHANGED = "status-changed",
+  DONE_CHANGED = "done-changed",
+  TASK_CREATED = "task-created",
+  TASK_UPDATED = "task-updated",
+  TASK_DELETED = "task-deleted",
+  PROJECT_CREATED = "project-created",
+  PROJECT_UPDATED = "project-updated",
+  PROJECT_DELETED = "project-deleted",
+  AREA_CREATED = "area-created",
+  AREA_UPDATED = "area-updated",
+  AREA_DELETED = "area-deleted",
+
   // System events
-  PLUGIN_LOADED = 'plugin-loaded',
-  PLUGIN_UNLOADED = 'plugin-unloaded',
-  SETTINGS_CHANGED = 'settings-changed',
-  BASE_REGENERATED = 'base-regenerated'
+  PLUGIN_LOADED = "plugin-loaded",
+  PLUGIN_UNLOADED = "plugin-unloaded",
+  SETTINGS_CHANGED = "settings-changed",
+  BASE_REGENERATED = "base-regenerated",
 }
 
 /**
@@ -39,7 +39,7 @@ export interface PluginEvent {
 /**
  * Union type for all possible event data structures
  */
-export type EventData = 
+export type EventData =
   | StatusChangedEventData
   | DoneChangedEventData
   | TaskEventData
@@ -57,7 +57,7 @@ export interface StatusChangedEventData {
   oldStatus?: string;
   newStatus: string;
   frontmatter: Record<string, any>;
-  entityType: 'task' | 'project' | 'area';
+  entityType: "task" | "project" | "area";
 }
 
 /**
@@ -68,7 +68,7 @@ export interface DoneChangedEventData {
   oldDone?: boolean;
   newDone: boolean;
   frontmatter: Record<string, any>;
-  entityType: 'task' | 'project' | 'area';
+  entityType: "task" | "project" | "area";
 }
 
 /**
@@ -114,7 +114,7 @@ export interface SettingsChangedEventData {
  * Event data for base regeneration events
  */
 export interface BaseRegeneratedEventData {
-  baseType: 'tasks' | 'area' | 'project' | 'parent-task';
+  baseType: "tasks" | "area" | "project" | "parent-task";
   basePath: string;
   entityName?: string;
 }

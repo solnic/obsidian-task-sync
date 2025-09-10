@@ -4,10 +4,13 @@
  * Handles task file creation, status changes, project/area assignments, and task-specific operations
  */
 
-import { App, Vault, TFile } from 'obsidian';
-import { TaskSyncSettings } from '../main';
-import { FileManager, FileCreationData } from './FileManager';
-import { PROPERTY_REGISTRY, PROPERTY_SETS } from './base-definitions/BaseConfigurations';
+import { App, Vault, TFile } from "obsidian";
+import { TaskSyncSettings } from "../main";
+import { FileManager, FileCreationData } from "./FileManager";
+import {
+  PROPERTY_REGISTRY,
+  PROPERTY_SETS,
+} from "./base-definitions/BaseConfigurations";
 
 /**
  * Interface for task creation data
@@ -28,7 +31,6 @@ export interface TaskCreationData extends FileCreationData {
  * Extends the abstract FileManager with task-specific functionality
  */
 export class TaskFileManager extends FileManager {
-
   constructor(app: App, vault: Vault, settings: TaskSyncSettings) {
     super(app, vault, settings);
   }
@@ -39,7 +41,10 @@ export class TaskFileManager extends FileManager {
    * @param content - Optional file content that may contain {{tasks}} variable. If not provided, reads from template.
    * @returns Path of the created task file
    */
-  async createTaskFile(data: TaskCreationData, content?: string): Promise<string> {
+  async createTaskFile(
+    data: TaskCreationData,
+    content?: string,
+  ): Promise<string> {
     const taskFolder = this.settings.tasksFolder;
 
     // Get content from template if not provided
@@ -51,7 +56,11 @@ export class TaskFileManager extends FileManager {
     // Process {{tasks}} variable in content before creating file
     const processedContent = this.processTasksVariable(fileContent, data.title);
 
-    const filePath = await this.createFile(taskFolder, data.title, processedContent);
+    const filePath = await this.createFile(
+      taskFolder,
+      data.title,
+      processedContent,
+    );
     const frontMatterData = this.generateTaskFrontMatterObject(data);
 
     await this.updateFrontMatter(filePath, frontMatterData);
@@ -60,11 +69,15 @@ export class TaskFileManager extends FileManager {
     if (this.shouldUseParentTaskTemplate(data)) {
       try {
         // Import BaseManager to create parent task base
-        const { BaseManager } = await import('./BaseManager');
-        const baseManager = new BaseManager(this.app, this.vault, this.settings);
+        const { BaseManager } = await import("./BaseManager");
+        const baseManager = new BaseManager(
+          this.app,
+          this.vault,
+          this.settings,
+        );
         await baseManager.createOrUpdateParentTaskBase(data.title);
       } catch (error) {
-        console.error('Failed to create parent task base:', error);
+        console.error("Failed to create parent task base:", error);
         // Don't fail the task creation if base creation fails
       }
     }
@@ -77,16 +90,19 @@ export class TaskFileManager extends FileManager {
    * @param data - Task creation data to determine template type
    * @returns Template content or default content if template not found
    */
-  private async getTaskTemplateContent(data: TaskCreationData): Promise<string> {
+  private async getTaskTemplateContent(
+    data: TaskCreationData,
+  ): Promise<string> {
     // Determine if this should be a parent task based on task data
     const shouldUseParentTemplate = this.shouldUseParentTaskTemplate(data);
-    const templateType = shouldUseParentTemplate ? 'parentTask' : 'task';
+    const templateType = shouldUseParentTemplate ? "parentTask" : "task";
 
     // Try to read template content
     const templateContent = await this.readTemplate(templateType);
     if (templateContent) {
       // Check if template has meaningful content (not just front-matter)
-      const hasContentAfterFrontMatter = this.hasContentAfterFrontMatter(templateContent);
+      const hasContentAfterFrontMatter =
+        this.hasContentAfterFrontMatter(templateContent);
       if (hasContentAfterFrontMatter) {
         return templateContent;
       }
@@ -99,7 +115,7 @@ export class TaskFileManager extends FileManager {
     }
 
     // Fallback content if template doesn't exist - use description if available
-    return data.description || '';
+    return data.description || "";
   }
 
   /**
@@ -113,19 +129,19 @@ export class TaskFileManager extends FileManager {
     // 2. Or if the task name suggests it's a parent task (contains words like "Epic", "Parent", etc.)
     // 3. Or if we're in a context where parent tasks are expected
 
-    if (data.category === 'Parent Task') {
+    if (data.category === "Parent Task") {
       return true;
     }
 
     // Check if task name suggests it's a parent task
-    const parentKeywords = ['epic', 'parent', 'main', 'master', 'primary'];
+    const parentKeywords = ["epic", "parent", "main", "master", "primary"];
     const taskNameLower = data.title.toLowerCase();
-    if (parentKeywords.some(keyword => taskNameLower.includes(keyword))) {
+    if (parentKeywords.some((keyword) => taskNameLower.includes(keyword))) {
       return true;
     }
 
     // For now, also use parent template for Feature category tasks as they often have subtasks
-    if (data.category === 'Feature') {
+    if (data.category === "Feature") {
       return true;
     }
 
@@ -137,10 +153,13 @@ export class TaskFileManager extends FileManager {
    * @param templateType - Type of template to read
    * @returns Template content or null if not found
    */
-  private async readTemplate(templateType: 'task' | 'parentTask'): Promise<string | null> {
-    const templateFileName = templateType === 'parentTask'
-      ? this.settings.defaultParentTaskTemplate
-      : this.settings.defaultTaskTemplate;
+  private async readTemplate(
+    templateType: "task" | "parentTask",
+  ): Promise<string | null> {
+    const templateFileName =
+      templateType === "parentTask"
+        ? this.settings.defaultParentTaskTemplate
+        : this.settings.defaultTaskTemplate;
 
     const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
 
@@ -163,14 +182,14 @@ export class TaskFileManager extends FileManager {
    */
   private hasContentAfterFrontMatter(content: string): boolean {
     // Split content by lines
-    const lines = content.split('\n');
+    const lines = content.split("\n");
 
     // Find the end of front-matter (second occurrence of ---)
     let frontMatterEndIndex = -1;
     let dashCount = 0;
 
     for (let i = 0; i < lines.length; i++) {
-      if (lines[i].trim() === '---') {
+      if (lines[i].trim() === "---") {
         dashCount++;
         if (dashCount === 2) {
           frontMatterEndIndex = i;
@@ -185,7 +204,9 @@ export class TaskFileManager extends FileManager {
     }
 
     // Check if there's non-empty content after front-matter
-    const contentAfterFrontMatter = lines.slice(frontMatterEndIndex + 1).join('\n');
+    const contentAfterFrontMatter = lines
+      .slice(frontMatterEndIndex + 1)
+      .join("\n");
     return contentAfterFrontMatter.trim().length > 0;
   }
 
@@ -196,7 +217,7 @@ export class TaskFileManager extends FileManager {
    * @returns Processed content with {{tasks}} replaced
    */
   public processTasksVariable(content: string, taskName: string): string {
-    if (!content.includes('{{tasks}}')) {
+    if (!content.includes("{{tasks}}")) {
       return content;
     }
 
@@ -209,11 +230,14 @@ export class TaskFileManager extends FileManager {
    * @param data - Task creation data
    * @returns Front-matter object with all required properties
    */
-  private generateTaskFrontMatterObject(data: TaskCreationData): Record<string, any> {
+  private generateTaskFrontMatterObject(
+    data: TaskCreationData,
+  ): Record<string, any> {
     const frontMatterData: Record<string, any> = {};
 
     for (const propertyKey of PROPERTY_SETS.TASK_FRONTMATTER) {
-      const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+      const prop =
+        PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
 
       if (!prop) continue;
 
@@ -222,22 +246,26 @@ export class TaskFileManager extends FileManager {
       if (value !== undefined && value !== null) {
         // Format as links if the property has link: true
         if (prop.link) {
-          if (prop.type === 'array' && Array.isArray(value)) {
+          if (prop.type === "array" && Array.isArray(value)) {
             // For arrays, format each item as a link
-            value = value.map(item => {
-              if (typeof item === 'string' && item.trim() !== '') {
+            value = value.map((item) => {
+              if (typeof item === "string" && item.trim() !== "") {
                 // Don't double-format if already a link
-                if (item.startsWith('[[') && item.endsWith(']]')) {
+                if (item.startsWith("[[") && item.endsWith("]]")) {
                   return item;
                 }
                 return `[[${item}]]`;
               }
               return item;
             });
-          } else if (prop.type === 'string' && typeof value === 'string' && value.trim() !== '') {
+          } else if (
+            prop.type === "string" &&
+            typeof value === "string" &&
+            value.trim() !== ""
+          ) {
             // For strings, format as a link
             // Don't double-format if already a link
-            if (!value.startsWith('[[') || !value.endsWith(']]')) {
+            if (!value.startsWith("[[") || !value.endsWith("]]")) {
               value = `[[${value}]]`;
             }
           }
@@ -248,7 +276,7 @@ export class TaskFileManager extends FileManager {
       }
     }
 
-    frontMatterData.Type = 'Task';
+    frontMatterData.Type = "Task";
 
     return frontMatterData;
   }
@@ -262,14 +290,14 @@ export class TaskFileManager extends FileManager {
     if (this.isTaskCreationData(data)) {
       return await this.createTaskFile(data);
     }
-    throw new Error('Invalid data type for TaskFileManager');
+    throw new Error("Invalid data type for TaskFileManager");
   }
 
   /**
    * Type guard to check if data is TaskCreationData
    */
   private isTaskCreationData(data: FileCreationData): data is TaskCreationData {
-    return 'title' in data;
+    return "title" in data;
   }
 
   /**
@@ -277,11 +305,14 @@ export class TaskFileManager extends FileManager {
    * @param filePath - Path to the task file
    * @param status - Either boolean (for Done property) or string (for Status property)
    */
-  async changeTaskStatus(filePath: string, status: boolean | string): Promise<void> {
-    if (typeof status === 'boolean') {
-      await this.updateProperty(filePath, 'Done', status);
+  async changeTaskStatus(
+    filePath: string,
+    status: boolean | string,
+  ): Promise<void> {
+    if (typeof status === "boolean") {
+      await this.updateProperty(filePath, "Done", status);
     } else {
-      await this.updateProperty(filePath, 'Status', status);
+      await this.updateProperty(filePath, "Status", status);
     }
   }
 
@@ -292,8 +323,9 @@ export class TaskFileManager extends FileManager {
    */
   async assignToProject(filePath: string, projectName: string): Promise<void> {
     // Format as link if not empty
-    const projectLink = projectName && projectName.trim() !== '' ? `[[${projectName}]]` : '';
-    await this.updateProperty(filePath, 'Project', projectLink);
+    const projectLink =
+      projectName && projectName.trim() !== "" ? `[[${projectName}]]` : "";
+    await this.updateProperty(filePath, "Project", projectLink);
   }
 
   /**
@@ -303,17 +335,17 @@ export class TaskFileManager extends FileManager {
    */
   async assignToAreas(filePath: string, areas: string[]): Promise<void> {
     // Format each area as a link
-    const areaLinks = areas.map(area => {
-      if (typeof area === 'string' && area.trim() !== '') {
+    const areaLinks = areas.map((area) => {
+      if (typeof area === "string" && area.trim() !== "") {
         // Don't double-format if already a link
-        if (area.startsWith('[[') && area.endsWith(']]')) {
+        if (area.startsWith("[[") && area.endsWith("]]")) {
           return area;
         }
         return `[[${area}]]`;
       }
       return area;
     });
-    await this.updateProperty(filePath, 'Areas', areaLinks);
+    await this.updateProperty(filePath, "Areas", areaLinks);
   }
 
   /**
@@ -322,7 +354,7 @@ export class TaskFileManager extends FileManager {
    * @param priority - Priority level (Low, Medium, High, Critical)
    */
   async setTaskPriority(filePath: string, priority: string): Promise<void> {
-    await this.updateProperty(filePath, 'Priority', priority);
+    await this.updateProperty(filePath, "Priority", priority);
   }
 
   /**
@@ -331,7 +363,7 @@ export class TaskFileManager extends FileManager {
    * @param type - Task type (Task, Bug, Feature, Improvement, Chore)
    */
   async setTaskType(filePath: string, type: string): Promise<void> {
-    await this.updateProperty(filePath, 'Type', type);
+    await this.updateProperty(filePath, "Type", type);
   }
 
   /**
@@ -343,7 +375,7 @@ export class TaskFileManager extends FileManager {
     const currentFrontMatter = await this.loadFrontMatter(filePath);
     const currentTags = currentFrontMatter.tags || [];
     const newTags = [...new Set([...currentTags, ...tags])]; // Remove duplicates
-    await this.updateProperty(filePath, 'tags', newTags);
+    await this.updateProperty(filePath, "tags", newTags);
   }
 
   /**
@@ -354,8 +386,10 @@ export class TaskFileManager extends FileManager {
   async removeTags(filePath: string, tagsToRemove: string[]): Promise<void> {
     const currentFrontMatter = await this.loadFrontMatter(filePath);
     const currentTags = currentFrontMatter.tags || [];
-    const newTags = currentTags.filter((tag: string) => !tagsToRemove.includes(tag));
-    await this.updateProperty(filePath, 'tags', newTags);
+    const newTags = currentTags.filter(
+      (tag: string) => !tagsToRemove.includes(tag),
+    );
+    await this.updateProperty(filePath, "tags", newTags);
   }
 
   /**
@@ -364,11 +398,9 @@ export class TaskFileManager extends FileManager {
    * @param parentTaskName - Name of the parent task
    */
   async setParentTask(filePath: string, parentTaskName: string): Promise<void> {
-    const parentTaskLink = parentTaskName ? `[[${parentTaskName}]]` : '';
-    await this.updateProperty(filePath, 'Parent task', parentTaskLink);
+    const parentTaskLink = parentTaskName ? `[[${parentTaskName}]]` : "";
+    await this.updateProperty(filePath, "Parent task", parentTaskLink);
   }
-
-
 
   // ============================================================================
   // PROPERTY ORDER MANAGEMENT
@@ -380,21 +412,32 @@ export class TaskFileManager extends FileManager {
    */
   getTaskPropertiesInOrder(): any[] {
     // Get property order from settings or use default
-    const propertyOrder = this.settings.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
+    const propertyOrder =
+      this.settings.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
 
     // Validate property order - ensure all required properties are present
     const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
-    const isValidOrder = requiredProperties.every((prop: any) => propertyOrder.includes(prop)) &&
-      propertyOrder.every((prop: any) => requiredProperties.includes(prop as typeof requiredProperties[number]));
+    const isValidOrder =
+      requiredProperties.every((prop: any) => propertyOrder.includes(prop)) &&
+      propertyOrder.every((prop: any) =>
+        requiredProperties.includes(
+          prop as (typeof requiredProperties)[number],
+        ),
+      );
 
     // Use validated order or fall back to default
-    const finalPropertyOrder = isValidOrder ? propertyOrder : requiredProperties;
+    const finalPropertyOrder = isValidOrder
+      ? propertyOrder
+      : requiredProperties;
 
     // Convert property keys to property definitions in the correct order
-    return finalPropertyOrder.map((propertyKey: any) => {
-      const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
-      return { ...prop };
-    }).filter((prop: any) => prop); // Filter out any undefined properties
+    return finalPropertyOrder
+      .map((propertyKey: any) => {
+        const prop =
+          PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+        return { ...prop };
+      })
+      .filter((prop: any) => prop); // Filter out any undefined properties
   }
 
   /**
@@ -403,7 +446,9 @@ export class TaskFileManager extends FileManager {
    * @returns Content with reordered properties
    */
   async reorderTaskTemplateProperties(content: string): Promise<string> {
-    const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+    const frontMatterMatch = content.match(
+      /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/,
+    );
     if (!frontMatterMatch) {
       return content;
     }
@@ -412,7 +457,7 @@ export class TaskFileManager extends FileManager {
 
     // Parse existing front-matter
     const existingData: Record<string, string> = {};
-    const lines = frontMatterText.split('\n');
+    const lines = frontMatterText.split("\n");
     for (const line of lines) {
       const match = line.match(/^([^:]+):\s*(.*)$/);
       if (match) {
@@ -425,9 +470,9 @@ export class TaskFileManager extends FileManager {
     const properties = this.getTaskPropertiesInOrder();
 
     // Regenerate front-matter in correct order
-    const frontMatterLines = ['---'];
+    const frontMatterLines = ["---"];
     for (const prop of properties) {
-      const value = existingData[prop.name] || '';
+      const value = existingData[prop.name] || "";
       frontMatterLines.push(`${prop.name}: ${value}`);
     }
 
@@ -438,9 +483,9 @@ export class TaskFileManager extends FileManager {
       }
     }
 
-    frontMatterLines.push('---');
+    frontMatterLines.push("---");
 
-    return frontMatterLines.join('\n') + '\n' + bodyContent;
+    return frontMatterLines.join("\n") + "\n" + bodyContent;
   }
 
   /**
@@ -453,7 +498,9 @@ export class TaskFileManager extends FileManager {
   /**
    * Implementation of abstract method from FileManager
    */
-  async updateFileProperties(filePath: string): Promise<{ hasChanges: boolean, propertiesChanged: number }> {
+  async updateFileProperties(
+    filePath: string,
+  ): Promise<{ hasChanges: boolean; propertiesChanged: number }> {
     return this.updateTaskFileProperties(filePath);
   }
 
@@ -462,7 +509,9 @@ export class TaskFileManager extends FileManager {
    * @param filePath - Path to the task file
    * @returns Object with hasChanges and propertiesChanged count
    */
-  async updateTaskFileProperties(filePath: string): Promise<{ hasChanges: boolean, propertiesChanged: number }> {
+  async updateTaskFileProperties(
+    filePath: string,
+  ): Promise<{ hasChanges: boolean; propertiesChanged: number }> {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (!file) {
       throw new Error(`File not found: ${filePath}`);
@@ -478,9 +527,11 @@ export class TaskFileManager extends FileManager {
     }
 
     // Check if file has correct Type property for tasks
-    if (existingFrontMatter.Type && existingFrontMatter.Type !== 'Task') {
+    if (existingFrontMatter.Type && existingFrontMatter.Type !== "Task") {
       // Skip files that are not tasks
-      console.log(`Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Task, found: ${existingFrontMatter.Type})`);
+      console.log(
+        `Task Sync: Skipping file with incorrect Type property: ${filePath} (expected: Task, found: ${existingFrontMatter.Type})`,
+      );
       return { hasChanges: false, propertiesChanged: 0 };
     }
 
@@ -493,7 +544,7 @@ export class TaskFileManager extends FileManager {
       currentSchema[prop.name] = {
         type: prop.type,
         ...(prop.default !== undefined && { default: prop.default }),
-        ...(prop.link && { link: prop.link })
+        ...(prop.link && { link: prop.link }),
       };
       propertyOrder.push(prop.name);
     });
@@ -509,8 +560,10 @@ export class TaskFileManager extends FileManager {
       const config = fieldConfig as { default?: any };
       if (config && !(fieldName in updatedFrontMatter)) {
         // Add any field that's defined in the schema
-        updatedFrontMatter[fieldName] = config.default || '';
-        console.log(`Task Sync: Added missing field '${fieldName}' to ${filePath}`);
+        updatedFrontMatter[fieldName] = config.default || "";
+        console.log(
+          `Task Sync: Added missing field '${fieldName}' to ${filePath}`,
+        );
         hasChanges = true;
         propertiesChanged++;
       }
@@ -521,7 +574,7 @@ export class TaskFileManager extends FileManager {
     for (const fieldName of Object.keys(updatedFrontMatter)) {
       // Only remove fields that are clearly not part of the schema
       // Keep common fields that might be used by other plugins
-      const commonFields = ['tags', 'aliases', 'cssclass', 'publish'];
+      const commonFields = ["tags", "aliases", "cssclass", "publish"];
       if (!validFields.has(fieldName) && !commonFields.includes(fieldName)) {
         delete updatedFrontMatter[fieldName];
         hasChanges = true;
@@ -530,7 +583,10 @@ export class TaskFileManager extends FileManager {
     }
 
     // Check if property order matches schema
-    if (!hasChanges && !this.isPropertyOrderCorrect(fullContent, currentSchema, propertyOrder)) {
+    if (
+      !hasChanges &&
+      !this.isPropertyOrderCorrect(fullContent, currentSchema, propertyOrder)
+    ) {
       hasChanges = true;
       propertiesChanged++; // Count order change as one property change
     }
@@ -541,13 +597,15 @@ export class TaskFileManager extends FileManager {
       const file = this.app.vault.getAbstractFileByPath(filePath);
       if (file) {
         // Regenerate the front-matter section in correct order
-        const frontMatterLines = ['---'];
+        const frontMatterLines = ["---"];
 
         // Include ALL fields from the schema in the correct order
         for (const fieldName of propertyOrder) {
           const value = updatedFrontMatter[fieldName];
           if (value !== undefined) {
-            frontMatterLines.push(`${fieldName}: ${this.formatPropertyValue(value)}`);
+            frontMatterLines.push(
+              `${fieldName}: ${this.formatPropertyValue(value)}`,
+            );
           }
         }
 
@@ -558,14 +616,16 @@ export class TaskFileManager extends FileManager {
           }
         }
 
-        frontMatterLines.push('---');
+        frontMatterLines.push("---");
 
         // Extract body content (everything after front-matter)
-        const frontMatterMatch = fullContent.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
-        const bodyContent = frontMatterMatch ? frontMatterMatch[2] : '';
+        const frontMatterMatch = fullContent.match(
+          /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/,
+        );
+        const bodyContent = frontMatterMatch ? frontMatterMatch[2] : "";
 
         // Combine updated front-matter with existing body
-        const updatedContent = frontMatterLines.join('\n') + '\n' + bodyContent;
+        const updatedContent = frontMatterLines.join("\n") + "\n" + bodyContent;
 
         // Write back to file
         await this.vault.modify(file as any, updatedContent);
@@ -574,8 +634,6 @@ export class TaskFileManager extends FileManager {
 
     return { hasChanges, propertiesChanged };
   }
-
-
 
   /**
    * Get task summary information
@@ -596,15 +654,15 @@ export class TaskFileManager extends FileManager {
     const frontMatter = await this.loadFrontMatter(filePath);
 
     return {
-      title: frontMatter.Title || '',
-      type: frontMatter.Type || '',
-      priority: frontMatter.Priority || '',
+      title: frontMatter.Title || "",
+      type: frontMatter.Type || "",
+      priority: frontMatter.Priority || "",
       done: frontMatter.Done || false,
-      status: frontMatter.Status || '',
-      project: frontMatter.Project || '',
+      status: frontMatter.Status || "",
+      project: frontMatter.Project || "",
       areas: frontMatter.Areas || [],
       tags: frontMatter.tags || [],
-      parentTask: frontMatter['Parent task'] || ''
+      parentTask: frontMatter["Parent task"] || "",
     };
   }
 
@@ -623,12 +681,12 @@ export class TaskFileManager extends FileManager {
    * @returns Array of task file paths
    */
   async getAllTaskFiles(): Promise<string[]> {
-    const taskFolder = this.settings.tasksFolder || 'Tasks';
+    const taskFolder = this.settings.tasksFolder || "Tasks";
     const allFiles = this.app.vault.getMarkdownFiles();
 
     return allFiles
-      .filter(file => file.path.startsWith(taskFolder + '/'))
-      .map(file => file.path);
+      .filter((file) => file.path.startsWith(taskFolder + "/"))
+      .map((file) => file.path);
   }
 
   /**
@@ -654,19 +712,23 @@ export class TaskFileManager extends FileManager {
 
         // Check each criteria
         if (criteria.type && frontMatter.Type !== criteria.type) continue;
-        if (criteria.priority && frontMatter.Priority !== criteria.priority) continue;
-        if (criteria.done !== undefined && frontMatter.Done !== criteria.done) continue;
+        if (criteria.priority && frontMatter.Priority !== criteria.priority)
+          continue;
+        if (criteria.done !== undefined && frontMatter.Done !== criteria.done)
+          continue;
         if (criteria.status && frontMatter.Status !== criteria.status) continue;
-        if (criteria.project && frontMatter.Project !== criteria.project) continue;
+        if (criteria.project && frontMatter.Project !== criteria.project)
+          continue;
 
         if (criteria.areas && criteria.areas.length > 0) {
           const taskAreas = frontMatter.Areas || [];
-          if (!criteria.areas.some(area => taskAreas.includes(area))) continue;
+          if (!criteria.areas.some((area) => taskAreas.includes(area)))
+            continue;
         }
 
         if (criteria.tags && criteria.tags.length > 0) {
           const taskTags = frontMatter.tags || [];
-          if (!criteria.tags.some(tag => taskTags.includes(tag))) continue;
+          if (!criteria.tags.some((tag) => taskTags.includes(tag))) continue;
         }
 
         matchingTasks.push(taskPath);

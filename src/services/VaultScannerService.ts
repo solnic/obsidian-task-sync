@@ -3,7 +3,7 @@
  * Scans the Obsidian vault for task, project, and area files
  */
 
-import { TFile, TFolder, Vault } from 'obsidian';
+import { TFile, TFolder, Vault } from "obsidian";
 import {
   VaultScannerService,
   TaskFileInfo,
@@ -11,15 +11,15 @@ import {
   AreaFileInfo,
   TemplateFileInfo,
   BaseFileInfo,
-  FolderValidationResult
-} from '../types';
-import { TaskSyncSettings } from '../main';
+  FolderValidationResult,
+} from "../types";
+import { TaskSyncSettings } from "../main";
 
 export class VaultScanner implements VaultScannerService {
   constructor(
     private vault: Vault,
-    private settings: TaskSyncSettings
-  ) { }
+    private settings: TaskSyncSettings,
+  ) {}
 
   async scanTasksFolder(): Promise<string[]> {
     return this.scanFolder(this.settings.tasksFolder);
@@ -57,7 +57,7 @@ export class VaultScanner implements VaultScannerService {
 
   private collectMarkdownFiles(folder: any, files: string[]): void {
     for (const child of folder.children) {
-      if (this.isFile(child) && child.extension === 'md') {
+      if (this.isFile(child) && child.extension === "md") {
         files.push(child.path);
       } else if (this.isFolder(child)) {
         this.collectMarkdownFiles(child, files);
@@ -66,11 +66,21 @@ export class VaultScanner implements VaultScannerService {
   }
 
   private isFolder(obj: any): boolean {
-    return obj && (obj instanceof TFolder || obj.constructor?.name === 'TFolder' || obj.children !== undefined);
+    return (
+      obj &&
+      (obj instanceof TFolder ||
+        obj.constructor?.name === "TFolder" ||
+        obj.children !== undefined)
+    );
   }
 
   private isFile(obj: any): boolean {
-    return obj && (obj instanceof TFile || obj.constructor?.name === 'TFile' || obj.extension !== undefined);
+    return (
+      obj &&
+      (obj instanceof TFile ||
+        obj.constructor?.name === "TFile" ||
+        obj.extension !== undefined)
+    );
   }
 
   async findTaskFiles(): Promise<TaskFileInfo[]> {
@@ -101,7 +111,7 @@ export class VaultScanner implements VaultScannerService {
         if (fileInfo) {
           const projectFile: ProjectFileInfo = {
             ...fileInfo,
-            taskFiles: await this.findRelatedTaskFiles(path)
+            taskFiles: await this.findRelatedTaskFiles(path),
           };
           projectFiles.push(projectFile);
         }
@@ -123,7 +133,7 @@ export class VaultScanner implements VaultScannerService {
         if (fileInfo) {
           const areaFile: AreaFileInfo = {
             ...fileInfo,
-            projectFiles: await this.findRelatedProjectFiles(path)
+            projectFiles: await this.findRelatedProjectFiles(path),
           };
           areaFiles.push(areaFile);
         }
@@ -145,8 +155,8 @@ export class VaultScanner implements VaultScannerService {
         if (fileInfo) {
           const templateFile: TemplateFileInfo = {
             ...fileInfo,
-            templateType: this.detectTemplateType(path, fileInfo.content || ''),
-            variables: this.extractTemplateVariables(fileInfo.content || '')
+            templateType: this.detectTemplateType(path, fileInfo.content || ""),
+            variables: this.extractTemplateVariables(fileInfo.content || ""),
           };
           templateFiles.push(templateFile);
         }
@@ -163,7 +173,7 @@ export class VaultScanner implements VaultScannerService {
     const baseFiles: BaseFileInfo[] = [];
 
     for (const file of allFiles) {
-      if (file.extension === 'base' || file.name.endsWith('.base.md')) {
+      if (file.extension === "base" || file.name.endsWith(".base.md")) {
         try {
           const content = await this.vault.read(file);
           const baseFile: BaseFileInfo = {
@@ -177,7 +187,7 @@ export class VaultScanner implements VaultScannerService {
             viewType: this.detectBaseViewType(content),
             entityType: this.detectBaseEntityType(content),
             isValid: this.validateBaseFile(content),
-            errors: this.getBaseFileErrors(content)
+            errors: this.getBaseFileErrors(content),
           };
           baseFiles.push(baseFile);
         } catch (error) {
@@ -195,14 +205,14 @@ export class VaultScanner implements VaultScannerService {
       errors: [],
       warnings: [],
       missingFolders: [],
-      suggestions: []
+      suggestions: [],
     };
 
     const foldersToCheck = [
-      { path: this.settings.tasksFolder, name: 'Tasks' },
-      { path: this.settings.projectsFolder, name: 'Projects' },
-      { path: this.settings.areasFolder, name: 'Areas' },
-      { path: this.settings.templateFolder, name: 'Templates' }
+      { path: this.settings.tasksFolder, name: "Tasks" },
+      { path: this.settings.projectsFolder, name: "Projects" },
+      { path: this.settings.areasFolder, name: "Areas" },
+      { path: this.settings.templateFolder, name: "Templates" },
     ];
 
     for (const folder of foldersToCheck) {
@@ -214,22 +224,30 @@ export class VaultScanner implements VaultScannerService {
       const exists = await this.folderExists(folder.path);
       if (!exists) {
         result.missingFolders.push(folder.path);
-        result.errors.push(`${folder.name} folder does not exist: ${folder.path}`);
+        result.errors.push(
+          `${folder.name} folder does not exist: ${folder.path}`,
+        );
         result.isValid = false;
       }
     }
 
     // Check for conflicting folder paths
-    const paths = foldersToCheck.map(f => f.path).filter(Boolean);
-    const duplicates = paths.filter((path, index) => paths.indexOf(path) !== index);
+    const paths = foldersToCheck.map((f) => f.path).filter(Boolean);
+    const duplicates = paths.filter(
+      (path, index) => paths.indexOf(path) !== index,
+    );
     if (duplicates.length > 0) {
-      result.errors.push(`Duplicate folder paths detected: ${duplicates.join(', ')}`);
+      result.errors.push(
+        `Duplicate folder paths detected: ${duplicates.join(", ")}`,
+      );
       result.isValid = false;
     }
 
     // Add suggestions
     if (result.missingFolders.length > 0) {
-      result.suggestions.push('Create missing folders manually in Obsidian - the plugin will work once folders exist');
+      result.suggestions.push(
+        "Create missing folders manually in Obsidian - the plugin will work once folders exist",
+      );
     }
 
     return result;
@@ -237,7 +255,9 @@ export class VaultScanner implements VaultScannerService {
 
   async createMissingFolders(): Promise<void> {
     // Note: Folder creation removed - Obsidian handles this automatically when files are created
-    console.log('Folder creation is handled automatically by Obsidian when files are created');
+    console.log(
+      "Folder creation is handled automatically by Obsidian when files are created",
+    );
   }
 
   private async getFileInfo(path: string): Promise<TaskFileInfo | null> {
@@ -256,7 +276,7 @@ export class VaultScanner implements VaultScannerService {
         lastModified: new Date(tfile.stat.mtime),
         size: tfile.stat.size,
         content,
-        frontmatter: this.extractFrontmatter(content)
+        frontmatter: this.extractFrontmatter(content),
       };
     } catch (error) {
       console.error(`Failed to get file info for ${path}:`, error);
@@ -276,20 +296,30 @@ export class VaultScanner implements VaultScannerService {
     return [];
   }
 
-  private detectTemplateType(path: string, content: string): 'task' | 'project' | 'area' | 'parent-task' {
+  private detectTemplateType(
+    path: string,
+    content: string,
+  ): "task" | "project" | "area" | "parent-task" {
     const pathLower = path.toLowerCase();
-    if (pathLower.includes('parent-task') || pathLower.includes('parent_task')) return 'parent-task';
-    if (pathLower.includes('task')) return 'task';
-    if (pathLower.includes('project')) return 'project';
-    if (pathLower.includes('area')) return 'area';
+    if (pathLower.includes("parent-task") || pathLower.includes("parent_task"))
+      return "parent-task";
+    if (pathLower.includes("task")) return "task";
+    if (pathLower.includes("project")) return "project";
+    if (pathLower.includes("area")) return "area";
 
     // Analyze content for clues
     const contentLower = content.toLowerCase();
-    if (contentLower.includes('sub-tasks') || contentLower.includes('subtasks')) return 'parent-task';
-    if (contentLower.includes('deadline') || contentLower.includes('status')) return 'task';
-    if (contentLower.includes('objectives') || contentLower.includes('milestones')) return 'project';
+    if (contentLower.includes("sub-tasks") || contentLower.includes("subtasks"))
+      return "parent-task";
+    if (contentLower.includes("deadline") || contentLower.includes("status"))
+      return "task";
+    if (
+      contentLower.includes("objectives") ||
+      contentLower.includes("milestones")
+    )
+      return "project";
 
-    return 'task'; // Default
+    return "task"; // Default
   }
 
   private extractTemplateVariables(content: string): string[] {
@@ -307,28 +337,30 @@ export class VaultScanner implements VaultScannerService {
     return variables;
   }
 
-  private detectBaseViewType(content: string): 'kanban' | 'list' | 'calendar' | 'timeline' {
+  private detectBaseViewType(
+    content: string,
+  ): "kanban" | "list" | "calendar" | "timeline" {
     // Analyze content to detect view type
     // For now, default to kanban
-    return 'kanban';
+    return "kanban";
   }
 
-  private detectBaseEntityType(content: string): 'task' | 'project' | 'area' {
+  private detectBaseEntityType(content: string): "task" | "project" | "area" {
     // Analyze content to detect entity type
     // For now, default to task
-    return 'task';
+    return "task";
   }
 
   private validateBaseFile(content: string): boolean {
     // Basic validation - check if it has proper base file structure
-    return content.includes('```base') || content.includes('view:');
+    return content.includes("```base") || content.includes("view:");
   }
 
   private getBaseFileErrors(content: string): string[] {
     const errors: string[] = [];
 
     if (!this.validateBaseFile(content)) {
-      errors.push('Invalid base file format');
+      errors.push("Invalid base file format");
     }
 
     return errors;
@@ -343,11 +375,11 @@ export class VaultScanner implements VaultScannerService {
     try {
       // Simple YAML parsing - in production, use a proper YAML parser
       const frontmatterText = match[1];
-      const lines = frontmatterText.split('\n');
+      const lines = frontmatterText.split("\n");
       const result: Record<string, any> = {};
 
       for (const line of lines) {
-        const colonIndex = line.indexOf(':');
+        const colonIndex = line.indexOf(":");
         if (colonIndex > 0) {
           const key = line.substring(0, colonIndex).trim();
           const value = line.substring(colonIndex + 1).trim();
@@ -357,7 +389,7 @@ export class VaultScanner implements VaultScannerService {
 
       return result;
     } catch (error) {
-      console.error('Failed to parse frontmatter:', error);
+      console.error("Failed to parse frontmatter:", error);
       return {};
     }
   }

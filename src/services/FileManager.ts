@@ -4,10 +4,10 @@
  * Uses Obsidian's native APIs for file system operations and front-matter handling
  */
 
-import { App, Vault, TFile, normalizePath } from 'obsidian';
-import { TaskSyncSettings } from '../main';
-import { sanitizeFileName } from '../utils/fileNameSanitizer';
-import matter from 'gray-matter';
+import { App, Vault, TFile, normalizePath } from "obsidian";
+import { TaskSyncSettings } from "../main";
+import { sanitizeFileName } from "../utils/fileNameSanitizer";
+import matter from "gray-matter";
 
 /**
  * Interface for file creation data
@@ -39,7 +39,11 @@ export abstract class FileManager {
    * @param content - The file content
    * @returns The path of the created file
    */
-  protected async createFile(folderPath: string, fileName: string, content: string): Promise<string> {
+  protected async createFile(
+    folderPath: string,
+    fileName: string,
+    content: string,
+  ): Promise<string> {
     const sanitizedName = sanitizeFileName(fileName);
     const filePath = normalizePath(`${folderPath}/${sanitizedName}.md`);
 
@@ -83,7 +87,7 @@ export abstract class FileManager {
 
     const content = await this.vault.read(file);
     const parsed = matter(content);
-    return parsed.content || '';
+    return parsed.content || "";
   }
 
   /**
@@ -91,7 +95,10 @@ export abstract class FileManager {
    * @param filePath - Path to the file
    * @param updates - Object with properties to update
    */
-  async updateFrontMatter(filePath: string, updates: Record<string, any>): Promise<void> {
+  async updateFrontMatter(
+    filePath: string,
+    updates: Record<string, any>,
+  ): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (!file || !(file instanceof TFile)) {
       throw new Error(`File not found: ${filePath}`);
@@ -108,7 +115,11 @@ export abstract class FileManager {
    * @param propertyKey - The property key to update
    * @param value - The new value
    */
-  async updateProperty(filePath: string, propertyKey: string, value: any): Promise<void> {
+  async updateProperty(
+    filePath: string,
+    propertyKey: string,
+    value: any,
+  ): Promise<void> {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (!file || !(file instanceof TFile)) {
       throw new Error(`File not found: ${filePath}`);
@@ -220,7 +231,9 @@ export abstract class FileManager {
    * @param content - File content
    * @returns Parsed front-matter data or null if not found
    */
-  protected extractFrontMatterData(content: string): Record<string, any> | null {
+  protected extractFrontMatterData(
+    content: string,
+  ): Record<string, any> | null {
     const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
     if (!frontMatterMatch) {
       return null;
@@ -230,7 +243,7 @@ export abstract class FileManager {
     const data: Record<string, any> = {};
 
     // Simple YAML-like parsing for front-matter
-    const lines = frontMatterText.split('\n');
+    const lines = frontMatterText.split("\n");
     for (const line of lines) {
       const match = line.match(/^([^:]+):\s*(.*)$/);
       if (match) {
@@ -256,7 +269,7 @@ export abstract class FileManager {
     const frontMatterText = frontMatterMatch[1];
     const properties: string[] = [];
 
-    const lines = frontMatterText.split('\n');
+    const lines = frontMatterText.split("\n");
     for (const line of lines) {
       const match = line.match(/^([^:]+):\s*/);
       if (match) {
@@ -274,14 +287,24 @@ export abstract class FileManager {
    * @param expectedOrder - Expected property order
    * @returns True if order is correct
    */
-  protected isPropertyOrderCorrect(content: string, schema: Record<string, any>, expectedOrder: string[]): boolean {
+  protected isPropertyOrderCorrect(
+    content: string,
+    schema: Record<string, any>,
+    expectedOrder: string[],
+  ): boolean {
     const currentOrder = this.extractPropertyOrder(content);
 
     // Filter current order to only include properties that are in the schema
-    const currentSchemaProperties = currentOrder.filter(prop => prop in schema);
+    const currentSchemaProperties = currentOrder.filter(
+      (prop) => prop in schema,
+    );
 
     // Compare the order of schema properties
-    for (let i = 0; i < Math.min(currentSchemaProperties.length, expectedOrder.length); i++) {
+    for (
+      let i = 0;
+      i < Math.min(currentSchemaProperties.length, expectedOrder.length);
+      i++
+    ) {
       if (currentSchemaProperties[i] !== expectedOrder[i]) {
         return false;
       }
@@ -297,18 +320,18 @@ export abstract class FileManager {
    */
   protected formatPropertyValue(value: any): string {
     if (value === null || value === undefined) {
-      return '';
+      return "";
     }
     if (Array.isArray(value)) {
       if (value.length === 0) {
-        return '[]';
+        return "[]";
       }
-      return `[${value.map(v => `"${v}"`).join(', ')}]`;
+      return `[${value.map((v) => `"${v}"`).join(", ")}]`;
     }
-    if (typeof value === 'boolean') {
+    if (typeof value === "boolean") {
       return value.toString();
     }
-    if (typeof value === 'string' && value.includes('\n')) {
+    if (typeof value === "string" && value.includes("\n")) {
       return `"${value.replace(/"/g, '\\"')}"`;
     }
     return value.toString();
@@ -324,5 +347,7 @@ export abstract class FileManager {
    * Abstract method to update file properties with correct ordering
    * Must be implemented by subclasses
    */
-  abstract updateFileProperties(filePath: string): Promise<{ hasChanges: boolean, propertiesChanged: number }>;
+  abstract updateFileProperties(
+    filePath: string,
+  ): Promise<{ hasChanges: boolean; propertiesChanged: number }>;
 }

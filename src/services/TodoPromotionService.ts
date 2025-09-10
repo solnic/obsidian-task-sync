@@ -61,7 +61,7 @@ export class TodoPromotionService {
     private templateManager: TemplateManager,
     private createTaskCallback: (taskData: any) => Promise<void>,
     private detectCurrentFileContextCallback: () => FileContext,
-    private refreshBaseViewsCallback: () => Promise<void>
+    private refreshBaseViewsCallback: () => Promise<void>,
   ) {}
 
   /**
@@ -108,9 +108,8 @@ export class TodoPromotionService {
         const parentTaskPath = `${
           this.settings.tasksFolder
         }/${createSafeFileName(todoWithParent.parentTodo.text)}`;
-        const parentExists = await this.app.vault.adapter.exists(
-          parentTaskPath
-        );
+        const parentExists =
+          await this.app.vault.adapter.exists(parentTaskPath);
 
         if (!parentExists) {
           await this.createTaskCallback(parentTaskData);
@@ -119,7 +118,7 @@ export class TodoPromotionService {
           // Create base for parent task to show related tasks
           try {
             await this.baseManager.createOrUpdateParentTaskBase(
-              todoWithParent.parentTodo.text
+              todoWithParent.parentTodo.text,
             );
           } catch (error) {
             console.error("Failed to create parent task base:", error);
@@ -132,7 +131,7 @@ export class TodoPromotionService {
       // Create the main task
       console.log(
         "TodoPromotionService: Creating task with title:",
-        todoWithParent.text
+        todoWithParent.text,
       );
       const taskData = {
         title: todoWithParent.text,
@@ -179,7 +178,7 @@ export class TodoPromotionService {
         // Create base for parent task to show related tasks
         try {
           await this.baseManager.createOrUpdateParentTaskBase(
-            todoWithParent.text
+            todoWithParent.text,
           );
         } catch (error) {
           console.error("Failed to create parent task base:", error);
@@ -205,7 +204,7 @@ export class TodoPromotionService {
         success: true,
         message,
         taskPath: `${this.settings.tasksFolder}/${createSafeFileName(
-          todoWithParent.text
+          todoWithParent.text,
         )}`,
         childTasksCount: childTodos.length,
         parentTaskName,
@@ -234,7 +233,7 @@ export class TodoPromotionService {
 
       // Get promoted todos for the current file
       const promotedTodos = this.storageService.getPromotedTodosForFile(
-        activeFile.path
+        activeFile.path,
       );
 
       if (promotedTodos.length === 0) {
@@ -254,7 +253,7 @@ export class TodoPromotionService {
         } catch (error) {
           console.error(
             `Failed to revert promoted todo ${promotedTodo.id}:`,
-            error
+            error,
           );
         }
       }
@@ -305,7 +304,7 @@ export class TodoPromotionService {
       "TodoPromotionService: Detected todo text:",
       text,
       "trimmed:",
-      text.trim()
+      text.trim(),
     );
 
     return {
@@ -443,7 +442,7 @@ export class TodoPromotionService {
    */
   private async replaceTodoLinesWithLinks(
     todoWithParent: TodoItemWithParent,
-    childTodos: TodoItem[]
+    childTodos: TodoItem[],
   ): Promise<void> {
     const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!markdownView) {
@@ -488,7 +487,7 @@ export class TodoPromotionService {
         }
         editor.setLine(
           todoWithParent.parentTodo.lineNumber,
-          parentReplacementLine
+          parentReplacementLine,
         );
       }
     }
@@ -522,7 +521,7 @@ export class TodoPromotionService {
    */
   private async trackPromotedTodos(
     todoWithParent: TodoItemWithParent,
-    childTodos: TodoItem[]
+    childTodos: TodoItem[],
   ): Promise<void> {
     const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
     if (!markdownView) {
@@ -539,7 +538,7 @@ export class TodoPromotionService {
     // Track the main promoted todo
     const originalLine = editor.getLine(todoWithParent.lineNumber);
     const taskPath = `${this.settings.tasksFolder}/${createSafeFileName(
-      todoWithParent.text
+      todoWithParent.text,
     )}`;
     await this.storageService.trackPromotedTodo(
       todoWithParent.text,
@@ -554,7 +553,7 @@ export class TodoPromotionService {
             lineNumber: todoWithParent.parentTodo.lineNumber,
             taskName: todoWithParent.parentTodo.text,
           }
-        : undefined
+        : undefined,
     );
 
     // Track the parent todo promotion if it exists
@@ -575,7 +574,7 @@ export class TodoPromotionService {
           activeFile.path,
           todoWithParent.parentTodo.lineNumber,
           todoWithParent.parentTodo.text,
-          parentTaskPath
+          parentTaskPath,
         );
       }
     }
@@ -604,7 +603,7 @@ export class TodoPromotionService {
             text: todoWithParent.text,
             lineNumber: todoWithParent.lineNumber,
             taskName: todoWithParent.text,
-          }
+          },
         );
       }
     }

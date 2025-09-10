@@ -2,7 +2,7 @@
  * Service interface types for the Task Sync plugin
  */
 
-import { Task, Project, Area, Template, BaseFile } from './entities';
+import { Task, Project, Area, Template, BaseFile } from "./entities";
 
 // Vault scanning service interface
 export interface VaultScannerService {
@@ -44,13 +44,13 @@ export interface AreaFileInfo extends TaskFileInfo {
 }
 
 export interface TemplateFileInfo extends TaskFileInfo {
-  templateType: 'task' | 'project' | 'area' | 'parent-task';
+  templateType: "task" | "project" | "area" | "parent-task";
   variables: string[]; // Detected template variables
 }
 
 export interface BaseFileInfo extends TaskFileInfo {
-  viewType: 'kanban' | 'list' | 'calendar' | 'timeline';
-  entityType: 'task' | 'project' | 'area';
+  viewType: "kanban" | "list" | "calendar" | "timeline";
+  entityType: "task" | "project" | "area";
   isValid: boolean;
   errors: string[];
 }
@@ -93,10 +93,16 @@ export interface DataGeneratorService {
   generateAreaFile(area: Area): Promise<string>;
 
   // Base file generation
-  generateBaseFile(baseFile: BaseFile, entities: (Task | Project | Area)[]): Promise<string>;
+  generateBaseFile(
+    baseFile: BaseFile,
+    entities: (Task | Project | Area)[],
+  ): Promise<string>;
 
   // Template processing
-  processTemplate(template: Template, variables: Record<string, any>): Promise<string>;
+  processTemplate(
+    template: Template,
+    variables: Record<string, any>,
+  ): Promise<string>;
 
   // File creation
   createTaskFile(task: Task, folderPath: string): Promise<string>;
@@ -111,23 +117,34 @@ export interface TemplateService {
   detectTemplaterPlugin(): Promise<boolean>;
 
   // Template management
-  getAvailableTemplates(type: 'task' | 'project' | 'area' | 'parent-task'): Promise<Template[]>;
+  getAvailableTemplates(
+    type: "task" | "project" | "area" | "parent-task",
+  ): Promise<Template[]>;
   loadTemplate(templateId: string): Promise<Template>;
 
   // Template processing
-  processNativeTemplate(templatePath: string, variables: Record<string, any>): Promise<string>;
-  processTemplaterTemplate(templatePath: string, variables: Record<string, any>): Promise<string>;
+  processNativeTemplate(
+    templatePath: string,
+    variables: Record<string, any>,
+  ): Promise<string>;
+  processTemplaterTemplate(
+    templatePath: string,
+    variables: Record<string, any>,
+  ): Promise<string>;
 
   // Variable extraction
   extractTemplateVariables(content: string): TemplateVariable[];
-  validateTemplateVariables(variables: Record<string, any>, template: Template): ValidationResult;
+  validateTemplateVariables(
+    variables: Record<string, any>,
+    template: Template,
+  ): ValidationResult;
 }
 
 // Template information
 export interface TemplateInfo {
   name: string;
   path: string;
-  type: 'native' | 'templater';
+  type: "native" | "templater";
   variables: string[];
   description?: string;
 }
@@ -156,7 +173,7 @@ export interface FileWatcherService {
 
 // File change event
 export interface FileChangeEvent {
-  type: 'created' | 'modified' | 'deleted' | 'renamed';
+  type: "created" | "modified" | "deleted" | "renamed";
   filePath: string;
   oldPath?: string; // For rename events
   timestamp: Date;
@@ -172,22 +189,24 @@ export interface ValidationResult {
 }
 
 // Template variable (imported from entities)
-import { TemplateVariable } from './entities';
+import { TemplateVariable } from "./entities";
 
 // Data store service interface
 export interface DataStoreService {
   // Entity CRUD operations
-  createTask(task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task>;
+  createTask(task: Omit<Task, "id" | "createdAt" | "updatedAt">): Promise<Task>;
   getTask(id: string): Promise<Task | null>;
   updateTask(id: string, updates: Partial<Task>): Promise<Task>;
   deleteTask(id: string): Promise<boolean>;
 
-  createProject(project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project>;
+  createProject(
+    project: Omit<Project, "id" | "createdAt" | "updatedAt">,
+  ): Promise<Project>;
   getProject(id: string): Promise<Project | null>;
   updateProject(id: string, updates: Partial<Project>): Promise<Project>;
   deleteProject(id: string): Promise<boolean>;
 
-  createArea(area: Omit<Area, 'id' | 'createdAt' | 'updatedAt'>): Promise<Area>;
+  createArea(area: Omit<Area, "id" | "createdAt" | "updatedAt">): Promise<Area>;
   getArea(id: string): Promise<Area | null>;
   updateArea(id: string, updates: Partial<Area>): Promise<Area>;
   deleteArea(id: string): Promise<boolean>;

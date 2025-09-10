@@ -17,7 +17,5 @@ export {
   PROPERTY_REGISTRY,
   PROPERTY_SETS,
   VIEW_ORDERS,
-  SORT_CONFIGS
-} from './BaseConfigurations';
-
-
+  SORT_CONFIGS,
+} from "./BaseConfigurations";

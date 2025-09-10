@@ -86,7 +86,7 @@ export interface Task extends BaseEntity {
     "DONE",
     "STATUS",
     "PARENT_TASK",
-    "TAGS"
+    "TAGS",
   ];
 
   base: [
@@ -101,7 +101,7 @@ export interface Task extends BaseEntity {
     "PARENT_TASK",
     "TAGS",
     "CREATED_AT",
-    "UPDATED_AT"
+    "UPDATED_AT",
   ];
 
   // Template and automation

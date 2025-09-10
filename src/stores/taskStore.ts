@@ -3,10 +3,10 @@
  * Provides a centralized, reactive API for task operations and queries
  */
 
-import { writable, derived, get } from 'svelte/store';
-import { App, TFile } from 'obsidian';
-import matter from 'gray-matter';
-import { TaskSource } from '../types/entities';
+import { writable, derived, get } from "svelte/store";
+import { App, TFile } from "obsidian";
+import matter from "gray-matter";
+import { TaskSource } from "../types/entities";
 
 export interface TaskData {
   file: TFile;
@@ -32,42 +32,42 @@ export interface TaskStoreState {
 
 class TaskStore {
   private app: App | null = null;
-  private tasksFolder = 'Tasks';
-  
+  private tasksFolder = "Tasks";
+
   // Core store
   private _store = writable<TaskStoreState>({
     tasks: [],
     loading: false,
     error: null,
-    lastUpdated: null
+    lastUpdated: null,
   });
 
   // Public store interface
   public subscribe = this._store.subscribe;
 
   // Derived stores for common queries
-  public importedTasks = derived(this._store, ($store) => 
-    $store.tasks.filter(task => task.source)
+  public importedTasks = derived(this._store, ($store) =>
+    $store.tasks.filter((task) => task.source),
   );
 
-  public githubTasks = derived(this._store, ($store) => 
-    $store.tasks.filter(task => task.source?.name === 'github')
+  public githubTasks = derived(this._store, ($store) =>
+    $store.tasks.filter((task) => task.source?.name === "github"),
   );
 
-  public linearTasks = derived(this._store, ($store) => 
-    $store.tasks.filter(task => task.source?.name === 'linear')
+  public linearTasks = derived(this._store, ($store) =>
+    $store.tasks.filter((task) => task.source?.name === "linear"),
   );
 
   /**
    * Initialize the store with Obsidian app instance
    */
-  initialize(app: App, tasksFolder: string = 'Tasks') {
+  initialize(app: App, tasksFolder: string = "Tasks") {
     this.app = app;
     this.tasksFolder = tasksFolder;
-    
+
     // Set up file system watchers for reactive updates
     this.setupFileWatchers();
-    
+
     // Initial load
     this.refreshTasks();
   }
@@ -78,21 +78,21 @@ class TaskStore {
   async refreshTasks() {
     if (!this.app) return;
 
-    this._store.update(state => ({ ...state, loading: true, error: null }));
+    this._store.update((state) => ({ ...state, loading: true, error: null }));
 
     try {
       const tasks = await this.loadAllTasks();
-      this._store.update(state => ({
+      this._store.update((state) => ({
         ...state,
         tasks,
         loading: false,
-        lastUpdated: new Date()
+        lastUpdated: new Date(),
       }));
     } catch (error) {
-      this._store.update(state => ({
+      this._store.update((state) => ({
         ...state,
         loading: false,
-        error: error instanceof Error ? error.message : 'Failed to load tasks'
+        error: error instanceof Error ? error.message : "Failed to load tasks",
       }));
     }
   }
@@ -102,9 +102,12 @@ class TaskStore {
    */
   findTaskBySource(sourceName: string, sourceKey: string): TaskData | null {
     const state = get(this._store);
-    return state.tasks.find(task => 
-      task.source?.name === sourceName && task.source?.key === sourceKey
-    ) || null;
+    return (
+      state.tasks.find(
+        (task) =>
+          task.source?.name === sourceName && task.source?.key === sourceKey,
+      ) || null
+    );
   }
 
   /**
@@ -119,7 +122,7 @@ class TaskStore {
    */
   getTasksBySource(sourceName: string): TaskData[] {
     const state = get(this._store);
-    return state.tasks.filter(task => task.source?.name === sourceName);
+    return state.tasks.filter((task) => task.source?.name === sourceName);
   }
 
   /**
@@ -127,8 +130,9 @@ class TaskStore {
    */
   getTasksByProject(projectName: string): TaskData[] {
     const state = get(this._store);
-    return state.tasks.filter(task => 
-      task.project === projectName || task.project === `[[${projectName}]]`
+    return state.tasks.filter(
+      (task) =>
+        task.project === projectName || task.project === `[[${projectName}]]`,
     );
   }
 
@@ -137,8 +141,10 @@ class TaskStore {
    */
   getTasksByArea(areaName: string): TaskData[] {
     const state = get(this._store);
-    return state.tasks.filter(task => 
-      task.areas?.some(area => area === areaName || area === `[[${areaName}]]`)
+    return state.tasks.filter((task) =>
+      task.areas?.some(
+        (area) => area === areaName || area === `[[${areaName}]]`,
+      ),
     );
   }
 
@@ -148,9 +154,9 @@ class TaskStore {
   private async loadAllTasks(): Promise<TaskData[]> {
     if (!this.app) return [];
 
-    const taskFiles = this.app.vault.getMarkdownFiles().filter(file => 
-      file.path.startsWith(this.tasksFolder + '/')
-    );
+    const taskFiles = this.app.vault
+      .getMarkdownFiles()
+      .filter((file) => file.path.startsWith(this.tasksFolder + "/"));
 
     const tasks: TaskData[] = [];
 
@@ -180,7 +186,7 @@ class TaskStore {
       const frontMatter = parsed.data;
 
       // Only include files that are actually tasks (have Type: Task or similar)
-      if (frontMatter.Type !== 'Task' && frontMatter.type !== 'Task') {
+      if (frontMatter.Type !== "Task" && frontMatter.type !== "Task") {
         return null;
       }
 
@@ -196,7 +202,7 @@ class TaskStore {
         status: frontMatter.Status || frontMatter.status,
         source: frontMatter.source,
         tags: frontMatter.tags || [],
-        ...frontMatter // Include all other front-matter properties
+        ...frontMatter, // Include all other front-matter properties
       };
     } catch (error) {
       console.warn(`Failed to read task file ${file.path}:`, error);
@@ -211,27 +217,39 @@ class TaskStore {
     if (!this.app) return;
 
     // Watch for file changes in the tasks folder
-    this.app.vault.on('create', (file) => {
-      if (file instanceof TFile && file.path.startsWith(this.tasksFolder + '/')) {
+    this.app.vault.on("create", (file) => {
+      if (
+        file instanceof TFile &&
+        file.path.startsWith(this.tasksFolder + "/")
+      ) {
         this.refreshTasks();
       }
     });
 
-    this.app.vault.on('delete', (file) => {
-      if (file instanceof TFile && file.path.startsWith(this.tasksFolder + '/')) {
+    this.app.vault.on("delete", (file) => {
+      if (
+        file instanceof TFile &&
+        file.path.startsWith(this.tasksFolder + "/")
+      ) {
         this.refreshTasks();
       }
     });
 
-    this.app.vault.on('modify', (file) => {
-      if (file instanceof TFile && file.path.startsWith(this.tasksFolder + '/')) {
+    this.app.vault.on("modify", (file) => {
+      if (
+        file instanceof TFile &&
+        file.path.startsWith(this.tasksFolder + "/")
+      ) {
         this.refreshTasks();
       }
     });
 
-    this.app.vault.on('rename', (file, oldPath) => {
-      if ((file instanceof TFile && file.path.startsWith(this.tasksFolder + '/')) ||
-          oldPath.startsWith(this.tasksFolder + '/')) {
+    this.app.vault.on("rename", (file, oldPath) => {
+      if (
+        (file instanceof TFile &&
+          file.path.startsWith(this.tasksFolder + "/")) ||
+        oldPath.startsWith(this.tasksFolder + "/")
+      ) {
         this.refreshTasks();
       }
     });
@@ -245,7 +263,7 @@ class TaskStore {
       tasks: [],
       loading: false,
       error: null,
-      lastUpdated: null
+      lastUpdated: null,
     });
   }
 }

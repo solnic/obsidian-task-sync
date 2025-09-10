@@ -14,7 +14,10 @@ export interface LabelTypeMapper {
    * @param availableTypes Array of configured task types in the system
    * @returns The mapped task type name, or undefined if no mapping found
    */
-  mapLabelsToType(labels: string[], availableTypes: string[]): string | undefined;
+  mapLabelsToType(
+    labels: string[],
+    availableTypes: string[],
+  ): string | undefined;
 
   /**
    * Set the label-to-type mapping configuration
@@ -48,18 +51,18 @@ export interface LabelMappingConfig {
   defaultTaskType: string;
 
   /** Whether to use the first matching label or prioritize certain labels */
-  mappingStrategy: 'first-match' | 'priority-based';
+  mappingStrategy: "first-match" | "priority-based";
 
   /** Priority order for labels when using priority-based strategy */
   labelPriority?: string[];
 }
 
 // Import types we need
-import type { TaskImportConfig } from './integrations';
+import type { TaskImportConfig } from "./integrations";
 
 // Define FileContext here since we can't import it from main
 export interface FileContext {
-  type: 'project' | 'area' | 'none';
+  type: "project" | "area" | "none";
   name?: string;
   path?: string;
 }
@@ -75,7 +78,10 @@ export interface ContextAwareImportService {
    * @param baseConfig Base import configuration to enhance
    * @returns Enhanced import configuration with context-specific settings
    */
-  getContextAwareConfig(context: FileContext, baseConfig?: Partial<TaskImportConfig>): TaskImportConfig;
+  getContextAwareConfig(
+    context: FileContext,
+    baseConfig?: Partial<TaskImportConfig>,
+  ): TaskImportConfig;
 
   /**
    * Detect the current file context

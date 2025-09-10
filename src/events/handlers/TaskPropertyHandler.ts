@@ -3,16 +3,16 @@
  * Handles TASK_CREATED events to ensure tasks have proper default values
  */
 
-import { App, TFile } from 'obsidian';
+import { App, TFile } from "obsidian";
 import {
   EventHandler,
   EventType,
   PluginEvent,
-  TaskEventData
-} from '../EventTypes';
-import { TaskSyncSettings } from '../../main';
-import { PROPERTY_REGISTRY } from '../../services/base-definitions/BaseConfigurations';
-import matter from 'gray-matter';
+  TaskEventData,
+} from "../EventTypes";
+import { TaskSyncSettings } from "../../main";
+import { PROPERTY_REGISTRY } from "../../services/base-definitions/BaseConfigurations";
+import matter from "gray-matter";
 
 /**
  * Handler that sets default property values for newly created tasks
@@ -20,8 +20,8 @@ import matter from 'gray-matter';
 export class TaskPropertyHandler implements EventHandler {
   constructor(
     private app: App,
-    private settings: TaskSyncSettings
-  ) { }
+    private settings: TaskSyncSettings,
+  ) {}
 
   /**
    * Update the settings reference for this handler
@@ -47,7 +47,7 @@ export class TaskPropertyHandler implements EventHandler {
 
     const data = event.data as TaskEventData;
 
-    if (!await this.hasCorrectTypeProperty(data.filePath)) {
+    if (!(await this.hasCorrectTypeProperty(data.filePath))) {
       return;
     }
 
@@ -77,13 +77,18 @@ export class TaskPropertyHandler implements EventHandler {
       const frontmatterData = parsed.data || {};
 
       // Get all configured task type names
-      const configuredTaskTypes = this.settings.taskTypes.map(taskType => taskType.name);
+      const configuredTaskTypes = this.settings.taskTypes.map(
+        (taskType) => taskType.name,
+      );
 
       // Only process files that already have a valid configured task type
       // Skip files with no Type property - they should not be processed by this handler
       return configuredTaskTypes.includes(frontmatterData.Type);
     } catch (error) {
-      console.error(`TaskPropertyHandler: Error checking Type property for ${filePath}:`, error);
+      console.error(
+        `TaskPropertyHandler: Error checking Type property for ${filePath}:`,
+        error,
+      );
       return false;
     }
   }

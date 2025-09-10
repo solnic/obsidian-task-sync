@@ -4,13 +4,13 @@
  */
 
 // Entity types
-export * from './entities';
+export * from "./entities";
 
 // Service types
-export * from './services';
+export * from "./services";
 
 // Integration types
-export * from './integrations';
+export * from "./integrations";
 
 // Plugin-specific types
 export interface PluginState {
@@ -34,7 +34,7 @@ export interface UIState {
   selectedTask: string | null;
   selectedProject: string | null;
   selectedArea: string | null;
-  dashboardView: 'tasks' | 'projects' | 'areas' | 'overview';
+  dashboardView: "tasks" | "projects" | "areas" | "overview";
   filters: UIFilters;
   sorting: UISorting;
 }
@@ -52,10 +52,10 @@ export interface UIFilters {
 
 export interface UISorting {
   field: string;
-  direction: 'asc' | 'desc';
+  direction: "asc" | "desc";
   secondary?: {
     field: string;
-    direction: 'asc' | 'desc';
+    direction: "asc" | "desc";
   };
 }
 
@@ -64,30 +64,42 @@ export class TaskSyncError extends Error {
   constructor(
     message: string,
     public code: string,
-    public context?: Record<string, any>
+    public context?: Record<string, any>,
   ) {
     super(message);
-    this.name = 'TaskSyncError';
+    this.name = "TaskSyncError";
   }
 }
 
 export class ValidationError extends TaskSyncError {
-  constructor(message: string, public field: string, context?: Record<string, any>) {
-    super(message, 'VALIDATION_ERROR', context);
-    this.name = 'ValidationError';
+  constructor(
+    message: string,
+    public field: string,
+    context?: Record<string, any>,
+  ) {
+    super(message, "VALIDATION_ERROR", context);
+    this.name = "ValidationError";
   }
 }
 
 export class FileSystemError extends TaskSyncError {
-  constructor(message: string, public filePath: string, context?: Record<string, any>) {
-    super(message, 'FILESYSTEM_ERROR', context);
-    this.name = 'FileSystemError';
+  constructor(
+    message: string,
+    public filePath: string,
+    context?: Record<string, any>,
+  ) {
+    super(message, "FILESYSTEM_ERROR", context);
+    this.name = "FileSystemError";
   }
 }
 
 export class TemplateError extends TaskSyncError {
-  constructor(message: string, public templateId: string, context?: Record<string, any>) {
-    super(message, 'TEMPLATE_ERROR', context);
-    this.name = 'TemplateError';
+  constructor(
+    message: string,
+    public templateId: string,
+    context?: Record<string, any>,
+  ) {
+    super(message, "TEMPLATE_ERROR", context);
+    this.name = "TemplateError";
   }
 }

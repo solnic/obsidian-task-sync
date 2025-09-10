@@ -3,7 +3,7 @@
  * across the Task Sync plugin interface
  */
 
-import { TaskPriority } from './settings/types';
+import { TaskPriority } from "./settings/types";
 
 /**
  * Creates a task priority badge element with appropriate styling
@@ -11,16 +11,19 @@ import { TaskPriority } from './settings/types';
  * @param className Optional additional CSS class names
  * @returns HTMLElement representing the badge
  */
-export function createPriorityBadge(taskPriority: TaskPriority, className?: string): HTMLElement {
-  const badge = document.createElement('span');
+export function createPriorityBadge(
+  taskPriority: TaskPriority,
+  className?: string,
+): HTMLElement {
+  const badge = document.createElement("span");
   badge.className = `task-priority-badge task-priority-${taskPriority.color}`;
-  
+
   if (className) {
     badge.className += ` ${className}`;
   }
-  
+
   badge.textContent = taskPriority.name;
-  
+
   return badge;
 }
 
@@ -31,7 +34,11 @@ export function createPriorityBadge(taskPriority: TaskPriority, className?: stri
  * @param className Optional additional CSS class names
  * @returns The created badge element
  */
-export function appendPriorityBadge(container: HTMLElement, taskPriority: TaskPriority, className?: string): HTMLElement {
+export function appendPriorityBadge(
+  container: HTMLElement,
+  taskPriority: TaskPriority,
+  className?: string,
+): HTMLElement {
   const badge = createPriorityBadge(taskPriority, className);
   container.appendChild(badge);
   return badge;
@@ -45,16 +52,16 @@ export function appendPriorityBadge(container: HTMLElement, taskPriority: TaskPr
  * @returns HTMLElement representing the wrapper containing the badge
  */
 export function createPriorityBadgeWrapper(
-  taskPriority: TaskPriority, 
-  wrapperClassName?: string, 
-  badgeClassName?: string
+  taskPriority: TaskPriority,
+  wrapperClassName?: string,
+  badgeClassName?: string,
 ): HTMLElement {
-  const wrapper = document.createElement('div');
-  wrapper.className = wrapperClassName || 'task-priority-preview';
-  
+  const wrapper = document.createElement("div");
+  wrapper.className = wrapperClassName || "task-priority-preview";
+
   const badge = createPriorityBadge(taskPriority, badgeClassName);
   wrapper.appendChild(badge);
-  
+
   return wrapper;
 }
 
@@ -63,13 +70,20 @@ export function createPriorityBadgeWrapper(
  * @param badgeElement The existing badge element to update
  * @param taskPriority The new task priority configuration
  */
-export function updatePriorityBadge(badgeElement: HTMLElement, taskPriority: TaskPriority): void {
+export function updatePriorityBadge(
+  badgeElement: HTMLElement,
+  taskPriority: TaskPriority,
+): void {
   // Remove old color classes
-  badgeElement.className = badgeElement.className.replace(/task-priority-\w+/g, '');
-  
+  badgeElement.className = badgeElement.className.replace(
+    /task-priority-\w+/g,
+    "",
+  );
+
   // Add new color class and ensure base class is present
-  badgeElement.className = `task-priority-badge task-priority-${taskPriority.color} ${badgeElement.className}`.trim();
-  
+  badgeElement.className =
+    `task-priority-badge task-priority-${taskPriority.color} ${badgeElement.className}`.trim();
+
   // Update text content
   badgeElement.textContent = taskPriority.name;
 }
@@ -82,18 +96,18 @@ export function updatePriorityBadge(badgeElement: HTMLElement, taskPriority: Tas
  * @returns HTMLElement containing all the badges
  */
 export function createPriorityBadgeList(
-  taskPriorities: TaskPriority[], 
-  containerClassName?: string, 
-  badgeClassName?: string
+  taskPriorities: TaskPriority[],
+  containerClassName?: string,
+  badgeClassName?: string,
 ): HTMLElement {
-  const container = document.createElement('div');
-  container.className = containerClassName || 'task-priority-badge-list';
-  
-  taskPriorities.forEach(taskPriority => {
+  const container = document.createElement("div");
+  container.className = containerClassName || "task-priority-badge-list";
+
+  taskPriorities.forEach((taskPriority) => {
     const badge = createPriorityBadge(taskPriority, badgeClassName);
     container.appendChild(badge);
   });
-  
+
   return container;
 }
 
@@ -105,5 +119,5 @@ export const PriorityBadge = {
   append: appendPriorityBadge,
   createWrapper: createPriorityBadgeWrapper,
   update: updatePriorityBadge,
-  createList: createPriorityBadgeList
+  createList: createPriorityBadgeList,
 };

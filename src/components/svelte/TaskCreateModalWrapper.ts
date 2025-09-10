@@ -13,7 +13,7 @@ export class TaskCreateModalWrapper extends SvelteModal {
     plugin: TaskSyncPlugin,
     context: FileContext,
     initialData: Partial<TaskCreateData> = {},
-    onSubmit: (data: TaskCreateData) => void
+    onSubmit: (data: TaskCreateData) => void,
   ) {
     super(plugin);
     this.context = context;
@@ -64,7 +64,7 @@ export class TaskCreateModalWrapper extends SvelteModal {
         oncancel: () => {
           this.close();
         },
-      }
+      },
     );
 
     return component;

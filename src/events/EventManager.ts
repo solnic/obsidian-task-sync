@@ -9,8 +9,8 @@ import {
   EventHandler,
   EventMiddleware,
   EventEmissionOptions,
-  EventData
-} from './EventTypes';
+  EventData,
+} from "./EventTypes";
 
 /**
  * Central event manager for the plugin
@@ -67,7 +67,7 @@ export class EventManager {
   registerMiddleware(middleware: EventMiddleware): void {
     if (!this.middleware.includes(middleware)) {
       this.middleware.push(middleware);
-      console.log('EventManager: Registered middleware');
+      console.log("EventManager: Registered middleware");
     }
   }
 
@@ -79,7 +79,7 @@ export class EventManager {
     const index = this.middleware.indexOf(middleware);
     if (index !== -1) {
       this.middleware.splice(index, 1);
-      console.log('EventManager: Unregistered middleware');
+      console.log("EventManager: Unregistered middleware");
     }
   }
 
@@ -92,26 +92,26 @@ export class EventManager {
   async emit(
     eventType: EventType,
     data: EventData,
-    options: EventEmissionOptions = {}
+    options: EventEmissionOptions = {},
   ): Promise<void> {
     const event: PluginEvent = {
       type: eventType,
       timestamp: new Date(),
-      data
+      data,
     };
 
     const {
       async: isAsync = true,
       continueOnError = true,
-      timeout = 5000
+      timeout = 5000,
     } = options;
 
     if (isAsync) {
       // Add to queue for async processing
       this.eventQueue.push(event);
       // Don't await this to keep it truly async
-      this.processEventQueue(continueOnError, timeout).catch(error => {
-        console.error('EventManager: Error in async event processing:', error);
+      this.processEventQueue(continueOnError, timeout).catch((error) => {
+        console.error("EventManager: Error in async event processing:", error);
       });
     } else {
       // Process immediately
@@ -122,7 +122,10 @@ export class EventManager {
   /**
    * Process the event queue asynchronously
    */
-  private async processEventQueue(continueOnError: boolean, timeout: number): Promise<void> {
+  private async processEventQueue(
+    continueOnError: boolean,
+    timeout: number,
+  ): Promise<void> {
     if (this.isProcessing) {
       return; // Already processing
     }
@@ -145,7 +148,7 @@ export class EventManager {
   private async processEvent(
     event: PluginEvent,
     continueOnError: boolean,
-    timeout: number
+    timeout: number,
   ): Promise<void> {
     try {
       // Process through middleware
@@ -160,10 +163,13 @@ export class EventManager {
           processedEvent = await this.withTimeout(
             middleware.process(processedEvent),
             timeout,
-            `Middleware processing timeout for ${event.type}`
+            `Middleware processing timeout for ${event.type}`,
           );
         } catch (error) {
-          console.error(`EventManager: Middleware error for ${event.type}:`, error);
+          console.error(
+            `EventManager: Middleware error for ${event.type}:`,
+            error,
+          );
           if (!continueOnError) {
             throw error;
           }
@@ -187,9 +193,12 @@ export class EventManager {
         const handlerPromise = this.withTimeout(
           handler.handle(processedEvent as any),
           timeout,
-          `Handler timeout for ${processedEvent.type}`
-        ).catch(error => {
-          console.error(`EventManager: Handler error for ${processedEvent.type}:`, error);
+          `Handler timeout for ${processedEvent.type}`,
+        ).catch((error) => {
+          console.error(
+            `EventManager: Handler error for ${processedEvent.type}:`,
+            error,
+          );
           if (!continueOnError) {
             throw error;
           }
@@ -200,9 +209,11 @@ export class EventManager {
 
       // Wait for all handlers to complete
       await Promise.all(handlerPromises);
-
     } catch (error) {
-      console.error(`EventManager: Error processing event ${event.type}:`, error);
+      console.error(
+        `EventManager: Error processing event ${event.type}:`,
+        error,
+      );
       if (!continueOnError) {
         throw error;
       }
@@ -215,17 +226,15 @@ export class EventManager {
   private async withTimeout<T>(
     promise: Promise<T>,
     timeoutMs: number,
-    errorMessage: string
+    errorMessage: string,
   ): Promise<T> {
     return Promise.race([
       promise,
       new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
-      })
+      }),
     ]);
   }
-
-
 
   /**
    * Get all registered event types
@@ -242,7 +251,7 @@ export class EventManager {
     this.middleware = [];
     this.eventQueue = [];
     this.isProcessing = false;
-    console.log('EventManager: Cleared all handlers and middleware');
+    console.log("EventManager: Cleared all handlers and middleware");
   }
 
   /**
@@ -276,7 +285,7 @@ export class EventManager {
       middlewareCount: this.middleware.length,
       queueSize: this.eventQueue.length,
       isProcessing: this.isProcessing,
-      handlersByType
+      handlersByType,
     };
   }
 

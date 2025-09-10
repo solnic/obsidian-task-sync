@@ -3,8 +3,8 @@
  * Manages plugin data storage including promoted todos, cached entities, and plugin state
  */
 
-import { App, TFile, Plugin } from 'obsidian';
-import { Task, Project, Area } from '../types/entities';
+import { App, TFile, Plugin } from "obsidian";
+import { Task, Project, Area } from "../types/entities";
 
 // Promoted todo tracking interface
 export interface PromotedTodo {
@@ -35,9 +35,12 @@ export interface PluginStorageData {
 
 export class PluginStorageService {
   private data: PluginStorageData;
-  private readonly STORAGE_VERSION = '1.0.0';
+  private readonly STORAGE_VERSION = "1.0.0";
 
-  constructor(private app: App, private plugin: Plugin) {
+  constructor(
+    private app: App,
+    private plugin: Plugin,
+  ) {
     this.data = this.getDefaultData();
   }
 
@@ -58,7 +61,7 @@ export class PluginStorageService {
       cachedTasks: [],
       cachedProjects: [],
       cachedAreas: [],
-      lastSync: new Date()
+      lastSync: new Date(),
     };
   }
 
@@ -74,14 +77,16 @@ export class PluginStorageService {
           ...loadedData.pluginStorage,
           // Convert date strings back to Date objects
           lastSync: new Date(loadedData.pluginStorage.lastSync || new Date()),
-          promotedTodos: (loadedData.pluginStorage.promotedTodos || []).map((todo: any) => ({
-            ...todo,
-            promotedAt: new Date(todo.promotedAt)
-          }))
+          promotedTodos: (loadedData.pluginStorage.promotedTodos || []).map(
+            (todo: any) => ({
+              ...todo,
+              promotedAt: new Date(todo.promotedAt),
+            }),
+          ),
         };
       }
     } catch (error) {
-      console.error('Failed to load plugin storage data:', error);
+      console.error("Failed to load plugin storage data:", error);
       this.data = this.getDefaultData();
     }
   }
@@ -92,17 +97,17 @@ export class PluginStorageService {
   private async saveData(): Promise<void> {
     try {
       // Load existing plugin data to preserve settings
-      const existingData = await this.plugin.loadData() || {};
+      const existingData = (await this.plugin.loadData()) || {};
 
       // Save our storage data under a specific key
       const updatedData = {
         ...existingData,
-        pluginStorage: this.data
+        pluginStorage: this.data,
       };
 
       await this.plugin.saveData(updatedData);
     } catch (error) {
-      console.error('Failed to save plugin storage data:', error);
+      console.error("Failed to save plugin storage data:", error);
     }
   }
 
@@ -127,7 +132,7 @@ export class PluginStorageService {
     lineNumber: number,
     taskName: string,
     taskPath: string,
-    parentTodo?: { text: string; lineNumber: number; taskName: string }
+    parentTodo?: { text: string; lineNumber: number; taskName: string },
   ): Promise<string> {
     const id = this.generateId();
     const promotedTodo: PromotedTodo = {
@@ -139,7 +144,7 @@ export class PluginStorageService {
       taskName,
       taskPath,
       promotedAt: new Date(),
-      parentTodo
+      parentTodo,
     };
 
     this.data.promotedTodos.push(promotedTodo);
@@ -159,14 +164,14 @@ export class PluginStorageService {
    * Get promoted todos for a specific file
    */
   getPromotedTodosForFile(filePath: string): PromotedTodo[] {
-    return this.data.promotedTodos.filter(todo => todo.filePath === filePath);
+    return this.data.promotedTodos.filter((todo) => todo.filePath === filePath);
   }
 
   /**
    * Remove a promoted todo from tracking
    */
   async removePromotedTodo(id: string): Promise<boolean> {
-    const index = this.data.promotedTodos.findIndex(todo => todo.id === id);
+    const index = this.data.promotedTodos.findIndex((todo) => todo.id === id);
     if (index !== -1) {
       this.data.promotedTodos.splice(index, 1);
       await this.saveData();
@@ -179,14 +184,16 @@ export class PluginStorageService {
    * Revert a promoted todo back to its original format and delete the task file
    */
   async revertPromotedTodo(id: string): Promise<boolean> {
-    const promotedTodo = this.data.promotedTodos.find(todo => todo.id === id);
+    const promotedTodo = this.data.promotedTodos.find((todo) => todo.id === id);
     if (!promotedTodo) {
       return false;
     }
 
     try {
       // Delete the associated task file
-      const taskFile = this.app.vault.getAbstractFileByPath(promotedTodo.taskPath);
+      const taskFile = this.app.vault.getAbstractFileByPath(
+        promotedTodo.taskPath,
+      );
       if (taskFile instanceof TFile) {
         await this.app.vault.delete(taskFile);
         console.log(`Deleted task file: ${promotedTodo.taskPath}`);
@@ -196,13 +203,13 @@ export class PluginStorageService {
       const file = this.app.vault.getAbstractFileByPath(promotedTodo.filePath);
       if (file instanceof TFile) {
         const content = await this.app.vault.read(file);
-        const lines = content.split('\n');
+        const lines = content.split("\n");
 
         // Restore the original line
         if (lines[promotedTodo.lineNumber]) {
           lines[promotedTodo.lineNumber] = promotedTodo.originalLine;
 
-          const updatedContent = lines.join('\n');
+          const updatedContent = lines.join("\n");
           await this.app.vault.modify(file, updatedContent);
 
           // Remove from tracking
@@ -212,7 +219,7 @@ export class PluginStorageService {
         }
       }
     } catch (error) {
-      console.error('Failed to revert promoted todo:', error);
+      console.error("Failed to revert promoted todo:", error);
     }
 
     return false;
@@ -226,7 +233,9 @@ export class PluginStorageService {
    * Cache a task entity
    */
   async cacheTask(task: Task): Promise<void> {
-    const existingIndex = this.data.cachedTasks.findIndex(t => t.id === task.id);
+    const existingIndex = this.data.cachedTasks.findIndex(
+      (t) => t.id === task.id,
+    );
     if (existingIndex !== -1) {
       this.data.cachedTasks[existingIndex] = task;
     } else {
@@ -246,7 +255,9 @@ export class PluginStorageService {
    * Cache a project entity
    */
   async cacheProject(project: Project): Promise<void> {
-    const existingIndex = this.data.cachedProjects.findIndex(p => p.id === project.id);
+    const existingIndex = this.data.cachedProjects.findIndex(
+      (p) => p.id === project.id,
+    );
     if (existingIndex !== -1) {
       this.data.cachedProjects[existingIndex] = project;
     } else {
@@ -266,7 +277,9 @@ export class PluginStorageService {
    * Cache an area entity
    */
   async cacheArea(area: Area): Promise<void> {
-    const existingIndex = this.data.cachedAreas.findIndex(a => a.id === area.id);
+    const existingIndex = this.data.cachedAreas.findIndex(
+      (a) => a.id === area.id,
+    );
     if (existingIndex !== -1) {
       this.data.cachedAreas[existingIndex] = area;
     } else {
@@ -318,7 +331,7 @@ export class PluginStorageService {
       cachedTasks: this.data.cachedTasks.length,
       cachedProjects: this.data.cachedProjects.length,
       cachedAreas: this.data.cachedAreas.length,
-      lastSync: this.data.lastSync
+      lastSync: this.data.lastSync,
     };
   }
 }

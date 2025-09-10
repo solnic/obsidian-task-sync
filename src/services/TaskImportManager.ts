@@ -13,7 +13,7 @@ export class TaskImportManager {
   constructor(
     private app: App,
     private vault: Vault,
-    private settings: TaskSyncSettings
+    private settings: TaskSyncSettings,
   ) {}
 
   /**
@@ -28,7 +28,7 @@ export class TaskImportManager {
    */
   async createTaskFromData(
     taskData: ExternalTaskData,
-    config: TaskImportConfig
+    config: TaskImportConfig,
   ): Promise<string> {
     const taskName = this.sanitizeTaskName(taskData.title);
     const taskFolder = this.determineTaskFolder(config);
@@ -73,7 +73,7 @@ export class TaskImportManager {
    */
   private generateCompleteTaskContent(
     taskData: ExternalTaskData,
-    config: TaskImportConfig
+    config: TaskImportConfig,
   ): string {
     const frontMatterData = this.generateTaskFrontMatter(taskData, config);
     const content = this.generateTaskContent(taskData);
@@ -86,7 +86,7 @@ export class TaskImportManager {
    */
   generateTaskFrontMatter(
     taskData: ExternalTaskData,
-    config: TaskImportConfig
+    config: TaskImportConfig,
   ): Record<string, any> {
     const frontMatter: Record<string, any> = {};
 

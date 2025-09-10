@@ -10,10 +10,19 @@ export interface TaskType {
 
 // Available colors for task categories
 export const TASK_TYPE_COLORS = [
-  'blue', 'red', 'green', 'yellow', 'purple', 'orange', 'pink', 'gray', 'teal', 'indigo'
+  "blue",
+  "red",
+  "green",
+  "yellow",
+  "purple",
+  "orange",
+  "pink",
+  "gray",
+  "teal",
+  "indigo",
 ] as const;
 
-export type TaskTypeColor = typeof TASK_TYPE_COLORS[number];
+export type TaskTypeColor = (typeof TASK_TYPE_COLORS)[number];
 
 // Task priority interface with color support
 export interface TaskPriority {
@@ -23,10 +32,19 @@ export interface TaskPriority {
 
 // Available colors for task priorities
 export const TASK_PRIORITY_COLORS = [
-  'blue', 'red', 'green', 'yellow', 'purple', 'orange', 'pink', 'gray', 'teal', 'indigo'
+  "blue",
+  "red",
+  "green",
+  "yellow",
+  "purple",
+  "orange",
+  "pink",
+  "gray",
+  "teal",
+  "indigo",
 ] as const;
 
-export type TaskPriorityColor = typeof TASK_PRIORITY_COLORS[number];
+export type TaskPriorityColor = (typeof TASK_PRIORITY_COLORS)[number];
 
 // Task status interface with color support
 export interface TaskStatus {
@@ -38,14 +56,23 @@ export interface TaskStatus {
 
 // Available colors for task statuses
 export const TASK_STATUS_COLORS = [
-  'blue', 'red', 'green', 'yellow', 'purple', 'orange', 'pink', 'gray', 'teal', 'indigo'
+  "blue",
+  "red",
+  "green",
+  "yellow",
+  "purple",
+  "orange",
+  "pink",
+  "gray",
+  "teal",
+  "indigo",
 ] as const;
 
-export type TaskStatusColor = typeof TASK_STATUS_COLORS[number];
+export type TaskStatusColor = (typeof TASK_STATUS_COLORS)[number];
 
 // GitHub integration interfaces
 export interface GitHubIssueFilters {
-  state: 'open' | 'closed' | 'all';
+  state: "open" | "closed" | "all";
   assignee: string; // 'me' for current user, username, or empty for all
   labels: string[];
 }

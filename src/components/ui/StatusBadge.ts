@@ -3,7 +3,7 @@
  * across the Task Sync plugin interface
  */
 
-import { TaskStatus } from './settings/types';
+import { TaskStatus } from "./settings/types";
 
 /**
  * Creates a task status badge element with appropriate styling
@@ -11,16 +11,19 @@ import { TaskStatus } from './settings/types';
  * @param className Optional additional CSS class names
  * @returns HTMLElement representing the badge
  */
-export function createStatusBadge(taskStatus: TaskStatus, className?: string): HTMLElement {
-  const badge = document.createElement('span');
+export function createStatusBadge(
+  taskStatus: TaskStatus,
+  className?: string,
+): HTMLElement {
+  const badge = document.createElement("span");
   badge.className = `task-status-badge task-status-${taskStatus.color}`;
-  
+
   if (className) {
     badge.className += ` ${className}`;
   }
-  
+
   badge.textContent = taskStatus.name;
-  
+
   return badge;
 }
 
@@ -31,7 +34,11 @@ export function createStatusBadge(taskStatus: TaskStatus, className?: string): H
  * @param className Optional additional CSS class names
  * @returns The created badge element
  */
-export function appendStatusBadge(container: HTMLElement, taskStatus: TaskStatus, className?: string): HTMLElement {
+export function appendStatusBadge(
+  container: HTMLElement,
+  taskStatus: TaskStatus,
+  className?: string,
+): HTMLElement {
   const badge = createStatusBadge(taskStatus, className);
   container.appendChild(badge);
   return badge;
@@ -45,16 +52,16 @@ export function appendStatusBadge(container: HTMLElement, taskStatus: TaskStatus
  * @returns HTMLElement representing the wrapper containing the badge
  */
 export function createStatusBadgeWrapper(
-  taskStatus: TaskStatus, 
-  wrapperClassName?: string, 
-  badgeClassName?: string
+  taskStatus: TaskStatus,
+  wrapperClassName?: string,
+  badgeClassName?: string,
 ): HTMLElement {
-  const wrapper = document.createElement('div');
-  wrapper.className = wrapperClassName || 'task-status-preview';
-  
+  const wrapper = document.createElement("div");
+  wrapper.className = wrapperClassName || "task-status-preview";
+
   const badge = createStatusBadge(taskStatus, badgeClassName);
   wrapper.appendChild(badge);
-  
+
   return wrapper;
 }
 
@@ -63,13 +70,20 @@ export function createStatusBadgeWrapper(
  * @param badgeElement The existing badge element to update
  * @param taskStatus The new task status configuration
  */
-export function updateStatusBadge(badgeElement: HTMLElement, taskStatus: TaskStatus): void {
+export function updateStatusBadge(
+  badgeElement: HTMLElement,
+  taskStatus: TaskStatus,
+): void {
   // Remove old color classes
-  badgeElement.className = badgeElement.className.replace(/task-status-\w+/g, '');
-  
+  badgeElement.className = badgeElement.className.replace(
+    /task-status-\w+/g,
+    "",
+  );
+
   // Add new color class and ensure base class is present
-  badgeElement.className = `task-status-badge task-status-${taskStatus.color} ${badgeElement.className}`.trim();
-  
+  badgeElement.className =
+    `task-status-badge task-status-${taskStatus.color} ${badgeElement.className}`.trim();
+
   // Update text content
   badgeElement.textContent = taskStatus.name;
 }

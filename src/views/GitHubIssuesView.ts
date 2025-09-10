@@ -35,7 +35,7 @@ export class GitHubIssuesView extends ItemView {
     leaf: WorkspaceLeaf,
     githubService: GitHubService,
     settings: GitHubIssuesViewSettings,
-    dependencies: GitHubIssuesViewDependencies
+    dependencies: GitHubIssuesViewDependencies,
   ) {
     super(leaf);
     this.githubService = githubService;

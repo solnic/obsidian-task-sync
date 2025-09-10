@@ -35,7 +35,7 @@ export class TasksView extends ItemView {
     leaf: WorkspaceLeaf,
     githubService: GitHubService,
     settings: TasksViewSettings,
-    dependencies: TasksViewDependencies
+    dependencies: TasksViewDependencies,
   ) {
     super(leaf);
     this.githubService = githubService;

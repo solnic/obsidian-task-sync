@@ -3,7 +3,7 @@
  * Provides drag-and-drop functionality for reordering task properties
  */
 
-import { PROPERTY_REGISTRY } from '../../../services/base-definitions/BaseConfigurations';
+import { PROPERTY_REGISTRY } from "../../../services/base-definitions/BaseConfigurations";
 
 export interface SortablePropertyListOptions {
   container: HTMLElement;
@@ -26,7 +26,7 @@ export class SortablePropertyList {
     this.properties = [...options.properties];
     this.onReorder = options.onReorder;
     this.onReset = options.onReset;
-    this.listElement = this.container.createDiv('sortable-property-list');
+    this.listElement = this.container.createDiv("sortable-property-list");
 
     this.render();
     this.addStyles();
@@ -34,12 +34,12 @@ export class SortablePropertyList {
 
   private addStyles(): void {
     // Only add styles once
-    if (document.getElementById('sortable-property-list-styles')) {
+    if (document.getElementById("sortable-property-list-styles")) {
       return;
     }
 
-    const style = document.createElement('style');
-    style.id = 'sortable-property-list-styles';
+    const style = document.createElement("style");
+    style.id = "sortable-property-list-styles";
     style.textContent = `
       .sortable-property-list {
         border: 1px solid var(--background-modifier-border);
@@ -116,24 +116,25 @@ export class SortablePropertyList {
     this.listElement.empty();
 
     this.properties.forEach((propertyKey, index) => {
-      const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+      const prop =
+        PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
       if (!prop) return;
 
-      const item = this.listElement.createDiv('sortable-property-item');
+      const item = this.listElement.createDiv("sortable-property-item");
       item.draggable = true;
       item.dataset.index = index.toString();
       item.dataset.propertyKey = propertyKey;
 
       // Drag handle
-      const handle = item.createSpan('property-drag-handle');
-      handle.innerHTML = '⋮⋮'; // Vertical dots
+      const handle = item.createSpan("property-drag-handle");
+      handle.innerHTML = "⋮⋮"; // Vertical dots
 
       // Property info
-      const info = item.createDiv('property-info');
-      const name = info.createDiv('property-name');
+      const info = item.createDiv("property-info");
+      const name = info.createDiv("property-name");
       name.textContent = prop.name;
 
-      const description = info.createDiv('property-description');
+      const description = info.createDiv("property-description");
       description.textContent = this.getPropertyDescription(propertyKey);
 
       // Add drag event listeners
@@ -142,10 +143,10 @@ export class SortablePropertyList {
 
     // Add reset button if callback provided
     if (this.onReset) {
-      const actions = this.container.createDiv('sortable-property-actions');
-      const resetButton = actions.createEl('button', {
-        text: 'Reset to Default Order',
-        cls: 'mod-muted'
+      const actions = this.container.createDiv("sortable-property-actions");
+      const resetButton = actions.createEl("button", {
+        text: "Reset to Default Order",
+        cls: "mod-muted",
       });
       resetButton.onclick = () => this.onReset?.();
     }
@@ -153,69 +154,71 @@ export class SortablePropertyList {
 
   private getPropertyDescription(propertyKey: string): string {
     const descriptions: Record<string, string> = {
-      'TITLE': 'The title/name of the task',
-      'TYPE': 'Task type (Task, Bug, Feature, etc.)',
-      'PRIORITY': 'Task priority level',
-      'AREAS': 'Areas this task belongs to',
-      'PROJECT': 'Project this task belongs to',
-      'DONE': 'Whether the task is completed',
-      'STATUS': 'Current status of the task',
-      'PARENT_TASK': 'Parent task for sub-tasks',
-      'TAGS': 'Tags associated with the task'
+      TITLE: "The title/name of the task",
+      TYPE: "Task type (Task, Bug, Feature, etc.)",
+      PRIORITY: "Task priority level",
+      AREAS: "Areas this task belongs to",
+      PROJECT: "Project this task belongs to",
+      DONE: "Whether the task is completed",
+      STATUS: "Current status of the task",
+      PARENT_TASK: "Parent task for sub-tasks",
+      TAGS: "Tags associated with the task",
     };
-    return descriptions[propertyKey] || 'Task property';
+    return descriptions[propertyKey] || "Task property";
   }
 
   private addDragListeners(item: HTMLElement): void {
-    item.addEventListener('dragstart', (e) => {
+    item.addEventListener("dragstart", (e) => {
       this.draggedElement = item;
-      this.draggedIndex = parseInt(item.dataset.index || '-1');
-      item.classList.add('dragging');
+      this.draggedIndex = parseInt(item.dataset.index || "-1");
+      item.classList.add("dragging");
 
       if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', item.outerHTML);
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/html", item.outerHTML);
       }
     });
 
-    item.addEventListener('dragend', () => {
-      item.classList.remove('dragging');
+    item.addEventListener("dragend", () => {
+      item.classList.remove("dragging");
       this.draggedElement = null;
       this.draggedIndex = -1;
 
       // Remove drag-over class from all items
-      this.listElement.querySelectorAll('.sortable-property-item').forEach(el => {
-        el.classList.remove('drag-over');
-      });
+      this.listElement
+        .querySelectorAll(".sortable-property-item")
+        .forEach((el) => {
+          el.classList.remove("drag-over");
+        });
     });
 
-    item.addEventListener('dragover', (e) => {
+    item.addEventListener("dragover", (e) => {
       e.preventDefault();
       if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = 'move';
+        e.dataTransfer.dropEffect = "move";
       }
     });
 
-    item.addEventListener('dragenter', (e) => {
+    item.addEventListener("dragenter", (e) => {
       e.preventDefault();
       if (this.draggedElement && item !== this.draggedElement) {
-        item.classList.add('drag-over');
+        item.classList.add("drag-over");
       }
     });
 
-    item.addEventListener('dragleave', (e) => {
+    item.addEventListener("dragleave", (e) => {
       // Only remove drag-over if we're actually leaving the element
       if (!item.contains(e.relatedTarget as Node)) {
-        item.classList.remove('drag-over');
+        item.classList.remove("drag-over");
       }
     });
 
-    item.addEventListener('drop', (e) => {
+    item.addEventListener("drop", (e) => {
       e.preventDefault();
-      item.classList.remove('drag-over');
+      item.classList.remove("drag-over");
 
       if (this.draggedElement && item !== this.draggedElement) {
-        const targetIndex = parseInt(item.dataset.index || '-1');
+        const targetIndex = parseInt(item.dataset.index || "-1");
         this.moveProperty(this.draggedIndex, targetIndex);
       }
     });

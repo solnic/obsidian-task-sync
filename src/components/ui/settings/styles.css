@@ -205,16 +205,46 @@
   margin-right: 8px;
 }
 
-.task-type-blue { background: #3b82f6; color: white; }
-.task-type-red { background: #ef4444; color: white; }
-.task-type-green { background: #10b981; color: white; }
-.task-type-yellow { background: #f59e0b; color: black; }
-.task-type-purple { background: #8b5cf6; color: white; }
-.task-type-orange { background: #f97316; color: white; }
-.task-type-pink { background: #ec4899; color: white; }
-.task-type-gray { background: #6b7280; color: white; }
-.task-type-teal { background: #14b8a6; color: white; }
-.task-type-indigo { background: #6366f1; color: white; }
+.task-type-blue {
+  background: #3b82f6;
+  color: white;
+}
+.task-type-red {
+  background: #ef4444;
+  color: white;
+}
+.task-type-green {
+  background: #10b981;
+  color: white;
+}
+.task-type-yellow {
+  background: #f59e0b;
+  color: black;
+}
+.task-type-purple {
+  background: #8b5cf6;
+  color: white;
+}
+.task-type-orange {
+  background: #f97316;
+  color: white;
+}
+.task-type-pink {
+  background: #ec4899;
+  color: white;
+}
+.task-type-gray {
+  background: #6b7280;
+  color: white;
+}
+.task-type-teal {
+  background: #14b8a6;
+  color: white;
+}
+.task-type-indigo {
+  background: #6366f1;
+  color: white;
+}
 
 /* Add task type button */
 .task-sync-add-button {
@@ -232,15 +262,15 @@
   .task-sync-settings {
     padding: 15px;
   }
-  
+
   .task-sync-settings-section {
     padding: 15px;
   }
-  
+
   .task-sync-settings-actions {
     flex-direction: column;
   }
-  
+
   .task-sync-settings-actions button {
     width: 100%;
   }

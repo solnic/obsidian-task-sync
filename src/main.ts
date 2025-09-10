@@ -108,7 +108,7 @@ export default class TaskSyncPlugin extends Plugin {
     this.templateManager = new TemplateManager(
       this.app,
       this.app.vault,
-      this.settings
+      this.settings,
     );
     this.storageService = new PluginStorageService(this.app, this);
     this.githubService = new GitHubService(this.settings);
@@ -117,22 +117,22 @@ export default class TaskSyncPlugin extends Plugin {
     this.taskImportManager = new TaskImportManager(
       this.app,
       this.app.vault,
-      this.settings
+      this.settings,
     );
     this.taskFileManager = new TaskFileManager(
       this.app,
       this.app.vault,
-      this.settings
+      this.settings,
     );
     this.areaFileManager = new AreaFileManager(
       this.app,
       this.app.vault,
-      this.settings
+      this.settings,
     );
     this.projectFileManager = new ProjectFileManager(
       this.app,
       this.app.vault,
-      this.settings
+      this.settings,
     );
 
     // Initialize TodoPromotionService
@@ -145,7 +145,7 @@ export default class TaskSyncPlugin extends Plugin {
       this.templateManager,
       (taskData) => this.createTask(taskData),
       () => this.detectCurrentFileContext(),
-      () => this.refreshBaseViews()
+      () => this.refreshBaseViews(),
     );
 
     // Initialize task store
@@ -167,18 +167,18 @@ export default class TaskSyncPlugin extends Plugin {
     this.areaPropertyHandler = new AreaPropertyHandler(this.app, this.settings);
     this.projectPropertyHandler = new ProjectPropertyHandler(
       this.app,
-      this.settings
+      this.settings,
     );
     this.entityCacheHandler = new EntityCacheHandler(
       this.app,
       this.settings,
-      this.storageService
+      this.storageService,
     );
     this.fileChangeListener = new FileChangeListener(
       this.app,
       this.app.vault,
       this.eventManager,
-      this.settings
+      this.settings,
     );
 
     // Register event handlers
@@ -211,14 +211,14 @@ export default class TaskSyncPlugin extends Plugin {
           {
             taskImportManager: this.taskImportManager,
             getDefaultImportConfig: () => this.getDefaultImportConfig(),
-          }
-        )
+          },
+        ),
     );
 
     // Register Context Tab view
     this.registerView(
       CONTEXT_TAB_VIEW_TYPE,
-      (leaf) => new ContextTabView(leaf)
+      (leaf) => new ContextTabView(leaf),
     );
 
     // Create Tasks view in right sidebar if it doesn't exist
@@ -464,7 +464,7 @@ export default class TaskSyncPlugin extends Plugin {
         templateName.trim() === ""
       ) {
         console.warn(
-          `Task Sync: Template setting ${field} is empty or invalid, using default`
+          `Task Sync: Template setting ${field} is empty or invalid, using default`,
         );
         (this.settings as any)[field] = (DEFAULT_SETTINGS as any)[field];
       }
@@ -485,7 +485,7 @@ export default class TaskSyncPlugin extends Plugin {
           if (this.settings.autoUpdateBaseViews) {
             await this.refreshBaseViews();
           }
-        }
+        },
       );
       modal.open();
     } catch (error) {
@@ -572,10 +572,10 @@ export default class TaskSyncPlugin extends Plugin {
 
       // Check if Context Tab view already exists
       const existingLeaves = this.app.workspace.getLeavesOfType(
-        CONTEXT_TAB_VIEW_TYPE
+        CONTEXT_TAB_VIEW_TYPE,
       );
       console.log(
-        `🔧 Found ${existingLeaves.length} existing Context Tab views`
+        `🔧 Found ${existingLeaves.length} existing Context Tab views`,
       );
 
       if (existingLeaves.length > 0) {
@@ -605,7 +605,7 @@ export default class TaskSyncPlugin extends Plugin {
     try {
       // Check if Context Tab view already exists
       const existingLeaves = this.app.workspace.getLeavesOfType(
-        CONTEXT_TAB_VIEW_TYPE
+        CONTEXT_TAB_VIEW_TYPE,
       );
 
       if (existingLeaves.length > 0) {
@@ -672,14 +672,14 @@ export default class TaskSyncPlugin extends Plugin {
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", () => {
         this.updateCurrentContext();
-      })
+      }),
     );
 
     // Update context when file is opened
     this.registerEvent(
       this.app.workspace.on("file-open", () => {
         this.updateCurrentContext();
-      })
+      }),
     );
 
     // Set initial context
@@ -721,7 +721,7 @@ export default class TaskSyncPlugin extends Plugin {
       const content = taskData.content || taskData.description;
       const taskPath = await this.taskFileManager.createTaskFile(
         taskCreationData,
-        content
+        content,
       );
       console.log("Task created successfully:", taskPath);
     } catch (error) {
@@ -759,9 +759,8 @@ export default class TaskSyncPlugin extends Plugin {
       };
 
       // Use AreaFileManager to create the area file (it will handle template content and {{tasks}} variable)
-      const areaPath = await this.areaFileManager.createAreaFile(
-        areaCreationData
-      );
+      const areaPath =
+        await this.areaFileManager.createAreaFile(areaCreationData);
       console.log("Area created successfully:", areaPath);
 
       // Create individual base if enabled
@@ -794,9 +793,8 @@ export default class TaskSyncPlugin extends Plugin {
       };
 
       // Use ProjectFileManager to create the project file (it will handle template content and {{tasks}} variable)
-      const projectPath = await this.projectFileManager.createProjectFile(
-        projectCreationData
-      );
+      const projectPath =
+        await this.projectFileManager.createProjectFile(projectCreationData);
       console.log("Project created successfully:", projectPath);
 
       // Create individual base if enabled
@@ -870,7 +868,7 @@ export default class TaskSyncPlugin extends Plugin {
       await this.updateAreaFiles(results);
 
       console.log(
-        `Task Sync: Updated properties in ${results.filesUpdated} files (${results.propertiesUpdated} properties changed)`
+        `Task Sync: Updated properties in ${results.filesUpdated} files (${results.propertiesUpdated} properties changed)`,
       );
     } catch (error) {
       console.error("Task Sync: Failed to update file properties:", error);
@@ -892,7 +890,7 @@ export default class TaskSyncPlugin extends Plugin {
             results.filesUpdated++;
             results.propertiesUpdated += updateResult.propertiesChanged;
             console.log(
-              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`
+              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`,
             );
           } else {
             console.log(`Task Sync: No changes needed for ${filePath}`);
@@ -900,7 +898,7 @@ export default class TaskSyncPlugin extends Plugin {
         } catch (error) {
           console.error(
             `Task Sync: Failed to update task file ${filePath}:`,
-            error
+            error,
           );
           results.errors.push(`Failed to update ${filePath}: ${error.message}`);
         }
@@ -925,7 +923,7 @@ export default class TaskSyncPlugin extends Plugin {
             results.filesUpdated++;
             results.propertiesUpdated += updateResult.propertiesChanged;
             console.log(
-              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`
+              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`,
             );
           } else {
             console.log(`Task Sync: No changes needed for ${filePath}`);
@@ -933,7 +931,7 @@ export default class TaskSyncPlugin extends Plugin {
         } catch (error) {
           console.error(
             `Task Sync: Failed to update project file ${filePath}:`,
-            error
+            error,
           );
           results.errors.push(`Failed to update ${filePath}: ${error.message}`);
         }
@@ -952,14 +950,13 @@ export default class TaskSyncPlugin extends Plugin {
       const areaFiles = await this.vaultScanner.scanAreasFolder();
       for (const filePath of areaFiles) {
         try {
-          const updateResult = await this.areaFileManager.updateFileProperties(
-            filePath
-          );
+          const updateResult =
+            await this.areaFileManager.updateFileProperties(filePath);
           if (updateResult.hasChanges) {
             results.filesUpdated++;
             results.propertiesUpdated += updateResult.propertiesChanged;
             console.log(
-              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`
+              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`,
             );
           } else {
             console.log(`Task Sync: No changes needed for ${filePath}`);
@@ -967,7 +964,7 @@ export default class TaskSyncPlugin extends Plugin {
         } catch (error) {
           console.error(
             `Task Sync: Failed to update area file ${filePath}:`,
-            error
+            error,
           );
           results.errors.push(`Failed to update ${filePath}: ${error.message}`);
         }
@@ -989,7 +986,7 @@ export default class TaskSyncPlugin extends Plugin {
       await this.updateSpecificTemplateFiles(results);
 
       console.log(
-        `Task Sync: Updated ${results.templatesUpdated} template files`
+        `Task Sync: Updated ${results.templatesUpdated} template files`,
       );
     } catch (error) {
       console.error("Task Sync: Failed to update template files:", error);
@@ -1016,10 +1013,10 @@ export default class TaskSyncPlugin extends Plugin {
     } catch (error) {
       console.error(
         "Task Sync: Failed to update specific template files:",
-        error
+        error,
       );
       results.errors.push(
-        `Failed to update specific template files: ${error.message}`
+        `Failed to update specific template files: ${error.message}`,
       );
     }
   }
@@ -1077,7 +1074,7 @@ export default class TaskSyncPlugin extends Plugin {
       await this.templateManager.createProjectTemplate();
       results.templatesUpdated++;
       console.log(
-        `Task Sync: Created missing project template ${templatePath}`
+        `Task Sync: Created missing project template ${templatePath}`,
       );
     }
     // Don't modify existing project templates to preserve their structure
@@ -1105,7 +1102,7 @@ export default class TaskSyncPlugin extends Plugin {
       await this.templateManager.createParentTaskTemplate();
       results.templatesUpdated++;
       console.log(
-        `Task Sync: Created missing parent task template ${templatePath}`
+        `Task Sync: Created missing parent task template ${templatePath}`,
       );
     }
   }
@@ -1283,7 +1280,7 @@ export default class TaskSyncPlugin extends Plugin {
         try {
           const result = await this.githubService.importIssueAsTask(
             issue,
-            config
+            config,
           );
 
           if (result.success) {
@@ -1296,7 +1293,7 @@ export default class TaskSyncPlugin extends Plugin {
             failed++;
             console.error(
               `Failed to import issue ${issue.number}:`,
-              result.error
+              result.error,
             );
           }
         } catch (error: any) {
@@ -1306,7 +1303,7 @@ export default class TaskSyncPlugin extends Plugin {
       }
 
       new Notice(
-        `Import complete: ${imported} imported, ${skipped} skipped, ${failed} failed`
+        `Import complete: ${imported} imported, ${skipped} skipped, ${failed} failed`,
       );
     } catch (error: any) {
       console.error("Failed to import GitHub issues:", error);

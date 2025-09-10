@@ -20,7 +20,7 @@ export class EntityCacheHandler implements EventHandler {
   constructor(
     private app: App,
     private settings: TaskSyncSettings,
-    private storageService: PluginStorageService
+    private storageService: PluginStorageService,
   ) {}
 
   /**
@@ -62,7 +62,7 @@ export class EntityCacheHandler implements EventHandler {
     } catch (error) {
       console.error(
         `EntityCacheHandler: Error caching entity for ${data.filePath}:`,
-        error
+        error,
       );
     }
   }
@@ -109,7 +109,7 @@ export class EntityCacheHandler implements EventHandler {
     const file = this.app.vault.getAbstractFileByPath(data.filePath);
     if (!(file instanceof TFile)) {
       console.warn(
-        `EntityCacheHandler: Project file not found: ${data.filePath}`
+        `EntityCacheHandler: Project file not found: ${data.filePath}`,
       );
       return;
     }

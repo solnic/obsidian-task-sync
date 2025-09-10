@@ -4,10 +4,10 @@
  * Handles area file creation, property updates, and area-specific operations
  */
 
-import { App, Vault, TFile } from 'obsidian';
-import { TaskSyncSettings } from '../main';
-import { FileManager, FileCreationData } from './FileManager';
-import { generateAreaFrontMatter } from './base-definitions/BaseConfigurations';
+import { App, Vault, TFile } from "obsidian";
+import { TaskSyncSettings } from "../main";
+import { FileManager, FileCreationData } from "./FileManager";
+import { generateAreaFrontMatter } from "./base-definitions/BaseConfigurations";
 
 /**
  * Interface for area creation data
@@ -22,7 +22,6 @@ export interface AreaCreationData extends FileCreationData {
  * Extends the abstract FileManager with area-specific functionality
  */
 export class AreaFileManager extends FileManager {
-
   constructor(app: App, vault: Vault, settings: TaskSyncSettings) {
     super(app, vault, settings);
   }
@@ -33,7 +32,10 @@ export class AreaFileManager extends FileManager {
    * @param content - Optional file content. If not provided, reads from template.
    * @returns Path of the created area file
    */
-  async createAreaFile(data: AreaCreationData, content?: string): Promise<string> {
+  async createAreaFile(
+    data: AreaCreationData,
+    content?: string,
+  ): Promise<string> {
     const areaFolder = this.settings.areasFolder;
 
     // Get content from template if not provided
@@ -45,7 +47,11 @@ export class AreaFileManager extends FileManager {
     // Process {{tasks}} variable in content
     const processedContent = this.processTasksVariable(fileContent, data.title);
 
-    const filePath = await this.createFile(areaFolder, data.title, processedContent);
+    const filePath = await this.createFile(
+      areaFolder,
+      data.title,
+      processedContent,
+    );
     const frontMatterData = this.generateAreaFrontMatterObject(data);
 
     await this.updateFrontMatter(filePath, frontMatterData);
@@ -58,7 +64,9 @@ export class AreaFileManager extends FileManager {
    * @param data - Area creation data
    * @returns Template content or default content if template not found
    */
-  private async getAreaTemplateContent(data: AreaCreationData): Promise<string> {
+  private async getAreaTemplateContent(
+    data: AreaCreationData,
+  ): Promise<string> {
     // Try to read template content
     const templateContent = await this.readTemplate();
     if (templateContent) {
@@ -67,16 +75,16 @@ export class AreaFileManager extends FileManager {
 
     // Fallback content if template doesn't exist
     return [
-      '',
-      '## Notes',
-      '',
-      data.description || '',
-      '',
-      '## Tasks',
-      '',
-      '{{tasks}}',
-      ''
-    ].join('\n');
+      "",
+      "## Notes",
+      "",
+      data.description || "",
+      "",
+      "## Tasks",
+      "",
+      "{{tasks}}",
+      "",
+    ].join("\n");
   }
 
   /**
@@ -106,7 +114,7 @@ export class AreaFileManager extends FileManager {
    * @returns Processed content with {{tasks}} replaced
    */
   private processTasksVariable(content: string, areaName: string): string {
-    if (!content.includes('{{tasks}}')) {
+    if (!content.includes("{{tasks}}")) {
       return content;
     }
 
@@ -134,7 +142,9 @@ export class AreaFileManager extends FileManager {
    * @param filePath - Path to the area file
    * @returns Object with hasChanges and propertiesChanged count
    */
-  async updateFileProperties(filePath: string): Promise<{ hasChanges: boolean, propertiesChanged: number }> {
+  async updateFileProperties(
+    filePath: string,
+  ): Promise<{ hasChanges: boolean; propertiesChanged: number }> {
     const file = this.app.vault.getAbstractFileByPath(filePath);
     if (!file) {
       throw new Error(`File not found: ${filePath}`);
@@ -150,9 +160,11 @@ export class AreaFileManager extends FileManager {
     }
 
     // Check if file has correct Type property for areas
-    if (existingFrontMatter.Type && existingFrontMatter.Type !== 'Area') {
+    if (existingFrontMatter.Type && existingFrontMatter.Type !== "Area") {
       // Skip files that are not areas
-      console.log(`Area FileManager: Skipping file with incorrect Type property: ${filePath} (expected: Area, found: ${existingFrontMatter.Type})`);
+      console.log(
+        `Area FileManager: Skipping file with incorrect Type property: ${filePath} (expected: Area, found: ${existingFrontMatter.Type})`,
+      );
       return { hasChanges: false, propertiesChanged: 0 };
     }
 
@@ -165,7 +177,7 @@ export class AreaFileManager extends FileManager {
       currentSchema[prop.name] = {
         type: prop.type,
         ...(prop.default !== undefined && { default: prop.default }),
-        ...(prop.link && { link: prop.link })
+        ...(prop.link && { link: prop.link }),
       };
       propertyOrder.push(prop.name);
     });
@@ -177,7 +189,7 @@ export class AreaFileManager extends FileManager {
     // Add missing fields with default values
     for (const [fieldName, fieldConfig] of Object.entries(currentSchema)) {
       if (!(fieldName in updatedFrontMatter)) {
-        updatedFrontMatter[fieldName] = (fieldConfig as any).default || '';
+        updatedFrontMatter[fieldName] = (fieldConfig as any).default || "";
         hasChanges = true;
         propertiesChanged++;
       }
@@ -188,7 +200,7 @@ export class AreaFileManager extends FileManager {
     for (const fieldName of Object.keys(updatedFrontMatter)) {
       // Only remove fields that are clearly not part of the schema
       // Keep common fields that might be used by other plugins
-      const commonFields = ['tags', 'aliases', 'cssclass', 'publish'];
+      const commonFields = ["tags", "aliases", "cssclass", "publish"];
       if (!validFields.has(fieldName) && !commonFields.includes(fieldName)) {
         delete updatedFrontMatter[fieldName];
         hasChanges = true;
@@ -197,7 +209,10 @@ export class AreaFileManager extends FileManager {
     }
 
     // Check if property order matches schema
-    if (!hasChanges && !this.isPropertyOrderCorrect(fullContent, currentSchema, propertyOrder)) {
+    if (
+      !hasChanges &&
+      !this.isPropertyOrderCorrect(fullContent, currentSchema, propertyOrder)
+    ) {
       hasChanges = true;
       propertiesChanged++; // Count order change as one property change
     }
@@ -205,25 +220,28 @@ export class AreaFileManager extends FileManager {
     // Only update the file if there are changes
     if (hasChanges) {
       // Use Obsidian's native processFrontMatter to update with correct order
-      await this.app.fileManager.processFrontMatter(file as TFile, (frontmatter) => {
-        // Clear existing properties
-        Object.keys(frontmatter).forEach(key => delete frontmatter[key]);
+      await this.app.fileManager.processFrontMatter(
+        file as TFile,
+        (frontmatter) => {
+          // Clear existing properties
+          Object.keys(frontmatter).forEach((key) => delete frontmatter[key]);
 
-        // Add properties in correct order
-        for (const fieldName of propertyOrder) {
-          const value = updatedFrontMatter[fieldName];
-          if (value !== undefined) {
-            frontmatter[fieldName] = value;
+          // Add properties in correct order
+          for (const fieldName of propertyOrder) {
+            const value = updatedFrontMatter[fieldName];
+            if (value !== undefined) {
+              frontmatter[fieldName] = value;
+            }
           }
-        }
 
-        // Add any additional fields that aren't in the schema but exist in the file
-        for (const [key, value] of Object.entries(updatedFrontMatter)) {
-          if (!propertyOrder.includes(key)) {
-            frontmatter[key] = value;
+          // Add any additional fields that aren't in the schema but exist in the file
+          for (const [key, value] of Object.entries(updatedFrontMatter)) {
+            if (!propertyOrder.includes(key)) {
+              frontmatter[key] = value;
+            }
           }
-        }
-      });
+        },
+      );
     }
 
     return { hasChanges, propertiesChanged };
@@ -234,10 +252,12 @@ export class AreaFileManager extends FileManager {
    * @param data - Area creation data
    * @returns Front-matter object
    */
-  private generateAreaFrontMatterObject(data: AreaCreationData): Record<string, any> {
+  private generateAreaFrontMatterObject(
+    data: AreaCreationData,
+  ): Record<string, any> {
     return {
       Name: data.title,
-      Type: 'Area'
+      Type: "Area",
     };
   }
 }

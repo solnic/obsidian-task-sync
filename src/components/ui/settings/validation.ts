@@ -2,8 +2,8 @@
  * Validation utilities for settings
  */
 
-import { ValidationResult } from './types';
-import { VALIDATION_PATTERNS } from './defaults';
+import { ValidationResult } from "./types";
+import { VALIDATION_PATTERNS } from "./defaults";
 
 /**
  * Validates a folder path
@@ -18,28 +18,51 @@ export function validateFolderPath(path: string): ValidationResult {
   if (!VALIDATION_PATTERNS.folderName.test(path)) {
     return {
       isValid: false,
-      error: 'Folder path contains invalid characters'
+      error: "Folder path contains invalid characters",
     };
   }
 
   // Check for reserved names (Windows)
-  const reservedNames = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
-  const pathParts = path.split('/').filter(part => part.length > 0);
+  const reservedNames = [
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "COM1",
+    "COM2",
+    "COM3",
+    "COM4",
+    "COM5",
+    "COM6",
+    "COM7",
+    "COM8",
+    "COM9",
+    "LPT1",
+    "LPT2",
+    "LPT3",
+    "LPT4",
+    "LPT5",
+    "LPT6",
+    "LPT7",
+    "LPT8",
+    "LPT9",
+  ];
+  const pathParts = path.split("/").filter((part) => part.length > 0);
 
   for (const part of pathParts) {
     if (reservedNames.includes(part.toUpperCase())) {
       return {
         isValid: false,
-        error: `"${part}" is a reserved folder name`
+        error: `"${part}" is a reserved folder name`,
       };
     }
 
     // Check for "Obsidian" folder name (case-insensitive)
     // Obsidian hides folders named "Obsidian" to avoid confusion with the .obsidian system folder
-    if (part.toLowerCase() === 'obsidian') {
+    if (part.toLowerCase() === "obsidian") {
       return {
         isValid: false,
-        error: `"${part}" folder name is not recommended as Obsidian hides folders with this name. Use "Templates" or "MyTemplates" instead.`
+        error: `"${part}" folder name is not recommended as Obsidian hides folders with this name. Use "Templates" or "MyTemplates" instead.`,
       };
     }
   }
@@ -60,18 +83,41 @@ export function validateFileName(fileName: string): ValidationResult {
   if (!VALIDATION_PATTERNS.fileName.test(fileName)) {
     return {
       isValid: false,
-      error: 'File name contains invalid characters or missing extension'
+      error: "File name contains invalid characters or missing extension",
     };
   }
 
   // Check for reserved names (Windows)
-  const reservedNames = ['CON', 'PRN', 'AUX', 'NUL', 'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9', 'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
-  const nameWithoutExt = fileName.split('.')[0];
+  const reservedNames = [
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    "COM1",
+    "COM2",
+    "COM3",
+    "COM4",
+    "COM5",
+    "COM6",
+    "COM7",
+    "COM8",
+    "COM9",
+    "LPT1",
+    "LPT2",
+    "LPT3",
+    "LPT4",
+    "LPT5",
+    "LPT6",
+    "LPT7",
+    "LPT8",
+    "LPT9",
+  ];
+  const nameWithoutExt = fileName.split(".")[0];
 
   if (reservedNames.includes(nameWithoutExt.toUpperCase())) {
     return {
       isValid: false,
-      error: `"${nameWithoutExt}" is a reserved file name`
+      error: `"${nameWithoutExt}" is a reserved file name`,
     };
   }
 
@@ -87,10 +133,10 @@ export function validateBaseFileName(fileName: string): ValidationResult {
     return baseValidation;
   }
 
-  if (fileName.trim() && !fileName.endsWith('.base')) {
+  if (fileName.trim() && !fileName.endsWith(".base")) {
     return {
       isValid: false,
-      error: 'Base file must have .base extension'
+      error: "Base file must have .base extension",
     };
   }
 
@@ -106,10 +152,10 @@ export function validateTemplateFileName(fileName: string): ValidationResult {
     return baseValidation;
   }
 
-  if (fileName.trim() && !fileName.endsWith('.md')) {
+  if (fileName.trim() && !fileName.endsWith(".md")) {
     return {
       isValid: false,
-      error: 'Template file must have .md extension'
+      error: "Template file must have .md extension",
     };
   }
 
@@ -137,6 +183,7 @@ export function validateGitHubToken(token: string): ValidationResult {
 
   return {
     isValid: false,
-    error: 'Invalid GitHub Personal Access Token format. Expected format: ghp_... (classic) or github_pat_... (fine-grained)'
+    error:
+      "Invalid GitHub Personal Access Token format. Expected format: ghp_... (classic) or github_pat_... (fine-grained)",
   };
 }

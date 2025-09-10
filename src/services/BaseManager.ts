@@ -4,17 +4,17 @@
  * with proper properties and views for task management
  */
 
-import { App, Vault, TFile } from 'obsidian';
-import { TaskSyncSettings } from '../main';
-import * as yaml from 'js-yaml';
-import { sanitizeFileName } from '../utils/fileNameSanitizer';
+import { App, Vault, TFile } from "obsidian";
+import { TaskSyncSettings } from "../main";
+import * as yaml from "js-yaml";
+import { sanitizeFileName } from "../utils/fileNameSanitizer";
 import {
   generateTasksBase as generateTasksBaseConfig,
   generateAreaBase as generateAreaBaseConfig,
   generateProjectBase as generateProjectBaseConfig,
   generateParentTaskBase as generateParentTaskBaseConfig,
-  PropertyDefinition
-} from './base-definitions';
+  PropertyDefinition,
+} from "./base-definitions";
 
 export interface BaseProperty {
   displayName: string;
@@ -23,7 +23,7 @@ export interface BaseProperty {
 }
 
 export interface BaseView {
-  type: 'table' | 'kanban' | 'calendar';
+  type: "table" | "kanban" | "calendar";
   name: string;
   filters?: {
     and?: Array<string>;
@@ -32,7 +32,7 @@ export interface BaseView {
   order?: string[];
   sort?: Array<{
     property: string;
-    direction: 'ASC' | 'DESC';
+    direction: "ASC" | "DESC";
   }>;
   columnSize?: Record<string, number>;
 }
@@ -46,15 +46,15 @@ export interface BaseConfig {
 export interface ProjectAreaInfo {
   name: string;
   path: string;
-  type: 'project' | 'area';
+  type: "project" | "area";
 }
 
 export class BaseManager {
   constructor(
     private app: App,
     private vault: Vault,
-    private settings: TaskSyncSettings
-  ) { }
+    private settings: TaskSyncSettings,
+  ) {}
 
   /**
    * Update settings reference (for when settings are changed)
@@ -66,7 +66,9 @@ export class BaseManager {
   /**
    * Generate the main Tasks.base file with all task properties and default views
    */
-  async generateTasksBase(projectsAndAreas: ProjectAreaInfo[]): Promise<string> {
+  async generateTasksBase(
+    projectsAndAreas: ProjectAreaInfo[],
+  ): Promise<string> {
     return generateTasksBaseConfig(this.settings, projectsAndAreas);
   }
 
@@ -77,7 +79,7 @@ export class BaseManager {
     try {
       return yaml.load(content) as BaseConfig;
     } catch (error) {
-      console.error('Failed to parse base file:', error);
+      console.error("Failed to parse base file:", error);
       return null;
     }
   }
@@ -85,19 +87,23 @@ export class BaseManager {
   /**
    * Create or update the Tasks.base file
    */
-  async createOrUpdateTasksBase(projectsAndAreas: ProjectAreaInfo[]): Promise<void> {
+  async createOrUpdateTasksBase(
+    projectsAndAreas: ProjectAreaInfo[],
+  ): Promise<void> {
     const baseFilePath = `${this.settings.basesFolder}/${this.settings.tasksBaseFile}`;
     const content = await this.generateTasksBase(projectsAndAreas);
 
-    await this.createOrUpdateBaseFile(baseFilePath, content, 'Tasks');
+    await this.createOrUpdateBaseFile(baseFilePath, content, "Tasks");
   }
-
-
 
   /**
    * Helper method to create or update a base file with robust error handling
    */
-  private async createOrUpdateBaseFile(baseFilePath: string, content: string, type: string): Promise<void> {
+  private async createOrUpdateBaseFile(
+    baseFilePath: string,
+    content: string,
+    type: string,
+  ): Promise<void> {
     try {
       // Use more reliable file existence check
       const fileExists = await this.vault.adapter.exists(baseFilePath);
@@ -118,7 +124,9 @@ export class BaseManager {
             const retryFile = this.vault.getAbstractFileByPath(baseFilePath);
             if (retryFile instanceof TFile) {
               await this.vault.modify(retryFile, content);
-              console.log(`Updated ${type} base file after retry: ${baseFilePath}`);
+              console.log(
+                `Updated ${type} base file after retry: ${baseFilePath}`,
+              );
             } else {
               throw createError;
             }
@@ -131,11 +139,13 @@ export class BaseManager {
           console.log(`Created ${type} base file: ${baseFilePath}`);
         } catch (createError) {
           // If create fails, the file might have been created by another process
-          if (createError.message?.includes('already exists')) {
+          if (createError.message?.includes("already exists")) {
             const existingFile = this.vault.getAbstractFileByPath(baseFilePath);
             if (existingFile instanceof TFile) {
               await this.vault.modify(existingFile, content);
-              console.log(`Updated ${type} base file after creation conflict: ${baseFilePath}`);
+              console.log(
+                `Updated ${type} base file after creation conflict: ${baseFilePath}`,
+              );
             } else {
               throw createError;
             }
@@ -168,7 +178,8 @@ export class BaseManager {
 
       // Only add Tasks.base if no base embedding exists at all
       const baseFilePath = `${this.settings.basesFolder}/${this.settings.tasksBaseFile}`;
-      const updatedContent = content.trim() + `\n\n## Tasks\n![[${baseFilePath}]]`;
+      const updatedContent =
+        content.trim() + `\n\n## Tasks\n![[${baseFilePath}]]`;
       await this.vault.modify(file, updatedContent);
       console.log(`Added base embedding to: ${filePath}`);
     } catch (error) {
@@ -184,64 +195,80 @@ export class BaseManager {
 
     // Scan projects folder for files with Type: Project
     try {
-      const projectsFolder = this.vault.getAbstractFileByPath(this.settings.projectsFolder);
+      const projectsFolder = this.vault.getAbstractFileByPath(
+        this.settings.projectsFolder,
+      );
       if (projectsFolder) {
-        const projectFiles = this.vault.getMarkdownFiles().filter(file =>
-          file.path.startsWith(this.settings.projectsFolder + '/')
-        );
+        const projectFiles = this.vault
+          .getMarkdownFiles()
+          .filter((file) =>
+            file.path.startsWith(this.settings.projectsFolder + "/"),
+          );
 
         for (const file of projectFiles) {
           const cache = this.app.metadataCache.getFileCache(file);
           const frontmatter = cache?.frontmatter;
 
-          console.log(`BaseManager: Checking project file ${file.path}, Type: ${frontmatter?.Type}`);
+          console.log(
+            `BaseManager: Checking project file ${file.path}, Type: ${frontmatter?.Type}`,
+          );
 
           // Only include files with Type: Project
-          if (frontmatter?.Type === 'Project') {
+          if (frontmatter?.Type === "Project") {
             console.log(`BaseManager: Including project file ${file.path}`);
             items.push({
               name: file.basename,
               path: file.path,
-              type: 'project'
+              type: "project",
             });
           } else {
-            console.log(`BaseManager: Skipping project file ${file.path} (Type: ${frontmatter?.Type})`);
+            console.log(
+              `BaseManager: Skipping project file ${file.path} (Type: ${frontmatter?.Type})`,
+            );
           }
         }
       }
     } catch (error) {
-      console.error('Failed to scan projects folder:', error);
+      console.error("Failed to scan projects folder:", error);
     }
 
     // Scan areas folder for files with Type: Area
     try {
-      const areasFolder = this.vault.getAbstractFileByPath(this.settings.areasFolder);
+      const areasFolder = this.vault.getAbstractFileByPath(
+        this.settings.areasFolder,
+      );
       if (areasFolder) {
-        const areaFiles = this.vault.getMarkdownFiles().filter(file =>
-          file.path.startsWith(this.settings.areasFolder + '/')
-        );
+        const areaFiles = this.vault
+          .getMarkdownFiles()
+          .filter((file) =>
+            file.path.startsWith(this.settings.areasFolder + "/"),
+          );
 
         for (const file of areaFiles) {
           const cache = this.app.metadataCache.getFileCache(file);
           const frontmatter = cache?.frontmatter;
 
-          console.log(`BaseManager: Checking area file ${file.path}, Type: ${frontmatter?.Type}`);
+          console.log(
+            `BaseManager: Checking area file ${file.path}, Type: ${frontmatter?.Type}`,
+          );
 
           // Only include files with Type: Area
-          if (frontmatter?.Type === 'Area') {
+          if (frontmatter?.Type === "Area") {
             console.log(`BaseManager: Including area file ${file.path}`);
             items.push({
               name: file.basename,
               path: file.path,
-              type: 'area'
+              type: "area",
             });
           } else {
-            console.log(`BaseManager: Skipping area file ${file.path} (Type: ${frontmatter?.Type})`);
+            console.log(
+              `BaseManager: Skipping area file ${file.path} (Type: ${frontmatter?.Type})`,
+            );
           }
         }
       }
     } catch (error) {
-      console.error('Failed to scan areas folder:', error);
+      console.error("Failed to scan areas folder:", error);
     }
 
     return items;
@@ -252,41 +279,60 @@ export class BaseManager {
    */
   async syncAreaProjectBases(): Promise<void> {
     const projectsAndAreas = await this.getProjectsAndAreas();
-    console.log(`BaseManager: Found ${projectsAndAreas.length} projects and areas:`, projectsAndAreas.map(item => `${item.name} (${item.type})`));
+    console.log(
+      `BaseManager: Found ${projectsAndAreas.length} projects and areas:`,
+      projectsAndAreas.map((item) => `${item.name} (${item.type})`),
+    );
 
     // Handle area bases
-    console.log(`BaseManager: areaBasesEnabled = ${this.settings.areaBasesEnabled}`);
+    console.log(
+      `BaseManager: areaBasesEnabled = ${this.settings.areaBasesEnabled}`,
+    );
     if (this.settings.areaBasesEnabled) {
       // Create individual bases for areas
-      const areas = projectsAndAreas.filter(item => item.type === 'area');
-      console.log(`BaseManager: Found ${areas.length} areas to create bases for:`, areas.map(a => a.name));
+      const areas = projectsAndAreas.filter((item) => item.type === "area");
+      console.log(
+        `BaseManager: Found ${areas.length} areas to create bases for:`,
+        areas.map((a) => a.name),
+      );
       for (const area of areas) {
         console.log(`BaseManager: Creating area base for: ${area.name}`);
         await this.createOrUpdateAreaBase(area);
       }
     } else {
       // Clean up existing area bases when disabled
-      console.log('BaseManager: Area bases disabled, cleaning up existing bases');
+      console.log(
+        "BaseManager: Area bases disabled, cleaning up existing bases",
+      );
       await this.cleanupAreaBases(projectsAndAreas);
     }
 
     // Handle project bases
-    console.log(`BaseManager: projectBasesEnabled = ${this.settings.projectBasesEnabled}`);
+    console.log(
+      `BaseManager: projectBasesEnabled = ${this.settings.projectBasesEnabled}`,
+    );
     if (this.settings.projectBasesEnabled) {
       // Create individual bases for projects
-      const projects = projectsAndAreas.filter(item => item.type === 'project');
-      console.log(`BaseManager: Found ${projects.length} projects to create bases for:`, projects.map(p => p.name));
+      const projects = projectsAndAreas.filter(
+        (item) => item.type === "project",
+      );
+      console.log(
+        `BaseManager: Found ${projects.length} projects to create bases for:`,
+        projects.map((p) => p.name),
+      );
       for (const project of projects) {
         console.log(`BaseManager: Creating project base for: ${project.name}`);
         await this.createOrUpdateProjectBase(project);
       }
     } else {
       // Clean up existing project bases when disabled
-      console.log('BaseManager: Project bases disabled, cleaning up existing bases');
+      console.log(
+        "BaseManager: Project bases disabled, cleaning up existing bases",
+      );
       await this.cleanupProjectBases(projectsAndAreas);
     }
 
-    console.log('Area and project bases synced successfully');
+    console.log("Area and project bases synced successfully");
   }
 
   /**
@@ -299,7 +345,7 @@ export class BaseManager {
     const content = await this.generateAreaBase(area);
 
     try {
-      await this.createOrUpdateBaseFile(baseFilePath, content, 'area');
+      await this.createOrUpdateBaseFile(baseFilePath, content, "area");
       // Update the area file to embed the specific base
       await this.ensureSpecificBaseEmbedding(area.path, baseFileName);
     } catch (error) {
@@ -318,7 +364,7 @@ export class BaseManager {
     const content = await this.generateProjectBase(project);
 
     try {
-      await this.createOrUpdateBaseFile(baseFilePath, content, 'project');
+      await this.createOrUpdateBaseFile(baseFilePath, content, "project");
       // Update the project file to embed the specific base
       await this.ensureSpecificBaseEmbedding(project.path, baseFileName);
     } catch (error) {
@@ -358,7 +404,7 @@ export class BaseManager {
     const content = await this.generateParentTaskBase(parentTaskName);
 
     try {
-      await this.createOrUpdateBaseFile(baseFilePath, content, 'parent-task');
+      await this.createOrUpdateBaseFile(baseFilePath, content, "parent-task");
     } catch (error) {
       console.error(`Failed to create/update parent task base file: ${error}`);
       throw error;
@@ -368,14 +414,19 @@ export class BaseManager {
   /**
    * Ensure specific base embedding in area/project files
    */
-  async ensureSpecificBaseEmbedding(filePath: string, baseFileName: string): Promise<void> {
+  async ensureSpecificBaseEmbedding(
+    filePath: string,
+    baseFileName: string,
+  ): Promise<void> {
     try {
       const file = this.vault.getAbstractFileByPath(filePath);
       if (!(file instanceof TFile)) return;
 
       const content = await this.vault.read(file);
       const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
-      const specificBasePattern = new RegExp(`!\\[\\[${baseFilePath.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\|.*?)?\\]\\]`);
+      const specificBasePattern = new RegExp(
+        `!\\[\\[${baseFilePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\|.*?)?\\]\\]`,
+      );
 
       // If the specific base embed already exists, we're done
       if (specificBasePattern.test(content)) {
@@ -387,19 +438,20 @@ export class BaseManager {
       // Remove any existing base embeds to prevent duplicates
       const allBasePatterns = [
         /!\[\[.*Tasks\.base(\|.*?)?\]\]/g,
-        /!\[\[.*\.base(\|.*?)?\]\]/g
+        /!\[\[.*\.base(\|.*?)?\]\]/g,
       ];
 
       for (const pattern of allBasePatterns) {
-        updatedContent = updatedContent.replace(pattern, '');
+        updatedContent = updatedContent.replace(pattern, "");
       }
 
       // Clean up any empty "## Tasks" sections that might be left
-      updatedContent = updatedContent.replace(/## Tasks\s*\n\s*\n/g, '');
+      updatedContent = updatedContent.replace(/## Tasks\s*\n\s*\n/g, "");
 
       // Add the specific base embedding with proper path
-      if (!updatedContent.trim().endsWith('## Tasks')) {
-        updatedContent = updatedContent.trim() + `\n\n## Tasks\n![[${baseFilePath}]]`;
+      if (!updatedContent.trim().endsWith("## Tasks")) {
+        updatedContent =
+          updatedContent.trim() + `\n\n## Tasks\n![[${baseFilePath}]]`;
       } else {
         updatedContent = updatedContent.trim() + `\n![[${baseFilePath}]]`;
       }
@@ -414,8 +466,10 @@ export class BaseManager {
   /**
    * Clean up area base files when area bases are disabled
    */
-  private async cleanupAreaBases(projectsAndAreas: ProjectAreaInfo[]): Promise<void> {
-    const areas = projectsAndAreas.filter(item => item.type === 'area');
+  private async cleanupAreaBases(
+    projectsAndAreas: ProjectAreaInfo[],
+  ): Promise<void> {
+    const areas = projectsAndAreas.filter((item) => item.type === "area");
 
     for (const area of areas) {
       const sanitizedName = sanitizeFileName(area.name);
@@ -440,8 +494,10 @@ export class BaseManager {
   /**
    * Clean up project base files when project bases are disabled
    */
-  private async cleanupProjectBases(projectsAndAreas: ProjectAreaInfo[]): Promise<void> {
-    const projects = projectsAndAreas.filter(item => item.type === 'project');
+  private async cleanupProjectBases(
+    projectsAndAreas: ProjectAreaInfo[],
+  ): Promise<void> {
+    const projects = projectsAndAreas.filter((item) => item.type === "project");
 
     for (const project of projects) {
       const sanitizedName = sanitizeFileName(project.name);

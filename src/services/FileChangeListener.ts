@@ -34,7 +34,7 @@ export class FileChangeListener {
     private app: App,
     private vault: Vault,
     private eventManager: EventManager,
-    private settings: TaskSyncSettings
+    private settings: TaskSyncSettings,
   ) {}
 
   /**
@@ -99,13 +99,13 @@ export class FileChangeListener {
       } catch (error) {
         console.error(
           `FileChangeListener: Error initializing state for ${file.path}:`,
-          error
+          error,
         );
       }
     }
 
     console.log(
-      `FileChangeListener: Initialized ${this.fileStates.size} file states`
+      `FileChangeListener: Initialized ${this.fileStates.size} file states`,
     );
   }
 
@@ -156,7 +156,7 @@ export class FileChangeListener {
       }
       console.error(
         `FileChangeListener: Error creating file state for ${file.path}:`,
-        error
+        error,
       );
       return null;
     }
@@ -241,7 +241,7 @@ export class FileChangeListener {
     } catch (error) {
       console.error(
         `FileChangeListener: Error processing file modification for ${file.path}:`,
-        error
+        error,
       );
     } finally {
       this.processingFiles.delete(file.path);
@@ -273,15 +273,15 @@ export class FileChangeListener {
           entityType === "task"
             ? EventType.TASK_CREATED
             : entityType === "project"
-            ? EventType.PROJECT_CREATED
-            : EventType.AREA_CREATED,
-          eventData
+              ? EventType.PROJECT_CREATED
+              : EventType.AREA_CREATED,
+          eventData,
         );
       }
     } catch (error) {
       console.error(
         `FileChangeListener: Error processing file creation for ${file.path}:`,
-        error
+        error,
       );
     }
   }
@@ -309,9 +309,9 @@ export class FileChangeListener {
           entityType === "task"
             ? EventType.TASK_DELETED
             : entityType === "project"
-            ? EventType.PROJECT_DELETED
-            : EventType.AREA_DELETED,
-          eventData
+              ? EventType.PROJECT_DELETED
+              : EventType.AREA_DELETED,
+          eventData,
         );
 
         // Remove from state
@@ -320,7 +320,7 @@ export class FileChangeListener {
     } catch (error) {
       console.error(
         `FileChangeListener: Error processing file deletion for ${file.path}:`,
-        error
+        error,
       );
     }
   }
@@ -349,7 +349,7 @@ export class FileChangeListener {
     } catch (error) {
       console.error(
         `FileChangeListener: Error processing file rename from ${oldPath} to ${file.path}:`,
-        error
+        error,
       );
     }
   }
@@ -359,7 +359,7 @@ export class FileChangeListener {
    */
   private async compareAndEmitEvents(
     oldState: FileState,
-    newState: FileState
+    newState: FileState,
   ): Promise<void> {
     const oldFrontmatter = oldState.frontmatter;
     const newFrontmatter = newState.frontmatter;
