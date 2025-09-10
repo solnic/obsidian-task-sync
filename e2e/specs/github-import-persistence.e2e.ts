@@ -141,24 +141,22 @@ describe("GitHub Import Status Persistence", () => {
 
     expect(importStatusAfterRestart).toBe(true);
 
+    // Re-configure GitHub integration to ensure settings are restored
+    await configureGitHubIntegration(context.page, {
+      enabled: true,
+      repository: "solnic/obsidian-task-sync",
+      token: "fake-token-for-testing",
+    });
+
     // Re-stub the APIs after plugin restart
     await stubGitHubWithFixtures(context.page, {
       repositories: "repositories-basic",
       issues: "persistence-test",
     });
 
-    await context.page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin && plugin.githubService) {
-        const views = app.workspace.getLeavesOfType("github-issues");
-        if (views.length > 0) {
-          views[0].view.refresh();
-        }
-      }
-    });
-
-    await context.page.waitForTimeout(2000);
+    // Open GitHub Issues view again after restart
+    await openGitHubIssuesView(context.page);
+    await waitForGitHubViewContent(context.page, 15000);
 
     const stillHasImportedStatus = await context.page.evaluate(() => {
       const issueItems = document.querySelectorAll(

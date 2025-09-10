@@ -65,7 +65,7 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
   // Wait for the view to be created
   await new Promise((resolve) => setTimeout(resolve, 500));
 
-  // Now open the right sidebar and activate the GitHub Issues tab through UI
+  // Now open the right sidebar and activate the Tasks tab through UI
   const rightSidebarToggle = page
     .locator(".workspace-ribbon.mod-right .side-dock-ribbon-action")
     .first();
@@ -74,10 +74,11 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
 
-  // Look for the Tasks tab and click it
+  // Look for the Tasks tab and click it - use first() to handle multiple tabs
   const tasksTab = page
     .locator(".workspace-tab-header")
-    .filter({ hasText: "Tasks" });
+    .filter({ hasText: "Tasks" })
+    .first();
 
   if (await tasksTab.isVisible()) {
     await tasksTab.click();
@@ -85,7 +86,7 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
   } else {
     // Alternative: use command palette to open the view
     await page.keyboard.press("Control+p");
-    await page.fill(".prompt-input", "GitHub Issues");
+    await page.fill(".prompt-input", "Tasks");
     await page.keyboard.press("Enter");
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
@@ -145,7 +146,7 @@ export async function waitForGitHubView(
       // Fallback: check for view in workspace leaves
       const workspace = (window as any).app?.workspace;
       if (workspace) {
-        const leaves = workspace.getLeavesOfType("github-issues");
+        const leaves = workspace.getLeavesOfType("tasks");
         if (leaves && leaves.length > 0) {
           return true;
         }
@@ -160,8 +161,8 @@ export async function waitForGitHubView(
   await page.waitForFunction(
     () => {
       let viewElement =
-        document.querySelector('[data-type="github-issues"]') ||
-        document.querySelector(".github-issues-view");
+        document.querySelector('[data-type="tasks"]') ||
+        document.querySelector(".tasks-view");
 
       if (!viewElement) {
         return false;
@@ -503,11 +504,11 @@ export async function ensureGitHubViewExists(page: Page): Promise<void> {
     }
 
     // Check if view already exists
-    const existingLeaves = app.workspace.getLeavesOfType("github-issues");
+    const existingLeaves = app.workspace.getLeavesOfType("tasks");
     if (existingLeaves.length === 0) {
       const rightLeaf = app.workspace.getRightLeaf(false);
       await rightLeaf.setViewState({
-        type: "github-issues",
+        type: "tasks",
         active: false,
       });
 
@@ -515,7 +516,7 @@ export async function ensureGitHubViewExists(page: Page): Promise<void> {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Manually call onOpen if it wasn't called automatically
-      const newLeaves = app.workspace.getLeavesOfType("github-issues");
+      const newLeaves = app.workspace.getLeavesOfType("tasks");
       if (newLeaves.length > 0) {
         const view = newLeaves[0].view;
         if (view && view.onOpen && typeof view.onOpen === "function") {
@@ -576,7 +577,9 @@ export async function waitForGitHubErrorState(
 ): Promise<void> {
   await page.waitForFunction(
     () => {
-      const viewElement = document.querySelector('[data-type="github-issues"]');
+      const viewElement = document.querySelector(
+        '[data-testid="github-service"]'
+      );
       if (!viewElement) return false;
 
       const text = viewElement.textContent || "";
@@ -740,16 +743,15 @@ export async function getGitHubViewStructure(page: Page): Promise<{
   await debugGitHubViewState(page);
 
   const result = await page.evaluate(() => {
-    // Look for the actual view content container, not the tab element
-    // The view content is inside the workspace leaf content area
-    let viewElement = document.querySelector(".github-issues-view");
+    // Look for the GitHub service component within the Tasks view
+    let viewElement = document.querySelector('[data-testid="github-service"]');
 
     if (!viewElement) {
       // Fallback: look for the view content inside any workspace leaf
       const leaves = document.querySelectorAll(".workspace-leaf-content");
       for (let i = 0; i < leaves.length; i++) {
         const leaf = leaves[i];
-        const githubView = leaf.querySelector(".github-issues-view");
+        const githubView = leaf.querySelector('[data-testid="github-service"]');
         if (githubView) {
           viewElement = githubView;
           break;
