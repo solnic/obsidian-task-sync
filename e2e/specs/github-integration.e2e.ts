@@ -15,6 +15,11 @@ import {
   openGitHubIssuesView,
   stubGitHubWithFixtures,
 } from "../helpers/github-integration-helpers";
+import {
+  stubGitHubAPIs,
+  restoreGitHubAPIs,
+  ensureGitHubStubsInstalled,
+} from "../helpers/api-stubbing";
 
 describe("GitHub Integration", () => {
   const context = setupE2ETestHooks();
@@ -55,7 +60,6 @@ describe("GitHub Integration", () => {
   });
 
   test("should display import buttons on GitHub issues", async () => {
-    // Use fixture-based stubbing for better maintainability
     await stubGitHubWithFixtures(context.page, {
       repositories: "repositories-basic",
       issues: "integration-test",

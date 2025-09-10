@@ -3,7 +3,6 @@
  * Provides fixture-based stubbing using vitest API
  */
 
-import { vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import type { Page } from "playwright";
@@ -200,6 +199,122 @@ export async function stubMultipleAPIs(
       await stubAPI(page, service, method, fixtureName);
     }
   }
+}
+
+// ============================================================================
+// SIMPLIFIED STUBBING WITH RELOAD PERSISTENCE
+// ============================================================================
+
+/**
+ * Simple GitHub API stubbing that persists across plugin reloads
+ * Uses global window storage to maintain stubs
+ */
+export async function stubGitHubAPIs(
+  page: Page,
+  fixtures: {
+    issues?: string;
+    repositories?: string;
+    pullRequests?: string;
+  }
+): Promise<void> {
+  // Load fixture data
+  const fixtureData: any = {};
+
+  if (fixtures.issues) {
+    fixtureData.issues = loadFixture("github", fixtures.issues);
+  }
+  if (fixtures.repositories) {
+    fixtureData.repositories = loadFixture("github", fixtures.repositories);
+  }
+  if (fixtures.pullRequests) {
+    fixtureData.pullRequests = loadFixture("github", fixtures.pullRequests);
+  }
+
+  // Store fixture data globally so it persists across plugin reloads
+  await page.evaluate((data) => {
+    (window as any).__githubApiStubs = data;
+
+    // Create a global stub installer that can be called after plugin reloads
+    (window as any).__installGitHubStubs = () => {
+      const app = (window as any).app;
+      const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+
+      if (!plugin?.githubService) {
+        return false;
+      }
+
+      // Only stub if not already stubbed
+      if (plugin.githubService.__isStubbed) {
+        return true;
+      }
+
+      // Store originals
+      plugin.githubService.__originals = {
+        fetchIssues: plugin.githubService.fetchIssues,
+        fetchRepositories: plugin.githubService.fetchRepositories,
+        fetchPullRequests: plugin.githubService.fetchPullRequests,
+      };
+
+      // Install stubs
+      plugin.githubService.fetchIssues = async () => {
+        console.log("🔧 Stubbed fetchIssues called");
+        return (window as any).__githubApiStubs?.issues || [];
+      };
+
+      plugin.githubService.fetchRepositories = async () => {
+        console.log("🔧 Stubbed fetchRepositories called");
+        return (window as any).__githubApiStubs?.repositories || [];
+      };
+
+      plugin.githubService.fetchPullRequests = async () => {
+        console.log("🔧 Stubbed fetchPullRequests called");
+        return (window as any).__githubApiStubs?.pullRequests || [];
+      };
+
+      plugin.githubService.__isStubbed = true;
+      return true;
+    };
+
+    // Install stubs immediately if plugin is available
+    (window as any).__installGitHubStubs();
+  }, fixtureData);
+}
+
+/**
+ * Restore GitHub APIs to original implementations
+ */
+export async function restoreGitHubAPIs(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const app = (window as any).app;
+    const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+
+    if (plugin?.githubService?.__originals) {
+      plugin.githubService.fetchIssues =
+        plugin.githubService.__originals.fetchIssues;
+      plugin.githubService.fetchRepositories =
+        plugin.githubService.__originals.fetchRepositories;
+      plugin.githubService.fetchPullRequests =
+        plugin.githubService.__originals.fetchPullRequests;
+
+      delete plugin.githubService.__originals;
+      delete plugin.githubService.__isStubbed;
+    }
+
+    // Clean up global stubs
+    delete (window as any).__githubApiStubs;
+    delete (window as any).__installGitHubStubs;
+  });
+}
+
+/**
+ * Ensure stubs are installed (useful after plugin reloads)
+ */
+export async function ensureGitHubStubsInstalled(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    if ((window as any).__installGitHubStubs) {
+      (window as any).__installGitHubStubs();
+    }
+  });
 }
 
 /**

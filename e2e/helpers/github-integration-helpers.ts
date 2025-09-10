@@ -1,7 +1,6 @@
 import type { Page } from "playwright";
 import { type SharedTestContext } from "./shared-context";
 import { openTaskSyncSettings } from "./task-sync-setup";
-import { stubAPI, restoreAPI, stubMultipleAPIs } from "./api-stubbing";
 
 /**
  * GitHub Integration helpers for e2e tests
@@ -410,6 +409,7 @@ export async function configureGitHubRepository(
 
 /**
  * Stub GitHub API using fixture files
+ * Now uses simplified stubbing that persists across plugin reloads
  *
  * @example
  * await stubGitHubWithFixtures(page, {
@@ -425,21 +425,9 @@ export async function stubGitHubWithFixtures(
     repositories?: string;
   }
 ): Promise<void> {
-  const stubConfig: Record<string, string> = {};
-
-  if (fixtures.issues) {
-    stubConfig.fetchIssues = fixtures.issues;
-  }
-
-  if (fixtures.pullRequests) {
-    stubConfig.fetchPullRequests = fixtures.pullRequests;
-  }
-
-  if (fixtures.repositories) {
-    stubConfig.fetchRepositories = fixtures.repositories;
-  }
-
-  await stubMultipleAPIs(page, { github: stubConfig });
+  // Use the simplified stubbing system that handles plugin reloads
+  const { stubGitHubAPIs } = await import("./api-stubbing");
+  await stubGitHubAPIs(page, fixtures);
 }
 
 /**
