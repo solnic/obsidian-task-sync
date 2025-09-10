@@ -62,10 +62,12 @@ export abstract class FileManager {
    * @param filePath - Path to the file
    * @returns Parsed front-matter object
    */
-  async loadFrontMatter(filePath: string): Promise<Record<string, any>> {
+  async loadFrontMatter(filePath: string): Promise<any> {
     const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
-    const cache = this.app.metadataCache.getFileCache(file);
-    return cache.frontmatter;
+
+    await this.waitForMetadataCache(file).then((cache) => {
+      return cache.frontMatter;
+    });
   }
 
   /**
