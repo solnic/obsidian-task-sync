@@ -128,13 +128,13 @@ describe("GitHubService Import Functionality - Pure Logic", () => {
     expect(taskData.id).toBe("github-123");
     expect(taskData.title).toBe("Fix login bug");
     expect(taskData.description).toBe(
-      "Users cannot login with special characters"
+      "Users cannot login with special characters",
     );
     expect(taskData.status).toBe("open");
     expect(taskData.assignee).toBe("developer");
     expect(taskData.labels).toEqual(["bug", "priority:high"]);
     expect(taskData.externalUrl).toBe(
-      "https://github.com/owner/repo/issues/456"
+      "https://github.com/owner/repo/issues/456",
     );
     expect(taskData.sourceType).toBe("github");
     expect(taskData.sourceData).toEqual({
@@ -185,7 +185,7 @@ describe("GitHubService Import Functionality - Pure Logic", () => {
     ];
 
     const priority = githubService.extractPriorityFromLabels(
-      labelsWithoutPriority
+      labelsWithoutPriority,
     );
     expect(priority).toBeUndefined();
   });
@@ -212,7 +212,7 @@ describe("GitHubService Import Functionality - Pure Logic", () => {
 
     // Mock successful task creation
     mockTaskImportManager.createTaskFromData.mockResolvedValue(
-      "Areas/Product/Tasks/New feature request.md"
+      "Areas/Product/Tasks/New feature request.md",
     );
     mockTaskStore.isTaskImported.mockReturnValue(false);
 
@@ -229,7 +229,7 @@ describe("GitHubService Import Functionality - Pure Logic", () => {
         title: "New feature request",
         sourceType: "github",
       }),
-      config
+      config,
     );
 
     // Task store will automatically pick up the new task via file watchers
@@ -259,7 +259,7 @@ describe("GitHubService Import Functionality - Pure Logic", () => {
     };
 
     mockTaskImportManager.createTaskFromData.mockResolvedValue(
-      "Areas/Development/Tasks/Bug fix needed.md"
+      "Areas/Development/Tasks/Bug fix needed.md",
     );
     mockTaskStore.isTaskImported.mockReturnValue(false);
 
@@ -277,7 +277,7 @@ describe("GitHubService Import Functionality - Pure Logic", () => {
       expect.objectContaining({
         taskType: "Bug", // Should be mapped from 'bug' label
         targetArea: "Development",
-      })
+      }),
     );
   });
 
@@ -301,7 +301,7 @@ describe("GitHubService Import Functionality - Pure Logic", () => {
 
     // Mock task creation failure
     mockTaskImportManager.createTaskFromData.mockRejectedValue(
-      new Error("Task already exists")
+      new Error("Task already exists"),
     );
     mockTaskStore.isTaskImported.mockReturnValue(false);
 

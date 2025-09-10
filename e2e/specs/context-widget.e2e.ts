@@ -33,7 +33,7 @@ describe("ContextWidget", () => {
     // Check that context widget shows "No context"
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
     const contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-text']",
     );
     expect(contextText).toBe("No context");
   });
@@ -58,20 +58,20 @@ describe("ContextWidget", () => {
     // Check that context widget shows project context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
     const contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-text']",
     );
     expect(contextText).toBe(`Project: ${projectName}`);
 
     // Check that the widget has the correct CSS class
     const contextWidgetClass = await context.page.getAttribute(
       "[data-testid='context-widget']",
-      "class"
+      "class",
     );
     expect(contextWidgetClass).toContain("context-type-project");
 
     // Check that the path is displayed
     const contextPath = await context.page.textContent(
-      "[data-testid='context-path']"
+      "[data-testid='context-path']",
     );
     expect(contextPath).toContain(`Projects/${projectName}.md`);
   });
@@ -96,20 +96,20 @@ describe("ContextWidget", () => {
     // Check that context widget shows area context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
     const contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-text']",
     );
     expect(contextText).toBe(`Area: ${areaName}`);
 
     // Check that the widget has the correct CSS class
     const contextWidgetClass2 = await context.page.getAttribute(
       "[data-testid='context-widget']",
-      "class"
+      "class",
     );
     expect(contextWidgetClass2).toContain("context-type-area");
 
     // Check that the path is displayed
     const contextPath = await context.page.textContent(
-      "[data-testid='context-path']"
+      "[data-testid='context-path']",
     );
     expect(contextPath).toContain(`Areas/${areaName}.md`);
   });
@@ -138,7 +138,7 @@ describe("ContextWidget", () => {
     // Check project context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
     let contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-text']",
     );
     expect(contextText).toBe(`Project: ${projectName}`);
 
@@ -147,14 +147,14 @@ describe("ContextWidget", () => {
 
     // Check that context updated to area
     contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-text']",
     );
     expect(contextText).toBe(`Area: ${areaName}`);
 
     // Check CSS class changed
     const contextWidgetClass3 = await context.page.getAttribute(
       "[data-testid='context-widget']",
-      "class"
+      "class",
     );
     expect(contextWidgetClass3).toContain("context-type-area");
   });
@@ -177,7 +177,7 @@ describe("ContextWidget", () => {
     // Verify project context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
     let contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-text']",
     );
     expect(contextText).toBe(`Project: ${projectName}`);
 
@@ -191,14 +191,14 @@ describe("ContextWidget", () => {
 
     // Check that context reset to "No context"
     contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-text']",
     );
     expect(contextText).toBe("No context");
 
     // Check CSS class changed
     const contextWidgetClass4 = await context.page.getAttribute(
       "[data-testid='context-widget']",
-      "class"
+      "class",
     );
     expect(contextWidgetClass4).toContain("context-type-none");
   });

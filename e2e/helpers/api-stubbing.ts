@@ -16,14 +16,14 @@ function loadFixture(service: string, fixtureName: string): any {
     "e2e",
     "fixtures",
     service,
-    `${fixtureName}.json`
+    `${fixtureName}.json`,
   );
 
   if (!fs.existsSync(fixturePath)) {
     throw new Error(
       `Fixture file not found: ${fixturePath}. Available fixtures: ${getAvailableFixtures(
-        service
-      ).join(", ")}`
+        service,
+      ).join(", ")}`,
     );
   }
 
@@ -32,7 +32,7 @@ function loadFixture(service: string, fixtureName: string): any {
     return JSON.parse(fixtureContent);
   } catch (error) {
     throw new Error(
-      `Failed to parse fixture file ${fixturePath}: ${error.message}`
+      `Failed to parse fixture file ${fixturePath}: ${error.message}`,
     );
   }
 }
@@ -69,7 +69,7 @@ export async function stubAPI(
   page: Page,
   service: string,
   method: string,
-  fixtureName: string
+  fixtureName: string,
 ): Promise<void> {
   const fixtureData = loadFixture(service, fixtureName);
 
@@ -77,7 +77,7 @@ export async function stubAPI(
     await stubGitHubAPI(page, method, fixtureData);
   } else {
     throw new Error(
-      `Unsupported service: ${service}. Supported services: github`
+      `Unsupported service: ${service}. Supported services: github`,
     );
   }
 }
@@ -88,7 +88,7 @@ export async function stubAPI(
 async function stubGitHubAPI(
   page: Page,
   method: string,
-  fixtureData: any
+  fixtureData: any,
 ): Promise<void> {
   await page.evaluate(
     async ({ methodName, data }) => {
@@ -112,8 +112,8 @@ async function stubGitHubAPI(
       if (!mappedMethod) {
         throw new Error(
           `Unknown GitHub method: ${methodName}. Available methods: ${Object.keys(
-            methodMap
-          ).join(", ")}`
+            methodMap,
+          ).join(", ")}`,
         );
       }
 
@@ -133,7 +133,7 @@ async function stubGitHubAPI(
         return data;
       };
     },
-    { methodName: method, data: fixtureData }
+    { methodName: method, data: fixtureData },
   );
 }
 
@@ -145,7 +145,7 @@ export async function restoreAPI(page: Page, service: string): Promise<void> {
     await restoreGitHubAPI(page);
   } else {
     throw new Error(
-      `Unsupported service: ${service}. Supported services: github`
+      `Unsupported service: ${service}. Supported services: github`,
     );
   }
 }
@@ -192,7 +192,7 @@ async function restoreGitHubAPI(page: Page): Promise<void> {
  */
 export async function stubMultipleAPIs(
   page: Page,
-  config: Record<string, Record<string, string>>
+  config: Record<string, Record<string, string>>,
 ): Promise<void> {
   for (const [service, methods] of Object.entries(config)) {
     for (const [method, fixtureName] of Object.entries(methods)) {
@@ -215,7 +215,7 @@ export async function stubGitHubAPIs(
     issues?: string;
     repositories?: string;
     pullRequests?: string;
-  }
+  },
 ): Promise<void> {
   // Load fixture data
   const fixtureData: any = {};

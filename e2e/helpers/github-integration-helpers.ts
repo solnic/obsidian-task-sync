@@ -96,7 +96,7 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
  */
 export async function waitForGitHubView(
   page: Page,
-  timeout: number = 10000
+  timeout: number = 10000,
 ): Promise<void> {
   // First, ensure the plugin has initialized the view
   await page.waitForFunction(
@@ -105,7 +105,7 @@ export async function waitForGitHubView(
       const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
       return plugin !== undefined;
     },
-    { timeout: 5000 }
+    { timeout: 5000 },
   );
 
   // Force view creation if it doesn't exist
@@ -153,7 +153,7 @@ export async function waitForGitHubView(
 
       return false;
     },
-    { timeout }
+    { timeout },
   );
 
   // Then wait for it to be visible (may take additional time for Obsidian to render)
@@ -170,7 +170,7 @@ export async function waitForGitHubView(
       const isVisible = (viewElement as HTMLElement).offsetParent !== null;
       return isVisible;
     },
-    { timeout: 5000 }
+    { timeout: 5000 },
   );
 }
 
@@ -179,7 +179,7 @@ export async function waitForGitHubView(
  */
 export async function waitForGitHubViewContent(
   page: Page,
-  timeout: number = 15000
+  timeout: number = 15000,
 ): Promise<void> {
   await waitForGitHubView(page, Math.min(timeout / 3, 10000));
 
@@ -187,7 +187,7 @@ export async function waitForGitHubViewContent(
     .waitForFunction(
       () => {
         const viewElement = document.querySelector(
-          "[data-testid='github-service']"
+          "[data-testid='github-service']",
         );
 
         if (!viewElement) {
@@ -204,7 +204,7 @@ export async function waitForGitHubViewContent(
 
         return hasHeader && hasContent && hasText;
       },
-      { timeout: Math.max(timeout - 10000, 10000) }
+      { timeout: Math.max(timeout - 10000, 10000) },
     )
     .catch(async (error) => {
       throw error;
@@ -216,7 +216,7 @@ export async function waitForGitHubViewContent(
  */
 export async function waitForGitHubSettings(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<void> {
   await page.waitForFunction(
     () => {
@@ -226,7 +226,7 @@ export async function waitForGitHubSettings(
       const text = settingsContainer.textContent || "";
       return text.includes("Enable GitHub Integration");
     },
-    { timeout }
+    { timeout },
   );
 }
 
@@ -234,7 +234,7 @@ export async function waitForGitHubSettings(
  * Open GitHub integration settings
  */
 export async function openGitHubSettings(
-  context: SharedTestContext
+  context: SharedTestContext,
 ): Promise<void> {
   await openTaskSyncSettings(context);
   await waitForGitHubSettings(context.page);
@@ -245,23 +245,23 @@ export async function openGitHubSettings(
  */
 export async function toggleGitHubIntegration(
   page: Page,
-  enabled: boolean
+  enabled: boolean,
 ): Promise<void> {
   const toggleClicked = await page.evaluate((shouldEnable) => {
     const settingsContainer = document.querySelector(".vertical-tab-content");
     if (!settingsContainer) return false;
 
     const settings = Array.from(
-      settingsContainer.querySelectorAll(".setting-item")
+      settingsContainer.querySelectorAll(".setting-item"),
     );
     for (const setting of settings) {
       const nameEl = setting.querySelector(".setting-item-name");
       if (nameEl && nameEl.textContent?.includes("Enable GitHub Integration")) {
         const toggle = setting.querySelector(
-          ".checkbox-container"
+          ".checkbox-container",
         ) as HTMLElement;
         const checkbox = setting.querySelector(
-          'input[type="checkbox"]'
+          'input[type="checkbox"]',
         ) as HTMLInputElement;
 
         if (toggle && checkbox) {
@@ -293,7 +293,7 @@ export async function toggleGitHubIntegration(
  */
 export async function waitForGitHubTokenSettings(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<void> {
   await page.waitForFunction(
     () => {
@@ -308,7 +308,7 @@ export async function waitForGitHubTokenSettings(
 
       return hasToken && hasRepo;
     },
-    { timeout }
+    { timeout },
   );
 }
 
@@ -317,7 +317,7 @@ export async function waitForGitHubTokenSettings(
  */
 export async function configureGitHubToken(
   page: Page,
-  token: string
+  token: string,
 ): Promise<void> {
   const settingsDebugInfo = await page.evaluate(() => {
     const settingsContainer = document.querySelector(".vertical-tab-content");
@@ -326,7 +326,7 @@ export async function configureGitHubToken(
     }
 
     const settings = Array.from(
-      settingsContainer.querySelectorAll(".setting-item")
+      settingsContainer.querySelectorAll(".setting-item"),
     );
     const settingNames = settings.map((setting) => {
       const nameEl = setting.querySelector(".setting-item-name");
@@ -346,7 +346,7 @@ export async function configureGitHubToken(
     if (!settingsContainer) return false;
 
     const settings = Array.from(
-      settingsContainer.querySelectorAll(".setting-item")
+      settingsContainer.querySelectorAll(".setting-item"),
     );
     for (const setting of settings) {
       const nameEl = setting.querySelector(".setting-item-name");
@@ -355,7 +355,7 @@ export async function configureGitHubToken(
         nameEl.textContent?.includes("GitHub Personal Access Token")
       ) {
         const input = setting.querySelector(
-          'input[type="password"]'
+          'input[type="password"]',
         ) as HTMLInputElement;
         if (input) {
           input.value = tokenValue;
@@ -377,20 +377,20 @@ export async function configureGitHubToken(
  */
 export async function configureGitHubRepository(
   page: Page,
-  repository: string
+  repository: string,
 ): Promise<void> {
   const repoConfigured = await page.evaluate((repoValue) => {
     const settingsContainer = document.querySelector(".vertical-tab-content");
     if (!settingsContainer) return false;
 
     const settings = Array.from(
-      settingsContainer.querySelectorAll(".setting-item")
+      settingsContainer.querySelectorAll(".setting-item"),
     );
     for (const setting of settings) {
       const nameEl = setting.querySelector(".setting-item-name");
       if (nameEl && nameEl.textContent?.includes("Default Repository")) {
         const input = setting.querySelector(
-          'input[type="text"]'
+          'input[type="text"]',
         ) as HTMLInputElement;
         if (input) {
           input.value = repoValue;
@@ -423,7 +423,7 @@ export async function stubGitHubWithFixtures(
     issues?: string;
     pullRequests?: string;
     repositories?: string;
-  }
+  },
 ): Promise<void> {
   // Use the simplified stubbing system that handles plugin reloads
   const { stubGitHubAPIs } = await import("./api-stubbing");
@@ -440,7 +440,7 @@ export async function configureGitHubIntegration(
     enabled: boolean;
     token?: string;
     repository?: string;
-  }
+  },
 ): Promise<void> {
   // Use environment token as fallback if no token provided
   const tokenToUse = config.token || process.env.GITHUB_TOKEN || "";
@@ -469,7 +469,7 @@ export async function configureGitHubIntegration(
 
       await plugin.saveSettings();
     },
-    { ...config, token: tokenToUse }
+    { ...config, token: tokenToUse },
   );
 
   // Wait a bit for settings to propagate
@@ -533,7 +533,7 @@ export async function ensureGitHubViewExists(page: Page): Promise<void> {
  */
 export async function waitForGitHubDisabledState(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<void> {
   await waitForGitHubView(page, timeout);
   await page.waitForFunction(
@@ -552,7 +552,7 @@ export async function waitForGitHubDisabledState(
 
       return hasDisabledText;
     },
-    { timeout }
+    { timeout },
   );
 }
 
@@ -561,12 +561,12 @@ export async function waitForGitHubDisabledState(
  */
 export async function waitForGitHubErrorState(
   page: Page,
-  timeout: number = 10000
+  timeout: number = 10000,
 ): Promise<void> {
   await page.waitForFunction(
     () => {
       const viewElement = document.querySelector(
-        '[data-testid="github-service"]'
+        '[data-testid="github-service"]',
       );
       if (!viewElement) return false;
 
@@ -578,7 +578,7 @@ export async function waitForGitHubErrorState(
         text.includes("Error")
       );
     },
-    { timeout }
+    { timeout },
   );
 }
 
@@ -591,7 +591,7 @@ export async function hasGitHubToggle(page: Page): Promise<boolean> {
     if (!settingsContainer) return false;
 
     const settings = Array.from(
-      settingsContainer.querySelectorAll(".setting-item")
+      settingsContainer.querySelectorAll(".setting-item"),
     );
     for (const setting of settings) {
       const nameEl = setting.querySelector(".setting-item-name");
@@ -630,7 +630,7 @@ export async function debugGitHubViewState(page: Page): Promise<void> {
 
     // Check DOM elements
     const viewByDataType = document.querySelector(
-      '[data-type="github-issues"]'
+      '[data-type="github-issues"]',
     );
     const viewByClass = document.querySelector(".github-issues-view");
     const domInfo = {
@@ -638,10 +638,10 @@ export async function debugGitHubViewState(page: Page): Promise<void> {
       foundByClass: !!viewByClass,
       element: viewByDataType || viewByClass,
       hasHeader: !!(viewByDataType || viewByClass)?.querySelector(
-        ".github-issues-header"
+        ".github-issues-header",
       ),
       hasContent: !!(viewByDataType || viewByClass)?.querySelector(
-        ".github-issues-content"
+        ".github-issues-content",
       ),
       textContent:
         (viewByDataType || viewByClass)?.textContent?.substring(0, 200) || null,
@@ -657,7 +657,7 @@ export async function debugGitHubViewState(page: Page): Promise<void> {
  */
 export async function clickIssueImportButton(
   page: Page,
-  issueNumber: number
+  issueNumber: number,
 ): Promise<void> {
   // Find the issue item and hover over it
   const issueLocator = page.locator('[data-testid="issue-item"]').filter({
@@ -672,7 +672,7 @@ export async function clickIssueImportButton(
 
   // Wait for the import button to appear and click it
   const importButton = issueLocator.locator(
-    '[data-testid="issue-import-button"]'
+    '[data-testid="issue-import-button"]',
   );
   await importButton.waitFor({ state: "visible", timeout: 5000 });
   await importButton.click();
@@ -684,7 +684,7 @@ export async function clickIssueImportButton(
 export async function waitForIssueImportComplete(
   page: Page,
   issueNumber: number,
-  timeout: number = 10000
+  timeout: number = 10000,
 ): Promise<void> {
   // Find the issue item and wait for it to have data-imported="true"
   const issueLocator = page.locator('[data-testid="issue-item"]').filter({
@@ -703,7 +703,7 @@ export async function waitForIssueImportComplete(
   await page.waitForFunction(
     (issueNumber) => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]'
+        '[data-testid="issue-item"]',
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
@@ -714,7 +714,7 @@ export async function waitForIssueImportComplete(
       return false;
     },
     issueNumber,
-    { timeout }
+    { timeout },
   );
 }
 

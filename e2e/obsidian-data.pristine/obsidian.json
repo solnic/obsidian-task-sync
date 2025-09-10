@@ -13,9 +13,7 @@
     "height": 1080
   },
   "theme": "obsidian",
-  "enabledPlugins": [
-    "obsidian-task-sync"
-  ],
+  "enabledPlugins": ["obsidian-task-sync"],
   "hotkeys": {},
   "workspaceLayout": {
     "type": "split",

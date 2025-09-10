@@ -39,7 +39,7 @@ describe("GitHub Integration", () => {
       if (!settingsContainer) return false;
 
       const settings = Array.from(
-        settingsContainer.querySelectorAll(".setting-item")
+        settingsContainer.querySelectorAll(".setting-item"),
       );
       for (const setting of settings) {
         const nameEl = setting.querySelector(".setting-item-name");
@@ -48,7 +48,7 @@ describe("GitHub Integration", () => {
           nameEl.textContent?.includes("GitHub Personal Access Token")
         ) {
           const input = setting.querySelector(
-            'input[type="password"]'
+            'input[type="password"]',
           ) as HTMLInputElement;
           return input && input.value === "test-token-123";
         }

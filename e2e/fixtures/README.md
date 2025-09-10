@@ -42,8 +42,8 @@ await stubMultipleAPIs(page, {
   github: {
     fetchIssues: "issues-multiple",
     fetchPullRequests: "pull-requests-basic",
-    fetchRepositories: "repositories-basic"
-  }
+    fetchRepositories: "repositories-basic",
+  },
 });
 ```
 
@@ -57,7 +57,7 @@ import { stubGitHubWithFixtures } from "../helpers/github-integration-helpers";
 await stubGitHubWithFixtures(page, {
   issues: "issues-basic",
   pullRequests: "pull-requests-basic",
-  repositories: "repositories-basic"
+  repositories: "repositories-basic",
 });
 ```
 
@@ -148,12 +148,12 @@ The old `stubGitHubApiResponses` function is deprecated. Migrate to the new syst
 // OLD (deprecated)
 await stubGitHubApiResponses(page, {
   issues: [{ id: 1, title: "Test" }],
-  repositories: [{ id: 1, name: "test-repo" }]
+  repositories: [{ id: 1, name: "test-repo" }],
 });
 
 // NEW (recommended)
 await stubGitHubWithFixtures(page, {
   issues: "issues-basic",
-  repositories: "repositories-basic"
+  repositories: "repositories-basic",
 });
 ```

@@ -53,7 +53,7 @@ describe("Context-Aware GitHub Import", () => {
     // Verify the issue appears in the UI
     const issueVisible = await context.page.evaluate(() => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]'
+        '[data-testid="issue-item"]',
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
@@ -107,7 +107,7 @@ describe("Context-Aware GitHub Import", () => {
 
     expect(taskContent).toBeTruthy();
     expect(taskContent).toContain(
-      "Title: Fix login error when user has special characters"
+      "Title: Fix login error when user has special characters",
     );
     expect(taskContent).toContain("Type: Task"); // Type is always 'Task' for task entities
     expect(taskContent).toContain("Category: Bug"); // Label mapping should work for Category
@@ -158,7 +158,7 @@ describe("Context-Aware GitHub Import", () => {
     // Verify the issue appears in the UI
     const issueVisible = await context.page.evaluate(() => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]'
+        '[data-testid="issue-item"]',
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
@@ -264,7 +264,7 @@ describe("Context-Aware GitHub Import", () => {
     // Verify the issue appears in the UI
     const issueVisible = await context.page.evaluate(() => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]'
+        '[data-testid="issue-item"]',
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
@@ -321,7 +321,7 @@ describe("Context-Aware GitHub Import", () => {
     expect(taskContent).toContain("Type: Task"); // Type is always 'Task' for task entities
     // Should fallback to first available task category since 'documentation' doesn't map to anything
     expect(taskContent).toMatch(
-      /Category: (Task|Bug|Feature|Improvement|Chore)/
+      /Category: (Task|Bug|Feature|Improvement|Chore)/,
     );
     expect(taskContent).toContain("documentation"); // Should include original labels as tags
 

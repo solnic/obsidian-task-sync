@@ -72,29 +72,29 @@ describe("Bases Integration", () => {
       // Verify the entities exist in the file system
       const projectFileExists = await fileExists(
         context.page,
-        "Projects/Test Project.md"
+        "Projects/Test Project.md",
       );
       expect(projectFileExists).toBe(true);
 
       const areaFileExists = await fileExists(
         context.page,
-        "Areas/Test Area.md"
+        "Areas/Test Area.md",
       );
       expect(areaFileExists).toBe(true);
 
       // Verify that individual base files were created for the entities
       const testProjectBaseExists = await fileExists(
         context.page,
-        "Bases/Test Project.base"
+        "Bases/Test Project.base",
       );
       expect(testProjectBaseExists).toBe(true);
 
       const testAreaBaseExists = await fileExists(
         context.page,
-        "Bases/Test Area.base"
+        "Bases/Test Area.base",
       );
       expect(testAreaBaseExists).toBe(true);
-    }
+    },
   );
 
   test("should add base embedding to project files", async () => {
@@ -128,14 +128,14 @@ describe("Bases Integration", () => {
     // Verify the project file exists
     const projectFileExists = await fileExists(
       context.page,
-      "Projects/Sample Project.md"
+      "Projects/Sample Project.md",
     );
     expect(projectFileExists).toBe(true);
 
     // Check if project base file was created
     const projectBaseExists = await fileExists(
       context.page,
-      "Bases/Sample Project.base"
+      "Bases/Sample Project.base",
     );
     expect(projectBaseExists).toBe(true);
 
@@ -143,7 +143,7 @@ describe("Bases Integration", () => {
     const projectFileContent = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Projects/Sample Project.md"
+        "Projects/Sample Project.md",
       );
       if (file) {
         return await app.vault.read(file);

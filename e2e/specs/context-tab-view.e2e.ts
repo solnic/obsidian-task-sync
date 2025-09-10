@@ -49,17 +49,17 @@ describe("Context Tab View", () => {
     expect(emptyTitle).toBe("No Entity Selected");
 
     const emptyDescription = await context.page.textContent(
-      ".context-tab-empty p"
+      ".context-tab-empty p",
     );
     expect(emptyDescription).toContain("Open a task, project, or area file");
 
     // Check that create task button is present
     await waitForElementVisible(
       context.page,
-      ".context-tab-empty .task-sync-button"
+      ".context-tab-empty .task-sync-button",
     );
     const createTaskButtonText = await context.page.textContent(
-      ".context-tab-empty .task-sync-button"
+      ".context-tab-empty .task-sync-button",
     );
     expect(createTaskButtonText).toBe("Create Task");
   });
@@ -85,7 +85,7 @@ describe("Context Tab View", () => {
           await app.workspace.getLeaf().openFile(file);
         }
       },
-      { name: taskName }
+      { name: taskName },
     );
 
     // Wait for context to update
@@ -100,7 +100,7 @@ describe("Context Tab View", () => {
 
     // Check entity type indicator
     const typeIndicator = await context.page.textContent(
-      ".entity-type-indicator"
+      ".entity-type-indicator",
     );
     expect(typeIndicator).toBe("Task");
 
@@ -110,29 +110,29 @@ describe("Context Tab View", () => {
     // Check specific properties
     await waitForElementVisible(
       context.page,
-      '[data-testid="property-Category"]'
+      '[data-testid="property-Category"]',
     );
     await waitForElementVisible(
       context.page,
-      '[data-testid="property-Priority"]'
+      '[data-testid="property-Priority"]',
     );
     await waitForElementVisible(
       context.page,
-      '[data-testid="property-Status"]'
+      '[data-testid="property-Status"]',
     );
 
     // Check that badges are rendered for category, priority, and status
     await waitForElementVisible(
       context.page,
-      '[data-testid="property-Category"] .property-badge-container'
+      '[data-testid="property-Category"] .property-badge-container',
     );
     await waitForElementVisible(
       context.page,
-      '[data-testid="property-Priority"] .property-badge-container'
+      '[data-testid="property-Priority"] .property-badge-container',
     );
     await waitForElementVisible(
       context.page,
-      '[data-testid="property-Status"] .property-badge-container'
+      '[data-testid="property-Status"] .property-badge-container',
     );
   });
 
@@ -154,7 +154,7 @@ describe("Context Tab View", () => {
           await app.workspace.getLeaf().openFile(file);
         }
       },
-      { name: projectName }
+      { name: projectName },
     );
 
     // Wait for context to update
@@ -169,7 +169,7 @@ describe("Context Tab View", () => {
 
     // Check entity type indicator
     const typeIndicator = await context.page.textContent(
-      ".entity-type-indicator"
+      ".entity-type-indicator",
     );
     expect(typeIndicator).toBe("Project");
 
@@ -199,7 +199,7 @@ describe("Context Tab View", () => {
           await app.workspace.getLeaf().openFile(file);
         }
       },
-      { name: areaName }
+      { name: areaName },
     );
 
     // Wait for context to update
@@ -214,7 +214,7 @@ describe("Context Tab View", () => {
 
     // Check entity type indicator
     const typeIndicator = await context.page.textContent(
-      ".entity-type-indicator"
+      ".entity-type-indicator",
     );
     expect(typeIndicator).toBe("Area");
   });
@@ -236,7 +236,7 @@ describe("Context Tab View", () => {
           await app.workspace.getLeaf().openFile(file);
         }
       },
-      { name: taskName }
+      { name: taskName },
     );
 
     // Wait for context to update
@@ -248,37 +248,37 @@ describe("Context Tab View", () => {
     // Check that action buttons are present
     await waitForElementVisible(
       context.page,
-      '[data-testid="edit-entity-button"]'
+      '[data-testid="edit-entity-button"]',
     );
     const editButtonText = await context.page.textContent(
-      '[data-testid="edit-entity-button"]'
+      '[data-testid="edit-entity-button"]',
     );
     expect(editButtonText).toContain("Edit");
 
     await waitForElementVisible(
       context.page,
-      '[data-testid="create-task-button"]'
+      '[data-testid="create-task-button"]',
     );
     const createTaskButtonText = await context.page.textContent(
-      '[data-testid="create-task-button"]'
+      '[data-testid="create-task-button"]',
     );
     expect(createTaskButtonText).toContain("Create Task");
 
     await waitForElementVisible(
       context.page,
-      '[data-testid="refresh-bases-button"]'
+      '[data-testid="refresh-bases-button"]',
     );
     const refreshBasesButtonText = await context.page.textContent(
-      '[data-testid="refresh-bases-button"]'
+      '[data-testid="refresh-bases-button"]',
     );
     expect(refreshBasesButtonText).toContain("Refresh Bases");
 
     await waitForElementVisible(
       context.page,
-      '[data-testid="delete-entity-button"]'
+      '[data-testid="delete-entity-button"]',
     );
     const deleteButtonText = await context.page.textContent(
-      '[data-testid="delete-entity-button"]'
+      '[data-testid="delete-entity-button"]',
     );
     expect(deleteButtonText).toContain("Delete");
 
@@ -317,7 +317,7 @@ describe("Context Tab View", () => {
           await app.workspace.getLeaf().openFile(file);
         }
       },
-      { name: taskName }
+      { name: taskName },
     );
 
     await context.page.waitForTimeout(1000);
@@ -327,7 +327,7 @@ describe("Context Tab View", () => {
     expect(entityTitle).toBe(taskName);
 
     let typeIndicator = await context.page.textContent(
-      ".entity-type-indicator"
+      ".entity-type-indicator",
     );
     expect(typeIndicator).toBe("Task");
 
@@ -340,7 +340,7 @@ describe("Context Tab View", () => {
           await app.workspace.getLeaf().openFile(file);
         }
       },
-      { name: projectName }
+      { name: projectName },
     );
 
     await context.page.waitForTimeout(1000);

@@ -1,31 +1,33 @@
-import type { Page } from 'playwright';
-
-
+import type { Page } from "playwright";
 
 /**
  * Reset Obsidian UI state by closing modals and dialogs
  * Improved for headless mode stability
  */
 export async function resetObsidianUI(page: Page): Promise<void> {
-  await page.keyboard.press('Escape');
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(200);
-  await page.keyboard.press('Escape');
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
 
   // Force close any open modals
   await page.evaluate(() => {
-    const modals = document.querySelectorAll('.modal-container, .modal-backdrop, .suggester-container, .prompt, .modal');
+    const modals = document.querySelectorAll(
+      ".modal-container, .modal-backdrop, .suggester-container, .prompt, .modal",
+    );
 
     modals.forEach((modal) => {
       try {
-        const closeButton = modal.querySelector('.modal-close-button, .modal-close, .close, [aria-label="Close"]');
+        const closeButton = modal.querySelector(
+          '.modal-close-button, .modal-close, .close, [aria-label="Close"]',
+        );
         if (closeButton) {
           (closeButton as HTMLElement).click();
         } else {
           modal.remove();
         }
       } catch (error) {
-        console.warn('Error closing modal:', error);
+        console.warn("Error closing modal:", error);
       }
     });
   });
@@ -34,19 +36,21 @@ export async function resetObsidianUI(page: Page): Promise<void> {
   await page.waitForTimeout(500);
 
   // Final cleanup
-  await page.keyboard.press('Escape');
-  await page.keyboard.press('Escape');
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
   await page.waitForTimeout(300);
 
   // Force remove any remaining modals and reset focus
   await page.evaluate(() => {
     try {
-      const modals = document.querySelectorAll('.modal-container, .modal-backdrop, .suggester-container, .prompt');
-      modals.forEach(modal => {
+      const modals = document.querySelectorAll(
+        ".modal-container, .modal-backdrop, .suggester-container, .prompt",
+      );
+      modals.forEach((modal) => {
         try {
           modal.remove();
         } catch (error) {
-          console.warn('Error removing modal:', error);
+          console.warn("Error removing modal:", error);
         }
       });
 
@@ -54,7 +58,7 @@ export async function resetObsidianUI(page: Page): Promise<void> {
         try {
           (document.activeElement as HTMLElement).blur();
         } catch (error) {
-          console.warn('Error blurring active element:', error);
+          console.warn("Error blurring active element:", error);
         }
       }
 
@@ -62,59 +66,72 @@ export async function resetObsidianUI(page: Page): Promise<void> {
         try {
           window.getSelection()?.removeAllRanges();
         } catch (error) {
-          console.warn('Error clearing selection:', error);
+          console.warn("Error clearing selection:", error);
         }
       }
     } catch (error) {
-      console.warn('Error in final UI cleanup:', error);
+      console.warn("Error in final UI cleanup:", error);
     }
   });
 
-  await toggleSidebar(page, 'left', false);
-  await toggleSidebar(page, 'right', false);
+  await toggleSidebar(page, "left", false);
+  await toggleSidebar(page, "right", false);
 }
 
-export async function toggleSidebar(page: Page, sidebar: 'left' | 'right', open: boolean): Promise<void> {
-  await page.evaluate(async ({ sidebar, open }) => {
-    const app = (window as any).app;
+export async function toggleSidebar(
+  page: Page,
+  sidebar: "left" | "right",
+  open: boolean,
+): Promise<void> {
+  await page.evaluate(
+    async ({ sidebar, open }) => {
+      const app = (window as any).app;
 
-    if (app?.workspace) {
-      if (sidebar === 'left') {
-        if (open) {
-          app.workspace.leftSplit.expand();
-        } else {
-          app.workspace.leftSplit.collapse();
-        }
-      } else if (sidebar === 'right') {
-        if (open) {
-          app.workspace.rightSplit.expand();
-        } else {
-          app.workspace.rightSplit.collapse();
+      if (app?.workspace) {
+        if (sidebar === "left") {
+          if (open) {
+            app.workspace.leftSplit.expand();
+          } else {
+            app.workspace.leftSplit.collapse();
+          }
+        } else if (sidebar === "right") {
+          if (open) {
+            app.workspace.rightSplit.expand();
+          } else {
+            app.workspace.rightSplit.collapse();
+          }
         }
       }
-    }
-  }, { sidebar, open });
+    },
+    { sidebar, open },
+  );
 }
 
 /**
  * Wait for a success notice to appear
  */
-export async function waitForSuccessNotice(page: Page, timeout: number = 5000): Promise<boolean> {
+export async function waitForSuccessNotice(
+  page: Page,
+  timeout: number = 5000,
+): Promise<boolean> {
   try {
     await page.waitForFunction(
       () => {
-        const notices = document.querySelectorAll('.notice');
-        const noticeTexts = Array.from(notices).map(n => n.textContent?.toLowerCase() || '');
-        return noticeTexts.some(text =>
-          text.includes('sync') ||
-          text.includes('success') ||
-          text.includes('updated') ||
-          text.includes('published') ||
-          text.includes('saved')
+        const notices = document.querySelectorAll(".notice");
+        const noticeTexts = Array.from(notices).map(
+          (n) => n.textContent?.toLowerCase() || "",
+        );
+        return noticeTexts.some(
+          (text) =>
+            text.includes("sync") ||
+            text.includes("success") ||
+            text.includes("updated") ||
+            text.includes("published") ||
+            text.includes("saved"),
         );
       },
       {},
-      { timeout }
+      { timeout },
     );
     return true;
   } catch (error) {
@@ -126,20 +143,26 @@ export async function waitForSuccessNotice(page: Page, timeout: number = 5000): 
 /**
  * Wait for any modal to appear
  */
-export async function waitForModal(page: Page, timeout: number = 5000): Promise<{ found: boolean; type: string }> {
+export async function waitForModal(
+  page: Page,
+  timeout: number = 5000,
+): Promise<{ found: boolean; type: string }> {
   try {
-    await page.waitForSelector('.modal-container, .suggester-container, .modal-backdrop', { timeout });
+    await page.waitForSelector(
+      ".modal-container, .suggester-container, .modal-backdrop",
+      { timeout },
+    );
 
     const modalType = await page.evaluate(() => {
-      if (document.querySelector('.modal-container')) return 'modal-container';
-      if (document.querySelector('.suggester-container')) return 'suggester';
-      if (document.querySelector('.modal-backdrop')) return 'custom-modal';
-      return 'unknown';
+      if (document.querySelector(".modal-container")) return "modal-container";
+      if (document.querySelector(".suggester-container")) return "suggester";
+      if (document.querySelector(".modal-backdrop")) return "custom-modal";
+      return "unknown";
     });
 
     return { found: true, type: modalType };
   } catch (error) {
-    return { found: false, type: 'none' };
+    return { found: false, type: "none" };
   }
 }
 
@@ -148,19 +171,19 @@ export async function waitForModal(page: Page, timeout: number = 5000): Promise<
  */
 export async function getModalContent(page: Page): Promise<any> {
   return await page.evaluate(() => {
-    const modalContainer = document.querySelector('.modal-container');
+    const modalContainer = document.querySelector(".modal-container");
     if (modalContainer) {
-      return { type: 'modal-container', element: modalContainer };
+      return { type: "modal-container", element: modalContainer };
     }
 
-    const suggester = document.querySelector('.suggester-container');
+    const suggester = document.querySelector(".suggester-container");
     if (suggester) {
-      return { type: 'suggester', element: suggester };
+      return { type: "suggester", element: suggester };
     }
 
-    const modalBackdrop = document.querySelector('.modal-backdrop');
+    const modalBackdrop = document.querySelector(".modal-backdrop");
     if (modalBackdrop) {
-      return { type: 'custom-modal', element: modalBackdrop };
+      return { type: "custom-modal", element: modalBackdrop };
     }
 
     return null;
@@ -172,21 +195,25 @@ export async function getModalContent(page: Page): Promise<any> {
  */
 export async function verifyPluginAvailable(page: Page): Promise<void> {
   const pluginCheck = await page.evaluate(() => {
-    const plugin = (window as any).app.plugins.plugins['obsidian-task-sync'];
-    const isEnabled = (window as any).app.plugins.isEnabled('obsidian-task-sync');
+    const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+    const isEnabled = (window as any).app.plugins.isEnabled(
+      "obsidian-task-sync",
+    );
     return {
       pluginExists: !!plugin,
       isEnabled: isEnabled,
-      hasSettings: !!plugin?.settings
+      hasSettings: !!plugin?.settings,
     };
   });
 
   if (!pluginCheck.pluginExists) {
-    console.log('⚠️ Task Sync plugin is not loaded');
+    console.log("⚠️ Task Sync plugin is not loaded");
     return;
   }
 
-  console.log(`✅ Plugin verification passed: enabled=${pluginCheck.isEnabled}, hasSettings=${pluginCheck.hasSettings}`);
+  console.log(
+    `✅ Plugin verification passed: enabled=${pluginCheck.isEnabled}, hasSettings=${pluginCheck.hasSettings}`,
+  );
 }
 
 /**
@@ -195,7 +222,7 @@ export async function verifyPluginAvailable(page: Page): Promise<void> {
  */
 export async function getPlugin(page: Page): Promise<any> {
   return await page.evaluate(() => {
-    return (window as any).app.plugins.plugins['obsidian-task-sync'];
+    return (window as any).app.plugins.plugins["obsidian-task-sync"];
   });
 }
 
@@ -204,7 +231,10 @@ export async function getPlugin(page: Page): Promise<any> {
  * This is a simplified version that doesn't include defensive checks
  */
 export async function getFile(page: Page, filePath: string): Promise<any> {
-  return await page.evaluate(({ path }) => {
-    return (window as any).app.vault.getAbstractFileByPath(path);
-  }, { path: filePath });
+  return await page.evaluate(
+    ({ path }) => {
+      return (window as any).app.vault.getAbstractFileByPath(path);
+    },
+    { path: filePath },
+  );
 }

@@ -40,7 +40,7 @@ describe("GitHub Pull Requests Integration", () => {
     // Check that both tabs are visible
     const issuesTab = context.page.locator('[data-testid="issues-tab"]');
     const pullRequestsTab = context.page.locator(
-      '[data-testid="pull-requests-tab"]'
+      '[data-testid="pull-requests-tab"]',
     );
 
     const issuesTabVisible = await issuesTab.isVisible();
@@ -68,9 +68,8 @@ describe("GitHub Pull Requests Integration", () => {
     await context.page.waitForTimeout(1000);
 
     // Pull requests tab should now be active
-    const pullRequestsTabClassAfter = await pullRequestsTab.getAttribute(
-      "class"
-    );
+    const pullRequestsTabClassAfter =
+      await pullRequestsTab.getAttribute("class");
     const issuesTabClassAfter = await issuesTab.getAttribute("class");
 
     expect(pullRequestsTabClassAfter).toContain("active");
@@ -87,9 +86,8 @@ describe("GitHub Pull Requests Integration", () => {
 
     // Issues tab should be active again
     const issuesTabClassFinal = await issuesTab.getAttribute("class");
-    const pullRequestsTabClassFinal = await pullRequestsTab.getAttribute(
-      "class"
-    );
+    const pullRequestsTabClassFinal =
+      await pullRequestsTab.getAttribute("class");
 
     expect(issuesTabClassFinal).toContain("active");
     expect(pullRequestsTabClassFinal).not.toContain("active");
@@ -117,7 +115,7 @@ describe("GitHub Pull Requests Integration", () => {
 
     // Switch to pull requests tab
     const pullRequestsTab = context.page.locator(
-      '[data-testid="pull-requests-tab"]'
+      '[data-testid="pull-requests-tab"]',
     );
     await pullRequestsTab.click();
     await context.page.waitForTimeout(1000);
@@ -169,7 +167,7 @@ describe("GitHub Pull Requests Integration", () => {
 
     // Switch to pull requests tab
     const pullRequestsTab = context.page.locator(
-      '[data-testid="pull-requests-tab"]'
+      '[data-testid="pull-requests-tab"]',
     );
     await pullRequestsTab.click();
     await context.page.waitForTimeout(1000);
@@ -185,7 +183,7 @@ describe("GitHub Pull Requests Integration", () => {
     });
 
     const importButton = context.page.locator(
-      '[data-testid="pr-import-button"]'
+      '[data-testid="pr-import-button"]',
     );
     const importButtonVisible = await importButton.isVisible();
     const importButtonText = await importButton.textContent();
@@ -227,7 +225,7 @@ describe("GitHub Pull Requests Integration", () => {
 
     // Switch to pull requests tab
     const pullRequestsTab = context.page.locator(
-      '[data-testid="pull-requests-tab"]'
+      '[data-testid="pull-requests-tab"]',
     );
     await pullRequestsTab.click();
     await context.page.waitForTimeout(500);

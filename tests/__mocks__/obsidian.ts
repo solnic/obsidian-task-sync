@@ -14,7 +14,9 @@ export class Plugin {
 
   async onload() {}
   onunload() {}
-  async loadData() { return {}; }
+  async loadData() {
+    return {};
+  }
   async saveData(data: any) {}
   addCommand(command: any) {}
   addSettingTab(tab: any) {}
@@ -34,12 +36,24 @@ export class PluginSettingTab {
 
 export class Setting {
   constructor(containerEl: any) {}
-  setName(name: string) { return this; }
-  setDesc(desc: string) { return this; }
-  addText(cb: any) { return this; }
-  addToggle(cb: any) { return this; }
-  addDropdown(cb: any) { return this; }
-  addButton(cb: any) { return this; }
+  setName(name: string) {
+    return this;
+  }
+  setDesc(desc: string) {
+    return this;
+  }
+  addText(cb: any) {
+    return this;
+  }
+  addToggle(cb: any) {
+    return this;
+  }
+  addDropdown(cb: any) {
+    return this;
+  }
+  addButton(cb: any) {
+    return this;
+  }
 }
 
 export class TFile {
@@ -49,8 +63,8 @@ export class TFile {
 
   constructor(path: string) {
     this.path = path;
-    this.name = path.split('/').pop() || '';
-    this.extension = this.name.split('.').pop() || '';
+    this.name = path.split("/").pop() || "";
+    this.extension = this.name.split(".").pop() || "";
   }
 }
 
@@ -62,7 +76,7 @@ export class MarkdownView {
   }
 
   getViewType() {
-    return 'markdown';
+    return "markdown";
   }
 }
 

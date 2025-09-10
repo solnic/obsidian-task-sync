@@ -34,11 +34,11 @@ describe("Context-Aware Task Modal", () => {
     // Fill in task details
     await context.page.fill(
       "[data-testid='title-input']",
-      "Test Task Creation"
+      "Test Task Creation",
     );
     await context.page.fill(
       "[data-testid='description-input']",
-      "This is a test task description"
+      "This is a test task description",
     );
 
     // Click more options to reveal extra fields
@@ -62,7 +62,7 @@ describe("Context-Aware Task Modal", () => {
     const taskExists = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/Test Task Creation.md"
+        "Tasks/Test Task Creation.md",
       );
       return file !== null;
     });
@@ -76,7 +76,7 @@ describe("Context-Aware Task Modal", () => {
 
     // Only check project if it was set (when not in project context)
     const projectInputCheck = context.page.locator(
-      '.task-sync-property-input[placeholder="Project"]'
+      '.task-sync-property-input[placeholder="Project"]',
     );
     if (await projectInputCheck.isVisible()) {
       expectedProperties.Project = "[[Test Project]]";
@@ -85,14 +85,14 @@ describe("Context-Aware Task Modal", () => {
     await verifyTaskProperties(
       context.page,
       "Tasks/Test Task Creation.md",
-      expectedProperties
+      expectedProperties,
     );
 
     // Verify task content (description)
     const taskContent = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/Test Task Creation.md"
+        "Tasks/Test Task Creation.md",
       );
       if (file) {
         return await app.vault.read(file);
@@ -127,7 +127,7 @@ describe("Context-Aware Task Modal", () => {
     await context.page.fill(".task-sync-title-input", "Context Aware Task");
     await context.page.fill(
       ".task-sync-description-input",
-      "This task should inherit project context"
+      "This task should inherit project context",
     );
 
     // Submit the form
@@ -142,7 +142,7 @@ describe("Context-Aware Task Modal", () => {
     const taskExists = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/Context Aware Task.md"
+        "Tasks/Context Aware Task.md",
       );
       return file !== null;
     });
@@ -158,7 +158,7 @@ describe("Context-Aware Task Modal", () => {
     const taskContent = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/Context Aware Task.md"
+        "Tasks/Context Aware Task.md",
       );
       if (file) {
         return await app.vault.read(file);
@@ -184,7 +184,7 @@ describe("Context-Aware Task Modal", () => {
     await context.page.fill(".task-sync-title-input", "Cancelled Task");
     await context.page.fill(
       ".task-sync-description-input",
-      "This task should not be created"
+      "This task should not be created",
     );
 
     // Cancel the form

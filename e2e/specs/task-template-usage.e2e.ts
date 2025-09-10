@@ -1,16 +1,16 @@
-import { test, expect, describe } from 'vitest';
+import { test, expect, describe } from "vitest";
 import {
   createTestFolders,
   getFileContent,
   fileExists,
-  waitForTaskSyncPlugin
-} from '../helpers/task-sync-setup';
-import { setupE2ETestHooks } from '../helpers/shared-context';
+  waitForTaskSyncPlugin,
+} from "../helpers/task-sync-setup";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
-describe('Task Template Usage', () => {
+describe("Task Template Usage", () => {
   const context = setupE2ETestHooks();
 
-  test('should use template when defaultTaskTemplate is configured', async () => {
+  test("should use template when defaultTaskTemplate is configured", async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
@@ -39,18 +39,18 @@ This task was created from a template!
 - [ ] Test changes`;
 
       try {
-        await app.vault.create('Templates/CustomTask.md', templateContent);
+        await app.vault.create("Templates/CustomTask.md", templateContent);
       } catch (error) {
-        console.log('Template creation error:', error);
+        console.log("Template creation error:", error);
       }
     });
 
     // Configure plugin to use the template
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        plugin.settings.defaultTaskTemplate = 'CustomTask.md';
+        plugin.settings.defaultTaskTemplate = "CustomTask.md";
         await plugin.saveSettings();
       }
     });
@@ -58,16 +58,16 @@ This task was created from a template!
     // Create a task using the plugin
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
         await plugin.createTask({
-          title: 'Template Test Task',
-          category: 'Feature',
-          priority: 'High',
-          areas: ['Development'],
+          title: "Template Test Task",
+          category: "Feature",
+          priority: "High",
+          areas: ["Development"],
           done: false,
-          status: 'In Progress',
-          tags: ['template-test']
+          status: "In Progress",
+          tags: ["template-test"],
         });
       }
     });
@@ -75,34 +75,40 @@ This task was created from a template!
     await context.page.waitForTimeout(1000);
 
     // Check if task file was created
-    const taskFileExists = await fileExists(context.page, 'Tasks/Template Test Task.md');
+    const taskFileExists = await fileExists(
+      context.page,
+      "Tasks/Template Test Task.md",
+    );
     expect(taskFileExists).toBe(true);
 
     // Check task file content
-    const taskContent = await getFileContent(context.page, 'Tasks/Template Test Task.md');
+    const taskContent = await getFileContent(
+      context.page,
+      "Tasks/Template Test Task.md",
+    );
 
     // Verify task was created with correct front-matter (templates are not used in task creation)
     // The plugin creates tasks with front-matter only, not template content
 
     // Verify template variables were processed
-    expect(taskContent).toContain('Title: Template Test Task');
-    expect(taskContent).toContain('Type: Task');
-    expect(taskContent).toContain('Category: Feature');
-    expect(taskContent).toContain('Priority: High');
-    expect(taskContent).toContain('Status: In Progress');
+    expect(taskContent).toContain("Title: Template Test Task");
+    expect(taskContent).toContain("Type: Task");
+    expect(taskContent).toContain("Category: Feature");
+    expect(taskContent).toContain("Priority: High");
+    expect(taskContent).toContain("Status: In Progress");
   });
 
-  test('should prevent empty template settings through validation', async () => {
+  test("should prevent empty template settings through validation", async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
     // Try to set template to empty string - validation should reset it to default
     const templateAfterValidation = await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
         // Try to set empty template
-        plugin.settings.defaultTaskTemplate = '';
+        plugin.settings.defaultTaskTemplate = "";
         await plugin.saveSettings(); // This should trigger validation and reset to default
 
         // Return the template setting after validation
@@ -112,22 +118,22 @@ This task was created from a template!
     });
 
     // Validation should have reset the empty template to the default value
-    expect(templateAfterValidation).toBe('Task.md');
+    expect(templateAfterValidation).toBe("Task.md");
 
     // Task creation should work normally with the validated template setting
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
         await plugin.createTask({
-          title: 'Validation Test Task',
-          category: 'Bug',
-          priority: 'Low',
+          title: "Validation Test Task",
+          category: "Bug",
+          priority: "Low",
           areas: [],
           done: false,
-          status: 'Backlog',
+          status: "Backlog",
           tags: [],
-          description: 'This task should create successfully'
+          description: "This task should create successfully",
         });
       }
     });
@@ -135,13 +141,13 @@ This task was created from a template!
     // Verify the task was created
     const taskExists = await context.page.evaluate(async () => {
       const app = (window as any).app;
-      return await app.vault.adapter.exists('Tasks/Validation Test Task.md');
+      return await app.vault.adapter.exists("Tasks/Validation Test Task.md");
     });
 
     expect(taskExists).toBe(true);
   });
 
-  test('should process {{tasks}} variable correctly', async () => {
+  test("should process {{tasks}} variable correctly", async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
@@ -165,18 +171,21 @@ tags: []
 {{tasks}}`;
 
       try {
-        await app.vault.create('Templates/TasksVariableTest.md', templateContent);
+        await app.vault.create(
+          "Templates/TasksVariableTest.md",
+          templateContent,
+        );
       } catch (error) {
-        console.log('Template creation error:', error);
+        console.log("Template creation error:", error);
       }
     });
 
     // Configure plugin to use the template
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        plugin.settings.defaultParentTaskTemplate = 'TasksVariableTest.md';
+        plugin.settings.defaultParentTaskTemplate = "TasksVariableTest.md";
         await plugin.saveSettings();
       }
     });
@@ -184,17 +193,17 @@ tags: []
     // Create a parent task to test {{tasks}} variable processing
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
         await plugin.createTask({
-          title: 'Parent Task Test',
-          category: 'Feature',
-          priority: 'High',
-          areas: ['Development'],
-          project: 'Test Project',
+          title: "Parent Task Test",
+          category: "Feature",
+          priority: "High",
+          areas: ["Development"],
+          project: "Test Project",
           done: false,
-          status: 'In Progress',
-          tags: ['test']
+          status: "In Progress",
+          tags: ["test"],
         });
       }
     });
@@ -204,16 +213,21 @@ tags: []
     // Check parent task file content using API
     const frontMatter = await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
-      return await plugin.taskFileManager.loadFrontMatter('Tasks/Parent Task Test.md');
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      return await plugin.taskFileManager.loadFrontMatter(
+        "Tasks/Parent Task Test.md",
+      );
     });
 
     // Verify front matter was set correctly
-    expect(frontMatter.Title).toBe('Parent Task Test');
+    expect(frontMatter.Title).toBe("Parent Task Test");
 
     // Check template content was processed correctly
-    const taskContent = await getFileContent(context.page, 'Tasks/Parent Task Test.md');
-    expect(taskContent).toContain('## Sub tasks');
-    expect(taskContent).toContain('![[Bases/Parent Task Test.base]]');
+    const taskContent = await getFileContent(
+      context.page,
+      "Tasks/Parent Task Test.md",
+    );
+    expect(taskContent).toContain("## Sub tasks");
+    expect(taskContent).toContain("![[Bases/Parent Task Test.base]]");
   });
 });

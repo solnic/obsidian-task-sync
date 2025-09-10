@@ -1,15 +1,15 @@
-import { test, expect, describe } from 'vitest';
+import { test, expect, describe } from "vitest";
 import {
   createTestFolders,
   getFileContent,
-  fileExists
-} from '../helpers/task-sync-setup';
-import { setupE2ETestHooks } from '../helpers/shared-context';
+  fileExists,
+} from "../helpers/task-sync-setup";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
-describe('Template {{tasks}} Syntax', () => {
+describe("Template {{tasks}} Syntax", () => {
   const context = setupE2ETestHooks();
 
-  test('should process {{tasks}} syntax in project templates', async () => {
+  test("should process {{tasks}} syntax in project templates", async () => {
     await createTestFolders(context.page);
 
     // Create a project template with {{tasks}} syntax
@@ -43,18 +43,21 @@ Additional project notes here.
 `;
 
       try {
-        await app.vault.create('Templates/project-tasks-template.md', templateContent);
+        await app.vault.create(
+          "Templates/project-tasks-template.md",
+          templateContent,
+        );
       } catch (error) {
-        console.log('Template creation error:', error);
+        console.log("Template creation error:", error);
       }
     });
 
     // Configure plugin to use the template
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        plugin.settings.defaultProjectTemplate = 'project-tasks-template.md';
+        plugin.settings.defaultProjectTemplate = "project-tasks-template.md";
         await plugin.saveSettings();
       }
     });
@@ -62,12 +65,12 @@ Additional project notes here.
     // Create a project using the template
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin && plugin.createProject) {
         await plugin.createProject({
-          name: 'Mobile App Development',
-          description: 'Building a cross-platform mobile application',
-          areas: ['Technology', 'Business']
+          name: "Mobile App Development",
+          description: "Building a cross-platform mobile application",
+          areas: ["Technology", "Business"],
         });
       }
     });
@@ -75,24 +78,32 @@ Additional project notes here.
     await context.page.waitForTimeout(1000);
 
     // Check if project file was created
-    const projectExists = await fileExists(context.page, 'Projects/Mobile App Development.md');
+    const projectExists = await fileExists(
+      context.page,
+      "Projects/Mobile App Development.md",
+    );
     expect(projectExists).toBe(true);
 
     // Check project file content
-    const projectContent = await getFileContent(context.page, 'Projects/Mobile App Development.md');
+    const projectContent = await getFileContent(
+      context.page,
+      "Projects/Mobile App Development.md",
+    );
 
     // Verify {{tasks}} was replaced with specific base embed
-    expect(projectContent).toContain('![[Bases/Mobile App Development.base]]');
-    expect(projectContent).not.toContain('{{tasks}}');
+    expect(projectContent).toContain("![[Bases/Mobile App Development.base]]");
+    expect(projectContent).not.toContain("{{tasks}}");
 
     // Verify other variables were processed
-    expect(projectContent).toContain('Name: Mobile App Development');
-    expect(projectContent).toContain('- Technology');
-    expect(projectContent).toContain('- Business');
-    expect(projectContent).toContain('Building a cross-platform mobile application');
+    expect(projectContent).toContain("Name: Mobile App Development");
+    expect(projectContent).toContain("- Technology");
+    expect(projectContent).toContain("- Business");
+    expect(projectContent).toContain(
+      "Building a cross-platform mobile application",
+    );
   });
 
-  test('should process {{tasks}} syntax in area templates', async () => {
+  test("should process {{tasks}} syntax in area templates", async () => {
     await createTestFolders(context.page);
 
     // Create an area template with {{tasks}} syntax
@@ -123,18 +134,21 @@ Links and resources for this area.
 `;
 
       try {
-        await app.vault.create('Templates/area-tasks-template.md', templateContent);
+        await app.vault.create(
+          "Templates/area-tasks-template.md",
+          templateContent,
+        );
       } catch (error) {
-        console.log('Template creation error:', error);
+        console.log("Template creation error:", error);
       }
     });
 
     // Configure plugin to use the template
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        plugin.settings.defaultAreaTemplate = 'area-tasks-template.md';
+        plugin.settings.defaultAreaTemplate = "area-tasks-template.md";
         await plugin.saveSettings();
       }
     });
@@ -142,11 +156,11 @@ Links and resources for this area.
     // Create an area using the template
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin && plugin.createArea) {
         await plugin.createArea({
-          name: 'Health & Wellness',
-          description: 'Maintaining physical and mental health'
+          name: "Health & Wellness",
+          description: "Maintaining physical and mental health",
         });
       }
     });
@@ -154,22 +168,28 @@ Links and resources for this area.
     await context.page.waitForTimeout(1000);
 
     // Check if area file was created
-    const areaExists = await fileExists(context.page, 'Areas/Health & Wellness.md');
+    const areaExists = await fileExists(
+      context.page,
+      "Areas/Health & Wellness.md",
+    );
     expect(areaExists).toBe(true);
 
     // Check area file content
-    const areaContent = await getFileContent(context.page, 'Areas/Health & Wellness.md');
+    const areaContent = await getFileContent(
+      context.page,
+      "Areas/Health & Wellness.md",
+    );
 
     // Verify {{tasks}} was replaced with specific base embed
-    expect(areaContent).toContain('![[Bases/Health & Wellness.base]]');
-    expect(areaContent).not.toContain('{{tasks}}');
+    expect(areaContent).toContain("![[Bases/Health & Wellness.base]]");
+    expect(areaContent).not.toContain("{{tasks}}");
 
     // Verify other variables were processed
-    expect(areaContent).toContain('Name: Health & Wellness');
-    expect(areaContent).toContain('Maintaining physical and mental health');
+    expect(areaContent).toContain("Name: Health & Wellness");
+    expect(areaContent).toContain("Maintaining physical and mental health");
   });
 
-  test('should not create duplicate base embeds when {{tasks}} is used', async () => {
+  test("should not create duplicate base embeds when {{tasks}} is used", async () => {
     await createTestFolders(context.page);
 
     // Create a template with {{tasks}} syntax
@@ -184,18 +204,21 @@ Type: Project
 {{tasks}}`;
 
       try {
-        await app.vault.create('Templates/simple-project-template.md', templateContent);
+        await app.vault.create(
+          "Templates/simple-project-template.md",
+          templateContent,
+        );
       } catch (error) {
-        console.log('Template creation error:', error);
+        console.log("Template creation error:", error);
       }
     });
 
     // Configure plugin to use the template
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        plugin.settings.defaultProjectTemplate = 'simple-project-template.md';
+        plugin.settings.defaultProjectTemplate = "simple-project-template.md";
         await plugin.saveSettings();
       }
     });
@@ -203,11 +226,11 @@ Type: Project
     // Create a project
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin && plugin.createProject) {
         await plugin.createProject({
-          name: 'Test Project',
-          description: 'A test project'
+          name: "Test Project",
+          description: "A test project",
         });
       }
     });
@@ -217,7 +240,7 @@ Type: Project
     // Regenerate bases to test for duplicates
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin && plugin.regenerateBases) {
         await plugin.regenerateBases();
       }
@@ -226,11 +249,14 @@ Type: Project
     await context.page.waitForTimeout(1000);
 
     // Check project file content
-    const projectContent = await getFileContent(context.page, 'Projects/Test Project.md');
+    const projectContent = await getFileContent(
+      context.page,
+      "Projects/Test Project.md",
+    );
 
     // Count base embeds - should only have one
     const baseEmbedMatches = projectContent.match(/!\[\[.*\.base\]\]/g);
     expect(baseEmbedMatches).toHaveLength(1);
-    expect(baseEmbedMatches[0]).toBe('![[Bases/Test Project.base]]');
+    expect(baseEmbedMatches[0]).toBe("![[Bases/Test Project.base]]");
   });
 });

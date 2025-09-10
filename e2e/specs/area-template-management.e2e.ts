@@ -1,43 +1,49 @@
-import { test, expect, describe } from 'vitest';
+import { test, expect, describe } from "vitest";
 import {
   createTestFolders,
   getFileContent,
   fileExists,
-  waitForTaskSyncPlugin
-} from '../helpers/task-sync-setup';
-import { setupE2ETestHooks } from '../helpers/shared-context';
+  waitForTaskSyncPlugin,
+} from "../helpers/task-sync-setup";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
-describe('Area Template Management', () => {
+describe("Area Template Management", () => {
   const context = setupE2ETestHooks();
 
-  test('should create area template with proper front-matter structure', async () => {
+  test("should create area template with proper front-matter structure", async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
     // Create area template using TemplateManager
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createAreaTemplate('TestArea.md');
+        await plugin.templateManager.createAreaTemplate("TestArea.md");
       }
     });
 
     await context.page.waitForTimeout(1000);
 
     // Check if template file was created
-    const templateExists = await fileExists(context.page, 'Templates/TestArea.md');
+    const templateExists = await fileExists(
+      context.page,
+      "Templates/TestArea.md",
+    );
     expect(templateExists).toBe(true);
 
     // Check template content structure
-    const templateContent = await getFileContent(context.page, 'Templates/TestArea.md');
+    const templateContent = await getFileContent(
+      context.page,
+      "Templates/TestArea.md",
+    );
 
     // Should have proper front-matter structure for areas
-    expect(templateContent).toContain('---');
-    expect(templateContent).toContain('Name:');
-    expect(templateContent).toContain('Type:');
-    expect(templateContent).toContain('Project:');
+    expect(templateContent).toContain("---");
+    expect(templateContent).toContain("Name:");
+    expect(templateContent).toContain("Type:");
+    expect(templateContent).toContain("Project:");
     // No longer expect {{description}} placeholder as it's not supported
 
     // Should have clean empty values (empty strings render with quotes in YAML)
@@ -45,74 +51,86 @@ describe('Area Template Management', () => {
     expect(templateContent).toMatch(/Project:\s*['"]?['"]?\s*$/m);
   });
 
-  test('should handle existing template file conflict', async () => {
+  test("should handle existing template file conflict", async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
     // Create existing template file
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      await app.vault.create('Templates/ExistingArea.md', 'Existing template content');
+      await app.vault.create(
+        "Templates/ExistingArea.md",
+        "Existing template content",
+      );
     });
 
     // Try to create template with same name - should handle conflict
     const result = await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin && plugin.templateManager) {
         try {
-          await plugin.templateManager.createAreaTemplate('ExistingArea.md');
+          await plugin.templateManager.createAreaTemplate("ExistingArea.md");
           return { success: true, error: null };
         } catch (error) {
           return { success: false, error: error.message };
         }
       }
-      return { success: false, error: 'Plugin or templateManager not available' };
+      return {
+        success: false,
+        error: "Plugin or templateManager not available",
+      };
     });
 
     // Should handle the conflict appropriately
     expect(result.success).toBe(false);
-    expect(result.error).toContain('already exists');
+    expect(result.error).toContain("already exists");
   });
 
-  test('should create template with custom filename when specified', async () => {
+  test("should create template with custom filename when specified", async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
     // Create template with custom filename
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createAreaTemplate('CustomArea.md');
+        await plugin.templateManager.createAreaTemplate("CustomArea.md");
       }
     });
 
     await context.page.waitForTimeout(1000);
 
     // Check if custom template was created
-    const templateExists = await fileExists(context.page, 'Templates/CustomArea.md');
+    const templateExists = await fileExists(
+      context.page,
+      "Templates/CustomArea.md",
+    );
     expect(templateExists).toBe(true);
 
     // Verify it has proper structure
-    const templateContent = await getFileContent(context.page, 'Templates/CustomArea.md');
-    expect(templateContent).toContain('Name:');
-    expect(templateContent).toContain('Type:');
-    expect(templateContent).toContain('Project:');
+    const templateContent = await getFileContent(
+      context.page,
+      "Templates/CustomArea.md",
+    );
+    expect(templateContent).toContain("Name:");
+    expect(templateContent).toContain("Type:");
+    expect(templateContent).toContain("Project:");
   });
 
-  test('should use default template filename from settings when none specified', async () => {
+  test("should use default template filename from settings when none specified", async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
     // Configure default area template in settings
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        plugin.settings.defaultAreaTemplate = 'DefaultArea.md';
+        plugin.settings.defaultAreaTemplate = "DefaultArea.md";
         await plugin.saveSettings();
       }
     });
@@ -120,7 +138,7 @@ describe('Area Template Management', () => {
     // Create template without specifying filename (should use default)
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin && plugin.templateManager) {
         await plugin.templateManager.createAreaTemplate();
@@ -130,41 +148,49 @@ describe('Area Template Management', () => {
     await context.page.waitForTimeout(1000);
 
     // Check if default template was created
-    const templateExists = await fileExists(context.page, 'Templates/DefaultArea.md');
+    const templateExists = await fileExists(
+      context.page,
+      "Templates/DefaultArea.md",
+    );
     expect(templateExists).toBe(true);
   });
 
-  test('should generate clean template without pre-filled values', async () => {
+  test("should generate clean template without pre-filled values", async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
 
     // Create area template
     await context.page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins['obsidian-task-sync'];
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createAreaTemplate('CleanArea.md');
+        await plugin.templateManager.createAreaTemplate("CleanArea.md");
       }
     });
 
     await context.page.waitForTimeout(1000);
 
     // Check template content is clean
-    const templateContent = await getFileContent(context.page, 'Templates/CleanArea.md');
+    const templateContent = await getFileContent(
+      context.page,
+      "Templates/CleanArea.md",
+    );
 
     // Should not have any pre-filled values
-    expect(templateContent).not.toContain('Health');
-    expect(templateContent).not.toContain('Finance');
-    expect(templateContent).not.toContain('Learning');
+    expect(templateContent).not.toContain("Health");
+    expect(templateContent).not.toContain("Finance");
+    expect(templateContent).not.toContain("Learning");
 
     // No longer expect {{description}} placeholder as it's not supported
 
     // Should have empty field values
-    const lines = templateContent.split('\n');
-    const nameLineIndex = lines.findIndex(line => line.startsWith('Name:'));
-    const typeLineIndex = lines.findIndex(line => line.startsWith('Type:'));
-    const projectLineIndex = lines.findIndex(line => line.startsWith('Project:'));
+    const lines = templateContent.split("\n");
+    const nameLineIndex = lines.findIndex((line) => line.startsWith("Name:"));
+    const typeLineIndex = lines.findIndex((line) => line.startsWith("Type:"));
+    const projectLineIndex = lines.findIndex((line) =>
+      line.startsWith("Project:"),
+    );
 
     expect(nameLineIndex).toBeGreaterThan(-1);
     expect(typeLineIndex).toBeGreaterThan(-1);

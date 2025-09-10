@@ -33,7 +33,7 @@ Status: In Progress
 Parent task:
 ---
 
-This task has all properties but in wrong order.`
+This task has all properties but in wrong order.`,
       );
     });
 
@@ -100,7 +100,7 @@ This task has all properties but in wrong order.`
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Wrong Order Task.md"
+        "Tasks/Wrong Order Task.md",
       );
     });
 
@@ -113,7 +113,7 @@ This task has all properties but in wrong order.`
     expect(frontMatter.Status).toBe("In Progress");
     expect(frontMatter.tags).toBe("test");
     expect(updatedContent).toContain(
-      "This task has all properties but in wrong order."
+      "This task has all properties but in wrong order.",
     );
   });
 
@@ -140,7 +140,7 @@ Parent task:
 tags: test
 ---
 
-This task was created with default property order.`
+This task was created with default property order.`,
       );
     });
 
@@ -230,7 +230,7 @@ This task was created with default property order.`
 
     console.log(
       "Updated file content (after settings change):",
-      updatedContent
+      updatedContent,
     );
 
     // Extract property order from updated content
@@ -254,7 +254,7 @@ This task was created with default property order.`
     expect(updatedContent).toContain("Status: In Progress");
     expect(updatedContent).toContain("tags: test");
     expect(updatedContent).toContain(
-      "This task was created with default property order."
+      "This task was created with default property order.",
     );
   });
 });

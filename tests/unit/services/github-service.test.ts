@@ -149,7 +149,7 @@ describe("GitHubService", () => {
 
   it("should handle API errors gracefully", async () => {
     mockListForRepo.mockRejectedValue(
-      new Error("Request failed with status code 401")
+      new Error("Request failed with status code 401"),
     );
 
     await expect(githubService.fetchIssues("owner/repo1")).rejects.toThrow();
@@ -189,7 +189,7 @@ describe("GitHubService", () => {
     const rateLimitError = new Error("API rate limit exceeded");
     (rateLimitError as any).status = 403;
     (mockOctokit.rest.issues.listForRepo as any).mockRejectedValue(
-      rateLimitError
+      rateLimitError,
     );
 
     await expect(githubService.fetchIssues("owner/repo1")).rejects.toThrow();
@@ -238,9 +238,8 @@ describe("GitHubService", () => {
       data: mockOrgRepos,
     });
 
-    const repos = await githubService.fetchRepositoriesForOrganization(
-      "my-org"
-    );
+    const repos =
+      await githubService.fetchRepositoriesForOrganization("my-org");
 
     expect(repos).toEqual(mockOrgRepos);
     expect(mockListForOrg).toHaveBeenCalledWith({

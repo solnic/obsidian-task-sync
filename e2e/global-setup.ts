@@ -1,7 +1,7 @@
-import * as fs from 'fs';
-import * as path from 'path';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import * as fs from "fs";
+import * as path from "path";
+import { exec } from "child_process";
+import { promisify } from "util";
 
 const execAsync = promisify(exec);
 
@@ -15,29 +15,39 @@ const execAsync = promisify(exec);
  */
 async function killExistingElectronProcesses(): Promise<void> {
   try {
-    const { stdout } = await execAsync('pgrep -f "Electron.*obsidian.*main.js" || true');
+    const { stdout } = await execAsync(
+      'pgrep -f "Electron.*obsidian.*main.js" || true',
+    );
 
     if (stdout.trim()) {
-      const pids = stdout.trim().split('\n').filter(pid => pid.trim());
+      const pids = stdout
+        .trim()
+        .split("\n")
+        .filter((pid) => pid.trim());
       for (const pid of pids) {
         try {
-          process.kill(parseInt(pid), 'SIGTERM');
+          process.kill(parseInt(pid), "SIGTERM");
         } catch (error) {
           // NO OP
         }
       }
 
       // Give processes time to terminate
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       // Force kill any remaining processes
       try {
-        const { stdout: remainingProcesses } = await execAsync('pgrep -f "Electron.*obsidian.*main.js" || true');
+        const { stdout: remainingProcesses } = await execAsync(
+          'pgrep -f "Electron.*obsidian.*main.js" || true',
+        );
         if (remainingProcesses.trim()) {
-          const remainingPids = remainingProcesses.trim().split('\n').filter(pid => pid.trim());
+          const remainingPids = remainingProcesses
+            .trim()
+            .split("\n")
+            .filter((pid) => pid.trim());
           for (const pid of remainingPids) {
             try {
-              process.kill(parseInt(pid), 'SIGKILL');
+              process.kill(parseInt(pid), "SIGKILL");
             } catch (error) {
               // NO OP
             }
@@ -48,7 +58,10 @@ async function killExistingElectronProcesses(): Promise<void> {
       }
     }
   } catch (error) {
-    console.log('⚠️ Error checking for existing Electron processes:', error.message);
+    console.log(
+      "⚠️ Error checking for existing Electron processes:",
+      error.message,
+    );
   }
 }
 
@@ -57,7 +70,7 @@ async function killExistingElectronProcesses(): Promise<void> {
  */
 async function cleanupDebugArtifacts(): Promise<void> {
   try {
-    const debugDir = path.join(process.cwd(), 'e2e/debug');
+    const debugDir = path.join(process.cwd(), "e2e/debug");
 
     if (fs.existsSync(debugDir)) {
       await fs.promises.rm(debugDir, { recursive: true, force: true });
@@ -65,7 +78,7 @@ async function cleanupDebugArtifacts(): Promise<void> {
 
     await fs.promises.mkdir(debugDir, { recursive: true });
   } catch (error) {
-    console.log('⚠️ Error cleaning up debug artifacts:', error.message);
+    console.log("⚠️ Error cleaning up debug artifacts:", error.message);
   }
 }
 
@@ -78,13 +91,13 @@ export default async function globalSetup() {
     await cleanupDebugArtifacts();
 
     try {
-      await execAsync('npm run build', { cwd: process.cwd() });
+      await execAsync("npm run build", { cwd: process.cwd() });
     } catch (buildError) {
       throw new Error(`Plugin build failed: ${buildError.message}`);
     }
 
     // Ensure test environments directory exists
-    const testEnvDir = path.join(process.cwd(), 'e2e/test-environments');
+    const testEnvDir = path.join(process.cwd(), "e2e/test-environments");
     await fs.promises.mkdir(testEnvDir, { recursive: true });
 
     // Clean up any leftover test environments from previous runs

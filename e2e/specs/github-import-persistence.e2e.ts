@@ -45,7 +45,7 @@ describe("GitHub Import Status Persistence", () => {
     // Verify the issue appears and is not imported initially
     const isNotImportedInitially = await context.page.evaluate(() => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]'
+        '[data-testid="issue-item"]',
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
@@ -71,7 +71,7 @@ describe("GitHub Import Status Persistence", () => {
     await issueLocator.hover();
 
     const importButton = issueLocator.locator(
-      '[data-testid="issue-import-button"]'
+      '[data-testid="issue-import-button"]',
     );
     await importButton.waitFor({ state: "visible", timeout: 5000 });
     expect(await importButton.isVisible()).toBe(true);
@@ -85,7 +85,7 @@ describe("GitHub Import Status Persistence", () => {
     // Verify the issue now shows "Imported" status via data attribute
     const hasImportedStatus = await context.page.evaluate(() => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]'
+        '[data-testid="issue-item"]',
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
@@ -107,7 +107,7 @@ describe("GitHub Import Status Persistence", () => {
       const app = (window as any).app;
       // Check if the task file exists in the vault (using the actual issue title)
       const taskFile = app.vault.getAbstractFileByPath(
-        "Tasks/Test import persistence issue.md"
+        "Tasks/Test import persistence issue.md",
       );
       return taskFile !== null;
     });
@@ -134,7 +134,7 @@ describe("GitHub Import Status Persistence", () => {
       const app = (window as any).app;
       // Check if the task file still exists in the vault after restart
       const taskFile = app.vault.getAbstractFileByPath(
-        "Tasks/Test import persistence issue.md"
+        "Tasks/Test import persistence issue.md",
       );
       return taskFile !== null;
     });
@@ -160,7 +160,7 @@ describe("GitHub Import Status Persistence", () => {
 
     const stillHasImportedStatus = await context.page.evaluate(() => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]'
+        '[data-testid="issue-item"]',
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];

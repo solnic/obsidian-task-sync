@@ -9,7 +9,7 @@ import * as fs from "fs";
  */
 export async function setupObsidianWithTaskSync(
   vaultPath: string,
-  dataDir: string
+  dataDir: string,
 ): Promise<{ electronApp: ElectronApplication; page: Page }> {
   // Import shared context system
   const { getSharedTestContext } = await import("./shared-context");
@@ -31,14 +31,14 @@ export async function setupObsidianWithTaskSync(
  */
 export async function setupObsidianElectron(
   vaultPath: string,
-  dataDir: string
+  dataDir: string,
 ): Promise<{ electronApp: ElectronApplication; page: Page }> {
   const { _electron: electron } = await import("playwright");
 
   // Check for different possible Obsidian structures
   const mainJsPath = path.resolve("./.obsidian-unpacked/main.js");
   const appExtractedMainJs = path.resolve(
-    "./.obsidian-unpacked/app-extracted/main.js"
+    "./.obsidian-unpacked/app-extracted/main.js",
   );
   const obsidianBinaryPath = path.resolve("./.obsidian-unpacked/obsidian");
   const appAsarPath = path.resolve("./.obsidian-unpacked/resources/app.asar");
@@ -56,7 +56,7 @@ export async function setupObsidianElectron(
   } else {
     throw new Error(
       `Unpacked Obsidian not found. Checked: ${appExtractedMainJs}, ${mainJsPath}, ${appAsarPath}, ${obsidianBinaryPath}. ` +
-        "Please run: npm run setup:obsidian-playwright"
+        "Please run: npm run setup:obsidian-playwright",
     );
   }
 
@@ -91,7 +91,7 @@ export async function setupObsidianElectron(
     launchArgs.push(
       "--no-sandbox",
       "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage"
+      "--disable-dev-shm-usage",
     );
   }
 
@@ -111,7 +111,7 @@ export async function setupObsidianElectron(
       "--disable-features=VizDisplayCompositor",
       "--disable-dbus",
       "--disable-default-apps",
-      "--disable-component-update"
+      "--disable-component-update",
     );
   }
 
@@ -149,7 +149,7 @@ export async function setupObsidianElectron(
       page = windows[0];
     } else {
       throw new Error(
-        `No windows available. Original error: ${windowError.message}`
+        `No windows available. Original error: ${windowError.message}`,
       );
     }
   }
@@ -173,12 +173,12 @@ export async function setupObsidianElectron(
 
         return isLayoutReady;
       },
-      { timeout: 90000 }
+      { timeout: 90000 },
     );
   } catch (error) {
     console.error(
       "❌ Timeout waiting for Obsidian to be ready:",
-      error.message
+      error.message,
     );
 
     // Get current state for debugging
@@ -194,7 +194,7 @@ export async function setupObsidianElectron(
     });
     console.log(
       "🔍 Current Obsidian state:",
-      JSON.stringify(currentState, null, 2)
+      JSON.stringify(currentState, null, 2),
     );
     throw error;
   }
@@ -227,7 +227,7 @@ export async function setupObsidianElectron(
       try {
         await app.vault.adapter.write(
           ".obsidian/plugins/obsidian-task-sync/data.json",
-          JSON.stringify(testSettings)
+          JSON.stringify(testSettings),
         );
         console.log("✅ Task Sync plugin settings configured");
       } catch (error) {
@@ -258,7 +258,7 @@ export async function setupObsidianElectron(
             undefined
         );
       },
-      { timeout: 30000 }
+      { timeout: 30000 },
     );
   } catch (error) {
     const availablePlugins = await page.evaluate(() => {
@@ -272,12 +272,12 @@ export async function setupObsidianElectron(
     });
     console.error(
       "❌ Task Sync plugin not found. Available plugins:",
-      availablePlugins
+      availablePlugins,
     );
     throw new Error(
       `Task Sync plugin not loaded. Available plugins: ${availablePlugins.join(
-        ", "
-      )}`
+        ", ",
+      )}`,
     );
   }
 
@@ -289,7 +289,7 @@ export async function setupObsidianElectron(
  */
 export async function waitForTaskSyncPlugin(
   page: Page,
-  timeout: number = 10000
+  timeout: number = 10000,
 ): Promise<void> {
   await page.waitForFunction(
     () => {
@@ -301,7 +301,7 @@ export async function waitForTaskSyncPlugin(
         typeof plugin.regenerateBases === "function"
       );
     },
-    { timeout }
+    { timeout },
   );
 }
 
@@ -311,7 +311,7 @@ export async function waitForTaskSyncPlugin(
 export async function waitForBaseFile(
   page: Page,
   baseFilePath: string,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<void> {
   await page.waitForFunction(
     ({ filePath }) => {
@@ -320,7 +320,7 @@ export async function waitForBaseFile(
       return file !== null;
     },
     { filePath: baseFilePath },
-    { timeout }
+    { timeout },
   );
 }
 
@@ -330,7 +330,7 @@ export async function waitForBaseFile(
 export async function waitForBaseFileDeleted(
   page: Page,
   baseFilePath: string,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<void> {
   await page.waitForFunction(
     ({ filePath }) => {
@@ -339,7 +339,7 @@ export async function waitForBaseFileDeleted(
       return file === null;
     },
     { filePath: baseFilePath },
-    { timeout }
+    { timeout },
   );
 }
 
@@ -350,7 +350,7 @@ export async function waitForBaseContent(
   page: Page,
   baseFilePath: string,
   expectedContent: string,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<void> {
   await page.waitForFunction(
     async ({ filePath, content }) => {
@@ -366,7 +366,7 @@ export async function waitForBaseContent(
       }
     },
     { filePath: baseFilePath, content: expectedContent },
-    { timeout }
+    { timeout },
   );
 }
 
@@ -378,7 +378,7 @@ export async function waitForFileContentToContain(
   page: Page,
   filePath: string,
   expectedContent: string,
-  timeout: number = 10000
+  timeout: number = 10000,
 ): Promise<void> {
   const startTime = Date.now();
   let waitTime = 100; // Start with 100ms
@@ -399,7 +399,7 @@ export async function waitForFileContentToContain(
           return false;
         }
       },
-      { path: filePath, content: expectedContent }
+      { path: filePath, content: expectedContent },
     );
 
     if (hasContent) {
@@ -424,12 +424,12 @@ export async function waitForFileContentToContain(
         return `ERROR_READING_FILE: ${error.message}`;
       }
     },
-    { path: filePath }
+    { path: filePath },
   );
 
   throw new Error(
     `Timeout waiting for file "${filePath}" to contain "${expectedContent}" after ${timeout}ms.\n` +
-      `Current file content:\n${currentContent}`
+      `Current file content:\n${currentContent}`,
   );
 }
 
@@ -438,7 +438,7 @@ export async function waitForFileContentToContain(
  */
 export async function waitForEventSystemIdle(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<void> {
   const startTime = Date.now();
 
@@ -489,7 +489,7 @@ export async function waitForStatusChangeComplete(
   filePath: string,
   expectedStatus: string,
   expectedDone: boolean,
-  timeout: number = 10000
+  timeout: number = 10000,
 ): Promise<void> {
   // Wait for both properties to be updated
   await Promise.all([
@@ -499,7 +499,7 @@ export async function waitForStatusChangeComplete(
       filePath,
       "Done",
       expectedDone.toString(),
-      timeout
+      timeout,
     ),
   ]);
 }
@@ -513,7 +513,7 @@ export async function waitForTaskPropertySync(
   filePath: string,
   property: string,
   expectedValue: string | boolean,
-  timeout: number = 10000
+  timeout: number = 10000,
 ): Promise<void> {
   const expectedText = `${property}: ${expectedValue}`;
 
@@ -533,12 +533,12 @@ export async function waitForTaskPropertySync(
           return `ERROR_READING_FILE: ${error.message}`;
         }
       },
-      { path: filePath }
+      { path: filePath },
     );
 
     // Extract current property value for better debugging
     const propertyMatch = currentContent.match(
-      new RegExp(`${property}:\\s*(.+)`)
+      new RegExp(`${property}:\\s*(.+)`),
     );
     const currentValue = propertyMatch ? propertyMatch[1].trim() : "NOT_FOUND";
 
@@ -547,7 +547,7 @@ export async function waitForTaskPropertySync(
         `Expected: ${property}: ${expectedValue}\n` +
         `Current: ${property}: ${currentValue}\n` +
         `Timeout: ${timeout}ms\n\n` +
-        `Full file content:\n${currentContent}`
+        `Full file content:\n${currentContent}`,
     );
   }
 }
@@ -557,7 +557,7 @@ export async function waitForTaskPropertySync(
  */
 export async function waitForBasesRegeneration(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<void> {
   // Wait for the main Tasks.base file to exist
   await waitForBaseFile(page, "Bases/Tasks.base", timeout);
@@ -609,7 +609,7 @@ export async function createTestTaskFile(
   page: Page,
   filename: string,
   frontmatter: Record<string, any> = {},
-  content: string = ""
+  content: string = "",
 ): Promise<void> {
   await page.evaluate(
     async ({ filename, frontmatter, content }) => {
@@ -647,7 +647,7 @@ export async function createTestTaskFile(
         throw error;
       }
     },
-    { filename, frontmatter, content }
+    { filename, frontmatter, content },
   );
 }
 
@@ -656,7 +656,7 @@ export async function createTestTaskFile(
  */
 export async function getFileContent(
   page: Page,
-  filePath: string
+  filePath: string,
 ): Promise<string | null> {
   return await page.evaluate(
     async ({ path }) => {
@@ -674,7 +674,7 @@ export async function getFileContent(
         return null;
       }
     },
-    { path: filePath }
+    { path: filePath },
   );
 }
 
@@ -683,14 +683,14 @@ export async function getFileContent(
  */
 export async function fileExists(
   page: Page,
-  filePath: string
+  filePath: string,
 ): Promise<boolean> {
   return await page.evaluate(
     async ({ path }) => {
       const app = (window as any).app;
       return await app.vault.adapter.exists(path);
     },
-    { path: filePath }
+    { path: filePath },
   );
 }
 
@@ -699,7 +699,7 @@ export async function fileExists(
  */
 export async function listFilesInFolder(
   page: Page,
-  folderPath: string
+  folderPath: string,
 ): Promise<string[]> {
   return await page.evaluate(
     async ({ path }) => {
@@ -714,7 +714,7 @@ export async function listFilesInFolder(
         .filter((child: any) => child.extension === "md")
         .map((child: any) => child.path);
     },
-    { path: folderPath }
+    { path: folderPath },
   );
 }
 
@@ -723,7 +723,7 @@ export async function listFilesInFolder(
  */
 export async function isElementVisible(
   page: Page,
-  selector: string
+  selector: string,
 ): Promise<boolean> {
   try {
     const element = page.locator(selector);
@@ -738,7 +738,7 @@ export async function isElementVisible(
  */
 export async function isElementEnabled(
   page: Page,
-  selector: string
+  selector: string,
 ): Promise<boolean> {
   try {
     const element = page.locator(selector);
@@ -754,7 +754,7 @@ export async function isElementEnabled(
 export async function elementHasClass(
   page: Page,
   selector: string,
-  className: string | RegExp
+  className: string | RegExp,
 ): Promise<boolean> {
   try {
     const element = page.locator(selector);
@@ -776,7 +776,7 @@ export async function elementHasClass(
 export async function waitForElementVisible(
   page: Page,
   selector: string,
-  timeout = 5000
+  timeout = 5000,
 ): Promise<void> {
   await page.waitForSelector(selector, { state: "visible", timeout });
 }
@@ -818,7 +818,7 @@ async function waitForSettingsModal(page: Page): Promise<void> {
  * Open Task Sync plugin settings
  */
 export async function openTaskSyncSettings(
-  context: SharedTestContext
+  context: SharedTestContext,
 ): Promise<void> {
   await executeCommand(context, "Open Settings");
   await waitForSettingsModal(context.page);
@@ -844,7 +844,7 @@ export async function openTaskSyncSettings(
         // Also wait for the header to be visible
         await context.page.waitForSelector(
           '.task-sync-settings-header h2:has-text("Task Sync Settings")',
-          { timeout: 5000 }
+          { timeout: 5000 },
         );
         return;
       }
@@ -898,7 +898,7 @@ export async function closeSettings(page: Page): Promise<void> {
 export async function fillSettingInput(
   page: Page,
   placeholder: string,
-  value: string
+  value: string,
 ): Promise<void> {
   const input = page.locator(`input[placeholder="${placeholder}"]`);
   await input.waitFor({ timeout: 5000 });
@@ -912,7 +912,7 @@ export async function fillSettingInput(
  */
 export async function scrollToSettingsSection(
   page: Page,
-  sectionName: string
+  sectionName: string,
 ): Promise<void> {
   const section = page
     .locator(".task-sync-section-header")
@@ -945,7 +945,7 @@ export async function addTaskStatus(
   page: Page,
   statusName: string,
   color: string = "blue",
-  isDone: boolean = false
+  isDone: boolean = false,
 ): Promise<void> {
   // Find the "Add New Task Status" section
   const addSection = page
@@ -955,7 +955,7 @@ export async function addTaskStatus(
 
   // Fill in the status name
   const nameInput = addSection.locator(
-    'input[placeholder*="Review, Testing, Blocked"]'
+    'input[placeholder*="Review, Testing, Blocked"]',
   );
   await nameInput.fill(statusName);
 
@@ -995,7 +995,7 @@ export async function addTaskStatus(
 export async function toggleTaskStatusDone(
   page: Page,
   statusName: string,
-  isDone: boolean
+  isDone: boolean,
 ): Promise<void> {
   const statusSetting = page
     .locator(".setting-item")
@@ -1022,7 +1022,7 @@ export async function toggleTaskStatusDone(
 export async function toggleTaskStatusInProgress(
   page: Page,
   statusName: string,
-  isInProgress: boolean
+  isInProgress: boolean,
 ): Promise<void> {
   const statusSetting = page
     .locator(".setting-item")
@@ -1056,13 +1056,13 @@ export async function openTaskStatusSettings(context: any): Promise<void> {
  */
 export async function toggleAreaBasesEnabled(
   context: SharedTestContext,
-  enabled: boolean
+  enabled: boolean,
 ): Promise<void> {
   await toggleSetting(
     context,
     "Bases Integration",
     "Enable Area Bases",
-    enabled
+    enabled,
   );
 }
 
@@ -1071,13 +1071,13 @@ export async function toggleAreaBasesEnabled(
  */
 export async function toggleProjectBasesEnabled(
   context: SharedTestContext,
-  enabled: boolean
+  enabled: boolean,
 ): Promise<void> {
   await toggleSetting(
     context,
     "Bases Integration",
     "Enable Project Bases",
-    enabled
+    enabled,
   );
 }
 
@@ -1089,7 +1089,7 @@ export async function toggleSetting(
   context: SharedTestContext,
   _sectionName: string,
   settingName: string,
-  enabled: boolean
+  enabled: boolean,
 ): Promise<void> {
   // Get the current plugin setting value
   const currentPluginSetting = await context.page.evaluate(
@@ -1105,17 +1105,17 @@ export async function toggleSetting(
       }
       return null;
     },
-    settingName
+    settingName,
   );
 
   console.log(
-    `🔧 toggleSetting: ${settingName} plugin setting is currently ${currentPluginSetting}, want ${enabled}`
+    `🔧 toggleSetting: ${settingName} plugin setting is currently ${currentPluginSetting}, want ${enabled}`,
   );
 
   // If the plugin setting already matches what we want, don't change anything
   if (currentPluginSetting === enabled) {
     console.log(
-      `🔧 toggleSetting: ${settingName} already has correct value, skipping update`
+      `🔧 toggleSetting: ${settingName} already has correct value, skipping update`,
     );
     return;
   }
@@ -1140,10 +1140,10 @@ export async function toggleSetting(
       }
       await plugin.saveSettings();
       console.log(
-        `🔧 Direct plugin setting update: ${settingName} = ${enabled}`
+        `🔧 Direct plugin setting update: ${settingName} = ${enabled}`,
       );
     },
-    { settingName, enabled }
+    { settingName, enabled },
   );
 
   // Verify the setting was updated correctly
@@ -1160,11 +1160,11 @@ export async function toggleSetting(
       }
       return null;
     },
-    settingName
+    settingName,
   );
 
   console.log(
-    `🔧 toggleSetting: ${settingName} plugin setting is now ${finalPluginSetting}`
+    `🔧 toggleSetting: ${settingName} plugin setting is now ${finalPluginSetting}`,
   );
 }
 
@@ -1175,7 +1175,7 @@ export async function fillSetting(
   context: SharedTestContext,
   sectionName: string,
   settingName: string,
-  value: string
+  value: string,
 ): Promise<void> {
   await openTaskSyncSettings(context);
   await scrollToSettingsSection(context.page, sectionName);
@@ -1197,10 +1197,10 @@ export async function fillSetting(
 export async function configureBasesSettings(
   context: SharedTestContext,
   areaBasesEnabled: boolean,
-  projectBasesEnabled: boolean
+  projectBasesEnabled: boolean,
 ): Promise<void> {
   console.log(
-    `🔧 configureBasesSettings: Setting area bases to ${areaBasesEnabled}, project bases to ${projectBasesEnabled}`
+    `🔧 configureBasesSettings: Setting area bases to ${areaBasesEnabled}, project bases to ${projectBasesEnabled}`,
   );
 
   // Check current plugin settings before making changes
@@ -1214,7 +1214,7 @@ export async function configureBasesSettings(
   });
   console.log(
     `🔧 configureBasesSettings: Current plugin settings:`,
-    currentSettings
+    currentSettings,
   );
 
   // If the current settings already match what we want, don't change anything
@@ -1223,7 +1223,7 @@ export async function configureBasesSettings(
     currentSettings.projectBasesEnabled === projectBasesEnabled
   ) {
     console.log(
-      `🔧 configureBasesSettings: Settings already match desired values, skipping UI changes`
+      `🔧 configureBasesSettings: Settings already match desired values, skipping UI changes`,
     );
     return;
   }
@@ -1233,13 +1233,13 @@ export async function configureBasesSettings(
     context,
     "Bases Integration",
     "Enable Area Bases",
-    areaBasesEnabled
+    areaBasesEnabled,
   );
   await toggleSetting(
     context,
     "Bases Integration",
     "Enable Project Bases",
-    projectBasesEnabled
+    projectBasesEnabled,
   );
 
   // Check final plugin settings after making changes
@@ -1253,7 +1253,7 @@ export async function configureBasesSettings(
   });
   console.log(
     `🔧 configureBasesSettings: Final plugin settings:`,
-    finalSettings
+    finalSettings,
   );
 
   console.log(`🔧 configureBasesSettings: Settings configuration completed`);
@@ -1265,7 +1265,7 @@ export async function configureBasesSettings(
 export async function waitForFileCreation(
   page: Page,
   filePath: string,
-  timeout: number = 5000
+  timeout: number = 5000,
 ): Promise<void> {
   const startTime = Date.now();
   let waitTime = 100; // Start with 100ms
@@ -1286,7 +1286,7 @@ export async function waitForFileCreation(
           return false;
         }
       },
-      { path: filePath }
+      { path: filePath },
     );
 
     if (fileExists) {
@@ -1299,7 +1299,7 @@ export async function waitForFileCreation(
   }
 
   throw new Error(
-    `Timeout waiting for file "${filePath}" to be created after ${timeout}ms`
+    `Timeout waiting for file "${filePath}" to be created after ${timeout}ms`,
   );
 }
 
@@ -1309,7 +1309,7 @@ export async function waitForFileCreation(
  */
 export async function getTaskProperties(
   page: Page,
-  taskPath: string
+  taskPath: string,
 ): Promise<Record<string, any> | null> {
   return await page.evaluate(async (path) => {
     const app = (window as any).app;
@@ -1350,7 +1350,7 @@ export async function getTaskProperties(
 export async function verifyTaskProperties(
   page: Page,
   taskPath: string,
-  expectedProperties: Record<string, any>
+  expectedProperties: Record<string, any>,
 ): Promise<void> {
   const properties = await getTaskProperties(page, taskPath);
 
@@ -1364,8 +1364,8 @@ export async function verifyTaskProperties(
     if (JSON.stringify(actualValue) !== JSON.stringify(expectedValue)) {
       throw new Error(
         `Property "${key}" mismatch. Expected: ${JSON.stringify(
-          expectedValue
-        )}, Actual: ${JSON.stringify(actualValue)}`
+          expectedValue,
+        )}, Actual: ${JSON.stringify(actualValue)}`,
       );
     }
   }
