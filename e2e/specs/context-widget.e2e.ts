@@ -28,7 +28,7 @@ describe("ContextWidget", () => {
     await openGitHubIssuesView(context.page);
 
     // Wait for the view to load
-    await waitForElementVisible(context.page, ".github-issues-view");
+    await waitForElementVisible(context.page, "[data-testid='tasks-view']");
 
     // Check that context widget shows "No context"
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
@@ -53,7 +53,7 @@ describe("ContextWidget", () => {
     await openGitHubIssuesView(context.page);
 
     // Wait for the view to load
-    await waitForElementVisible(context.page, ".github-issues-view");
+    await waitForElementVisible(context.page, "[data-testid='tasks-view']");
 
     // Check that context widget shows project context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
@@ -91,7 +91,7 @@ describe("ContextWidget", () => {
     await openGitHubIssuesView(context.page);
 
     // Wait for the view to load
-    await waitForElementVisible(context.page, ".github-issues-view");
+    await waitForElementVisible(context.page, "[data-testid='tasks-view']");
 
     // Check that context widget shows area context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
@@ -130,7 +130,7 @@ describe("ContextWidget", () => {
 
     // Open GitHub Issues view first
     await openGitHubIssuesView(context.page);
-    await waitForElementVisible(context.page, ".github-issues-view");
+    await waitForElementVisible(context.page, "[data-testid='tasks-view']");
 
     // Open project file
     await openFile(context, `Projects/${projectName}.md`);
@@ -169,7 +169,7 @@ describe("ContextWidget", () => {
 
     // Open GitHub Issues view
     await openGitHubIssuesView(context.page);
-    await waitForElementVisible(context.page, ".github-issues-view");
+    await waitForElementVisible(context.page, "[data-testid='tasks-view']");
 
     // Open project file to establish context
     await openFile(context, `Projects/${projectName}.md`);

@@ -36,10 +36,7 @@ import {
 } from "./components/ui/settings";
 import { GitHubService } from "./services/GitHubService";
 import { TaskImportManager } from "./services/TaskImportManager";
-import {
-  GitHubIssuesView,
-  GITHUB_ISSUES_VIEW_TYPE,
-} from "./views/GitHubIssuesView";
+import { TasksView, TASKS_VIEW_TYPE } from "./views/TasksView";
 import { ContextTabView, CONTEXT_TAB_VIEW_TYPE } from "./views/ContextTabView";
 import { TaskImportConfig } from "./types/integrations";
 import { taskStore } from "./stores/taskStore";
@@ -203,11 +200,11 @@ export default class TaskSyncPlugin extends Plugin {
     // Add settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
 
-    // Register GitHub Issues view
+    // Register Tasks view
     this.registerView(
-      GITHUB_ISSUES_VIEW_TYPE,
+      TASKS_VIEW_TYPE,
       (leaf) =>
-        new GitHubIssuesView(
+        new TasksView(
           leaf,
           this.githubService,
           { githubIntegration: this.settings.githubIntegration },
@@ -224,9 +221,9 @@ export default class TaskSyncPlugin extends Plugin {
       (leaf) => new ContextTabView(leaf)
     );
 
-    // Create GitHub Issues view in right sidebar if it doesn't exist
+    // Create Tasks view in right sidebar if it doesn't exist
     this.app.workspace.onLayoutReady(() => {
-      this.initializeGitHubIssuesView();
+      this.initializeTasksView();
       this.initializeContextTabView();
     });
 
@@ -388,12 +385,10 @@ export default class TaskSyncPlugin extends Plugin {
       this.taskImportManager.updateSettings(this.settings);
     }
 
-    const githubLeaves = this.app.workspace.getLeavesOfType(
-      GITHUB_ISSUES_VIEW_TYPE
-    );
+    const tasksLeaves = this.app.workspace.getLeavesOfType(TASKS_VIEW_TYPE);
 
-    githubLeaves.forEach((leaf) => {
-      const view = leaf.view as GitHubIssuesView;
+    tasksLeaves.forEach((leaf) => {
+      const view = leaf.view as TasksView;
       if (view && view.updateSettings) {
         view.updateSettings({
           githubIntegration: this.settings.githubIntegration,
@@ -537,37 +532,34 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
-   * Initialize GitHub Issues view in the right sidebar if it doesn't already exist
+   * Initialize Tasks view in the right sidebar if it doesn't already exist
    */
-  private async initializeGitHubIssuesView(): Promise<void> {
+  private async initializeTasksView(): Promise<void> {
     try {
-      console.log("🔧 Initializing GitHub Issues view...");
+      console.log("🔧 Initializing Tasks view...");
 
-      // Check if GitHub Issues view already exists
-      const existingLeaves = this.app.workspace.getLeavesOfType(
-        GITHUB_ISSUES_VIEW_TYPE
-      );
-      console.log(
-        `🔧 Found ${existingLeaves.length} existing GitHub Issues views`
-      );
+      // Check if Tasks view already exists
+      const existingLeaves =
+        this.app.workspace.getLeavesOfType(TASKS_VIEW_TYPE);
+      console.log(`🔧 Found ${existingLeaves.length} existing Tasks views`);
 
       if (existingLeaves.length > 0) {
-        console.log("✅ GitHub Issues view already exists, skipping creation");
+        console.log("✅ Tasks view already exists, skipping creation");
         return; // View already exists
       }
 
-      console.log("🔧 Creating GitHub Issues view in right sidebar...");
+      console.log("🔧 Creating Tasks view in right sidebar...");
 
       // Create the view in the right sidebar
       const rightLeaf = this.app.workspace.getRightLeaf(false);
       await rightLeaf.setViewState({
-        type: GITHUB_ISSUES_VIEW_TYPE,
+        type: TASKS_VIEW_TYPE,
         active: false, // Don't make it active by default
       });
 
-      console.log("✅ GitHub Issues view created successfully");
+      console.log("✅ Tasks view created successfully");
     } catch (error) {
-      console.error("❌ Failed to initialize GitHub Issues view:", error);
+      console.error("❌ Failed to initialize Tasks view:", error);
     }
   }
 

@@ -38,7 +38,7 @@ export async function dismissNotices(page: Page): Promise<void> {
 }
 
 /**
- * Open GitHub Issues view through UI interactions (like a real user)
+ * Open Tasks view through UI interactions (like a real user)
  */
 export async function openGitHubIssuesView(page: Page): Promise<void> {
   await dismissNotices(page);
@@ -50,12 +50,12 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
 
     if (plugin) {
       // Check if view already exists
-      const existingLeaves = app.workspace.getLeavesOfType("github-issues");
+      const existingLeaves = app.workspace.getLeavesOfType("tasks");
       if (existingLeaves.length === 0) {
         // Create the view in the right sidebar (but don't force it active)
         const rightLeaf = app.workspace.getRightLeaf(false);
         await rightLeaf.setViewState({
-          type: "github-issues",
+          type: "tasks",
           active: false,
         });
       }
@@ -74,13 +74,13 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 300));
   }
 
-  // Look for the GitHub Issues tab and click it
-  const githubTab = page
+  // Look for the Tasks tab and click it
+  const tasksTab = page
     .locator(".workspace-tab-header")
-    .filter({ hasText: "Task Sync" });
+    .filter({ hasText: "Tasks" });
 
-  if (await githubTab.isVisible()) {
-    await githubTab.click();
+  if (await tasksTab.isVisible()) {
+    await tasksTab.click();
     await new Promise((resolve) => setTimeout(resolve, 500));
   } else {
     // Alternative: use command palette to open the view
@@ -92,7 +92,7 @@ export async function openGitHubIssuesView(page: Page): Promise<void> {
 }
 
 /**
- * Wait for GitHub Issues view to appear and be ready
+ * Wait for Tasks view to appear and be ready
  */
 export async function waitForGitHubView(
   page: Page,
@@ -115,12 +115,12 @@ export async function waitForGitHubView(
 
     if (plugin) {
       // Check if view already exists
-      const existingLeaves = app.workspace.getLeavesOfType("github-issues");
+      const existingLeaves = app.workspace.getLeavesOfType("tasks");
       if (existingLeaves.length === 0) {
         // Create the view in the right sidebar (but don't force it active)
         const rightLeaf = app.workspace.getRightLeaf(false);
         await rightLeaf.setViewState({
-          type: "github-issues",
+          type: "tasks",
           active: false,
         });
       }
@@ -130,14 +130,14 @@ export async function waitForGitHubView(
   // Wait for the view element to appear in DOM
   await page.waitForFunction(
     () => {
-      // Check for data-type attribute (primary)
-      let viewElement = document.querySelector('[data-type="github-issues"]');
+      // Check for data-testid attribute (primary)
+      let viewElement = document.querySelector('[data-testid="tasks-view"]');
       if (viewElement) {
         return true;
       }
 
-      // Fallback: check for class-based selector
-      viewElement = document.querySelector(".github-issues-view");
+      // Fallback: check for data-type attribute
+      viewElement = document.querySelector('[data-type="tasks"]');
       if (viewElement) {
         return true;
       }
@@ -186,7 +186,9 @@ export async function waitForGitHubViewContent(
   await page
     .waitForFunction(
       () => {
-        const viewElement = document.querySelector(".github-issues-view");
+        const viewElement = document.querySelector(
+          "[data-testid='github-service']"
+        );
 
         if (!viewElement) {
           return false;
@@ -548,8 +550,8 @@ export async function waitForGitHubDisabledState(
   await page.waitForFunction(
     () => {
       const viewElement =
-        document.querySelector('[data-type="github-issues"]') ||
-        document.querySelector(".github-issues-view");
+        document.querySelector('[data-testid="github-service"]') ||
+        document.querySelector('[data-type="github-service"]');
       if (!viewElement) {
         return false;
       }
