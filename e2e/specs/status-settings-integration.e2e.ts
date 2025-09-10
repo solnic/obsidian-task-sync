@@ -50,7 +50,7 @@ describe("Status Settings Integration with Event System", () => {
         status: "Backlog",
         tags: ["test"],
       },
-      "This task tests custom status configurations.",
+      "This task tests custom status configurations."
     );
 
     // Test changing to custom done status
@@ -62,27 +62,27 @@ describe("Status Settings Integration with Event System", () => {
         const content = await app.vault.read(file);
         const updatedContent = content.replace(
           "Status: Backlog",
-          "Status: Shipped",
+          "Status: Shipped"
         );
         await app.vault.modify(file, updatedContent);
       }
-    }, task.name);
+    }, task.title);
 
     // Wait for synchronization using smart wait - wait for both status and done to be updated
     await waitForStatusChangeComplete(
       context.page,
-      `Tasks/${task.name}.md`,
+      `Tasks/${task.title}.md`,
       "Shipped",
-      true,
+      true
     );
 
     // Verify the changes using the cached task entity
     let updatedTask = await context.page.evaluate(async (taskName) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const cachedTasks = plugin.storageService.getCachedTasks();
-      return cachedTasks.find((t: any) => t.name === taskName);
-    }, task.name);
+      const cachedTasks = plugin.getCachedTasks();
+      return cachedTasks.find((t: any) => t.title === taskName);
+    }, task.title);
 
     expect(updatedTask.status).toBe("Shipped");
     expect(updatedTask.done).toBe(true);
@@ -96,27 +96,27 @@ describe("Status Settings Integration with Event System", () => {
         const content = await app.vault.read(file);
         const updatedContent = content.replace(
           "Status: Shipped",
-          "Status: Blocked",
+          "Status: Blocked"
         );
         await app.vault.modify(file, updatedContent);
       }
-    }, task.name);
+    }, task.title);
 
     // Wait for synchronization using smart wait - wait for both status and done to be updated
     await waitForStatusChangeComplete(
       context.page,
-      `Tasks/${task.name}.md`,
+      `Tasks/${task.title}.md`,
       "Blocked",
-      false,
+      false
     );
 
     // Verify the changes using the cached task entity
     const finalTask = await context.page.evaluate(async (taskName) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const cachedTasks = plugin.storageService.getCachedTasks();
-      return cachedTasks.find((t: any) => t.name === taskName);
-    }, task.name);
+      const cachedTasks = plugin.getCachedTasks();
+      return cachedTasks.find((t: any) => t.title === taskName);
+    }, task.title);
 
     expect(finalTask.status).toBe("Blocked");
     expect(finalTask.done).toBe(false);
@@ -136,7 +136,7 @@ describe("Status Settings Integration with Event System", () => {
         status: "In Progress",
         tags: ["test"],
       },
-      "This task tests dynamic configuration changes.",
+      "This task tests dynamic configuration changes."
     );
 
     // Initially, "In Progress" should not be marked as done
@@ -158,18 +158,18 @@ describe("Status Settings Integration with Event System", () => {
         // Change to a different status and back to trigger the event
         let updatedContent = content.replace(
           "Status: In Progress",
-          "Status: Backlog",
+          "Status: Backlog"
         );
         await app.vault.modify(file, updatedContent);
       }
-    }, task.name);
+    }, task.title);
 
     // Wait for the intermediate change to be processed
     await waitForTaskPropertySync(
       context.page,
-      `Tasks/${task.name}.md`,
+      `Tasks/${task.title}.md`,
       "Status",
-      "Backlog",
+      "Backlog"
     );
 
     // Change back to In Progress
@@ -181,27 +181,27 @@ describe("Status Settings Integration with Event System", () => {
         const content = await app.vault.read(file);
         const updatedContent = content.replace(
           "Status: Backlog",
-          "Status: In Progress",
+          "Status: In Progress"
         );
         await app.vault.modify(file, updatedContent);
       }
-    }, task.name);
+    }, task.title);
 
     // Wait for synchronization with new configuration using smart wait
     await waitForTaskPropertySync(
       context.page,
-      `Tasks/${task.name}.md`,
+      `Tasks/${task.title}.md`,
       "Done",
-      "true",
+      "true"
     );
 
     // Verify the changes using the cached task entity
     const updatedTask = await context.page.evaluate(async (taskName) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const cachedTasks = plugin.storageService.getCachedTasks();
-      return cachedTasks.find((t: any) => t.name === taskName);
-    }, task.name);
+      const cachedTasks = plugin.getCachedTasks();
+      return cachedTasks.find((t: any) => t.title === taskName);
+    }, task.title);
 
     expect(updatedTask.status).toBe("In Progress");
     expect(updatedTask.done).toBe(true);
@@ -228,7 +228,7 @@ describe("Status Settings Integration with Event System", () => {
         status: "Backlog",
         tags: ["test"],
       },
-      "This task tests multiple done statuses.",
+      "This task tests multiple done statuses."
     );
 
     // Test each done status
@@ -245,29 +245,29 @@ describe("Status Settings Integration with Event System", () => {
             const content = await app.vault.read(file);
             const updatedContent = content.replace(
               /Status: \w+/,
-              `Status: ${statusName}`,
+              `Status: ${statusName}`
             );
             await app.vault.modify(file, updatedContent);
           }
         },
-        { taskName: task.name, statusName: status },
+        { taskName: task.title, statusName: status }
       );
 
       // Wait for synchronization using smart wait
       await waitForTaskPropertySync(
         context.page,
-        `Tasks/${task.name}.md`,
+        `Tasks/${task.title}.md`,
         "Done",
-        "true",
+        "true"
       );
 
       // Verify the changes using the cached task entity
       const updatedTask = await context.page.evaluate(async (taskName) => {
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
-        const cachedTasks = plugin.storageService.getCachedTasks();
-        return cachedTasks.find((t: any) => t.name === taskName);
-      }, task.name);
+        const cachedTasks = plugin.getCachedTasks();
+        return cachedTasks.find((t: any) => t.title === taskName);
+      }, task.title);
 
       expect(updatedTask.status).toBe(status);
       expect(updatedTask.done).toBe(true);
@@ -300,7 +300,7 @@ describe("Status Settings Integration with Event System", () => {
         status: "Backlog",
         tags: ["test"],
       },
-      "This task tests status preference logic.",
+      "This task tests status preference logic."
     );
 
     // Change Done to true
@@ -310,23 +310,23 @@ describe("Status Settings Integration with Event System", () => {
       const content = await app.vault.read(file);
       const updatedContent = content.replace("Done: false", "Done: true");
       await app.vault.modify(file, updatedContent);
-    }, task.name);
+    }, task.title);
 
     // Wait for synchronization using smart wait - wait for both Done and Status to be updated
     await waitForStatusChangeComplete(
       context.page,
-      `Tasks/${task.name}.md`,
+      `Tasks/${task.title}.md`,
       "Done",
-      true,
+      true
     );
 
     // Verify Status was changed to a done status (should prefer "Done")
     let updatedTask = await context.page.evaluate(async (taskName) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const cachedTasks = plugin.storageService.getCachedTasks();
-      return cachedTasks.find((t: any) => t.name === taskName);
-    }, task.name);
+      const cachedTasks = plugin.getCachedTasks();
+      return cachedTasks.find((t: any) => t.title === taskName);
+    }, task.title);
 
     expect(updatedTask.done).toBe(true);
     expect(updatedTask.status).toBe("Done");
@@ -338,31 +338,31 @@ describe("Status Settings Integration with Event System", () => {
       const content = await app.vault.read(file);
       const updatedContent = content.replace("Done: true", "Done: false");
       await app.vault.modify(file, updatedContent);
-    }, task.name);
+    }, task.title);
 
     // Wait for synchronization using smart wait
     await waitForTaskPropertySync(
       context.page,
-      `Tasks/${task.name}.md`,
+      `Tasks/${task.title}.md`,
       "Done",
-      "false",
+      "false"
     );
 
     // Also wait for the Status to be updated
     await waitForTaskPropertySync(
       context.page,
-      `Tasks/${task.name}.md`,
+      `Tasks/${task.title}.md`,
       "Status",
-      "Backlog",
+      "Backlog"
     );
 
     // Verify Status was changed to a non-done status (should prefer "Backlog")
     const finalTask = await context.page.evaluate(async (taskName) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const cachedTasks = plugin.storageService.getCachedTasks();
-      return cachedTasks.find((t: any) => t.name === taskName);
-    }, task.name);
+      const cachedTasks = plugin.getCachedTasks();
+      return cachedTasks.find((t: any) => t.title === taskName);
+    }, task.title);
 
     expect(finalTask.done).toBe(false);
     expect(finalTask.status).toBe("Backlog"); // Should prefer "Backlog" over other non-done statuses
@@ -382,7 +382,7 @@ describe("Status Settings Integration with Event System", () => {
         status: "Backlog",
         tags: ["test"],
       },
-      "This task tests settings changes.",
+      "This task tests settings changes."
     );
 
     // Test initial synchronization
@@ -394,26 +394,26 @@ describe("Status Settings Integration with Event System", () => {
         const content = await app.vault.read(file);
         const updatedContent = content.replace(
           "Status: Backlog",
-          "Status: Done",
+          "Status: Done"
         );
         await app.vault.modify(file, updatedContent);
       }
-    }, task.name);
+    }, task.title);
 
     // Wait for synchronization using smart wait
     await waitForTaskPropertySync(
       context.page,
-      `Tasks/${task.name}.md`,
+      `Tasks/${task.title}.md`,
       "Done",
-      "true",
+      "true"
     );
 
     let updatedTask = await context.page.evaluate(async (taskName) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const cachedTasks = plugin.storageService.getCachedTasks();
-      return cachedTasks.find((t: any) => t.name === taskName);
-    }, task.name);
+      const cachedTasks = plugin.getCachedTasks();
+      return cachedTasks.find((t: any) => t.title === taskName);
+    }, task.title);
 
     expect(updatedTask.status).toBe("Done");
     expect(updatedTask.done).toBe(true);
@@ -432,26 +432,26 @@ describe("Status Settings Integration with Event System", () => {
         const content = await app.vault.read(file);
         const updatedContent = content.replace(
           "Status: Done",
-          "Status: Review",
+          "Status: Review"
         );
         await app.vault.modify(file, updatedContent);
       }
-    }, task.name);
+    }, task.title);
 
     // Wait for synchronization using smart wait
     await waitForTaskPropertySync(
       context.page,
-      `Tasks/${task.name}.md`,
+      `Tasks/${task.title}.md`,
       "Done",
-      "false",
+      "false"
     );
 
     const finalTask = await context.page.evaluate(async (taskName) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const cachedTasks = plugin.storageService.getCachedTasks();
-      return cachedTasks.find((t: any) => t.name === taskName);
-    }, task.name);
+      const cachedTasks = plugin.getCachedTasks();
+      return cachedTasks.find((t: any) => t.title === taskName);
+    }, task.title);
 
     expect(finalTask.status).toBe("Review");
     expect(finalTask.done).toBe(false); // Review is not marked as done

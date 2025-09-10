@@ -50,8 +50,8 @@ export async function createTask(
       // Create the task using the plugin API (this will trigger automatic caching)
       await plugin.createTask(taskData);
 
-      // Wait a bit for the event system to process the creation
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Wait for store refresh operations to complete
+      await plugin.waitForStoreRefresh();
 
       // Get the cached task from task store
       const cachedTasks = plugin.getCachedTasks();
@@ -98,8 +98,8 @@ export async function createArea(
       // Create the area using the plugin API (this will trigger automatic caching)
       await plugin.createArea(areaData);
 
-      // Wait a bit for the event system to process the creation
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Wait for store refresh operations to complete
+      await plugin.waitForStoreRefresh();
 
       // Get the cached area from area store
       const cachedAreas = plugin.getCachedAreas();
@@ -148,8 +148,11 @@ export async function createProject(
       // Create the project using the plugin API (this will trigger automatic caching)
       await plugin.createProject(projectData);
 
-      // Wait a bit for the event system to process the creation
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Give a small delay for file system events to be processed
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Wait for store refresh operations to complete
+      await plugin.waitForStoreRefresh();
 
       // Get the cached project from project store
       const cachedProjects = plugin.getCachedProjects();

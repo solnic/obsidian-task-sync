@@ -29,26 +29,26 @@ describe("Area Template Management", () => {
     // Check if template file was created
     const templateExists = await fileExists(
       context.page,
-      "Templates/TestArea.md",
+      "Templates/TestArea.md"
     );
     expect(templateExists).toBe(true);
 
     // Check template content structure
     const templateContent = await getFileContent(
       context.page,
-      "Templates/TestArea.md",
+      "Templates/TestArea.md"
     );
 
     // Should have proper front-matter structure for areas
     expect(templateContent).toContain("---");
     expect(templateContent).toContain("Name:");
     expect(templateContent).toContain("Type:");
-    expect(templateContent).toContain("Project:");
+    expect(templateContent).toContain("tags:");
     // No longer expect {{description}} placeholder as it's not supported
 
     // Should have clean empty values (empty strings render with quotes in YAML)
     expect(templateContent).toMatch(/Name:\s*['"]?['"]?\s*$/m);
-    expect(templateContent).toMatch(/Project:\s*['"]?['"]?\s*$/m);
+    expect(templateContent).toMatch(/Type:\s*Area\s*$/m);
   });
 
   test("should handle existing template file conflict", async () => {
@@ -60,7 +60,7 @@ describe("Area Template Management", () => {
       const app = (window as any).app;
       await app.vault.create(
         "Templates/ExistingArea.md",
-        "Existing template content",
+        "Existing template content"
       );
     });
 
@@ -107,18 +107,18 @@ describe("Area Template Management", () => {
     // Check if custom template was created
     const templateExists = await fileExists(
       context.page,
-      "Templates/CustomArea.md",
+      "Templates/CustomArea.md"
     );
     expect(templateExists).toBe(true);
 
     // Verify it has proper structure
     const templateContent = await getFileContent(
       context.page,
-      "Templates/CustomArea.md",
+      "Templates/CustomArea.md"
     );
     expect(templateContent).toContain("Name:");
     expect(templateContent).toContain("Type:");
-    expect(templateContent).toContain("Project:");
+    expect(templateContent).toContain("tags:");
   });
 
   test("should use default template filename from settings when none specified", async () => {
@@ -150,7 +150,7 @@ describe("Area Template Management", () => {
     // Check if default template was created
     const templateExists = await fileExists(
       context.page,
-      "Templates/DefaultArea.md",
+      "Templates/DefaultArea.md"
     );
     expect(templateExists).toBe(true);
   });
@@ -174,7 +174,7 @@ describe("Area Template Management", () => {
     // Check template content is clean
     const templateContent = await getFileContent(
       context.page,
-      "Templates/CleanArea.md",
+      "Templates/CleanArea.md"
     );
 
     // Should not have any pre-filled values
@@ -188,16 +188,14 @@ describe("Area Template Management", () => {
     const lines = templateContent.split("\n");
     const nameLineIndex = lines.findIndex((line) => line.startsWith("Name:"));
     const typeLineIndex = lines.findIndex((line) => line.startsWith("Type:"));
-    const projectLineIndex = lines.findIndex((line) =>
-      line.startsWith("Project:"),
-    );
+    const tagsLineIndex = lines.findIndex((line) => line.startsWith("tags:"));
 
     expect(nameLineIndex).toBeGreaterThan(-1);
     expect(typeLineIndex).toBeGreaterThan(-1);
-    expect(projectLineIndex).toBeGreaterThan(-1);
+    expect(tagsLineIndex).toBeGreaterThan(-1);
 
     // Check that values are empty (empty strings render with quotes in YAML)
     expect(lines[nameLineIndex]).toMatch(/^Name:\s*['"]?['"]?\s*$/);
-    expect(lines[projectLineIndex]).toMatch(/^Project:\s*['"]?['"]?\s*$/);
+    expect(lines[typeLineIndex]).toMatch(/^Type:\s*Area\s*$/);
   });
 });

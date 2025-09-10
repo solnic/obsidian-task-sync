@@ -103,6 +103,15 @@ export default class TaskSyncPlugin extends Plugin {
     return areaStore.getEntities();
   }
 
+  // Wait for store refresh operations to complete (for e2e testing)
+  public async waitForStoreRefresh() {
+    await Promise.all([
+      taskStore.waitForRefresh(),
+      projectStore.waitForRefresh(),
+      areaStore.waitForRefresh(),
+    ]);
+  }
+
   // Global context system
   private currentContext: FileContext = { type: "none" };
 
@@ -163,19 +172,19 @@ export default class TaskSyncPlugin extends Plugin {
     );
 
     // Initialize stores with file managers
-    taskStore.initialize(
+    await taskStore.initialize(
       this.app,
       this,
       this.settings.tasksFolder,
       this.taskFileManager
     );
-    projectStore.initialize(
+    await projectStore.initialize(
       this.app,
       this,
       this.settings.projectsFolder,
       this.projectFileManager
     );
-    areaStore.initialize(
+    await areaStore.initialize(
       this.app,
       this,
       this.settings.areasFolder,

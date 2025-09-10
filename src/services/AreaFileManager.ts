@@ -130,9 +130,8 @@ export class AreaFileManager extends FileManager {
    */
   async loadEntity(file: TFile): Promise<Area | null> {
     try {
-      // Use Obsidian's metadata cache to get front-matter
-      const cache = this.app.metadataCache.getFileCache(file);
-      const frontMatter = cache?.frontmatter || {};
+      // Wait for metadata cache to be ready for this file
+      const frontMatter = await this.waitForMetadataCache(file);
 
       // Check if this is a valid area file
       if (frontMatter.Type !== "Area") {
@@ -152,6 +151,48 @@ export class AreaFileManager extends FileManager {
       console.warn(`Failed to load area from ${file.path}:`, error);
       return null;
     }
+  }
+
+  /**
+   * Wait for metadata cache to have front-matter for the given file
+   */
+  private async waitForMetadataCache(file: TFile): Promise<any> {
+    // First try to get from cache immediately
+    let frontMatter = this.app.metadataCache.getFileCache(file)?.frontmatter;
+
+    if (frontMatter && Object.keys(frontMatter).length > 0) {
+      return frontMatter;
+    }
+
+    // If not available, wait for metadata cache to be updated
+    return new Promise((resolve) => {
+      const checkCache = () => {
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (cache?.frontmatter && Object.keys(cache.frontmatter).length > 0) {
+          resolve(cache.frontmatter);
+          return true;
+        }
+        return false;
+      };
+
+      // Check immediately in case it was just updated
+      if (checkCache()) return;
+
+      // Listen for metadata cache changes
+      const onMetadataChange = (changedFile: TFile) => {
+        if (changedFile.path === file.path && checkCache()) {
+          this.app.metadataCache.off("changed", onMetadataChange);
+        }
+      };
+
+      this.app.metadataCache.on("changed", onMetadataChange);
+
+      // Fallback timeout to prevent hanging
+      setTimeout(() => {
+        this.app.metadataCache.off("changed", onMetadataChange);
+        resolve(this.app.metadataCache.getFileCache(file)?.frontmatter || {});
+      }, 1000);
+    });
   }
 
   /**

@@ -32,6 +32,9 @@ export abstract class EntityStore<T extends BaseEntity> {
   // Public store interface
   public subscribe: Readable<EntityStoreState<T>>["subscribe"];
 
+  // Track ongoing refresh operations
+  private refreshPromise: Promise<void> | null = null;
+
   constructor(storageKey: string) {
     this.storageKey = storageKey;
     this._store = writable<EntityStoreState<T>>({
@@ -46,20 +49,25 @@ export abstract class EntityStore<T extends BaseEntity> {
   /**
    * Initialize the store with Obsidian app instance and plugin
    */
-  initialize(app: App, plugin: Plugin, folder: string, fileManager?: any) {
+  async initialize(
+    app: App,
+    plugin: Plugin,
+    folder: string,
+    fileManager?: any
+  ) {
     this.app = app;
     this.plugin = plugin;
     this.fileManager = fileManager;
     this.folder = folder;
 
     // Load persisted data first
-    this.loadPersistedData();
+    await this.loadPersistedData();
 
     // Set up file system watchers for reactive updates
     this.setupFileWatchers();
 
     // Initial load from file system
-    this.refreshEntities();
+    await this.refreshEntities();
   }
 
   /**
@@ -68,10 +76,30 @@ export abstract class EntityStore<T extends BaseEntity> {
   async refreshEntities() {
     if (!this.app) return;
 
+    // If there's already a refresh in progress, wait for it
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    // Start a new refresh operation
+    this.refreshPromise = this.performRefresh();
+
+    try {
+      await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
+    }
+  }
+
+  /**
+   * Internal method to perform the actual refresh
+   */
+  private async performRefresh() {
     this._store.update((state) => ({ ...state, loading: true, error: null }));
 
     try {
       const entities = await this.loadAllEntities();
+
       this._store.update((state) => ({
         ...state,
         entities,
@@ -157,6 +185,15 @@ export abstract class EntityStore<T extends BaseEntity> {
   }
 
   /**
+   * Wait for any ongoing refresh operations to complete
+   */
+  async waitForRefresh(): Promise<void> {
+    if (this.refreshPromise) {
+      await this.refreshPromise;
+    }
+  }
+
+  /**
    * Load all entities from the file system
    */
   private async loadAllEntities(): Promise<T[]> {
@@ -169,16 +206,9 @@ export abstract class EntityStore<T extends BaseEntity> {
     const entities: T[] = [];
 
     for (const file of entityFiles) {
-      try {
-        const entityData = await this.parseFileToEntity(file);
-        if (entityData) {
-          entities.push(entityData);
-        }
-      } catch (error) {
-        console.warn(
-          `Failed to parse ${this.storageKey} file ${file.path}:`,
-          error
-        );
+      const entityData = await this.parseFileToEntity(file);
+      if (entityData) {
+        entities.push(entityData);
       }
     }
 
@@ -190,17 +220,13 @@ export abstract class EntityStore<T extends BaseEntity> {
    */
   private async parseFileToEntity(file: TFile): Promise<T | null> {
     if (!this.fileManager) {
-      console.warn("No file manager available for parsing entity");
-      return null;
+      throw new Error(
+        `No file manager available for parsing ${this.storageKey} entity`
+      );
     }
 
-    try {
-      // Use the file manager's loadEntity method
-      return await this.fileManager.loadEntity(file);
-    } catch (error) {
-      console.warn(`Failed to parse entity file ${file.path}:`, error);
-      return null;
-    }
+    // Use the file manager's loadEntity method - let errors bubble up
+    return await this.fileManager.loadEntity(file);
   }
 
   /**
@@ -212,7 +238,13 @@ export abstract class EntityStore<T extends BaseEntity> {
     // Watch for file changes in the entity folder
     this.app.vault.on("create", (file) => {
       if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
-        this.refreshEntities();
+        // Don't await here to avoid blocking the event handler
+        this.refreshEntities().catch((error) => {
+          console.error(
+            `Failed to refresh ${this.storageKey}s after file creation:`,
+            error
+          );
+        });
       }
     });
 
@@ -224,7 +256,13 @@ export abstract class EntityStore<T extends BaseEntity> {
 
     this.app.vault.on("modify", (file) => {
       if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
-        this.refreshEntities();
+        // Don't await here to avoid blocking the event handler
+        this.refreshEntities().catch((error) => {
+          console.error(
+            `Failed to refresh ${this.storageKey}s after file modification:`,
+            error
+          );
+        });
       }
     });
 
@@ -233,7 +271,13 @@ export abstract class EntityStore<T extends BaseEntity> {
         (file instanceof TFile && file.path.startsWith(this.folder + "/")) ||
         oldPath.startsWith(this.folder + "/")
       ) {
-        this.refreshEntities();
+        // Don't await here to avoid blocking the event handler
+        this.refreshEntities().catch((error) => {
+          console.error(
+            `Failed to refresh ${this.storageKey}s after file rename:`,
+            error
+          );
+        });
       }
     });
   }
