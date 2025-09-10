@@ -36,6 +36,7 @@ export interface Task extends BaseEntity {
   parentTask?: string; // PARENT_TASK
   project?: string; // PROJECT
   areas?: string[]; // AREAS
+  doDate?: string; // DO_DATE - date when task should be done
   tags?: string[]; // TAGS
 
   // Internal attributes (not front-matter)

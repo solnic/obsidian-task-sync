@@ -164,6 +164,105 @@ describe("LocalTasksService", () => {
       timeout: 5000,
     });
   });
+
+  test("should add task to today's daily note in day planning mode", async () => {
+    // Create a test task directly using plugin API
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const taskData = {
+        title: "Daily Planning Task",
+        category: "Feature",
+        priority: "High",
+      };
+
+      await plugin.createTask(taskData);
+    });
+
+    // Create a daily note to simulate day planning mode
+    const today = new Date().toISOString().split("T")[0];
+    const dailyNotePath = `Daily Notes/${today}.md`;
+
+    await context.page.evaluate(async (path) => {
+      const app = (window as any).app;
+      const content = `# ${new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      })}\n\n## Notes\n\n## Tasks\n\n## Reflections\n`;
+
+      // Ensure Daily Notes folder exists
+      const folder = app.vault.getAbstractFileByPath("Daily Notes");
+      if (!folder) {
+        await app.vault.createFolder("Daily Notes");
+      }
+
+      // Create the daily note
+      await app.vault.create(path, content);
+    }, dailyNotePath);
+
+    // Open the daily note to activate day planning mode
+    await context.page.evaluate(async (path) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (file) {
+        await app.workspace.getLeaf().openFile(file);
+      }
+    }, dailyNotePath);
+
+    // Open Tasks view and switch to local service
+    await openTasksView(context.page);
+    const localTab = context.page.locator('[data-testid="service-local"]');
+    await localTab.click();
+
+    // Wait for tasks to load
+    await context.page.waitForSelector('[data-testid="local-task-item"]', {
+      timeout: 10000,
+    });
+
+    // Wait for the context to update to daily note mode
+    await context.page.waitForSelector(".context-badge.daily-note", {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Verify we're in daily note mode
+    const dailyNoteBadge = context.page.locator(".context-badge.daily-note");
+    const badgeText = await dailyNoteBadge.textContent();
+    expect(badgeText).toContain("Daily Note Mode");
+
+    // Should now be in day planning mode - hover over task to see "Add to today" button
+    const taskItem = context.page
+      .locator('[data-testid="local-task-item"]')
+      .first();
+    await taskItem.hover();
+
+    // Wait for "Add to today" button to appear
+    await context.page.waitForSelector('[data-testid="add-to-today-button"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Click the "Add to today" button
+    const addToTodayButton = context.page.locator(
+      '[data-testid="add-to-today-button"]'
+    );
+    await addToTodayButton.click();
+
+    // Verify the task was added to the daily note
+    const dailyNoteContent = await context.page.evaluate(async (path) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (file) {
+        return await app.vault.read(file);
+      }
+      return "";
+    }, dailyNotePath);
+
+    expect(dailyNoteContent).toContain("- [ ] [[Daily Planning Task]]");
+  });
 });
 
 /**

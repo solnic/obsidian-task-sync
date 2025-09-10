@@ -92,9 +92,6 @@ export class ProjectPropertyHandler implements EventHandler {
     }
 
     await this.updatePropertiesInContent(filePath);
-    console.log(
-      `ProjectPropertyHandler: Updated default properties in ${filePath}`
-    );
   }
 
   /**

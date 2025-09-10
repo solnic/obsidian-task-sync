@@ -206,13 +206,8 @@ export abstract class EntityStore<T extends BaseEntity> {
     const entities: T[] = [];
 
     for (const file of entityFiles) {
-      try {
-        const entityData = await this.parseFileToEntity(file);
-        entities.push(entityData);
-      } catch (error) {
-        // Skip files that are not valid entities (e.g., wrong Type property)
-        console.debug(`Skipping file ${file.path}: ${error.message}`);
-      }
+      const entityData = await this.parseFileToEntity(file);
+      entities.push(entityData);
     }
 
     return entities;

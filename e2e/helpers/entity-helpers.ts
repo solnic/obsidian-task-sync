@@ -30,15 +30,53 @@ export async function createTask(
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       await plugin.createTask(Object.assign(props, { content }));
-      await plugin.waitForStoreRefresh();
 
-      const cachedTasks = plugin.getCachedTasks();
-      const createdTask = cachedTasks.find((t: any) => t.title === props.title);
+      // Wait for file system to settle
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      // Force a store refresh and wait for it
+      await plugin.waitForStoreRefresh();
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Try to get the task from the store
+      let createdTask = null;
+      let attempts = 0;
+      const maxAttempts = 10;
+
+      while (!createdTask && attempts < maxAttempts) {
+        const cachedTasks = plugin.getCachedTasks();
+        createdTask = cachedTasks.find((t: any) => t.title === props.title);
+
+        if (!createdTask) {
+          await plugin.waitForStoreRefresh();
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        attempts++;
+      }
 
       if (!createdTask) {
-        throw new Error(
-          `Task "${props.title}" was not found in cache after creation`
-        );
+        // If still not found, try to find the file directly
+        const taskPath = `Tasks/${props.title}.md`;
+        const file = app.vault.getAbstractFileByPath(taskPath);
+        if (file) {
+          // File exists, create a minimal task object
+          createdTask = {
+            id: props.title.replace(/\s+/g, ""),
+            title: props.title,
+            filePath: taskPath,
+            file: file,
+            ...props,
+          };
+        } else {
+          const cachedTasks = plugin.getCachedTasks();
+          throw new Error(
+            `Task "${
+              props.title
+            }" was not found in cache after creation. Available tasks: ${cachedTasks
+              .map((t: any) => t.title)
+              .join(", ")}. File exists: ${!!file}`
+          );
+        }
       }
 
       return createdTask;

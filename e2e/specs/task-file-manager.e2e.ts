@@ -305,4 +305,37 @@ This is the main content of the task.
       "This is a detailed task description that should appear as the file content."
     );
   });
+
+  test("should create task with Do Date property", async () => {
+    const taskData = {
+      title: "Task with Do Date",
+      priority: "Medium",
+      doDate: "2024-01-15",
+      done: false,
+      status: "Backlog",
+    };
+
+    const taskPath = await context.page.evaluate(async (data) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Access the taskFileManager instance
+      const taskFileManager = plugin.taskFileManager;
+
+      return await taskFileManager.createTaskFile(data);
+    }, taskData);
+
+    // Verify the task file was created
+    const taskExists = await fileExists(context.page, taskPath);
+    expect(taskExists).toBe(true);
+
+    // Verify Do Date property is in front-matter
+    await verifyTaskProperties(context.page, taskPath, {
+      Title: "Task with Do Date",
+      Priority: "Medium",
+      "Do Date": "2024-01-15T00:00:00.000Z",
+      Done: false,
+      Status: "Backlog",
+    });
+  });
 });

@@ -91,6 +91,7 @@ export interface TaskSyncSettings {
   projectsFolder: string;
   areasFolder: string;
   templateFolder: string;
+  dailyNotesFolder: string;
   useTemplater: boolean;
   defaultTaskTemplate: string;
   defaultProjectTemplate: string;

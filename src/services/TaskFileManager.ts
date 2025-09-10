@@ -24,6 +24,7 @@ export interface TaskCreationData extends FileCreationData {
   done?: boolean;
   status?: string;
   parentTask?: string;
+  doDate?: string;
   tags?: string[];
 }
 
@@ -275,6 +276,7 @@ export class TaskFileManager extends FileManager {
       parentTask: frontMatter["Parent task"],
       project: frontMatter.Project,
       areas: frontMatter.Areas,
+      doDate: frontMatter["Do Date"],
       tags: frontMatter.tags,
       source: frontMatter.source,
     };

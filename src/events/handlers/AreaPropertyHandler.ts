@@ -92,9 +92,6 @@ export class AreaPropertyHandler implements EventHandler {
     }
 
     await this.updatePropertiesInContent(filePath);
-    console.log(
-      `AreaPropertyHandler: Updated default properties in ${filePath}`
-    );
   }
 
   /**

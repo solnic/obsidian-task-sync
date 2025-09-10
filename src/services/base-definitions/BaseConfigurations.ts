@@ -103,6 +103,12 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
     link: true,
     frontmatter: true,
   },
+  DO_DATE: {
+    key: "doDate",
+    name: "Do Date",
+    type: "date",
+    frontmatter: true,
+  },
   TAGS: {
     key: "tags",
     name: "tags",
@@ -141,6 +147,7 @@ export const PROPERTY_SETS = {
     "DONE",
     "STATUS",
     "PARENT_TASK",
+    "DO_DATE",
     "TAGS",
   ] as const,
   TASKS_BASE: [
@@ -153,6 +160,7 @@ export const PROPERTY_SETS = {
     "DONE",
     "STATUS",
     "PARENT_TASK",
+    "DO_DATE",
     "TAGS",
     "CREATED_AT",
     "UPDATED_AT",

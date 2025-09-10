@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { Notice } from "obsidian";
   import { getPluginContext } from "./context";
   import ContextWidget from "./ContextWidget.svelte";
   import { taskStore } from "../../stores/taskStore";
@@ -30,7 +31,7 @@
 
   onMount(() => {
     loadTasks();
-    
+
     // Subscribe to task store updates
     const unsubscribe = taskStore.subscribe((state) => {
       tasks = state.entities;
@@ -43,14 +44,15 @@
 
   function searchTasks(query: string, taskList: Task[]): Task[] {
     const lowerQuery = query.toLowerCase();
-    
+
     return taskList.filter(
       (task) =>
         task.title.toLowerCase().includes(lowerQuery) ||
         (task.category && task.category.toLowerCase().includes(lowerQuery)) ||
         (task.status && task.status.toLowerCase().includes(lowerQuery)) ||
         (task.project && task.project.toLowerCase().includes(lowerQuery)) ||
-        (task.areas && task.areas.some(area => area.toLowerCase().includes(lowerQuery)))
+        (task.areas &&
+          task.areas.some((area) => area.toLowerCase().includes(lowerQuery)))
     );
   }
 
@@ -72,11 +74,25 @@
   }
 
   async function addToToday(task: Task): Promise<void> {
-    // Placeholder implementation for day planning mode
-    plugin.app.workspace.trigger(
-      "notice",
-      `Add to today functionality not yet implemented for: ${task.title}`
-    );
+    try {
+      // Use the DailyNoteService to add the task to today's daily note
+      const result = await plugin.dailyNoteService.addTaskToToday(
+        task.filePath
+      );
+
+      if (result.success) {
+        new Notice(`Added "${task.title}" to today's daily note`);
+      } else {
+        new Notice(
+          `Failed to add task to today: ${result.error || "Unknown error"}`
+        );
+      }
+    } catch (error: any) {
+      console.error("Error adding task to today:", error);
+      new Notice(
+        `Error adding task to today: ${error.message || "Unknown error"}`
+      );
+    }
   }
 
   // Expose methods for the wrapper
@@ -128,9 +144,7 @@
         {error}
       </div>
     {:else if isLoading}
-      <div class="loading-indicator">
-        Loading local tasks...
-      </div>
+      <div class="loading-indicator">Loading local tasks...</div>
     {:else}
       <div class="tasks-list">
         {#if filteredTasks.length === 0}

@@ -43,6 +43,7 @@ import { taskStore } from "./stores/taskStore";
 import { projectStore } from "./stores/projectStore";
 import { areaStore } from "./stores/areaStore";
 import { TodoPromotionService } from "./services/TodoPromotionService";
+import { DailyNoteService } from "./services/DailyNoteService";
 import { initializeContextStore } from "./components/svelte/context";
 
 // Re-export types for backward compatibility
@@ -89,6 +90,7 @@ export default class TaskSyncPlugin extends Plugin {
   areaFileManager: AreaFileManager;
   projectFileManager: ProjectFileManager;
   todoPromotionService: TodoPromotionService;
+  dailyNoteService: DailyNoteService;
 
   // Expose store access methods for e2e testing
   public getCachedTasks() {
@@ -169,6 +171,13 @@ export default class TaskSyncPlugin extends Plugin {
       (taskData: any) => this.createTask(taskData),
       () => this.detectCurrentFileContext(),
       () => this.refreshBaseViews()
+    );
+
+    // Initialize DailyNoteService
+    this.dailyNoteService = new DailyNoteService(
+      this.app,
+      this.app.vault,
+      this.settings
     );
 
     // Initialize stores with file managers
@@ -319,6 +328,14 @@ export default class TaskSyncPlugin extends Plugin {
       callback: async () => {
         const result = await this.todoPromotionService.revertPromotedTodo();
         new Notice(result.message);
+      },
+    });
+
+    this.addCommand({
+      id: "add-to-today",
+      name: "Add to Today",
+      callback: async () => {
+        await this.addCurrentTaskToToday();
       },
     });
 
@@ -1470,6 +1487,49 @@ export default class TaskSyncPlugin extends Plugin {
     }
 
     return config;
+  }
+
+  /**
+   * Add current task to today's daily note
+   */
+  private async addCurrentTaskToToday(): Promise<void> {
+    try {
+      // Get the currently active file
+      const activeFile = this.app.workspace.getActiveFile();
+
+      if (!activeFile) {
+        new Notice("No file is currently open");
+        return;
+      }
+
+      // Check if the current file is a task
+      const frontMatter =
+        this.app.metadataCache.getFileCache(activeFile)?.frontmatter;
+      if (!frontMatter || frontMatter.Type !== "Task") {
+        new Notice("Current file is not a task");
+        return;
+      }
+
+      // Add the task to today's daily note
+      const result = await this.dailyNoteService.addTaskToToday(
+        activeFile.path
+      );
+
+      if (result.success) {
+        new Notice(
+          `Added "${
+            frontMatter.Title || activeFile.name
+          }" to today's daily note`
+        );
+      } else {
+        new Notice(
+          `Failed to add to today: ${result.error || "Unknown error"}`
+        );
+      }
+    } catch (error: any) {
+      console.error("Error adding current task to today:", error);
+      new Notice(`Error adding to today: ${error.message || "Unknown error"}`);
+    }
   }
 
   /**

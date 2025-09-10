@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import { Notice } from "obsidian";
   import { getPluginContext } from "./context";
   import ContextWidget from "./ContextWidget.svelte";
   import FilterButton from "./FilterButton.svelte";
@@ -307,6 +308,7 @@
       const config = dependencies.getDefaultImportConfig();
       const result = await githubService.importIssueAsTask(issue, config);
 
+      // Handle successful import or existing task
       if (result.success) {
         if (result.skipped) {
           plugin.app.workspace.trigger(
@@ -321,11 +323,52 @@
         }
         importedIssues.add(issue.number);
         importedIssues = new Set(importedIssues); // Trigger reactivity
+      } else if (
+        result.error &&
+        result.error.includes("Task already exists:")
+      ) {
+        // Handle existing task case - extract the file path from the error message
+        const existingTaskPath = result.error.replace(
+          "Task already exists: ",
+          ""
+        );
+
+        // Set the taskFilePath so we can still add to daily note
+        result.taskFilePath = existingTaskPath;
+        result.success = true; // Treat as success for daily note purposes
+
+        plugin.app.workspace.trigger(
+          "notice",
+          `Task already exists: ${issue.title}`
+        );
+        importedIssues.add(issue.number);
+        importedIssues = new Set(importedIssues); // Trigger reactivity
       } else {
         plugin.app.workspace.trigger(
           "notice",
           `Failed to import issue: ${result.error}`
         );
+      }
+
+      // If in day planning mode, add to today's daily note (for both new and existing tasks)
+      if (dayPlanningMode && result.taskFilePath) {
+        try {
+          const dailyResult = await plugin.dailyNoteService.addTaskToToday(
+            result.taskFilePath
+          );
+          if (dailyResult.success) {
+            new Notice(`Added "${issue.title}" to today's daily note`);
+          } else {
+            new Notice(
+              `Failed to add to today: ${dailyResult.error || "Unknown error"}`
+            );
+          }
+        } catch (dailyErr: any) {
+          console.error("Error adding to today:", dailyErr);
+          new Notice(
+            `Error adding to today: ${dailyErr.message || "Unknown error"}`
+          );
+        }
       }
     } catch (err: any) {
       plugin.app.workspace.trigger(
@@ -368,6 +411,35 @@
         }
         importedPullRequests.add(pr.number);
         importedPullRequests = new Set(importedPullRequests); // Trigger reactivity
+
+        // If in day planning mode, also add to today's daily note
+        console.log(
+          "🔄 GitHub PR import - dayPlanningMode:",
+          dayPlanningMode,
+          "taskFilePath:",
+          result.taskFilePath
+        );
+        if (dayPlanningMode && result.taskFilePath) {
+          try {
+            console.log("🔄 Adding GitHub PR to today's daily note:", pr.title);
+            const dailyResult = await plugin.dailyNoteService.addTaskToToday(
+              result.taskFilePath
+            );
+            console.log("🔄 GitHub PR daily note result:", dailyResult);
+            if (dailyResult.success) {
+              new Notice(`Added "${pr.title}" to today's daily note`);
+            } else {
+              new Notice(
+                `Failed to add to today: ${dailyResult.error || "Unknown error"}`
+              );
+            }
+          } catch (dailyErr: any) {
+            console.error("Error adding to today:", dailyErr);
+            new Notice(
+              `Error adding to today: ${dailyErr.message || "Unknown error"}`
+            );
+          }
+        }
       } else {
         plugin.app.workspace.trigger(
           "notice",
