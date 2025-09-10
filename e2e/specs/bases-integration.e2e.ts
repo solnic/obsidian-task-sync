@@ -270,7 +270,6 @@ describe("Bases Integration UI", () => {
   test("should filter tasks correctly by task type in base UI views", async () => {
     await setupTest();
 
-    // Create an area using helper
     await createArea(context, {
       name: "Engineering",
       description: "Engineering Area",
@@ -328,7 +327,7 @@ describe("Bases Integration UI", () => {
       }
     });
 
-    await openFile(context, "Areas/Development.md");
+    await openFile(context, "Areas/Engineering.md");
     await waitForBaseView(context);
 
     // Verify the base view is visible
