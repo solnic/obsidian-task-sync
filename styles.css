@@ -1597,6 +1597,13 @@ Provides consistent styling for all UI components
   padding: 1rem;
 }
 
+.tasks-view-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
 .service-icon[data-icon="github"]::before {
   content: "🐙";
   font-size: 16px;
@@ -1608,13 +1615,25 @@ Provides consistent styling for all UI components
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0; /* Critical for flex children to shrink */
 }
 
 .github-service {
   display: flex;
   flex-direction: column;
   height: 100%;
+  max-height: 100%;
   padding: 0;
+  overflow: hidden;
+}
+
+.local-tasks-service {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  padding: 0;
+  overflow: hidden;
 }
 
 /* GitHub Issues View Styles */
@@ -1624,6 +1643,8 @@ Provides consistent styling for all UI components
   flex-direction: column;
   height: 100%;
   padding: 0;
+  min-height: 0; /* Allow flex child to shrink */
+  overflow: hidden; /* Prevent content from overflowing */
 }
 
 /* Header Section */
@@ -1805,7 +1826,40 @@ button.tab-item.active {
 .github-issues-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 8px;
+  min-height: 0; /* Ensure flex child can shrink below content size */
+  max-height: 100%; /* Prevent content from growing beyond container */
+  height: 0; /* Force flex child to respect container height */
+}
+
+.local-tasks-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px;
+  min-height: 0; /* Ensure flex child can shrink below content size */
+  max-height: 100%; /* Prevent content from growing beyond container */
+  height: 0; /* Force flex child to respect container height */
+}
+
+/* Task Lists */
+.tasks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.pull-requests-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 /* State Messages */
@@ -2022,6 +2076,24 @@ button.tab-item.active {
 }
 
 .github-issues-content::-webkit-scrollbar-thumb:hover {
+  background: var(--background-modifier-border-hover);
+}
+
+/* Local Tasks Content Scrollbar styling */
+.local-tasks-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.local-tasks-content::-webkit-scrollbar-track {
+  background: var(--background-primary);
+}
+
+.local-tasks-content::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.local-tasks-content::-webkit-scrollbar-thumb:hover {
   background: var(--background-modifier-border-hover);
 }
 
