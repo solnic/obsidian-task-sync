@@ -104,14 +104,20 @@ Provides consistent styling for all UI components
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.task-sync-form-actions button {
+/* Base button styles - unified for all task-sync buttons */
+.task-sync-button-base,
+.task-sync-form-actions button,
+.task-sync-cancel-button,
+.task-sync-create-button,
+.task-sync-submit-button,
+.task-sync-import-button,
+.task-sync-filter-toggle {
   padding: 8px 16px;
   border-radius: 6px;
   font-weight: 500;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
-  border: 1px solid transparent;
 }
 
 .task-sync-form-actions .mod-cancel {
@@ -461,7 +467,6 @@ Provides consistent styling for all UI components
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  min-width: 150px;
 }
 
 .task-sync-filter-group label {
@@ -1469,14 +1474,10 @@ Provides consistent styling for all UI components
 }
 
 .task-sync-cancel-button {
-  padding: 8px 16px;
   border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
   background: var(--background-primary);
   color: var(--text-normal);
-  cursor: pointer;
   font-size: 0.9em;
-  transition: all 0.1s ease;
 }
 
 .task-sync-cancel-button:hover {
@@ -1484,15 +1485,10 @@ Provides consistent styling for all UI components
 }
 
 .task-sync-create-button {
-  padding: 8px 16px;
   border: none;
-  border-radius: 6px;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   font-size: 0.9em;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.1s ease;
 }
 
 .task-sync-create-button:hover {
@@ -1931,12 +1927,12 @@ button.tab-item.active {
   border-bottom: 1px solid var(--background-primary);
 }
 
-/* Repository Selector */
-.repository-selector {
+/* Repository Selector - scoped to task-sync */
+.task-sync-repository-selector {
   margin-bottom: 8px;
 }
 
-.repository-selector select {
+.task-sync-repository-selector select {
   width: 100%;
   padding: 4px 8px;
   border: 1px solid var(--background-modifier-border);
@@ -1946,20 +1942,20 @@ button.tab-item.active {
   font-size: 12px;
 }
 
-/* Issue Filters */
-.issue-filters {
+/* Issue Filters - scoped to task-sync */
+.task-sync-issue-filters {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.filter-row {
+.task-sync-filter-row {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-.repository-select {
+.task-sync-repository-select {
   width: 200px;
   padding: 4px 8px;
   border: 1px solid var(--background-modifier-border);
@@ -1982,28 +1978,71 @@ button.tab-item.active {
 
 .task-sync-filter-section {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+/* Filter rows */
+.task-sync-filter-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
   flex-wrap: wrap;
+}
+
+.task-sync-filter-row--primary {
+  /* Toggle buttons row */
+  gap: 16px;
+}
+
+.task-sync-filter-row--secondary {
+  /* Dropdown filters row */
+  gap: 16px;
+}
+
+/* Filter groups */
+.task-sync-filter-group {
+  display: flex;
+}
+
+.task-sync-filter-group--type,
+.task-sync-filter-group--state {
+  /* Toggle button groups */
+  flex-shrink: 0;
+}
+
+.task-sync-filter-group--org,
+.task-sync-filter-group--repo,
+.task-sync-filter-group--dropdown {
+  /* Dropdown filter groups */
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Local tasks filters - simple horizontal layout */
+.task-sync-local-filters {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 0;
 }
 
 /* Filter Toggle Buttons - unified style for type and state filters */
 .task-sync-type-filters,
 .task-sync-state-filters {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
 .task-sync-filter-toggle {
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
   font-size: 13px;
-  font-weight: 500;
   color: var(--text-muted);
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  transition: all 0.2s ease;
   white-space: nowrap;
+  min-width: 80px;
+  text-align: center;
 }
 
 .task-sync-filter-toggle.active {
@@ -2116,20 +2155,8 @@ button.tab-item.active {
   height: 0; /* Force flex child to respect container height */
 }
 
-/* Task Lists */
-.tasks-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.issues-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.pull-requests-list {
+/* Task Lists - unified class for all list types */
+.task-sync-task-list {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -2154,19 +2181,7 @@ button.tab-item.active {
   color: var(--interactive-accent);
 }
 
-/* Issues List */
-.task-sync-issues-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* Pull Requests List */
-.task-sync-pull-requests-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+/* Issues and Pull Requests Lists - use unified task-sync-task-list class */
 
 .task-sync-issue-item {
   padding: 12px;
@@ -2262,30 +2277,25 @@ button.tab-item.active {
   font-weight: 500;
 }
 
-/* Import Button */
-.import-button {
-  padding: 8px 16px;
+/* Import Button - scoped to task-sync */
+.task-sync-import-button {
   border: 1px solid var(--interactive-accent);
   background: var(--interactive-accent);
   color: var(--text-on-accent);
-  border-radius: 6px;
-  cursor: pointer;
   font-size: 0.875rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
   white-space: nowrap;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.import-button:hover {
+.task-sync-import-button:hover {
   background: var(--interactive-accent-hover);
   border-color: var(--interactive-accent-hover);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Import Status Indicators */
-.import-status {
+/* Import Status Indicators - scoped to task-sync */
+.task-sync-import-status {
   padding: 8px 16px;
   border-radius: 6px;
   font-size: 0.875rem;
@@ -2294,13 +2304,13 @@ button.tab-item.active {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-.import-status.imported {
+.task-sync-import-status.imported {
   background: var(--color-green);
   color: var(--text-on-accent);
   border: 1px solid var(--color-green);
 }
 
-.import-status.importing {
+.task-sync-import-status.importing {
   background: var(--color-orange);
   color: var(--text-on-accent);
   border: 1px solid var(--color-orange);
@@ -2319,7 +2329,43 @@ button.tab-item.active {
   }
 }
 
-/* GitHub Issues View Responsive adjustments */
+@media (max-width: 768px) {
+  .task-sync-filter-section {
+    gap: 12px;
+    padding: 12px 0;
+  }
+
+  .task-sync-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .task-sync-filter-row--primary {
+    flex-direction: row;
+    justify-content: center;
+    gap: 12px;
+  }
+
+  .task-sync-filter-group--org,
+  .task-sync-filter-group--repo,
+  .task-sync-filter-group--dropdown {
+    min-width: 0;
+  }
+
+  .task-sync-filter-toggle {
+    padding: 6px 12px;
+    min-width: 70px;
+    font-size: 12px;
+  }
+
+  .task-sync-local-filters {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 0;
+  }
+}
+
 @media (max-width: 400px) {
   .github-issues-header {
     padding: 6px;
@@ -2330,6 +2376,23 @@ button.tab-item.active {
   }
 
   .issue-title {
+    font-size: 12px;
+  }
+
+  .task-sync-filter-section {
+    gap: 16px;
+    padding: 12px 0;
+  }
+
+  .task-sync-type-filters,
+  .task-sync-state-filters {
+    gap: 8px;
+    padding: 2px;
+  }
+
+  .task-sync-filter-toggle {
+    padding: 6px 12px;
+    min-width: 70px;
     font-size: 12px;
   }
 }

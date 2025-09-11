@@ -528,81 +528,98 @@
       />
 
       <!-- Filter Section -->
-      <div class="filter-section">
-        <!-- Type filters (Issues/Pull Requests) -->
-        <div class="task-sync-type-filters">
-          <button
-            class="task-sync-filter-toggle {activeTab === 'issues'
-              ? 'active'
-              : ''}"
-            data-tab="issues"
-            data-testid="issues-tab"
-            onclick={() => setActiveTab("issues")}
-            type="button"
-          >
-            Issues
-          </button>
-          <button
-            class="task-sync-filter-toggle {activeTab === 'pull-requests'
-              ? 'active'
-              : ''}"
-            data-tab="pull-requests"
-            data-testid="pull-requests-tab"
-            onclick={() => setActiveTab("pull-requests")}
-            type="button"
-          >
-            Pull Requests
-          </button>
+      <div class="task-sync-filter-section">
+        <!-- Primary filters row -->
+        <div class="task-sync-filter-row task-sync-filter-row--primary">
+          <!-- Type filters (Issues/Pull Requests) -->
+          <div class="task-sync-filter-group task-sync-filter-group--type">
+            <div class="task-sync-type-filters">
+              <button
+                class="task-sync-filter-toggle {activeTab === 'issues'
+                  ? 'active'
+                  : ''}"
+                data-tab="issues"
+                data-testid="issues-tab"
+                onclick={() => setActiveTab("issues")}
+                type="button"
+              >
+                Issues
+              </button>
+              <button
+                class="task-sync-filter-toggle {activeTab === 'pull-requests'
+                  ? 'active'
+                  : ''}"
+                data-tab="pull-requests"
+                data-testid="pull-requests-tab"
+                onclick={() => setActiveTab("pull-requests")}
+                type="button"
+              >
+                Pull Requests
+              </button>
+            </div>
+          </div>
+
+          <!-- State filters -->
+          <div class="task-sync-filter-group task-sync-filter-group--state">
+            <div class="task-sync-state-filters">
+              <button
+                class="task-sync-filter-toggle {currentState === 'open'
+                  ? 'active'
+                  : ''}"
+                data-state="open"
+                data-testid="open-filter"
+                onclick={() => setStateFilter("open")}
+              >
+                Open
+              </button>
+              <button
+                class="task-sync-filter-toggle {currentState === 'closed'
+                  ? 'active'
+                  : ''}"
+                data-state="closed"
+                data-testid="closed-filter"
+                onclick={() => setStateFilter("closed")}
+              >
+                Closed
+              </button>
+            </div>
+          </div>
         </div>
 
-        <!-- State filters -->
-        <div class="task-sync-state-filters">
-          <button
-            class="task-sync-filter-toggle {currentState === 'open'
-              ? 'active'
-              : ''}"
-            data-state="open"
-            data-testid="open-filter"
-            onclick={() => setStateFilter("open")}
-          >
-            Open
-          </button>
-          <button
-            class="task-sync-filter-toggle {currentState === 'closed'
-              ? 'active'
-              : ''}"
-            data-state="closed"
-            data-testid="closed-filter"
-            onclick={() => setStateFilter("closed")}
-          >
-            Closed
-          </button>
-        </div>
-        <!-- Organization filter -->
-        <FilterButton
-          label="Organization"
-          currentValue={currentOrganization || "All organizations"}
-          options={availableOrganizations}
-          placeholder="All organizations"
-          onselect={(value) =>
-            setOrganizationFilter(value === "All organizations" ? null : value)}
-          testId="organization-filter"
-          autoSuggest={true}
-          allowClear={true}
-        />
+        <!-- Secondary filters row -->
+        <div class="task-sync-filter-row task-sync-filter-row--secondary">
+          <!-- Organization filter -->
+          <div class="task-sync-filter-group task-sync-filter-group--org">
+            <FilterButton
+              label="Organization"
+              currentValue={currentOrganization || "All organizations"}
+              options={availableOrganizations}
+              placeholder="All organizations"
+              onselect={(value) =>
+                setOrganizationFilter(
+                  value === "All organizations" ? null : value
+                )}
+              testId="organization-filter"
+              autoSuggest={true}
+              allowClear={true}
+            />
+          </div>
 
-        <!-- Repository filter -->
-        <FilterButton
-          label="Repository"
-          currentValue={currentRepository || "All repositories"}
-          options={sortedRepositories.map((repo) => repo.full_name)}
-          placeholder="All repositories"
-          onselect={(value) =>
-            setRepository(value === "All repositories" ? null : value)}
-          testId="repository-filter"
-          autoSuggest={true}
-          allowClear={true}
-        />
+          <!-- Repository filter -->
+          <div class="task-sync-filter-group task-sync-filter-group--repo">
+            <FilterButton
+              label="Repository"
+              currentValue={currentRepository || "All repositories"}
+              options={sortedRepositories.map((repo) => repo.full_name)}
+              placeholder="All repositories"
+              onselect={(value) =>
+                setRepository(value === "All repositories" ? null : value)}
+              testId="repository-filter"
+              autoSuggest={true}
+              allowClear={true}
+            />
+          </div>
+        </div>
       </div>
     </div>
   </div>

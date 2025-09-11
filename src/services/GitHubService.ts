@@ -33,6 +33,14 @@ export interface GitHubIssue {
   html_url: string;
 }
 
+export interface GitHubLabel {
+  id: number;
+  name: string;
+  color: string;
+  description?: string;
+  default: boolean;
+}
+
 export interface GitHubPullRequest {
   id: number;
   number: number;
@@ -90,6 +98,7 @@ export class GitHubService {
   private octokit: Octokit | null = null;
   private settings: TaskSyncSettings;
   private labelTypeMapper: LabelTypeMapper;
+  private labelCache: Map<string, GitHubLabel[]> = new Map(); // Cache labels by repository
 
   // Import functionality dependencies (injected for testing)
   public taskImportManager?: TaskImportManager;
@@ -343,6 +352,54 @@ export class GitHubService {
       return response.data as GitHubRepository[];
     } catch (error) {
       throw error;
+    }
+  }
+
+  /**
+   * Fetch labels for a GitHub repository with caching
+   */
+  async fetchLabels(repository: string): Promise<GitHubLabel[]> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    if (!this.validateRepository(repository)) {
+      throw new Error("Invalid repository format. Expected: owner/repo");
+    }
+
+    // Check cache first
+    if (this.labelCache.has(repository)) {
+      return this.labelCache.get(repository)!;
+    }
+
+    const [owner, repo] = repository.split("/");
+
+    try {
+      const response = await this.octokit.rest.issues.listLabelsForRepo({
+        owner,
+        repo,
+        per_page: 100,
+      });
+
+      const labels = response.data as GitHubLabel[];
+
+      // Cache the labels
+      this.labelCache.set(repository, labels);
+
+      return labels;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Clear label cache for a specific repository or all repositories
+   */
+  clearLabelCache(repository?: string): void {
+    if (repository) {
+      this.labelCache.delete(repository);
+    } else {
+      this.labelCache.clear();
     }
   }
 

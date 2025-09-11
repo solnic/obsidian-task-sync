@@ -169,7 +169,7 @@
       />
 
       <!-- Filter Dropdowns -->
-      <div class="filter-section">
+      <div class="task-sync-local-filters">
         <FilterDropdown
           label="Project"
           currentValue={selectedProject}
