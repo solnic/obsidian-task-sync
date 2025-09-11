@@ -236,7 +236,9 @@
               }}
               {dayPlanningMode}
               onAddToToday={addToToday}
-              testId="local-task-item"
+              testId="local-task-item-{task.title
+                .replace(/\s+/g, '-')
+                .toLowerCase()}"
             />
           {/each}
         {/if}

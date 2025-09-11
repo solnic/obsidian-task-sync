@@ -15,30 +15,12 @@ import { createTask } from "../helpers/entity-helpers";
 describe("LocalTasksService", () => {
   const context = setupE2ETestHooks();
 
-  beforeEach(async () => {
+  beforeAll(async () => {
     await createTestFolders(context.page);
-    await toggleSidebar(context.page, "right", true);
   });
 
-  test("should display local tasks service tab", async () => {
-    // Open Tasks view
-    await openTasksView(context.page);
-
-    // Check that local service tab is visible
-    await context.page.waitForSelector('[data-testid="service-local"]', {
-      state: "visible",
-      timeout: 10000,
-    });
-
-    // Click on local service tab
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
-
-    // Verify local tasks service content is displayed
-    await context.page.waitForSelector('[data-testid="local-tasks-service"]', {
-      state: "visible",
-      timeout: 10000,
-    });
+  beforeEach(async () => {
+    await toggleSidebar(context.page, "right", true);
   });
 
   test("should display local tasks from vault", async () => {
@@ -63,12 +45,12 @@ describe("LocalTasksService", () => {
     await localTab.click();
 
     // Wait for tasks to load
-    await context.page.waitForSelector('[data-testid="local-task-item"]', {
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
       timeout: 10000,
     });
 
     // Verify tasks are displayed
-    const taskItems = context.page.locator('[data-testid="local-task-item"]');
+    const taskItems = context.page.locator('[data-testid^="local-task-item-"]');
     const taskCount = await taskItems.count();
     expect(taskCount).toBeGreaterThanOrEqual(2);
 
@@ -97,7 +79,7 @@ describe("LocalTasksService", () => {
     await localTab.click();
 
     // Wait for tasks to load
-    await context.page.waitForSelector('[data-testid="local-task-item"]', {
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
       timeout: 10000,
     });
 
@@ -112,7 +94,7 @@ describe("LocalTasksService", () => {
 
     // Verify only matching task is shown
     const visibleTasks = context.page.locator(
-      '[data-testid="local-task-item"]:visible'
+      '[data-testid^="local-task-item-"]:visible'
     );
     const visibleCount = await visibleTasks.count();
     expect(visibleCount).toBe(1);
@@ -134,7 +116,7 @@ describe("LocalTasksService", () => {
     await localTab.click();
 
     // Wait for tasks to load
-    await context.page.waitForSelector('[data-testid="local-task-item"]', {
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
       timeout: 10000,
     });
 
@@ -166,7 +148,7 @@ describe("LocalTasksService", () => {
 
     // Initially should show "Open" button on hover (not in daily note mode)
     const taskItem = context.page
-      .locator('[data-testid="local-task-item"]')
+      .locator('[data-testid^="local-task-item-"]')
       .first();
     await taskItem.hover();
 
@@ -210,6 +192,12 @@ describe("LocalTasksService", () => {
         await app.vault.createFolder("Daily Notes");
       }
 
+      // Delete existing daily note if it exists
+      const existingFile = app.vault.getAbstractFileByPath(path);
+      if (existingFile) {
+        await app.vault.delete(existingFile);
+      }
+
       // Create the daily note
       await app.vault.create(path, content);
     }, dailyNotePath);
@@ -229,9 +217,12 @@ describe("LocalTasksService", () => {
     await localTab.click();
 
     // Wait for tasks to load
-    await context.page.waitForSelector('[data-testid="local-task-item"]', {
-      timeout: 10000,
-    });
+    await context.page.waitForSelector(
+      '[data-testid="local-task-item-daily-planning-task"]',
+      {
+        timeout: 10000,
+      }
+    );
 
     // Wait for the context to update to daily note mode
     await context.page.waitForSelector(
@@ -251,10 +242,10 @@ describe("LocalTasksService", () => {
       .textContent();
     expect(contextText).toContain("Daily Note");
 
-    // Should now be in day planning mode - hover over task to see "Add to today" button
-    const taskItem = context.page
-      .locator('[data-testid="local-task-item"]')
-      .first();
+    // Should now be in day planning mode - hover over the specific task to see "Add to today" button
+    const taskItem = context.page.locator(
+      '[data-testid="local-task-item-daily-planning-task"]'
+    );
     await taskItem.hover();
 
     // Wait for "Add to today" button to appear
@@ -374,7 +365,7 @@ This is a test task created directly in the vault.`;
     await context.page.waitForFunction(
       () => {
         const taskItems = document.querySelectorAll(
-          '[data-testid="local-task-item"]'
+          '[data-testid^="local-task-item-"]'
         );
         return taskItems.length >= 3;
       },
@@ -382,7 +373,7 @@ This is a test task created directly in the vault.`;
     );
 
     // Verify all tasks are displayed in the UI
-    const taskItems = context.page.locator('[data-testid="local-task-item"]');
+    const taskItems = context.page.locator('[data-testid^="local-task-item-"]');
     const taskCount = await taskItems.count();
 
     expect(taskCount).toBeGreaterThanOrEqual(3);

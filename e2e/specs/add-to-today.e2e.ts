@@ -297,6 +297,12 @@ describe("Add to Today Functionality", () => {
         await app.vault.createFolder(folderPath);
       }
 
+      // Delete existing daily note if it exists
+      const existingFile = app.vault.getAbstractFileByPath(path);
+      if (existingFile) {
+        await app.vault.delete(existingFile);
+      }
+
       await app.vault.create(
         path,
         "# Today's Daily Note\n\n## Tasks\n\n## Notes"
@@ -333,10 +339,14 @@ describe("Add to Today Functionality", () => {
     );
 
     // Wait for tasks to load
-    await context.page.waitForSelector('[data-testid="local-task-item"]');
+    await context.page.waitForSelector(
+      '[data-testid="local-task-item-local-service-test-task"]'
+    );
 
-    // Hover over the first task to show the "Add to today" button
-    await context.page.hover('[data-testid="local-task-item"]:first-child');
+    // Hover over the specific task to show the "Add to today" button
+    await context.page.hover(
+      '[data-testid="local-task-item-local-service-test-task"]'
+    );
     await context.page.waitForSelector('[data-testid="add-to-today-button"]');
 
     // Wait a moment for the button to be fully interactive
