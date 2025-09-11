@@ -1773,12 +1773,9 @@ Provides consistent styling for all UI components
   overflow: hidden; /* Prevent content from overflowing */
 }
 
-/* Header Section */
-.github-issues-header {
-  border-bottom: 1px solid var(--background-modifier-border);
-  padding: 8px;
-  background: var(--background-primary);
-}
+
+
+
 
 .tab-header {
   display: flex;
@@ -1873,6 +1870,56 @@ button.tab-item.active {
   font-size: 12px;
 }
 
+/* Unified Task Service Header Styles */
+.local-tasks-header {
+  margin-bottom: 1rem;
+}
+
+.search-and-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-section {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Filter Toggle Buttons - unified style for type and state filters */
+.type-filters,
+.state-filters {
+  display: flex;
+  gap: 4px;
+}
+
+.filter-toggle {
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.filter-toggle.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.filter-toggle:hover:not(.active) {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-color: var(--background-modifier-border-hover);
+}
+
+/* Legacy state filter styles for backward compatibility */
 .state-filters {
   display: flex;
   gap: 4px;

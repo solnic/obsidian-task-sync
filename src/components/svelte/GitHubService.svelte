@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
   import { getPluginContext } from "./context";
-  import FilterButton from "./FilterButton.svelte";
+  import AutoSuggestInput from "./AutoSuggestInput.svelte";
   import SearchInput from "./SearchInput.svelte";
   import type {
     GitHubIssue,
@@ -285,11 +285,13 @@
     }
   }
 
-  async function setRepository(repository: string): Promise<void> {
-    currentRepository = repository;
-    await loadIssues();
-    if (activeTab === "pull-requests") {
-      await loadPullRequests();
+  async function setRepository(repository: string | null): Promise<void> {
+    if (repository) {
+      currentRepository = repository;
+      await loadIssues();
+      if (activeTab === "pull-requests") {
+        await loadPullRequests();
+      }
     }
   }
 
@@ -510,82 +512,9 @@
   data-testid="github-service"
 >
   <!-- Header Section -->
-  <div class="github-issues-header">
-    <!-- Tab header -->
-    <div class="tab-header">
-      <button
-        class="tab-item {activeTab === 'issues' ? 'active' : ''}"
-        data-tab="issues"
-        data-testid="issues-tab"
-        onclick={() => setActiveTab("issues")}
-        type="button"
-      >
-        Issues
-      </button>
-      <button
-        class="tab-item {activeTab === 'pull-requests' ? 'active' : ''}"
-        data-tab="pull-requests"
-        data-testid="pull-requests-tab"
-        onclick={() => setActiveTab("pull-requests")}
-        type="button"
-      >
-        Pull Requests
-      </button>
-    </div>
-
-    <!-- Issue filters -->
-    <div class="issue-filters">
-      <!-- Organization filter -->
-      <div class="filter-row">
-        <FilterButton
-          label="Organization"
-          currentValue={currentOrganization || "All Organizations"}
-          options={["All Organizations", ...availableOrganizations]}
-          onselect={(value) =>
-            setOrganizationFilter(value === "All Organizations" ? null : value)}
-          placeholder="All Organizations"
-          testId="organization-filter"
-        />
-      </div>
-
-      <!-- Repository filter -->
-      <div class="filter-row">
-        <select
-          bind:value={currentRepository}
-          onchange={() => setRepository(currentRepository)}
-          data-testid="repository-select"
-          class="repository-select"
-        >
-          {#each sortedRepositories as repo}
-            <option value={repo.full_name}>{repo.full_name}</option>
-          {/each}
-          {#if currentRepository && !sortedRepositories.find((r) => r.full_name === currentRepository)}
-            <option value={currentRepository}>{currentRepository}</option>
-          {/if}
-        </select>
-      </div>
-
-      <!-- State filters -->
-      <div class="state-filters">
-        <button
-          class="state-filter {currentState === 'open' ? 'active' : ''}"
-          data-state="open"
-          data-testid="open-filter"
-          onclick={() => setStateFilter("open")}
-        >
-          Open
-        </button>
-        <button
-          class="state-filter {currentState === 'closed' ? 'active' : ''}"
-          data-state="closed"
-          data-testid="closed-filter"
-          onclick={() => setStateFilter("closed")}
-        >
-          Closed
-        </button>
-      </div>
-
-      <!-- Search input -->
+  <div class="local-tasks-header">
+    <!-- Search and Filters -->
+    <div class="search-and-filters">
       <SearchInput
         bind:value={searchQuery}
         placeholder="Search {activeTab === 'issues'
@@ -595,6 +524,72 @@
         onRefresh={refresh}
         testId="search-input"
       />
+
+      <!-- Filter Section -->
+      <div class="filter-section">
+        <!-- Type filters (Issues/Pull Requests) -->
+        <div class="type-filters">
+          <button
+            class="filter-toggle {activeTab === 'issues' ? 'active' : ''}"
+            data-tab="issues"
+            data-testid="issues-tab"
+            onclick={() => setActiveTab("issues")}
+            type="button"
+          >
+            Issues
+          </button>
+          <button
+            class="filter-toggle {activeTab === 'pull-requests'
+              ? 'active'
+              : ''}"
+            data-tab="pull-requests"
+            data-testid="pull-requests-tab"
+            onclick={() => setActiveTab("pull-requests")}
+            type="button"
+          >
+            Pull Requests
+          </button>
+        </div>
+
+        <!-- State filters -->
+        <div class="state-filters">
+          <button
+            class="filter-toggle {currentState === 'open' ? 'active' : ''}"
+            data-state="open"
+            data-testid="open-filter"
+            onclick={() => setStateFilter("open")}
+          >
+            Open
+          </button>
+          <button
+            class="filter-toggle {currentState === 'closed' ? 'active' : ''}"
+            data-state="closed"
+            data-testid="closed-filter"
+            onclick={() => setStateFilter("closed")}
+          >
+            Closed
+          </button>
+        </div>
+        <!-- Organization filter -->
+        <AutoSuggestInput
+          label="Organization"
+          bind:value={currentOrganization}
+          suggestions={availableOrganizations}
+          placeholder="Type organization name..."
+          onselect={(value) => setOrganizationFilter(value)}
+          testId="organization-filter"
+        />
+
+        <!-- Repository filter -->
+        <AutoSuggestInput
+          label="Repository"
+          bind:value={currentRepository}
+          suggestions={sortedRepositories.map((repo) => repo.full_name)}
+          placeholder="Type repository name..."
+          onselect={(value) => setRepository(value)}
+          testId="repository-filter"
+        />
+      </div>
     </div>
   </div>
 

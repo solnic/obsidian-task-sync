@@ -178,25 +178,23 @@
           isActive={!!contextFilters.project}
         />
 
-        {#if !contextFilters.area}
-          <FilterDropdown
-            label="Area"
-            currentValue={selectedArea}
-            options={filterOptions.areas}
-            onselect={(value) => (selectedArea = value)}
-            testId="area-filter"
-          />
-        {/if}
+        <FilterDropdown
+          label="Area"
+          currentValue={selectedArea}
+          options={filterOptions.areas}
+          onselect={(value) => (selectedArea = value)}
+          testId="area-filter"
+          isActive={!!contextFilters.area}
+        />
 
-        {#if !contextFilters.parentTask}
-          <FilterDropdown
-            label="Parent"
-            currentValue={selectedParentTask}
-            options={filterOptions.parentTasks}
-            onselect={(value) => (selectedParentTask = value)}
-            testId="parent-task-filter"
-          />
-        {/if}
+        <FilterDropdown
+          label="Parent"
+          currentValue={selectedParentTask}
+          options={filterOptions.parentTasks}
+          onselect={(value) => (selectedParentTask = value)}
+          testId="parent-task-filter"
+          isActive={!!contextFilters.parentTask}
+        />
       </div>
     </div>
   </div>
@@ -288,22 +286,6 @@
 </div>
 
 <style>
-  .local-tasks-header {
-    margin-bottom: 1rem;
-  }
-
-  .search-and-filters {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .filter-section {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   .task-title {
     font-weight: 600;
     margin-bottom: 0.5rem;
