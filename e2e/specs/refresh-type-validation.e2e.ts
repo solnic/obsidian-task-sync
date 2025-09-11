@@ -13,11 +13,12 @@ import {
 describe("Refresh Type Validation", () => {
   const context = setupE2ETestHooks();
 
-  test("should not create bases for files without correct Type property", async () => {
+  beforeAll(async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
+  });
 
-    // Enable individual bases
+  test("should not create bases for files without correct Type property", async () => {
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -103,10 +104,6 @@ Invalid area file.`
   });
 
   test("should skip task files without Type property during refresh", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create valid task using helper
     await createTask(
       context,
       {
@@ -194,10 +191,6 @@ Task with wrong Type property.`
   });
 
   test("should add Status field to task files during refresh", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create task files that will be missing Status field after manual front-matter modification
     await createTask(
       context,
       {
