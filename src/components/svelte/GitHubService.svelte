@@ -353,6 +353,9 @@
         }
         importedIssues.add(issue.number);
         importedIssues = new Set(importedIssues); // Trigger reactivity
+
+        // Refresh task store to ensure it knows about the new task
+        await taskStore.refreshTasks();
       } else if (
         result.error &&
         result.error.includes("Task already exists:")
@@ -644,11 +647,12 @@
           <div class="task-sync-empty-message">No issues found.</div>
         {:else}
           {#each filteredIssues as issue}
-            {@const isImported = taskStore.isTaskImported(
-              "github",
-              `github-${issue.id}`
-            )}
             {@const isImporting = importingIssues.has(issue.number)}
+            {@const isImported = $taskStore.entities.some(
+              (task) =>
+                task.source?.name === "github" &&
+                task.source?.key === `github-${issue.id}`
+            )}
             <GitHubIssueItem
               {issue}
               isHovered={hoveredIssue === issue.number}
@@ -669,11 +673,12 @@
           <div class="task-sync-empty-message">No pull requests found.</div>
         {:else}
           {#each filteredPullRequests as pr}
-            {@const isImported = taskStore.isTaskImported(
-              "github",
-              `github-pr-${pr.id}`
-            )}
             {@const isImporting = importingPullRequests.has(pr.number)}
+            {@const isImported = $taskStore.entities.some(
+              (task) =>
+                task.source?.name === "github" &&
+                task.source?.key === `github-pr-${pr.id}`
+            )}
             <GitHubPullRequestItem
               pullRequest={pr}
               isHovered={hoveredPullRequest === pr.number}

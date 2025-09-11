@@ -677,6 +677,9 @@ export async function clickIssueImportButton(
   // Hover over the issue to make the import button appear
   await issueLocator.hover();
 
+  // Give a small delay for the action overlay to render
+  await page.waitForTimeout(100);
+
   // Wait for the import button to appear and click it
   const importButton = issueLocator.locator(
     '[data-testid="issue-import-button"]'
