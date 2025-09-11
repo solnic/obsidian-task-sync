@@ -47,8 +47,9 @@ export async function getSharedTestContext(): Promise<SharedTestContext> {
   }
 
   // Create isolated environment for this worker
-  const { testId, vaultPath, dataPath } =
-    await createIsolatedTestEnvironment(workerId);
+  const { testId, vaultPath, dataPath } = await createIsolatedTestEnvironment(
+    workerId
+  );
 
   // Create Electron instance using simplified setup
   const { setupObsidianElectron } = await import("./task-sync-setup");
@@ -61,7 +62,7 @@ export async function getSharedTestContext(): Promise<SharedTestContext> {
   } catch (setupError) {
     console.error(
       `❌ Failed to setup Obsidian for ${workerId}:`,
-      setupError.message,
+      setupError.message
     );
 
     // Try to capture any available debug information
@@ -80,7 +81,7 @@ export async function getSharedTestContext(): Promise<SharedTestContext> {
       }
     } catch (debugError) {
       console.warn(
-        `⚠️ Could not capture debug info for setup failure: ${debugError.message}`,
+        `⚠️ Could not capture debug info for setup failure: ${debugError.message}`
       );
     }
 
@@ -129,18 +130,18 @@ export async function cleanupTestState(): Promise<void> {
  */
 async function resetVaultToPristineState(
   vaultPath: string,
-  dataPath: string,
+  dataPath: string
 ): Promise<void> {
   // Step 1: Preserve plugin files before vault reset
   const pluginDir = path.join(
     vaultPath,
     ".obsidian",
     "plugins",
-    "obsidian-task-sync",
+    "obsidian-task-sync"
   );
   const tempPluginDir = path.join(
     path.dirname(vaultPath),
-    "temp-plugin-backup",
+    "temp-plugin-backup"
   );
 
   let pluginFilesExist = false;
@@ -171,7 +172,7 @@ async function resetVaultToPristineState(
     if (fs.existsSync(obsidianJsonPath)) {
       try {
         const obsidianConfig = JSON.parse(
-          await fs.promises.readFile(obsidianJsonPath, "utf8"),
+          await fs.promises.readFile(obsidianJsonPath, "utf8")
         );
         if (obsidianConfig.vaults) {
           for (const vaultId in obsidianConfig.vaults) {
@@ -180,7 +181,7 @@ async function resetVaultToPristineState(
         }
         await fs.promises.writeFile(
           obsidianJsonPath,
-          JSON.stringify(obsidianConfig, null, 2),
+          JSON.stringify(obsidianConfig, null, 2)
         );
       } catch (error) {
         console.warn(`⚠️ Failed to update obsidian.json: ${error.message}`);
@@ -242,7 +243,7 @@ export async function cleanupAllWorkerContexts(): Promise<void> {
         } catch (error) {
           console.log(
             `⚠️ Error closing Electron app for ${workerId}:`,
-            error.message,
+            error.message
           );
         }
       }
@@ -273,7 +274,7 @@ async function cleanupOldTestArtifacts(testName: string): Promise<void> {
       const testDebugDirs = entries.filter(
         (entry) =>
           entry.isDirectory() &&
-          entry.name.startsWith(`test-failure-${testName}`),
+          entry.name.startsWith(`test-failure-${testName}`)
       );
 
       for (const dir of testDebugDirs) {
@@ -284,7 +285,7 @@ async function cleanupOldTestArtifacts(testName: string): Promise<void> {
           });
         } catch (error) {
           console.warn(
-            `⚠️ Could not remove old debug directory ${dir.name}: ${error.message}`,
+            `⚠️ Could not remove old debug directory ${dir.name}: ${error.message}`
           );
         }
       }
@@ -299,7 +300,7 @@ async function cleanupOldTestArtifacts(testName: string): Promise<void> {
  */
 export async function captureScreenshotOnFailure(
   context: SharedTestContext,
-  name: string,
+  name: string
 ): Promise<void> {
   try {
     // Create test-specific directory structure in debug folder
@@ -317,7 +318,7 @@ export async function captureScreenshotOnFailure(
     // Check if page is still available
     if (!context.page || context.page.isClosed()) {
       console.warn(
-        `⚠️ Page is not available or closed, trying Electron windows`,
+        `⚠️ Page is not available or closed, trying Electron windows`
       );
 
       try {
@@ -325,7 +326,7 @@ export async function captureScreenshotOnFailure(
         if (windows.length > 0) {
           const appScreenshotPath = screenshotPath.replace(
             ".png",
-            "-electron.png",
+            "-electron.png"
           );
           await windows[0].screenshot({
             path: appScreenshotPath,
@@ -336,7 +337,7 @@ export async function captureScreenshotOnFailure(
         }
       } catch (electronError) {
         console.warn(
-          `⚠️ Electron window screenshot failed: ${electronError.message}`,
+          `⚠️ Electron window screenshot failed: ${electronError.message}`
         );
       }
     } else {
@@ -361,7 +362,7 @@ export async function captureScreenshotOnFailure(
           if (windows.length > 0) {
             const appScreenshotPath = screenshotPath.replace(
               ".png",
-              "-app.png",
+              "-app.png"
             );
             await windows[0].screenshot({
               path: appScreenshotPath,
@@ -374,7 +375,7 @@ export async function captureScreenshotOnFailure(
           }
         } catch (appError) {
           console.warn(
-            `⚠️ Electron window screenshot also failed: ${appError.message}`,
+            `⚠️ Electron window screenshot also failed: ${appError.message}`
           );
         }
       }
@@ -409,7 +410,7 @@ export async function captureScreenshotOnFailure(
       const debugPath = screenshotPath.replace(".png", "-debug.json");
       await fs.promises.writeFile(
         debugPath,
-        JSON.stringify(debugInfo, null, 2),
+        JSON.stringify(debugInfo, null, 2)
       );
     } catch (debugError) {
       console.warn(`⚠️ Debug info capture failed: ${debugError.message}`);
@@ -424,7 +425,7 @@ export async function captureScreenshotOnFailure(
  */
 async function copyVaultForDebug(
   context: SharedTestContext,
-  debugDir: string,
+  debugDir: string
 ): Promise<void> {
   try {
     const vaultDebugPath = path.join(debugDir, "vault");
@@ -446,7 +447,7 @@ async function copyVaultForDebug(
 export async function captureFullDebugInfo(
   context: SharedTestContext,
   name: string,
-  consoleLogs?: Array<{ type: string; text: string; timestamp: Date }>,
+  consoleLogs?: Array<{ type: string; text: string; timestamp: Date }>
 ): Promise<void> {
   try {
     const baseDebugDir = path.join(process.cwd(), "e2e", "debug");
@@ -556,10 +557,10 @@ export async function captureFullDebugInfo(
               : null,
             visibleElements: {
               modals: document.querySelectorAll(
-                ".modal-container, .modal-backdrop",
+                ".modal-container, .modal-backdrop"
               ).length,
               sidebars: document.querySelectorAll(
-                ".workspace-ribbon, .side-dock-ribbon",
+                ".workspace-ribbon, .side-dock-ribbon"
               ).length,
               leaves: document.querySelectorAll(".workspace-leaf").length,
               views: document.querySelectorAll("[data-type]").length,
@@ -572,28 +573,28 @@ export async function captureFullDebugInfo(
         // Save the complete HTML structure
         const htmlPath = path.join(
           debugDir,
-          `html-structure-${timestamp}.html`,
+          `html-structure-${timestamp}.html`
         );
         await fs.promises.writeFile(
           htmlPath,
           htmlStructure.htmlContent,
-          "utf8",
+          "utf8"
         );
 
         // Save the metadata separately for easier analysis
         const metadataPath = path.join(
           debugDir,
-          `html-metadata-${timestamp}.json`,
+          `html-metadata-${timestamp}.json`
         );
         await fs.promises.writeFile(
           metadataPath,
-          JSON.stringify(htmlStructure.metadata, null, 2),
+          JSON.stringify(htmlStructure.metadata, null, 2)
         );
 
         console.log(
           `🌐 HTML structure captured: ${htmlPath} (${Math.round(
-            htmlStructure.htmlContent.length / 1024,
-          )}KB)`,
+            htmlStructure.htmlContent.length / 1024
+          )}KB)`
         );
         console.log(`📋 HTML metadata captured: ${metadataPath}`);
       }
@@ -607,7 +608,7 @@ export async function captureFullDebugInfo(
 
 export async function executeCommand(
   context: SharedTestContext,
-  command: string,
+  command: string
 ): Promise<void> {
   await context.page.keyboard.press("Control+P");
   await context.page.waitForSelector(".prompt-input");
@@ -621,19 +622,19 @@ export async function executeCommand(
 export async function waitForNotice(
   context: SharedTestContext,
   expectedText: string,
-  timeout: number = 5000,
+  timeout: number = 5000
 ): Promise<boolean> {
   try {
     await context.page.waitForFunction(
       ({ text }) => {
         const noticeElements = document.querySelectorAll(".notice");
         const notices = Array.from(noticeElements).map(
-          (el) => el.textContent || "",
+          (el) => el.textContent || ""
         );
         return notices.some((notice) => notice.includes(text));
       },
       { text: expectedText },
-      { timeout },
+      { timeout }
     );
     return true;
   } catch (error) {
@@ -648,7 +649,7 @@ export async function waitForNotice(
 export async function expectNotice(
   context: SharedTestContext,
   expectedText: string,
-  timeout: number = 10000,
+  timeout: number = 10000
 ): Promise<void> {
   // First wait for any notice to appear
   try {
@@ -659,13 +660,13 @@ export async function expectNotice(
     // If no notice appears at all, take a screenshot for debugging
     await captureScreenshotOnFailure(
       context,
-      `no-notice-appeared-${expectedText.replace(/[^a-zA-Z0-9]/g, "-")}`,
+      `no-notice-appeared-${expectedText.replace(/[^a-zA-Z0-9]/g, "-")}`
     );
     throw new Error(
       `No notice appeared within ${Math.min(
         timeout,
-        5000,
-      )}ms. Expected notice containing: "${expectedText}"`,
+        5000
+      )}ms. Expected notice containing: "${expectedText}"`
     );
   }
 
@@ -681,12 +682,12 @@ export async function expectNotice(
 
     await captureScreenshotOnFailure(
       context,
-      `wrong-notice-${expectedText.replace(/[^a-zA-Z0-9]/g, "-")}`,
+      `wrong-notice-${expectedText.replace(/[^a-zA-Z0-9]/g, "-")}`
     );
 
     throw new Error(
       `Expected notice containing "${expectedText}" did not appear within ${timeout}ms. ` +
-        `Current notices: ${JSON.stringify(currentNotices)}`,
+        `Current notices: ${JSON.stringify(currentNotices)}`
     );
   }
 }
@@ -696,7 +697,7 @@ export async function expectNotice(
  * @param workerId Optional worker ID for consistent naming across worker processes
  */
 export async function createIsolatedTestEnvironment(
-  workerId?: string,
+  workerId?: string
 ): Promise<{ testId: string; vaultPath: string; dataPath: string }> {
   const testId = workerId || randomUUID();
   const baseTestDir = path.resolve("./e2e/test-environments");
@@ -716,7 +717,7 @@ export async function createIsolatedTestEnvironment(
     // Create minimal vault if pristine doesn't exist
     await fs.promises.mkdir(vaultPath, { recursive: true });
     console.log(
-      `⚠️ Pristine vault not found at ${pristineVaultPath}, created empty vault`,
+      `⚠️ Pristine vault not found at ${pristineVaultPath}, created empty vault`
     );
   }
 
@@ -730,7 +731,7 @@ export async function createIsolatedTestEnvironment(
     if (fs.existsSync(obsidianJsonPath)) {
       try {
         const obsidianConfig = JSON.parse(
-          await fs.promises.readFile(obsidianJsonPath, "utf8"),
+          await fs.promises.readFile(obsidianJsonPath, "utf8")
         );
 
         // Update all vault paths to point to the isolated vault
@@ -742,11 +743,11 @@ export async function createIsolatedTestEnvironment(
 
         await fs.promises.writeFile(
           obsidianJsonPath,
-          JSON.stringify(obsidianConfig, null, 2),
+          JSON.stringify(obsidianConfig, null, 2)
         );
       } catch (error) {
         console.warn(
-          `⚠️ Failed to update obsidian.json vault path: ${error.message}`,
+          `⚠️ Failed to update obsidian.json vault path: ${error.message}`
         );
       }
     }
@@ -754,7 +755,7 @@ export async function createIsolatedTestEnvironment(
     // Create minimal data directory if pristine doesn't exist
     await fs.promises.mkdir(dataPath, { recursive: true });
     console.log(
-      `⚠️ Pristine data not found at ${pristineDataPath}, created empty data directory`,
+      `⚠️ Pristine data not found at ${pristineDataPath}, created empty data directory`
     );
   }
 
@@ -768,7 +769,7 @@ export async function createIsolatedTestEnvironment(
  * Clean up isolated test environment
  */
 export async function cleanupIsolatedTestEnvironment(
-  testId: string,
+  testId: string
 ): Promise<void> {
   const baseTestDir = path.resolve("./e2e/test-environments");
   const testDir = path.join(baseTestDir, testId);
@@ -779,7 +780,7 @@ export async function cleanupIsolatedTestEnvironment(
     } catch (error) {
       console.log(
         `⚠️ Failed to cleanup test environment ${testId}:`,
-        error.message,
+        error.message
       );
     }
   }
@@ -789,13 +790,13 @@ export async function cleanupIsolatedTestEnvironment(
  * Copy the freshly built plugin files to the test environment
  */
 async function copyBuiltPluginToTestEnvironment(
-  vaultPath: string,
+  vaultPath: string
 ): Promise<void> {
   const pluginDir = path.join(
     vaultPath,
     ".obsidian",
     "plugins",
-    "obsidian-task-sync",
+    "obsidian-task-sync"
   );
 
   try {
@@ -818,7 +819,7 @@ async function copyBuiltPluginToTestEnvironment(
     }
   } catch (error) {
     console.error(
-      `❌ Failed to copy built plugin to test environment: ${error.message}`,
+      `❌ Failed to copy built plugin to test environment: ${error.message}`
     );
     throw error;
   }
@@ -872,7 +873,7 @@ async function copyDirectoryContents(src: string, dest: string): Promise<void> {
  */
 async function clearDirectoryContents(
   dirPath: string,
-  preservePaths: string[] = [],
+  preservePaths: string[] = []
 ): Promise<void> {
   if (!fs.existsSync(dirPath)) {
     return;
@@ -975,6 +976,17 @@ async function resetPluginSettings(page: Page): Promise<void> {
               assignee: "",
               labels: [],
             },
+          },
+          // Apple Reminders integration defaults
+          appleRemindersIntegration: {
+            enabled: false,
+            includeCompletedReminders: false,
+            reminderLists: [],
+            syncInterval: 60,
+            excludeAllDayReminders: false,
+            defaultTaskType: "Task",
+            importNotesAsDescription: true,
+            preservePriority: true,
           },
         };
 
@@ -1082,11 +1094,11 @@ export function setupE2ETestHooks(): SharedTestContext {
         await captureFullDebugInfo(
           context,
           `test-failure-${testName}`,
-          consoleLogs,
+          consoleLogs
         );
       } catch (captureError) {
         console.error(
-          `❌ Failed to capture debug info: ${captureError.message}`,
+          `❌ Failed to capture debug info: ${captureError.message}`
         );
 
         // Try a simpler screenshot capture as fallback
@@ -1097,7 +1109,7 @@ export function setupE2ETestHooks(): SharedTestContext {
           await context.page.screenshot({ path: fallbackPath, fullPage: true });
         } catch (fallbackError) {
           console.error(
-            `❌ Even fallback screenshot failed: ${fallbackError.message}`,
+            `❌ Even fallback screenshot failed: ${fallbackError.message}`
           );
         }
       }
@@ -1124,7 +1136,7 @@ export function setupE2ETestHooks(): SharedTestContext {
       get(_target, prop) {
         if (!context) {
           throw new Error(
-            `Context not yet initialized. Make sure you're accessing context properties inside test functions, not at the top level.`,
+            `Context not yet initialized. Make sure you're accessing context properties inside test functions, not at the top level.`
           );
         }
 
@@ -1138,13 +1150,13 @@ export function setupE2ETestHooks(): SharedTestContext {
       set(_target, prop, value) {
         if (!context) {
           throw new Error(
-            `Context not yet initialized. Make sure you're accessing context properties inside test functions, not at the top level.`,
+            `Context not yet initialized. Make sure you're accessing context properties inside test functions, not at the top level.`
           );
         }
         (context as any)[prop] = value;
         return true;
       },
-    },
+    }
   );
 }
 
@@ -1177,7 +1189,7 @@ export async function openFile(context: SharedTestContext, filePath: string) {
 
   await context.page.waitForSelector(
     ".markdown-source-view, .markdown-preview-view",
-    { timeout: 5000 },
+    { timeout: 5000 }
   );
 }
 
@@ -1186,7 +1198,7 @@ export async function openFile(context: SharedTestContext, filePath: string) {
  */
 export async function waitForBaseView(
   context: SharedTestContext,
-  timeout = 5000,
+  timeout = 5000
 ) {
   await context.page.waitForSelector(".bases-view", { timeout });
   await context.page.waitForSelector(".bases-table-container", {

@@ -39,7 +39,7 @@ export interface ExternalTaskData {
   externalUrl: string;
 
   /** Source system type */
-  sourceType: "github" | "linear";
+  sourceType: "github" | "linear" | "apple-reminders";
 
   /** Raw data from source system for reference */
   sourceData: Record<string, any>;
@@ -96,7 +96,7 @@ export interface ImportedTaskMetadata {
   externalId: string;
 
   /** Source system */
-  externalSource: "github" | "linear";
+  externalSource: "github" | "linear" | "apple-reminders";
 
   /** Path to the created Obsidian task */
   taskPath: string;

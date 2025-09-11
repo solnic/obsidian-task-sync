@@ -1,0 +1,302 @@
+/**
+ * E2E tests for Apple Reminders integration
+ */
+
+import { test, expect, describe } from "vitest";
+import { setupE2ETestHooks } from "../helpers/shared-context";
+import type { SharedTestContext } from "../helpers/shared-context";
+
+describe("Apple Reminders Integration", () => {
+  const context = setupE2ETestHooks();
+
+  test("should have Apple Reminders service initialized", async () => {
+    // Check if the Apple Reminders service is properly initialized
+    const hasAppleRemindersService = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      return plugin && plugin.appleRemindersService !== undefined;
+    });
+
+    expect(hasAppleRemindersService).toBe(true);
+  });
+
+  test("should have Apple Reminders commands available on macOS", async () => {
+    // Check if Apple Reminders commands are registered
+    const hasAppleRemindersCommands = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const commands = app.commands.commands;
+
+      // Check for Apple Reminders commands
+      const hasImportCommand =
+        "obsidian-task-sync:import-apple-reminders" in commands;
+      const hasPermissionCommand =
+        "obsidian-task-sync:check-apple-reminders-permissions" in commands;
+
+      return {
+        hasImportCommand,
+        hasPermissionCommand,
+        platform: process.platform,
+      };
+    });
+
+    // Commands should exist if platform is macOS
+    if (hasAppleRemindersCommands.platform === "darwin") {
+      expect(hasAppleRemindersCommands.hasImportCommand).toBe(true);
+      expect(hasAppleRemindersCommands.hasPermissionCommand).toBe(true);
+    } else {
+      // On non-macOS platforms, commands should not be registered
+      expect(hasAppleRemindersCommands.hasImportCommand).toBe(false);
+      expect(hasAppleRemindersCommands.hasPermissionCommand).toBe(false);
+    }
+  });
+
+  test("should have Apple Reminders settings in settings tab", async () => {
+    // Open settings
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      app.setting.open();
+
+      // Navigate to Task Sync plugin settings
+      const pluginTab = app.setting.pluginTabs["obsidian-task-sync"];
+      if (pluginTab) {
+        app.setting.openTabById("obsidian-task-sync");
+      }
+    });
+
+    // Wait for settings to load
+    await context.page.waitForTimeout(1000);
+
+    // Check if Apple Reminders settings section exists
+    const hasAppleRemindersSettings = await context.page.evaluate(() => {
+      const settingsContainer = document.querySelector(".modal-content");
+      if (!settingsContainer) return false;
+
+      // Look for Apple Reminders heading
+      const headings = settingsContainer.querySelectorAll("h3");
+      for (let i = 0; i < headings.length; i++) {
+        const heading = headings[i];
+        if (heading.textContent?.includes("Apple Reminders")) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    expect(hasAppleRemindersSettings).toBe(true);
+
+    // Close settings
+    await context.page.evaluate(() => {
+      const app = (window as any).app;
+      app.setting.close();
+    });
+  });
+
+  test("should show platform warning on non-macOS systems", async () => {
+    // Skip this test on macOS since we want to test the warning
+    const platform = await context.page.evaluate(() => process.platform);
+
+    if (platform === "darwin") {
+      return;
+    }
+
+    // Open settings
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      app.setting.open();
+
+      // Navigate to Task Sync plugin settings
+      const pluginTab = app.setting.pluginTabs["obsidian-task-sync"];
+      if (pluginTab) {
+        app.setting.openTabById("obsidian-task-sync");
+      }
+    });
+
+    // Wait for settings to load
+    await context.page.waitForTimeout(1000);
+
+    // Check if platform warning is shown
+    const hasPlatformWarning = await context.page.evaluate(() => {
+      const settingsContainer = document.querySelector(".modal-content");
+      if (!settingsContainer) return false;
+
+      // Look for platform warning text
+      const text = settingsContainer.textContent || "";
+      return (
+        text.includes("macOS only") || text.includes("only available on macOS")
+      );
+    });
+
+    expect(hasPlatformWarning).toBe(true);
+
+    // Close settings
+    await context.page.evaluate(() => {
+      const app = (window as any).app;
+      app.setting.close();
+    });
+  });
+
+  test("should handle Apple Reminders service enablement correctly", async () => {
+    // Test service enablement logic
+    const serviceStatus = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      if (!plugin || !plugin.appleRemindersService) {
+        return { error: "Service not found" };
+      }
+
+      const service = plugin.appleRemindersService;
+
+      return {
+        isPlatformSupported: service.isPlatformSupported(),
+        isEnabled: service.isEnabled(),
+        platform: process.platform,
+        settingsEnabled: plugin.settings.appleRemindersIntegration.enabled,
+      };
+    });
+
+    expect(serviceStatus.error).toBeUndefined();
+    expect(typeof serviceStatus.isPlatformSupported).toBe("boolean");
+    expect(typeof serviceStatus.isEnabled).toBe("boolean");
+
+    // Platform support should match actual platform
+    if (serviceStatus.platform === "darwin") {
+      expect(serviceStatus.isPlatformSupported).toBe(true);
+    } else {
+      expect(serviceStatus.isPlatformSupported).toBe(false);
+    }
+
+    // Service should not be enabled by default
+    expect(serviceStatus.isEnabled).toBe(false);
+    expect(serviceStatus.settingsEnabled).toBe(false);
+  });
+
+  test("should have proper default settings for Apple Reminders", async () => {
+    // Check default Apple Reminders settings
+    const defaultSettings = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      if (!plugin) {
+        return { error: "Plugin not found" };
+      }
+
+      return plugin.settings.appleRemindersIntegration;
+    });
+
+    expect(defaultSettings.error).toBeUndefined();
+    expect(defaultSettings.enabled).toBe(false);
+    expect(defaultSettings.includeCompletedReminders).toBe(false);
+    expect(defaultSettings.reminderLists).toEqual([]);
+    expect(defaultSettings.syncInterval).toBe(60);
+    expect(defaultSettings.excludeAllDayReminders).toBe(false);
+    expect(defaultSettings.defaultTaskType).toBe("Task");
+    expect(defaultSettings.importNotesAsDescription).toBe(true);
+    expect(defaultSettings.preservePriority).toBe(true);
+  });
+
+  test("should show Apple Reminders service in TasksView when enabled on macOS", async () => {
+    // Skip this test on non-macOS platforms
+    const platform = await context.page.evaluate(() => process.platform);
+    if (platform !== "darwin") {
+      return;
+    }
+
+    // Enable Apple Reminders integration
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      if (plugin) {
+        plugin.settings.appleRemindersIntegration.enabled = true;
+        await plugin.saveSettings();
+      }
+    });
+
+    // Open Tasks view
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      await app.commands.executeCommandById(
+        "obsidian-task-sync:open-tasks-view"
+      );
+    });
+
+    // Wait for the view to load
+    await context.page.waitForSelector('[data-testid="tasks-view"]', {
+      timeout: 5000,
+    });
+
+    // Check if Apple Reminders service is available in the service switcher
+    const hasAppleRemindersService = await context.page.evaluate(() => {
+      const tasksView = document.querySelector('[data-testid="tasks-view"]');
+      if (!tasksView) return false;
+
+      // Look for Apple Reminders service in the service switcher
+      const serviceElements = tasksView.querySelectorAll("[data-service-id]");
+      for (let i = 0; i < serviceElements.length; i++) {
+        const serviceEl = serviceElements[i];
+        if (serviceEl.getAttribute("data-service-id") === "apple-reminders") {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    expect(hasAppleRemindersService).toBe(true);
+
+    // Disable Apple Reminders integration for cleanup
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      if (plugin) {
+        plugin.settings.appleRemindersIntegration.enabled = false;
+        await plugin.saveSettings();
+      }
+    });
+  });
+
+  test("should not show Apple Reminders service when disabled", async () => {
+    // Ensure Apple Reminders integration is disabled
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      if (plugin) {
+        plugin.settings.appleRemindersIntegration.enabled = false;
+        await plugin.saveSettings();
+      }
+    });
+
+    // Open Tasks view
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      await app.commands.executeCommandById(
+        "obsidian-task-sync:open-tasks-view"
+      );
+    });
+
+    // Wait for the view to load
+    await context.page.waitForSelector('[data-testid="tasks-view"]', {
+      timeout: 5000,
+    });
+
+    // Check that Apple Reminders service is not available
+    const hasAppleRemindersService = await context.page.evaluate(() => {
+      const tasksView = document.querySelector('[data-testid="tasks-view"]');
+      if (!tasksView) return false;
+
+      // Look for Apple Reminders service in the service switcher
+      const serviceElements = tasksView.querySelectorAll("[data-service-id]");
+      for (let i = 0; i < serviceElements.length; i++) {
+        const serviceEl = serviceElements[i];
+        if (serviceEl.getAttribute("data-service-id") === "apple-reminders") {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    expect(hasAppleRemindersService).toBe(false);
+  });
+});

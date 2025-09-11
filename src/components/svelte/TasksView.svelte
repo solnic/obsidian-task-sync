@@ -1,8 +1,12 @@
 <script lang="ts">
   import GitHubService from "./GitHubService.svelte";
   import LocalTasksService from "./LocalTasksService.svelte";
+  import AppleRemindersService from "./AppleRemindersService.svelte";
   import TabView from "./TabView.svelte";
-  import type { GitHubIntegrationSettings } from "../ui/settings/types";
+  import type {
+    GitHubIntegrationSettings,
+    AppleRemindersIntegrationSettings,
+  } from "../ui/settings/types";
   import type { TaskImportConfig } from "../../types/integrations";
   import { setIcon } from "obsidian";
   import { getContextStore } from "./context";
@@ -10,17 +14,22 @@
 
   interface Props {
     githubService: any;
-    settings: { githubIntegration: GitHubIntegrationSettings };
+    appleRemindersService: any;
+    settings: {
+      githubIntegration: GitHubIntegrationSettings;
+      appleRemindersIntegration: AppleRemindersIntegrationSettings;
+    };
     dependencies: {
       taskImportManager: any;
       getDefaultImportConfig: () => TaskImportConfig;
     };
   }
 
-  let { githubService, settings, dependencies }: Props = $props();
+  let { githubService, appleRemindersService, settings, dependencies }: Props =
+    $props();
 
   // State
-  let activeService = $state<"github" | "local">("local");
+  let activeService = $state<"github" | "local" | "apple-reminders">("local");
 
   // Get context store and reactive context
   const contextStore = getContextStore();
@@ -53,14 +62,23 @@
       icon: "github", // Native Obsidian GitHub icon
       enabled: true,
     },
+    {
+      id: "apple-reminders",
+      name: "Apple Reminders",
+      icon: "calendar-check", // Native Obsidian icon for reminders
+      enabled:
+        appleRemindersService?.isPlatformSupported() &&
+        settings.appleRemindersIntegration.enabled,
+    },
   ];
 
   function setActiveService(serviceId: string): void {
-    activeService = serviceId as "github" | "local";
+    activeService = serviceId as "github" | "local" | "apple-reminders";
   }
 
   function updateSettings(newSettings: {
     githubIntegration: GitHubIntegrationSettings;
+    appleRemindersIntegration: AppleRemindersIntegrationSettings;
   }): void {
     settings = newSettings;
   }
@@ -74,6 +92,11 @@
       }
     } else if (activeService === "local") {
       const methods = (window as any).__localTasksServiceMethods;
+      if (methods && methods.refresh) {
+        await methods.refresh();
+      }
+    } else if (activeService === "apple-reminders") {
+      const methods = (window as any).__appleRemindersServiceMethods;
       if (methods && methods.refresh) {
         await methods.refresh();
       }
@@ -123,6 +146,13 @@
             />
           {:else if activeService === "local"}
             <LocalTasksService {dayPlanningMode} />
+          {:else if activeService === "apple-reminders"}
+            <AppleRemindersService
+              {appleRemindersService}
+              {settings}
+              {dependencies}
+              {dayPlanningMode}
+            />
           {/if}
         </div>
       </TabView>

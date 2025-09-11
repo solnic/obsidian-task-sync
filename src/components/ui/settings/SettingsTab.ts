@@ -178,7 +178,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
   private createSectionInterface(container: HTMLElement): void {
     const sectionsContainer = container.createDiv(
-      "task-sync-settings-sections",
+      "task-sync-settings-sections"
     );
 
     // Create all sections in order
@@ -189,7 +189,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     this.createTaskCategoriesSection(sectionsContainer);
     this.createTaskPrioritiesSection(sectionsContainer);
     this.createTaskStatusesSection(sectionsContainer);
-    this.createGitHubIntegrationSection(sectionsContainer);
+    this.createIntegrationsSection(sectionsContainer);
   }
 
   private createGeneralSection(container: HTMLElement): void {
@@ -205,21 +205,21 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       section,
       "tasksFolder",
       "Tasks Folder",
-      "Folder where task files will be stored",
+      "Folder where task files will be stored"
     );
 
     this.createFolderSetting(
       section,
       "projectsFolder",
       "Projects Folder",
-      "Folder where project files will be stored",
+      "Folder where project files will be stored"
     );
 
     this.createFolderSetting(
       section,
       "areasFolder",
       "Areas Folder",
-      "Folder where area files will be stored",
+      "Folder where area files will be stored"
     );
   }
 
@@ -236,13 +236,13 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       section,
       "templateFolder",
       "Template Folder",
-      "Folder where templates are stored",
+      "Folder where templates are stored"
     );
 
     new Setting(section)
       .setName("Use Templater Plugin")
       .setDesc(
-        "Enable integration with Templater plugin for advanced templates",
+        "Enable integration with Templater plugin for advanced templates"
       )
       .addToggle((toggle) =>
         toggle
@@ -250,7 +250,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.useTemplater = value;
             await this.plugin.saveSettings();
-          }),
+          })
       );
 
     // Default template settings with file suggestions
@@ -259,7 +259,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       "defaultTaskTemplate",
       "Default Task Template",
       "Default template to use when creating new tasks",
-      [".md"],
+      [".md"]
     );
 
     this.createFileSetting(
@@ -267,7 +267,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       "defaultProjectTemplate",
       "Default Project Template",
       "Default template to use when creating new projects",
-      [".md"],
+      [".md"]
     );
 
     this.createFileSetting(
@@ -275,7 +275,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       "defaultAreaTemplate",
       "Default Area Template",
       "Default template to use when creating new areas",
-      [".md"],
+      [".md"]
     );
 
     this.createFileSetting(
@@ -283,7 +283,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       "defaultParentTaskTemplate",
       "Default Parent Task Template",
       "Default template to use when creating new parent tasks",
-      [".md"],
+      [".md"]
     );
 
     // Template creation button
@@ -303,7 +303,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       section,
       "basesFolder",
       "Bases Folder",
-      "Folder where .base files are stored",
+      "Folder where .base files are stored"
     );
 
     this.createFileSetting(
@@ -311,7 +311,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       "tasksBaseFile",
       "Tasks Base File",
       "Name of the main tasks base file",
-      [".base"],
+      [".base"]
     );
 
     new Setting(section)
@@ -323,7 +323,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.autoGenerateBases = value;
             await this.plugin.saveSettings();
-          }),
+          })
       );
 
     new Setting(section)
@@ -335,7 +335,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.autoUpdateBaseViews = value;
             await this.plugin.saveSettings();
-          }),
+          })
       );
 
     new Setting(section)
@@ -352,13 +352,13 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             if (this.plugin.settings.autoSyncAreaProjectBases) {
               await this.plugin.syncAreaProjectBases();
             }
-          }),
+          })
       );
 
     new Setting(section)
       .setName("Enable Project Bases")
       .setDesc(
-        "Create individual base files for each project with filtered views",
+        "Create individual base files for each project with filtered views"
       )
       .addToggle((toggle) =>
         toggle
@@ -371,13 +371,13 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             if (this.plugin.settings.autoSyncAreaProjectBases) {
               await this.plugin.syncAreaProjectBases();
             }
-          }),
+          })
       );
 
     new Setting(section)
       .setName("Auto-Sync Area/Project Bases")
       .setDesc(
-        "Automatically update area and project bases when settings change",
+        "Automatically update area and project bases when settings change"
       )
       .addToggle((toggle) =>
         toggle
@@ -385,7 +385,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           .onChange(async (value) => {
             this.plugin.settings.autoSyncAreaProjectBases = value;
             await this.plugin.saveSettings();
-          }),
+          })
       );
 
     // Action buttons
@@ -487,7 +487,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         TASK_TYPE_COLORS.forEach((color) => {
           dropdown.addOption(
             color,
-            color.charAt(0).toUpperCase() + color.slice(1),
+            color.charAt(0).toUpperCase() + color.slice(1)
           );
         });
 
@@ -583,7 +583,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         TASK_TYPE_COLORS.forEach((color) => {
           dropdown.addOption(
             color,
-            color.charAt(0).toUpperCase() + color.slice(1),
+            color.charAt(0).toUpperCase() + color.slice(1)
           );
         });
 
@@ -646,7 +646,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         TASK_TYPE_COLORS.forEach((color) => {
           dropdown.addOption(
             color,
-            color.charAt(0).toUpperCase() + color.slice(1),
+            color.charAt(0).toUpperCase() + color.slice(1)
           );
         });
 
@@ -662,7 +662,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             if (
               newTypeName &&
               !this.plugin.settings.taskTypes.some(
-                (t) => t.name === newTypeName,
+                (t) => t.name === newTypeName
               )
             ) {
               this.plugin.settings.taskTypes.push({
@@ -673,12 +673,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
               // Find the task categories section and refresh it
               const taskCategoriesSection = container.closest(
-                ".task-sync-settings-section",
+                ".task-sync-settings-section"
               );
               if (taskCategoriesSection) {
                 taskCategoriesSection.empty();
                 this.recreateTaskCategoriesSection(
-                  taskCategoriesSection as HTMLElement,
+                  taskCategoriesSection as HTMLElement
                 );
               }
 
@@ -712,7 +712,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
       // Add priority badge preview
       const badgeContainer = setting.controlEl.createDiv(
-        "task-priority-preview",
+        "task-priority-preview"
       );
       const badge = createPriorityBadge(taskPriority);
       badgeContainer.appendChild(badge);
@@ -744,7 +744,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         TASK_PRIORITY_COLORS.forEach((color) => {
           dropdown.addOption(
             color,
-            color.charAt(0).toUpperCase() + color.slice(1),
+            color.charAt(0).toUpperCase() + color.slice(1)
           );
         });
 
@@ -810,7 +810,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
       // Add priority badge preview
       const badgeContainer = setting.controlEl.createDiv(
-        "task-priority-preview",
+        "task-priority-preview"
       );
       const badge = createPriorityBadge(taskPriority);
       badgeContainer.appendChild(badge);
@@ -842,7 +842,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         TASK_PRIORITY_COLORS.forEach((color) => {
           dropdown.addOption(
             color,
-            color.charAt(0).toUpperCase() + color.slice(1),
+            color.charAt(0).toUpperCase() + color.slice(1)
           );
         });
 
@@ -907,7 +907,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         TASK_PRIORITY_COLORS.forEach((color) => {
           dropdown.addOption(
             color,
-            color.charAt(0).toUpperCase() + color.slice(1),
+            color.charAt(0).toUpperCase() + color.slice(1)
           );
         });
 
@@ -925,7 +925,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             if (
               newPriorityName &&
               !this.plugin.settings.taskPriorities.some(
-                (p) => p.name === newPriorityName,
+                (p) => p.name === newPriorityName
               )
             ) {
               this.plugin.settings.taskPriorities.push({
@@ -936,12 +936,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
               // Find the task priorities section and refresh it
               const taskPrioritiesSection = container.closest(
-                ".task-sync-settings-section",
+                ".task-sync-settings-section"
               );
               if (taskPrioritiesSection) {
                 taskPrioritiesSection.empty();
                 this.recreateTaskPrioritiesSection(
-                  taskPrioritiesSection as HTMLElement,
+                  taskPrioritiesSection as HTMLElement
                 );
               }
 
@@ -1005,7 +1005,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         TASK_STATUS_COLORS.forEach((color) => {
           dropdown.addOption(
             color,
-            color.charAt(0).toUpperCase() + color.slice(1),
+            color.charAt(0).toUpperCase() + color.slice(1)
           );
         });
 
@@ -1046,7 +1046,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         toggle
           .setValue(taskStatus.isInProgress || false)
           .setTooltip(
-            "Mark this status as representing an active/in-progress state",
+            "Mark this status as representing an active/in-progress state"
           )
           .onChange(async (value) => {
             this.plugin.settings.taskStatuses[index].isInProgress = value;
@@ -1135,7 +1135,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         TASK_STATUS_COLORS.forEach((color) => {
           dropdown.addOption(
             color,
-            color.charAt(0).toUpperCase() + color.slice(1),
+            color.charAt(0).toUpperCase() + color.slice(1)
           );
         });
 
@@ -1176,7 +1176,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         toggle
           .setValue(taskStatus.isInProgress || false)
           .setTooltip(
-            "Mark this status as representing an active/in-progress state",
+            "Mark this status as representing an active/in-progress state"
           )
           .onChange(async (value) => {
             this.plugin.settings.taskStatuses[index].isInProgress = value;
@@ -1234,7 +1234,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         TASK_STATUS_COLORS.forEach((color) => {
           dropdown.addOption(
             color,
-            color.charAt(0).toUpperCase() + color.slice(1),
+            color.charAt(0).toUpperCase() + color.slice(1)
           );
         });
 
@@ -1250,7 +1250,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             if (
               newStatusName &&
               !this.plugin.settings.taskStatuses.some(
-                (s) => s.name === newStatusName,
+                (s) => s.name === newStatusName
               )
             ) {
               this.plugin.settings.taskStatuses.push({
@@ -1263,12 +1263,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
               // Find the task statuses section and refresh it
               const taskStatusesSection = container.closest(
-                ".task-sync-settings-section",
+                ".task-sync-settings-section"
               );
               if (taskStatusesSection) {
                 taskStatusesSection.empty();
                 this.recreateTaskStatusesSection(
-                  taskStatusesSection as HTMLElement,
+                  taskStatusesSection as HTMLElement
                 );
               }
 
@@ -1402,7 +1402,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     container: HTMLElement,
     key: keyof TaskSyncSettings,
     name: string,
-    desc: string,
+    desc: string
   ): void {
     const setting = new Setting(container)
       .setName(name)
@@ -1427,7 +1427,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         // Add folder suggestion
         const folderSuggest = new FolderSuggestComponent(
           this.app,
-          text.inputEl,
+          text.inputEl
         );
         folderSuggest.onChange(async (value) => {
           const validation = validateFolderPath(value);
@@ -1451,7 +1451,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     key: keyof TaskSyncSettings,
     name: string,
     desc: string,
-    extensions?: string[],
+    extensions?: string[]
   ): void {
     const setting = new Setting(container)
       .setName(name)
@@ -1494,7 +1494,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         const fileSuggest = new FileSuggestComponent(
           this.app,
           text.inputEl,
-          fileSuggestOptions,
+          fileSuggestOptions
         );
         fileSuggest.onChange(async (value) => {
           let validation: ValidationResult;
@@ -1536,7 +1536,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     // Remove existing error styling
     settingEl.removeClass("task-sync-setting-error");
     const existingError = settingEl.querySelector(
-      ".task-sync-validation-error",
+      ".task-sync-validation-error"
     );
     if (existingError) {
       existingError.remove();
@@ -1550,7 +1550,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     }
   }
 
-  private createGitHubIntegrationSection(container: HTMLElement): void {
+  private createIntegrationsSection(container: HTMLElement): void {
     const section = container.createDiv("task-sync-settings-section");
 
     // Section header
@@ -1572,7 +1572,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
             // Refresh the section to show/hide additional settings
             section.empty();
-            this.createGitHubIntegrationSection(container);
+            this.createIntegrationsSection(container);
           });
       });
 
@@ -1582,13 +1582,13 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       new Setting(section)
         .setName("GitHub Personal Access Token")
         .setDesc(
-          "Your GitHub PAT for API access. Create one at github.com/settings/tokens",
+          "Your GitHub PAT for API access. Create one at github.com/settings/tokens"
         )
         .addText((text) => {
           text
             .setPlaceholder("ghp_...")
             .setValue(
-              this.plugin.settings.githubIntegration.personalAccessToken,
+              this.plugin.settings.githubIntegration.personalAccessToken
             )
             .onChange(async (value) => {
               const validation = validateGitHubToken(value);
@@ -1600,7 +1600,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
               } else {
                 this.setValidationError(
                   "github-token",
-                  validation.error || "Invalid token",
+                  validation.error || "Invalid token"
                 );
               }
             });
@@ -1643,18 +1643,169 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       new Setting(section)
         .setName("Default Assignee Filter")
         .setDesc(
-          'Default assignee filter (leave empty for all, "me" for your issues)',
+          'Default assignee filter (leave empty for all, "me" for your issues)'
         )
         .addText((text) => {
           text
             .setPlaceholder("me, username, or empty")
             .setValue(
-              this.plugin.settings.githubIntegration.issueFilters.assignee,
+              this.plugin.settings.githubIntegration.issueFilters.assignee
             )
             .onChange(async (value) => {
               this.plugin.settings.githubIntegration.issueFilters.assignee =
                 value;
               await this.plugin.saveSettings();
+            });
+        });
+    }
+
+    // Apple Reminders Integration Section
+    section.createEl("h3", {
+      text: "Apple Reminders",
+      cls: "task-sync-subsection-header",
+    });
+
+    // Platform check
+    const isPlatformSupported = process.platform === "darwin";
+    if (!isPlatformSupported) {
+      section.createDiv({
+        text: "Apple Reminders integration is only available on macOS",
+        cls: "task-sync-platform-warning",
+      });
+    }
+
+    // Apple Reminders integration toggle
+    new Setting(section)
+      .setName("Enable Apple Reminders Integration")
+      .setDesc(
+        isPlatformSupported
+          ? "Connect to Apple Reminders to import reminders as tasks"
+          : "Apple Reminders integration (macOS only)"
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.appleRemindersIntegration.enabled)
+          .setDisabled(!isPlatformSupported)
+          .onChange(async (value) => {
+            this.plugin.settings.appleRemindersIntegration.enabled = value;
+            await this.plugin.saveSettings();
+
+            // Refresh the section to show/hide additional settings
+            section.empty();
+            this.createIntegrationsSection(container);
+          });
+      });
+
+    // Only show additional settings if Apple Reminders integration is enabled and platform is supported
+    if (
+      this.plugin.settings.appleRemindersIntegration.enabled &&
+      isPlatformSupported
+    ) {
+      // Include completed reminders
+      new Setting(section)
+        .setName("Include Completed Reminders")
+        .setDesc("Import completed reminders along with active ones")
+        .addToggle((toggle) => {
+          toggle
+            .setValue(
+              this.plugin.settings.appleRemindersIntegration
+                .includeCompletedReminders
+            )
+            .onChange(async (value) => {
+              this.plugin.settings.appleRemindersIntegration.includeCompletedReminders =
+                value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Exclude all-day reminders
+      new Setting(section)
+        .setName("Exclude All-Day Reminders")
+        .setDesc("Skip reminders that are set for all day")
+        .addToggle((toggle) => {
+          toggle
+            .setValue(
+              this.plugin.settings.appleRemindersIntegration
+                .excludeAllDayReminders
+            )
+            .onChange(async (value) => {
+              this.plugin.settings.appleRemindersIntegration.excludeAllDayReminders =
+                value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Default task type
+      new Setting(section)
+        .setName("Default Task Type")
+        .setDesc("Default task type for imported reminders")
+        .addDropdown((dropdown) => {
+          // Add task types from settings
+          this.plugin.settings.taskTypes.forEach((taskType) => {
+            dropdown.addOption(taskType.name, taskType.name);
+          });
+
+          dropdown
+            .setValue(
+              this.plugin.settings.appleRemindersIntegration.defaultTaskType
+            )
+            .onChange(async (value) => {
+              this.plugin.settings.appleRemindersIntegration.defaultTaskType =
+                value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Import notes as description
+      new Setting(section)
+        .setName("Import Notes as Description")
+        .setDesc("Import reminder notes as task descriptions")
+        .addToggle((toggle) => {
+          toggle
+            .setValue(
+              this.plugin.settings.appleRemindersIntegration
+                .importNotesAsDescription
+            )
+            .onChange(async (value) => {
+              this.plugin.settings.appleRemindersIntegration.importNotesAsDescription =
+                value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Preserve priority
+      new Setting(section)
+        .setName("Preserve Priority")
+        .setDesc("Map Apple Reminders priority levels to task priorities")
+        .addToggle((toggle) => {
+          toggle
+            .setValue(
+              this.plugin.settings.appleRemindersIntegration.preservePriority
+            )
+            .onChange(async (value) => {
+              this.plugin.settings.appleRemindersIntegration.preservePriority =
+                value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Sync interval
+      new Setting(section)
+        .setName("Sync Interval (minutes)")
+        .setDesc("How often to check for new reminders (for future auto-sync)")
+        .addText((text) => {
+          text
+            .setPlaceholder("60")
+            .setValue(
+              this.plugin.settings.appleRemindersIntegration.syncInterval.toString()
+            )
+            .onChange(async (value) => {
+              const interval = parseInt(value);
+              if (!isNaN(interval) && interval > 0) {
+                this.plugin.settings.appleRemindersIntegration.syncInterval =
+                  interval;
+                await this.plugin.saveSettings();
+              }
             });
         });
     }

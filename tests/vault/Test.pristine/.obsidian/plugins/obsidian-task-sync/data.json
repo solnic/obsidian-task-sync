@@ -97,5 +97,15 @@
       "assignee": "",
       "labels": []
     }
+  },
+  "appleRemindersIntegration": {
+    "enabled": false,
+    "includeCompletedReminders": false,
+    "reminderLists": [],
+    "syncInterval": 60,
+    "excludeAllDayReminders": false,
+    "defaultTaskType": "Task",
+    "importNotesAsDescription": true,
+    "preservePriority": true
   }
 }

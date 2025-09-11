@@ -68,6 +68,17 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
       documentation: "Chore",
     },
   },
+  // Apple Reminders integration defaults
+  appleRemindersIntegration: {
+    enabled: false,
+    includeCompletedReminders: false,
+    reminderLists: [], // Empty array means sync all lists
+    syncInterval: 60, // 60 minutes
+    excludeAllDayReminders: false,
+    defaultTaskType: "Task",
+    importNotesAsDescription: true,
+    preservePriority: true,
+  },
 };
 
 /**

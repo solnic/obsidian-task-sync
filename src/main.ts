@@ -35,6 +35,7 @@ import {
   validateFolderPath,
 } from "./components/ui/settings";
 import { GitHubService } from "./services/GitHubService";
+import { AppleRemindersService } from "./services/AppleRemindersService";
 import { TaskImportManager } from "./services/TaskImportManager";
 import { TasksView, TASKS_VIEW_TYPE } from "./views/TasksView";
 import { ContextTabView, CONTEXT_TAB_VIEW_TYPE } from "./views/ContextTabView";
@@ -85,6 +86,7 @@ export default class TaskSyncPlugin extends Plugin {
   projectPropertyHandler: ProjectPropertyHandler;
   entityCacheHandler: EntityCacheHandler;
   githubService: GitHubService;
+  appleRemindersService: AppleRemindersService;
   taskImportManager: TaskImportManager;
   taskFileManager: TaskFileManager;
   areaFileManager: AreaFileManager;
@@ -139,6 +141,9 @@ export default class TaskSyncPlugin extends Plugin {
 
     this.githubService = new GitHubService(this.settings);
 
+    // Initialize Apple Reminders service (only on macOS)
+    this.appleRemindersService = new AppleRemindersService(this.settings);
+
     // Initialize import services
     this.taskImportManager = new TaskImportManager(
       this.app,
@@ -187,6 +192,9 @@ export default class TaskSyncPlugin extends Plugin {
     // Wire up GitHub service with import dependencies
     this.githubService.setImportDependencies(this.taskImportManager);
 
+    // Wire up Apple Reminders service with import dependencies
+    this.appleRemindersService.setImportDependencies(this.taskImportManager);
+
     // Ensure templates exist
     await this.templateManager.ensureTemplatesExist();
 
@@ -233,7 +241,11 @@ export default class TaskSyncPlugin extends Plugin {
         new TasksView(
           leaf,
           this.githubService,
-          { githubIntegration: this.settings.githubIntegration },
+          this.appleRemindersService,
+          {
+            githubIntegration: this.settings.githubIntegration,
+            appleRemindersIntegration: this.settings.appleRemindersIntegration,
+          },
           {
             taskImportManager: this.taskImportManager,
             getDefaultImportConfig: () => this.getDefaultImportConfig(),
@@ -346,6 +358,25 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
+    // Apple Reminders Import Commands (only on macOS)
+    if (this.appleRemindersService.isPlatformSupported()) {
+      this.addCommand({
+        id: "import-apple-reminders",
+        name: "Import Apple Reminders",
+        callback: async () => {
+          await this.importAppleReminders();
+        },
+      });
+
+      this.addCommand({
+        id: "check-apple-reminders-permissions",
+        name: "Check Apple Reminders Permissions",
+        callback: async () => {
+          await this.checkAppleRemindersPermissions();
+        },
+      });
+    }
+
     this.addCommand({
       id: "open-context-tab",
       name: "Open Context Tab",
@@ -413,6 +444,7 @@ export default class TaskSyncPlugin extends Plugin {
       if (view && view.updateSettings) {
         view.updateSettings({
           githubIntegration: this.settings.githubIntegration,
+          appleRemindersIntegration: this.settings.appleRemindersIntegration,
         });
       }
     });
@@ -1292,6 +1324,125 @@ export default class TaskSyncPlugin extends Plugin {
     } catch (error: any) {
       console.error("Error fetching issue from URL:", error);
       return null;
+    }
+  }
+
+  /**
+   * Import Apple Reminders as tasks
+   */
+  private async importAppleReminders(): Promise<void> {
+    if (!this.appleRemindersService.isEnabled()) {
+      new Notice(
+        "Apple Reminders integration is not enabled or not available on this platform"
+      );
+      return;
+    }
+
+    try {
+      // Check permissions first
+      const permissionResult =
+        await this.appleRemindersService.checkPermissions();
+      if (!permissionResult.success) {
+        new Notice(`Permission error: ${permissionResult.error?.message}`);
+        return;
+      }
+
+      new Notice("Fetching Apple Reminders...");
+
+      // Fetch reminders
+      const remindersResult = await this.appleRemindersService.fetchReminders();
+      if (!remindersResult.success) {
+        new Notice(
+          `Failed to fetch reminders: ${remindersResult.error?.message}`
+        );
+        return;
+      }
+
+      const reminders = remindersResult.data || [];
+      if (reminders.length === 0) {
+        new Notice("No reminders found");
+        return;
+      }
+
+      // Import each reminder
+      let imported = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (const reminder of reminders) {
+        try {
+          const config = this.getDefaultImportConfig();
+          const result = await this.appleRemindersService.importReminderAsTask(
+            reminder,
+            config
+          );
+
+          if (result.success) {
+            if (result.skipped) {
+              skipped++;
+            } else {
+              imported++;
+            }
+          } else {
+            failed++;
+            console.error(
+              `Failed to import reminder ${reminder.title}:`,
+              result.error
+            );
+          }
+        } catch (error: any) {
+          failed++;
+          console.error(`Error importing reminder ${reminder.title}:`, error);
+        }
+      }
+
+      new Notice(
+        `Import complete: ${imported} imported, ${skipped} skipped, ${failed} failed`
+      );
+    } catch (error: any) {
+      console.error("Failed to import Apple Reminders:", error);
+      new Notice(`Error importing reminders: ${error.message}`);
+    }
+  }
+
+  /**
+   * Check Apple Reminders permissions
+   */
+  private async checkAppleRemindersPermissions(): Promise<void> {
+    if (!this.appleRemindersService.isPlatformSupported()) {
+      new Notice("Apple Reminders is only available on macOS");
+      return;
+    }
+
+    try {
+      const result = await this.appleRemindersService.checkPermissions();
+
+      if (result.success) {
+        const permission = result.data;
+        switch (permission) {
+          case "authorized":
+            new Notice("✅ Apple Reminders access is authorized");
+            break;
+          case "denied":
+            new Notice(
+              "❌ Apple Reminders access is denied. Please grant permission in System Preferences > Security & Privacy > Privacy > Reminders"
+            );
+            break;
+          case "notDetermined":
+            new Notice(
+              "⚠️ Apple Reminders permission not determined. Please try importing reminders to trigger permission request."
+            );
+            break;
+          case "restricted":
+            new Notice("🔒 Apple Reminders access is restricted");
+            break;
+        }
+      } else {
+        new Notice(`Permission check failed: ${result.error?.message}`);
+      }
+    } catch (error: any) {
+      console.error("Error checking Apple Reminders permissions:", error);
+      new Notice(`Error checking permissions: ${error.message}`);
     }
   }
 

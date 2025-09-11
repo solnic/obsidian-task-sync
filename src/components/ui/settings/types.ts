@@ -86,6 +86,18 @@ export interface GitHubIntegrationSettings {
   labelTypeMapping: Record<string, string>; // Map GitHub labels to task types
 }
 
+// Apple Reminders integration interfaces
+export interface AppleRemindersIntegrationSettings {
+  enabled: boolean;
+  includeCompletedReminders: boolean;
+  reminderLists: string[]; // Array of reminder list names to sync
+  syncInterval: number; // Sync interval in minutes
+  excludeAllDayReminders: boolean;
+  defaultTaskType: string; // Default task type for imported reminders
+  importNotesAsDescription: boolean;
+  preservePriority: boolean;
+}
+
 export interface TaskSyncSettings {
   tasksFolder: string;
   projectsFolder: string;
@@ -116,6 +128,8 @@ export interface TaskSyncSettings {
   taskPropertyOrder: string[];
   // GitHub integration settings
   githubIntegration: GitHubIntegrationSettings;
+  // Apple Reminders integration settings
+  appleRemindersIntegration: AppleRemindersIntegrationSettings;
 }
 
 export interface ValidationResult {

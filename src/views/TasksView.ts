@@ -5,7 +5,11 @@
 
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import { GitHubService } from "../services/GitHubService";
-import { GitHubIntegrationSettings } from "../components/ui/settings/types";
+import { AppleRemindersService } from "../services/AppleRemindersService";
+import {
+  GitHubIntegrationSettings,
+  AppleRemindersIntegrationSettings,
+} from "../components/ui/settings/types";
 import { TaskImportManager } from "../services/TaskImportManager";
 import { TaskImportConfig } from "../types/integrations";
 import TasksViewSvelte from "../components/svelte/TasksView.svelte";
@@ -15,6 +19,7 @@ export const TASKS_VIEW_TYPE = "tasks";
 
 export interface TasksViewSettings {
   githubIntegration: GitHubIntegrationSettings;
+  appleRemindersIntegration: AppleRemindersIntegrationSettings;
 }
 
 export interface TasksViewDependencies {
@@ -27,6 +32,7 @@ export interface TasksViewDependencies {
  */
 export class TasksView extends ItemView {
   private githubService: GitHubService;
+  private appleRemindersService: AppleRemindersService;
   private settings: TasksViewSettings;
   private dependencies: TasksViewDependencies;
   private svelteComponent: SvelteComponent | null = null;
@@ -34,11 +40,13 @@ export class TasksView extends ItemView {
   constructor(
     leaf: WorkspaceLeaf,
     githubService: GitHubService,
+    appleRemindersService: AppleRemindersService,
     settings: TasksViewSettings,
-    dependencies: TasksViewDependencies,
+    dependencies: TasksViewDependencies
   ) {
     super(leaf);
     this.githubService = githubService;
+    this.appleRemindersService = appleRemindersService;
     this.settings = settings;
     this.dependencies = dependencies;
   }
@@ -65,6 +73,7 @@ export class TasksView extends ItemView {
       target: this.containerEl,
       props: {
         githubService: this.githubService,
+        appleRemindersService: this.appleRemindersService,
         settings: this.settings,
         dependencies: this.dependencies,
       },
