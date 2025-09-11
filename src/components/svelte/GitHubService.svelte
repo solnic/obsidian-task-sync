@@ -2,7 +2,6 @@
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
   import { getPluginContext } from "./context";
-  import ContextWidget from "./ContextWidget.svelte";
   import FilterButton from "./FilterButton.svelte";
   import type {
     GitHubIssue,
@@ -509,9 +508,6 @@
   data-type="github-service"
   data-testid="github-service"
 >
-  <!-- Context Widget -->
-  <ContextWidget />
-
   <!-- Header Section -->
   <div class="github-issues-header">
     <!-- Tab header -->
@@ -612,7 +608,7 @@
   </div>
 
   <!-- Content Section -->
-  <div class="github-issues-content">
+  <div class="task-list-container">
     {#if !githubService.isEnabled()}
       <div class="disabled-message">
         GitHub integration is not enabled. Please configure it in settings.
@@ -626,13 +622,13 @@
         Loading {activeTab === "issues" ? "issues" : "pull requests"}...
       </div>
     {:else if activeTab === "issues"}
-      <div class="issues-list">
+      <div class="task-list">
         {#if filteredIssues.length === 0}
           <div class="empty-message">No issues found.</div>
         {:else}
           {#each filteredIssues as issue}
             <div
-              class="issue-item {hoveredIssue === issue.number
+              class="task-list-item {hoveredIssue === issue.number
                 ? 'hovered'
                 : ''} {importedIssues.has(issue.number) ? 'imported' : ''}"
               onmouseenter={() => (hoveredIssue = issue.number)}
@@ -641,7 +637,7 @@
               data-imported={importedIssues.has(issue.number)}
               role="listitem"
             >
-              <div class="issue-content">
+              <div class="task-list-item-content">
                 <div class="issue-title">{issue.title}</div>
                 <div class="issue-number">#{issue.number}</div>
                 <div class="issue-meta">
@@ -706,13 +702,13 @@
         {/if}
       </div>
     {:else if activeTab === "pull-requests"}
-      <div class="pull-requests-list">
+      <div class="task-list">
         {#if filteredPullRequests.length === 0}
           <div class="empty-message">No pull requests found.</div>
         {:else}
           {#each filteredPullRequests as pr}
             <div
-              class="issue-item {hoveredPullRequest === pr.number
+              class="task-list-item {hoveredPullRequest === pr.number
                 ? 'hovered'
                 : ''} {importedPullRequests.has(pr.number) ? 'imported' : ''}"
               onmouseenter={() => (hoveredPullRequest = pr.number)}
@@ -721,7 +717,7 @@
               data-imported={importedPullRequests.has(pr.number)}
               role="listitem"
             >
-              <div class="issue-content">
+              <div class="task-list-item-content">
                 <div class="issue-title">{pr.title}</div>
                 <div class="issue-number">#{pr.number}</div>
                 <div class="issue-meta">
@@ -793,10 +789,3 @@
     {/if}
   </div>
 </div>
-
-<style>
-  .issue-item.imported {
-    background-color: var(--background-modifier-success-hover, #d4edda);
-    border-left: 3px solid var(--text-success, #28a745);
-  }
-</style>

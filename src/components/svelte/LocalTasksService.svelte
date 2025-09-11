@@ -1,10 +1,17 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
-  import { getPluginContext } from "./context";
-  import ContextWidget from "./ContextWidget.svelte";
+  import { getPluginContext, getContextStore } from "./context";
   import { taskStore } from "../../stores/taskStore";
+  import SearchInput from "./SearchInput.svelte";
+  import FilterDropdown from "./FilterDropdown.svelte";
+  import {
+    filterLocalTasks,
+    getFilterOptions,
+    getContextFilters,
+  } from "../../utils/contextFiltering";
   import type { Task } from "../../types/entities";
+  import type { FileContext } from "../../main";
 
   interface Props {
     dayPlanningMode?: boolean;
@@ -13,6 +20,7 @@
   let { dayPlanningMode = false }: Props = $props();
 
   const { plugin } = getPluginContext();
+  const contextStore = getContextStore();
 
   // State
   let tasks = $state<Task[]>([]);
@@ -20,13 +28,46 @@
   let error = $state<string | null>(null);
   let isLoading = $state(false);
   let hoveredTask = $state<string | null>(null);
+  let currentContext = $state<FileContext>({ type: "none" });
 
-  // Computed
+  // Additional filter state
+  let selectedProject = $state<string | null>(null);
+  let selectedArea = $state<string | null>(null);
+  let selectedParentTask = $state<string | null>(null);
+
+  // Subscribe to context changes
+  $effect(() => {
+    const unsubscribe = contextStore.subscribe((value) => {
+      currentContext = value;
+    });
+    return unsubscribe;
+  });
+
+  // Computed filter options
+  let filterOptions = $derived.by(() => {
+    return getFilterOptions(tasks);
+  });
+
+  // Computed filtered tasks with context and additional filters
   let filteredTasks = $derived.by(() => {
-    if (!searchQuery) {
-      return tasks;
+    // Start with context-based filtering
+    let filtered = filterLocalTasks(tasks, currentContext, {
+      project: selectedProject,
+      area: selectedArea,
+      parentTask: selectedParentTask,
+    });
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = searchTasks(searchQuery, filtered);
     }
-    return searchTasks(searchQuery, tasks);
+
+    return filtered;
+  });
+
+  // Get context filters for display
+  let contextFilters = $derived.by(() => {
+    return getContextFilters(currentContext);
   });
 
   onMount(() => {
@@ -99,35 +140,55 @@
   data-type="local-tasks-service"
   data-testid="local-tasks-service"
 >
-  <!-- Context Widget -->
-  <ContextWidget />
-
   <!-- Header Section -->
   <div class="local-tasks-header">
-    <!-- Search input -->
-    <div class="search-section">
-      <input
-        type="text"
-        class="search-input"
-        placeholder="Search local tasks..."
+    <!-- Search and Filters -->
+    <div class="search-and-filters">
+      <SearchInput
         bind:value={searchQuery}
-        data-testid="local-search-input"
+        placeholder="Search local tasks..."
+        onInput={(value) => (searchQuery = value)}
+        onRefresh={refresh}
+        testId="local-search-input"
       />
 
-      <!-- Refresh button -->
-      <button
-        class="refresh-button"
-        title="Refresh"
-        onclick={refresh}
-        data-testid="local-refresh-button"
-      >
-        ↻
-      </button>
+      <!-- Filter Dropdowns -->
+      <div class="filter-section">
+        {#if !contextFilters.project}
+          <FilterDropdown
+            label="Project"
+            currentValue={selectedProject}
+            options={filterOptions.projects}
+            onselect={(value) => (selectedProject = value)}
+            testId="project-filter"
+          />
+        {/if}
+
+        {#if !contextFilters.area}
+          <FilterDropdown
+            label="Area"
+            currentValue={selectedArea}
+            options={filterOptions.areas}
+            onselect={(value) => (selectedArea = value)}
+            testId="area-filter"
+          />
+        {/if}
+
+        {#if !contextFilters.parentTask}
+          <FilterDropdown
+            label="Parent"
+            currentValue={selectedParentTask}
+            options={filterOptions.parentTasks}
+            onselect={(value) => (selectedParentTask = value)}
+            testId="parent-task-filter"
+          />
+        {/if}
+      </div>
     </div>
   </div>
 
   <!-- Content Section -->
-  <div class="local-tasks-content">
+  <div class="task-list-container">
     {#if error}
       <div class="error-message">
         {error}
@@ -135,7 +196,7 @@
     {:else if isLoading}
       <div class="loading-indicator">Loading local tasks...</div>
     {:else}
-      <div class="tasks-list">
+      <div class="task-list">
         {#if filteredTasks.length === 0}
           <div class="empty-message">
             {searchQuery ? "No tasks match your search." : "No tasks found."}
@@ -143,13 +204,13 @@
         {:else}
           {#each filteredTasks as task}
             <div
-              class="task-item {hoveredTask === task.id ? 'hovered' : ''}"
+              class="task-list-item {hoveredTask === task.id ? 'hovered' : ''}"
               onmouseenter={() => (hoveredTask = task.id)}
               onmouseleave={() => (hoveredTask = null)}
               data-testid="local-task-item"
               role="listitem"
             >
-              <div class="task-content">
+              <div class="task-list-item-content">
                 <div class="task-title">{task.title}</div>
                 <div class="task-meta">
                   {#if task.category}
@@ -217,46 +278,16 @@
     margin-bottom: 1rem;
   }
 
-  .search-section {
+  .search-and-filters {
     display: flex;
-    gap: 0.5rem;
-    align-items: center;
+    flex-direction: column;
+    gap: 12px;
   }
 
-  .search-input {
-    flex: 1;
-    padding: 0.5rem;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
-    background: var(--background-primary);
-    color: var(--text-normal);
-  }
-
-  .refresh-button {
-    padding: 0.5rem;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
-    background: var(--background-primary);
-    color: var(--text-normal);
-    cursor: pointer;
-  }
-
-  .refresh-button:hover {
-    background: var(--background-modifier-hover);
-  }
-
-  .task-item {
-    position: relative;
-    padding: 1rem;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 6px;
-    margin-bottom: 0.5rem;
-    background: var(--background-primary);
-    transition: all 0.2s ease;
-  }
-
-  .task-item:hover {
-    background: var(--background-modifier-hover);
+  .filter-section {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   .task-title {

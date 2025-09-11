@@ -1,6 +1,7 @@
 <script lang="ts">
   import GitHubService from "./GitHubService.svelte";
   import LocalTasksService from "./LocalTasksService.svelte";
+  import ContextWidget from "./ContextWidget.svelte";
   import type { GitHubIntegrationSettings } from "../ui/settings/types";
   import type { TaskImportConfig } from "../../types/integrations";
   import { setIcon } from "obsidian";
@@ -38,18 +39,18 @@
     return currentContext.type === "daily";
   });
 
-  // Available services
+  // Available services with native Obsidian icons
   const services = [
     {
       id: "local",
       name: "Local Tasks",
-      icon: "list-todo",
+      icon: "file-text", // Native Obsidian icon for local files
       enabled: true,
     },
     {
       id: "github",
       name: "GitHub",
-      icon: "github",
+      icon: "github", // Native Obsidian GitHub icon
       enabled: true,
     },
   ];
@@ -82,22 +83,11 @@
   // Set Obsidian icons after component mounts
   $effect(() => {
     if (typeof window !== "undefined") {
-      // Set service icons
+      // Set service icons for vertical switcher
       const serviceIcons = document.querySelectorAll(
-        ".service-icon[data-icon]"
+        ".service-icon-vertical[data-icon]"
       );
       serviceIcons.forEach((iconEl) => {
-        const iconName = iconEl.getAttribute("data-icon");
-        if (iconName) {
-          setIcon(iconEl as HTMLElement, iconName);
-        }
-      });
-
-      // Set context icons
-      const contextIcons = document.querySelectorAll(
-        ".context-icon[data-icon]"
-      );
-      contextIcons.forEach((iconEl) => {
         const iconName = iconEl.getAttribute("data-icon");
         if (iconName) {
           setIcon(iconEl as HTMLElement, iconName);
@@ -119,145 +109,117 @@
 
 <div class="tasks-view" data-type="tasks" data-testid="tasks-view">
   <div class="tasks-view-layout">
-    <!-- Header with Service Switcher -->
-    <div class="tasks-view-header">
-      <!-- Service Switcher -->
-      <div class="service-switcher" data-testid="service-switcher">
-        {#each services as service}
-          <button
-            class="service-button {activeService === service.id
-              ? 'active'
-              : ''} {!service.enabled ? 'disabled' : ''}"
-            title={service.name}
-            onclick={() => setActiveService(service.id)}
-            disabled={!service.enabled}
-            data-testid="service-{service.id}"
-            aria-label="Switch to {service.name}"
-          >
-            <span class="service-icon" data-icon={service.icon}></span>
-            <span class="service-label">{service.name}</span>
-          </button>
-        {/each}
+    <!-- Main Content Area -->
+    <div class="tasks-view-main">
+      <!-- Context Widget at the top -->
+      <div class="tasks-view-context">
+        <ContextWidget />
       </div>
 
-      <!-- Context Indicator -->
-      <div class="context-indicator">
-        {#if dayPlanningMode}
-          <span class="context-badge daily-note">
-            <span class="context-icon" data-icon="calendar-days"></span>
-            Daily Note Mode
-          </span>
-        {:else}
-          <span class="context-badge project-area">
-            <span class="context-icon" data-icon="folder"></span>
-            Project/Area Mode
-          </span>
+      <!-- Service Content -->
+      <div class="service-content" data-testid="service-content">
+        {#if activeService === "github"}
+          <GitHubService
+            {githubService}
+            {settings}
+            {dependencies}
+            {dayPlanningMode}
+          />
+        {:else if activeService === "local"}
+          <LocalTasksService {dayPlanningMode} />
         {/if}
       </div>
     </div>
 
-    <!-- Service Content -->
-    <div class="service-content" data-testid="service-content">
-      {#if activeService === "github"}
-        <GitHubService
-          {githubService}
-          {settings}
-          {dependencies}
-          {dayPlanningMode}
-        />
-      {:else if activeService === "local"}
-        <LocalTasksService {dayPlanningMode} />
-      {/if}
+    <!-- Vertical Service Switcher on the right -->
+    <div class="service-switcher-vertical" data-testid="service-switcher">
+      {#each services as service}
+        <button
+          class="service-button-vertical {activeService === service.id
+            ? 'active'
+            : ''} {!service.enabled ? 'disabled' : ''}"
+          title={service.name}
+          onclick={() => setActiveService(service.id)}
+          disabled={!service.enabled}
+          data-testid="service-{service.id}"
+          aria-label="Switch to {service.name}"
+        >
+          <span class="service-icon-vertical" data-icon={service.icon}></span>
+        </button>
+      {/each}
     </div>
   </div>
 </div>
 
 <style>
-  .tasks-view-header {
+  .tasks-view-layout {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid var(--background-modifier-border);
+    height: 100%;
+    gap: 12px;
   }
 
-  .service-switcher {
+  .tasks-view-main {
+    flex: 1;
     display: flex;
-    gap: 0.5rem;
+    flex-direction: column;
+    overflow: hidden;
   }
 
-  .service-button {
+  .tasks-view-context {
+    padding: 12px 16px 0 16px;
+    flex-shrink: 0;
+  }
+
+  .service-content {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .service-switcher-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 8px;
+    background: var(--background-secondary);
+    border-left: 1px solid var(--background-modifier-border);
+    width: 48px;
+    flex-shrink: 0;
+  }
+
+  .service-button-vertical {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
     background: var(--background-primary);
     color: var(--text-normal);
     cursor: pointer;
     transition: all 0.2s ease;
-    font-size: 0.9em;
   }
 
-  .service-button:hover {
+  .service-button-vertical:hover:not(.disabled) {
     background: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover);
   }
 
-  .service-button.active {
+  .service-button-vertical.active {
     background: var(--interactive-accent);
     color: var(--text-on-accent);
     border-color: var(--interactive-accent);
   }
 
-  .service-button.disabled {
+  .service-button-vertical.disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  .service-icon {
+  .service-icon-vertical {
     width: 16px;
     height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .service-label {
-    font-weight: 500;
-  }
-
-  .context-indicator {
-    display: flex;
-    align-items: center;
-  }
-
-  .context-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-size: 0.85em;
-    font-weight: 500;
-  }
-
-  .context-badge.daily-note {
-    background: var(--color-accent-1);
-    color: var(--text-on-accent);
-  }
-
-  .context-badge.project-area {
-    background: var(--background-secondary);
-    color: var(--text-muted);
-  }
-
-  .context-icon {
-    width: 14px;
-    height: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-shrink: 0;
   }
 </style>

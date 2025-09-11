@@ -138,23 +138,31 @@ describe("LocalTasksService", () => {
       timeout: 10000,
     });
 
-    // Should show context indicator
-    await context.page.waitForSelector(".context-indicator", {
-      state: "visible",
-      timeout: 5000,
-    });
-
-    // Should show project/area mode by default (not a daily note)
-    const projectAreaBadge = context.page.locator(
-      ".context-badge.project-area"
+    // Should show context widget in tasks view
+    await context.page.waitForSelector(
+      '[data-testid="tasks-view"] .context-widget',
+      {
+        state: "visible",
+        timeout: 5000,
+      }
     );
-    await context.page.waitForSelector(".context-badge.project-area", {
-      state: "visible",
-      timeout: 5000,
-    });
 
-    const badgeText = await projectAreaBadge.textContent();
-    expect(badgeText).toContain("Project/Area Mode");
+    // Should show context text (not in daily note mode)
+    const contextWidget = context.page.locator(
+      '[data-testid="tasks-view"] .context-widget'
+    );
+    await context.page.waitForSelector(
+      '[data-testid="tasks-view"] .context-widget',
+      {
+        state: "visible",
+        timeout: 5000,
+      }
+    );
+
+    const contextText = await contextWidget
+      .locator(".context-text")
+      .textContent();
+    expect(contextText).toContain("No context");
 
     // Initially should show "Open" button on hover (not in daily note mode)
     const taskItem = context.page
@@ -226,15 +234,22 @@ describe("LocalTasksService", () => {
     });
 
     // Wait for the context to update to daily note mode
-    await context.page.waitForSelector(".context-badge.daily-note", {
-      state: "visible",
-      timeout: 5000,
-    });
+    await context.page.waitForSelector(
+      '[data-testid="tasks-view"] .context-widget.context-type-daily',
+      {
+        state: "visible",
+        timeout: 5000,
+      }
+    );
 
     // Verify we're in daily note mode
-    const dailyNoteBadge = context.page.locator(".context-badge.daily-note");
-    const badgeText = await dailyNoteBadge.textContent();
-    expect(badgeText).toContain("Daily Note Mode");
+    const contextWidget = context.page.locator(
+      '[data-testid="tasks-view"] .context-widget.context-type-daily'
+    );
+    const contextText = await contextWidget
+      .locator(".context-text")
+      .textContent();
+    expect(contextText).toContain("Daily Note");
 
     // Should now be in day planning mode - hover over task to see "Add to today" button
     const taskItem = context.page
