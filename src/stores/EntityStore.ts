@@ -60,22 +60,21 @@ export abstract class EntityStore<T extends BaseEntity> {
     this.fileManager = fileManager;
     this.folder = folder;
 
-    // Load persisted data first
-    await this.loadPersistedData();
-
     // Set up file system watchers for reactive updates
     this.setupFileWatchers();
 
-    // Initial load from file system
-    await this.refreshEntities();
+    // Load persisted metadata (for tracking purposes only)
+    await this.loadPersistedData();
+
+    console.log(
+      `${this.storageKey}: Store initialized, ready for vault events`
+    );
   }
 
   /**
    * Refresh all entities from the file system
    */
   async refreshEntities() {
-    if (!this.app) return;
-
     // If there's already a refresh in progress, wait for it
     if (this.refreshPromise) {
       return this.refreshPromise;
@@ -197,15 +196,18 @@ export abstract class EntityStore<T extends BaseEntity> {
    * Load all entities from the file system
    */
   private async loadAllEntities(): Promise<T[]> {
-    const entityFiles = this.app.vault
-      .getMarkdownFiles()
-      .filter((file) => file.path.startsWith(this.folder + "/"));
+    const folder = this.app.vault.getFolderByPath(this.folder);
+
+    const entityFiles = folder.children
+      .filter((child) => child instanceof TFile && child.extension === "md")
+      .map((child) => child as TFile);
 
     const entities: T[] = [];
 
     for (const file of entityFiles) {
       const entityData = await this.parseFileToEntity(file);
 
+      // It is fine to skip files that are not valid entities
       if (entityData) {
         entities.push(entityData);
       }
@@ -218,13 +220,6 @@ export abstract class EntityStore<T extends BaseEntity> {
    * Parse a file and extract entity data using file manager
    */
   private async parseFileToEntity(file: TFile): Promise<T> {
-    if (!this.fileManager) {
-      throw new Error(
-        `No file manager available for parsing ${this.storageKey} entity`
-      );
-    }
-
-    // Use the file manager's loadEntity method - let errors bubble up
     return await this.fileManager.loadEntity(file);
   }
 

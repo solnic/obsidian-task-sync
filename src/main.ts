@@ -180,25 +180,9 @@ export default class TaskSyncPlugin extends Plugin {
       this.settings
     );
 
-    // Initialize stores with file managers
-    await taskStore.initialize(
-      this.app,
-      this,
-      this.settings.tasksFolder,
-      this.taskFileManager
-    );
-    await projectStore.initialize(
-      this.app,
-      this,
-      this.settings.projectsFolder,
-      this.projectFileManager
-    );
-    await areaStore.initialize(
-      this.app,
-      this,
-      this.settings.areasFolder,
-      this.areaFileManager
-    );
+    // Initialize stores - this will set up the basic structure
+    // Full population will happen in onLayoutReady after vault is loaded
+    await this.initializeStores();
 
     // Wire up GitHub service with import dependencies
     this.githubService.setImportDependencies(this.taskImportManager);
@@ -263,13 +247,14 @@ export default class TaskSyncPlugin extends Plugin {
       (leaf) => new ContextTabView(leaf)
     );
 
-    // Wait for both layout ready and stores to finish initial loading before creating views
-    Promise.all([
-      new Promise<void>((resolve) => {
-        this.app.workspace.onLayoutReady(() => resolve());
-      }),
-      this.waitForStoreRefresh(),
-    ]).then(() => {
+    // Wait for layout ready, then populate stores and create views
+    this.app.workspace.onLayoutReady(async () => {
+      console.log("Layout ready - populating stores from vault");
+
+      // Now that vault is fully loaded, populate stores with existing files
+      await this.populateStoresFromVault();
+
+      // Initialize views after stores are populated
       this.initializeTasksView();
       this.initializeContextTabView();
     });
@@ -1388,5 +1373,43 @@ export default class TaskSyncPlugin extends Plugin {
       console.error("Failed to sync area and project bases:", error);
       throw error;
     }
+  }
+
+  /**
+   * Initialize stores with basic setup (no file scanning)
+   */
+  private async initializeStores(): Promise<void> {
+    await taskStore.initialize(
+      this.app,
+      this,
+      this.settings.tasksFolder,
+      this.taskFileManager
+    );
+    await projectStore.initialize(
+      this.app,
+      this,
+      this.settings.projectsFolder,
+      this.projectFileManager
+    );
+    await areaStore.initialize(
+      this.app,
+      this,
+      this.settings.areasFolder,
+      this.areaFileManager
+    );
+  }
+
+  /**
+   * Populate stores from vault after layout is ready
+   */
+  private async populateStoresFromVault(): Promise<void> {
+    console.log("Populating stores from vault...");
+
+    // Refresh all stores to load existing files
+    await taskStore.refreshEntities();
+    await projectStore.refreshEntities();
+    await areaStore.refreshEntities();
+
+    console.log("Stores populated from vault");
   }
 }

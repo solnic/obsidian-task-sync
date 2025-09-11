@@ -108,9 +108,7 @@ export class ProjectFileManager extends FileManager {
     const frontMatter = await this.waitForMetadataCache(file);
 
     if (frontMatter.Type !== "Project") {
-      throw new Error(
-        `File ${file.path} is not a valid project (Type: ${frontMatter.Type})`
-      );
+      return;
     }
 
     return {

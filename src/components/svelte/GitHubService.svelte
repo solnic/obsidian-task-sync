@@ -115,11 +115,24 @@
         .catch((err) => {
           error = err.message || "Failed to load GitHub data";
         });
+
+      refreshImportStatus();
     }
+  });
+
+  // Watch for changes in the task store and refresh import status
+  $effect(() => {
+    // This effect will run whenever the task store changes
+    taskStore.getEntities(); // Access entities to trigger reactivity
+    // Refresh import status whenever task store entities change
+    refreshImportStatus();
   });
 
   function setActiveTab(tab: "issues" | "pull-requests"): void {
     activeTab = tab;
+
+    refreshImportStatus();
+
     if (
       tab === "pull-requests" &&
       pullRequests.length === 0 &&
@@ -205,6 +218,31 @@
     }
   }
 
+  /**
+   * Refresh import status for all issues and pull requests from task store
+   * This should be called whenever the component becomes visible to ensure
+   * import status is up-to-date with the current state of the task store
+   */
+  function refreshImportStatus(): void {
+    // Refresh import status for issues
+    const importedIssueNumbers = new Set<number>();
+    for (const issue of issues) {
+      if (taskStore.isTaskImported("github", `github-${issue.id}`)) {
+        importedIssueNumbers.add(issue.number);
+      }
+    }
+    importedIssues = importedIssueNumbers;
+
+    // Refresh import status for pull requests
+    const importedPRNumbers = new Set<number>();
+    for (const pr of pullRequests) {
+      if (taskStore.isTaskImported("github", `github-${pr.id}`)) {
+        importedPRNumbers.add(pr.number);
+      }
+    }
+    importedPullRequests = importedPRNumbers;
+  }
+
   async function loadIssues(): Promise<void> {
     if (!currentRepository || !githubService.isEnabled()) {
       return;
@@ -216,14 +254,8 @@
     try {
       issues = await githubService.fetchIssues(currentRepository);
 
-      // Load import status for all issues using task store
-      const importedNumbers = new Set<number>();
-      for (const issue of issues) {
-        if (taskStore.isTaskImported("github", `github-${issue.id}`)) {
-          importedNumbers.add(issue.number);
-        }
-      }
-      importedIssues = importedNumbers;
+      // Refresh import status after loading issues
+      refreshImportStatus();
 
       isLoading = false;
     } catch (err: any) {
@@ -243,14 +275,8 @@
     try {
       pullRequests = await githubService.fetchPullRequests(currentRepository);
 
-      // Load import status for all pull requests using task store
-      const importedNumbers = new Set<number>();
-      for (const pr of pullRequests) {
-        if (taskStore.isTaskImported("github", `github-pr-${pr.id}`)) {
-          importedNumbers.add(pr.number);
-        }
-      }
-      importedPullRequests = importedNumbers;
+      // Refresh import status after loading pull requests
+      refreshImportStatus();
 
       isLoading = false;
     } catch (err: any) {

@@ -107,9 +107,7 @@ export class AreaFileManager extends FileManager {
     const frontMatter = await this.waitForMetadataCache(file);
 
     if (frontMatter.Type !== "Area") {
-      throw new Error(
-        `File ${file.path} is not a valid area (Type: ${frontMatter.Type})`
-      );
+      return;
     }
 
     return {
