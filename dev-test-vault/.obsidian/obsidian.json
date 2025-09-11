@@ -1,0 +1,49 @@
+{
+  "vaults": {
+    "test-vault": {
+      "path": "/workspaces/obsidian-task-sync/dev-test-vault",
+      "ts": 1757588630000,
+      "open": true
+    }
+  },
+  "frame": {
+    "x": 0,
+    "y": 0,
+    "width": 1920,
+    "height": 1080
+  },
+  "theme": "obsidian",
+  "enabledPlugins": [
+    "obsidian-task-sync"
+  ],
+  "hotkeys": {},
+  "workspaceLayout": {
+    "type": "split",
+    "direction": "vertical",
+    "children": [
+      {
+        "type": "leaf",
+        "state": {
+          "type": "empty",
+          "state": {}
+        }
+      }
+    ]
+  },
+  "leftRibbon": {
+    "hiddenItems": {}
+  },
+  "rightRibbon": {
+    "hiddenItems": {}
+  },
+  "leftSidedock": {
+    "children": [],
+    "collapsed": true
+  },
+  "rightSidedock": {
+    "children": [],
+    "collapsed": true
+  },
+  "active": "test-vault",
+  "lastOpenFiles": []
+}

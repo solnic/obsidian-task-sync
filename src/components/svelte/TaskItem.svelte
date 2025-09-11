@@ -5,6 +5,12 @@
    */
 
   import type { Snippet } from "svelte";
+  import { getPluginContext } from "./context";
+  import CategoryBadge from "./badges/CategoryBadge.svelte";
+  import StatusBadge from "./badges/StatusBadge.svelte";
+  import PriorityBadge from "./badges/PriorityBadge.svelte";
+  import ProjectBadge from "./badges/ProjectBadge.svelte";
+  import AreaBadge from "./badges/AreaBadge.svelte";
 
   interface Props {
     // Core item data
@@ -52,6 +58,8 @@
     actions,
   }: Props = $props();
 
+  const { plugin } = getPluginContext();
+
   function handleMouseEnter() {
     onHover?.(true);
   }
@@ -60,21 +68,18 @@
     onHover?.(false);
   }
 
-  // Badge type to CSS class mapping
-  function getBadgeClass(type: string): string {
+  // Get color for badge types that have configurable colors
+  function getBadgeColor(type: string, text: string): string | undefined {
     switch (type) {
       case "category":
-        return "task-sync-category-badge";
+        return plugin.settings.taskTypes.find((t) => t.name === text)?.color;
       case "status":
-        return "task-sync-status-badge";
+        return plugin.settings.taskStatuses.find((s) => s.name === text)?.color;
       case "priority":
-        return "task-sync-priority-badge";
-      case "project":
-        return "task-sync-project-badge";
-      case "area":
-        return "task-sync-area-badge";
+        return plugin.settings.taskPriorities.find((p) => p.name === text)
+          ?.color;
       default:
-        return "task-sync-generic-badge";
+        return undefined;
     }
   }
 </script>
@@ -109,7 +114,31 @@
       {#if badges.length > 0}
         <div class="task-sync-item-badges">
           {#each badges as badge}
-            <span class={getBadgeClass(badge.type)}>{badge.text}</span>
+            {#if badge.type === "category"}
+              <CategoryBadge
+                category={badge.text}
+                color={getBadgeColor(badge.type, badge.text)}
+                size="small"
+              />
+            {:else if badge.type === "status"}
+              <StatusBadge
+                status={badge.text}
+                color={getBadgeColor(badge.type, badge.text)}
+                size="small"
+              />
+            {:else if badge.type === "priority"}
+              <PriorityBadge
+                priority={badge.text}
+                color={getBadgeColor(badge.type, badge.text)}
+                size="small"
+              />
+            {:else if badge.type === "project"}
+              <ProjectBadge project={badge.text} size="small" />
+            {:else if badge.type === "area"}
+              <AreaBadge area={badge.text} size="small" />
+            {:else}
+              <span class="task-sync-generic-badge">{badge.text}</span>
+            {/if}
           {/each}
         </div>
       {/if}
@@ -185,12 +214,7 @@
     font-weight: 500;
   }
 
-  /* Badge styles */
-  .task-sync-category-badge,
-  .task-sync-status-badge,
-  .task-sync-priority-badge,
-  .task-sync-project-badge,
-  .task-sync-area-badge,
+  /* Generic badge fallback style */
   .task-sync-generic-badge {
     padding: 2px 8px;
     border-radius: 12px;
@@ -198,24 +222,11 @@
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    color: white;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-    min-width: 60px;
-    text-align: center;
-  }
-
-  .task-sync-project-badge {
-    background-color: #3b82f6;
-  }
-
-  .task-sync-area-badge {
-    background-color: #10b981;
-  }
-
-  .task-sync-generic-badge {
     background-color: var(--background-modifier-border);
     color: var(--text-muted);
     text-shadow: none;
+    min-width: 60px;
+    text-align: center;
   }
 
   .task-sync-action-overlay {

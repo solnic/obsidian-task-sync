@@ -255,6 +255,21 @@ export class TaskFileManager extends FileManager {
       return;
     }
 
+    // Helper function to clean link formatting from strings
+    const cleanLinkFormat = (value: any): any => {
+      if (typeof value === "string") {
+        // Remove [[ ]] brackets from links
+        return value.replace(/^\[\[|\]\]$/g, "");
+      }
+      if (Array.isArray(value)) {
+        // Clean each item in array
+        return value.map((item) =>
+          typeof item === "string" ? item.replace(/^\[\[|\]\]$/g, "") : item
+        );
+      }
+      return value;
+    };
+
     return {
       id: this.generateId(),
       file,
@@ -265,9 +280,9 @@ export class TaskFileManager extends FileManager {
       priority: frontMatter.Priority,
       status: frontMatter.Status,
       done: frontMatter.Done,
-      parentTask: frontMatter["Parent task"],
-      project: frontMatter.Project,
-      areas: frontMatter.Areas,
+      parentTask: cleanLinkFormat(frontMatter["Parent task"]),
+      project: cleanLinkFormat(frontMatter.Project),
+      areas: cleanLinkFormat(frontMatter.Areas),
       doDate: frontMatter["Do Date"],
       tags: frontMatter.tags,
       source: frontMatter.source,
