@@ -119,7 +119,6 @@ export class TaskFileManager extends FileManager {
     // Use parent task template if:
     // 1. Category is explicitly set to 'Parent Task'
     // 2. Or if the task name suggests it's a parent task (contains words like "Epic", "Parent", etc.)
-    // 3. Or if we're in a context where parent tasks are expected
 
     if (data.category === "Parent Task") {
       return true;
@@ -129,11 +128,6 @@ export class TaskFileManager extends FileManager {
     const parentKeywords = ["epic", "parent", "main", "master", "primary"];
     const taskNameLower = data.title.toLowerCase();
     if (parentKeywords.some((keyword) => taskNameLower.includes(keyword))) {
-      return true;
-    }
-
-    // For now, also use parent template for Feature category tasks as they often have subtasks
-    if (data.category === "Feature") {
       return true;
     }
 

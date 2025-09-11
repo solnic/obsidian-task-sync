@@ -148,7 +148,10 @@ Task with wrong Type property.`
     // Capture console logs
     const consoleLogs: string[] = [];
     context.page.on("console", (msg: any) => {
-      if (msg.type() === "log" && msg.text().includes("Task Sync:")) {
+      if (
+        (msg.type() === "log" || msg.type() === "error") &&
+        msg.text().includes("Task Sync:")
+      ) {
         consoleLogs.push(msg.text());
       }
     });
@@ -176,8 +179,7 @@ Task with wrong Type property.`
     expect(
       consoleLogs.some(
         (log) =>
-          log.includes("is not a valid task") &&
-          log.includes("Wrong Type Task.md")
+          log.includes("is not a task") && log.includes("Wrong Type Task.md")
       )
     ).toBe(true);
 

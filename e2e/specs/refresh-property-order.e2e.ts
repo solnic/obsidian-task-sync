@@ -33,7 +33,7 @@ Status: In Progress
 Parent task:
 ---
 
-This task has all properties but in wrong order.`,
+This task has all properties but in wrong order.`
       );
     });
 
@@ -53,7 +53,7 @@ This task has all properties but in wrong order.`,
     const initialPropertyOrder = extractPropertyOrder(initialContent);
     console.log("Initial property order:", initialPropertyOrder);
 
-    // Expected order based on default schema
+    // Expected order based on default schema (including Do Date which gets added during refresh)
     const expectedOrder = [
       "Title",
       "Type",
@@ -64,6 +64,7 @@ This task has all properties but in wrong order.`,
       "Done",
       "Status",
       "Parent task",
+      "Do Date",
       "tags",
     ];
 
@@ -100,7 +101,7 @@ This task has all properties but in wrong order.`,
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Wrong Order Task.md",
+        "Tasks/Wrong Order Task.md"
       );
     });
 
@@ -113,7 +114,7 @@ This task has all properties but in wrong order.`,
     expect(frontMatter.Status).toBe("In Progress");
     expect(frontMatter.tags).toBe("test");
     expect(updatedContent).toContain(
-      "This task has all properties but in wrong order.",
+      "This task has all properties but in wrong order."
     );
   });
 
@@ -137,10 +138,11 @@ Project: Test Project
 Done: false
 Status: In Progress
 Parent task:
+Do Date:
 tags: test
 ---
 
-This task was created with default property order.`,
+This task was created with default property order.`
       );
     });
 
@@ -160,7 +162,7 @@ This task was created with default property order.`,
     const initialPropertyOrder = extractPropertyOrder(initialContent);
     console.log("Initial property order:", initialPropertyOrder);
 
-    // Expected default order
+    // Expected default order (including Do Date)
     const expectedDefaultOrder = [
       "Title",
       "Type",
@@ -171,6 +173,7 @@ This task was created with default property order.`,
       "Done",
       "Status",
       "Parent task",
+      "Do Date",
       "tags",
     ];
 
@@ -182,7 +185,7 @@ This task was created with default property order.`,
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Update settings with custom property order (Done first)
+      // Update settings with custom property order (Done first, including DO_DATE)
       plugin.settings.taskPropertyOrder = [
         "DONE",
         "TITLE",
@@ -193,12 +196,13 @@ This task was created with default property order.`,
         "PROJECT",
         "STATUS",
         "PARENT_TASK",
+        "DO_DATE",
         "TAGS",
       ];
       await plugin.saveSettings();
     });
 
-    // Expected order based on NEW custom settings (Done first)
+    // Expected order based on NEW custom settings (Done first, including Do Date)
     const expectedCustomOrder = [
       "Done",
       "Title",
@@ -209,6 +213,7 @@ This task was created with default property order.`,
       "Project",
       "Status",
       "Parent task",
+      "Do Date",
       "tags",
     ];
 
@@ -230,7 +235,7 @@ This task was created with default property order.`,
 
     console.log(
       "Updated file content (after settings change):",
-      updatedContent,
+      updatedContent
     );
 
     // Extract property order from updated content
@@ -254,7 +259,7 @@ This task was created with default property order.`,
     expect(updatedContent).toContain("Status: In Progress");
     expect(updatedContent).toContain("tags: test");
     expect(updatedContent).toContain(
-      "This task was created with default property order.",
+      "This task was created with default property order."
     );
   });
 });

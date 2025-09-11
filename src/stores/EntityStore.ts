@@ -197,8 +197,6 @@ export abstract class EntityStore<T extends BaseEntity> {
    * Load all entities from the file system
    */
   private async loadAllEntities(): Promise<T[]> {
-    if (!this.app) return [];
-
     const entityFiles = this.app.vault
       .getMarkdownFiles()
       .filter((file) => file.path.startsWith(this.folder + "/"));
@@ -206,14 +204,8 @@ export abstract class EntityStore<T extends BaseEntity> {
     const entities: T[] = [];
 
     for (const file of entityFiles) {
-      try {
-        const entityData = await this.parseFileToEntity(file);
-        entities.push(entityData);
-      } catch (error) {
-        // Log the error but continue loading other entities
-        console.warn(`Failed to load entity from ${file.path}:`, error);
-        // Don't add this entity to the list, but continue with others
-      }
+      const entityData = await this.parseFileToEntity(file);
+      entities.push(entityData);
     }
 
     return entities;
@@ -237,9 +229,6 @@ export abstract class EntityStore<T extends BaseEntity> {
    * Set up file system watchers for reactive updates
    */
   private setupFileWatchers() {
-    if (!this.app) return;
-
-    // Watch for file changes in the entity folder
     this.app.vault.on("create", (file) => {
       if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
         // Don't await here to avoid blocking the event handler

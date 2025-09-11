@@ -282,7 +282,12 @@ describe("LocalTasksService", () => {
         priority: "Medium",
         status: "Backlog",
       });
+      // Add a small delay between task creation to avoid metadata cache race conditions
+      await context.page.waitForTimeout(100);
     }
+
+    // Wait for metadata cache to update for all files
+    await context.page.waitForTimeout(2000);
 
     // Wait for all store refreshes to complete after task creation
     await context.page.evaluate(async () => {
@@ -303,9 +308,23 @@ describe("LocalTasksService", () => {
     const localTab = context.page.locator('[data-testid="service-local"]');
     await localTab.click();
 
-    // Wait for tasks to load
-    await context.page.waitForSelector('[data-testid="local-task-item"]', {
-      timeout: 10000,
+    // Wait for all 5 tasks to load
+    await context.page.waitForFunction(
+      () => {
+        const taskItems = document.querySelectorAll(
+          '[data-testid="local-task-item"]'
+        );
+        return taskItems.length === 5;
+      },
+      { timeout: 10000 }
+    );
+
+    // Scroll to ensure all tasks are visible
+    await context.page.evaluate(() => {
+      const tasksContainer = document.querySelector(".tasks-list");
+      if (tasksContainer) {
+        tasksContainer.scrollTop = tasksContainer.scrollHeight;
+      }
     });
 
     // Verify all tasks are loaded in the UI
@@ -318,7 +337,11 @@ describe("LocalTasksService", () => {
     // Should match the cached task count (all tasks should be loaded)
     expect(taskCount).toBe(finalTaskCount);
 
-    // Verify all our test tasks are present
+    // Verify that we have the expected number of tasks
+    expect(taskCount).toBe(5);
+    expect(taskCount).toBe(finalTaskCount);
+
+    // Verify all our test tasks are present with correct titles
     const taskTexts = await taskItems.allTextContents();
     const allTaskText = taskTexts.join(" ");
 
