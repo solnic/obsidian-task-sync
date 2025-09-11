@@ -96,12 +96,41 @@ function runFailedTests(isHeadless = false) {
   console.log('');
 
   try {
-    execSync(command, { stdio: 'inherit' });
+    const output = execSync(command, { encoding: 'utf8', stdio: 'pipe' });
+
+    // Show regular vitest output but filter out unhandled errors
+    const cleanOutput = filterUnhandledErrors(output);
+    console.log(cleanOutput);
     console.log('✅ Failed tests rerun completed!');
   } catch (error) {
-    console.log('❌ Some tests still failing. Check output above.');
+    const errorOutput = error.stdout ? error.stdout.toString() : '';
+    const cleanOutput = filterUnhandledErrors(errorOutput);
+    console.log(cleanOutput);
+    console.log('❌ Some tests are still failing.');
     process.exit(1);
   }
+}
+
+function filterUnhandledErrors(output) {
+  // Split output into sections and filter out only the unhandled errors
+  const sections = output.split(/⎯{20,}/);
+  const filteredSections = [];
+
+  for (const section of sections) {
+    // Skip sections that contain unhandled errors
+    if (section.includes('Unhandled Errors') ||
+      section.includes('Unhandled Rejection') ||
+      section.includes('Protocol error') ||
+      section.includes('Serialized Error') ||
+      section.includes('This error originated in')) {
+      continue;
+    }
+
+    // Keep all other sections (including test results, failures, etc.)
+    filteredSections.push(section);
+  }
+
+  return filteredSections.join('⎯'.repeat(80)).trim();
 }
 
 function main() {
