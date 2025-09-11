@@ -78,6 +78,9 @@ export async function setupObsidianElectron(
     "--user-data-dir=" + userDataDir,
     "open",
     `obsidian://open?path=${encodeURIComponent(resolvedVaultPath)}`,
+    // Add window size arguments
+    "--window-size=1920,1080",
+    "--force-device-scale-factor=1",
   ];
 
   // Add sandbox and headless arguments
@@ -153,6 +156,15 @@ export async function setupObsidianElectron(
       );
     }
   }
+
+  // Set viewport size to Full HD for consistent testing
+  try {
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    console.log("✅ Set viewport to 1920x1080");
+  } catch (viewportError) {
+    console.log("⚠️ Could not set viewport size:", viewportError.message);
+  }
+
   try {
     await page.waitForFunction(
       () => {
