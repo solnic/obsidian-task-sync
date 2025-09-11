@@ -58,7 +58,10 @@ export function filterLocalTasks(
   return tasks.filter((task) => {
     // Project filter
     if (combinedFilters.project) {
-      const taskProject = task.project?.replace(/^\[\[|\]\]$/g, ""); // Remove wiki link brackets
+      const taskProject =
+        typeof task.project === "string"
+          ? task.project.replace(/^\[\[|\]\]$/g, "")
+          : task.project; // Remove wiki link brackets
       if (taskProject !== combinedFilters.project) {
         return false;
       }
@@ -66,7 +69,12 @@ export function filterLocalTasks(
 
     // Area filter
     if (combinedFilters.area) {
-      const taskAreas = task.areas?.map(area => area.replace(/^\[\[|\]\]$/g, "")) || [];
+      const taskAreas =
+        task.areas && Array.isArray(task.areas)
+          ? task.areas.map((area) =>
+              typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area
+            )
+          : [];
       if (!taskAreas.includes(combinedFilters.area)) {
         return false;
       }
@@ -74,7 +82,10 @@ export function filterLocalTasks(
 
     // Parent task filter
     if (combinedFilters.parentTask) {
-      const taskParent = task.parentTask?.replace(/^\[\[|\]\]$/g, ""); // Remove wiki link brackets
+      const taskParent =
+        typeof task.parentTask === "string"
+          ? task.parentTask.replace(/^\[\[|\]\]$/g, "")
+          : task.parentTask; // Remove wiki link brackets
       if (taskParent !== combinedFilters.parentTask) {
         return false;
       }
@@ -99,24 +110,29 @@ export function filterGitHubIssues(
   const combinedFilters = { ...contextFilters, ...additionalFilters };
 
   // If no context filters are active, return all issues
-  if (!combinedFilters.project && !combinedFilters.area && !combinedFilters.parentTask) {
+  if (
+    !combinedFilters.project &&
+    !combinedFilters.area &&
+    !combinedFilters.parentTask
+  ) {
     return issues;
   }
 
   // Get GitHub task IDs that match the context filters
   const relevantTaskIds = new Set<string>();
-  
+
   importedTasks
-    .filter(task => task.source?.name === "github")
-    .forEach(task => {
-      const matchesContext = filterLocalTasks([task], context, additionalFilters).length > 0;
+    .filter((task) => task.source?.name === "github")
+    .forEach((task) => {
+      const matchesContext =
+        filterLocalTasks([task], context, additionalFilters).length > 0;
       if (matchesContext && task.source?.key) {
         relevantTaskIds.add(task.source.key);
       }
     });
 
   // Filter issues based on whether they have been imported as relevant tasks
-  return issues.filter(issue => {
+  return issues.filter((issue) => {
     const issueKey = `github-${issue.id}`;
     return relevantTaskIds.has(issueKey);
   });
@@ -135,24 +151,29 @@ export function filterGitHubPullRequests(
   const combinedFilters = { ...contextFilters, ...additionalFilters };
 
   // If no context filters are active, return all pull requests
-  if (!combinedFilters.project && !combinedFilters.area && !combinedFilters.parentTask) {
+  if (
+    !combinedFilters.project &&
+    !combinedFilters.area &&
+    !combinedFilters.parentTask
+  ) {
     return pullRequests;
   }
 
   // Get GitHub task IDs that match the context filters
   const relevantTaskIds = new Set<string>();
-  
+
   importedTasks
-    .filter(task => task.source?.name === "github")
-    .forEach(task => {
-      const matchesContext = filterLocalTasks([task], context, additionalFilters).length > 0;
+    .filter((task) => task.source?.name === "github")
+    .forEach((task) => {
+      const matchesContext =
+        filterLocalTasks([task], context, additionalFilters).length > 0;
       if (matchesContext && task.source?.key) {
         relevantTaskIds.add(task.source.key);
       }
     });
 
   // Filter pull requests based on whether they have been imported as relevant tasks
-  return pullRequests.filter(pr => {
+  return pullRequests.filter((pr) => {
     const prKey = `github-${pr.id}`;
     return relevantTaskIds.has(prKey);
   });
@@ -170,19 +191,23 @@ export function getFilterOptions(tasks: Task[]): {
   const areas = new Set<string>();
   const parentTasks = new Set<string>();
 
-  tasks.forEach(task => {
+  tasks.forEach((task) => {
     // Collect projects
     if (task.project) {
-      const project = task.project.replace(/^\[\[|\]\]$/g, "");
+      const project =
+        typeof task.project === "string"
+          ? task.project.replace(/^\[\[|\]\]$/g, "")
+          : task.project;
       if (project) {
         projects.add(project);
       }
     }
 
-    // Collect areas
-    if (task.areas) {
-      task.areas.forEach(area => {
-        const cleanArea = area.replace(/^\[\[|\]\]$/g, "");
+    // Collect areas - ensure areas is an array before iterating
+    if (task.areas && Array.isArray(task.areas)) {
+      task.areas.forEach((area) => {
+        const cleanArea =
+          typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area;
         if (cleanArea) {
           areas.add(cleanArea);
         }
@@ -191,7 +216,10 @@ export function getFilterOptions(tasks: Task[]): {
 
     // Collect parent tasks
     if (task.parentTask) {
-      const parent = task.parentTask.replace(/^\[\[|\]\]$/g, "");
+      const parent =
+        typeof task.parentTask === "string"
+          ? task.parentTask.replace(/^\[\[|\]\]$/g, "")
+          : task.parentTask;
       if (parent) {
         parentTasks.add(parent);
       }

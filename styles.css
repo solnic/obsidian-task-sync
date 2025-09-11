@@ -1594,7 +1594,7 @@ Provides consistent styling for all UI components
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 1rem;
+  padding: 0;
 }
 
 /* Unified Task List Container Styles */
@@ -1676,7 +1676,9 @@ Provides consistent styling for all UI components
 }
 
 .tasks-view-context {
-  padding: 12px 16px 0 16px;
+  padding: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
   flex-shrink: 0;
 }
 
@@ -1740,6 +1742,7 @@ Provides consistent styling for all UI components
   flex-direction: column;
   overflow: hidden;
   min-height: 0; /* Critical for flex children to shrink */
+  padding: 16px;
 }
 
 .github-service {

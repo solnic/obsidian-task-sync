@@ -39,6 +39,14 @@
   $effect(() => {
     const unsubscribe = contextStore.subscribe((value) => {
       currentContext = value;
+
+      // Get filters based on new context
+      const filters = getContextFilters(value);
+
+      // Reset all filters first, then apply context filters
+      selectedProject = filters.project;
+      selectedArea = filters.area;
+      selectedParentTask = filters.parentTask;
     });
     return unsubscribe;
   });
@@ -89,9 +97,16 @@
         task.title.toLowerCase().includes(lowerQuery) ||
         (task.category && task.category.toLowerCase().includes(lowerQuery)) ||
         (task.status && task.status.toLowerCase().includes(lowerQuery)) ||
-        (task.project && task.project.toLowerCase().includes(lowerQuery)) ||
+        (task.project &&
+          typeof task.project === "string" &&
+          task.project.toLowerCase().includes(lowerQuery)) ||
         (task.areas &&
-          task.areas.some((area) => area.toLowerCase().includes(lowerQuery)))
+          Array.isArray(task.areas) &&
+          task.areas.some(
+            (area) =>
+              typeof area === "string" &&
+              area.toLowerCase().includes(lowerQuery)
+          ))
     );
   }
 
@@ -154,15 +169,14 @@
 
       <!-- Filter Dropdowns -->
       <div class="filter-section">
-        {#if !contextFilters.project}
-          <FilterDropdown
-            label="Project"
-            currentValue={selectedProject}
-            options={filterOptions.projects}
-            onselect={(value) => (selectedProject = value)}
-            testId="project-filter"
-          />
-        {/if}
+        <FilterDropdown
+          label="Project"
+          currentValue={selectedProject}
+          options={filterOptions.projects}
+          onselect={(value) => (selectedProject = value)}
+          testId="project-filter"
+          isActive={!!contextFilters.project}
+        />
 
         {#if !contextFilters.area}
           <FilterDropdown

@@ -3,6 +3,7 @@
   import { Notice } from "obsidian";
   import { getPluginContext } from "./context";
   import FilterButton from "./FilterButton.svelte";
+  import SearchInput from "./SearchInput.svelte";
   import type {
     GitHubIssue,
     GitHubPullRequest,
@@ -585,25 +586,15 @@
       </div>
 
       <!-- Search input -->
-      <input
-        type="text"
-        class="search-input"
+      <SearchInput
+        bind:value={searchQuery}
         placeholder="Search {activeTab === 'issues'
           ? 'issues'
           : 'pull requests'}..."
-        bind:value={searchQuery}
-        data-testid="search-input"
+        onInput={(value) => (searchQuery = value)}
+        onRefresh={refresh}
+        testId="search-input"
       />
-
-      <!-- Refresh button -->
-      <button
-        class="refresh-button"
-        title="Refresh"
-        onclick={refresh}
-        data-testid="refresh-button"
-      >
-        ↻
-      </button>
     </div>
   </div>
 

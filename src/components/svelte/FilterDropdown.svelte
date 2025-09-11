@@ -53,7 +53,9 @@
     // Add "All" option to clear filter
     const allItem = menu.createDiv("task-sync-selector-item");
     allItem.textContent = placeholder;
-    allItem.addClass(currentValue === null ? "selected" : "");
+    if (currentValue === null) {
+      allItem.addClass("selected");
+    }
     allItem.addEventListener("click", () => {
       onselect(null);
       menu.remove();
@@ -69,7 +71,9 @@
     options.forEach((option) => {
       const item = menu.createDiv("task-sync-selector-item");
       item.textContent = option;
-      item.addClass(currentValue === option ? "selected" : "");
+      if (currentValue === option) {
+        item.addClass("selected");
+      }
       item.addEventListener("click", () => {
         onselect(option);
         menu.remove();

@@ -58,7 +58,7 @@
       onkeydown={handleKeydown}
       data-testid={testId}
     />
-    
+
     {#if showRefreshButton && onRefresh}
       <button
         class="refresh-button"
