@@ -88,7 +88,7 @@
 
   .search-input {
     flex: 1;
-    padding: 8px 12px;
+    padding: 8px 12px 8px 30px;
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
     background: var(--background-primary);

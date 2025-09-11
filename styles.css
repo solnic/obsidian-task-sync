@@ -1902,7 +1902,7 @@ button.tab-item.active {
 
 .search-input {
   width: 100%;
-  padding: 4px 8px;
+  padding: 8px 12px 8px 30px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
   background: var(--background-primary);
