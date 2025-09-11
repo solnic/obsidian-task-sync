@@ -2,8 +2,10 @@
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
   import { getPluginContext } from "./context";
-  import AutoSuggestInput from "./AutoSuggestInput.svelte";
+  import FilterButton from "./FilterButton.svelte";
   import SearchInput from "./SearchInput.svelte";
+  import GitHubIssueItem from "./GitHubIssueItem.svelte";
+  import GitHubPullRequestItem from "./GitHubPullRequestItem.svelte";
   import type {
     GitHubIssue,
     GitHubPullRequest,
@@ -528,9 +530,11 @@
       <!-- Filter Section -->
       <div class="filter-section">
         <!-- Type filters (Issues/Pull Requests) -->
-        <div class="type-filters">
+        <div class="task-sync-type-filters">
           <button
-            class="filter-toggle {activeTab === 'issues' ? 'active' : ''}"
+            class="task-sync-filter-toggle {activeTab === 'issues'
+              ? 'active'
+              : ''}"
             data-tab="issues"
             data-testid="issues-tab"
             onclick={() => setActiveTab("issues")}
@@ -539,7 +543,7 @@
             Issues
           </button>
           <button
-            class="filter-toggle {activeTab === 'pull-requests'
+            class="task-sync-filter-toggle {activeTab === 'pull-requests'
               ? 'active'
               : ''}"
             data-tab="pull-requests"
@@ -552,9 +556,11 @@
         </div>
 
         <!-- State filters -->
-        <div class="state-filters">
+        <div class="task-sync-state-filters">
           <button
-            class="filter-toggle {currentState === 'open' ? 'active' : ''}"
+            class="task-sync-filter-toggle {currentState === 'open'
+              ? 'active'
+              : ''}"
             data-state="open"
             data-testid="open-filter"
             onclick={() => setStateFilter("open")}
@@ -562,7 +568,9 @@
             Open
           </button>
           <button
-            class="filter-toggle {currentState === 'closed' ? 'active' : ''}"
+            class="task-sync-filter-toggle {currentState === 'closed'
+              ? 'active'
+              : ''}"
             data-state="closed"
             data-testid="closed-filter"
             onclick={() => setStateFilter("closed")}
@@ -571,204 +579,95 @@
           </button>
         </div>
         <!-- Organization filter -->
-        <AutoSuggestInput
+        <FilterButton
           label="Organization"
-          bind:value={currentOrganization}
-          suggestions={availableOrganizations}
-          placeholder="Type organization name..."
-          onselect={(value) => setOrganizationFilter(value)}
+          currentValue={currentOrganization || "All organizations"}
+          options={availableOrganizations}
+          placeholder="All organizations"
+          onselect={(value) =>
+            setOrganizationFilter(value === "All organizations" ? null : value)}
           testId="organization-filter"
+          autoSuggest={true}
+          allowClear={true}
         />
 
         <!-- Repository filter -->
-        <AutoSuggestInput
+        <FilterButton
           label="Repository"
-          bind:value={currentRepository}
-          suggestions={sortedRepositories.map((repo) => repo.full_name)}
-          placeholder="Type repository name..."
-          onselect={(value) => setRepository(value)}
+          currentValue={currentRepository || "All repositories"}
+          options={sortedRepositories.map((repo) => repo.full_name)}
+          placeholder="All repositories"
+          onselect={(value) =>
+            setRepository(value === "All repositories" ? null : value)}
           testId="repository-filter"
+          autoSuggest={true}
+          allowClear={true}
         />
       </div>
     </div>
   </div>
 
   <!-- Content Section -->
-  <div class="task-list-container">
+  <div class="task-sync-task-list-container">
     {#if !githubService.isEnabled()}
-      <div class="disabled-message">
+      <div class="task-sync-disabled-message">
         GitHub integration is not enabled. Please configure it in settings.
       </div>
     {:else if error}
-      <div class="error-message">
+      <div class="task-sync-error-message">
         {error}
       </div>
     {:else if isLoading}
-      <div class="loading-indicator">
+      <div class="task-sync-loading-indicator">
         Loading {activeTab === "issues" ? "issues" : "pull requests"}...
       </div>
     {:else if activeTab === "issues"}
-      <div class="task-list">
+      <div class="task-sync-task-list">
         {#if filteredIssues.length === 0}
-          <div class="empty-message">No issues found.</div>
+          <div class="task-sync-empty-message">No issues found.</div>
         {:else}
           {#each filteredIssues as issue}
-            <div
-              class="task-list-item {hoveredIssue === issue.number
-                ? 'hovered'
-                : ''} {importedIssues.has(issue.number) ? 'imported' : ''}"
-              onmouseenter={() => (hoveredIssue = issue.number)}
-              onmouseleave={() => (hoveredIssue = null)}
-              data-testid="issue-item"
-              data-imported={importedIssues.has(issue.number)}
-              role="listitem"
-            >
-              <div class="task-list-item-content">
-                <div class="issue-title">{issue.title}</div>
-                <div class="issue-number">#{issue.number}</div>
-                <div class="issue-meta">
-                  {#if issue.assignee}
-                    Assigned to {issue.assignee.login} •
-                  {/if}
-                  {issue.state} • {new Date(
-                    issue.created_at
-                  ).toLocaleDateString()}
-                </div>
-                {#if issue.labels.length > 0}
-                  <div class="issue-labels">
-                    {#each issue.labels as label}
-                      <span class="issue-label">{label.name}</span>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-
-              <!-- Import overlay -->
-              {#if hoveredIssue === issue.number}
-                {@const isImported = taskStore.isTaskImported(
-                  "github",
-                  `github-${issue.id}`
-                )}
-                {@const isImporting = importingIssues.has(issue.number)}
-                <div class="import-overlay">
-                  <div class="import-actions">
-                    {#if isImported}
-                      <span
-                        class="import-status imported"
-                        data-testid="imported-indicator"
-                      >
-                        ✓ Imported
-                      </span>
-                    {:else if isImporting}
-                      <span
-                        class="import-status importing"
-                        data-testid="importing-indicator"
-                      >
-                        ⏳ Importing...
-                      </span>
-                    {:else}
-                      <button
-                        class="import-button"
-                        title={dayPlanningMode
-                          ? "Add to today"
-                          : "Import this issue as a task"}
-                        onclick={() => importIssue(issue)}
-                        data-testid={dayPlanningMode
-                          ? "add-to-today-button"
-                          : "issue-import-button"}
-                      >
-                        {dayPlanningMode ? "Add to today" : "Import"}
-                      </button>
-                    {/if}
-                  </div>
-                </div>
-              {/if}
-            </div>
+            {@const isImported = taskStore.isTaskImported(
+              "github",
+              `github-${issue.id}`
+            )}
+            {@const isImporting = importingIssues.has(issue.number)}
+            <GitHubIssueItem
+              {issue}
+              isHovered={hoveredIssue === issue.number}
+              {isImported}
+              {isImporting}
+              onHover={(hovered) =>
+                (hoveredIssue = hovered ? issue.number : null)}
+              onImport={importIssue}
+              {dayPlanningMode}
+              testId="issue-item"
+            />
           {/each}
         {/if}
       </div>
     {:else if activeTab === "pull-requests"}
-      <div class="task-list">
+      <div class="task-sync-task-list">
         {#if filteredPullRequests.length === 0}
-          <div class="empty-message">No pull requests found.</div>
+          <div class="task-sync-empty-message">No pull requests found.</div>
         {:else}
           {#each filteredPullRequests as pr}
-            <div
-              class="task-list-item {hoveredPullRequest === pr.number
-                ? 'hovered'
-                : ''} {importedPullRequests.has(pr.number) ? 'imported' : ''}"
-              onmouseenter={() => (hoveredPullRequest = pr.number)}
-              onmouseleave={() => (hoveredPullRequest = null)}
-              data-testid="pr-item"
-              data-imported={importedPullRequests.has(pr.number)}
-              role="listitem"
-            >
-              <div class="task-list-item-content">
-                <div class="issue-title">{pr.title}</div>
-                <div class="issue-number">#{pr.number}</div>
-                <div class="issue-meta">
-                  {#if pr.assignee}
-                    Assigned to {pr.assignee.login} •
-                  {/if}
-                  {pr.state}
-                  {#if pr.merged_at}
-                    (merged)
-                  {:else if pr.draft}
-                    (draft)
-                  {/if}
-                  • {new Date(pr.created_at).toLocaleDateString()}
-                  • {pr.head.ref} → {pr.base.ref}
-                </div>
-                {#if pr.labels.length > 0}
-                  <div class="issue-labels">
-                    {#each pr.labels as label}
-                      <span class="issue-label">{label.name}</span>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-
-              <!-- Import overlay -->
-              {#if hoveredPullRequest === pr.number}
-                {@const isImported = taskStore.isTaskImported(
-                  "github",
-                  `github-pr-${pr.id}`
-                )}
-                {@const isImporting = importingPullRequests.has(pr.number)}
-                <div class="import-overlay">
-                  <div class="import-actions">
-                    {#if isImported}
-                      <span
-                        class="import-status imported"
-                        data-testid="imported-indicator"
-                      >
-                        ✓ Imported
-                      </span>
-                    {:else if isImporting}
-                      <span
-                        class="import-status importing"
-                        data-testid="importing-indicator"
-                      >
-                        ⏳ Importing...
-                      </span>
-                    {:else}
-                      <button
-                        class="import-button"
-                        title={dayPlanningMode
-                          ? "Add to today"
-                          : "Import this pull request as a task"}
-                        onclick={() => importPullRequest(pr)}
-                        data-testid={dayPlanningMode
-                          ? "add-to-today-button"
-                          : "pr-import-button"}
-                      >
-                        {dayPlanningMode ? "Add to today" : "Import"}
-                      </button>
-                    {/if}
-                  </div>
-                </div>
-              {/if}
-            </div>
+            {@const isImported = taskStore.isTaskImported(
+              "github",
+              `github-pr-${pr.id}`
+            )}
+            {@const isImporting = importingPullRequests.has(pr.number)}
+            <GitHubPullRequestItem
+              pullRequest={pr}
+              isHovered={hoveredPullRequest === pr.number}
+              {isImported}
+              {isImporting}
+              onHover={(hovered) =>
+                (hoveredPullRequest = hovered ? pr.number : null)}
+              onImport={importPullRequest}
+              {dayPlanningMode}
+              testId="pr-item"
+            />
           {/each}
         {/if}
       </div>

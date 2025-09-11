@@ -27,7 +27,7 @@ export interface GitHubIssue {
   body: string | null;
   state: "open" | "closed";
   assignee: { login: string } | null;
-  labels: Array<{ name: string }>;
+  labels: Array<{ name: string; color?: string }>;
   created_at: string;
   updated_at: string;
   html_url: string;
@@ -103,7 +103,7 @@ export class GitHubService {
       customMappings && Object.keys(customMappings).length > 0;
 
     this.labelTypeMapper = GitHubLabelTypeMapper.createWithDefaults(
-      hasCustomMappings ? { labelToTypeMapping: customMappings } : undefined,
+      hasCustomMappings ? { labelToTypeMapping: customMappings } : undefined
     );
     this.initializeOctokit();
   }
@@ -327,7 +327,7 @@ export class GitHubService {
    * Fetch repositories for a specific organization
    */
   async fetchRepositoriesForOrganization(
-    org: string,
+    org: string
   ): Promise<GitHubRepository[]> {
     if (!this.octokit) {
       throw new Error("GitHub integration is not enabled or configured");
@@ -379,7 +379,7 @@ export class GitHubService {
    */
   async importIssueAsTask(
     issue: GitHubIssue,
-    config: TaskImportConfig,
+    config: TaskImportConfig
   ): Promise<ImportResult> {
     if (!this.taskImportManager) {
       const error =
@@ -405,7 +405,7 @@ export class GitHubService {
       // Create the task
       const taskPath = await this.taskImportManager.createTaskFromData(
         taskData,
-        enhancedConfig,
+        enhancedConfig
       );
 
       // Task store will automatically pick up the new task via file watchers
@@ -426,7 +426,7 @@ export class GitHubService {
    */
   async importPullRequestAsTask(
     pullRequest: GitHubPullRequest,
-    config: TaskImportConfig,
+    config: TaskImportConfig
   ): Promise<ImportResult> {
     if (!this.taskImportManager) {
       const error =
@@ -449,13 +449,13 @@ export class GitHubService {
       // Enhance config with label-based task type mapping
       const enhancedConfig = this.enhanceConfigWithLabelMapping(
         pullRequest,
-        config,
+        config
       );
 
       // Create the task
       const taskPath = await this.taskImportManager.createTaskFromData(
         taskData,
-        enhancedConfig,
+        enhancedConfig
       );
 
       // Task store will automatically pick up the new task via file watchers
@@ -499,7 +499,7 @@ export class GitHubService {
    * Transform GitHub pull request to standardized external task data
    */
   transformPullRequestToTaskData(
-    pullRequest: GitHubPullRequest,
+    pullRequest: GitHubPullRequest
   ): ExternalTaskData {
     // Determine status based on PR state
     let status: string = pullRequest.state;
@@ -540,7 +540,7 @@ export class GitHubService {
    */
   private enhanceConfigWithLabelMapping(
     issue: GitHubIssue,
-    config: TaskImportConfig,
+    config: TaskImportConfig
   ): TaskImportConfig {
     const enhancedConfig = { ...config };
 
@@ -555,7 +555,7 @@ export class GitHubService {
 
       const mappedType = this.labelTypeMapper.mapLabelsToType(
         labels,
-        availableTypes,
+        availableTypes
       );
 
       if (mappedType) {
@@ -589,7 +589,7 @@ export class GitHubService {
    * Extract priority from GitHub issue labels
    */
   extractPriorityFromLabels(
-    labels: Array<{ name: string }>,
+    labels: Array<{ name: string }>
   ): string | undefined {
     for (const label of labels) {
       const labelName = label.name.toLowerCase();

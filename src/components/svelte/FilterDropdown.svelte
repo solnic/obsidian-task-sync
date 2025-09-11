@@ -29,9 +29,16 @@
   let buttonEl: HTMLButtonElement;
   let isMenuOpen = $state(false);
 
-  // Computed display value
+  // Computed display value - show "All {entity type}" format
   let displayValue = $derived.by(() => {
-    return currentValue || placeholder;
+    if (currentValue) {
+      return currentValue;
+    }
+    // Convert placeholder to "All {entity type}" format if not already
+    if (placeholder.toLowerCase().startsWith("all ")) {
+      return placeholder;
+    }
+    return `All ${placeholder.toLowerCase()}`;
   });
 
   // Computed active state - active if a specific value is selected
@@ -124,9 +131,8 @@
   class:disabled
   {disabled}
   data-testid={testId}
-  title="{label}: {displayValue}"
+  title={displayValue}
 >
-  <span class="filter-label">{label}:</span>
   <span class="filter-value">{displayValue}</span>
   <span class="filter-arrow" class:open={isMenuOpen}>▼</span>
 </button>
@@ -145,6 +151,9 @@
     cursor: pointer;
     transition: all 0.2s ease;
     white-space: nowrap;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .filter-dropdown-button:hover:not(.disabled) {
@@ -172,12 +181,8 @@
     cursor: not-allowed;
   }
 
-  .filter-label {
-    font-weight: 500;
-  }
-
   .filter-value {
-    font-weight: normal;
+    font-weight: 500;
   }
 
   .filter-arrow {

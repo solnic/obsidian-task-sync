@@ -1,7 +1,7 @@
 <script lang="ts">
   import GitHubService from "./GitHubService.svelte";
   import LocalTasksService from "./LocalTasksService.svelte";
-  import ContextWidget from "./ContextWidget.svelte";
+  import TabView from "./TabView.svelte";
   import type { GitHubIntegrationSettings } from "../ui/settings/types";
   import type { TaskImportConfig } from "../../types/integrations";
   import { setIcon } from "obsidian";
@@ -111,24 +111,21 @@
   <div class="tasks-view-layout">
     <!-- Main Content Area -->
     <div class="tasks-view-main">
-      <!-- Context Widget at the top -->
-      <div class="tasks-view-context">
-        <ContextWidget />
-      </div>
-
-      <!-- Service Content -->
-      <div class="service-content" data-testid="service-content">
-        {#if activeService === "github"}
-          <GitHubService
-            {githubService}
-            {settings}
-            {dependencies}
-            {dayPlanningMode}
-          />
-        {:else if activeService === "local"}
-          <LocalTasksService {dayPlanningMode} />
-        {/if}
-      </div>
+      <TabView className="tasks-view-tab" testId="tasks-view-tab">
+        <!-- Service Content -->
+        <div class="service-content" data-testid="service-content">
+          {#if activeService === "github"}
+            <GitHubService
+              {githubService}
+              {settings}
+              {dependencies}
+              {dayPlanningMode}
+            />
+          {:else if activeService === "local"}
+            <LocalTasksService {dayPlanningMode} />
+          {/if}
+        </div>
+      </TabView>
     </div>
 
     <!-- Vertical Service Switcher on the right -->
@@ -163,11 +160,6 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
-  }
-
-  .tasks-view-context {
-    padding: 12px 16px 0 16px;
-    flex-shrink: 0;
   }
 
   .service-content {

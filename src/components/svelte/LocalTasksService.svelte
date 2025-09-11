@@ -5,6 +5,7 @@
   import { taskStore } from "../../stores/taskStore";
   import SearchInput from "./SearchInput.svelte";
   import FilterDropdown from "./FilterDropdown.svelte";
+  import LocalTaskItem from "./LocalTaskItem.svelte";
   import {
     filterLocalTasks,
     getFilterOptions,
@@ -200,84 +201,34 @@
   </div>
 
   <!-- Content Section -->
-  <div class="task-list-container">
+  <div class="task-sync-task-list-container">
     {#if error}
-      <div class="error-message">
+      <div class="task-sync-error-message">
         {error}
       </div>
     {:else if isLoading}
-      <div class="loading-indicator">Loading local tasks...</div>
+      <div class="task-sync-loading-indicator">Loading local tasks...</div>
     {:else}
-      <div class="task-list">
+      <div class="task-sync-task-list">
         {#if filteredTasks.length === 0}
-          <div class="empty-message">
+          <div class="task-sync-empty-message">
             {searchQuery ? "No tasks match your search." : "No tasks found."}
           </div>
         {:else}
           {#each filteredTasks as task}
-            <div
-              class="task-list-item {hoveredTask === task.id ? 'hovered' : ''}"
-              onmouseenter={() => (hoveredTask = task.id)}
-              onmouseleave={() => (hoveredTask = null)}
-              data-testid="local-task-item"
-              role="listitem"
-            >
-              <div class="task-list-item-content">
-                <div class="task-title">{task.title}</div>
-                <div class="task-meta">
-                  {#if task.category}
-                    <span class="task-category">{task.category}</span>
-                  {/if}
-                  {#if task.priority}
-                    <span class="task-priority">Priority: {task.priority}</span>
-                  {/if}
-                  {#if task.status}
-                    <span class="task-status">Status: {task.status}</span>
-                  {/if}
-                  {#if task.project}
-                    <span class="task-project">Project: {task.project}</span>
-                  {/if}
-                </div>
-                {#if task.areas && task.areas.length > 0}
-                  <div class="task-areas">
-                    {#each task.areas as area}
-                      <span class="task-area">{area}</span>
-                    {/each}
-                  </div>
-                {/if}
-              </div>
-
-              <!-- Action overlay -->
-              {#if hoveredTask === task.id}
-                <div class="action-overlay">
-                  <div class="action-buttons">
-                    {#if dayPlanningMode}
-                      <button
-                        class="add-to-today-button"
-                        title="Add to today"
-                        onclick={() => addToToday(task)}
-                        data-testid="add-to-today-button"
-                      >
-                        Add to today
-                      </button>
-                    {:else}
-                      <button
-                        class="open-task-button"
-                        title="Open task"
-                        onclick={() => {
-                          if (task.file) {
-                            plugin.app.workspace.getLeaf().openFile(task.file);
-                          }
-                        }}
-                        data-testid="open-task-button"
-                      >
-                        Open
-                      </button>
-                    {/if}
-                  </div>
-                </div>
-              {/if}
-            </div>
+            <LocalTaskItem
+              {task}
+              isHovered={hoveredTask === task.id}
+              onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
+              onClick={() => {
+                if (task.file) {
+                  plugin.app.workspace.getLeaf().openFile(task.file);
+                }
+              }}
+              {dayPlanningMode}
+              onAddToToday={addToToday}
+              testId="local-task-item"
+            />
           {/each}
         {/if}
       </div>
@@ -286,61 +237,5 @@
 </div>
 
 <style>
-  .task-title {
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    color: var(--text-normal);
-  }
-
-  .task-meta {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.5rem;
-    font-size: 0.9em;
-    color: var(--text-muted);
-  }
-
-  .task-areas {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .task-area {
-    padding: 0.2rem 0.5rem;
-    background: var(--background-modifier-border);
-    border-radius: 3px;
-    font-size: 0.8em;
-    color: var(--text-muted);
-  }
-
-  .action-overlay {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    background: rgba(var(--background-primary-rgb), 0.9);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 6px;
-  }
-
-  .add-to-today-button,
-  .open-task-button {
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--interactive-accent);
-    border-radius: 4px;
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    cursor: pointer;
-    font-weight: 500;
-  }
-
-  .add-to-today-button:hover,
-  .open-task-button:hover {
-    background: var(--interactive-accent-hover);
-  }
+  /* No local styles needed - using LocalTaskItem component */
 </style>
