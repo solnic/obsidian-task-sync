@@ -10,9 +10,10 @@ import {
   createTestTaskFile,
   getFileContent,
   fileExists,
+  verifyTaskProperties,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks } from "../helpers/shared-context";
-import { createArea } from "../helpers/entity-helpers";
+import { createArea, createTask } from "../helpers/entity-helpers";
 
 describe("File Name Sanitization and Base Formulas", () => {
   const context = setupE2ETestHooks();
@@ -24,36 +25,27 @@ describe("File Name Sanitization and Base Formulas", () => {
     const taskName = "Project: Website/Mobile*App";
     const sanitizedTaskName = "Project- Website-Mobile-App";
 
-    await createTestTaskFile(
-      context.page,
-      sanitizedTaskName,
+    await createTask(
+      context,
       {
-        Title: taskName,
-        Type: "Feature",
-        Areas: "Development",
-        Project: "Website Redesign",
-        Done: false,
-        Status: "In Progress",
+        title: taskName,
+        category: "Feature",
+        project: "Website Redesign",
+        areas: ["Development"],
+        done: false,
+        status: "In Progress",
       },
       "This is a test task with invalid characters in the name."
     );
 
-    // Verify the task file was created with sanitized name
-    const taskExists = await fileExists(
-      context.page,
-      `Tasks/${sanitizedTaskName}.md`
-    );
-    expect(taskExists).toBe(true);
-
-    // Verify the task content includes the original title in frontmatter using API
-    const frontMatter = await context.page.evaluate(async (path) => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(path);
-    }, `Tasks/${sanitizedTaskName}.md`);
-
-    expect(frontMatter.Title).toBe(taskName); // Original title should be preserved
-    expect(frontMatter.Category).toBe("Feature");
+    await verifyTaskProperties(context.page, `Tasks/${sanitizedTaskName}.md`, {
+      Title: taskName,
+      Category: "Feature",
+      Areas: ["[[Development]]"],
+      Project: "[[Website Redesign]]",
+      Done: false,
+      Status: "In Progress",
+    });
   });
 
   test("should create area with invalid characters and generate proper base", async () => {
