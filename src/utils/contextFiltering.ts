@@ -69,12 +69,17 @@ export function filterLocalTasks(
 
     // Area filter
     if (combinedFilters.area) {
-      const taskAreas =
-        task.areas && Array.isArray(task.areas)
-          ? task.areas.map((area) =>
-              typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area
-            )
-          : [];
+      let taskAreas: string[] = [];
+      if (task.areas) {
+        if (Array.isArray(task.areas)) {
+          taskAreas = task.areas.map((area) =>
+            typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area
+          );
+        } else if (typeof (task.areas as any) === "string") {
+          // Handle case where areas is a single string instead of array (runtime safety)
+          taskAreas = [(task.areas as any).replace(/^\[\[|\]\]$/g, "")];
+        }
+      }
       if (!taskAreas.includes(combinedFilters.area)) {
         return false;
       }
@@ -204,14 +209,22 @@ export function getFilterOptions(tasks: Task[]): {
     }
 
     // Collect areas - ensure areas is an array before iterating
-    if (task.areas && Array.isArray(task.areas)) {
-      task.areas.forEach((area) => {
-        const cleanArea =
-          typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area;
+    if (task.areas) {
+      if (Array.isArray(task.areas)) {
+        task.areas.forEach((area) => {
+          const cleanArea =
+            typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area;
+          if (cleanArea) {
+            areas.add(cleanArea);
+          }
+        });
+      } else if (typeof (task.areas as any) === "string") {
+        // Handle case where areas is a single string (runtime safety)
+        const cleanArea = (task.areas as any).replace(/^\[\[|\]\]$/g, "");
         if (cleanArea) {
           areas.add(cleanArea);
         }
-      });
+      }
     }
 
     // Collect parent tasks

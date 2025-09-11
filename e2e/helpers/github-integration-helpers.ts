@@ -186,7 +186,7 @@ export async function waitForGitHubView(
  */
 export async function waitForGitHubViewContent(
   page: Page,
-  timeout: number = 15000
+  timeout: number = 5000
 ): Promise<void> {
   await waitForGitHubView(page, Math.min(timeout / 3, 10000));
 

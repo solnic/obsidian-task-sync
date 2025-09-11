@@ -270,6 +270,18 @@ export class TaskFileManager extends FileManager {
       return value;
     };
 
+    // Ensure areas is always an array
+    let areas = cleanLinkFormat(frontMatter.Areas);
+    if (!Array.isArray(areas)) {
+      if (areas === undefined || areas === null) {
+        areas = [];
+      } else if (typeof areas === "string") {
+        areas = [areas];
+      } else {
+        areas = [];
+      }
+    }
+
     return {
       id: this.generateId(),
       file,
@@ -282,7 +294,7 @@ export class TaskFileManager extends FileManager {
       done: frontMatter.Done,
       parentTask: cleanLinkFormat(frontMatter["Parent task"]),
       project: cleanLinkFormat(frontMatter.Project),
-      areas: cleanLinkFormat(frontMatter.Areas),
+      areas: areas,
       doDate: frontMatter["Do Date"],
       tags: frontMatter.tags,
       source: frontMatter.source,

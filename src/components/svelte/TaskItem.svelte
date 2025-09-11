@@ -61,10 +61,22 @@
   const { plugin } = getPluginContext();
 
   function handleMouseEnter() {
+    console.log("TaskItem: Mouse enter", {
+      actionContent,
+      actions: !!actions,
+      isHovered,
+      title: title.substring(0, 20),
+    });
     onHover?.(true);
   }
 
   function handleMouseLeave() {
+    console.log("TaskItem: Mouse leave", {
+      actionContent,
+      actions: !!actions,
+      isHovered,
+      title: title.substring(0, 20),
+    });
     onHover?.(false);
   }
 
@@ -92,6 +104,7 @@
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
   data-testid={testId}
+  data-imported={isImported ? "true" : "false"}
   role="listitem"
 >
   <div class="task-sync-task-list-item-content">
@@ -163,6 +176,9 @@
     <div class="task-sync-action-overlay">
       {@render actions()}
     </div>
+  {:else}
+    <!-- Debug: Show why action overlay is not rendered -->
+    <!-- actionContent: {actionContent}, isHovered: {isHovered}, actions: {!!actions}, title: {title.substring(0, 20)} -->
   {/if}
 </div>
 

@@ -53,7 +53,8 @@
   });
 
   let areaLabels = $derived.by(() => {
-    if (!task.areas || task.areas.length === 0) return [];
+    if (!task.areas || !Array.isArray(task.areas) || task.areas.length === 0)
+      return [];
     return task.areas.map((area) => ({ name: area }));
   });
 

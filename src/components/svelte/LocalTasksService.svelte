@@ -74,6 +74,13 @@
     return filtered;
   });
 
+  // Reset hover state when filtered tasks change
+  $effect(() => {
+    // This effect runs when filteredTasks changes
+    filteredTasks;
+    hoveredTask = null;
+  });
+
   // Get context filters for display
   let contextFilters = $derived.by(() => {
     return getContextFilters(currentContext);
@@ -102,12 +109,14 @@
           typeof task.project === "string" &&
           task.project.toLowerCase().includes(lowerQuery)) ||
         (task.areas &&
-          Array.isArray(task.areas) &&
-          task.areas.some(
-            (area) =>
-              typeof area === "string" &&
-              area.toLowerCase().includes(lowerQuery)
-          ))
+          ((Array.isArray(task.areas) &&
+            task.areas.some(
+              (area) =>
+                typeof area === "string" &&
+                area.toLowerCase().includes(lowerQuery)
+            )) ||
+            (typeof (task.areas as any) === "string" &&
+              (task.areas as any).toLowerCase().includes(lowerQuery))))
     );
   }
 
@@ -215,7 +224,7 @@
             {searchQuery ? "No tasks match your search." : "No tasks found."}
           </div>
         {:else}
-          {#each filteredTasks as task}
+          {#each filteredTasks as task (task.id)}
             <LocalTaskItem
               {task}
               isHovered={hoveredTask === task.id}
