@@ -205,7 +205,10 @@ export abstract class EntityStore<T extends BaseEntity> {
 
     for (const file of entityFiles) {
       const entityData = await this.parseFileToEntity(file);
-      entities.push(entityData);
+
+      if (entityData) {
+        entities.push(entityData);
+      }
     }
 
     return entities;

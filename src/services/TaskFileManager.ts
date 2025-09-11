@@ -252,9 +252,7 @@ export class TaskFileManager extends FileManager {
     const frontMatter = await this.waitForMetadataCache(file);
 
     if (frontMatter.Type !== "Task") {
-      throw new Error(
-        `File ${file.path} is not a valid task (Type: ${frontMatter.Type})`
-      );
+      return;
     }
 
     return {
