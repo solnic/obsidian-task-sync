@@ -948,18 +948,15 @@ export default class TaskSyncPlugin extends Plugin {
   private async updateTaskFiles(results: any): Promise<void> {
     try {
       const taskFiles = await this.vaultScanner.scanTasksFolder();
+
       for (const filePath of taskFiles) {
         try {
           const updateResult =
             await this.taskFileManager.updateTaskFileProperties(filePath);
+
           if (updateResult.hasChanges) {
             results.filesUpdated++;
             results.propertiesUpdated += updateResult.propertiesChanged;
-            console.log(
-              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`
-            );
-          } else {
-            console.log(`Task Sync: No changes needed for ${filePath}`);
           }
         } catch (error) {
           console.error(

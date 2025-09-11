@@ -513,12 +513,9 @@ export class TaskFileManager extends FileManager {
 
     // Check if file has correct Type property for tasks
     if (existingFrontMatter.Type && existingFrontMatter.Type !== "Task") {
-      throw new Error(
-        `File ${filePath} is not a task (Type: ${existingFrontMatter.Type})`
-      );
+      return { hasChanges: false, propertiesChanged: 0 };
     }
 
-    // Get current schema for tasks
     const properties = this.getTaskPropertiesInOrder();
     const currentSchema: Record<string, any> = {};
     const propertyOrder: string[] = [];
