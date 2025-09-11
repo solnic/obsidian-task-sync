@@ -103,7 +103,7 @@ Invalid area file.`
     expect(baseFiles).not.toContain("Invalid Area.base");
   });
 
-  test("should skip task files without Type property during refresh", async () => {
+  test("should handle task files correctly during refresh based on Type property", async () => {
     await createTask(
       context,
       {
@@ -118,7 +118,7 @@ Invalid area file.`
     await context.page.evaluate(async () => {
       const app = (window as any).app;
 
-      // Task without Type property (should be skipped by property handlers)
+      // Task without Type property (should get Type property added during refresh)
       await app.vault.create(
         "Tasks/No Type Task.md",
         `---
@@ -129,7 +129,7 @@ Status: Backlog
 Task without Type property.`
       );
 
-      // Invalid task with wrong Type property
+      // Invalid task with wrong Type property (should remain unchanged)
       await app.vault.create(
         "Tasks/Wrong Type Task.md",
         `---
@@ -142,52 +142,82 @@ Task with wrong Type property.`
       );
     });
 
-    // Capture console logs
-    const consoleLogs: string[] = [];
-    context.page.on("console", (msg: any) => {
-      if (
-        (msg.type() === "log" || msg.type() === "error") &&
-        msg.text().includes("Task Sync:")
-      ) {
-        consoleLogs.push(msg.text());
-      }
-    });
-
     // Execute refresh command
     await executeCommand(context, "Task Sync: Refresh");
 
     // Wait for refresh to complete
     await context.page.waitForTimeout(3000);
 
-    console.log("Task refresh logs:", consoleLogs);
+    // Check actual file states after refresh
+    const fileStates = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const results: {
+        filename: string;
+        hasTypeProperty: boolean;
+        typeValue: string;
+        isValidTask: boolean;
+      }[] = [];
 
-    // Should process valid task files (only those with correct Type property)
-    const shouldProcess = ["Valid Task.md"];
-    for (const filename of shouldProcess) {
-      const wasSkipped = consoleLogs.some(
-        (log) =>
-          log.includes("Skipping file with incorrect Type property") &&
-          log.includes(filename)
-      );
-      expect(wasSkipped).toBe(false);
-    }
+      const files = [
+        "Tasks/Valid Task.md",
+        "Tasks/No Type Task.md",
+        "Tasks/Wrong Type Task.md",
+      ];
 
-    // Should skip tasks with wrong Type property
-    expect(
-      consoleLogs.some(
-        (log) =>
-          log.includes("is not a task") && log.includes("Wrong Type Task.md")
-      )
-    ).toBe(true);
+      for (const filePath of files) {
+        try {
+          const frontMatter = await plugin.taskFileManager.loadFrontMatter(
+            filePath
+          );
+          const hasTypeProperty = frontMatter.Type !== undefined;
+          const typeValue = frontMatter.Type || "";
+          const isValidTask = typeValue === "Task";
 
-    // Should add Type property to files without it (during refresh, files without Type get the Type property added)
-    expect(
-      consoleLogs.some(
-        (log) =>
-          log.includes("Added missing field 'Type' to") &&
-          log.includes("No Type Task.md")
-      )
-    ).toBe(true);
+          results.push({
+            filename: filePath,
+            hasTypeProperty,
+            typeValue,
+            isValidTask,
+          });
+        } catch (error) {
+          results.push({
+            filename: filePath,
+            hasTypeProperty: false,
+            typeValue: "",
+            isValidTask: false,
+          });
+        }
+      }
+
+      return results;
+    });
+
+    // Verify behavior based on actual file states
+    const validTask = fileStates.find(
+      (f) => f.filename === "Tasks/Valid Task.md"
+    );
+    const noTypeTask = fileStates.find(
+      (f) => f.filename === "Tasks/No Type Task.md"
+    );
+    const wrongTypeTask = fileStates.find(
+      (f) => f.filename === "Tasks/Wrong Type Task.md"
+    );
+
+    // Valid task should remain valid
+    expect(validTask?.hasTypeProperty).toBe(true);
+    expect(validTask?.typeValue).toBe("Task");
+    expect(validTask?.isValidTask).toBe(true);
+
+    // Task without Type should get Type property added during refresh
+    expect(noTypeTask?.hasTypeProperty).toBe(true);
+    expect(noTypeTask?.typeValue).toBe("Task");
+    expect(noTypeTask?.isValidTask).toBe(true);
+
+    // Task with wrong Type should remain unchanged (not processed as a task)
+    expect(wrongTypeTask?.hasTypeProperty).toBe(true);
+    expect(wrongTypeTask?.typeValue).toBe("Project");
+    expect(wrongTypeTask?.isValidTask).toBe(false);
   });
 
   test("should add Status field to task files during refresh", async () => {
