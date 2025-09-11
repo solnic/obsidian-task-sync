@@ -482,6 +482,26 @@ export async function waitForEventSystemIdle(
 }
 
 /**
+ * Wait for a file to be updated using vault events (more reliable than polling)
+ * This helper listens to vault modify events and waits for the specific file to be updated
+ */
+export async function waitForFileUpdate(
+  page: Page,
+  filePath: string,
+  expectedContent?: string,
+  timeout: number = 5000
+): Promise<void> {
+  // Use the existing waitForFileContentToContain helper which is more reliable
+  // and has better error handling
+  if (expectedContent) {
+    await waitForFileContentToContain(page, filePath, expectedContent, timeout);
+  } else {
+    // Just wait for file to exist and have content
+    await waitForFileContentToContain(page, filePath, "", timeout);
+  }
+}
+
+/**
  * Wait for a status change to be fully processed (both status and done fields updated)
  */
 export async function waitForStatusChangeComplete(

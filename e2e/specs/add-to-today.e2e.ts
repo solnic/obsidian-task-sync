@@ -8,6 +8,7 @@ import {
   createTestFolders,
   fileExists,
   waitForTaskSyncPlugin,
+  waitForFileUpdate,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
@@ -340,8 +341,13 @@ describe("Add to Today Functionality", () => {
     // Click the "Add to today" button
     await context.page.click('[data-testid="add-to-today-button"]');
 
-    // Wait for the operation to complete
-    await context.page.waitForTimeout(1000);
+    // Wait for the daily note to be updated with the task
+    await waitForFileUpdate(
+      context.page,
+      dailyNotePath,
+      "- [ ] [[Local Service Test Task]]",
+      5000
+    );
 
     // Verify the task was added to the daily note
     const dailyNoteContent = await context.page.evaluate(async (path) => {
@@ -353,7 +359,7 @@ describe("Add to Today Functionality", () => {
       return "";
     }, dailyNotePath);
 
-    expect(dailyNoteContent).toContain("[[Local Service Test Task]]");
+    expect(dailyNoteContent).toContain("- [ ] [[Local Service Test Task]]");
   });
 
   test("should handle GitHub import with day planning mode for existing tasks", async () => {

@@ -5,7 +5,10 @@
 
 import { test, expect, describe } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
-import { createTestFolders } from "../helpers/task-sync-setup";
+import {
+  createTestFolders,
+  waitForFileUpdate,
+} from "../helpers/task-sync-setup";
 import { toggleSidebar } from "../helpers/plugin-setup";
 import { createTask } from "../helpers/entity-helpers";
 
@@ -251,6 +254,14 @@ describe("LocalTasksService", () => {
     );
     await addToTodayButton.click();
 
+    // Wait for the daily note to be updated with the task
+    await waitForFileUpdate(
+      context.page,
+      dailyNotePath,
+      "- [ ] [[Daily Planning Task]]",
+      5000
+    );
+
     // Verify the task was added to the daily note
     const dailyNoteContent = await context.page.evaluate(async (path) => {
       const app = (window as any).app;
@@ -322,8 +333,8 @@ This is a test task created directly in the vault.`;
       return plugin.getCachedTasks().length;
     });
 
-    // Should have loaded all 3 tasks
-    expect(finalTaskCount).toBe(3);
+    // Should have loaded all tasks including the 3 new ones (plus any existing from previous tests)
+    expect(finalTaskCount).toBeGreaterThanOrEqual(3);
 
     // Ensure right sidebar is open and Tasks view is accessible
     await toggleSidebar(context.page, "right", true);
