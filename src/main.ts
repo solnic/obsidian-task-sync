@@ -371,9 +371,6 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   async onunload() {
-    console.log("Unloading Task Sync Plugin");
-
-    // Save store data before shutdown
     await taskStore.saveData();
     await projectStore.saveData();
     await areaStore.saveData();
@@ -388,26 +385,11 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   async loadSettings() {
-    try {
-      const loadedData = await this.loadData();
-      console.log("🔧 Loaded data from storage:", loadedData);
-      console.log("🔧 DEFAULT_SETTINGS.taskTypes:", DEFAULT_SETTINGS.taskTypes);
+    const loadedData = await this.loadData();
 
-      this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
-      console.log("🔧 Final settings after merge:", {
-        taskTypes: this.settings.taskTypes,
-        githubIntegration: this.settings.githubIntegration,
-      });
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
 
-      // Validate settings
-      this.validateSettings();
-    } catch (error) {
-      console.error("Task Sync: Failed to load settings:", error);
-      this.settings = { ...DEFAULT_SETTINGS };
-      console.log("🔧 Using fallback DEFAULT_SETTINGS:", {
-        taskTypes: this.settings.taskTypes,
-      });
-    }
+    this.validateSettings();
   }
 
   async saveSettings() {
@@ -527,154 +509,116 @@ export default class TaskSyncPlugin extends Plugin {
 
   // UI Methods
   private async openTaskCreateModal(): Promise<void> {
-    try {
-      const context = this.detectCurrentFileContext();
-      const modal = new TaskCreateModalWrapper(
-        this,
-        context,
-        {},
-        async (taskData) => {
-          await this.createTask(taskData);
-          // Refresh base views if auto-update is enabled
-          if (this.settings.autoUpdateBaseViews) {
-            await this.refreshBaseViews();
-          }
+    const context = this.detectCurrentFileContext();
+
+    const modal = new TaskCreateModalWrapper(
+      this,
+      context,
+      {},
+      async (taskData) => {
+        await this.createTask(taskData);
+
+        if (this.settings.autoUpdateBaseViews) {
+          await this.refreshBaseViews();
         }
-      );
-      modal.open();
-    } catch (error) {
-      console.error("Failed to open task creation modal:", error);
-    }
+      }
+    );
+
+    modal.open();
   }
 
   /**
    * Open area creation modal
    */
   private openAreaCreateModal(): void {
-    try {
-      const modal = new AreaCreateModal(this.app, this);
-      modal.onSubmit(async (areaData) => {
-        await this.createArea(areaData);
-        // Refresh base views if auto-update is enabled
-        if (this.settings.autoUpdateBaseViews) {
-          await this.refreshBaseViews();
-        }
-      });
-      modal.open();
-    } catch (error) {
-      console.error("Failed to open area creation modal:", error);
-    }
+    const modal = new AreaCreateModal(this.app, this);
+
+    modal.onSubmit(async (areaData) => {
+      await this.createArea(areaData);
+
+      if (this.settings.autoUpdateBaseViews) {
+        await this.refreshBaseViews();
+      }
+    });
+
+    modal.open();
   }
 
   /**
    * Open project creation modal
    */
   private openProjectCreateModal(): void {
-    try {
-      const modal = new ProjectCreateModal(this.app, this);
-      modal.onSubmit(async (projectData) => {
-        await this.createProject(projectData);
-        // Refresh base views if auto-update is enabled
-        if (this.settings.autoUpdateBaseViews) {
-          await this.refreshBaseViews();
-        }
-      });
-      modal.open();
-    } catch (error) {
-      console.error("Failed to open project creation modal:", error);
-    }
+    const modal = new ProjectCreateModal(this.app, this);
+
+    modal.onSubmit(async (projectData) => {
+      await this.createProject(projectData);
+
+      if (this.settings.autoUpdateBaseViews) {
+        await this.refreshBaseViews();
+      }
+    });
+
+    modal.open();
   }
 
   /**
    * Initialize Tasks view in the right sidebar if it doesn't already exist
    */
   private async initializeTasksView(): Promise<void> {
-    try {
-      console.log("🔧 Initializing Tasks view...");
+    const existingLeaves = this.app.workspace.getLeavesOfType(TASKS_VIEW_TYPE);
 
-      // Check if Tasks view already exists
-      const existingLeaves =
-        this.app.workspace.getLeavesOfType(TASKS_VIEW_TYPE);
-      console.log(`🔧 Found ${existingLeaves.length} existing Tasks views`);
-
-      if (existingLeaves.length > 0) {
-        console.log("✅ Tasks view already exists, skipping creation");
-        return; // View already exists
-      }
-
-      console.log("🔧 Creating Tasks view in right sidebar...");
-
-      // Create the view in the right sidebar
-      const rightLeaf = this.app.workspace.getRightLeaf(false);
-      await rightLeaf.setViewState({
-        type: TASKS_VIEW_TYPE,
-        active: false, // Don't make it active by default
-      });
-
-      console.log("✅ Tasks view created successfully");
-    } catch (error) {
-      console.error("❌ Failed to initialize Tasks view:", error);
+    if (existingLeaves.length > 0) {
+      console.log("✅ Tasks view already exists, skipping creation");
+      return;
     }
+
+    const rightLeaf = this.app.workspace.getRightLeaf(false);
+
+    await rightLeaf.setViewState({
+      type: TASKS_VIEW_TYPE,
+      active: false,
+    });
   }
 
   /**
    * Initialize Context Tab view in the right sidebar if it doesn't already exist
    */
   private async initializeContextTabView(): Promise<void> {
-    try {
-      console.log("🔧 Initializing Context Tab view...");
+    const existingLeaves = this.app.workspace.getLeavesOfType(
+      CONTEXT_TAB_VIEW_TYPE
+    );
 
-      // Check if Context Tab view already exists
-      const existingLeaves = this.app.workspace.getLeavesOfType(
-        CONTEXT_TAB_VIEW_TYPE
-      );
-      console.log(
-        `🔧 Found ${existingLeaves.length} existing Context Tab views`
-      );
-
-      if (existingLeaves.length > 0) {
-        console.log("✅ Context Tab view already exists, skipping creation");
-        return; // View already exists
-      }
-
-      console.log("🔧 Creating Context Tab view in right sidebar...");
-
-      // Create the view in the right sidebar
-      const rightLeaf = this.app.workspace.getRightLeaf(false);
-      await rightLeaf.setViewState({
-        type: CONTEXT_TAB_VIEW_TYPE,
-        active: false, // Don't make it active by default
-      });
-
-      console.log("✅ Context Tab view created successfully");
-    } catch (error) {
-      console.error("❌ Failed to initialize Context Tab view:", error);
+    if (existingLeaves.length > 0) {
+      console.log("✅ Context Tab view already exists, skipping creation");
+      return; // View already exists
     }
+
+    const rightLeaf = this.app.workspace.getRightLeaf(false);
+
+    await rightLeaf.setViewState({
+      type: CONTEXT_TAB_VIEW_TYPE,
+      active: false,
+    });
   }
 
   /**
    * Activate the Context Tab view (bring it to focus)
    */
   private async activateContextTabView(): Promise<void> {
-    try {
-      // Check if Context Tab view already exists
-      const existingLeaves = this.app.workspace.getLeavesOfType(
-        CONTEXT_TAB_VIEW_TYPE
-      );
+    const existingLeaves = this.app.workspace.getLeavesOfType(
+      CONTEXT_TAB_VIEW_TYPE
+    );
 
-      if (existingLeaves.length > 0) {
-        // Activate existing view
-        this.app.workspace.revealLeaf(existingLeaves[0]);
-      } else {
-        // Create new view in right sidebar
-        const rightLeaf = this.app.workspace.getRightLeaf(false);
-        await rightLeaf.setViewState({
-          type: CONTEXT_TAB_VIEW_TYPE,
-          active: true,
-        });
-      }
-    } catch (error) {
-      console.error("❌ Failed to activate Context Tab view:", error);
+    if (existingLeaves.length > 0) {
+      // Activate existing view
+      this.app.workspace.revealLeaf(existingLeaves[0]);
+    } else {
+      // Create new view in right sidebar
+      const rightLeaf = this.app.workspace.getRightLeaf(false);
+      await rightLeaf.setViewState({
+        type: CONTEXT_TAB_VIEW_TYPE,
+        active: true,
+      });
     }
   }
 
@@ -777,71 +721,36 @@ export default class TaskSyncPlugin extends Plugin {
   // This is the SINGLE METHOD for creating tasks - all task creation must go through this method
   // to ensure consistent property setting and context handling
   async createTask(taskData: any): Promise<void> {
-    try {
-      // Convert old taskData format to TaskCreationData format
-      const taskCreationData = this.mapToTaskCreationData(taskData);
+    const content = taskData.content || taskData.description;
 
-      // Use TaskFileManager to create the task file, passing content (or description for backward compatibility)
-      const content = taskData.content || taskData.description;
-      const taskPath = await this.taskFileManager.createTaskFile(
-        taskCreationData,
-        content
-      );
-      console.log("Task created successfully:", taskPath);
-    } catch (error) {
-      console.error("Failed to create task:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Map old taskData format to TaskCreationData format for TaskFileManager
-   */
-  private mapToTaskCreationData(taskData: any): any {
-    return {
-      title: taskData.title,
-      category: taskData.category || taskData.type,
-      priority: taskData.priority,
-      areas: taskData.areas,
-      project: taskData.project,
-      done: taskData.done,
-      status: taskData.status,
-      parentTask: taskData.parentTask,
-      tags: taskData.tags,
-    };
+    const taskPath = await this.taskFileManager.createTaskFile(
+      taskData,
+      content
+    );
   }
 
   /**
    * Create a new area
    */
   private async createArea(areaData: AreaCreateData): Promise<void> {
-    try {
-      // Convert to AreaCreationData format for AreaFileManager
-      const areaCreationData = {
-        title: areaData.name,
-        description: areaData.description,
-      };
+    const areaCreationData = {
+      title: areaData.name,
+      description: areaData.description,
+    };
 
-      // Use AreaFileManager to create the area file (it will handle template content and {{tasks}} variable)
-      const areaPath = await this.areaFileManager.createAreaFile(
-        areaCreationData
-      );
-      console.log("Area created successfully:", areaPath);
+    const areaPath = await this.areaFileManager.createAreaFile(
+      areaCreationData
+    );
 
-      // Create individual base if enabled
-      if (
-        this.settings.areaBasesEnabled &&
-        this.settings.autoSyncAreaProjectBases
-      ) {
-        await this.baseManager.createOrUpdateAreaBase({
-          name: areaData.name,
-          path: areaPath,
-          type: "area",
-        });
-      }
-    } catch (error) {
-      console.error("Failed to create area:", error);
-      throw error;
+    if (
+      this.settings.areaBasesEnabled &&
+      this.settings.autoSyncAreaProjectBases
+    ) {
+      await this.baseManager.createOrUpdateAreaBase({
+        name: areaData.name,
+        path: areaPath,
+        type: "area",
+      });
     }
   }
 
@@ -849,34 +758,25 @@ export default class TaskSyncPlugin extends Plugin {
    * Create a new project
    */
   private async createProject(projectData: ProjectCreateData): Promise<void> {
-    try {
-      // Convert to ProjectCreationData format for ProjectFileManager
-      const projectCreationData = {
-        title: projectData.name,
-        description: projectData.description,
-        areas: projectData.areas,
-      };
+    const projectCreationData = {
+      title: projectData.name,
+      description: projectData.description,
+      areas: projectData.areas,
+    };
 
-      // Use ProjectFileManager to create the project file (it will handle template content and {{tasks}} variable)
-      const projectPath = await this.projectFileManager.createProjectFile(
-        projectCreationData
-      );
-      console.log("Project created successfully:", projectPath);
+    const projectPath = await this.projectFileManager.createProjectFile(
+      projectCreationData
+    );
 
-      // Create individual base if enabled
-      if (
-        this.settings.projectBasesEnabled &&
-        this.settings.autoSyncAreaProjectBases
-      ) {
-        await this.baseManager.createOrUpdateProjectBase({
-          name: projectData.name,
-          path: projectPath,
-          type: "project",
-        });
-      }
-    } catch (error) {
-      console.error("Failed to create project:", error);
-      throw error;
+    if (
+      this.settings.projectBasesEnabled &&
+      this.settings.autoSyncAreaProjectBases
+    ) {
+      await this.baseManager.createOrUpdateProjectBase({
+        name: projectData.name,
+        path: projectPath,
+        type: "project",
+      });
     }
   }
 
@@ -886,60 +786,30 @@ export default class TaskSyncPlugin extends Plugin {
    * Comprehensive refresh operation - updates file properties and regenerates bases
    */
   async refresh(): Promise<void> {
-    try {
-      const results = {
-        filesUpdated: 0,
-        propertiesUpdated: 0,
-        basesRegenerated: 0,
-        templatesUpdated: 0,
-        errors: [] as string[],
-      };
+    const results = {
+      filesUpdated: 0,
+      propertiesUpdated: 0,
+      basesRegenerated: 0,
+      templatesUpdated: 0,
+      errors: [] as string[],
+    };
 
-      console.log("Task Sync: Starting comprehensive refresh...");
+    await this.updateFileProperties(results);
+    await this.updateTemplateFiles(results);
+    await this.regenerateBases();
 
-      // 2. Update task/project/area file properties
-      await this.updateFileProperties(results);
+    results.basesRegenerated = 1;
 
-      // 3. Update template files to match current property order
-      await this.updateTemplateFiles(results);
-
-      // 4. Regenerate all base files (existing functionality)
-      await this.regenerateBases();
-      results.basesRegenerated = 1;
-
-      // 5. Provide feedback
-      this.showRefreshResults(results);
-
-      console.log("Task Sync: Refresh completed successfully");
-    } catch (error) {
-      console.error("Task Sync: Refresh failed:", error);
-      throw error;
-    }
+    this.showRefreshResults(results);
   }
 
   /**
    * Update properties in all task, project, and area files to match current schema
    */
   private async updateFileProperties(results: any): Promise<void> {
-    try {
-      console.log("Task Sync: Starting file property updates...");
-
-      // Update task files using TaskFileManager
-      await this.updateTaskFiles(results);
-
-      // Update project files using ProjectFileManager
-      await this.updateProjectFiles(results);
-
-      // Update area files using AreaFileManager
-      await this.updateAreaFiles(results);
-
-      console.log(
-        `Task Sync: Updated properties in ${results.filesUpdated} files (${results.propertiesUpdated} properties changed)`
-      );
-    } catch (error) {
-      console.error("Task Sync: Failed to update file properties:", error);
-      results.errors.push(`Failed to update file properties: ${error.message}`);
-    }
+    await this.updateTaskFiles(results);
+    await this.updateProjectFiles(results);
+    await this.updateAreaFiles(results);
   }
 
   /**
@@ -1170,34 +1040,6 @@ export default class TaskSyncPlugin extends Plugin {
       );
     }
   }
-
-  // ============================================================================
-  // REMOVED COMPLEX PROPERTY ORDERING METHODS - MOVED TO FILE MANAGERS
-  // ============================================================================
-  // The following methods have been moved to dedicated file managers for better
-  // separation of concerns and to use Obsidian's native API for property ordering:
-  //
-  // - getFrontMatterSchema() -> moved to individual file managers
-  // - extractFrontMatterData() -> moved to base FileManager class as protected method
-  // - extractPropertyOrder() -> moved to base FileManager class as protected method
-  // - isPropertyOrderCorrect() -> moved to base FileManager class as protected method
-  // - updateSingleFile() -> replaced by AreaFileManager.updateFileProperties() and ProjectFileManager.updateFileProperties()
-  //
-  // This simplification allows each file manager to handle its own property ordering
-  // logic while using Obsidian's native processFrontMatter API for better integration.
-  // ============================================================================
-
-  // REMOVED: updateSingleFile method - functionality moved to dedicated file managers
-
-  // ============================================================================
-  // REMOVED COMPLEX PROPERTY ORDERING METHODS
-  // These methods have been moved to dedicated file managers:
-  // - updateSingleFile -> AreaFileManager.updateFileProperties / ProjectFileManager.updateFileProperties
-  // - getFrontMatterSchema -> moved to individual file managers
-  // - extractPropertyOrder -> moved to base FileManager class
-  // - isPropertyOrderCorrect -> moved to base FileManager class
-  // - extractFrontMatterData -> moved to base FileManager class
-  // ============================================================================
 
   /**
    * Show refresh results to the user
