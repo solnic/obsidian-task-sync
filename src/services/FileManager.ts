@@ -264,11 +264,68 @@ export abstract class FileManager {
 
       this.app.metadataCache.on("changed", onMetadataChange);
 
-      setTimeout(() => {
+      // Increased timeout to 10 seconds and force read file content if metadata cache fails
+      setTimeout(async () => {
         this.app.metadataCache.off("changed", onMetadataChange);
         const finalCache = this.app.metadataCache.getFileCache(file);
-        resolve(finalCache?.frontmatter || {});
-      }, 1000);
+        const finalFrontMatter = finalCache?.frontmatter;
+
+        if (finalFrontMatter && Object.keys(finalFrontMatter).length > 0) {
+          resolve(finalFrontMatter);
+        } else {
+          // If metadata cache is still not ready, manually parse the file content
+          try {
+            const fileContent = await this.app.vault.read(file);
+            const frontMatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---/);
+
+            if (frontMatterMatch) {
+              // Parse YAML front matter manually
+              const yamlContent = frontMatterMatch[1];
+              const frontMatter: any = {};
+
+              // Simple YAML parsing for basic key-value pairs
+              const lines = yamlContent.split("\n");
+              for (const line of lines) {
+                const colonIndex = line.indexOf(":");
+                if (colonIndex > 0) {
+                  const key = line.substring(0, colonIndex).trim();
+                  const value = line.substring(colonIndex + 1).trim();
+
+                  // Remove quotes if present
+                  const cleanValue = value.replace(/^["']|["']$/g, "");
+
+                  // Handle arrays (basic support)
+                  if (cleanValue.startsWith("[") && cleanValue.endsWith("]")) {
+                    const arrayContent = cleanValue.slice(1, -1);
+                    frontMatter[key] = arrayContent
+                      ? arrayContent
+                          .split(",")
+                          .map((item) =>
+                            item.trim().replace(/^["']|["']$/g, "")
+                          )
+                      : [];
+                  } else if (cleanValue === "true" || cleanValue === "false") {
+                    frontMatter[key] = cleanValue === "true";
+                  } else {
+                    frontMatter[key] = cleanValue;
+                  }
+                }
+              }
+
+              resolve(frontMatter);
+            } else {
+              // No front matter found, return empty object
+              resolve({});
+            }
+          } catch (error) {
+            console.warn(
+              `Failed to manually parse front matter for ${file.path}:`,
+              error
+            );
+            resolve({});
+          }
+        }
+      }, 10000);
     });
   }
 

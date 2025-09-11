@@ -263,8 +263,13 @@ export default class TaskSyncPlugin extends Plugin {
       (leaf) => new ContextTabView(leaf)
     );
 
-    // Create Tasks view in right sidebar if it doesn't exist
-    this.app.workspace.onLayoutReady(() => {
+    // Wait for both layout ready and stores to finish initial loading before creating views
+    Promise.all([
+      new Promise<void>((resolve) => {
+        this.app.workspace.onLayoutReady(() => resolve());
+      }),
+      this.waitForStoreRefresh(),
+    ]).then(() => {
       this.initializeTasksView();
       this.initializeContextTabView();
     });

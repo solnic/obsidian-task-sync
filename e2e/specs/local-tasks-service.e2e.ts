@@ -263,6 +263,69 @@ describe("LocalTasksService", () => {
 
     expect(dailyNoteContent).toContain("- [ ] [[Daily Planning Task]]");
   });
+
+  test("should load all tasks on first load even with slow metadata cache", async () => {
+    // Create multiple tasks to test loading
+    const taskTitles = [
+      "Metadata Cache Test Task 1",
+      "Metadata Cache Test Task 2",
+      "Metadata Cache Test Task 3",
+      "Metadata Cache Test Task 4",
+      "Metadata Cache Test Task 5",
+    ];
+
+    // Create tasks using the helper
+    for (const title of taskTitles) {
+      await createTask(context, {
+        title,
+        category: "Feature",
+        priority: "Medium",
+        status: "Backlog",
+      });
+    }
+
+    // Wait for all store refreshes to complete after task creation
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      await plugin.waitForStoreRefresh();
+    });
+
+    // Get task count after all refreshes are complete
+    const finalTaskCount = await context.page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      return plugin.getCachedTasks().length;
+    });
+
+    // Open Tasks view and switch to local service
+    await openTasksView(context.page);
+    const localTab = context.page.locator('[data-testid="service-local"]');
+    await localTab.click();
+
+    // Wait for tasks to load
+    await context.page.waitForSelector('[data-testid="local-task-item"]', {
+      timeout: 10000,
+    });
+
+    // Verify all tasks are loaded in the UI
+    const taskItems = context.page.locator('[data-testid="local-task-item"]');
+    const taskCount = await taskItems.count();
+
+    // Should have exactly 5 tasks
+    expect(taskCount).toBe(5);
+
+    // Should match the cached task count (all tasks should be loaded)
+    expect(taskCount).toBe(finalTaskCount);
+
+    // Verify all our test tasks are present
+    const taskTexts = await taskItems.allTextContents();
+    const allTaskText = taskTexts.join(" ");
+
+    for (const title of taskTitles) {
+      expect(allTaskText).toContain(title);
+    }
+  });
 });
 
 /**

@@ -30,9 +30,7 @@
   });
 
   onMount(() => {
-    loadTasks();
-
-    // Subscribe to task store updates
+    // Subscribe to task store updates immediately
     const unsubscribe = taskStore.subscribe((state) => {
       tasks = state.entities;
       isLoading = state.loading;
@@ -56,21 +54,12 @@
     );
   }
 
-  async function loadTasks(): Promise<void> {
-    isLoading = true;
-    error = null;
-
+  async function refresh(): Promise<void> {
     try {
       await taskStore.refreshTasks();
     } catch (err: any) {
-      error = err.message || "Failed to load local tasks";
-    } finally {
-      isLoading = false;
+      console.error("Failed to refresh tasks:", err);
     }
-  }
-
-  async function refresh(): Promise<void> {
-    await loadTasks();
   }
 
   async function addToToday(task: Task): Promise<void> {

@@ -129,13 +129,23 @@
     );
   });
 
-  // Load entity data when context changes
+  // Load entity data when context changes - track only specific context properties
+  let lastContextPath = $state("");
+  let lastContextType = $state("");
+
   $effect(() => {
-    loadEntityData();
+    if (context.path !== lastContextPath || context.type !== lastContextType) {
+      lastContextPath = context.path;
+      lastContextType = context.type;
+      loadEntityData();
+    }
   });
 
   async function loadEntityData() {
-    if (!context.path || context.type === "none") {
+    const currentPath = context.path;
+    const currentType = context.type;
+
+    if (!currentPath || currentType === "none") {
       entityData = null;
       isLoading = false;
       return;
@@ -148,21 +158,16 @@
       // Load front-matter based on entity type
       let frontMatter: Record<string, any>;
 
-      if (context.path.startsWith(plugin.settings.tasksFolder)) {
-        frontMatter = await plugin.taskFileManager.loadFrontMatter(
-          context.path
-        );
-      } else if (context.path.startsWith(plugin.settings.projectsFolder)) {
-        frontMatter = await plugin.projectFileManager.loadFrontMatter(
-          context.path
-        );
-      } else if (context.path.startsWith(plugin.settings.areasFolder)) {
-        frontMatter = await plugin.areaFileManager.loadFrontMatter(
-          context.path
-        );
+      if (currentPath.startsWith(plugin.settings.tasksFolder)) {
+        frontMatter = await plugin.taskFileManager.loadFrontMatter(currentPath);
+      } else if (currentPath.startsWith(plugin.settings.projectsFolder)) {
+        frontMatter =
+          await plugin.projectFileManager.loadFrontMatter(currentPath);
+      } else if (currentPath.startsWith(plugin.settings.areasFolder)) {
+        frontMatter = await plugin.areaFileManager.loadFrontMatter(currentPath);
       } else {
         // Try to determine type from file content using Obsidian's metadata cache
-        const file = plugin.app.vault.getAbstractFileByPath(context.path);
+        const file = plugin.app.vault.getAbstractFileByPath(currentPath);
         if (file && file instanceof TFile) {
           const cache = plugin.app.metadataCache.getFileCache(file);
           frontMatter = cache?.frontmatter || {};
@@ -171,16 +176,25 @@
         }
       }
 
-      entityData = frontMatter;
-
-      // Update badges after data loads
-      updateBadges();
+      // Only update if we're still loading the same path (avoid race conditions)
+      if (context.path === currentPath) {
+        entityData = frontMatter;
+        // Update badges after data loads
+        updateBadges();
+      }
     } catch (err) {
       console.error("Failed to load entity data:", err);
-      error = err instanceof Error ? err.message : "Failed to load entity data";
-      entityData = null;
+      // Only update error if we're still loading the same path
+      if (context.path === currentPath) {
+        error =
+          err instanceof Error ? err.message : "Failed to load entity data";
+        entityData = null;
+      }
     } finally {
-      isLoading = false;
+      // Only update loading state if we're still loading the same path
+      if (context.path === currentPath) {
+        isLoading = false;
+      }
     }
   }
 

@@ -313,19 +313,28 @@ describe("Add to Today Functionality", () => {
     // Wait for context to update
     await context.page.waitForTimeout(500);
 
-    // Open Task Sync view
-    await context.page.click('[data-testid="task-sync-view-button"]');
-    await context.page.waitForSelector('[data-testid="tasks-view"]');
+    // Open the right sidebar if it's collapsed
+    const rightSidebarToggle = context.page.locator(
+      ".sidebar-toggle-button.mod-right"
+    );
+    await rightSidebarToggle.click();
 
-    // Switch to Local Tasks tab
-    await context.page.click('[data-testid="service-tab-local"]');
-    await context.page.waitForSelector('[data-testid="local-tasks-service"]');
+    // Wait for the Tasks tab to be visible and click it to make it active
+    await context.page.waitForSelector(
+      '[data-type="tasks"].workspace-tab-header'
+    );
+    await context.page.click('[data-type="tasks"].workspace-tab-header');
+
+    // Wait for the local tasks service to be visible and active
+    await context.page.waitForSelector(
+      '[data-testid="local-tasks-service"]:not([style*="display: none"])'
+    );
 
     // Wait for tasks to load
     await context.page.waitForSelector('[data-testid="local-task-item"]');
 
-    // Hover over the task to show the "Add to today" button
-    await context.page.hover('[data-testid="local-task-item"]');
+    // Hover over the first task to show the "Add to today" button
+    await context.page.hover('[data-testid="local-task-item"]:first-child');
     await context.page.waitForSelector('[data-testid="add-to-today-button"]');
 
     // Click the "Add to today" button

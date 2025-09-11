@@ -206,8 +206,14 @@ export abstract class EntityStore<T extends BaseEntity> {
     const entities: T[] = [];
 
     for (const file of entityFiles) {
-      const entityData = await this.parseFileToEntity(file);
-      entities.push(entityData);
+      try {
+        const entityData = await this.parseFileToEntity(file);
+        entities.push(entityData);
+      } catch (error) {
+        // Log the error but continue loading other entities
+        console.warn(`Failed to load entity from ${file.path}:`, error);
+        // Don't add this entity to the list, but continue with others
+      }
     }
 
     return entities;
