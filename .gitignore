@@ -9,4 +9,6 @@ e2e/debug/*
 tests/vault/Test/articles
 tests/vault/Test/.obsidian/workspace.json
 tests/vault/Test/.obsidian/plugins/ghost-sync/data.json
+
 e2e-test-results.json
+dev-test-vault/
