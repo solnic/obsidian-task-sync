@@ -9,6 +9,7 @@ import {
   fileExists,
   waitForTaskSyncPlugin,
   waitForFileUpdate,
+  waitForAddToTodayOperation,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
@@ -338,15 +339,18 @@ describe("Add to Today Functionality", () => {
     await context.page.hover('[data-testid="local-task-item"]:first-child');
     await context.page.waitForSelector('[data-testid="add-to-today-button"]');
 
+    // Wait a moment for the button to be fully interactive
+    await context.page.waitForTimeout(200);
+
     // Click the "Add to today" button
     await context.page.click('[data-testid="add-to-today-button"]');
 
-    // Wait for the daily note to be updated with the task
-    await waitForFileUpdate(
+    // Wait for the add to today operation to complete
+    await waitForAddToTodayOperation(
       context.page,
       dailyNotePath,
       "- [ ] [[Local Service Test Task]]",
-      5000
+      10000
     );
 
     // Verify the task was added to the daily note

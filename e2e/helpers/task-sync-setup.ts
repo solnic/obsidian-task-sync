@@ -393,8 +393,8 @@ export async function waitForFileContentToContain(
   timeout: number = 10000
 ): Promise<void> {
   const startTime = Date.now();
-  let waitTime = 100; // Start with 100ms
-  const maxWaitTime = 2000; // Cap individual waits at 2 seconds
+  let waitTime = 50; // Start with 50ms for faster response
+  const maxWaitTime = 1000; // Cap individual waits at 1 second
 
   while (Date.now() - startTime < timeout) {
     // Check if file contains expected content
@@ -420,7 +420,7 @@ export async function waitForFileContentToContain(
 
     // Wait with exponential backoff
     await page.waitForTimeout(waitTime);
-    waitTime = Math.min(waitTime * 2, maxWaitTime); // Double wait time, but cap it
+    waitTime = Math.min(waitTime * 1.5, maxWaitTime); // Increase wait time more gradually
   }
 
   // Timeout reached - get current content for debugging
@@ -510,6 +510,91 @@ export async function waitForFileUpdate(
   } else {
     // Just wait for file to exist and have content
     await waitForFileContentToContain(page, filePath, "", timeout);
+  }
+}
+
+/**
+ * Wait for an "Add to today" operation to complete by waiting for the success notice
+ * and then verifying the file content was updated
+ */
+export async function waitForAddToTodayOperation(
+  page: Page,
+  dailyNotePath: string,
+  expectedTaskLink: string,
+  timeout: number = 10000
+): Promise<void> {
+  // Set up a vault modification listener to detect when the file is actually modified
+  const modificationPromise = page.evaluate(
+    async ({ path, timeoutMs }) => {
+      const app = (window as any).app;
+
+      return new Promise<void>((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          app.vault.off("modify", onModify);
+          reject(new Error(`Timeout waiting for file modification: ${path}`));
+        }, timeoutMs);
+
+        const onModify = (file: any) => {
+          if (file.path === path) {
+            clearTimeout(timeoutId);
+            app.vault.off("modify", onModify);
+            resolve();
+          }
+        };
+
+        app.vault.on("modify", onModify);
+      });
+    },
+    { path: dailyNotePath, timeoutMs: timeout }
+  );
+
+  // Wait for either the file modification or timeout
+  try {
+    await Promise.race([
+      modificationPromise,
+      // Fallback: wait for content to appear
+      waitForFileContentToContain(
+        page,
+        dailyNotePath,
+        expectedTaskLink,
+        timeout
+      ),
+    ]);
+  } catch (error) {
+    // If the vault listener fails, fall back to content checking
+    console.warn(
+      "Vault modification listener failed, falling back to content checking:",
+      error
+    );
+    await waitForFileContentToContain(
+      page,
+      dailyNotePath,
+      expectedTaskLink,
+      timeout
+    );
+  }
+
+  // Final verification that the content is actually there
+  const finalContent = await page.evaluate(
+    async ({ path }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (!file) return "";
+
+      try {
+        return await app.vault.read(file);
+      } catch (error) {
+        return "";
+      }
+    },
+    { path: dailyNotePath }
+  );
+
+  if (!finalContent.includes(expectedTaskLink)) {
+    throw new Error(
+      `Add to today operation did not complete successfully. Expected "${expectedTaskLink}" in daily note.\n` +
+        `Current content:\n${finalContent}`
+    );
   }
 }
 

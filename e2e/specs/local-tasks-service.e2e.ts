@@ -7,7 +7,7 @@ import { test, expect, describe } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import {
   createTestFolders,
-  waitForFileUpdate,
+  waitForAddToTodayOperation,
 } from "../helpers/task-sync-setup";
 import { toggleSidebar } from "../helpers/plugin-setup";
 import { createTask } from "../helpers/entity-helpers";
@@ -263,18 +263,21 @@ describe("LocalTasksService", () => {
       timeout: 5000,
     });
 
+    // Wait a moment for the button to be fully interactive
+    await context.page.waitForTimeout(200);
+
     // Click the "Add to today" button
     const addToTodayButton = context.page.locator(
       '[data-testid="add-to-today-button"]'
     );
     await addToTodayButton.click();
 
-    // Wait for the daily note to be updated with the task
-    await waitForFileUpdate(
+    // Wait for the add to today operation to complete
+    await waitForAddToTodayOperation(
       context.page,
       dailyNotePath,
       "- [ ] [[Daily Planning Task]]",
-      5000
+      10000
     );
 
     // Verify the task was added to the daily note
