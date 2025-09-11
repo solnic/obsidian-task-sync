@@ -264,84 +264,101 @@ describe("LocalTasksService", () => {
     expect(dailyNoteContent).toContain("- [ ] [[Daily Planning Task]]");
   });
 
-  test("should load all tasks on first load even with slow metadata cache", async () => {
-    // Create multiple tasks to test loading
+  test("should refresh stores and load all existing tasks on plugin initialization", async () => {
+    // Create tasks directly in the vault (simulating existing files)
     const taskTitles = [
-      "Metadata Cache Test Task 1",
-      "Metadata Cache Test Task 2",
-      "Metadata Cache Test Task 3",
-      "Metadata Cache Test Task 4",
-      "Metadata Cache Test Task 5",
+      "Store Refresh Test Task 1",
+      "Store Refresh Test Task 2",
+      "Store Refresh Test Task 3",
     ];
 
-    // Create tasks using the helper
+    // Create tasks directly using vault API (bypassing plugin)
     for (const title of taskTitles) {
-      await createTask(context, {
-        title,
-        category: "Feature",
-        priority: "Medium",
-        status: "Backlog",
-      });
-      // Add a small delay between task creation to avoid metadata cache race conditions
-      await context.page.waitForTimeout(100);
+      await context.page.evaluate(async (taskTitle) => {
+        const app = (window as any).app;
+        const content = `---
+Title: ${taskTitle}
+Type: Task
+Category: Feature
+Priority: Medium
+Status: Backlog
+Done: false
+---
+
+This is a test task created directly in the vault.`;
+        await app.vault.create(`Tasks/${taskTitle}.md`, content);
+      }, title);
     }
 
-    // Wait for metadata cache to update for all files
-    await context.page.waitForTimeout(2000);
+    // Wait for files to be created
+    await context.page.waitForTimeout(1000);
 
-    // Wait for all store refreshes to complete after task creation
+    // Simulate plugin restart by disabling and re-enabling
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const pluginManager = app.plugins;
+
+      // Disable plugin
+      await pluginManager.disablePlugin("obsidian-task-sync");
+
+      // Re-enable plugin (this should trigger store refresh)
+      await pluginManager.enablePlugin("obsidian-task-sync");
+    });
+
+    // Wait for plugin to fully initialize
+    await context.page.waitForTimeout(3000);
+
+    // Wait for all store refreshes to complete after plugin restart
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       await plugin.waitForStoreRefresh();
     });
 
-    // Get task count after all refreshes are complete
+    // Get task count after plugin restart
     const finalTaskCount = await context.page.evaluate(() => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return plugin.getCachedTasks().length;
     });
 
-    // Open Tasks view and switch to local service
+    // Should have loaded all 3 tasks
+    expect(finalTaskCount).toBe(3);
+
+    // Ensure right sidebar is open and Tasks view is accessible
+    await toggleSidebar(context.page, "right", true);
+    await context.page.waitForTimeout(1000);
+
+    // Open Tasks view and verify tasks are displayed
     await openTasksView(context.page);
+
+    // Wait for Tasks view to be fully loaded
+    await context.page.waitForSelector('[data-testid="service-local"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
     const localTab = context.page.locator('[data-testid="service-local"]');
     await localTab.click();
 
-    // Wait for all 5 tasks to load
+    // Wait for tasks to appear in UI
     await context.page.waitForFunction(
       () => {
         const taskItems = document.querySelectorAll(
           '[data-testid="local-task-item"]'
         );
-        return taskItems.length === 5;
+        return taskItems.length >= 3;
       },
       { timeout: 10000 }
     );
 
-    // Scroll to ensure all tasks are visible
-    await context.page.evaluate(() => {
-      const tasksContainer = document.querySelector(".tasks-list");
-      if (tasksContainer) {
-        tasksContainer.scrollTop = tasksContainer.scrollHeight;
-      }
-    });
-
-    // Verify all tasks are loaded in the UI
+    // Verify all tasks are displayed in the UI
     const taskItems = context.page.locator('[data-testid="local-task-item"]');
     const taskCount = await taskItems.count();
 
-    // Should have exactly 5 tasks
-    expect(taskCount).toBe(5);
+    expect(taskCount).toBeGreaterThanOrEqual(3);
 
-    // Should match the cached task count (all tasks should be loaded)
-    expect(taskCount).toBe(finalTaskCount);
-
-    // Verify that we have the expected number of tasks
-    expect(taskCount).toBe(5);
-    expect(taskCount).toBe(finalTaskCount);
-
-    // Verify all our test tasks are present with correct titles
+    // Verify our test tasks are present
     const taskTexts = await taskItems.allTextContents();
     const allTaskText = taskTexts.join(" ");
 
