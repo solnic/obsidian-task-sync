@@ -78,20 +78,24 @@ describe("GitHub Pull Requests Integration", () => {
     expect(prItemVisible).toBe(true);
 
     // Check title and number
-    const titleText = await prItem.locator(".issue-title").textContent();
-    const numberText = await prItem.locator(".issue-number").textContent();
+    const titleText = await prItem
+      .locator(".task-sync-item-title")
+      .textContent();
+    const numberText = await prItem
+      .locator(".task-sync-item-subtitle")
+      .textContent();
 
     expect(titleText).toContain("Implement new authentication system");
     expect(numberText).toContain("#123");
 
     // Check metadata (assignee, state, branch info)
-    const metaText = await prItem.locator(".issue-meta").textContent();
+    const metaText = await prItem.locator(".task-sync-item-meta").textContent();
     expect(metaText).toContain("Assigned to reviewer");
     expect(metaText).toContain("open");
     expect(metaText).toContain("feature/oauth2 → main");
 
     // Check labels
-    const labels = prItem.locator(".issue-label");
+    const labels = prItem.locator(".task-sync-item-label");
     const labelCount = await labels.count();
     expect(labelCount).toBe(2);
 
