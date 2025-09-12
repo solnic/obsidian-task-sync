@@ -69,6 +69,27 @@ export interface Task extends BaseEntity, HasDataView {
   source?: TaskSource; // External source tracking
 }
 
+// Task mention entity - represents a todo item that links to a task
+export interface TaskMention extends BaseEntity {
+  // Source file information
+  sourceFilePath: string; // Path to the file containing the mention
+  lineNumber: number; // Line number in the source file
+
+  // Task reference
+  taskPath: string; // Path to the linked task file
+  taskTitle: string; // Title of the linked task
+
+  // Todo item properties
+  mentionText: string; // The text of the todo item
+  completed: boolean; // Whether the todo item is checked
+  indentation: string; // Indentation level (for nested todos)
+  listMarker: string; // List marker (- or *)
+
+  // Metadata
+  lastSynced: Date; // Last time this mention was synced
+  createdAt: Date; // When this mention was first detected
+}
+
 // Project entity - core system properties
 export interface Project extends BaseEntity {
   // Front-matter properties (frontmatter: true)

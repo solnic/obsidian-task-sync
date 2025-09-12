@@ -12,6 +12,7 @@ import {
 } from "obsidian";
 import { TaskSyncSettings } from "../main";
 import { TaskFileManager } from "./TaskFileManager";
+import { taskMentionStore } from "../stores/taskMentionStore";
 
 export class TaskTodoMarkdownProcessor {
   private app: App;
@@ -99,6 +100,30 @@ export class TaskTodoMarkdownProcessor {
   }
 
   /**
+   * Check if a todo item is a task mention (contains task link)
+   */
+  private isTaskMention(item: HTMLElement): boolean {
+    if (!this.isTaskListItem(item)) {
+      return false;
+    }
+
+    // Check if it contains a wiki link to a task
+    const links = item.querySelectorAll("a");
+    for (let i = 0; i < links.length; i++) {
+      const link = links[i];
+      const href = link.getAttribute("href");
+      if (href) {
+        const filePath = this.extractFilePathFromHref(href);
+        if (filePath && filePath.startsWith(this.settings.tasksFolder + "/")) {
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
    * Process a single todo item
    */
   private async processTodoItem(
@@ -135,6 +160,11 @@ export class TaskTodoMarkdownProcessor {
 
     // Add badges to the todo item
     this.addTaskBadges(todoItem, taskData, link);
+
+    // Add task mention indicator if this is a task mention
+    if (this.isTaskMention(todoItem)) {
+      this.addTaskMentionIndicator(todoItem, taskData);
+    }
   }
 
   /**
@@ -397,5 +427,49 @@ export class TaskTodoMarkdownProcessor {
     };
 
     return colorMap[colorName.toLowerCase()] || colorName;
+  }
+
+  /**
+   * Add task mention indicator to show this todo is synced with a task
+   */
+  private addTaskMentionIndicator(todoItem: HTMLElement, taskData: any): void {
+    // Check if indicator already exists to avoid duplicates
+    if (todoItem.querySelector(".task-sync-mention-indicator")) {
+      return;
+    }
+
+    // Create indicator container
+    const indicator = document.createElement("span");
+    indicator.className = "task-sync-mention-indicator";
+    indicator.title = "This todo is synced with a task note";
+
+    // Add sync icon (using a simple symbol for now)
+    const icon = document.createElement("span");
+    icon.className = "task-sync-mention-icon";
+    icon.textContent = "🔗"; // Link symbol to indicate sync
+    icon.style.fontSize = "0.8em";
+    icon.style.marginLeft = "4px";
+    icon.style.opacity = "0.7";
+
+    // Add completion state indicator
+    if (taskData.done) {
+      icon.style.color = "#10b981"; // Green for completed
+      icon.title = "Task is completed";
+    } else {
+      icon.style.color = "#6b7280"; // Gray for incomplete
+      icon.title = "Task is incomplete";
+    }
+
+    indicator.appendChild(icon);
+
+    // Find the best place to insert the indicator
+    const badgesContainer = todoItem.querySelector(".task-sync-todo-badges");
+    if (badgesContainer) {
+      // Insert after badges
+      badgesContainer.appendChild(indicator);
+    } else {
+      // Insert at the end of the todo item
+      todoItem.appendChild(indicator);
+    }
   }
 }

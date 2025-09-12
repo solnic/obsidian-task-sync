@@ -12,6 +12,7 @@ import {
   TaskEventData,
 } from "../events";
 import { TaskSyncSettings } from "../components/ui/settings";
+import { TaskMentionDetectionService } from "./TaskMentionDetectionService";
 
 /**
  * Interface for tracking file state
@@ -20,6 +21,7 @@ interface FileState {
   path: string;
   frontmatter: Record<string, any>;
   lastModified: number;
+  hasTaskMentions?: boolean; // Track if file contains task mentions
 }
 
 /**
@@ -29,13 +31,21 @@ export class FileChangeListener {
   private fileStates: Map<string, FileState> = new Map();
   private isInitialized: boolean = false;
   private processingFiles: Set<string> = new Set();
+  private taskMentionDetectionService?: TaskMentionDetectionService;
 
   constructor(
     private app: App,
     private vault: Vault,
     private eventManager: EventManager,
-    private settings: TaskSyncSettings,
+    private settings: TaskSyncSettings
   ) {}
+
+  /**
+   * Set the task mention detection service
+   */
+  setTaskMentionDetectionService(service: TaskMentionDetectionService): void {
+    this.taskMentionDetectionService = service;
+  }
 
   /**
    * Initialize the file change listener
@@ -99,13 +109,13 @@ export class FileChangeListener {
       } catch (error) {
         console.error(
           `FileChangeListener: Error initializing state for ${file.path}:`,
-          error,
+          error
         );
       }
     }
 
     console.log(
-      `FileChangeListener: Initialized ${this.fileStates.size} file states`,
+      `FileChangeListener: Initialized ${this.fileStates.size} file states`
     );
   }
 
@@ -122,11 +132,16 @@ export class FileChangeListener {
       }
 
       const path = file.path;
-      return (
+      // Monitor entity folders for front-matter changes
+      const isEntityFile =
         path.startsWith(this.settings.tasksFolder + "/") ||
         path.startsWith(this.settings.projectsFolder + "/") ||
-        path.startsWith(this.settings.areasFolder + "/")
-      );
+        path.startsWith(this.settings.areasFolder + "/");
+
+      // Monitor all markdown files for task mentions
+      const isMarkdownFile = path.endsWith(".md");
+
+      return isEntityFile || isMarkdownFile;
     });
   }
 
@@ -156,7 +171,7 @@ export class FileChangeListener {
       }
       console.error(
         `FileChangeListener: Error creating file state for ${file.path}:`,
-        error,
+        error
       );
       return null;
     }
@@ -238,10 +253,15 @@ export class FileChangeListener {
 
       // Update stored state
       this.fileStates.set(file.path, newFileState);
+
+      // Handle task mentions for all markdown files
+      if (this.taskMentionDetectionService && file.path.endsWith(".md")) {
+        await this.taskMentionDetectionService.updateTaskMentionsForFile(file);
+      }
     } catch (error) {
       console.error(
         `FileChangeListener: Error processing file modification for ${file.path}:`,
-        error,
+        error
       );
     } finally {
       this.processingFiles.delete(file.path);
@@ -273,15 +293,15 @@ export class FileChangeListener {
           entityType === "task"
             ? EventType.TASK_CREATED
             : entityType === "project"
-              ? EventType.PROJECT_CREATED
-              : EventType.AREA_CREATED,
-          eventData,
+            ? EventType.PROJECT_CREATED
+            : EventType.AREA_CREATED,
+          eventData
         );
       }
     } catch (error) {
       console.error(
         `FileChangeListener: Error processing file creation for ${file.path}:`,
-        error,
+        error
       );
     }
   }
@@ -297,22 +317,31 @@ export class FileChangeListener {
     try {
       const oldFileState = this.fileStates.get(file.path);
       if (oldFileState) {
-        // Emit deletion event
-        const entityType = this.getEntityType(file.path);
-        const eventData: TaskEventData = {
-          filePath: file.path,
-          taskName: file.basename,
-          frontmatter: oldFileState.frontmatter,
-        };
+        // Handle entity deletion events
+        if (this.isEntityFile(file.path)) {
+          const entityType = this.getEntityType(file.path);
+          const eventData: TaskEventData = {
+            filePath: file.path,
+            taskName: file.basename,
+            frontmatter: oldFileState.frontmatter,
+          };
 
-        await this.eventManager.emit(
-          entityType === "task"
-            ? EventType.TASK_DELETED
-            : entityType === "project"
+          await this.eventManager.emit(
+            entityType === "task"
+              ? EventType.TASK_DELETED
+              : entityType === "project"
               ? EventType.PROJECT_DELETED
               : EventType.AREA_DELETED,
-          eventData,
-        );
+            eventData
+          );
+        }
+
+        // Handle task mention cleanup for all markdown files
+        if (this.taskMentionDetectionService && file.path.endsWith(".md")) {
+          await this.taskMentionDetectionService.removeTaskMentionsForFile(
+            file.path
+          );
+        }
 
         // Remove from state
         this.fileStates.delete(file.path);
@@ -320,7 +349,7 @@ export class FileChangeListener {
     } catch (error) {
       console.error(
         `FileChangeListener: Error processing file deletion for ${file.path}:`,
-        error,
+        error
       );
     }
   }
@@ -349,7 +378,7 @@ export class FileChangeListener {
     } catch (error) {
       console.error(
         `FileChangeListener: Error processing file rename from ${oldPath} to ${file.path}:`,
-        error,
+        error
       );
     }
   }
@@ -359,7 +388,7 @@ export class FileChangeListener {
    */
   private async compareAndEmitEvents(
     oldState: FileState,
-    newState: FileState,
+    newState: FileState
   ): Promise<void> {
     const oldFrontmatter = oldState.frontmatter;
     const newFrontmatter = newState.frontmatter;
@@ -408,6 +437,19 @@ export class FileChangeListener {
    * Check if a path is relevant for monitoring
    */
   private isRelevantPath(path: string): boolean {
+    // Monitor entity folders for front-matter changes
+    const isEntityFile = this.isEntityFile(path);
+
+    // Monitor all markdown files for task mentions
+    const isMarkdownFile = path.endsWith(".md");
+
+    return isEntityFile || isMarkdownFile;
+  }
+
+  /**
+   * Check if a file is an entity file (task, project, or area)
+   */
+  private isEntityFile(path: string): boolean {
     return (
       path.startsWith(this.settings.tasksFolder + "/") ||
       path.startsWith(this.settings.projectsFolder + "/") ||

@@ -20,6 +20,13 @@ export enum EventType {
   AREA_UPDATED = "area-updated",
   AREA_DELETED = "area-deleted",
 
+  // Task mention events
+  TASK_MENTION_CREATED = "task-mention-created",
+  TASK_MENTION_UPDATED = "task-mention-updated",
+  TASK_MENTION_DELETED = "task-mention-deleted",
+  TASK_MENTION_COMPLETED = "task-mention-completed",
+  TASK_MENTION_UNCOMPLETED = "task-mention-uncompleted",
+
   // System events
   PLUGIN_LOADED = "plugin-loaded",
   PLUGIN_UNLOADED = "plugin-unloaded",
@@ -45,6 +52,8 @@ export type EventData =
   | TaskEventData
   | ProjectEventData
   | AreaEventData
+  | TaskMentionEventData
+  | TaskMentionStateChangedEventData
   | SettingsChangedEventData
   | BaseRegeneratedEventData
   | GenericEventData;
@@ -99,6 +108,35 @@ export interface AreaEventData {
   areaName: string;
   frontmatter?: Record<string, any>;
   content?: string;
+}
+
+/**
+ * Event data for task mention-related events
+ */
+export interface TaskMentionEventData {
+  filePath: string;
+  lineNumber: number;
+  taskPath: string;
+  taskTitle: string;
+  mentionText: string;
+  completed: boolean;
+  indentation: string;
+  listMarker: string;
+}
+
+/**
+ * Event data for task mention state change events
+ */
+export interface TaskMentionStateChangedEventData {
+  filePath: string;
+  lineNumber: number;
+  taskPath: string;
+  taskTitle: string;
+  mentionText: string;
+  oldCompleted: boolean;
+  newCompleted: boolean;
+  indentation: string;
+  listMarker: string;
 }
 
 /**

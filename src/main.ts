@@ -60,6 +60,9 @@ import { areaStore } from "./stores/areaStore";
 import { TodoPromotionService } from "./services/TodoPromotionService";
 import { DailyNoteService } from "./services/DailyNoteService";
 import { initializeContextStore } from "./components/svelte/context";
+import { TaskMentionDetectionService } from "./services/TaskMentionDetectionService";
+import { TaskMentionSyncHandler } from "./events/handlers/TaskMentionSyncHandler";
+import { taskMentionStore } from "./stores/taskMentionStore";
 
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
@@ -112,6 +115,8 @@ export default class TaskSyncPlugin extends Plugin {
   todoPromotionService: TodoPromotionService;
   dailyNoteService: DailyNoteService;
   taskTodoMarkdownProcessor: TaskTodoMarkdownProcessor;
+  taskMentionDetectionService: TaskMentionDetectionService;
+  taskMentionSyncHandler: TaskMentionSyncHandler;
   private markdownProcessor: MarkdownPostProcessor;
 
   // Expose store access methods for e2e testing
@@ -240,11 +245,29 @@ export default class TaskSyncPlugin extends Plugin {
       this.settings
     );
     this.entityCacheHandler = new EntityCacheHandler(this.app, this.settings);
+
+    // Initialize task mention services
+    this.taskMentionDetectionService = new TaskMentionDetectionService(
+      this.app,
+      this.settings,
+      this.eventManager
+    );
+    this.taskMentionSyncHandler = new TaskMentionSyncHandler(
+      this.app,
+      this.settings,
+      this.taskFileManager
+    );
+
     this.fileChangeListener = new FileChangeListener(
       this.app,
       this.app.vault,
       this.eventManager,
       this.settings
+    );
+
+    // Connect task mention detection service to file change listener
+    this.fileChangeListener.setTaskMentionDetectionService(
+      this.taskMentionDetectionService
     );
 
     // Initialize settings change handlers
@@ -261,6 +284,7 @@ export default class TaskSyncPlugin extends Plugin {
     this.eventManager.registerHandler(this.entityCacheHandler);
     this.eventManager.registerHandler(this.githubSettingsHandler);
     this.eventManager.registerHandler(this.appleRemindersSettingsHandler);
+    this.eventManager.registerHandler(this.taskMentionSyncHandler);
 
     // Initialize file change listener
     await this.fileChangeListener.initialize();
@@ -455,6 +479,7 @@ export default class TaskSyncPlugin extends Plugin {
     await taskStore.saveData();
     await projectStore.saveData();
     await areaStore.saveData();
+    await taskMentionStore.saveData();
 
     // Cache manager doesn't need explicit unload - data is saved automatically
 
@@ -1696,10 +1721,14 @@ export default class TaskSyncPlugin extends Plugin {
   private async populateStoresFromVault(): Promise<void> {
     console.log("Populating stores from vault...");
 
+    // Initialize task mention store
+    taskMentionStore.initialize(this.app, this, "");
+
     // Refresh all stores to load existing files
     await taskStore.refreshEntities();
     await projectStore.refreshEntities();
     await areaStore.refreshEntities();
+    await taskMentionStore.refreshEntities();
 
     console.log("Stores populated from vault");
   }
