@@ -2,12 +2,12 @@
 
 /**
  * Rerun E2E tests that failed in the previous run
- * Uses Vitest with multiple reporters (verbose + json) to capture and parse results
+ * Simply runs npm run test:e2e:headless with the failed test pattern
  */
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { spawn } = require('child_process');
 
 const RESULTS_FILE = 'e2e-test-results.json';
 
@@ -55,7 +55,7 @@ function getFailedTestsFromResults() {
   }
 }
 
-function runFailedTests(isHeadless = false) {
+function runFailedTests() {
   const failedTests = getFailedTestsFromResults();
 
   if (failedTests.length === 0) {
@@ -69,91 +69,73 @@ function runFailedTests(isHeadless = false) {
   });
   console.log('');
 
-  const baseCommand = isHeadless
-    ? 'xvfb-run -a --server-args="-screen 0 1920x1080x24 -ac -nolisten tcp -dpi 96" npx vitest run --config vitest.playwright.config.mjs'
-    : 'npx vitest run --config vitest.playwright.config.mjs';
-
   // Check if we have file-level failures (indicated by wildcard test names)
   const fileLevelFailures = failedTests.filter(test => test.testName === '*');
   const testLevelFailures = failedTests.filter(test => test.testName !== '*');
 
-  let command;
+  let testPattern;
   if (fileLevelFailures.length > 0) {
-    // If we have file-level failures, run those files directly
-    const failedFiles = fileLevelFailures.map(test => test.file).join(' ');
-    command = `${baseCommand} ${failedFiles} --reporter=verbose --reporter=json --outputFile=${RESULTS_FILE}`;
+    // If we have file-level failures, we'll need to run the entire files
+    // For now, just use all test names as pattern
+    testPattern = failedTests.map(test => test.testName === '*' ? '.*' : test.testName).join('|');
   } else if (testLevelFailures.length > 0) {
     // If we only have test-level failures, use testNamePattern
-    const testNamePattern = testLevelFailures.map(test => test.testName).join('|');
-    command = `${baseCommand} --testNamePattern="${testNamePattern}" --reporter=verbose --reporter=json --outputFile=${RESULTS_FILE}`;
+    testPattern = testLevelFailures.map(test => test.testName).join('|');
   } else {
     console.log('❌ No valid failed tests found to rerun');
     return;
   }
 
   console.log('🚀 Running failed tests...');
-  console.log(`Command: ${command}`);
+
+  // Build the npm command with properly quoted test pattern
+  const npmArgs = ['run', 'test:e2e:headless', '--', '-t', `"${testPattern}"`];
+
+  console.log(`Command: npm ${npmArgs.join(' ')}`);
   console.log('');
 
-  try {
-    const output = execSync(command, { encoding: 'utf8', stdio: 'pipe' });
+  // Use spawn to run the command and inherit stdio for real-time output
+  const child = spawn('npm', npmArgs, {
+    stdio: 'inherit',
+    shell: true
+  });
 
-    // Show regular vitest output but filter out unhandled errors
-    const cleanOutput = filterUnhandledErrors(output);
-    console.log(cleanOutput);
-    console.log('✅ Failed tests rerun completed!');
-  } catch (error) {
-    const errorOutput = error.stdout ? error.stdout.toString() : '';
-    const cleanOutput = filterUnhandledErrors(errorOutput);
-    console.log(cleanOutput);
-    console.log('❌ Some tests are still failing.');
-    process.exit(1);
-  }
-}
-
-function filterUnhandledErrors(output) {
-  // Split output into sections and filter out only the unhandled errors
-  const sections = output.split(/⎯{20,}/);
-  const filteredSections = [];
-
-  for (const section of sections) {
-    // Skip sections that contain unhandled errors
-    if (section.includes('Unhandled Errors') ||
-      section.includes('Unhandled Rejection') ||
-      section.includes('Protocol error') ||
-      section.includes('Serialized Error') ||
-      section.includes('This error originated in')) {
-      continue;
+  child.on('close', (code) => {
+    if (code === 0) {
+      console.log('✅ Failed tests rerun completed!');
+    } else {
+      console.log('❌ Some tests are still failing.');
+      process.exit(code);
     }
+  });
 
-    // Keep all other sections (including test results, failures, etc.)
-    filteredSections.push(section);
-  }
-
-  return filteredSections.join('⎯'.repeat(80)).trim();
+  child.on('error', (error) => {
+    console.error('❌ Error running tests:', error.message);
+    process.exit(1);
+  });
 }
+
+
 
 function main() {
   const args = process.argv.slice(2);
-  const isHeadless = args.includes('--headless');
 
   if (args.includes('--help') || args.includes('-h')) {
     console.log('🎯 Rerun Failed E2E Tests');
     console.log('========================');
     console.log('');
-    console.log('Usage: node scripts/rerun-failed-e2e.js [--headless]');
+    console.log('Usage: node scripts/rerun-failed-e2e.js');
     console.log('');
     console.log('This script reruns only the tests that failed in the previous run.');
-    console.log('It reads test results from e2e-test-results.json and uses --testNamePattern');
-    console.log('to target only the failed tests.');
+    console.log('It reads test results from e2e-test-results.json and runs');
+    console.log('npm run test:e2e:headless with the failed test pattern.');
     console.log('');
     console.log('Options:');
-    console.log('  --headless    Run tests in headless mode (with xvfb)');
     console.log('  --help, -h    Show this help message');
     return;
   }
 
-  runFailedTests(isHeadless);
+  runFailedTests();
 }
 
 if (require.main === module) {
