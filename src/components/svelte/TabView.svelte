@@ -11,7 +11,9 @@
     className?: string;
     testId?: string;
     showContextWidget?: boolean;
-    showImportIndicator?: boolean;
+    isNonLocalService?: boolean;
+    dayPlanningMode?: boolean;
+    serviceName?: string;
     children: Snippet;
   }
 
@@ -19,7 +21,9 @@
     className = "",
     testId,
     showContextWidget = true,
-    showImportIndicator = false,
+    isNonLocalService = false,
+    dayPlanningMode = false,
+    serviceName,
     children,
   }: Props = $props();
 </script>
@@ -28,7 +32,7 @@
   <!-- Context Widget Header -->
   {#if showContextWidget}
     <div class="task-sync-tab-header">
-      <ContextWidget {showImportIndicator} />
+      <ContextWidget {isNonLocalService} {dayPlanningMode} {serviceName} />
     </div>
   {/if}
 

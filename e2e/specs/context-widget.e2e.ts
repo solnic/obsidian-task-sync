@@ -30,12 +30,20 @@ describe("ContextWidget", () => {
     // Wait for the view to load
     await waitForElementVisible(context.page, "[data-testid='tasks-view']");
 
-    // Check that context widget shows "Import context: No context"
+    // Check that context widget shows service name and "import context" with "No context"
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
-    const contextText = await context.page.textContent(
-      "[data-testid='context-widget'] .context-text"
+
+    // Check service name
+    const serviceName = await context.page.textContent(
+      "[data-testid='context-widget'] .service-name"
     );
-    expect(contextText).toBe("Import context: No context");
+    expect(serviceName).toBe("GitHub");
+
+    // Check no context message
+    const noContext = await context.page.textContent(
+      "[data-testid='context-widget'] .no-context"
+    );
+    expect(noContext).toBe("No context");
   });
 
   test("should display project context when project file is open", async () => {
@@ -57,10 +65,23 @@ describe("ContextWidget", () => {
 
     // Check that context widget shows project context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
-    const contextText = await context.page.textContent(
-      "[data-testid='context-widget'] .context-text"
+
+    // Check service name
+    const serviceName = await context.page.textContent(
+      "[data-testid='context-widget'] .service-name"
     );
-    expect(contextText).toBe(`Import context: Project / ${projectName}`);
+    expect(serviceName).toBe("GitHub");
+
+    // Check project context
+    const contextType = await context.page.textContent(
+      "[data-testid='context-widget'] .context-type"
+    );
+    expect(contextType).toBe("Project");
+
+    const contextName = await context.page.textContent(
+      "[data-testid='context-widget'] .context-name"
+    );
+    expect(contextName).toBe(projectName);
 
     // Check that the widget has the correct CSS class
     const contextWidgetClass = await context.page.getAttribute(
@@ -89,10 +110,17 @@ describe("ContextWidget", () => {
 
     // Check that context widget shows area context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
-    const contextText = await context.page.textContent(
-      "[data-testid='context-widget'] .context-text"
+
+    // Check area context
+    const contextType = await context.page.textContent(
+      "[data-testid='context-widget'] .context-type"
     );
-    expect(contextText).toBe(`Import context: Area / ${areaName}`);
+    expect(contextType).toBe("Area");
+
+    const contextName = await context.page.textContent(
+      "[data-testid='context-widget'] .context-name"
+    );
+    expect(contextName).toBe(areaName);
 
     // Check that the widget has the correct CSS class
     const contextWidgetClass2 = await context.page.getAttribute(
@@ -125,19 +153,29 @@ describe("ContextWidget", () => {
 
     // Check project context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
-    let contextText = await context.page.textContent(
-      "[data-testid='context-widget'] .context-text"
+    let contextType = await context.page.textContent(
+      "[data-testid='context-widget'] .context-type"
     );
-    expect(contextText).toBe(`Import context: Project / ${projectName}`);
+    expect(contextType).toBe("Project");
+
+    let contextName = await context.page.textContent(
+      "[data-testid='context-widget'] .context-name"
+    );
+    expect(contextName).toBe(projectName);
 
     // Switch to area file
     await openFile(context, `Areas/${areaName}.md`);
 
     // Check that context updated to area
-    contextText = await context.page.textContent(
-      "[data-testid='context-widget'] .context-text"
+    contextType = await context.page.textContent(
+      "[data-testid='context-widget'] .context-type"
     );
-    expect(contextText).toBe(`Import context: Area / ${areaName}`);
+    expect(contextType).toBe("Area");
+
+    contextName = await context.page.textContent(
+      "[data-testid='context-widget'] .context-name"
+    );
+    expect(contextName).toBe(areaName);
 
     // Check CSS class changed
     const contextWidgetClass3 = await context.page.getAttribute(
@@ -164,10 +202,15 @@ describe("ContextWidget", () => {
 
     // Verify project context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
-    let contextText = await context.page.textContent(
-      "[data-testid='context-widget'] .context-text"
+    let contextType = await context.page.textContent(
+      "[data-testid='context-widget'] .context-type"
     );
-    expect(contextText).toBe(`Import context: Project / ${projectName}`);
+    expect(contextType).toBe("Project");
+
+    let contextName = await context.page.textContent(
+      "[data-testid='context-widget'] .context-name"
+    );
+    expect(contextName).toBe(projectName);
 
     // Create and open a file outside of Projects/Areas folders
     await context.page.evaluate(async () => {
@@ -178,10 +221,10 @@ describe("ContextWidget", () => {
     await openFile(context, "Random Note.md");
 
     // Check that context reset to "No context"
-    contextText = await context.page.textContent(
-      "[data-testid='context-widget'] .context-text"
+    const noContext = await context.page.textContent(
+      "[data-testid='context-widget'] .no-context"
     );
-    expect(contextText).toBe("Import context: No context");
+    expect(noContext).toBe("No context");
 
     // Check CSS class changed
     const contextWidgetClass4 = await context.page.getAttribute(

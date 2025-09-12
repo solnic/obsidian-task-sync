@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { Notice } from "obsidian";
   import { getPluginContext } from "./context";
   import FilterButton from "./FilterButton.svelte";
@@ -130,7 +130,7 @@
   // Computed current repository display value
   let currentRepositoryDisplay = $derived.by(() => {
     if (!currentRepository) {
-      return "All repositories";
+      return "Select repository";
     }
 
     if (
@@ -160,7 +160,7 @@
     const recentOrgs = recentlyUsedOrgs.filter((org) => allOrgs.includes(org));
     const otherOrgs = allOrgs.filter((org) => !recentOrgs.includes(org));
 
-    const options = ["All organizations"];
+    const options: string[] = [];
     if (recentOrgs.length > 0) {
       options.push(...recentOrgs);
       if (otherOrgs.length > 0) {
@@ -202,7 +202,7 @@
       (option) => !recentRepos.includes(option)
     );
 
-    const options = ["All repositories"];
+    const options: string[] = [];
     if (recentRepos.length > 0) {
       options.push(...recentRepos);
       if (otherOptions.length > 0) {
@@ -216,23 +216,33 @@
     return options;
   });
 
-  onMount(() => {
+  onMount(async () => {
     if (githubService.isEnabled()) {
-      Promise.all([
-        loadCurrentUser(),
-        loadRecentlyUsedFilters(),
-        loadRepositories().then(async () => {
-          if (currentRepository) {
-            await loadIssues();
-            await loadLabels();
-          }
-        }),
-      ]).catch((err) => {
-        error = err.message || "Failed to load GitHub data";
-      });
+      try {
+        // First, load recently used filters to restore state
+        await loadRecentlyUsedFilters();
 
-      refreshImportStatus();
+        // Then load other data
+        await Promise.all([
+          loadCurrentUser(),
+          loadRepositories().then(async () => {
+            if (currentRepository) {
+              await loadIssues();
+              await loadLabels();
+            }
+          }),
+        ]);
+
+        refreshImportStatus();
+      } catch (err: any) {
+        error = err.message || "Failed to load GitHub data";
+      }
     }
+  });
+
+  onDestroy(() => {
+    // Save current filter state when component is destroyed
+    saveRecentlyUsedFilters();
   });
 
   // Watch for changes in the task store and refresh import status
@@ -281,6 +291,16 @@
         recentlyUsedOrgs = data.githubRecentlyUsed.organizations || [];
         recentlyUsedRepos = data.githubRecentlyUsed.repositories || [];
       }
+
+      // Also restore current filter selections
+      if (data?.githubCurrentFilters) {
+        if (data.githubCurrentFilters.organization !== undefined) {
+          currentOrganization = data.githubCurrentFilters.organization;
+        }
+        if (data.githubCurrentFilters.repository !== undefined) {
+          currentRepository = data.githubCurrentFilters.repository;
+        }
+      }
     } catch (err: any) {
       console.warn("Failed to load recently used filters:", err.message);
     }
@@ -292,6 +312,11 @@
       data.githubRecentlyUsed = {
         organizations: recentlyUsedOrgs,
         repositories: recentlyUsedRepos,
+      };
+      // Also save current filter selections
+      data.githubCurrentFilters = {
+        organization: currentOrganization,
+        repository: currentRepository,
       };
       await plugin.saveData(data);
     } catch (err: any) {
@@ -316,6 +341,16 @@
       repo,
       ...recentlyUsedRepos.filter((r) => r !== repo),
     ].slice(0, 5);
+    saveRecentlyUsedFilters();
+  }
+
+  function removeRecentlyUsedOrg(org: string): void {
+    recentlyUsedOrgs = recentlyUsedOrgs.filter((o) => o !== org);
+    saveRecentlyUsedFilters();
+  }
+
+  function removeRecentlyUsedRepo(repo: string): void {
+    recentlyUsedRepos = recentlyUsedRepos.filter((r) => r !== repo);
     saveRecentlyUsedFilters();
   }
 
@@ -541,14 +576,19 @@
     if (repository) {
       // Track recently used repository
       addRecentlyUsedRepo(repository);
+    }
 
+    // Save current filter state
+    saveRecentlyUsedFilters();
+
+    if (repository) {
       await loadIssues();
       await loadLabels();
       if (activeTab === "pull-requests") {
         await loadPullRequests();
       }
     } else {
-      // Clear data when repository is cleared
+      // No repository selected - clear data and show message
       issues = [];
       pullRequests = [];
       availableLabels = [];
@@ -581,6 +621,9 @@
       addRecentlyUsedOrg(org);
     }
 
+    // Save current filter state
+    saveRecentlyUsedFilters();
+
     // Reset repository selection when changing organization
     if (org && !currentRepository.startsWith(org + "/")) {
       const firstRepoInOrg = filteredRepositories[0];
@@ -591,6 +634,9 @@
   }
 
   async function refresh(): Promise<void> {
+    // Force refresh by clearing cache first
+    await githubService.clearCache();
+
     await loadRepositories();
     if (currentRepository) {
       await loadIssues();
@@ -873,19 +919,17 @@
           <div class="task-sync-filter-group task-sync-filter-group--org">
             <FilterButton
               label="Organization"
-              currentValue={currentOrganization || "All organizations"}
+              currentValue={currentOrganization || "Select organization"}
               options={organizationOptions}
-              placeholder="All organizations"
+              placeholder="Select organization"
               onselect={(value) =>
-                setOrganizationFilter(
-                  value === "All organizations" || value === "---"
-                    ? null
-                    : value
-                )}
+                setOrganizationFilter(value === "---" ? null : value)}
               testId="organization-filter"
               autoSuggest={true}
               allowClear={true}
               isActive={!!currentOrganization}
+              recentlyUsedItems={recentlyUsedOrgs}
+              onRemoveRecentItem={removeRecentlyUsedOrg}
             />
           </div>
 
@@ -895,23 +939,24 @@
               label="Repository"
               currentValue={currentRepositoryDisplay}
               options={repositoryOptionsWithRecent}
-              placeholder="All repositories"
+              placeholder="Select repository"
               onselect={(value) => {
-                if (value === "All repositories" || value === "---") {
-                  setRepository(null);
-                } else {
-                  // Convert display value back to full name
-                  let fullName = value;
-                  if (currentOrganization && !value.includes("/")) {
-                    fullName = `${currentOrganization}/${value}`;
-                  }
-                  setRepository(fullName);
+                if (value === "---") {
+                  return; // Skip separator
                 }
+                // Convert display value back to full name
+                let fullName = value;
+                if (currentOrganization && !value.includes("/")) {
+                  fullName = `${currentOrganization}/${value}`;
+                }
+                setRepository(fullName);
               }}
               testId="repository-filter"
               autoSuggest={true}
               allowClear={true}
               isActive={!!currentRepository}
+              recentlyUsedItems={recentlyUsedRepos}
+              onRemoveRecentItem={removeRecentlyUsedRepo}
             />
           </div>
 

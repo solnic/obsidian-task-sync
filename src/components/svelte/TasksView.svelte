@@ -137,8 +137,16 @@
       <TabView
         className="tasks-view-tab"
         testId="tasks-view-tab"
-        showContextWidget={activeService !== "local"}
-        showImportIndicator={activeService !== "local"}
+        showContextWidget={true}
+        isNonLocalService={activeService !== "local"}
+        {dayPlanningMode}
+        serviceName={activeService === "github"
+          ? "GitHub"
+          : activeService === "apple-reminders"
+            ? "Apple Reminders"
+            : activeService === "local"
+              ? "Local Tasks"
+              : ""}
       >
         <!-- Service Content -->
         <div class="service-content" data-testid="service-content">

@@ -1,12 +1,19 @@
 <script lang="ts">
   import { getContextStore } from "./context";
   import type { FileContext } from "../../main";
+  import { setIcon } from "obsidian";
 
   interface Props {
-    showImportIndicator?: boolean;
+    dayPlanningMode?: boolean;
+    serviceName?: string; // For consistent header format across services
+    isNonLocalService?: boolean; // Whether this is a non-local service (GitHub, Apple Reminders, etc.)
   }
 
-  let { showImportIndicator = false }: Props = $props();
+  let {
+    dayPlanningMode = false,
+    serviceName,
+    isNonLocalService = false,
+  }: Props = $props();
 
   // Get the reactive context store
   const contextStore = getContextStore();
@@ -24,41 +31,93 @@
   });
 
   // Computed properties for display
-  let displayText = $derived.by(() => {
+  let actionType = $derived.by(() => {
+    return dayPlanningMode && context.type === "daily" ? "planning" : "import";
+  });
+
+  let contextTypeLabel = $derived.by(() => {
     switch (context.type) {
       case "project":
-        return `Import context: Project / ${context.name}`;
+        return "Project";
       case "area":
-        return `Import context: Area / ${context.name}`;
+        return "Area";
       case "task":
-        return `Import context: Task / ${context.name}`;
+        return "Task";
       case "daily":
-        return `Import context: Daily Note / ${context.name}`;
+        return "Daily Note";
       case "none":
-        return "Import context: No context";
+        return "No context";
       default:
-        return "Import context: Unknown context";
+        return "Unknown";
     }
   });
 
   let contextClass = $derived.by(() => {
-    return `context-widget context-type-${context.type}`;
+    return `context-widget context-type-${context.type} action-type-${actionType}`;
+  });
+
+  // Always show action icon (for both local and non-local services)
+  let showActionIcon = $derived.by(() => {
+    return true; // Always show the icon
+  });
+
+  // Reference to the action icon element
+  let actionIconEl = $state<HTMLElement>();
+
+  // Set Obsidian icons when the element is available and actionType changes
+  $effect(() => {
+    if (actionIconEl && showActionIcon) {
+      let iconName;
+      if (actionType === "planning") {
+        // For daily planning mode (both local and non-local), show calendar icon
+        iconName = "calendar-days";
+      } else if (isNonLocalService) {
+        // For non-local services in import mode, show download icon
+        iconName = "download";
+      } else {
+        // For local service in normal mode, show file-text icon
+        iconName = "file-text";
+      }
+      setIcon(actionIconEl, iconName);
+    }
   });
 </script>
 
 <div class={contextClass} data-testid="context-widget">
-  <div class="context-type-indicator"></div>
-  <div class="context-content">
-    <span class="context-text">{displayText}</span>
-  </div>
-  {#if showImportIndicator}
+  <!-- Action icon on the left side -->
+  {#if showActionIcon}
     <div
-      class="import-indicator"
-      title="Import context - tasks will be imported here"
-    >
-      <span class="import-icon">⬇</span>
-    </div>
+      bind:this={actionIconEl}
+      class="action-icon"
+      title={actionType === "planning"
+        ? "Daily planning mode"
+        : isNonLocalService
+          ? "Import context - tasks will be imported here"
+          : "Local tasks"}
+    ></div>
   {/if}
+
+  <div class="context-content">
+    <!-- First row: Service name -->
+    <div class="context-row context-row-primary">
+      {#if serviceName}
+        <span class="service-name">{serviceName}</span>
+      {/if}
+    </div>
+
+    <!-- Second row: Context information -->
+    <div class="context-row context-row-secondary">
+      {#if context.type !== "none"}
+        <span class="context-type">{contextTypeLabel}</span>
+        {#if context.name}
+          <span class="context-separator">•</span>
+          <span class="context-name">{context.name}</span>
+        {/if}
+      {:else}
+        <span class="no-context">No context</span>
+      {/if}
+    </div>
+  </div>
 </div>
 
 <style>
@@ -76,69 +135,105 @@
     height: 100%;
   }
 
-  .context-type-indicator {
-    width: 4px;
-    height: 20px;
-    border-radius: 2px;
-    flex-shrink: 0;
-  }
-
-  .context-widget.context-type-project .context-type-indicator {
-    background: var(--color-blue);
-  }
-
-  .context-widget.context-type-area .context-type-indicator {
-    background: var(--color-green);
-  }
-
-  .context-widget.context-type-task .context-type-indicator {
-    background: var(--color-orange);
-  }
-
-  .context-widget.context-type-daily .context-type-indicator {
-    background: var(--color-purple);
-  }
-
   .context-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-grow: 1;
+    min-width: 0;
+  }
+
+  .context-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    flex-grow: 1;
+    min-height: 18px;
   }
 
-  .context-text {
+  .context-row-primary {
+    gap: 12px;
+  }
+
+  .context-row-secondary {
+    gap: 6px;
+  }
+
+  .service-name {
     color: var(--text-normal);
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 15px;
   }
 
-  .context-type-label {
-    font-size: 12px;
-    color: var(--text-muted);
+  .context-type {
     font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    font-size: 13px;
+  }
+
+  /* Colored context type labels */
+  .context-widget.context-type-project .context-type {
+    color: var(--color-blue);
+  }
+
+  .context-widget.context-type-area .context-type {
+    color: var(--color-green);
+  }
+
+  .context-widget.context-type-task .context-type {
+    color: var(--color-orange);
+  }
+
+  .context-widget.context-type-daily .context-type {
+    color: var(--color-purple);
+  }
+
+  .context-widget.context-type-none .context-type {
+    color: var(--text-muted);
+  }
+
+  .context-separator {
+    color: var(--text-muted);
+    font-size: 12px;
   }
 
   .context-name {
     color: var(--text-normal);
     font-weight: 600;
-    font-size: 16px;
+    font-size: 14px;
   }
 
-  .import-indicator {
+  .no-context {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 13px;
+  }
+
+  .action-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 20px;
-    height: 20px;
-    background: var(--interactive-accent);
-    border-radius: 3px;
-    flex-shrink: 0;
+    color: var(--text-muted);
   }
 
-  .import-icon {
-    color: var(--text-on-accent);
-    font-size: 10px;
-    font-weight: bold;
+  .action-icon :global(svg) {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* Responsive adjustments */
+  @media (max-width: 600px) {
+    .service-name {
+      font-size: 14px;
+    }
+
+    .context-type {
+      font-size: 12px;
+    }
+
+    .context-name {
+      font-size: 13px;
+    }
   }
 </style>

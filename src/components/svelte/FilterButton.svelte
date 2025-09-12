@@ -15,6 +15,8 @@
     autoSuggest?: boolean; // Enable auto-suggest functionality
     allowClear?: boolean; // Allow clearing the selection
     isActive?: boolean; // Whether the filter is currently active (has a non-default value)
+    recentlyUsedItems?: string[]; // List of recently used items (for showing clear buttons)
+    onRemoveRecentItem?: (item: string) => void; // Callback to remove item from recently used list
   }
 
   let {
@@ -28,6 +30,8 @@
     autoSuggest = false,
     allowClear = false,
     isActive = false,
+    recentlyUsedItems = [],
+    onRemoveRecentItem,
   }: Props = $props();
 
   let buttonEl: HTMLButtonElement;
@@ -109,18 +113,7 @@
     const existingOptions = menu.querySelectorAll(".task-sync-selector-item");
     existingOptions.forEach((item) => item.remove());
 
-    // Add clear option if enabled
-    if (allowClear && currentValue) {
-      const clearItem = menu.createDiv(
-        "task-sync-selector-item task-sync-selector-clear"
-      );
-      clearItem.textContent = `Clear ${label}`;
-      clearItem.addEventListener("click", () => {
-        onselect("");
-        menu.remove();
-        isMenuOpen = false;
-      });
-    }
+    // Clear option is now handled by the "x" button on the filter button itself
 
     // Add filtered options
     filteredOptions.slice(0, 10).forEach((option) => {
@@ -128,16 +121,57 @@
         // Add separator
         menu.createDiv("task-sync-selector-separator");
       } else {
-        const item = menu.createDiv("task-sync-selector-item");
-        item.textContent = option;
-        if (option === currentValue) {
-          item.addClass("selected");
+        // Check if this is a recently used item
+        const isRecentlyUsed = recentlyUsedItems.includes(option);
+
+        if (isRecentlyUsed && onRemoveRecentItem) {
+          // Create container for recently used item with clear button
+          const itemContainer = menu.createDiv(
+            "task-sync-selector-item task-sync-selector-item-container"
+          );
+
+          const textSpan = itemContainer.createSpan(
+            "task-sync-selector-item-text"
+          );
+          textSpan.textContent = option;
+
+          const clearButton = itemContainer.createSpan(
+            "task-sync-selector-clear-button"
+          );
+          clearButton.textContent = "×";
+          clearButton.title = `Remove "${option}" from recent items`;
+
+          if (option === currentValue) {
+            itemContainer.addClass("selected");
+          }
+
+          // Click on text selects the option
+          textSpan.addEventListener("click", () => {
+            onselect(option);
+            menu.remove();
+            isMenuOpen = false;
+          });
+
+          // Click on clear button removes from recent items
+          clearButton.addEventListener("click", (e) => {
+            e.stopPropagation();
+            onRemoveRecentItem(option);
+            // Don't close menu, just update it
+            updateMenuOptions(menu);
+          });
+        } else {
+          // Regular item without clear button
+          const item = menu.createDiv("task-sync-selector-item");
+          item.textContent = option;
+          if (option === currentValue) {
+            item.addClass("selected");
+          }
+          item.addEventListener("click", () => {
+            onselect(option);
+            menu.remove();
+            isMenuOpen = false;
+          });
         }
-        item.addEventListener("click", () => {
-          onselect(option);
-          menu.remove();
-          isMenuOpen = false;
-        });
       }
     });
 
@@ -153,22 +187,7 @@
 
     const menu = createSelectorMenu(buttonEl);
 
-    // Add clear option if enabled and filter is active
-    if (allowClear && isActive) {
-      const clearItem = menu.createDiv(
-        "task-sync-selector-item task-sync-selector-clear"
-      );
-      clearItem.textContent = `Clear ${label}`;
-      clearItem.addEventListener("click", () => {
-        onselect("");
-        menu.remove();
-        isMenuOpen = false;
-      });
-
-      if (options.length > 0) {
-        menu.createDiv("task-sync-selector-separator");
-      }
-    }
+    // Clear option is now handled by the "x" button on the filter button itself
 
     options.forEach((option) => {
       if (option === "---") {

@@ -126,30 +126,26 @@
   actions={actionSnippet}
   {testId}
 >
-  <!-- Custom content with two badge rows -->
+  <!-- Clean two-row layout -->
   <div class="task-sync-item-header">
     <div class="task-sync-item-title">{task.title}</div>
-  </div>
 
-  <!-- Source information if available -->
-  {#if task.source}
-    <div class="task-sync-item-source">
-      <span
-        class="task-sync-source-badge"
-        title="Imported from {task.source.name}"
-      >
-        <span class="task-sync-source-icon">🔗</span>
-        {task.source.name}
-        {#if task.source.key}
-          <span class="task-sync-source-key">#{task.source.key}</span>
-        {/if}
-      </span>
-    </div>
-  {/if}
+    <!-- Source information inline with title if available -->
+    {#if task.source}
+      <div class="task-sync-item-source-inline">
+        <span class="task-sync-source-text">
+          from {task.source.name}
+          {#if task.source.key}
+            #{task.source.key}
+          {/if}
+        </span>
+      </div>
+    {/if}
+  </div>
 
   <!-- First row: category, priority, status badges -->
   {#if primaryBadges.length > 0}
-    <div class="task-sync-item-badges">
+    <div class="task-sync-item-badges-row task-sync-item-badges-primary">
       {#each primaryBadges as badge}
         {#if badge.type === "category"}
           <CategoryBadge category={badge.text} size="small" />
@@ -164,7 +160,7 @@
 
   <!-- Second row: project and area badges -->
   {#if secondaryBadges.length > 0}
-    <div class="task-sync-item-badges">
+    <div class="task-sync-item-badges-row task-sync-item-badges-secondary">
       {#each secondaryBadges as badge}
         {#if badge.type === "project"}
           <ProjectBadge project={badge.text} size="small" />

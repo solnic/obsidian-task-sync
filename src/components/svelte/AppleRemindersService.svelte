@@ -197,6 +197,9 @@
   }
 
   async function refresh(): Promise<void> {
+    // Force refresh by clearing cache first, then reloading
+    await appleRemindersService.clearCache();
+    await loadReminderLists();
     await loadReminders();
   }
 
@@ -289,32 +292,45 @@
         testId="apple-reminders-search-input"
       />
 
-      <div class="filter-controls">
-        <!-- List Filter -->
-        <FilterButton
-          label="List"
-          currentValue={currentList || "All Lists"}
-          options={["All Lists", ...availableLists]}
-          onselect={(value: string) =>
-            setList(value === "All Lists" ? null : value)}
-          testId="list-filter"
-        />
+      <!-- Filter Section -->
+      <div class="task-sync-filter-section">
+        <div class="task-sync-filter-row task-sync-filter-row--secondary">
+          <!-- List Filter -->
+          <div class="task-sync-filter-group task-sync-filter-group--dropdown">
+            <FilterButton
+              label="List"
+              currentValue={currentList || "All Lists"}
+              options={["All Lists", ...availableLists]}
+              onselect={(value: string) =>
+                setList(value === "All Lists" ? null : value)}
+              testId="list-filter"
+              autoSuggest={true}
+              allowClear={true}
+              isActive={!!currentList}
+            />
+          </div>
 
-        <!-- State Filter -->
-        <FilterButton
-          label="State"
-          currentValue={currentState === "active"
-            ? "Active"
-            : currentState === "completed"
-              ? "Completed"
-              : "All"}
-          options={["Active", "Completed", "All"]}
-          onselect={(value: string) =>
-            setStateFilter(
-              value.toLowerCase() as "active" | "completed" | "all"
-            )}
-          testId="state-filter"
-        />
+          <!-- State Filter -->
+          <div class="task-sync-filter-group task-sync-filter-group--dropdown">
+            <FilterButton
+              label="State"
+              currentValue={currentState === "active"
+                ? "Active"
+                : currentState === "completed"
+                  ? "Completed"
+                  : "All"}
+              options={["Active", "Completed", "All"]}
+              onselect={(value: string) =>
+                setStateFilter(
+                  value.toLowerCase() as "active" | "completed" | "all"
+                )}
+              testId="state-filter"
+              autoSuggest={true}
+              allowClear={true}
+              isActive={currentState !== "active"}
+            />
+          </div>
+        </div>
       </div>
     </div>
   </div>

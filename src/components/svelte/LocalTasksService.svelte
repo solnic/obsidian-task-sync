@@ -34,6 +34,11 @@
   let selectedSource = $state<string | null>(null);
   let showCompleted = $state(false);
 
+  // Recently used filters
+  let recentlyUsedProjects = $state<string[]>([]);
+  let recentlyUsedAreas = $state<string[]>([]);
+  let recentlyUsedSources = $state<string[]>([]);
+
   // Subscribe to context changes
   $effect(() => {
     const unsubscribe = contextStore.subscribe((value) => {
@@ -47,6 +52,75 @@
   // Computed filter options
   let filterOptions = $derived.by(() => {
     return getFilterOptions(tasks);
+  });
+
+  // Computed options with recently used items at the top
+  let projectOptionsWithRecent = $derived.by(() => {
+    const allProjects = filterOptions.projects.map(
+      (p) => extractDisplayValue(p) || p
+    );
+    const recentProjects = recentlyUsedProjects.filter((project) =>
+      allProjects.includes(project)
+    );
+    const otherProjects = allProjects.filter(
+      (project) => !recentProjects.includes(project)
+    );
+
+    const options = ["All projects"];
+    if (recentProjects.length > 0) {
+      options.push(...recentProjects);
+      if (otherProjects.length > 0) {
+        options.push("---"); // Separator
+        options.push(...otherProjects);
+      }
+    } else {
+      options.push(...otherProjects);
+    }
+    return options;
+  });
+
+  let areaOptionsWithRecent = $derived.by(() => {
+    const allAreas = filterOptions.areas.map(
+      (a) => extractDisplayValue(a) || a
+    );
+    const recentAreas = recentlyUsedAreas.filter((area) =>
+      allAreas.includes(area)
+    );
+    const otherAreas = allAreas.filter((area) => !recentAreas.includes(area));
+
+    const options = ["All areas"];
+    if (recentAreas.length > 0) {
+      options.push(...recentAreas);
+      if (otherAreas.length > 0) {
+        options.push("---"); // Separator
+        options.push(...otherAreas);
+      }
+    } else {
+      options.push(...otherAreas);
+    }
+    return options;
+  });
+
+  let sourceOptionsWithRecent = $derived.by(() => {
+    const allSources = filterOptions.sources;
+    const recentSources = recentlyUsedSources.filter((source) =>
+      allSources.includes(source)
+    );
+    const otherSources = allSources.filter(
+      (source) => !recentSources.includes(source)
+    );
+
+    const options = ["All sources"];
+    if (recentSources.length > 0) {
+      options.push(...recentSources);
+      if (otherSources.length > 0) {
+        options.push("---"); // Separator
+        options.push(...otherSources);
+      }
+    } else {
+      options.push(...otherSources);
+    }
+    return options;
   });
 
   // Computed filtered tasks with manual filters only
@@ -122,6 +196,9 @@
   // Note: No longer using context filters for automatic filtering
 
   onMount(() => {
+    // Load recently used filters
+    loadRecentlyUsedFilters();
+
     // Subscribe to task store updates immediately
     const unsubscribe = taskStore.subscribe((state) => {
       tasks = state.entities;
@@ -157,10 +234,81 @@
 
   async function refresh(): Promise<void> {
     try {
+      // Force refresh by reloading all tasks from filesystem
       await taskStore.refreshTasks();
     } catch (err: any) {
       console.error("Failed to refresh tasks:", err);
     }
+  }
+
+  // Recently used filters management
+  async function loadRecentlyUsedFilters(): Promise<void> {
+    try {
+      const data = await plugin.loadData();
+      if (data?.localTasksRecentlyUsed) {
+        recentlyUsedProjects = data.localTasksRecentlyUsed.projects || [];
+        recentlyUsedAreas = data.localTasksRecentlyUsed.areas || [];
+        recentlyUsedSources = data.localTasksRecentlyUsed.sources || [];
+      }
+    } catch (err: any) {
+      console.warn("Failed to load recently used filters:", err.message);
+    }
+  }
+
+  async function saveRecentlyUsedFilters(): Promise<void> {
+    try {
+      const data = (await plugin.loadData()) || {};
+      data.localTasksRecentlyUsed = {
+        projects: recentlyUsedProjects,
+        areas: recentlyUsedAreas,
+        sources: recentlyUsedSources,
+      };
+      await plugin.saveData(data);
+    } catch (err: any) {
+      console.warn("Failed to save recently used filters:", err.message);
+    }
+  }
+
+  function addRecentlyUsedProject(project: string): void {
+    if (!project || recentlyUsedProjects.includes(project)) return;
+    recentlyUsedProjects = [
+      project,
+      ...recentlyUsedProjects.filter((p) => p !== project),
+    ].slice(0, 5);
+    saveRecentlyUsedFilters();
+  }
+
+  function addRecentlyUsedArea(area: string): void {
+    if (!area || recentlyUsedAreas.includes(area)) return;
+    recentlyUsedAreas = [
+      area,
+      ...recentlyUsedAreas.filter((a) => a !== area),
+    ].slice(0, 5);
+    saveRecentlyUsedFilters();
+  }
+
+  function addRecentlyUsedSource(source: string): void {
+    if (!source || recentlyUsedSources.includes(source)) return;
+    recentlyUsedSources = [
+      source,
+      ...recentlyUsedSources.filter((s) => s !== source),
+    ].slice(0, 5);
+    saveRecentlyUsedFilters();
+  }
+
+  function removeRecentlyUsedProject(project: string): void {
+    recentlyUsedProjects = recentlyUsedProjects.filter((p) => p !== project);
+    saveRecentlyUsedFilters();
+  }
+
+  function removeRecentlyUsedArea(area: string): void {
+    recentlyUsedAreas = recentlyUsedAreas.filter((a) => a !== area);
+    saveRecentlyUsedFilters();
+  }
+
+  function removeRecentlyUsedSource(source: string): void {
+    recentlyUsedSources = recentlyUsedSources.filter((s) => s !== source);
+    saveRecentlyUsedFilters();
   }
 
   async function addToToday(task: Task): Promise<void> {
@@ -202,29 +350,6 @@
 >
   <!-- Header Section -->
   <div class="local-tasks-header">
-    <!-- Unified Header with ContextWidget styling -->
-    <div class="local-tasks-unified-header">
-      <div class="context-type-indicator local-tasks-indicator"></div>
-      <div class="context-content">
-        <span class="context-type-label">Local Tasks</span>
-        <span class="context-name">
-          {#if currentContext.type !== "none"}
-            Import context: {currentContext.type === "project"
-              ? "Project"
-              : currentContext.type === "area"
-                ? "Area"
-                : currentContext.type === "task"
-                  ? "Task"
-                  : currentContext.type === "daily"
-                    ? "Daily Note"
-                    : "Unknown"} / {currentContext.name}
-          {:else}
-            No context
-          {/if}
-        </span>
-      </div>
-    </div>
-
     <!-- Search and Filters -->
     <div class="search-and-filters">
       <SearchInput
@@ -242,16 +367,20 @@
           currentValue={selectedProject
             ? extractDisplayValue(selectedProject) || selectedProject
             : "All projects"}
-          options={[
-            "All projects",
-            ...filterOptions.projects.map((p) => extractDisplayValue(p) || p),
-          ]}
-          onselect={(value: string) =>
-            (selectedProject = value === "All projects" ? null : value)}
+          options={projectOptionsWithRecent}
+          onselect={(value: string) => {
+            const newProject = value === "All projects" ? null : value;
+            selectedProject = newProject;
+            if (newProject) {
+              addRecentlyUsedProject(newProject);
+            }
+          }}
           placeholder="All projects"
           testId="project-filter"
           autoSuggest={true}
           allowClear={true}
+          recentlyUsedItems={recentlyUsedProjects}
+          onRemoveRecentItem={removeRecentlyUsedProject}
         />
 
         <FilterButton
@@ -259,28 +388,39 @@
           currentValue={selectedArea
             ? extractDisplayValue(selectedArea) || selectedArea
             : "All areas"}
-          options={[
-            "All areas",
-            ...filterOptions.areas.map((a) => extractDisplayValue(a) || a),
-          ]}
-          onselect={(value: string) =>
-            (selectedArea = value === "All areas" ? null : value)}
+          options={areaOptionsWithRecent}
+          onselect={(value: string) => {
+            const newArea = value === "All areas" ? null : value;
+            selectedArea = newArea;
+            if (newArea) {
+              addRecentlyUsedArea(newArea);
+            }
+          }}
           placeholder="All areas"
           testId="area-filter"
           autoSuggest={true}
           allowClear={true}
+          recentlyUsedItems={recentlyUsedAreas}
+          onRemoveRecentItem={removeRecentlyUsedArea}
         />
 
         <FilterButton
           label="Source"
           currentValue={selectedSource || "All sources"}
-          options={["All sources", ...filterOptions.sources]}
-          onselect={(value: string) =>
-            (selectedSource = value === "All sources" ? null : value)}
+          options={sourceOptionsWithRecent}
+          onselect={(value: string) => {
+            const newSource = value === "All sources" ? null : value;
+            selectedSource = newSource;
+            if (newSource) {
+              addRecentlyUsedSource(newSource);
+            }
+          }}
           placeholder="All sources"
           testId="source-filter"
           autoSuggest={true}
           allowClear={true}
+          recentlyUsedItems={recentlyUsedSources}
+          onRemoveRecentItem={removeRecentlyUsedSource}
         />
 
         <!-- Show completed toggle -->

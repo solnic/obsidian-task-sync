@@ -129,15 +129,16 @@ describe("LocalTasksService", () => {
       }
     );
 
-    // Should show context text (not in daily note mode)
+    // Should show context widget (not in daily note mode)
     const contextWidget = context.page.locator(
       '[data-testid="tasks-view"] .context-widget'
     );
 
-    const contextText = await contextWidget
-      .locator(".context-text")
-      .textContent();
-    expect(contextText).toContain("Import context: No context");
+    // Action labels are no longer displayed (replaced by icons)
+
+    // Check no context message
+    const noContext = await contextWidget.locator(".no-context").textContent();
+    expect(noContext).toBe("No context");
 
     // Switch back to local service to test local task functionality
     const localTab = context.page.locator('[data-testid="service-local"]');
@@ -236,10 +237,14 @@ describe("LocalTasksService", () => {
     const contextWidget = context.page.locator(
       '[data-testid="tasks-view"] .context-widget.context-type-daily'
     );
-    const contextText = await contextWidget
-      .locator(".context-text")
+
+    // Check service name
+    const serviceName = await contextWidget
+      .locator(".service-name")
       .textContent();
-    expect(contextText).toContain("Import context: Daily Note");
+    expect(serviceName).toBe("GitHub");
+
+    // Action labels are no longer displayed (replaced by icons)
 
     // Switch to local service to test day planning functionality
     const localTab = context.page.locator('[data-testid="service-local"]');

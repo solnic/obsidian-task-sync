@@ -984,12 +984,29 @@ Provides consistent styling for all UI components
   background-color: var(--text-muted);
 }
 
-/* TaskItem Badge Container */
+/* TaskItem Badge Container - Legacy */
 .task-sync-item-badges {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
   margin-top: 8px;
+}
+
+/* New Two-Row Badge Layout */
+.task-sync-item-badges-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.task-sync-item-badges-primary {
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
+.task-sync-item-badges-secondary {
+  margin-bottom: 4px;
 }
 
 /* TaskItem Footer */
@@ -1551,6 +1568,42 @@ Provides consistent styling for all UI components
   font-style: italic;
 }
 
+/* Recently used item container with clear button */
+.task-sync-selector-item-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.task-sync-selector-item-text {
+  flex: 1;
+  cursor: pointer;
+}
+
+.task-sync-selector-clear-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: all 0.1s ease;
+  flex-shrink: 0;
+}
+
+.task-sync-selector-clear-button:hover {
+  background: var(--text-error);
+  color: var(--text-on-accent);
+  opacity: 1;
+}
+
 .task-sync-selector-separator {
   height: 1px;
   background: var(--background-modifier-border);
@@ -1769,7 +1822,7 @@ Provides consistent styling for all UI components
   background: var(--background-modifier-border-hover);
 }
 
-/* Task Source Display */
+/* Task Source Display - Legacy */
 .task-sync-item-source {
   margin-top: 4px;
   margin-bottom: 4px;
@@ -1794,6 +1847,96 @@ Provides consistent styling for all UI components
 .task-sync-source-key {
   font-weight: 500;
   color: var(--text-accent);
+}
+
+/* New Clean Source Display */
+.task-sync-item-source-inline {
+  margin-top: 2px;
+}
+
+.task-sync-source-text {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Task Item Header Styles */
+.task-sync-item-header {
+  margin-bottom: 6px;
+}
+
+.task-sync-item-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-normal);
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+
+.task-sync-item-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+}
+
+.task-sync-item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  line-height: 1.2;
+}
+
+.task-sync-item-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.task-sync-item-label {
+  padding: 2px 6px;
+  border-radius: 12px;
+  background: var(--background-modifier-border);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* Action Overlay Styles */
+.task-sync-action-overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(var(--background-primary-rgb), 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 6px;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+}
+
+.task-sync-action-overlay button {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.task-sync-action-overlay button:hover {
+  background: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
 .tasks-view-layout {
