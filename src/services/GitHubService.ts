@@ -31,11 +31,15 @@ import {
   GitHubOrganizationList,
   GitHubIssue as GitHubIssueType,
   GitHubLabel as GitHubLabelType,
+  GitHubRepository as GitHubRepositoryType,
+  GitHubOrganization as GitHubOrganizationType,
 } from "../cache/schemas/github";
 
 // Use schema types directly
 export type GitHubIssue = GitHubIssueType;
 export type GitHubLabel = GitHubLabelType;
+export type GitHubRepository = GitHubRepositoryType;
+export type GitHubOrganization = GitHubOrganizationType;
 
 export interface GitHubPullRequest {
   id: number;
@@ -68,21 +72,6 @@ export interface GitHubPullRequest {
   user: { login: string };
   requested_reviewers: Array<{ login: string }>;
   draft: boolean;
-}
-
-export interface GitHubRepository {
-  id: number;
-  name: string;
-  full_name: string;
-  description: string | null;
-  private: boolean;
-}
-
-export interface GitHubOrganization {
-  id: number;
-  login: string;
-  description: string | null;
-  avatar_url: string;
 }
 
 // GitHubService now uses the full TaskSyncSettings to access all plugin configuration
@@ -383,46 +372,376 @@ export class GitHubService extends AbstractService {
   }
 
   /**
-   * Fetch repositories for the authenticated user
+   * Fetch repositories for the authenticated user with caching
    */
   async fetchRepositories(): Promise<GitHubRepository[]> {
     if (!this.octokit) {
       throw new Error("GitHub integration is not enabled or configured");
     }
 
-    try {
-      const response = await this.octokit.rest.repos.listForAuthenticatedUser({
-        sort: "updated",
-        per_page: 100,
-      });
+    const cacheKey = this.generateCacheKey("repositories");
 
-      return response.data as GitHubRepository[];
+    // Check cache first
+    if (this.repositoriesCache) {
+      const cachedRepos = await this.repositoriesCache.get(cacheKey);
+      if (cachedRepos) {
+        return cachedRepos;
+      }
+    }
+
+    try {
+      const allRepositories: GitHubRepository[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await this.octokit.rest.repos.listForAuthenticatedUser(
+          {
+            sort: "updated",
+            per_page: 100,
+            page: page,
+          }
+        );
+
+        const repositories = response.data as GitHubRepository[];
+        allRepositories.push(...repositories);
+
+        // Check if we have more pages
+        hasMore = repositories.length === 100;
+        page++;
+
+        // Safety check to prevent infinite loops
+        if (page > 50) {
+          console.warn(
+            "GitHub API: Stopping pagination after 50 pages (5000 repos) for safety"
+          );
+          break;
+        }
+      }
+
+      // Cache the results
+      if (this.repositoriesCache) {
+        await this.repositoriesCache.set(cacheKey, allRepositories);
+      }
+
+      return allRepositories;
     } catch (error) {
       throw error;
     }
   }
 
   /**
-   * Fetch organizations for the authenticated user
+   * Fetch organizations for the authenticated user with caching
    */
   async fetchOrganizations(): Promise<GitHubOrganization[]> {
+    console.log("🐙 SERVICE: fetchOrganizations called");
+
     if (!this.octokit) {
+      console.error(
+        "🐙 SERVICE: GitHub integration is not enabled or configured"
+      );
       throw new Error("GitHub integration is not enabled or configured");
     }
 
+    const cacheKey = this.generateCacheKey("organizations");
+    console.log(`🐙 SERVICE: Using cache key: ${cacheKey}`);
+
+    // Check cache first
+    if (this.organizationsCache) {
+      const cachedOrgs = await this.organizationsCache.get(cacheKey);
+      if (cachedOrgs) {
+        console.log(
+          `🐙 SERVICE: Found ${cachedOrgs.length} organizations in cache`
+        );
+        return cachedOrgs;
+      } else {
+        console.log("🐙 SERVICE: No organizations found in cache");
+      }
+    } else {
+      console.log("🐙 SERVICE: Organizations cache not initialized");
+    }
+
     try {
+      console.log("🐙 SERVICE: Making API call to fetch organizations...");
+      console.log(
+        "🐙 SERVICE: Token configured:",
+        !!this.settings.githubIntegration.personalAccessToken
+      );
+      console.log(
+        "🐙 SERVICE: Token length:",
+        this.settings.githubIntegration.personalAccessToken?.length || 0
+      );
+
+      // Check token scopes by making a request and examining headers
+      try {
+        console.log("🐙 SERVICE: Checking token scopes...");
+        const scopeCheckResponse = await this.octokit.request("GET /user");
+        const scopes = scopeCheckResponse.headers["x-oauth-scopes"];
+        const acceptedScopes =
+          scopeCheckResponse.headers["x-accepted-oauth-scopes"];
+        console.log("🐙 SERVICE: Current token scopes:", scopes);
+        console.log(
+          "🐙 SERVICE: Token scopes (split):",
+          scopes?.split(", ") || []
+        );
+        console.log(
+          "🐙 SERVICE: Accepted scopes for /user endpoint:",
+          acceptedScopes
+        );
+
+        // Check if we have read:org scope
+        const hasReadOrg =
+          scopes?.includes("read:org") || scopes?.includes("admin:org");
+        console.log("🐙 SERVICE: Has read:org or admin:org scope:", hasReadOrg);
+
+        // Now check what scopes are needed for /user/orgs
+        console.log(
+          "🐙 SERVICE: Testing /user/orgs endpoint with current token..."
+        );
+        const orgsTestResponse = await this.octokit.request("GET /user/orgs", {
+          per_page: 1,
+        });
+        const orgsAcceptedScopes =
+          orgsTestResponse.headers["x-accepted-oauth-scopes"];
+        console.log(
+          "🐙 SERVICE: Accepted scopes for /user/orgs endpoint:",
+          orgsAcceptedScopes
+        );
+        console.log(
+          "🐙 SERVICE: /user/orgs test response status:",
+          orgsTestResponse.status
+        );
+        console.log(
+          "🐙 SERVICE: /user/orgs test response data length:",
+          orgsTestResponse.data.length
+        );
+        console.log(
+          "🐙 SERVICE: /user/orgs test response data:",
+          orgsTestResponse.data
+        );
+
+        // Also try the /user/memberships/orgs endpoint
+        console.log("🐙 SERVICE: Testing /user/memberships/orgs endpoint...");
+        try {
+          const membershipsResponse = await this.octokit.request(
+            "GET /user/memberships/orgs"
+          );
+          console.log(
+            "🐙 SERVICE: Memberships response status:",
+            membershipsResponse.status
+          );
+          console.log(
+            "🐙 SERVICE: Memberships response data length:",
+            membershipsResponse.data.length
+          );
+          console.log(
+            "🐙 SERVICE: Memberships response data:",
+            membershipsResponse.data
+          );
+
+          // If memberships returns data but /user/orgs doesn't, it's a visibility issue
+          if (membershipsResponse.data.length > 0) {
+            console.warn(
+              "🐙 SERVICE: ⚠️ Found organizations via memberships but not via /user/orgs!"
+            );
+            console.warn(
+              "🐙 SERVICE: This suggests organization membership visibility is set to private."
+            );
+            console.warn(
+              "🐙 SERVICE: You may need to make your membership public for organizations to appear."
+            );
+          }
+        } catch (membershipsError) {
+          console.error(
+            "🐙 SERVICE: Error with memberships endpoint:",
+            membershipsError
+          );
+          console.error("🐙 SERVICE: Memberships error details:", {
+            status: membershipsError.status,
+            message: membershipsError.message,
+            response: membershipsError.response?.data,
+          });
+        }
+
+        // Let's also try to get ALL repositories with pagination to see if we can derive organizations from them
+        console.log(
+          "🐙 SERVICE: Testing repository access to derive organizations (with pagination)..."
+        );
+        try {
+          const allRepos: any[] = [];
+          let page = 1;
+          let hasMore = true;
+
+          while (hasMore) {
+            console.log(`🐙 SERVICE: Fetching repositories page ${page}...`);
+            const reposResponse = await this.octokit.request(
+              "GET /user/repos",
+              {
+                per_page: 100,
+                page: page,
+                type: "all",
+                sort: "updated",
+              }
+            );
+
+            console.log(
+              `🐙 SERVICE: Page ${page} repos response status:`,
+              reposResponse.status
+            );
+            console.log(
+              `🐙 SERVICE: Page ${page} repos count:`,
+              reposResponse.data.length
+            );
+
+            allRepos.push(...reposResponse.data);
+
+            // Check if we have more pages
+            hasMore = reposResponse.data.length === 100;
+            page++;
+
+            // Safety check to prevent infinite loops
+            if (page > 50) {
+              console.warn(
+                "🐙 SERVICE: Stopping pagination after 50 pages (5000 repos) for safety"
+              );
+              break;
+            }
+          }
+
+          console.log(
+            "🐙 SERVICE: Total repositories fetched across all pages:",
+            allRepos.length
+          );
+
+          // Extract unique organizations from repository full names
+          const orgsFromRepos = new Set<string>();
+          const userLogin = (await this.octokit.rest.users.getAuthenticated())
+            .data.login;
+
+          allRepos.forEach((repo: any) => {
+            const [owner] = repo.full_name.split("/");
+            // Only add if it's not the user's own repos and the owner type is Organization
+            if (owner !== userLogin && repo.owner.type === "Organization") {
+              orgsFromRepos.add(owner);
+              console.log(
+                `🐙 SERVICE: Found org repo: ${repo.full_name} (owner type: ${repo.owner.type})`
+              );
+            }
+          });
+
+          console.log(
+            "🐙 SERVICE: Organizations derived from repositories:",
+            Array.from(orgsFromRepos)
+          );
+
+          if (orgsFromRepos.size > 0) {
+            console.warn(
+              "🐙 SERVICE: ⚠️ Found organizations via repositories but not via /user/orgs!"
+            );
+            console.warn(
+              "🐙 SERVICE: This confirms the issue is with organization membership visibility or token scopes."
+            );
+            console.warn(
+              "🐙 SERVICE: Organizations found in repos:",
+              Array.from(orgsFromRepos)
+            );
+          } else {
+            console.log(
+              "🐙 SERVICE: No organization repositories found - user may not be a member of any organizations."
+            );
+          }
+        } catch (reposError) {
+          console.error("🐙 SERVICE: Error fetching repositories:", reposError);
+        }
+      } catch (scopeError) {
+        console.error("🐙 SERVICE: Error checking scopes:", scopeError);
+        console.error(
+          "🐙 SERVICE: This might indicate insufficient token permissions"
+        );
+      }
+
       const response = await this.octokit.rest.orgs.listForAuthenticatedUser({
         per_page: 100,
       });
 
-      return response.data as GitHubOrganization[];
+      console.log("🐙 SERVICE: Raw API response status:", response.status);
+      console.log("🐙 SERVICE: Raw API response headers:", response.headers);
+      console.log("🐙 SERVICE: Raw API response data:", response.data);
+
+      const organizations = response.data as GitHubOrganization[];
+      console.log(
+        `🐙 SERVICE: API returned ${organizations.length} organizations:`,
+        organizations.map((org) => org.login)
+      );
+
+      // If no organizations are returned, provide helpful guidance
+      if (organizations.length === 0) {
+        console.warn(
+          "🐙 SERVICE: ⚠️  No organizations returned from GitHub API!"
+        );
+        console.warn("🐙 SERVICE: This could be due to:");
+        console.warn(
+          "🐙 SERVICE: 1. Token missing 'read:org' scope (most likely cause)"
+        );
+        console.warn(
+          "🐙 SERVICE: 2. User is not a member of any organizations"
+        );
+        console.warn(
+          "🐙 SERVICE: 3. All organizations have private membership"
+        );
+        console.warn("🐙 SERVICE: ");
+        console.warn(
+          "🐙 SERVICE: To fix this, ensure your Personal Access Token has the 'read:org' scope:"
+        );
+        console.warn(
+          "🐙 SERVICE: 1. Go to GitHub Settings > Developer settings > Personal access tokens"
+        );
+        console.warn(
+          "🐙 SERVICE: 2. Edit your token and check the 'read:org' scope"
+        );
+        console.warn("🐙 SERVICE: 3. Update the token in the plugin settings");
+      }
+
+      // Let's also try to get the current user to verify authentication
+      try {
+        const userResponse = await this.octokit.rest.users.getAuthenticated();
+        console.log("🐙 SERVICE: Authenticated user:", userResponse.data.login);
+        console.log("🐙 SERVICE: User type:", userResponse.data.type);
+        console.log(
+          "🐙 SERVICE: User public repos:",
+          userResponse.data.public_repos
+        );
+      } catch (userError) {
+        console.error(
+          "🐙 SERVICE: Failed to get authenticated user:",
+          userError
+        );
+      }
+
+      // Cache the results
+      if (this.organizationsCache) {
+        await this.organizationsCache.set(cacheKey, organizations);
+        console.log("🐙 SERVICE: Organizations cached successfully");
+      } else {
+        console.log(
+          "🐙 SERVICE: Could not cache organizations - cache not initialized"
+        );
+      }
+
+      return organizations;
     } catch (error) {
+      console.error("🐙 SERVICE: Error fetching organizations:", error);
+      console.error("🐙 SERVICE: Error details:", {
+        message: error.message,
+        status: error.status,
+        response: error.response?.data,
+      });
       throw error;
     }
   }
 
   /**
-   * Fetch repositories for a specific organization
+   * Fetch repositories for a specific organization with caching
    */
   async fetchRepositoriesForOrganization(
     org: string
@@ -431,14 +750,51 @@ export class GitHubService extends AbstractService {
       throw new Error("GitHub integration is not enabled or configured");
     }
 
-    try {
-      const response = await this.octokit.rest.repos.listForOrg({
-        org,
-        sort: "updated",
-        per_page: 100,
-      });
+    const cacheKey = this.generateCacheKey("repositories", `${org}/`);
 
-      return response.data as GitHubRepository[];
+    // Check cache first
+    if (this.repositoriesCache) {
+      const cachedRepos = await this.repositoriesCache.get(cacheKey);
+      if (cachedRepos) {
+        return cachedRepos;
+      }
+    }
+
+    try {
+      const allRepositories: GitHubRepository[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await this.octokit.rest.repos.listForOrg({
+          org,
+          sort: "updated",
+          per_page: 100,
+          page: page,
+        });
+
+        const repositories = response.data as GitHubRepository[];
+        allRepositories.push(...repositories);
+
+        // Check if we have more pages
+        hasMore = repositories.length === 100;
+        page++;
+
+        // Safety check to prevent infinite loops
+        if (page > 50) {
+          console.warn(
+            `GitHub API: Stopping pagination after 50 pages (5000 repos) for ${org} for safety`
+          );
+          break;
+        }
+      }
+
+      // Cache the results
+      if (this.repositoriesCache) {
+        await this.repositoriesCache.set(cacheKey, allRepositories);
+      }
+
+      return allRepositories;
     } catch (error) {
       throw error;
     }
@@ -492,21 +848,38 @@ export class GitHubService extends AbstractService {
    * Clear all GitHub-specific caches
    */
   async clearCache(): Promise<void> {
+    console.log("🐙 SERVICE: Clearing all GitHub caches...");
+
     // Clear all cache instances
     if (this.issuesCache) {
       await this.issuesCache.clear();
-    }
-    if (this.labelsCache) {
-      await this.labelsCache.clear();
-    }
-    if (this.repositoriesCache) {
-      await this.repositoriesCache.clear();
-    }
-    if (this.organizationsCache) {
-      await this.organizationsCache.clear();
+      console.log("🐙 SERVICE: Issues cache cleared");
+    } else {
+      console.log("🐙 SERVICE: Issues cache not initialized");
     }
 
-    console.log("🐙 Cleared GitHub-specific cache entries");
+    if (this.labelsCache) {
+      await this.labelsCache.clear();
+      console.log("🐙 SERVICE: Labels cache cleared");
+    } else {
+      console.log("🐙 SERVICE: Labels cache not initialized");
+    }
+
+    if (this.repositoriesCache) {
+      await this.repositoriesCache.clear();
+      console.log("🐙 SERVICE: Repositories cache cleared");
+    } else {
+      console.log("🐙 SERVICE: Repositories cache not initialized");
+    }
+
+    if (this.organizationsCache) {
+      await this.organizationsCache.clear();
+      console.log("🐙 SERVICE: Organizations cache cleared");
+    } else {
+      console.log("🐙 SERVICE: Organizations cache not initialized");
+    }
+
+    console.log("🐙 SERVICE: All GitHub cache clearing completed");
   }
 
   /**

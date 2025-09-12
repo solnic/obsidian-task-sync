@@ -146,12 +146,26 @@
   });
 
   let availableOrganizations = $derived.by(() => {
+    // Use organizations from GitHub API, not just derived from repositories
     const orgSet = new Set<string>();
+
+    // Add organizations from the GitHub API
+    organizations.forEach((org) => {
+      orgSet.add(org.login);
+    });
+
+    // Also add any organizations found in repositories (for personal repos)
     repositories.forEach((repo) => {
       const org = repo.full_name.split("/")[0];
       orgSet.add(org);
     });
-    return Array.from(orgSet).sort();
+
+    const orgs = Array.from(orgSet).sort();
+    console.log(
+      `🐙 UI: Available organizations from API (${organizations.length}) + repositories (${repositories.length}):`,
+      orgs
+    );
+    return orgs;
   });
 
   // Computed organization options with recently used at the top
@@ -171,6 +185,7 @@
       options.push(...otherOrgs);
     }
 
+    console.log(`🐙 UI: Organization options computed:`, options);
     return options;
   });
 
@@ -217,26 +232,49 @@
   });
 
   onMount(async () => {
+    console.log("🐙 INIT: GitHub component mounting...");
     if (githubService.isEnabled()) {
+      console.log(
+        "🐙 INIT: GitHub service is enabled, starting initialization..."
+      );
       try {
         // First, load recently used filters to restore state
+        console.log("🐙 INIT: Loading recently used filters...");
         await loadRecentlyUsedFilters();
 
-        // Then load other data
+        // Then load other data - organizations first, then repositories
+        console.log("🐙 INIT: Starting parallel loading of user and data...");
         await Promise.all([
           loadCurrentUser(),
-          loadRepositories().then(async () => {
+          loadOrganizations().then(async () => {
+            console.log(
+              "🐙 INIT: Organizations loaded, now loading repositories..."
+            );
+            await loadRepositories();
             if (currentRepository) {
+              console.log(
+                `🐙 INIT: Loading issues and labels for repository: ${currentRepository}`
+              );
               await loadIssues();
               await loadLabels();
+            } else {
+              console.log("🐙 INIT: No current repository set");
             }
           }),
         ]);
 
+        console.log("🐙 INIT: Refreshing import status...");
         refreshImportStatus();
+        console.log("🐙 INIT: GitHub component initialization completed");
       } catch (err: any) {
+        console.error(
+          "🐙 INIT: Failed to initialize GitHub component:",
+          err.message
+        );
         error = err.message || "Failed to load GitHub data";
       }
+    } else {
+      console.log("🐙 INIT: GitHub service is not enabled");
     }
   });
 
@@ -458,15 +496,75 @@
     );
   }
 
-  async function loadRepositories(): Promise<void> {
+  async function loadOrganizations(): Promise<void> {
     if (!githubService.isEnabled()) {
+      console.log(
+        "🐙 GitHub service not enabled, skipping organization loading"
+      );
       return;
     }
 
+    console.log("🐙 Loading organizations...");
     try {
-      const repos = await githubService.fetchRepositories();
-      repositories = repos;
-      const repositoryNames = repos.map(
+      const orgs = await githubService.fetchOrganizations();
+      console.log(
+        `🐙 Loaded ${orgs.length} organizations:`,
+        orgs.map((org) => org.login)
+      );
+      organizations = orgs;
+    } catch (err: any) {
+      console.error("🐙 Failed to load organizations:", err.message);
+      organizations = [];
+    }
+  }
+
+  async function loadRepositories(): Promise<void> {
+    if (!githubService.isEnabled()) {
+      console.log("🐙 GitHub service not enabled, skipping repository loading");
+      return;
+    }
+
+    console.log("🐙 Loading repositories...");
+    try {
+      // Load user repositories
+      console.log("🐙 Loading user repositories...");
+      const userRepos = await githubService.fetchRepositories();
+      console.log(
+        `🐙 Loaded ${userRepos.length} user repositories:`,
+        userRepos.map((repo) => repo.full_name)
+      );
+
+      // Load organization repositories
+      console.log(
+        `🐙 Loading repositories for ${organizations.length} organizations...`
+      );
+      const orgRepos: GitHubRepository[] = [];
+      for (const org of organizations) {
+        try {
+          console.log(`🐙 Loading repositories for organization: ${org.login}`);
+          const repos = await githubService.fetchRepositoriesForOrganization(
+            org.login
+          );
+          console.log(
+            `🐙 Loaded ${repos.length} repositories for ${org.login}:`,
+            repos.map((repo) => repo.full_name)
+          );
+          orgRepos.push(...repos);
+        } catch (err: any) {
+          console.error(
+            `🐙 Failed to load repositories for organization ${org.login}:`,
+            err.message
+          );
+        }
+      }
+
+      // Combine all repositories
+      repositories = [...userRepos, ...orgRepos];
+      console.log(
+        `🐙 Total repositories loaded: ${repositories.length} (${userRepos.length} user + ${orgRepos.length} org)`
+      );
+
+      const repositoryNames = repositories.map(
         (repo: GitHubRepository) => repo.full_name
       );
 
@@ -486,41 +584,8 @@
         await pluginInstance.saveSettings(true); // Skip template update
       }
     } catch (err: any) {
+      console.error("🐙 Failed to load repositories:", err.message);
       error = err.message || "Failed to load repositories";
-    }
-  }
-
-  async function loadOrganizationRepositories(org: string): Promise<void> {
-    if (!githubService.isEnabled()) {
-      return;
-    }
-
-    try {
-      const orgRepos =
-        await githubService.fetchRepositoriesForOrganization(org);
-
-      // Merge organization repositories with existing user repositories
-      // Remove duplicates by creating a map keyed by full_name
-      const repoMap = new Map<string, GitHubRepository>();
-
-      // Add existing repositories
-      repositories.forEach((repo) => {
-        repoMap.set(repo.full_name, repo);
-      });
-
-      // Add organization repositories (will overwrite duplicates)
-      orgRepos.forEach((repo) => {
-        repoMap.set(repo.full_name, repo);
-      });
-
-      // Update repositories array
-      repositories = Array.from(repoMap.values());
-    } catch (err: any) {
-      console.warn(
-        `Failed to load repositories for organization ${org}:`,
-        err.message
-      );
-      // Don't set error state as this is a background operation
     }
   }
 
@@ -647,7 +712,7 @@
     // No need to reload data as filtering is done client-side
   }
 
-  async function setOrganizationFilter(org: string | null): Promise<void> {
+  function setOrganizationFilter(org: string | null): void {
     currentOrganization = org;
 
     // Track recently used organization
@@ -657,11 +722,6 @@
 
     // Save current filter state
     saveRecentlyUsedFilters();
-
-    // Load organization repositories if an organization is selected
-    if (org) {
-      await loadOrganizationRepositories(org);
-    }
 
     // Reset repository selection when changing organization
     if (org && !currentRepository.startsWith(org + "/")) {
@@ -673,16 +733,35 @@
   }
 
   async function refresh(): Promise<void> {
+    console.log("🐙 REFRESH: Starting GitHub data refresh...");
+
     // Force refresh by clearing cache first
+    console.log("🐙 REFRESH: Clearing cache...");
     await githubService.clearCache();
 
+    // Reload organizations first, then repositories
+    console.log("🐙 REFRESH: Loading organizations...");
+    await loadOrganizations();
+
+    console.log("🐙 REFRESH: Loading repositories...");
     await loadRepositories();
+
     if (currentRepository) {
+      console.log(
+        `🐙 REFRESH: Loading issues for repository: ${currentRepository}`
+      );
       await loadIssues();
       if (activeTab === "pull-requests") {
+        console.log(
+          `🐙 REFRESH: Loading pull requests for repository: ${currentRepository}`
+        );
         await loadPullRequests();
       }
+    } else {
+      console.log("🐙 REFRESH: No current repository selected");
     }
+
+    console.log("🐙 REFRESH: Refresh completed");
   }
 
   async function importIssue(issue: GitHubIssue): Promise<void> {
@@ -961,8 +1040,8 @@
               currentValue={currentOrganization || "Select organization"}
               options={organizationOptions}
               placeholder="Select organization"
-              onselect={async (value) =>
-                await setOrganizationFilter(value === "---" ? null : value)}
+              onselect={(value) =>
+                setOrganizationFilter(value === "---" ? null : value)}
               testId="organization-filter"
               autoSuggest={true}
               allowClear={true}

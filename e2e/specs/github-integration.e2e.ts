@@ -64,8 +64,9 @@ describe("GitHub Integration", () => {
     });
 
     await stubGitHubWithFixtures(context.page, {
-      repositories: "repositories-basic",
+      repositories: "repositories-with-orgs",
       issues: "issues-basic",
+      organizations: "organizations-basic",
     });
 
     await openGitHubIssuesView(context.page);

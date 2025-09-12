@@ -116,7 +116,7 @@
     // Clear option is now handled by the "x" button on the filter button itself
 
     // Add filtered options
-    filteredOptions.slice(0, 10).forEach((option) => {
+    filteredOptions.forEach((option) => {
       if (option === "---") {
         // Add separator
         menu.createDiv("task-sync-selector-separator");

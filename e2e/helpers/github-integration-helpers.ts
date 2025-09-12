@@ -430,6 +430,7 @@ export async function stubGitHubWithFixtures(
     issues?: string;
     pullRequests?: string;
     repositories?: string;
+    organizations?: string;
   }
 ): Promise<void> {
   // Use the simplified stubbing system that handles plugin reloads
