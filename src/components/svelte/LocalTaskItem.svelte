@@ -96,11 +96,33 @@
   tabindex="0"
   data-testid={testId}
 >
-  <TaskItem title={task.title} {isHovered} {onHover} customContent={true}>
+  <TaskItem
+    title={task.title}
+    {isHovered}
+    {onHover}
+    source={task.source}
+    customContent={true}
+  >
     <!-- Custom content with two badge rows -->
     <div class="task-sync-item-header">
       <div class="task-sync-item-title">{task.title}</div>
     </div>
+
+    <!-- Source information if available -->
+    {#if task.source}
+      <div class="task-sync-item-source">
+        <span
+          class="task-sync-source-badge"
+          title="Imported from {task.source.name}"
+        >
+          <span class="task-sync-source-icon">🔗</span>
+          {task.source.name}
+          {#if task.source.key}
+            <span class="task-sync-source-key">#{task.source.key}</span>
+          {/if}
+        </span>
+      </div>
+    {/if}
 
     <!-- First row: category, priority, status badges -->
     {#if primaryBadges.length > 0}
@@ -157,45 +179,4 @@
   </TaskItem>
 </div>
 
-<style>
-  .local-task-item-wrapper {
-    cursor: pointer;
-    border-radius: 6px;
-    transition: all 0.2s ease;
-  }
-
-  .local-task-item-wrapper:hover {
-    background: var(--background-modifier-hover);
-  }
-
-  .local-task-item-wrapper:focus {
-    outline: 2px solid var(--interactive-accent);
-    outline-offset: 2px;
-  }
-
-  .action-buttons {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .add-to-today-button,
-  .open-task-button {
-    padding: 8px 16px;
-    border: 1px solid var(--interactive-accent);
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-  }
-
-  .add-to-today-button:hover,
-  .open-task-button:hover {
-    background: var(--interactive-accent-hover);
-    border-color: var(--interactive-accent-hover);
-  }
-</style>
+<!-- Styles moved to styles.css for consistency -->

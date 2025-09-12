@@ -14,7 +14,6 @@ export abstract class AbstractService {
   protected settings: TaskSyncSettings;
   protected cacheManager: CacheManager;
   protected taskImportManager?: TaskImportManager;
-  protected readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes default
 
   constructor(settings: TaskSyncSettings) {
     this.settings = settings;
@@ -26,6 +25,15 @@ export abstract class AbstractService {
   async initialize(cacheManager: CacheManager): Promise<void> {
     this.cacheManager = cacheManager;
     await this.setupCaches();
+    await this.preloadCaches();
+  }
+
+  /**
+   * Preload all service caches from persistent storage
+   * This restores cache state after plugin reload
+   */
+  protected async preloadCaches(): Promise<void> {
+    // Default implementation - services can override if they have specific caches to preload
   }
 
   /**
@@ -55,11 +63,9 @@ export abstract class AbstractService {
    */
   protected createCache<T>(
     cacheKey: string,
-    schema: z.ZodType<T>,
-    ttl?: number
+    schema: z.ZodType<T>
   ): SchemaCache<T> {
     return this.cacheManager.createCache(cacheKey, schema, {
-      ttl: ttl || this.CACHE_DURATION,
       version: "1.0.0",
     });
   }

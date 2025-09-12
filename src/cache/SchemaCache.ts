@@ -5,12 +5,10 @@ import { Plugin } from "obsidian";
 export interface CacheEntry<T> {
   data: T;
   timestamp: Date;
-  expiresAt?: Date;
   version: string;
 }
 
 export interface CacheOptions {
-  ttl?: number; // Time to live in milliseconds
   version?: string; // Schema version for cache invalidation
 }
 
@@ -31,7 +29,6 @@ export class SchemaCache<T> {
     this.cacheKey = cacheKey;
     this.schema = schema;
     this.options = {
-      ttl: 60 * 60 * 1000, // 1 hour default
       version: "1.0.0",
       ...options,
     };
@@ -59,14 +56,14 @@ export class SchemaCache<T> {
     // Validate data against schema
     const validatedData = this.schema.parse(data);
 
+    const now = new Date();
     const entry: CacheEntry<T> = {
       data: validatedData,
-      timestamp: new Date(),
-      expiresAt: this.options.ttl
-        ? new Date(Date.now() + this.options.ttl)
-        : undefined,
+      timestamp: now,
       version: this.options.version || "1.0.0",
     };
+
+    console.log(`🔧 Setting cache entry ${key} at ${now.toISOString()}`);
 
     // Store in memory cache
     this.memoryCache.set(key, entry);
@@ -85,19 +82,83 @@ export class SchemaCache<T> {
     await this.clearStorage();
   }
 
+  /**
+   * Preload all cached data from persistent storage into memory cache
+   * This should be called during service initialization to restore cache state
+   */
+  async preloadFromStorage(): Promise<void> {
+    try {
+      const cacheData = await this.loadCacheData();
+      console.log(
+        `🔍 Preloading cache ${this.cacheKey}, found keys:`,
+        Object.keys(cacheData)
+      );
+
+      for (const [key, serializedEntry] of Object.entries(cacheData)) {
+        try {
+          // Deserialize using SuperJSON to restore Date objects
+          const entry = superjson.deserialize<CacheEntry<T>>(serializedEntry);
+
+          // Validate entry structure and data
+          if (entry && typeof entry === "object" && "data" in entry) {
+            this.schema.parse(entry.data);
+
+            // Only load valid entries
+            if (this.isValidEntry(entry)) {
+              this.memoryCache.set(key, entry);
+              console.log(`✅ Preloaded cache entry: ${key}`);
+            } else {
+              console.log(`❌ Skipped invalid cache entry: ${key}`);
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to preload cache entry ${key}:`, error);
+          // Continue with other entries
+        }
+      }
+
+      console.log(
+        `Preloaded ${this.memoryCache.size} entries for cache ${this.cacheKey}`
+      );
+    } catch (error) {
+      console.warn(`Failed to preload cache ${this.cacheKey}:`, error);
+    }
+  }
+
   async keys(): Promise<string[]> {
     const storageData = await this.loadCacheData();
-    return Object.keys(storageData);
+    const validKeys: string[] = [];
+
+    for (const [key, serializedEntry] of Object.entries(storageData)) {
+      try {
+        // Deserialize using SuperJSON to restore Date objects
+        const entry = superjson.deserialize<CacheEntry<T>>(serializedEntry);
+
+        // Check if entry is valid before accessing properties
+        if (entry && typeof entry === "object" && "data" in entry) {
+          // Validate the deserialized data against schema
+          this.schema.parse(entry.data);
+
+          // Only include valid, non-expired entries
+          if (this.isValidEntry(entry)) {
+            validKeys.push(key);
+          }
+        }
+      } catch (error) {
+        // Skip invalid entries
+        console.warn(`Skipping invalid cache entry ${key}:`, error);
+      }
+    }
+
+    return validKeys;
   }
 
   private isValidEntry(entry: CacheEntry<T>): boolean {
     // Check version compatibility
     if (entry.version !== this.options.version) {
-      return false;
-    }
-
-    // Check expiration
-    if (entry.expiresAt && entry.expiresAt < new Date()) {
+      console.log(
+        `❌ Cache entry invalid: version mismatch. Entry: ${entry.version}, Expected: ${this.options.version}`
+      );
       return false;
     }
 

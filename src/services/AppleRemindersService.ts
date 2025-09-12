@@ -52,6 +52,21 @@ export class AppleRemindersService extends AbstractService {
   }
 
   /**
+   * Preload Apple Reminders caches from persistent storage
+   */
+  protected async preloadCaches(): Promise<void> {
+    const caches = [this.listsCache, this.remindersCache];
+
+    await Promise.all(
+      caches.map(async (cache) => {
+        if (cache) {
+          await cache.preloadFromStorage();
+        }
+      })
+    );
+  }
+
+  /**
    * Initialize the service with cache manager
    */
   async initialize(cacheManager: CacheManager): Promise<void> {
@@ -247,6 +262,7 @@ export class AppleRemindersService extends AbstractService {
 
     // Check cache first
     if (this.remindersCache) {
+      console.log(`🍎 Looking for cache key: ${cacheKey}`);
       const cachedReminders = await this.remindersCache.get(cacheKey);
       if (cachedReminders) {
         console.log(
@@ -260,6 +276,9 @@ export class AppleRemindersService extends AbstractService {
         console.log(
           `🍎 Cache miss for key: ${cacheKey}, fetching from Apple Reminders`
         );
+        // Debug: Check what keys are actually in the cache
+        const availableKeys = await this.remindersCache.keys();
+        console.log(`🍎 Available cache keys:`, availableKeys);
       }
     }
 

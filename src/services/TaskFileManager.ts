@@ -12,6 +12,7 @@ import {
   PROPERTY_SETS,
 } from "./base-definitions/BaseConfigurations";
 import { Task } from "../types/entities";
+import { createWikiLink, createLinkFormat } from "../utils/linkUtils";
 
 /**
  * Interface for task creation data
@@ -207,15 +208,18 @@ export class TaskFileManager extends FileManager {
       if (value !== undefined && value !== null) {
         // Format as links if the property has link: true
         if (prop.link) {
+          const folder = this.getLinkFolder(prop.key);
+
           if (prop.type === "array" && Array.isArray(value)) {
-            // For arrays, format each item as a link
+            // For arrays, format each item as a link with proper path|display format
             value = value.map((item) => {
               if (typeof item === "string" && item.trim() !== "") {
-                // Don't double-format if already a link
+                // Don't double-format if already a proper link
                 if (item.startsWith("[[") && item.endsWith("]]")) {
                   return item;
                 }
-                return `[[${item}]]`;
+                // Create proper link format with path and display name
+                return createWikiLink(item.trim(), folder);
               }
               return item;
             });
@@ -224,10 +228,10 @@ export class TaskFileManager extends FileManager {
             typeof value === "string" &&
             value.trim() !== ""
           ) {
-            // For strings, format as a link
-            // Don't double-format if already a link
+            // For strings, format as a link with proper path|display format
+            // Don't double-format if already a proper link
             if (!value.startsWith("[[") || !value.endsWith("]]")) {
-              value = `[[${value}]]`;
+              value = createWikiLink(value.trim(), folder);
             }
           }
         }
@@ -318,6 +322,22 @@ export class TaskFileManager extends FileManager {
    */
   private isTaskCreationData(data: FileCreationData): data is TaskCreationData {
     return "title" in data;
+  }
+
+  /**
+   * Get the appropriate folder for a linked property
+   */
+  private getLinkFolder(propertyKey: string): string {
+    switch (propertyKey) {
+      case "project":
+        return this.settings.projectsFolder || "Projects";
+      case "areas":
+        return this.settings.areasFolder || "Areas";
+      case "parentTask":
+        return this.settings.tasksFolder || "Tasks";
+      default:
+        return ""; // No folder prefix for unknown properties
+    }
   }
 
   /**

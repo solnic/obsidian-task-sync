@@ -131,6 +131,26 @@ export class GitHubService extends AbstractService {
   }
 
   /**
+   * Preload GitHub caches from persistent storage
+   */
+  protected async preloadCaches(): Promise<void> {
+    const caches = [
+      this.issuesCache,
+      this.labelsCache,
+      this.repositoriesCache,
+      this.organizationsCache,
+    ];
+
+    await Promise.all(
+      caches.map(async (cache) => {
+        if (cache) {
+          await cache.preloadFromStorage();
+        }
+      })
+    );
+  }
+
+  /**
    * Set label-to-type mapping configuration
    */
   setLabelTypeMapping(mapping: Record<string, string>): void {

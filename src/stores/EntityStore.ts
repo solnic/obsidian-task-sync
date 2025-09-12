@@ -284,14 +284,41 @@ export abstract class EntityStore<T extends BaseEntity> {
       if (data && data[this.storageKey]) {
         const persistedData: EntityPersistenceData<T> = data[this.storageKey];
 
-        // Note: We don't restore the entities directly since they contain TFile objects
-        // that can't be serialized. Instead, we'll refresh from the file system.
-        // The persistence is mainly for tracking last sync time and other metadata.
+        // Restore entities from persisted data
+        if (persistedData.entities && persistedData.entities.length > 0) {
+          // Restore entities without TFile objects (they'll be re-attached during refresh)
+          const restoredEntities = persistedData.entities.map((entity: any) => {
+            // Re-attach file reference if filePath exists
+            let file: TFile | undefined;
+            if (entity.filePath && this.app) {
+              file = this.app.vault.getAbstractFileByPath(
+                entity.filePath
+              ) as TFile;
+            }
 
-        console.log(`Loaded persisted data for ${this.storageKey}s:`, {
-          lastSync: persistedData.lastSync,
-          entityCount: persistedData.entities?.length || 0,
-        });
+            return {
+              ...entity,
+              file,
+            } as T;
+          });
+
+          // Update store with restored entities
+          this._store.update((state) => ({
+            ...state,
+            entities: restoredEntities,
+            lastUpdated: persistedData.lastSync
+              ? new Date(persistedData.lastSync)
+              : new Date(),
+          }));
+
+          console.log(
+            `Restored ${restoredEntities.length} ${this.storageKey}s from cache:`,
+            {
+              lastSync: persistedData.lastSync,
+              entityCount: restoredEntities.length,
+            }
+          );
+        }
       }
     } catch (error) {
       console.error(`Failed to load persisted ${this.storageKey} data:`, error);

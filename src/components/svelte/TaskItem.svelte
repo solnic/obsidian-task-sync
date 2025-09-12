@@ -11,6 +11,7 @@
   import PriorityBadge from "./badges/PriorityBadge.svelte";
   import ProjectBadge from "./badges/ProjectBadge.svelte";
   import AreaBadge from "./badges/AreaBadge.svelte";
+  import type { TaskSource } from "../../types/entities";
 
   interface Props {
     // Core item data
@@ -22,6 +23,7 @@
       text: string;
       type: "category" | "status" | "priority" | "project" | "area";
     }>; // standardized badges
+    source?: TaskSource; // External source information
 
     // State
     isHovered?: boolean;
@@ -47,6 +49,7 @@
     meta,
     labels = [],
     badges = [],
+    source,
     isHovered = false,
     isImported = false,
     isSelected = false,
@@ -110,6 +113,21 @@
 
       {#if meta}
         <div class="task-sync-item-meta">{meta}</div>
+      {/if}
+
+      {#if source}
+        <div class="task-sync-item-source">
+          <span
+            class="task-sync-source-badge"
+            title="Imported from {source.name}"
+          >
+            <span class="task-sync-source-icon">🔗</span>
+            {source.name}
+            {#if source.key}
+              <span class="task-sync-source-key">#{source.key}</span>
+            {/if}
+          </span>
+        </div>
       {/if}
 
       {#if badges.length > 0}

@@ -196,6 +196,7 @@
           currentValue={selectedProject}
           options={filterOptions.projects}
           onselect={(value) => (selectedProject = value)}
+          placeholder="All projects"
           testId="project-filter"
         />
 
@@ -204,6 +205,7 @@
           currentValue={selectedArea}
           options={filterOptions.areas}
           onselect={(value) => (selectedArea = value)}
+          placeholder="All areas"
           testId="area-filter"
         />
       </div>

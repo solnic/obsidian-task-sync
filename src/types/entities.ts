@@ -12,6 +12,32 @@ export interface BaseEntity {
   filePath?: string; // Path to the file in vault
 }
 
+// Data view interface for UI display
+export interface EntityDataView {
+  id: string;
+  title: string;
+  type?: string;
+  category?: string;
+  priority?: string;
+  status?: string;
+  done?: boolean;
+  project?: string; // Display name only (e.g., "Task Sync")
+  areas?: string[]; // Display names only (e.g., ["Open Source"])
+  parentTask?: string; // Display name only
+  tags?: string[];
+  source?: TaskSource;
+  // Add other common display properties as needed
+}
+
+// Interface for entities that can provide data view objects
+export interface HasDataView {
+  /**
+   * Returns a data view object suitable for UI display
+   * Converts Obsidian link format to display values
+   */
+  getDataView?(): EntityDataView;
+}
+
 // External source tracking for imported tasks
 export interface TaskSource {
   /** Source system name (e.g., 'github', 'linear', 'todo-promotion') */
@@ -25,7 +51,7 @@ export interface TaskSource {
 }
 
 // Task entity - core system properties
-export interface Task extends BaseEntity {
+export interface Task extends BaseEntity, HasDataView {
   // Front-matter properties (frontmatter: true)
   title: string; // TITLE (from Title front-matter property)
   type?: string; // TYPE
