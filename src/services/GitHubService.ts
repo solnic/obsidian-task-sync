@@ -145,6 +145,38 @@ export class GitHubService extends AbstractService {
   }
 
   /**
+   * Generate consistent cache key for GitHub resources
+   */
+  private generateCacheKey(
+    category: "issues" | "labels" | "repositories" | "organizations",
+    repository?: string,
+    filters?: { state?: string; assignee?: string; labels?: string[] }
+  ): string {
+    const parts = ["github"];
+
+    if (repository) {
+      const [owner, repo] = repository.split("/");
+      parts.push(`org:${owner}`, `repo:${repo}`);
+    }
+
+    parts.push(`category:${category}`);
+
+    if (filters) {
+      if (filters.state) {
+        parts.push(`status:${filters.state}`);
+      }
+      if (filters.assignee) {
+        parts.push(`assignee:${filters.assignee}`);
+      }
+      if (filters.labels && filters.labels.length > 0) {
+        parts.push(`labels:${filters.labels.sort().join(",")}`);
+      }
+    }
+
+    return parts.join("|");
+  }
+
+  /**
    * Update settings and reinitialize components (legacy method)
    * This will be replaced by the event system
    */
@@ -260,7 +292,12 @@ export class GitHubService extends AbstractService {
       throw new Error("Invalid repository format. Expected: owner/repo");
     }
 
-    const cacheKey = `issues-${repository}`;
+    const filters = this.settings.githubIntegration.issueFilters;
+    const cacheKey = this.generateCacheKey("issues", repository, {
+      state: filters.state,
+      assignee: filters.assignee,
+      labels: filters.labels,
+    });
 
     // Check cache first
     if (this.issuesCache) {
@@ -271,7 +308,6 @@ export class GitHubService extends AbstractService {
     }
 
     const [owner, repo] = repository.split("/");
-    const filters = this.settings.githubIntegration.issueFilters;
 
     try {
       const response = await this.octokit.rest.issues.listForRepo({
@@ -400,7 +436,7 @@ export class GitHubService extends AbstractService {
       throw new Error("Invalid repository format. Expected: owner/repo");
     }
 
-    const cacheKey = `labels-${repository}`;
+    const cacheKey = this.generateCacheKey("labels", repository);
 
     // Check cache first
     if (this.labelsCache) {
@@ -459,7 +495,7 @@ export class GitHubService extends AbstractService {
   async clearLabelCache(repository?: string): Promise<void> {
     if (this.labelsCache) {
       if (repository) {
-        const cacheKey = `labels-${repository}`;
+        const cacheKey = this.generateCacheKey("labels", repository);
         await this.labelsCache.delete(cacheKey);
       } else {
         // Clear all label caches

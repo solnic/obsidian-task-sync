@@ -30,7 +30,6 @@
   // Additional filter state
   let selectedProject = $state<string | null>(null);
   let selectedArea = $state<string | null>(null);
-  let selectedParentTask = $state<string | null>(null);
 
   // Subscribe to context changes
   $effect(() => {
@@ -79,17 +78,6 @@
         }
       }
 
-      // Parent task filter
-      if (selectedParentTask) {
-        const taskParent =
-          typeof task.parentTask === "string"
-            ? task.parentTask.replace(/^\[\[|\]\]$/g, "")
-            : task.parentTask;
-        if (taskParent !== selectedParentTask) {
-          return false;
-        }
-      }
-
       return true;
     });
 
@@ -108,10 +96,7 @@
     hoveredTask = null;
   });
 
-  // Get context filters for display
-  let contextFilters = $derived.by(() => {
-    return getContextFilters(currentContext);
-  });
+  // Note: No longer using context filters for automatic filtering
 
   onMount(() => {
     // Subscribe to task store updates immediately
@@ -212,7 +197,6 @@
           options={filterOptions.projects}
           onselect={(value) => (selectedProject = value)}
           testId="project-filter"
-          isActive={!!contextFilters.project}
         />
 
         <FilterDropdown
@@ -221,16 +205,6 @@
           options={filterOptions.areas}
           onselect={(value) => (selectedArea = value)}
           testId="area-filter"
-          isActive={!!contextFilters.area}
-        />
-
-        <FilterDropdown
-          label="Parent"
-          currentValue={selectedParentTask}
-          options={filterOptions.parentTasks}
-          onselect={(value) => (selectedParentTask = value)}
-          testId="parent-task-filter"
-          isActive={!!contextFilters.parentTask}
         />
       </div>
     </div>

@@ -517,7 +517,7 @@
   data-testid="github-service"
 >
   <!-- Header Section -->
-  <div class="local-tasks-header">
+  <div class="github-service-header">
     <!-- Search and Filters -->
     <div class="search-and-filters">
       <SearchInput

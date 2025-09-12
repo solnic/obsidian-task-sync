@@ -114,6 +114,12 @@ export class SchemaCache<T> {
       // Deserialize using SuperJSON to restore Date objects
       const entry = superjson.deserialize<CacheEntry<T>>(serializedEntry);
 
+      // Check if entry is valid before accessing properties
+      if (!entry || typeof entry !== "object" || !("data" in entry)) {
+        console.warn(`Invalid cache entry structure for key ${key}:`, entry);
+        return null;
+      }
+
       // Validate the deserialized data against schema
       this.schema.parse(entry.data);
 

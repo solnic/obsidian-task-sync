@@ -1836,7 +1836,7 @@ Provides consistent styling for all UI components
   flex-direction: column;
   overflow: hidden;
   min-height: 0; /* Critical for flex children to shrink */
-  padding: 16px;
+  padding: 0;
 }
 
 .github-service {
@@ -1966,7 +1966,10 @@ button.tab-item.active {
 }
 
 /* Unified Task Service Header Styles */
-.local-tasks-header {
+.local-tasks-header,
+.apple-reminders-header,
+.github-service-header,
+.task-service-header {
   margin-bottom: 1rem;
 }
 
