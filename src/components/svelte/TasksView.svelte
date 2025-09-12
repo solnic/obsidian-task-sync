@@ -10,6 +10,7 @@
   import type { TaskImportConfig } from "../../types/integrations";
   import { setIcon } from "obsidian";
   import { getContextStore } from "./context";
+  import { getPluginContext } from "./context";
   import type { FileContext } from "../../main";
 
   interface Props {
@@ -28,6 +29,8 @@
   let { githubService, appleRemindersService, settings, dependencies }: Props =
     $props();
 
+  const { plugin } = getPluginContext();
+
   // State
   let activeService = $state<"github" | "local" | "apple-reminders">("local");
 
@@ -41,6 +44,11 @@
       currentContext = value;
     });
     return unsubscribe;
+  });
+
+  // Load active service on component mount
+  $effect(() => {
+    loadActiveService();
   });
 
   // Detect day planning mode based on current file context
@@ -72,8 +80,30 @@
     },
   ];
 
+  async function loadActiveService(): Promise<void> {
+    try {
+      const data = await plugin.loadData();
+      if (data?.tasksViewActiveService) {
+        activeService = data.tasksViewActiveService;
+      }
+    } catch (err: any) {
+      console.warn("Failed to load active service:", err.message);
+    }
+  }
+
+  async function saveActiveService(): Promise<void> {
+    try {
+      const data = (await plugin.loadData()) || {};
+      data.tasksViewActiveService = activeService;
+      await plugin.saveData(data);
+    } catch (err: any) {
+      console.warn("Failed to save active service:", err.message);
+    }
+  }
+
   function setActiveService(serviceId: string): void {
     activeService = serviceId as "github" | "local" | "apple-reminders";
+    saveActiveService();
   }
 
   function updateSettings(newSettings: {
