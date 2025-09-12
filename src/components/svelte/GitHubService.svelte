@@ -490,6 +490,40 @@
     }
   }
 
+  async function loadOrganizationRepositories(org: string): Promise<void> {
+    if (!githubService.isEnabled()) {
+      return;
+    }
+
+    try {
+      const orgRepos =
+        await githubService.fetchRepositoriesForOrganization(org);
+
+      // Merge organization repositories with existing user repositories
+      // Remove duplicates by creating a map keyed by full_name
+      const repoMap = new Map<string, GitHubRepository>();
+
+      // Add existing repositories
+      repositories.forEach((repo) => {
+        repoMap.set(repo.full_name, repo);
+      });
+
+      // Add organization repositories (will overwrite duplicates)
+      orgRepos.forEach((repo) => {
+        repoMap.set(repo.full_name, repo);
+      });
+
+      // Update repositories array
+      repositories = Array.from(repoMap.values());
+    } catch (err: any) {
+      console.warn(
+        `Failed to load repositories for organization ${org}:`,
+        err.message
+      );
+      // Don't set error state as this is a background operation
+    }
+  }
+
   /**
    * Refresh import status for all issues and pull requests from task store
    * This should be called whenever the component becomes visible to ensure
@@ -613,7 +647,7 @@
     // No need to reload data as filtering is done client-side
   }
 
-  function setOrganizationFilter(org: string | null): void {
+  async function setOrganizationFilter(org: string | null): Promise<void> {
     currentOrganization = org;
 
     // Track recently used organization
@@ -623,6 +657,11 @@
 
     // Save current filter state
     saveRecentlyUsedFilters();
+
+    // Load organization repositories if an organization is selected
+    if (org) {
+      await loadOrganizationRepositories(org);
+    }
 
     // Reset repository selection when changing organization
     if (org && !currentRepository.startsWith(org + "/")) {
@@ -922,8 +961,8 @@
               currentValue={currentOrganization || "Select organization"}
               options={organizationOptions}
               placeholder="Select organization"
-              onselect={(value) =>
-                setOrganizationFilter(value === "---" ? null : value)}
+              onselect={async (value) =>
+                await setOrganizationFilter(value === "---" ? null : value)}
               testId="organization-filter"
               autoSuggest={true}
               allowClear={true}
