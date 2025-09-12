@@ -1544,6 +1544,20 @@ export async function getAreaProperties(
 }
 
 /**
+ * Helper to create fully qualified wiki link format
+ * Examples:
+ * - createFullyQualifiedLink("Testing", "Areas") → "[[Areas/Testing|Testing]]"
+ * - createFullyQualifiedLink("Task Sync", "Projects") → "[[Projects/Task Sync|Task Sync]]"
+ * - createFullyQualifiedLink("Parent Task", "Tasks") → "[[Tasks/Parent Task|Parent Task]]"
+ */
+export function createFullyQualifiedLink(
+  displayName: string,
+  folder: string
+): string {
+  return `[[${folder}/${displayName}|${displayName}]]`;
+}
+
+/**
  * Helper to verify task properties match expected values
  */
 export async function verifyTaskProperties(
