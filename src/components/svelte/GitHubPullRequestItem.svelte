@@ -119,6 +119,7 @@
   {meta}
   {badges}
   {labels}
+  createdAt={new Date(pullRequest.created_at)}
   {isHovered}
   {isImported}
   {onHover}

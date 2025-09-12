@@ -134,7 +134,12 @@
   <div class="tasks-view-layout">
     <!-- Main Content Area -->
     <div class="tasks-view-main">
-      <TabView className="tasks-view-tab" testId="tasks-view-tab">
+      <TabView
+        className="tasks-view-tab"
+        testId="tasks-view-tab"
+        showContextWidget={activeService !== "local"}
+        showImportIndicator={activeService !== "local"}
+      >
         <!-- Service Content -->
         <div class="service-content" data-testid="service-content">
           {#if activeService === "github"}

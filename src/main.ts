@@ -458,7 +458,7 @@ export default class TaskSyncPlugin extends Plugin {
     this.validateSettings();
   }
 
-  async saveSettings() {
+  async saveSettings(skipTemplateUpdate = false) {
     this.validateSettings();
 
     // Store previous settings for comparison
@@ -512,7 +512,9 @@ export default class TaskSyncPlugin extends Plugin {
     // Update other managers
     if (this.templateManager) {
       this.templateManager.updateSettings(this.settings);
-      await this.templateManager.updateTemplatesOnSettingsChange();
+      if (!skipTemplateUpdate) {
+        await this.templateManager.updateTemplatesOnSettingsChange();
+      }
     }
 
     if (this.baseManager) {

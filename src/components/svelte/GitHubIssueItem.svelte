@@ -102,6 +102,7 @@
   {meta}
   {badges}
   {labels}
+  createdAt={new Date(issue.created_at)}
   {isHovered}
   {isImported}
   {onHover}

@@ -298,59 +298,66 @@ export class AppleRemindersService extends AbstractService {
       const allReminders: AppleReminder[] = [];
       const processedLists = Array.isArray(lists) ? lists : [];
 
-      for (const list of processedLists) {
-        // Skip lists not in settings if configured
-        // Note: listNames filter is now handled in memory, not at fetch level
-        const configuredLists =
-          this.settings.appleRemindersIntegration.reminderLists;
-        if (
-          configuredLists.length > 0 &&
-          !configuredLists.includes(list.name)
-        ) {
-          continue;
-        }
+      // Filter lists based on settings
+      const configuredLists =
+        this.settings.appleRemindersIntegration.reminderLists;
+      const listsToProcess = processedLists.filter(
+        (list) =>
+          configuredLists.length === 0 || configuredLists.includes(list.name)
+      );
 
-        // Determine if we should include completed reminders
-        const includeCompleted =
-          filter?.includeCompleted ??
-          this.settings.appleRemindersIntegration.includeCompletedReminders;
+      // Determine if we should include completed reminders
+      const includeCompleted =
+        filter?.includeCompleted ??
+        this.settings.appleRemindersIntegration.includeCompletedReminders;
 
-        // Get reminders from this list with appropriate filter
-        let appleScriptQuery: string;
-        if (includeCompleted) {
-          // Get all reminders (both completed and incomplete)
-          appleScriptQuery = `tell list list_name in application "Reminders"
+      // Prepare AppleScript query
+      const appleScriptQuery = includeCompleted
+        ? `tell list list_name in application "Reminders"
             return properties of reminders
-          end tell`;
-        } else {
-          // Get only incomplete reminders
-          appleScriptQuery = `tell list list_name in application "Reminders"
+          end tell`
+        : `tell list list_name in application "Reminders"
             return properties of reminders whose completed is false
           end tell`;
-        }
 
-        let reminders;
+      // Process all lists concurrently for better performance
+      const listPromises = listsToProcess.map(async (list) => {
         try {
-          reminders = await this.executeAppleScript(appleScriptQuery, {
+          const reminders = await this.executeAppleScript(appleScriptQuery, {
             list_name: list.name,
           });
-        } catch (scriptError) {
-          continue; // Skip this list and continue with others
-        }
 
-        const processedReminders = Array.isArray(reminders) ? reminders : [];
+          const processedReminders = Array.isArray(reminders) ? reminders : [];
+          const filteredReminders: AppleReminder[] = [];
 
-        for (const reminder of processedReminders) {
-          // Apply filters
-          if (!this.shouldIncludeReminder(reminder, filter)) {
-            continue;
+          for (const reminder of processedReminders) {
+            // Apply filters
+            if (!this.shouldIncludeReminder(reminder, filter)) {
+              continue;
+            }
+
+            const appleReminder: AppleReminder =
+              this.transformAppleScriptReminderToAppleReminder(reminder, list);
+            filteredReminders.push(appleReminder);
           }
 
-          const appleReminder: AppleReminder =
-            this.transformAppleScriptReminderToAppleReminder(reminder, list);
-          allReminders.push(appleReminder);
+          return filteredReminders;
+        } catch (scriptError) {
+          console.warn(
+            `🍎 Failed to fetch reminders from list "${list.name}":`,
+            scriptError
+          );
+          return []; // Return empty array for failed lists
         }
-      }
+      });
+
+      // Wait for all lists to be processed concurrently
+      const listResults = await Promise.all(listPromises);
+
+      // Flatten all results into a single array
+      listResults.forEach((reminders) => {
+        allReminders.push(...reminders);
+      });
 
       // Cache the result
       if (this.remindersCache) {

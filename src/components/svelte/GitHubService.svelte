@@ -11,6 +11,7 @@
     GitHubPullRequest,
     GitHubRepository,
     GitHubOrganization,
+    GitHubLabel,
   } from "../../services/GitHubService";
   import type { GitHubIntegrationSettings } from "../ui/settings/types";
   import type { TaskImportConfig } from "../../types/integrations";
@@ -46,6 +47,13 @@
   let currentState = $state<"open" | "closed" | "all">(
     settings.githubIntegration.issueFilters.state
   );
+  let assignedToMe = $state(
+    settings.githubIntegration.issueFilters.assignee === "me"
+  );
+  let selectedLabels = $state<string[]>(
+    settings.githubIntegration.issueFilters.labels || []
+  );
+  let availableLabels = $state<GitHubLabel[]>([]);
   let searchQuery = $state("");
   let error = $state<string | null>(null);
   let isLoading = $state(false);
@@ -58,7 +66,7 @@
 
   // Computed
   let filteredIssues = $derived.by(() => {
-    let filtered = filterIssues(currentState);
+    let filtered = filterIssues(currentState, assignedToMe, selectedLabels);
     if (searchQuery) {
       filtered = searchIssues(searchQuery, filtered);
     }
@@ -66,7 +74,11 @@
   });
 
   let filteredPullRequests = $derived.by(() => {
-    let filtered = filterPullRequests(currentState);
+    let filtered = filterPullRequests(
+      currentState,
+      assignedToMe,
+      selectedLabels
+    );
     if (searchQuery) {
       filtered = searchPullRequests(searchQuery, filtered);
     }
@@ -144,20 +156,86 @@
     }
   }
 
-  function filterIssues(state: "open" | "closed" | "all"): GitHubIssue[] {
-    if (state === "all") {
-      return issues;
+  function getCurrentUser(): string | null {
+    // Extract the username from the first repository's full_name (owner/repo)
+    if (repositories.length > 0) {
+      const fullName = repositories[0].full_name;
+      const [owner] = fullName.split("/");
+      return owner;
     }
-    return issues.filter((issue) => issue.state === state);
+    return null;
+  }
+
+  function filterIssues(
+    state: "open" | "closed" | "all",
+    assignedToMe: boolean,
+    selectedLabels: string[]
+  ): GitHubIssue[] {
+    let filtered = issues;
+
+    // Filter by state
+    if (state !== "all") {
+      filtered = filtered.filter((issue) => issue.state === state);
+    }
+
+    // Filter by assignee if "assigned to me" is enabled
+    if (assignedToMe) {
+      // Get current user from GitHub service settings or API
+      // For now, we'll use the assignee filter from settings
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        filtered = filtered.filter(
+          (issue) => issue.assignee?.login === currentUser
+        );
+      }
+    }
+
+    // Filter by labels if any are selected
+    if (selectedLabels.length > 0) {
+      filtered = filtered.filter((issue) =>
+        selectedLabels.some((selectedLabel) =>
+          issue.labels.some((label) => label.name === selectedLabel)
+        )
+      );
+    }
+
+    return filtered;
   }
 
   function filterPullRequests(
-    state: "open" | "closed" | "all"
+    state: "open" | "closed" | "all",
+    assignedToMe: boolean,
+    selectedLabels: string[]
   ): GitHubPullRequest[] {
-    if (state === "all") {
-      return pullRequests;
+    let filtered = pullRequests;
+
+    // Filter by state
+    if (state !== "all") {
+      filtered = filtered.filter((pr) => pr.state === state);
     }
-    return pullRequests.filter((pr) => pr.state === state);
+
+    // Filter by assignee if "assigned to me" is enabled
+    if (assignedToMe) {
+      const currentUser = getCurrentUser();
+      if (currentUser) {
+        filtered = filtered.filter(
+          (pr) =>
+            pr.assignee?.login === currentUser ||
+            pr.assignees?.some((assignee) => assignee.login === currentUser)
+        );
+      }
+    }
+
+    // Filter by labels if any are selected
+    if (selectedLabels.length > 0) {
+      filtered = filtered.filter((pr) =>
+        selectedLabels.some((selectedLabel) =>
+          pr.labels.some((label) => label.name === selectedLabel)
+        )
+      );
+    }
+
+    return filtered;
   }
 
   function searchIssues(
@@ -208,12 +286,12 @@
         currentRepository = settings.githubIntegration.defaultRepository;
       }
 
-      // Save settings through the plugin
+      // Save settings through the plugin (skip template update for repository list updates)
       const pluginInstance = (window as any).app?.plugins?.plugins?.[
         "obsidian-task-sync"
       ];
       if (pluginInstance) {
-        await pluginInstance.saveSettings();
+        await pluginInstance.saveSettings(true); // Skip template update
       }
     } catch (err: any) {
       error = err.message || "Failed to load repositories";
@@ -287,10 +365,24 @@
     }
   }
 
+  async function loadLabels(): Promise<void> {
+    if (!currentRepository || !githubService.isEnabled()) {
+      return;
+    }
+
+    try {
+      availableLabels = await githubService.fetchLabels(currentRepository);
+    } catch (err: any) {
+      console.warn("Failed to load labels:", err.message);
+      availableLabels = [];
+    }
+  }
+
   async function setRepository(repository: string | null): Promise<void> {
     if (repository) {
       currentRepository = repository;
       await loadIssues();
+      await loadLabels();
       if (activeTab === "pull-requests") {
         await loadPullRequests();
       }
@@ -299,6 +391,26 @@
 
   function setStateFilter(state: "open" | "closed"): void {
     currentState = state;
+  }
+
+  function toggleAssignedToMe(): void {
+    assignedToMe = !assignedToMe;
+    // Update the settings to persist the filter
+    settings.githubIntegration.issueFilters.assignee = assignedToMe ? "me" : "";
+    // Reload data with new filter
+    if (currentRepository) {
+      loadIssues();
+      if (activeTab === "pull-requests") {
+        loadPullRequests();
+      }
+    }
+  }
+
+  function setLabelsFilter(labels: string[]): void {
+    selectedLabels = labels;
+    // Update the settings to persist the filter
+    settings.githubIntegration.issueFilters.labels = labels;
+    // No need to reload data as filtering is done client-side
   }
 
   function setOrganizationFilter(org: string | null): void {
@@ -618,6 +730,47 @@
               onselect={(value) =>
                 setRepository(value === "All repositories" ? null : value)}
               testId="repository-filter"
+              autoSuggest={true}
+              allowClear={true}
+            />
+          </div>
+
+          <!-- Assigned to me filter -->
+          <div class="task-sync-filter-group task-sync-filter-group--assignee">
+            <button
+              class="task-sync-filter-toggle {assignedToMe ? 'active' : ''}"
+              data-testid="assigned-to-me-filter"
+              onclick={() => toggleAssignedToMe()}
+              type="button"
+            >
+              Assigned to me
+            </button>
+          </div>
+
+          <!-- Labels filter -->
+          <div class="task-sync-filter-group task-sync-filter-group--labels">
+            <FilterButton
+              label="Labels"
+              currentValue={selectedLabels.length > 0
+                ? `${selectedLabels.length} selected`
+                : "All labels"}
+              options={[
+                "All labels",
+                ...availableLabels.map((label) => label.name),
+              ]}
+              placeholder="All labels"
+              onselect={(value) => {
+                if (value === "All labels") {
+                  setLabelsFilter([]);
+                } else {
+                  // Toggle label selection
+                  const newLabels = selectedLabels.includes(value)
+                    ? selectedLabels.filter((l) => l !== value)
+                    : [...selectedLabels, value];
+                  setLabelsFilter(newLabels);
+                }
+              }}
+              testId="labels-filter"
               autoSuggest={true}
               allowClear={true}
             />

@@ -2,6 +2,12 @@
   import { getContextStore } from "./context";
   import type { FileContext } from "../../main";
 
+  interface Props {
+    showImportIndicator?: boolean;
+  }
+
+  let { showImportIndicator = false }: Props = $props();
+
   // Get the reactive context store
   const contextStore = getContextStore();
 
@@ -21,13 +27,13 @@
   let displayText = $derived.by(() => {
     switch (context.type) {
       case "project":
-        return `Project: ${context.name}`;
+        return `${context.name}`;
       case "area":
-        return `Area: ${context.name}`;
+        return `${context.name}`;
       case "task":
-        return `Task: ${context.name}`;
+        return `${context.name}`;
       case "daily":
-        return `Daily Note: ${context.name}`;
+        return `${context.name}`;
       case "none":
         return "No context";
       default:
@@ -35,16 +41,20 @@
     }
   });
 
-  let iconClass = $derived.by(() => {
+  let contextTypeLabel = $derived.by(() => {
     switch (context.type) {
       case "project":
-        return "context-icon-project";
+        return "Project";
       case "area":
-        return "context-icon-area";
+        return "Area";
+      case "task":
+        return "Task";
+      case "daily":
+        return "Daily Note";
       case "none":
-        return "context-icon-none";
+        return "";
       default:
-        return "context-icon-unknown";
+        return "Unknown";
     }
   });
 
@@ -53,89 +63,94 @@
   });
 </script>
 
-<div class={contextClass} data-testid="context-widget">
-  <div class="context-icon {iconClass}"></div>
-  <div class="context-text" data-testid="context-text">
-    {displayText}
-  </div>
-  {#if context.type !== "none"}
-    <div class="context-path" data-testid="context-path" title={context.path}>
-      {context.path}
+{#if context.type !== "none"}
+  <div class={contextClass} data-testid="context-widget">
+    <div class="context-type-indicator"></div>
+    <div class="context-content">
+      <span class="context-type-label">{contextTypeLabel}</span>
+      <span class="context-name">{displayText}</span>
     </div>
-  {/if}
-</div>
+    {#if showImportIndicator}
+      <div
+        class="import-indicator"
+        title="Import context - tasks will be imported here"
+      >
+        <span class="import-icon">⬇</span>
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <style>
   .context-widget {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
-    background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 6px;
-    font-size: 13px;
-    color: var(--text-muted);
-    margin-bottom: 12px;
+    padding: 6px 12px;
+    background: var(--background-primary);
+    border-radius: 4px;
+    font-size: 12px;
+    margin-bottom: 8px;
+    border: none;
   }
 
-  .context-widget.context-type-project {
-    border-left: 3px solid var(--color-blue);
-  }
-
-  .context-widget.context-type-area {
-    border-left: 3px solid var(--color-green);
-  }
-
-  .context-widget.context-type-none {
-    border-left: 3px solid var(--background-modifier-border);
-    opacity: 0.7;
-  }
-
-  .context-icon {
-    width: 16px;
+  .context-type-indicator {
+    width: 3px;
     height: 16px;
+    border-radius: 2px;
     flex-shrink: 0;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
   }
 
-  .context-icon-project::before {
-    content: "📁";
-    font-size: 14px;
+  .context-widget.context-type-project .context-type-indicator {
+    background: var(--color-blue);
   }
 
-  .context-icon-area::before {
-    content: "🏷️";
-    font-size: 14px;
+  .context-widget.context-type-area .context-type-indicator {
+    background: var(--color-green);
   }
 
-  .context-icon-none::before {
-    content: "📄";
-    font-size: 14px;
-    opacity: 0.5;
+  .context-widget.context-type-task .context-type-indicator {
+    background: var(--color-orange);
   }
 
-  .context-text {
-    font-weight: 500;
-    color: var(--text-normal);
+  .context-widget.context-type-daily .context-type-indicator {
+    background: var(--color-purple);
+  }
+
+  .context-content {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     flex-grow: 1;
   }
 
-  .context-path {
+  .context-type-label {
     font-size: 11px;
-    color: var(--text-faint);
-    font-family: var(--font-monospace);
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
-  .context-widget:hover .context-path {
-    max-width: none;
-    white-space: normal;
-    word-break: break-all;
+  .context-name {
+    color: var(--text-normal);
+    font-weight: 500;
+  }
+
+  .import-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: var(--interactive-accent);
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  .import-icon {
+    color: var(--text-on-accent);
+    font-size: 10px;
+    font-weight: bold;
   }
 </style>

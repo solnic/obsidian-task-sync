@@ -4,7 +4,7 @@
   import { getPluginContext, getContextStore } from "./context";
   import { taskStore } from "../../stores/taskStore";
   import SearchInput from "./SearchInput.svelte";
-  import FilterDropdown from "./FilterDropdown.svelte";
+  import FilterButton from "./FilterButton.svelte";
   import LocalTaskItem from "./LocalTaskItem.svelte";
   import { getFilterOptions } from "../../utils/contextFiltering";
   import type { Task } from "../../types/entities";
@@ -189,24 +189,30 @@
         testId="local-search-input"
       />
 
-      <!-- Filter Dropdowns -->
+      <!-- Filter Buttons with Auto-suggest -->
       <div class="task-sync-local-filters">
-        <FilterDropdown
+        <FilterButton
           label="Project"
-          currentValue={selectedProject}
-          options={filterOptions.projects}
-          onselect={(value) => (selectedProject = value)}
+          currentValue={selectedProject || "All projects"}
+          options={["All projects", ...filterOptions.projects]}
+          onselect={(value: string) =>
+            (selectedProject = value === "All projects" ? null : value)}
           placeholder="All projects"
           testId="project-filter"
+          autoSuggest={true}
+          allowClear={true}
         />
 
-        <FilterDropdown
+        <FilterButton
           label="Area"
-          currentValue={selectedArea}
-          options={filterOptions.areas}
-          onselect={(value) => (selectedArea = value)}
+          currentValue={selectedArea || "All areas"}
+          options={["All areas", ...filterOptions.areas]}
+          onselect={(value: string) =>
+            (selectedArea = value === "All areas" ? null : value)}
           placeholder="All areas"
           testId="area-filter"
+          autoSuggest={true}
+          allowClear={true}
         />
       </div>
     </div>

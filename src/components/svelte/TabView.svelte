@@ -11,6 +11,7 @@
     className?: string;
     testId?: string;
     showContextWidget?: boolean;
+    showImportIndicator?: boolean;
     children: Snippet;
   }
 
@@ -18,6 +19,7 @@
     className = "",
     testId,
     showContextWidget = true,
+    showImportIndicator = false,
     children,
   }: Props = $props();
 </script>
@@ -26,7 +28,7 @@
   <!-- Context Widget Header -->
   {#if showContextWidget}
     <div class="task-sync-tab-header">
-      <ContextWidget />
+      <ContextWidget {showImportIndicator} />
     </div>
   {/if}
 

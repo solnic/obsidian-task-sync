@@ -40,11 +40,12 @@
 
     if (reminder.priority > 0) {
       const priorityLabels = ["", "Low", "Medium", "High"];
-      const priorityLabel = priorityLabels[Math.min(reminder.priority, 3)] || "High";
+      const priorityLabel =
+        priorityLabels[Math.min(reminder.priority, 3)] || "High";
       parts.push(`Priority: ${priorityLabel}`);
     }
 
-    parts.push(reminder.completed ? "Completed" : "Active");
+    // Removed redundant status display since it's shown in badges
     parts.push(reminder.creationDate.toLocaleDateString());
 
     return parts.join(" • ");
@@ -65,7 +66,8 @@
     // Add priority badge if set
     if (reminder.priority > 0) {
       const priorityLabels = ["", "Low", "Medium", "High"];
-      const priorityLabel = priorityLabels[Math.min(reminder.priority, 3)] || "High";
+      const priorityLabel =
+        priorityLabels[Math.min(reminder.priority, 3)] || "High";
       result.push({
         text: priorityLabel,
         type: "priority",
@@ -113,7 +115,9 @@
     {:else}
       <button
         class="import-button"
-        title={dayPlanningMode ? "Add to today" : "Import this reminder as a task"}
+        title={dayPlanningMode
+          ? "Add to today"
+          : "Import this reminder as a task"}
         onclick={handleImport}
         data-testid={dayPlanningMode
           ? "add-to-today-button"
@@ -131,6 +135,7 @@
   {meta}
   {badges}
   {labels}
+  createdAt={reminder.creationDate}
   {isHovered}
   {isImported}
   {onHover}

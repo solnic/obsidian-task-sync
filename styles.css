@@ -992,6 +992,19 @@ Provides consistent styling for all UI components
   margin-top: 8px;
 }
 
+/* TaskItem Footer */
+.task-sync-item-footer {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.task-sync-created-at {
+  font-size: 11px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
 .task-type-blue {
   background-color: #3b82f6;
 }

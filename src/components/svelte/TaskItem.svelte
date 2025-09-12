@@ -24,6 +24,7 @@
       type: "category" | "status" | "priority" | "project" | "area";
     }>; // standardized badges
     source?: TaskSource; // External source information
+    createdAt?: Date; // Creation date for footer display
 
     // State
     isHovered?: boolean;
@@ -50,6 +51,7 @@
     labels = [],
     badges = [],
     source,
+    createdAt,
     isHovered = false,
     isImported = false,
     isSelected = false,
@@ -174,6 +176,15 @@
           {/each}
         </div>
       {/if}
+    {/if}
+
+    <!-- Footer with created at info -->
+    {#if createdAt}
+      <div class="task-sync-item-footer">
+        <span class="task-sync-created-at">
+          Created {createdAt.toLocaleDateString()}
+        </span>
+      </div>
     {/if}
   </div>
 
