@@ -1,10 +1,18 @@
-import { Plugin, TFile, Notice, Modal, App } from "obsidian";
+import {
+  Plugin,
+  TFile,
+  Notice,
+  Modal,
+  App,
+  MarkdownPostProcessor,
+} from "obsidian";
 import { VaultScanner } from "./services/VaultScannerService";
 import { BaseManager } from "./services/BaseManager";
 
 import { FileChangeListener } from "./services/FileChangeListener";
 import { TemplateManager } from "./services/TemplateManager";
 import { TaskFileManager } from "./services/TaskFileManager";
+import { TaskTodoMarkdownProcessor } from "./services/TaskTodoMarkdownProcessor";
 import { AreaFileManager } from "./services/AreaFileManager";
 import { ProjectFileManager } from "./services/ProjectFileManager";
 import { TaskCreateModalWrapper } from "./components/svelte/TaskCreateModalWrapper";
@@ -103,6 +111,8 @@ export default class TaskSyncPlugin extends Plugin {
   projectFileManager: ProjectFileManager;
   todoPromotionService: TodoPromotionService;
   dailyNoteService: DailyNoteService;
+  taskTodoMarkdownProcessor: TaskTodoMarkdownProcessor;
+  private markdownProcessor: MarkdownPostProcessor;
 
   // Expose store access methods for e2e testing
   public getCachedTasks() {
@@ -200,6 +210,13 @@ export default class TaskSyncPlugin extends Plugin {
       this.settings
     );
 
+    // Initialize TaskTodoMarkdownProcessor
+    this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
+      this.app,
+      this.settings,
+      this.taskFileManager
+    );
+
     // Initialize stores - this will set up the basic structure
     // Full population will happen in onLayoutReady after vault is loaded
     await this.initializeStores();
@@ -292,6 +309,9 @@ export default class TaskSyncPlugin extends Plugin {
       // Initialize views after stores are populated
       this.initializeTasksView();
       this.initializeContextTabView();
+
+      // Register markdown processor after layout is ready
+      this.registerTaskTodoMarkdownProcessor();
     });
 
     // Note: Removed automatic folder creation - Obsidian handles this automatically
@@ -445,6 +465,9 @@ export default class TaskSyncPlugin extends Plugin {
     if (this.eventManager) {
       this.eventManager.clear();
     }
+
+    // Unregister markdown processor
+    this.unregisterTaskTodoMarkdownProcessor();
   }
 
   async loadSettings() {
@@ -1679,5 +1702,30 @@ export default class TaskSyncPlugin extends Plugin {
     await areaStore.refreshEntities();
 
     console.log("Stores populated from vault");
+  }
+
+  /**
+   * Register the task todo markdown processor
+   */
+  private registerTaskTodoMarkdownProcessor(): void {
+    if (this.taskTodoMarkdownProcessor) {
+      this.markdownProcessor = this.registerMarkdownPostProcessor(
+        this.taskTodoMarkdownProcessor.getProcessor(),
+        100 // Sort order - run after other processors
+      );
+      console.log("Task todo markdown processor registered");
+    }
+  }
+
+  /**
+   * Unregister the task todo markdown processor
+   */
+  private unregisterTaskTodoMarkdownProcessor(): void {
+    if (this.markdownProcessor) {
+      // Note: Obsidian doesn't provide a direct unregister method for post processors
+      // The processor will be automatically cleaned up when the plugin unloads
+      this.markdownProcessor = null;
+      console.log("Task todo markdown processor unregistered");
+    }
   }
 }

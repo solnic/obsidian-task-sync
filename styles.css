@@ -3548,3 +3548,71 @@ button.tab-item.active {
 .context-tab-content::-webkit-scrollbar-thumb:hover {
   background: var(--background-modifier-border-hover);
 }
+
+/* Task Todo Markdown Processor Styles */
+.task-sync-todo-badges {
+  display: inline-flex;
+  gap: 4px;
+  margin-left: 8px;
+  align-items: center;
+}
+
+.task-sync-todo-category-badge,
+.task-sync-todo-priority-badge,
+.task-sync-todo-status-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 0.65em;
+  font-weight: 500;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  min-width: 40px;
+  text-align: center;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.task-sync-todo-category-badge {
+  background-color: #3b82f6;
+}
+
+.task-sync-todo-priority-badge {
+  background-color: #f59e0b;
+}
+
+.task-sync-todo-status-badge {
+  background-color: #10b981;
+}
+
+/* Enhanced todo items with task links */
+li[data-task] .task-sync-todo-badges {
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+li[data-task]:hover .task-sync-todo-badges {
+  opacity: 1;
+}
+
+/* Ensure badges don't interfere with checkbox styling */
+li[data-task] .task-list-item-checkbox {
+  margin-right: 8px;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .task-sync-todo-badges {
+    flex-direction: column;
+    gap: 2px;
+    margin-left: 4px;
+  }
+
+  .task-sync-todo-category-badge,
+  .task-sync-todo-priority-badge,
+  .task-sync-todo-status-badge {
+    font-size: 0.6em;
+    padding: 1px 4px;
+    min-width: 30px;
+  }
+}
