@@ -110,17 +110,17 @@ describe("LocalTasksService", () => {
       category: "Feature",
     });
 
-    // Open Tasks view and switch to local service
+    // Open Tasks view and switch to GitHub service (which shows context widget)
     await openTasksView(context.page);
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
+    const githubTab = context.page.locator('[data-testid="service-github"]');
+    await githubTab.click();
 
-    // Wait for tasks to load
-    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
+    // Wait for GitHub service to load
+    await context.page.waitForSelector('[data-testid="github-service"]', {
       timeout: 10000,
     });
 
-    // Should show context widget in tasks view
+    // Should show context widget in tasks view for GitHub service
     await context.page.waitForSelector(
       '[data-testid="tasks-view"] .context-widget',
       {
@@ -133,18 +133,20 @@ describe("LocalTasksService", () => {
     const contextWidget = context.page.locator(
       '[data-testid="tasks-view"] .context-widget'
     );
-    await context.page.waitForSelector(
-      '[data-testid="tasks-view"] .context-widget',
-      {
-        state: "visible",
-        timeout: 5000,
-      }
-    );
 
     const contextText = await contextWidget
       .locator(".context-text")
       .textContent();
     expect(contextText).toContain("Import context: No context");
+
+    // Switch back to local service to test local task functionality
+    const localTab = context.page.locator('[data-testid="service-local"]');
+    await localTab.click();
+
+    // Wait for tasks to load
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
+      timeout: 10000,
+    });
 
     // Initially should show "Open" button on hover (not in daily note mode)
     const taskItem = context.page
@@ -211,18 +213,15 @@ describe("LocalTasksService", () => {
       }
     }, dailyNotePath);
 
-    // Open Tasks view and switch to local service
+    // Open Tasks view and switch to GitHub service to check context widget
     await openTasksView(context.page);
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
+    const githubTab = context.page.locator('[data-testid="service-github"]');
+    await githubTab.click();
 
-    // Wait for tasks to load
-    await context.page.waitForSelector(
-      '[data-testid="local-task-item-daily-planning-task"]',
-      {
-        timeout: 10000,
-      }
-    );
+    // Wait for GitHub service to load
+    await context.page.waitForSelector('[data-testid="github-service"]', {
+      timeout: 10000,
+    });
 
     // Wait for the context to update to daily note mode
     await context.page.waitForSelector(
@@ -241,6 +240,18 @@ describe("LocalTasksService", () => {
       .locator(".context-text")
       .textContent();
     expect(contextText).toContain("Import context: Daily Note");
+
+    // Switch to local service to test day planning functionality
+    const localTab = context.page.locator('[data-testid="service-local"]');
+    await localTab.click();
+
+    // Wait for tasks to load
+    await context.page.waitForSelector(
+      '[data-testid="local-task-item-daily-planning-task"]',
+      {
+        timeout: 10000,
+      }
+    );
 
     // Should now be in day planning mode - hover over the specific task to see "Add to today" button
     const taskItem = context.page.locator(

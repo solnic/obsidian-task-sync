@@ -11,6 +11,7 @@ import {
   getFileContent,
   fileExists,
   verifyTaskProperties,
+  createFullyQualifiedLink,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createArea, createTask } from "../helpers/entity-helpers";
@@ -41,8 +42,8 @@ describe("File Name Sanitization and Base Formulas", () => {
     await verifyTaskProperties(context.page, `Tasks/${sanitizedTaskName}.md`, {
       Title: taskName,
       Category: "Feature",
-      Areas: ["[[Development]]"],
-      Project: "[[Website Redesign]]",
+      Areas: [createFullyQualifiedLink("Development", "Areas")],
+      Project: createFullyQualifiedLink("Website Redesign", "Projects"),
       Done: false,
       Status: "In Progress",
     });

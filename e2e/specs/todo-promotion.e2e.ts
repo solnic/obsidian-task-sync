@@ -7,6 +7,7 @@ import {
   getFileContent,
   fileExists,
   createTestFolders,
+  createFullyQualifiedLink,
 } from "../helpers/task-sync-setup";
 import {
   setupE2ETestHooks,
@@ -41,14 +42,14 @@ describe("Todo Promotion E2E", () => {
     // Verify the task file was created
     const taskExists = await fileExists(
       context.page,
-      "Tasks/Buy groceries for the week.md",
+      "Tasks/Buy groceries for the week.md"
     );
     expect(taskExists).toBe(true);
 
     // Verify the original file was updated
     const updatedContent = await getFileContent(
       context.page,
-      "Areas/Personal.md",
+      "Areas/Personal.md"
     );
     expect(updatedContent).toContain("[[Buy groceries for the week]]");
     expect(updatedContent).not.toContain("- [ ] Buy groceries for the week");
@@ -78,14 +79,14 @@ describe("Todo Promotion E2E", () => {
     // Verify the task file was created
     const taskExists = await fileExists(
       context.page,
-      "Tasks/Finish the documentation.md",
+      "Tasks/Finish the documentation.md"
     );
     expect(taskExists).toBe(true);
 
     // Verify the original file preserves completion state
     const updatedContent = await getFileContent(
       context.page,
-      "Projects/Documentation.md",
+      "Projects/Documentation.md"
     );
     expect(updatedContent).toContain("[x] [[Finish the documentation]]");
     expect(updatedContent).not.toContain("- [x] Finish the documentation");
@@ -115,7 +116,7 @@ describe("Todo Promotion E2E", () => {
     // Verify the task file was created
     const taskExists = await fileExists(
       context.page,
-      "Tasks/Nested todo item.md",
+      "Tasks/Nested todo item.md"
     );
     expect(taskExists).toBe(true);
 
@@ -149,7 +150,7 @@ describe("Todo Promotion E2E", () => {
     // Verify no task was created for regular text
     const taskExists = await fileExists(
       context.page,
-      "Tasks/This is just regular text.md",
+      "Tasks/This is just regular text.md"
     );
     expect(taskExists).toBe(false);
   });
@@ -178,7 +179,7 @@ describe("Todo Promotion E2E", () => {
     // Verify the task was created and original line updated
     const taskExists = await fileExists(
       context.page,
-      "Tasks/Asterisk todo item.md",
+      "Tasks/Asterisk todo item.md"
     );
     expect(taskExists).toBe(true);
 
@@ -211,17 +212,19 @@ describe("Todo Promotion E2E", () => {
     // Verify the task file was created
     const taskExists = await fileExists(
       context.page,
-      "Tasks/Task with area context.md",
+      "Tasks/Task with area context.md"
     );
     expect(taskExists).toBe(true);
 
     // Verify the task has the correct area context in front-matter
     const taskContent = await getFileContent(
       context.page,
-      "Tasks/Task with area context.md",
+      "Tasks/Task with area context.md"
     );
     expect(taskContent).toContain("Areas:");
-    expect(taskContent).toContain(`- "[[Work]]"`);
+    expect(taskContent).toContain(
+      `- "${createFullyQualifiedLink("Work", "Areas")}"`
+    );
   });
 
   test("should set context properties correctly when promoting todo in project", async () => {
@@ -248,16 +251,18 @@ describe("Todo Promotion E2E", () => {
     // Verify the task file was created
     const taskExists = await fileExists(
       context.page,
-      "Tasks/Task with project context.md",
+      "Tasks/Task with project context.md"
     );
     expect(taskExists).toBe(true);
 
     // Verify the task has the correct project context in front-matter
     const taskContent = await getFileContent(
       context.page,
-      "Tasks/Task with project context.md",
+      "Tasks/Task with project context.md"
     );
-    expect(taskContent).toContain(`Project: "[[Website Redesign]]"`);
+    expect(taskContent).toContain(
+      `Project: "${createFullyQualifiedLink("Website Redesign", "Projects")}"`
+    );
   });
 
   test("should promote nested todos and create parent-child relationships", async () => {
@@ -287,19 +292,19 @@ describe("Todo Promotion E2E", () => {
     // Verify all tasks were created
     const parentExists = await fileExists(
       context.page,
-      "Tasks/Parent task with children.md",
+      "Tasks/Parent task with children.md"
     );
     const child1Exists = await fileExists(
       context.page,
-      "Tasks/First child task.md",
+      "Tasks/First child task.md"
     );
     const child2Exists = await fileExists(
       context.page,
-      "Tasks/Second child task.md",
+      "Tasks/Second child task.md"
     );
     const child3Exists = await fileExists(
       context.page,
-      "Tasks/Completed child task.md",
+      "Tasks/Completed child task.md"
     );
 
     expect(parentExists).toBe(true);
@@ -310,16 +315,19 @@ describe("Todo Promotion E2E", () => {
     // Verify child tasks have parent task set
     const child1Content = await getFileContent(
       context.page,
-      "Tasks/First child task.md",
+      "Tasks/First child task.md"
     );
     expect(child1Content).toContain(
-      `Parent task: "[[Parent task with children]]"`,
+      `Parent task: "${createFullyQualifiedLink(
+        "Parent task with children",
+        "Tasks"
+      )}"`
     );
 
     // Verify completed child task has correct status
     const child3Content = await getFileContent(
       context.page,
-      "Tasks/Completed child task.md",
+      "Tasks/Completed child task.md"
     );
     expect(child3Content).toContain("Done: true");
     expect(child3Content).toContain("Status: Done");
@@ -327,7 +335,7 @@ describe("Todo Promotion E2E", () => {
     // Verify all todo lines were replaced with links
     const updatedContent = await getFileContent(
       context.page,
-      "Areas/Nested.md",
+      "Areas/Nested.md"
     );
     expect(updatedContent).toContain("[[Parent task with children]]");
     expect(updatedContent).toContain("[[First child task]]");
@@ -360,7 +368,7 @@ describe("Todo Promotion E2E", () => {
     // Verify parent was promoted and line was linkified
     let updatedContent = await getFileContent(
       context.page,
-      "Areas/DoubleLink.md",
+      "Areas/DoubleLink.md"
     );
     expect(updatedContent).toContain("[[Already promoted parent]]");
 
@@ -375,7 +383,7 @@ describe("Todo Promotion E2E", () => {
     // Verify child was promoted
     const childExists = await fileExists(
       context.page,
-      "Tasks/Child to promote later.md",
+      "Tasks/Child to promote later.md"
     );
     expect(childExists).toBe(true);
 
@@ -412,11 +420,11 @@ describe("Todo Promotion E2E", () => {
     // Verify both tasks were created
     const parentExists = await fileExists(
       context.page,
-      "Tasks/Main parent task.md",
+      "Tasks/Main parent task.md"
     );
     const childExists = await fileExists(
       context.page,
-      "Tasks/Sub-task to promote.md",
+      "Tasks/Sub-task to promote.md"
     );
     expect(parentExists).toBe(true);
     expect(childExists).toBe(true);
@@ -426,10 +434,12 @@ describe("Todo Promotion E2E", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Sub-task to promote.md",
+        "Tasks/Sub-task to promote.md"
       );
     });
 
-    expect(childFrontMatter["Parent task"]).toBe("[[Main parent task]]");
+    expect(childFrontMatter["Parent task"]).toBe(
+      createFullyQualifiedLink("Main parent task", "Tasks")
+    );
   });
 });

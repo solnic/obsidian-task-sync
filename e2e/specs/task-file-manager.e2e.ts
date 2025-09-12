@@ -9,6 +9,7 @@ import {
   fileExists,
   waitForTaskSyncPlugin,
   verifyTaskProperties,
+  createFullyQualifiedLink,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
@@ -53,8 +54,8 @@ describe("TaskFileManager Service", () => {
       Title: taskData.title,
       Type: "Task",
       Priority: taskData.priority,
-      Areas: ["[[Development]]"],
-      Project: "[[Website Redesign]]",
+      Areas: [createFullyQualifiedLink("Development", "Areas")],
+      Project: createFullyQualifiedLink("Website Redesign", "Projects"),
       Done: taskData.done,
       Status: taskData.status,
     });
@@ -75,8 +76,11 @@ describe("TaskFileManager Service", () => {
       Title: "Test Task",
       Type: "Task",
       Priority: "Medium",
-      Areas: ["[[Development]]", "[[Testing]]"],
-      Project: "[[Test Project]]",
+      Areas: [
+        createFullyQualifiedLink("Development", "Areas"),
+        createFullyQualifiedLink("Testing", "Areas"),
+      ],
+      Project: createFullyQualifiedLink("Test Project", "Projects"),
       Done: false,
       Status: "Todo",
     });

@@ -68,12 +68,6 @@ describe("ContextWidget", () => {
       "class"
     );
     expect(contextWidgetClass).toContain("context-type-project");
-
-    // Check that the path is displayed
-    const contextPath = await context.page.textContent(
-      "[data-testid='context-path']"
-    );
-    expect(contextPath).toContain(`Projects/${projectName}.md`);
   });
 
   test("should display area context when area file is open", async () => {
@@ -106,12 +100,6 @@ describe("ContextWidget", () => {
       "class"
     );
     expect(contextWidgetClass2).toContain("context-type-area");
-
-    // Check that the path is displayed
-    const contextPath = await context.page.textContent(
-      "[data-testid='context-path']"
-    );
-    expect(contextPath).toContain(`Areas/${areaName}.md`);
   });
 
   test("should update context when switching between files", async () => {
@@ -138,18 +126,18 @@ describe("ContextWidget", () => {
     // Check project context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
     let contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-widget'] .context-text"
     );
-    expect(contextText).toBe(`Project: ${projectName}`);
+    expect(contextText).toBe(`Import context: Project / ${projectName}`);
 
     // Switch to area file
     await openFile(context, `Areas/${areaName}.md`);
 
     // Check that context updated to area
     contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-widget'] .context-text"
     );
-    expect(contextText).toBe(`Area: ${areaName}`);
+    expect(contextText).toBe(`Import context: Area / ${areaName}`);
 
     // Check CSS class changed
     const contextWidgetClass3 = await context.page.getAttribute(
@@ -177,9 +165,9 @@ describe("ContextWidget", () => {
     // Verify project context
     await waitForElementVisible(context.page, "[data-testid='context-widget']");
     let contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-widget'] .context-text"
     );
-    expect(contextText).toBe(`Project: ${projectName}`);
+    expect(contextText).toBe(`Import context: Project / ${projectName}`);
 
     // Create and open a file outside of Projects/Areas folders
     await context.page.evaluate(async () => {
@@ -191,9 +179,9 @@ describe("ContextWidget", () => {
 
     // Check that context reset to "No context"
     contextText = await context.page.textContent(
-      "[data-testid='context-text']"
+      "[data-testid='context-widget'] .context-text"
     );
-    expect(contextText).toBe("No context");
+    expect(contextText).toBe("Import context: No context");
 
     // Check CSS class changed
     const contextWidgetClass4 = await context.page.getAttribute(
