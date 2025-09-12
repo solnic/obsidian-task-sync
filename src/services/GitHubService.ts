@@ -553,6 +553,31 @@ export class GitHubService extends AbstractService {
   }
 
   /**
+   * Get the authenticated user information
+   */
+  async getCurrentUser(): Promise<{
+    login: string;
+    id: number;
+    avatar_url: string;
+  } | null> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    try {
+      const response = await this.octokit.rest.users.getAuthenticated();
+      return {
+        login: response.data.login,
+        id: response.data.id,
+        avatar_url: response.data.avatar_url,
+      };
+    } catch (error) {
+      console.error("Failed to fetch current user:", error);
+      return null;
+    }
+  }
+
+  /**
    * Import GitHub issue as Obsidian task
    */
   async importIssueAsTask(

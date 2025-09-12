@@ -1819,22 +1819,7 @@ Provides consistent styling for all UI components
   outline-offset: 2px;
 }
 
-.action-buttons {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  background: rgba(var(--background-primary-rgb), 0.9);
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  opacity: 1;
-  transition: opacity 0.2s ease;
-  z-index: 10;
-}
+
 
 .add-to-today-button,
 .open-task-button {
@@ -2143,6 +2128,15 @@ button.tab-item.active {
 .github-service-header,
 .task-service-header {
   margin-bottom: 1rem;
+}
+
+.local-tasks-section-title h3 {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-normal);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 8px;
 }
 
 .search-and-filters {
@@ -2827,6 +2821,41 @@ button.tab-item.active {
 .task-sync-text-button {
   min-width: 100px;
   justify-content: flex-start;
+}
+
+.task-sync-property-button.active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+}
+
+.filter-clear-button {
+  margin-left: auto;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.filter-clear-button:hover {
+  background: rgba(var(--text-error-rgb), 0.1);
+  color: var(--text-error);
+  opacity: 1;
+}
+
+.task-sync-property-button.active .filter-clear-button {
+  color: var(--text-on-accent);
+  opacity: 0.8;
+}
+
+.task-sync-property-button.active .filter-clear-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--text-on-accent);
+  opacity: 1;
 }
 
 .task-sync-button-label {

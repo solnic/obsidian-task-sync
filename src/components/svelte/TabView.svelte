@@ -43,7 +43,6 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: var(--background-primary);
   }
 
   .task-sync-tab-header {

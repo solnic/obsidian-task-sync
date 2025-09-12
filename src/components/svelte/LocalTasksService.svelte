@@ -7,6 +7,7 @@
   import FilterButton from "./FilterButton.svelte";
   import LocalTaskItem from "./LocalTaskItem.svelte";
   import { getFilterOptions } from "../../utils/contextFiltering";
+  import { extractDisplayValue } from "../../utils/linkUtils";
   import type { Task } from "../../types/entities";
   import type { FileContext } from "../../main";
 
@@ -30,6 +31,8 @@
   // Additional filter state
   let selectedProject = $state<string | null>(null);
   let selectedArea = $state<string | null>(null);
+  let selectedSource = $state<string | null>(null);
+  let showCompleted = $state(false);
 
   // Subscribe to context changes
   $effect(() => {
@@ -54,7 +57,8 @@
       if (selectedProject) {
         const taskProject =
           typeof task.project === "string"
-            ? task.project.replace(/^\[\[|\]\]$/g, "")
+            ? extractDisplayValue(task.project) ||
+              task.project.replace(/^\[\[|\]\]$/g, "")
             : task.project;
         if (taskProject !== selectedProject) {
           return false;
@@ -67,15 +71,34 @@
         if (task.areas) {
           if (Array.isArray(task.areas)) {
             taskAreas = task.areas.map((area) =>
-              typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area
+              typeof area === "string"
+                ? extractDisplayValue(area) || area.replace(/^\[\[|\]\]$/g, "")
+                : area
             );
           } else if (typeof (task.areas as any) === "string") {
-            taskAreas = [(task.areas as any).replace(/^\[\[|\]\]$/g, "")];
+            const areaStr = task.areas as any;
+            taskAreas = [
+              extractDisplayValue(areaStr) ||
+                areaStr.replace(/^\[\[|\]\]$/g, ""),
+            ];
           }
         }
         if (!taskAreas.includes(selectedArea)) {
           return false;
         }
+      }
+
+      // Source filter
+      if (selectedSource) {
+        const taskSource = task.source?.name;
+        if (taskSource !== selectedSource) {
+          return false;
+        }
+      }
+
+      // Completed filter - exclude completed tasks unless showCompleted is true
+      if (!showCompleted && task.done === true) {
+        return false;
       }
 
       return true;
@@ -179,6 +202,11 @@
 >
   <!-- Header Section -->
   <div class="local-tasks-header">
+    <!-- Section Title -->
+    <div class="local-tasks-section-title">
+      <h3>Local Tasks</h3>
+    </div>
+
     <!-- Search and Filters -->
     <div class="search-and-filters">
       <SearchInput
@@ -193,8 +221,13 @@
       <div class="task-sync-local-filters">
         <FilterButton
           label="Project"
-          currentValue={selectedProject || "All projects"}
-          options={["All projects", ...filterOptions.projects]}
+          currentValue={selectedProject
+            ? extractDisplayValue(selectedProject) || selectedProject
+            : "All projects"}
+          options={[
+            "All projects",
+            ...filterOptions.projects.map((p) => extractDisplayValue(p) || p),
+          ]}
           onselect={(value: string) =>
             (selectedProject = value === "All projects" ? null : value)}
           placeholder="All projects"
@@ -205,8 +238,13 @@
 
         <FilterButton
           label="Area"
-          currentValue={selectedArea || "All areas"}
-          options={["All areas", ...filterOptions.areas]}
+          currentValue={selectedArea
+            ? extractDisplayValue(selectedArea) || selectedArea
+            : "All areas"}
+          options={[
+            "All areas",
+            ...filterOptions.areas.map((a) => extractDisplayValue(a) || a),
+          ]}
           onselect={(value: string) =>
             (selectedArea = value === "All areas" ? null : value)}
           placeholder="All areas"
@@ -214,6 +252,29 @@
           autoSuggest={true}
           allowClear={true}
         />
+
+        <FilterButton
+          label="Source"
+          currentValue={selectedSource || "All sources"}
+          options={["All sources", ...filterOptions.sources]}
+          onselect={(value: string) =>
+            (selectedSource = value === "All sources" ? null : value)}
+          placeholder="All sources"
+          testId="source-filter"
+          autoSuggest={true}
+          allowClear={true}
+        />
+
+        <!-- Show completed toggle -->
+        <button
+          class="task-sync-filter-toggle {showCompleted ? 'active' : ''}"
+          onclick={() => (showCompleted = !showCompleted)}
+          data-testid="show-completed-toggle"
+          type="button"
+          title="Toggle showing completed tasks"
+        >
+          Show completed
+        </button>
       </div>
     </div>
   </div>
@@ -237,7 +298,8 @@
             <LocalTaskItem
               {task}
               isHovered={hoveredTask === task.id}
-              onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
+              onHover={(hovered: boolean) =>
+                (hoveredTask = hovered ? task.id : null)}
               onClick={() => {
                 if (task.file) {
                   plugin.app.workspace.getLeaf().openFile(task.file);

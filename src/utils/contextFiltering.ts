@@ -6,6 +6,7 @@
 import type { Task } from "../types/entities";
 import type { FileContext } from "../main";
 import type { GitHubIssue, GitHubPullRequest } from "../services/GitHubService";
+import { extractDisplayValue } from "./linkUtils";
 
 export interface FilterState {
   project: string | null;
@@ -60,7 +61,8 @@ export function filterLocalTasks(
     if (combinedFilters.project) {
       const taskProject =
         typeof task.project === "string"
-          ? task.project.replace(/^\[\[|\]\]$/g, "")
+          ? extractDisplayValue(task.project) ||
+            task.project.replace(/^\[\[|\]\]$/g, "")
           : task.project; // Remove wiki link brackets
       if (taskProject !== combinedFilters.project) {
         return false;
@@ -73,11 +75,16 @@ export function filterLocalTasks(
       if (task.areas) {
         if (Array.isArray(task.areas)) {
           taskAreas = task.areas.map((area) =>
-            typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area
+            typeof area === "string"
+              ? extractDisplayValue(area) || area.replace(/^\[\[|\]\]$/g, "")
+              : area
           );
         } else if (typeof (task.areas as any) === "string") {
           // Handle case where areas is a single string instead of array (runtime safety)
-          taskAreas = [(task.areas as any).replace(/^\[\[|\]\]$/g, "")];
+          const areaStr = task.areas as any;
+          taskAreas = [
+            extractDisplayValue(areaStr) || areaStr.replace(/^\[\[|\]\]$/g, ""),
+          ];
         }
       }
       if (!taskAreas.includes(combinedFilters.area)) {
@@ -89,7 +96,8 @@ export function filterLocalTasks(
     if (combinedFilters.parentTask) {
       const taskParent =
         typeof task.parentTask === "string"
-          ? task.parentTask.replace(/^\[\[|\]\]$/g, "")
+          ? extractDisplayValue(task.parentTask) ||
+            task.parentTask.replace(/^\[\[|\]\]$/g, "")
           : task.parentTask; // Remove wiki link brackets
       if (taskParent !== combinedFilters.parentTask) {
         return false;
@@ -191,17 +199,20 @@ export function getFilterOptions(tasks: Task[]): {
   projects: string[];
   areas: string[];
   parentTasks: string[];
+  sources: string[];
 } {
   const projects = new Set<string>();
   const areas = new Set<string>();
   const parentTasks = new Set<string>();
+  const sources = new Set<string>();
 
   tasks.forEach((task) => {
     // Collect projects
     if (task.project) {
       const project =
         typeof task.project === "string"
-          ? task.project.replace(/^\[\[|\]\]$/g, "")
+          ? extractDisplayValue(task.project) ||
+            task.project.replace(/^\[\[|\]\]$/g, "")
           : task.project;
       if (project) {
         projects.add(project);
@@ -213,14 +224,18 @@ export function getFilterOptions(tasks: Task[]): {
       if (Array.isArray(task.areas)) {
         task.areas.forEach((area) => {
           const cleanArea =
-            typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area;
+            typeof area === "string"
+              ? extractDisplayValue(area) || area.replace(/^\[\[|\]\]$/g, "")
+              : area;
           if (cleanArea) {
             areas.add(cleanArea);
           }
         });
       } else if (typeof (task.areas as any) === "string") {
         // Handle case where areas is a single string (runtime safety)
-        const cleanArea = (task.areas as any).replace(/^\[\[|\]\]$/g, "");
+        const areaStr = task.areas as any;
+        const cleanArea =
+          extractDisplayValue(areaStr) || areaStr.replace(/^\[\[|\]\]$/g, "");
         if (cleanArea) {
           areas.add(cleanArea);
         }
@@ -231,11 +246,17 @@ export function getFilterOptions(tasks: Task[]): {
     if (task.parentTask) {
       const parent =
         typeof task.parentTask === "string"
-          ? task.parentTask.replace(/^\[\[|\]\]$/g, "")
+          ? extractDisplayValue(task.parentTask) ||
+            task.parentTask.replace(/^\[\[|\]\]$/g, "")
           : task.parentTask;
       if (parent) {
         parentTasks.add(parent);
       }
+    }
+
+    // Collect sources
+    if (task.source?.name) {
+      sources.add(task.source.name);
     }
   });
 
@@ -243,6 +264,7 @@ export function getFilterOptions(tasks: Task[]): {
     projects: Array.from(projects).sort(),
     areas: Array.from(areas).sort(),
     parentTasks: Array.from(parentTasks).sort(),
+    sources: Array.from(sources).sort(),
   };
 }
 

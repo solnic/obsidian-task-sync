@@ -85,18 +85,20 @@
   .context-widget {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 6px 12px;
-    background: var(--background-primary);
-    border-radius: 4px;
-    font-size: 12px;
-    margin-bottom: 8px;
+    gap: 12px;
+    padding: 0;
+    background: transparent;
+    border-radius: 0;
+    font-size: 14px;
+    margin: 0;
     border: none;
+    width: 100%;
+    height: 100%;
   }
 
   .context-type-indicator {
-    width: 3px;
-    height: 16px;
+    width: 4px;
+    height: 20px;
     border-radius: 2px;
     flex-shrink: 0;
   }
@@ -120,12 +122,12 @@
   .context-content {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     flex-grow: 1;
   }
 
   .context-type-label {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--text-muted);
     font-weight: 500;
     text-transform: uppercase;
@@ -134,7 +136,8 @@
 
   .context-name {
     color: var(--text-normal);
-    font-weight: 500;
+    font-weight: 600;
+    font-size: 16px;
   }
 
   .import-indicator {

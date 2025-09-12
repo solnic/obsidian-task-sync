@@ -193,9 +193,6 @@
     <div class="task-sync-action-overlay">
       {@render actions()}
     </div>
-  {:else}
-    <!-- Debug: Show why action overlay is not rendered -->
-    <!-- actionContent: {actionContent}, isHovered: {isHovered}, actions: {!!actions}, title: {title.substring(0, 20)} -->
   {/if}
 </div>
 

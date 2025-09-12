@@ -63,6 +63,13 @@
   let importedPullRequests = $state(new Set<number>());
   let hoveredIssue = $state<number | null>(null);
   let hoveredPullRequest = $state<number | null>(null);
+  let currentUser = $state<{
+    login: string;
+    id: number;
+    avatar_url: string;
+  } | null>(null);
+  let recentlyUsedOrgs = $state<string[]>([]);
+  let recentlyUsedRepos = $state<string[]>([]);
 
   // Computed
   let filteredIssues = $derived.by(() => {
@@ -109,6 +116,35 @@
     });
   });
 
+  // Computed repository display options - show just repo name when org is selected
+  let repositoryDisplayOptions = $derived.by(() => {
+    if (currentOrganization) {
+      // When an org is selected, show just the repo name
+      return sortedRepositories.map((repo) => repo.name);
+    } else {
+      // When no org is selected, show full name
+      return sortedRepositories.map((repo) => repo.full_name);
+    }
+  });
+
+  // Computed current repository display value
+  let currentRepositoryDisplay = $derived.by(() => {
+    if (!currentRepository) {
+      return "All repositories";
+    }
+
+    if (
+      currentOrganization &&
+      currentRepository.startsWith(currentOrganization + "/")
+    ) {
+      // Show just the repo name when org is selected
+      return currentRepository.split("/")[1];
+    } else {
+      // Show full name when no org is selected
+      return currentRepository;
+    }
+  });
+
   let availableOrganizations = $derived.by(() => {
     const orgSet = new Set<string>();
     repositories.forEach((repo) => {
@@ -118,17 +154,82 @@
     return Array.from(orgSet).sort();
   });
 
+  // Computed organization options with recently used at the top
+  let organizationOptions = $derived.by(() => {
+    const allOrgs = availableOrganizations;
+    const recentOrgs = recentlyUsedOrgs.filter((org) => allOrgs.includes(org));
+    const otherOrgs = allOrgs.filter((org) => !recentOrgs.includes(org));
+
+    const options = ["All organizations"];
+    if (recentOrgs.length > 0) {
+      options.push(...recentOrgs);
+      if (otherOrgs.length > 0) {
+        options.push("---"); // Separator
+        options.push(...otherOrgs);
+      }
+    } else {
+      options.push(...otherOrgs);
+    }
+
+    return options;
+  });
+
+  // Computed repository options with recently used at the top
+  let repositoryOptionsWithRecent = $derived.by(() => {
+    const allOptions = repositoryDisplayOptions;
+    const recentRepos = recentlyUsedRepos
+      .filter((repo) => {
+        // Check if the repo exists in current filtered repositories
+        if (currentOrganization) {
+          // When org is selected, check if repo name exists
+          return sortedRepositories.some(
+            (r) => r.name === repo || r.full_name === repo
+          );
+        } else {
+          // When no org is selected, check full names
+          return sortedRepositories.some((r) => r.full_name === repo);
+        }
+      })
+      .map((repo) => {
+        // Convert to display format
+        if (currentOrganization && repo.includes("/")) {
+          return repo.split("/")[1];
+        }
+        return repo;
+      });
+
+    const otherOptions = allOptions.filter(
+      (option) => !recentRepos.includes(option)
+    );
+
+    const options = ["All repositories"];
+    if (recentRepos.length > 0) {
+      options.push(...recentRepos);
+      if (otherOptions.length > 0) {
+        options.push("---"); // Separator
+        options.push(...otherOptions);
+      }
+    } else {
+      options.push(...otherOptions);
+    }
+
+    return options;
+  });
+
   onMount(() => {
     if (githubService.isEnabled()) {
-      loadRepositories()
-        .then(() => {
+      Promise.all([
+        loadCurrentUser(),
+        loadRecentlyUsedFilters(),
+        loadRepositories().then(async () => {
           if (currentRepository) {
-            return loadIssues();
+            await loadIssues();
+            await loadLabels();
           }
-        })
-        .catch((err) => {
-          error = err.message || "Failed to load GitHub data";
-        });
+        }),
+      ]).catch((err) => {
+        error = err.message || "Failed to load GitHub data";
+      });
 
       refreshImportStatus();
     }
@@ -156,14 +257,66 @@
     }
   }
 
-  function getCurrentUser(): string | null {
-    // Extract the username from the first repository's full_name (owner/repo)
-    if (repositories.length > 0) {
-      const fullName = repositories[0].full_name;
-      const [owner] = fullName.split("/");
-      return owner;
+  async function loadCurrentUser(): Promise<void> {
+    if (!githubService.isEnabled()) {
+      return;
     }
-    return null;
+
+    try {
+      currentUser = await githubService.getCurrentUser();
+    } catch (err: any) {
+      console.warn("Failed to load current user:", err.message);
+      currentUser = null;
+    }
+  }
+
+  function getCurrentUser(): string | null {
+    return currentUser?.login || null;
+  }
+
+  async function loadRecentlyUsedFilters(): Promise<void> {
+    try {
+      const data = await plugin.loadData();
+      if (data?.githubRecentlyUsed) {
+        recentlyUsedOrgs = data.githubRecentlyUsed.organizations || [];
+        recentlyUsedRepos = data.githubRecentlyUsed.repositories || [];
+      }
+    } catch (err: any) {
+      console.warn("Failed to load recently used filters:", err.message);
+    }
+  }
+
+  async function saveRecentlyUsedFilters(): Promise<void> {
+    try {
+      const data = (await plugin.loadData()) || {};
+      data.githubRecentlyUsed = {
+        organizations: recentlyUsedOrgs,
+        repositories: recentlyUsedRepos,
+      };
+      await plugin.saveData(data);
+    } catch (err: any) {
+      console.warn("Failed to save recently used filters:", err.message);
+    }
+  }
+
+  function addRecentlyUsedOrg(org: string): void {
+    if (!org || recentlyUsedOrgs.includes(org)) return;
+
+    recentlyUsedOrgs = [
+      org,
+      ...recentlyUsedOrgs.filter((o) => o !== org),
+    ].slice(0, 5);
+    saveRecentlyUsedFilters();
+  }
+
+  function addRecentlyUsedRepo(repo: string): void {
+    if (!repo || recentlyUsedRepos.includes(repo)) return;
+
+    recentlyUsedRepos = [
+      repo,
+      ...recentlyUsedRepos.filter((r) => r !== repo),
+    ].slice(0, 5);
+    saveRecentlyUsedFilters();
   }
 
   function filterIssues(
@@ -379,13 +532,22 @@
   }
 
   async function setRepository(repository: string | null): Promise<void> {
+    currentRepository = repository;
+
     if (repository) {
-      currentRepository = repository;
+      // Track recently used repository
+      addRecentlyUsedRepo(repository);
+
       await loadIssues();
       await loadLabels();
       if (activeTab === "pull-requests") {
         await loadPullRequests();
       }
+    } else {
+      // Clear data when repository is cleared
+      issues = [];
+      pullRequests = [];
+      availableLabels = [];
     }
   }
 
@@ -415,6 +577,12 @@
 
   function setOrganizationFilter(org: string | null): void {
     currentOrganization = org;
+
+    // Track recently used organization
+    if (org) {
+      addRecentlyUsedOrg(org);
+    }
+
     // Reset repository selection when changing organization
     if (org && !currentRepository.startsWith(org + "/")) {
       const firstRepoInOrg = filteredRepositories[0];
@@ -708,15 +876,18 @@
             <FilterButton
               label="Organization"
               currentValue={currentOrganization || "All organizations"}
-              options={availableOrganizations}
+              options={organizationOptions}
               placeholder="All organizations"
               onselect={(value) =>
                 setOrganizationFilter(
-                  value === "All organizations" ? null : value
+                  value === "All organizations" || value === "---"
+                    ? null
+                    : value
                 )}
               testId="organization-filter"
               autoSuggest={true}
               allowClear={true}
+              isActive={!!currentOrganization}
             />
           </div>
 
@@ -724,14 +895,25 @@
           <div class="task-sync-filter-group task-sync-filter-group--repo">
             <FilterButton
               label="Repository"
-              currentValue={currentRepository || "All repositories"}
-              options={sortedRepositories.map((repo) => repo.full_name)}
+              currentValue={currentRepositoryDisplay}
+              options={repositoryOptionsWithRecent}
               placeholder="All repositories"
-              onselect={(value) =>
-                setRepository(value === "All repositories" ? null : value)}
+              onselect={(value) => {
+                if (value === "All repositories" || value === "---") {
+                  setRepository(null);
+                } else {
+                  // Convert display value back to full name
+                  let fullName = value;
+                  if (currentOrganization && !value.includes("/")) {
+                    fullName = `${currentOrganization}/${value}`;
+                  }
+                  setRepository(fullName);
+                }
+              }}
               testId="repository-filter"
               autoSuggest={true}
               allowClear={true}
+              isActive={!!currentRepository}
             />
           </div>
 
@@ -759,6 +941,7 @@
                 ...availableLabels.map((label) => label.name),
               ]}
               placeholder="All labels"
+              disabled={availableLabels.length === 0}
               onselect={(value) => {
                 if (value === "All labels") {
                   setLabelsFilter([]);
@@ -773,6 +956,7 @@
               testId="labels-filter"
               autoSuggest={true}
               allowClear={true}
+              isActive={selectedLabels.length > 0}
             />
           </div>
         </div>

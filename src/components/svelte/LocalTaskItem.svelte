@@ -61,12 +61,20 @@
     }> = [];
 
     if (task.project) {
-      result.push({ text: task.project, type: "project" });
+      // Remove wiki link brackets from project
+      const cleanProject =
+        typeof task.project === "string"
+          ? task.project.replace(/^\[\[|\]\]$/g, "")
+          : task.project;
+      result.push({ text: cleanProject, type: "project" });
     }
 
     if (task.areas && Array.isArray(task.areas) && task.areas.length > 0) {
       task.areas.forEach((area) => {
-        result.push({ text: area, type: "area" });
+        // Remove wiki link brackets from areas
+        const cleanArea =
+          typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area;
+        result.push({ text: cleanArea, type: "area" });
       });
     }
 
@@ -82,101 +90,86 @@
   }
 </script>
 
-<!-- Clickable wrapper for local tasks -->
-<div
-  class="local-task-item-wrapper"
-  onclick={handleOpenTask}
-  onkeydown={(event) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleOpenTask();
-    }
-  }}
-  role="button"
-  tabindex="0"
-  data-testid={testId}
+{#snippet actionSnippet()}
+  {#if dayPlanningMode}
+    <button
+      class="add-to-today-button"
+      title="Add to today"
+      onclick={handleAddToToday}
+      data-testid="add-to-today-button"
+    >
+      Add to today
+    </button>
+  {:else}
+    <button
+      class="open-task-button"
+      title="Open task"
+      onclick={handleOpenTask}
+      data-testid="open-task-button"
+    >
+      Open
+    </button>
+  {/if}
+{/snippet}
+
+<TaskItem
+  title={task.title}
+  {isHovered}
+  {onHover}
+  source={task.source}
+  customContent={true}
+  actionContent={true}
+  actions={actionSnippet}
+  {testId}
 >
-  <TaskItem
-    title={task.title}
-    {isHovered}
-    {onHover}
-    source={task.source}
-    customContent={true}
-  >
-    <!-- Custom content with two badge rows -->
-    <div class="task-sync-item-header">
-      <div class="task-sync-item-title">{task.title}</div>
-    </div>
+  <!-- Custom content with two badge rows -->
+  <div class="task-sync-item-header">
+    <div class="task-sync-item-title">{task.title}</div>
+  </div>
 
-    <!-- Source information if available -->
-    {#if task.source}
-      <div class="task-sync-item-source">
-        <span
-          class="task-sync-source-badge"
-          title="Imported from {task.source.name}"
-        >
-          <span class="task-sync-source-icon">🔗</span>
-          {task.source.name}
-          {#if task.source.key}
-            <span class="task-sync-source-key">#{task.source.key}</span>
-          {/if}
-        </span>
-      </div>
-    {/if}
-
-    <!-- First row: category, priority, status badges -->
-    {#if primaryBadges.length > 0}
-      <div class="task-sync-item-badges">
-        {#each primaryBadges as badge}
-          {#if badge.type === "category"}
-            <CategoryBadge category={badge.text} size="small" />
-          {:else if badge.type === "status"}
-            <StatusBadge status={badge.text} size="small" />
-          {:else if badge.type === "priority"}
-            <PriorityBadge priority={badge.text} size="small" />
-          {/if}
-        {/each}
-      </div>
-    {/if}
-
-    <!-- Second row: project and area badges -->
-    {#if secondaryBadges.length > 0}
-      <div class="task-sync-item-badges">
-        {#each secondaryBadges as badge}
-          {#if badge.type === "project"}
-            <ProjectBadge project={badge.text} size="small" />
-          {:else if badge.type === "area"}
-            <AreaBadge area={badge.text} size="small" />
-          {/if}
-        {/each}
-      </div>
-    {/if}
-
-    <!-- Action buttons on hover -->
-    {#if isHovered}
-      <div class="action-buttons">
-        {#if dayPlanningMode}
-          <button
-            class="add-to-today-button"
-            title="Add to today"
-            onclick={handleAddToToday}
-            data-testid="add-to-today-button"
-          >
-            Add to today
-          </button>
-        {:else}
-          <button
-            class="open-task-button"
-            title="Open task"
-            onclick={handleOpenTask}
-            data-testid="open-task-button"
-          >
-            Open
-          </button>
+  <!-- Source information if available -->
+  {#if task.source}
+    <div class="task-sync-item-source">
+      <span
+        class="task-sync-source-badge"
+        title="Imported from {task.source.name}"
+      >
+        <span class="task-sync-source-icon">🔗</span>
+        {task.source.name}
+        {#if task.source.key}
+          <span class="task-sync-source-key">#{task.source.key}</span>
         {/if}
-      </div>
-    {/if}
-  </TaskItem>
-</div>
+      </span>
+    </div>
+  {/if}
+
+  <!-- First row: category, priority, status badges -->
+  {#if primaryBadges.length > 0}
+    <div class="task-sync-item-badges">
+      {#each primaryBadges as badge}
+        {#if badge.type === "category"}
+          <CategoryBadge category={badge.text} size="small" />
+        {:else if badge.type === "status"}
+          <StatusBadge status={badge.text} size="small" />
+        {:else if badge.type === "priority"}
+          <PriorityBadge priority={badge.text} size="small" />
+        {/if}
+      {/each}
+    </div>
+  {/if}
+
+  <!-- Second row: project and area badges -->
+  {#if secondaryBadges.length > 0}
+    <div class="task-sync-item-badges">
+      {#each secondaryBadges as badge}
+        {#if badge.type === "project"}
+          <ProjectBadge project={badge.text} size="small" />
+        {:else if badge.type === "area"}
+          <AreaBadge area={badge.text} size="small" />
+        {/if}
+      {/each}
+    </div>
+  {/if}
+</TaskItem>
 
 <!-- Styles moved to styles.css for consistency -->

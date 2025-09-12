@@ -14,6 +14,7 @@
     testId?: string;
     autoSuggest?: boolean; // Enable auto-suggest functionality
     allowClear?: boolean; // Allow clearing the selection
+    isActive?: boolean; // Whether the filter is currently active (has a non-default value)
   }
 
   let {
@@ -26,6 +27,7 @@
     testId,
     autoSuggest = false,
     allowClear = false,
+    isActive = false,
   }: Props = $props();
 
   let buttonEl: HTMLButtonElement;
@@ -42,7 +44,16 @@
     );
   });
 
-  function handleButtonClick() {
+  function handleButtonClick(event: MouseEvent) {
+    // Check if the click was on the clear button
+    if (
+      (event.target as HTMLElement).classList.contains("filter-clear-button")
+    ) {
+      event.stopPropagation();
+      onselect("");
+      return;
+    }
+
     if (!disabled && options.length > 0) {
       if (autoSuggest) {
         showAutoSuggestMenu();
@@ -113,16 +124,21 @@
 
     // Add filtered options
     filteredOptions.slice(0, 10).forEach((option) => {
-      const item = menu.createDiv("task-sync-selector-item");
-      item.textContent = option;
-      if (option === currentValue) {
-        item.addClass("selected");
+      if (option === "---") {
+        // Add separator
+        menu.createDiv("task-sync-selector-separator");
+      } else {
+        const item = menu.createDiv("task-sync-selector-item");
+        item.textContent = option;
+        if (option === currentValue) {
+          item.addClass("selected");
+        }
+        item.addEventListener("click", () => {
+          onselect(option);
+          menu.remove();
+          isMenuOpen = false;
+        });
       }
-      item.addEventListener("click", () => {
-        onselect(option);
-        menu.remove();
-        isMenuOpen = false;
-      });
     });
 
     // Show "no results" message if no options
@@ -137,8 +153,8 @@
 
     const menu = createSelectorMenu(buttonEl);
 
-    // Add clear option if enabled
-    if (allowClear && currentValue) {
+    // Add clear option if enabled and filter is active
+    if (allowClear && isActive) {
       const clearItem = menu.createDiv(
         "task-sync-selector-item task-sync-selector-clear"
       );
@@ -155,16 +171,21 @@
     }
 
     options.forEach((option) => {
-      const item = menu.createDiv("task-sync-selector-item");
-      item.textContent = option;
-      if (option === currentValue) {
-        item.addClass("selected");
+      if (option === "---") {
+        // Add separator
+        menu.createDiv("task-sync-selector-separator");
+      } else {
+        const item = menu.createDiv("task-sync-selector-item");
+        item.textContent = option;
+        if (option === currentValue) {
+          item.addClass("selected");
+        }
+        item.addEventListener("click", () => {
+          onselect(option);
+          menu.remove();
+          isMenuOpen = false;
+        });
       }
-      item.addEventListener("click", () => {
-        onselect(option);
-        menu.remove();
-        isMenuOpen = false;
-      });
     });
 
     isMenuOpen = true;
@@ -201,7 +222,9 @@
   type="button"
   bind:this={buttonEl}
   onclick={handleButtonClick}
-  class="task-sync-property-button task-sync-text-button"
+  class="task-sync-property-button task-sync-text-button {isActive
+    ? 'active'
+    : ''}"
   {disabled}
   data-testid={testId}
   aria-label="Select {label}"
@@ -209,4 +232,7 @@
   <span class="task-sync-button-label">
     {currentValue || placeholder}
   </span>
+  {#if allowClear && isActive}
+    <span class="filter-clear-button" title="Clear {label}">×</span>
+  {/if}
 </button>
