@@ -144,7 +144,7 @@ describe("LocalTasksService", () => {
     const contextText = await contextWidget
       .locator(".context-text")
       .textContent();
-    expect(contextText).toContain("No context");
+    expect(contextText).toContain("Import context: No context");
 
     // Initially should show "Open" button on hover (not in daily note mode)
     const taskItem = context.page
@@ -240,7 +240,7 @@ describe("LocalTasksService", () => {
     const contextText = await contextWidget
       .locator(".context-text")
       .textContent();
-    expect(contextText).toContain("Daily Note");
+    expect(contextText).toContain("Import context: Daily Note");
 
     // Should now be in day planning mode - hover over the specific task to see "Add to today" button
     const taskItem = context.page.locator(

@@ -27,34 +27,17 @@
   let displayText = $derived.by(() => {
     switch (context.type) {
       case "project":
-        return `${context.name}`;
+        return `Import context: Project / ${context.name}`;
       case "area":
-        return `${context.name}`;
+        return `Import context: Area / ${context.name}`;
       case "task":
-        return `${context.name}`;
+        return `Import context: Task / ${context.name}`;
       case "daily":
-        return `${context.name}`;
+        return `Import context: Daily Note / ${context.name}`;
       case "none":
-        return "No context";
+        return "Import context: No context";
       default:
-        return "Unknown context";
-    }
-  });
-
-  let contextTypeLabel = $derived.by(() => {
-    switch (context.type) {
-      case "project":
-        return "Project";
-      case "area":
-        return "Area";
-      case "task":
-        return "Task";
-      case "daily":
-        return "Daily Note";
-      case "none":
-        return "";
-      default:
-        return "Unknown";
+        return "Import context: Unknown context";
     }
   });
 
@@ -63,23 +46,20 @@
   });
 </script>
 
-{#if context.type !== "none"}
-  <div class={contextClass} data-testid="context-widget">
-    <div class="context-type-indicator"></div>
-    <div class="context-content">
-      <span class="context-type-label">{contextTypeLabel}</span>
-      <span class="context-name">{displayText}</span>
-    </div>
-    {#if showImportIndicator}
-      <div
-        class="import-indicator"
-        title="Import context - tasks will be imported here"
-      >
-        <span class="import-icon">⬇</span>
-      </div>
-    {/if}
+<div class={contextClass} data-testid="context-widget">
+  <div class="context-type-indicator"></div>
+  <div class="context-content">
+    <span class="context-text">{displayText}</span>
   </div>
-{/if}
+  {#if showImportIndicator}
+    <div
+      class="import-indicator"
+      title="Import context - tasks will be imported here"
+    >
+      <span class="import-icon">⬇</span>
+    </div>
+  {/if}
+</div>
 
 <style>
   .context-widget {
@@ -124,6 +104,11 @@
     align-items: center;
     gap: 8px;
     flex-grow: 1;
+  }
+
+  .context-text {
+    color: var(--text-normal);
+    font-weight: 500;
   }
 
   .context-type-label {

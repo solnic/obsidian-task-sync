@@ -333,13 +333,14 @@
 
     // Filter by assignee if "assigned to me" is enabled
     if (assignedToMe) {
-      // Get current user from GitHub service settings or API
-      // For now, we'll use the assignee filter from settings
       const currentUser = getCurrentUser();
       if (currentUser) {
         filtered = filtered.filter(
           (issue) => issue.assignee?.login === currentUser
         );
+      } else {
+        // If no current user is available, show no results when "assigned to me" is active
+        filtered = [];
       }
     }
 
@@ -376,6 +377,9 @@
             pr.assignee?.login === currentUser ||
             pr.assignees?.some((assignee) => assignee.login === currentUser)
         );
+      } else {
+        // If no current user is available, show no results when "assigned to me" is active
+        filtered = [];
       }
     }
 
@@ -559,13 +563,7 @@
     assignedToMe = !assignedToMe;
     // Update the settings to persist the filter
     settings.githubIntegration.issueFilters.assignee = assignedToMe ? "me" : "";
-    // Reload data with new filter
-    if (currentRepository) {
-      loadIssues();
-      if (activeTab === "pull-requests") {
-        loadPullRequests();
-      }
-    }
+    // No need to reload data - filtering is reactive and happens client-side
   }
 
   function setLabelsFilter(labels: string[]): void {

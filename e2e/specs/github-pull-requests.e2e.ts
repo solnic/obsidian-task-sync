@@ -88,10 +88,9 @@ describe("GitHub Pull Requests Integration", () => {
     expect(titleText).toContain("Implement new authentication system");
     expect(numberText).toContain("#123");
 
-    // Check metadata (assignee, state, branch info)
+    // Check metadata (assignee and branch info - state is shown in badges)
     const metaText = await prItem.locator(".task-sync-item-meta").textContent();
     expect(metaText).toContain("Assigned to reviewer");
-    expect(metaText).toContain("open");
     expect(metaText).toContain("feature/oauth2 → main");
 
     // Check labels

@@ -2130,6 +2130,46 @@ button.tab-item.active {
   margin-bottom: 1rem;
 }
 
+/* LocalTasks Unified Header - matches ContextWidget styling */
+.local-tasks-unified-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.local-tasks-unified-header .context-type-indicator {
+  width: 4px;
+  height: 20px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.local-tasks-unified-header .local-tasks-indicator {
+  background: var(--color-purple);
+}
+
+.local-tasks-unified-header .context-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-grow: 1;
+}
+
+.local-tasks-unified-header .context-type-label {
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.local-tasks-unified-header .context-name {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
 .local-tasks-section-title h3 {
   margin: 0 0 12px 0;
   font-size: 16px;

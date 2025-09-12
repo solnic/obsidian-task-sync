@@ -38,17 +38,10 @@
       parts.push(`Assigned to ${pullRequest.assignee.login}`);
     }
 
-    let stateText = pullRequest.state;
-    if (pullRequest.merged_at) {
-      stateText += " (merged)";
-    } else if (pullRequest.draft) {
-      stateText += " (draft)";
-    }
-    parts.push(stateText);
-
-    parts.push(new Date(pullRequest.created_at).toLocaleDateString());
+    // Keep branch information as it's useful and not shown elsewhere
     parts.push(`${pullRequest.head.ref} → ${pullRequest.base.ref}`);
 
+    // Note: Removed redundant state and timestamp as they're shown elsewhere
     return parts.join(" • ");
   });
 
@@ -84,10 +77,22 @@
   function handleImport() {
     onImport?.(pullRequest);
   }
+
+  function handleSeeOnGitHub() {
+    window.open(pullRequest.html_url, "_blank");
+  }
 </script>
 
 {#snippet actionSnippet()}
   <div class="import-actions">
+    <button
+      class="github-link-button"
+      title="See on GitHub"
+      onclick={handleSeeOnGitHub}
+      data-testid="see-on-github-button"
+    >
+      See on GitHub
+    </button>
     {#if isImported}
       <span class="import-status imported" data-testid="imported-indicator">
         ✓ Imported
@@ -169,5 +174,22 @@
   .import-status.importing {
     background: var(--color-yellow);
     color: var(--text-normal);
+  }
+
+  .github-link-button {
+    padding: 8px 16px;
+    border: 1px solid var(--interactive-normal);
+    background: var(--background-primary);
+    color: var(--text-normal);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .github-link-button:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--interactive-hover);
   }
 </style>

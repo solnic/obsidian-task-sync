@@ -9,6 +9,7 @@
   import PriorityBadge from "./badges/PriorityBadge.svelte";
   import ProjectBadge from "./badges/ProjectBadge.svelte";
   import AreaBadge from "./badges/AreaBadge.svelte";
+  import { extractDisplayValue } from "../../utils/linkUtils";
   import type { Task } from "../../types/entities";
 
   interface Props {
@@ -61,19 +62,22 @@
     }> = [];
 
     if (task.project) {
-      // Remove wiki link brackets from project
+      // Extract display value from project (handles wiki links properly)
       const cleanProject =
         typeof task.project === "string"
-          ? task.project.replace(/^\[\[|\]\]$/g, "")
+          ? extractDisplayValue(task.project) ||
+            task.project.replace(/^\[\[|\]\]$/g, "")
           : task.project;
       result.push({ text: cleanProject, type: "project" });
     }
 
     if (task.areas && Array.isArray(task.areas) && task.areas.length > 0) {
       task.areas.forEach((area) => {
-        // Remove wiki link brackets from areas
+        // Extract display value from areas (handles wiki links properly)
         const cleanArea =
-          typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area;
+          typeof area === "string"
+            ? extractDisplayValue(area) || area.replace(/^\[\[|\]\]$/g, "")
+            : area;
         result.push({ text: cleanArea, type: "area" });
       });
     }

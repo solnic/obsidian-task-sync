@@ -202,9 +202,27 @@
 >
   <!-- Header Section -->
   <div class="local-tasks-header">
-    <!-- Section Title -->
-    <div class="local-tasks-section-title">
-      <h3>Local Tasks</h3>
+    <!-- Unified Header with ContextWidget styling -->
+    <div class="local-tasks-unified-header">
+      <div class="context-type-indicator local-tasks-indicator"></div>
+      <div class="context-content">
+        <span class="context-type-label">Local Tasks</span>
+        <span class="context-name">
+          {#if currentContext.type !== "none"}
+            Import context: {currentContext.type === "project"
+              ? "Project"
+              : currentContext.type === "area"
+                ? "Area"
+                : currentContext.type === "task"
+                  ? "Task"
+                  : currentContext.type === "daily"
+                    ? "Daily Note"
+                    : "Unknown"} / {currentContext.name}
+          {:else}
+            No context
+          {/if}
+        </span>
+      </div>
     </div>
 
     <!-- Search and Filters -->
