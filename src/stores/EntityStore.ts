@@ -229,7 +229,6 @@ export abstract class EntityStore<T extends BaseEntity> {
   private setupFileWatchers() {
     this.app.vault.on("create", (file) => {
       if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
-        console.log(`🗂️ ${this.storageKey}: File created: ${file.path}`);
         // Don't await here to avoid blocking the event handler
         this.refreshEntities().catch((error) => {
           console.error(

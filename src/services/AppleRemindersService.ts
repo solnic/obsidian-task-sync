@@ -8,10 +8,7 @@ import {
   TaskImportConfig,
   ImportResult,
 } from "../types/integrations";
-import {
-  AppleRemindersIntegrationSettings,
-  TaskSyncSettings,
-} from "../components/ui/settings/types";
+import { TaskSyncSettings } from "../components/ui/settings/types";
 import {
   AppleReminder,
   AppleRemindersList,
@@ -52,49 +49,23 @@ export class AppleRemindersService {
   }
 
   /**
-   * Update settings reference (for when settings are changed)
+   * Update settings reference (legacy method)
+   * This will be replaced by the event system
    */
   updateSettings(newSettings: TaskSyncSettings): void {
-    // Check if Apple Reminders specific settings have changed
-    const oldAppleSettings = this.settings.appleRemindersIntegration;
-    const newAppleSettings = newSettings.appleRemindersIntegration;
+    this.updateSettingsInternal(newSettings.appleRemindersIntegration);
+  }
 
-    console.log("🍎 updateSettings called", {
-      oldEnabled: oldAppleSettings.enabled,
-      newEnabled: newAppleSettings.enabled,
-      oldIncludeCompleted: oldAppleSettings.includeCompletedReminders,
-      newIncludeCompleted: newAppleSettings.includeCompletedReminders,
-      oldExcludeAllDay: oldAppleSettings.excludeAllDayReminders,
-      newExcludeAllDay: newAppleSettings.excludeAllDayReminders,
-      oldLists: oldAppleSettings.reminderLists,
-      newLists: newAppleSettings.reminderLists,
-    });
-
-    // More robust comparison for arrays
-    const oldListsSorted = [...oldAppleSettings.reminderLists].sort();
-    const newListsSorted = [...newAppleSettings.reminderLists].sort();
-
-    const settingsChanged =
-      oldAppleSettings.enabled !== newAppleSettings.enabled ||
-      oldAppleSettings.includeCompletedReminders !==
-        newAppleSettings.includeCompletedReminders ||
-      oldAppleSettings.excludeAllDayReminders !==
-        newAppleSettings.excludeAllDayReminders ||
-      JSON.stringify(oldListsSorted) !== JSON.stringify(newListsSorted);
-
-    this.settings = newSettings;
-
-    // Only clear cache if Apple Reminders specific settings changed AND service is initialized
-    if (settingsChanged && this.isInitialized) {
-      console.log("🍎 Apple Reminders settings changed, clearing cache");
-      this.clearCache();
-    } else if (settingsChanged && !this.isInitialized) {
-      console.log(
-        "🍎 Apple Reminders settings changed during initialization, preserving cache"
-      );
-    } else {
-      console.log("🍎 Apple Reminders settings unchanged, preserving cache");
-    }
+  /**
+   * Internal method to update Apple Reminders settings without cache clearing
+   * Used by the event system
+   */
+  updateSettingsInternal(newAppleSettings: any): void {
+    // Update the full settings object
+    this.settings = {
+      ...this.settings,
+      appleRemindersIntegration: newAppleSettings,
+    };
   }
 
   /**
@@ -285,9 +256,12 @@ export class AppleRemindersService {
         console.log(
           `🍎 Cache hit for key: ${cacheKey}, returning ${cachedReminders.length} reminders`
         );
+        // Deserialize date fields that were converted to strings during JSON serialization
+        const deserializedReminders =
+          this.deserializeCachedReminders(cachedReminders);
         return {
           success: true,
-          data: cachedReminders,
+          data: deserializedReminders,
         };
       } else {
         console.log(
@@ -505,6 +479,33 @@ export class AppleRemindersService {
   }
 
   /**
+   * Deserialize cached reminders by converting string dates back to Date objects
+   */
+  private deserializeCachedReminders(
+    cachedReminders: AppleReminder[]
+  ): AppleReminder[] {
+    return cachedReminders.map((reminder) => ({
+      ...reminder,
+      creationDate:
+        typeof reminder.creationDate === "string"
+          ? new Date(reminder.creationDate)
+          : reminder.creationDate,
+      modificationDate:
+        typeof reminder.modificationDate === "string"
+          ? new Date(reminder.modificationDate)
+          : reminder.modificationDate,
+      completionDate:
+        reminder.completionDate && typeof reminder.completionDate === "string"
+          ? new Date(reminder.completionDate)
+          : reminder.completionDate,
+      dueDate:
+        reminder.dueDate && typeof reminder.dueDate === "string"
+          ? new Date(reminder.dueDate)
+          : reminder.dueDate,
+    }));
+  }
+
+  /**
    * Check if a reminder should be included based on filters
    */
   private shouldIncludeReminder(
@@ -626,7 +627,7 @@ export class AppleRemindersService {
    * Enhance import config with reminder-specific data
    */
   private enhanceConfigWithReminderData(
-    reminder: AppleReminder,
+    _reminder: AppleReminder,
     config: TaskImportConfig
   ): TaskImportConfig {
     return {

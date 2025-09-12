@@ -148,14 +148,24 @@ export class GitHubService {
   }
 
   /**
-   * Update settings and reinitialize components
+   * Update settings and reinitialize components (legacy method)
+   * This will be replaced by the event system
    */
   updateSettings(newSettings: TaskSyncSettings): void {
-    this.settings = newSettings;
+    this.updateSettingsInternal(newSettings.githubIntegration);
+  }
+
+  /**
+   * Internal method to update GitHub settings without cache clearing
+   * Used by the event system
+   */
+  updateSettingsInternal(newGitHubSettings: any): void {
+    // Update the full settings object
+    this.settings = { ...this.settings, githubIntegration: newGitHubSettings };
 
     // Update label type mapper with new settings
     // Only override mappings if custom mappings are provided, otherwise keep defaults
-    const customMappings = newSettings.githubIntegration.labelTypeMapping;
+    const customMappings = newGitHubSettings.labelTypeMapping;
     if (customMappings && Object.keys(customMappings).length > 0) {
       // Merge custom mappings with defaults
       const defaultMappings = GitHubLabelTypeMapper.getDefaultMappings();
@@ -163,9 +173,6 @@ export class GitHubService {
       this.labelTypeMapper.setLabelMapping(mergedMappings);
     }
     // If no custom mappings, keep the existing mappings (which should be defaults)
-
-    // Clear cache when settings change
-    this.clearCache();
 
     // Reinitialize Octokit with new settings
     this.initializeOctokit();
@@ -414,14 +421,34 @@ export class GitHubService {
   }
 
   /**
-   * Clear all caches
+   * Clear all GitHub-specific caches
    */
   async clearCache(): Promise<void> {
     if (this.cache) {
-      // Clear all GitHub-related cache entries
-      // Note: We don't have a way to list all keys, so we'll clear specific known patterns
-      // This is a limitation of the current cache design
-      await this.cache.clear();
+      // Clear GitHub-specific cache entries only
+      // We need to clear all possible GitHub cache keys
+
+      // Clear repository cache
+      await this.cache.delete("github-repositories");
+
+      // Clear organization cache
+      await this.cache.delete("github-organizations");
+
+      // Clear label caches for all known repositories
+      // Since we can't list all keys, we'll clear based on current settings
+      const repositories = this.settings.githubIntegration.repositories || [];
+      for (const repo of repositories) {
+        const labelCacheKey = `github-labels-${repo}`;
+        await this.cache.delete(labelCacheKey);
+      }
+
+      // Clear issue caches for all known repositories
+      for (const repo of repositories) {
+        const issueCacheKey = `github-issues-${repo}`;
+        await this.cache.delete(issueCacheKey);
+      }
+
+      console.log("🐙 Cleared GitHub-specific cache entries");
     }
   }
 
@@ -434,8 +461,12 @@ export class GitHubService {
         const cacheKey = `github-labels-${repository}`;
         await this.cache.delete(cacheKey);
       } else {
-        // Clear all label caches - this is a limitation since we can't list keys
-        await this.clearCache();
+        // Clear all label caches for known repositories
+        const repositories = this.settings.githubIntegration.repositories || [];
+        for (const repo of repositories) {
+          const labelCacheKey = `github-labels-${repo}`;
+          await this.cache.delete(labelCacheKey);
+        }
       }
     }
   }

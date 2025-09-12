@@ -61,22 +61,10 @@
   const { plugin } = getPluginContext();
 
   function handleMouseEnter() {
-    console.log("TaskItem: Mouse enter", {
-      actionContent,
-      actions: !!actions,
-      isHovered,
-      title: title.substring(0, 20),
-    });
     onHover?.(true);
   }
 
   function handleMouseLeave() {
-    console.log("TaskItem: Mouse leave", {
-      actionContent,
-      actions: !!actions,
-      isHovered,
-      title: title.substring(0, 20),
-    });
     onHover?.(false);
   }
 

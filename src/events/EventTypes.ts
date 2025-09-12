@@ -105,9 +105,14 @@ export interface AreaEventData {
  * Event data for settings change events
  */
 export interface SettingsChangedEventData {
-  settingKey: string;
-  oldValue: any;
-  newValue: any;
+  /** The section of settings that changed (e.g., 'githubIntegration', 'appleRemindersIntegration') */
+  section: string;
+  /** The old settings object for this section */
+  oldSettings: any;
+  /** The new settings object for this section */
+  newSettings: any;
+  /** Whether this section's settings actually changed */
+  hasChanges: boolean;
 }
 
 /**

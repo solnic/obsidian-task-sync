@@ -24,11 +24,16 @@ import type {
   TaskTypeColor,
 } from "./components/ui/settings";
 import { EventManager } from "./events";
+import { EventType, SettingsChangedEventData } from "./events/EventTypes";
 import { StatusDoneHandler } from "./events/handlers";
 import { TaskPropertyHandler } from "./events/handlers/TaskPropertyHandler";
 import { AreaPropertyHandler } from "./events/handlers/AreaPropertyHandler";
 import { ProjectPropertyHandler } from "./events/handlers/ProjectPropertyHandler";
 import { EntityCacheHandler } from "./events/handlers/EntityCacheHandler";
+import {
+  GitHubSettingsHandler,
+  AppleRemindersSettingsHandler,
+} from "./events/handlers/SettingsChangeHandler";
 import {
   DEFAULT_SETTINGS,
   TASK_TYPE_COLORS,
@@ -75,6 +80,7 @@ export interface TodoItemWithParent extends TodoItem {
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
+  private previousSettings: TaskSyncSettings | null = null;
   vaultScanner: VaultScanner;
   baseManager: BaseManager;
   templateManager: TemplateManager;
@@ -86,6 +92,8 @@ export default class TaskSyncPlugin extends Plugin {
   areaPropertyHandler: AreaPropertyHandler;
   projectPropertyHandler: ProjectPropertyHandler;
   entityCacheHandler: EntityCacheHandler;
+  githubSettingsHandler: GitHubSettingsHandler;
+  appleRemindersSettingsHandler: AppleRemindersSettingsHandler;
   externalDataCache: ExternalDataCache;
   githubService: GitHubService;
   appleRemindersService: AppleRemindersService;
@@ -223,12 +231,20 @@ export default class TaskSyncPlugin extends Plugin {
       this.settings
     );
 
+    // Initialize settings change handlers
+    this.githubSettingsHandler = new GitHubSettingsHandler(this.githubService);
+    this.appleRemindersSettingsHandler = new AppleRemindersSettingsHandler(
+      this.appleRemindersService
+    );
+
     // Register event handlers
     this.eventManager.registerHandler(this.statusDoneHandler);
     this.eventManager.registerHandler(this.taskPropertyHandler);
     this.eventManager.registerHandler(this.areaPropertyHandler);
     this.eventManager.registerHandler(this.projectPropertyHandler);
     this.eventManager.registerHandler(this.entityCacheHandler);
+    this.eventManager.registerHandler(this.githubSettingsHandler);
+    this.eventManager.registerHandler(this.appleRemindersSettingsHandler);
 
     // Initialize file change listener
     await this.fileChangeListener.initialize();
@@ -417,14 +433,31 @@ export default class TaskSyncPlugin extends Plugin {
 
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
 
+    // Initialize previous settings for comparison
+    this.previousSettings = { ...this.settings };
+
     this.validateSettings();
   }
 
   async saveSettings() {
     this.validateSettings();
 
+    // Store previous settings for comparison
+    const oldSettings = this.previousSettings
+      ? { ...this.previousSettings }
+      : null;
+
     await this.saveData(this.settings);
 
+    // Emit settings change events for different sections
+    if (this.eventManager && oldSettings) {
+      await this.emitSettingsChangeEvents(oldSettings, this.settings);
+    }
+
+    // Update previous settings for next comparison
+    this.previousSettings = { ...this.settings };
+
+    // Update handlers that don't use the event system yet
     if (this.statusDoneHandler) {
       this.statusDoneHandler.updateSettings(this.settings);
     }
@@ -441,20 +474,12 @@ export default class TaskSyncPlugin extends Plugin {
       this.projectPropertyHandler.updateSettings(this.settings);
     }
 
-    if (this.githubService) {
-      this.githubService.updateSettings(this.settings);
-    }
-
-    if (this.appleRemindersService) {
-      this.appleRemindersService.updateSettings(this.settings);
-    }
-
     if (this.taskImportManager) {
       this.taskImportManager.updateSettings(this.settings);
     }
 
+    // Update UI views
     const tasksLeaves = this.app.workspace.getLeavesOfType(TASKS_VIEW_TYPE);
-
     tasksLeaves.forEach((leaf) => {
       const view = leaf.view as TasksView;
       if (view && view.updateSettings) {
@@ -465,6 +490,7 @@ export default class TaskSyncPlugin extends Plugin {
       }
     });
 
+    // Update other managers
     if (this.templateManager) {
       this.templateManager.updateSettings(this.settings);
       await this.templateManager.updateTemplatesOnSettingsChange();
@@ -484,6 +510,45 @@ export default class TaskSyncPlugin extends Plugin {
 
     if (this.projectFileManager) {
       this.projectFileManager.updateSettings(this.settings);
+    }
+  }
+
+  /**
+   * Emit settings change events for different sections
+   */
+  private async emitSettingsChangeEvents(
+    oldSettings: TaskSyncSettings,
+    newSettings: TaskSyncSettings
+  ): Promise<void> {
+    // Define the settings sections we want to track
+    const settingsSections = [
+      "githubIntegration",
+      "appleRemindersIntegration",
+      "taskTypes",
+      "taskPriorities",
+      "taskStatuses",
+      "templateFolder",
+      "basesFolder",
+    ];
+
+    for (const section of settingsSections) {
+      const oldSectionSettings = (oldSettings as any)[section];
+      const newSectionSettings = (newSettings as any)[section];
+
+      // Check if this section has actually changed
+      const hasChanges =
+        JSON.stringify(oldSectionSettings) !==
+        JSON.stringify(newSectionSettings);
+
+      // Emit event for this section
+      const eventData: SettingsChangedEventData = {
+        section,
+        oldSettings: oldSectionSettings,
+        newSettings: newSectionSettings,
+        hasChanges,
+      };
+
+      await this.eventManager.emit(EventType.SETTINGS_CHANGED, eventData);
     }
   }
 
