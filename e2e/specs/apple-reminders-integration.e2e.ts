@@ -4,7 +4,6 @@
 
 import { test, expect, describe } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
-import type { SharedTestContext } from "../helpers/shared-context";
 
 describe("Apple Reminders Integration", () => {
   const context = setupE2ETestHooks();

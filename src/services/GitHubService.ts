@@ -15,32 +15,27 @@ import {
   TaskImportConfig,
   ImportResult,
 } from "../types/integrations";
-import { TaskImportManager } from "./TaskImportManager";
 import { GitHubLabelTypeMapper } from "./GitHubLabelTypeMapper";
 import { LabelTypeMapper } from "../types/label-mapping";
 import { taskStore } from "../stores/taskStore";
-import { ExternalDataCache } from "./ExternalDataCache";
+import { AbstractService } from "./AbstractService";
+import { SchemaCache } from "../cache/SchemaCache";
+import {
+  GitHubIssueListSchema,
+  GitHubLabelListSchema,
+  GitHubRepositoryListSchema,
+  GitHubOrganizationListSchema,
+  GitHubIssueList,
+  GitHubLabelList,
+  GitHubRepositoryList,
+  GitHubOrganizationList,
+  GitHubIssue as GitHubIssueType,
+  GitHubLabel as GitHubLabelType,
+} from "../cache/schemas/github";
 
-export interface GitHubIssue {
-  id: number;
-  number: number;
-  title: string;
-  body: string | null;
-  state: "open" | "closed";
-  assignee: { login: string } | null;
-  labels: Array<{ name: string; color?: string }>;
-  created_at: string;
-  updated_at: string;
-  html_url: string;
-}
-
-export interface GitHubLabel {
-  id: number;
-  name: string;
-  color: string;
-  description?: string;
-  default: boolean;
-}
+// Use schema types directly
+export type GitHubIssue = GitHubIssueType;
+export type GitHubLabel = GitHubLabelType;
 
 export interface GitHubPullRequest {
   id: number;
@@ -95,18 +90,18 @@ export interface GitHubOrganization {
 /**
  * Service for interacting with GitHub API using Octokit
  */
-export class GitHubService {
+export class GitHubService extends AbstractService {
   private octokit: Octokit | null = null;
-  private settings: TaskSyncSettings;
   private labelTypeMapper: LabelTypeMapper;
-  private cache?: ExternalDataCache;
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache duration
 
-  // Import functionality dependencies (injected for testing)
-  public taskImportManager?: TaskImportManager;
+  // Cache instances
+  private issuesCache?: SchemaCache<GitHubIssueList>;
+  private labelsCache?: SchemaCache<GitHubLabelList>;
+  private repositoriesCache?: SchemaCache<GitHubRepositoryList>;
+  private organizationsCache?: SchemaCache<GitHubOrganizationList>;
 
   constructor(settings: TaskSyncSettings) {
-    this.settings = settings;
+    super(settings);
 
     // Only pass custom label mappings if they exist, otherwise use defaults
     const customMappings = settings.githubIntegration.labelTypeMapping;
@@ -120,17 +115,19 @@ export class GitHubService {
   }
 
   /**
-   * Set import dependencies (for dependency injection)
+   * Setup GitHub-specific caches
    */
-  setImportDependencies(taskImportManager: TaskImportManager): void {
-    this.taskImportManager = taskImportManager;
-  }
-
-  /**
-   * Initialize the service with cache
-   */
-  async initialize(cache: ExternalDataCache): Promise<void> {
-    this.cache = cache;
+  protected async setupCaches(): Promise<void> {
+    this.issuesCache = this.createCache("github-issues", GitHubIssueListSchema);
+    this.labelsCache = this.createCache("github-labels", GitHubLabelListSchema);
+    this.repositoriesCache = this.createCache(
+      "github-repositories",
+      GitHubRepositoryListSchema
+    );
+    this.organizationsCache = this.createCache(
+      "github-organizations",
+      GitHubOrganizationListSchema
+    );
   }
 
   /**
@@ -252,7 +249,7 @@ export class GitHubService {
   }
 
   /**
-   * Fetch issues from a GitHub repository
+   * Fetch issues from a GitHub repository with caching
    */
   async fetchIssues(repository: string): Promise<GitHubIssue[]> {
     if (!this.octokit) {
@@ -261,6 +258,16 @@ export class GitHubService {
 
     if (!this.validateRepository(repository)) {
       throw new Error("Invalid repository format. Expected: owner/repo");
+    }
+
+    const cacheKey = `issues-${repository}`;
+
+    // Check cache first
+    if (this.issuesCache) {
+      const cachedIssues = await this.issuesCache.get(cacheKey);
+      if (cachedIssues) {
+        return cachedIssues;
+      }
     }
 
     const [owner, repo] = repository.split("/");
@@ -277,7 +284,14 @@ export class GitHubService {
         per_page: 100,
       });
 
-      return response.data as GitHubIssue[];
+      const issues = response.data as GitHubIssue[];
+
+      // Cache the results
+      if (this.issuesCache) {
+        await this.issuesCache.set(cacheKey, issues);
+      }
+
+      return issues;
     } catch (error) {
       throw error;
     }
@@ -386,11 +400,11 @@ export class GitHubService {
       throw new Error("Invalid repository format. Expected: owner/repo");
     }
 
-    const cacheKey = `github-labels-${repository}`;
+    const cacheKey = `labels-${repository}`;
 
     // Check cache first
-    if (this.cache) {
-      const cachedLabels = await this.cache.get<GitHubLabel[]>(cacheKey);
+    if (this.labelsCache) {
+      const cachedLabels = await this.labelsCache.get(cacheKey);
       if (cachedLabels) {
         return cachedLabels;
       }
@@ -408,10 +422,8 @@ export class GitHubService {
       const labels = response.data as GitHubLabel[];
 
       // Cache the labels
-      if (this.cache) {
-        await this.cache.set(cacheKey, labels, {
-          duration: this.CACHE_DURATION,
-        });
+      if (this.labelsCache) {
+        await this.labelsCache.set(cacheKey, labels);
       }
 
       return labels;
@@ -424,49 +436,34 @@ export class GitHubService {
    * Clear all GitHub-specific caches
    */
   async clearCache(): Promise<void> {
-    if (this.cache) {
-      // Clear GitHub-specific cache entries only
-      // We need to clear all possible GitHub cache keys
-
-      // Clear repository cache
-      await this.cache.delete("github-repositories");
-
-      // Clear organization cache
-      await this.cache.delete("github-organizations");
-
-      // Clear label caches for all known repositories
-      // Since we can't list all keys, we'll clear based on current settings
-      const repositories = this.settings.githubIntegration.repositories || [];
-      for (const repo of repositories) {
-        const labelCacheKey = `github-labels-${repo}`;
-        await this.cache.delete(labelCacheKey);
-      }
-
-      // Clear issue caches for all known repositories
-      for (const repo of repositories) {
-        const issueCacheKey = `github-issues-${repo}`;
-        await this.cache.delete(issueCacheKey);
-      }
-
-      console.log("🐙 Cleared GitHub-specific cache entries");
+    // Clear all cache instances
+    if (this.issuesCache) {
+      await this.issuesCache.clear();
     }
+    if (this.labelsCache) {
+      await this.labelsCache.clear();
+    }
+    if (this.repositoriesCache) {
+      await this.repositoriesCache.clear();
+    }
+    if (this.organizationsCache) {
+      await this.organizationsCache.clear();
+    }
+
+    console.log("🐙 Cleared GitHub-specific cache entries");
   }
 
   /**
    * Clear label cache for a specific repository or all repositories
    */
   async clearLabelCache(repository?: string): Promise<void> {
-    if (this.cache) {
+    if (this.labelsCache) {
       if (repository) {
-        const cacheKey = `github-labels-${repository}`;
-        await this.cache.delete(cacheKey);
+        const cacheKey = `labels-${repository}`;
+        await this.labelsCache.delete(cacheKey);
       } else {
-        // Clear all label caches for known repositories
-        const repositories = this.settings.githubIntegration.repositories || [];
-        for (const repo of repositories) {
-          const labelCacheKey = `github-labels-${repo}`;
-          await this.cache.delete(labelCacheKey);
-        }
+        // Clear all label caches
+        await this.labelsCache.clear();
       }
     }
   }

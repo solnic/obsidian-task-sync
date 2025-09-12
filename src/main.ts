@@ -42,7 +42,7 @@ import {
 import { GitHubService } from "./services/GitHubService";
 import { AppleRemindersService } from "./services/AppleRemindersService";
 import { TaskImportManager } from "./services/TaskImportManager";
-import { ExternalDataCache } from "./services/ExternalDataCache";
+import { CacheManager } from "./cache/CacheManager";
 import { TasksView, TASKS_VIEW_TYPE } from "./views/TasksView";
 import { ContextTabView, CONTEXT_TAB_VIEW_TYPE } from "./views/ContextTabView";
 import { TaskImportConfig } from "./types/integrations";
@@ -94,7 +94,7 @@ export default class TaskSyncPlugin extends Plugin {
   entityCacheHandler: EntityCacheHandler;
   githubSettingsHandler: GitHubSettingsHandler;
   appleRemindersSettingsHandler: AppleRemindersSettingsHandler;
-  externalDataCache: ExternalDataCache;
+  cacheManager: CacheManager;
   githubService: GitHubService;
   appleRemindersService: AppleRemindersService;
   taskImportManager: TaskImportManager;
@@ -149,16 +149,15 @@ export default class TaskSyncPlugin extends Plugin {
       this.settings
     );
 
-    // Initialize external data cache
-    this.externalDataCache = new ExternalDataCache(this);
-    await this.externalDataCache.initialize();
+    // Initialize cache manager
+    this.cacheManager = new CacheManager(this);
 
     this.githubService = new GitHubService(this.settings);
-    await this.githubService.initialize(this.externalDataCache);
+    await this.githubService.initialize(this.cacheManager);
 
     // Initialize Apple Reminders service (only on macOS)
     this.appleRemindersService = new AppleRemindersService(this.settings);
-    await this.appleRemindersService.initialize(this.externalDataCache);
+    await this.appleRemindersService.initialize(this.cacheManager);
 
     // Initialize import services
     this.taskImportManager = new TaskImportManager(
@@ -348,6 +347,28 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
+    // Add cache management commands
+    this.addCommand({
+      id: "clear-all-caches",
+      name: "Clear all caches",
+      callback: async () => {
+        await this.cacheManager.clearAllCaches();
+        new Notice("All caches cleared");
+      },
+    });
+
+    this.addCommand({
+      id: "show-cache-stats",
+      name: "Show cache statistics",
+      callback: async () => {
+        const stats = await this.cacheManager.getStats();
+        const message = stats
+          .map((s) => `${s.cacheKey}: ${s.keyCount} entries`)
+          .join("\n");
+        new Notice(`Cache statistics:\n${message}`);
+      },
+    });
+
     this.addCommand({
       id: "revert-promoted-todo",
       name: "Revert Promoted Todo",
@@ -415,9 +436,7 @@ export default class TaskSyncPlugin extends Plugin {
     await projectStore.saveData();
     await areaStore.saveData();
 
-    if (this.externalDataCache) {
-      await this.externalDataCache.onUnload();
-    }
+    // Cache manager doesn't need explicit unload - data is saved automatically
 
     if (this.fileChangeListener) {
       this.fileChangeListener.cleanup();

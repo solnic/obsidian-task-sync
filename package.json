@@ -68,6 +68,8 @@
     "@types/js-yaml": "^4.0.9",
     "js-yaml": "^4.1.0",
     "node-osascript": "^2.1.0",
-    "pluralize": "^8.0.0"
+    "pluralize": "^8.0.0",
+    "superjson": "^2.2.2",
+    "zod": "^4.1.8"
   }
 }

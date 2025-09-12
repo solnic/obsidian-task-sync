@@ -17,35 +17,45 @@ import {
   AppleRemindersPermission,
   AppleRemindersFilter,
 } from "../types/apple-reminders";
-import { TaskImportManager } from "./TaskImportManager";
 import { taskStore } from "../stores/taskStore";
-import { ExternalDataCache } from "./ExternalDataCache";
+import { AbstractService } from "./AbstractService";
+import { CacheManager } from "../cache/CacheManager";
+import { SchemaCache } from "../cache/SchemaCache";
+import {
+  AppleRemindersListsSchema,
+  AppleRemindersSchema,
+  AppleRemindersLists,
+  AppleReminders,
+} from "../cache/schemas/apple-reminders";
 import * as osascript from "node-osascript";
 
-export class AppleRemindersService {
-  private settings: TaskSyncSettings;
-  private taskImportManager?: TaskImportManager;
-  private cache?: ExternalDataCache;
-  private readonly CACHE_DURATION = 60 * 60 * 1000; // 1 hour cache duration
-  private isInitialized = false;
+export class AppleRemindersService extends AbstractService {
+  private listsCache?: SchemaCache<AppleRemindersLists>;
+  private remindersCache?: SchemaCache<AppleReminders>;
 
   constructor(settings: TaskSyncSettings) {
-    this.settings = settings;
+    super(settings);
   }
 
   /**
-   * Set import dependencies (called from main plugin)
+   * Setup Apple Reminders-specific caches
    */
-  setImportDependencies(taskImportManager: TaskImportManager): void {
-    this.taskImportManager = taskImportManager;
+  protected async setupCaches(): Promise<void> {
+    this.listsCache = this.createCache(
+      "apple-reminders-lists",
+      AppleRemindersListsSchema
+    );
+    this.remindersCache = this.createCache(
+      "apple-reminders",
+      AppleRemindersSchema
+    );
   }
 
   /**
-   * Initialize the service with cache
+   * Initialize the service with cache manager
    */
-  async initialize(cache: ExternalDataCache): Promise<void> {
-    this.cache = cache;
-    this.isInitialized = true;
+  async initialize(cacheManager: CacheManager): Promise<void> {
+    await super.initialize(cacheManager);
   }
 
   /**
@@ -72,24 +82,12 @@ export class AppleRemindersService {
    * Clear all caches
    */
   async clearCache(): Promise<void> {
-    if (this.cache) {
-      // Clear reminder lists cache
-      await this.cache.delete("apple-reminders-lists");
-
-      // Clear all possible reminder cache keys
-      // Generate all possible combinations of cache keys
-      const completedOptions = [true, false];
-      const allDayOptions = [true, false];
-
-      for (const includeCompleted of completedOptions) {
-        for (const excludeAllDay of allDayOptions) {
-          const key = this.generateRemindersCacheKey({
-            includeCompleted,
-            excludeAllDay,
-          });
-          await this.cache.delete(key);
-        }
-      }
+    // Clear all cache instances
+    if (this.listsCache) {
+      await this.listsCache.clear();
+    }
+    if (this.remindersCache) {
+      await this.remindersCache.clear();
     }
   }
 
@@ -183,11 +181,11 @@ export class AppleRemindersService {
   async fetchReminderLists(): Promise<
     AppleRemindersResult<AppleRemindersList[]>
   > {
-    const cacheKey = "apple-reminders-lists";
+    const cacheKey = "lists";
 
     // Check cache first
-    if (this.cache) {
-      const cachedLists = await this.cache.get<AppleRemindersList[]>(cacheKey);
+    if (this.listsCache) {
+      const cachedLists = await this.listsCache.get(cacheKey);
       if (cachedLists) {
         return {
           success: true,
@@ -219,10 +217,8 @@ export class AppleRemindersService {
       }));
 
       // Cache the result
-      if (this.cache) {
-        await this.cache.set(cacheKey, reminderLists, {
-          duration: this.CACHE_DURATION,
-        });
+      if (this.listsCache) {
+        await this.listsCache.set(cacheKey, reminderLists);
       }
 
       return {
@@ -250,18 +246,15 @@ export class AppleRemindersService {
     const cacheKey = this.generateRemindersCacheKey(filter);
 
     // Check cache first
-    if (this.cache) {
-      const cachedReminders = await this.cache.get<AppleReminder[]>(cacheKey);
+    if (this.remindersCache) {
+      const cachedReminders = await this.remindersCache.get(cacheKey);
       if (cachedReminders) {
         console.log(
           `🍎 Cache hit for key: ${cacheKey}, returning ${cachedReminders.length} reminders`
         );
-        // Deserialize date fields that were converted to strings during JSON serialization
-        const deserializedReminders =
-          this.deserializeCachedReminders(cachedReminders);
         return {
           success: true,
-          data: deserializedReminders,
+          data: cachedReminders,
         };
       } else {
         console.log(
@@ -341,10 +334,8 @@ export class AppleRemindersService {
       }
 
       // Cache the result
-      if (this.cache) {
-        await this.cache.set(cacheKey, allReminders, {
-          duration: this.CACHE_DURATION,
-        });
+      if (this.remindersCache) {
+        await this.remindersCache.set(cacheKey, allReminders);
         console.log(
           `🍎 Cached ${allReminders.length} reminders with key: ${cacheKey}`
         );
@@ -476,33 +467,6 @@ export class AppleRemindersService {
       allDay: scriptReminder.allDay || false,
       url: `reminder://${scriptReminder.id || scriptReminder.name}`,
     };
-  }
-
-  /**
-   * Deserialize cached reminders by converting string dates back to Date objects
-   */
-  private deserializeCachedReminders(
-    cachedReminders: AppleReminder[]
-  ): AppleReminder[] {
-    return cachedReminders.map((reminder) => ({
-      ...reminder,
-      creationDate:
-        typeof reminder.creationDate === "string"
-          ? new Date(reminder.creationDate)
-          : reminder.creationDate,
-      modificationDate:
-        typeof reminder.modificationDate === "string"
-          ? new Date(reminder.modificationDate)
-          : reminder.modificationDate,
-      completionDate:
-        reminder.completionDate && typeof reminder.completionDate === "string"
-          ? new Date(reminder.completionDate)
-          : reminder.completionDate,
-      dueDate:
-        reminder.dueDate && typeof reminder.dueDate === "string"
-          ? new Date(reminder.dueDate)
-          : reminder.dueDate,
-    }));
   }
 
   /**
