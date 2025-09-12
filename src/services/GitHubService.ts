@@ -19,6 +19,7 @@ import { TaskImportManager } from "./TaskImportManager";
 import { GitHubLabelTypeMapper } from "./GitHubLabelTypeMapper";
 import { LabelTypeMapper } from "../types/label-mapping";
 import { taskStore } from "../stores/taskStore";
+import { ExternalDataCache } from "./ExternalDataCache";
 
 export interface GitHubIssue {
   id: number;
@@ -98,7 +99,8 @@ export class GitHubService {
   private octokit: Octokit | null = null;
   private settings: TaskSyncSettings;
   private labelTypeMapper: LabelTypeMapper;
-  private labelCache: Map<string, GitHubLabel[]> = new Map(); // Cache labels by repository
+  private cache?: ExternalDataCache;
+  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache duration
 
   // Import functionality dependencies (injected for testing)
   public taskImportManager?: TaskImportManager;
@@ -122,6 +124,13 @@ export class GitHubService {
    */
   setImportDependencies(taskImportManager: TaskImportManager): void {
     this.taskImportManager = taskImportManager;
+  }
+
+  /**
+   * Initialize the service with cache
+   */
+  async initialize(cache: ExternalDataCache): Promise<void> {
+    this.cache = cache;
   }
 
   /**
@@ -154,6 +163,9 @@ export class GitHubService {
       this.labelTypeMapper.setLabelMapping(mergedMappings);
     }
     // If no custom mappings, keep the existing mappings (which should be defaults)
+
+    // Clear cache when settings change
+    this.clearCache();
 
     // Reinitialize Octokit with new settings
     this.initializeOctokit();
@@ -356,7 +368,7 @@ export class GitHubService {
   }
 
   /**
-   * Fetch labels for a GitHub repository with caching
+   * Fetch labels for a GitHub repository with persistent caching
    */
   async fetchLabels(repository: string): Promise<GitHubLabel[]> {
     if (!this.octokit) {
@@ -367,9 +379,14 @@ export class GitHubService {
       throw new Error("Invalid repository format. Expected: owner/repo");
     }
 
+    const cacheKey = `github-labels-${repository}`;
+
     // Check cache first
-    if (this.labelCache.has(repository)) {
-      return this.labelCache.get(repository)!;
+    if (this.cache) {
+      const cachedLabels = await this.cache.get<GitHubLabel[]>(cacheKey);
+      if (cachedLabels) {
+        return cachedLabels;
+      }
     }
 
     const [owner, repo] = repository.split("/");
@@ -384,7 +401,11 @@ export class GitHubService {
       const labels = response.data as GitHubLabel[];
 
       // Cache the labels
-      this.labelCache.set(repository, labels);
+      if (this.cache) {
+        await this.cache.set(cacheKey, labels, {
+          duration: this.CACHE_DURATION,
+        });
+      }
 
       return labels;
     } catch (error) {
@@ -393,13 +414,29 @@ export class GitHubService {
   }
 
   /**
+   * Clear all caches
+   */
+  async clearCache(): Promise<void> {
+    if (this.cache) {
+      // Clear all GitHub-related cache entries
+      // Note: We don't have a way to list all keys, so we'll clear specific known patterns
+      // This is a limitation of the current cache design
+      await this.cache.clear();
+    }
+  }
+
+  /**
    * Clear label cache for a specific repository or all repositories
    */
-  clearLabelCache(repository?: string): void {
-    if (repository) {
-      this.labelCache.delete(repository);
-    } else {
-      this.labelCache.clear();
+  async clearLabelCache(repository?: string): Promise<void> {
+    if (this.cache) {
+      if (repository) {
+        const cacheKey = `github-labels-${repository}`;
+        await this.cache.delete(cacheKey);
+      } else {
+        // Clear all label caches - this is a limitation since we can't list keys
+        await this.clearCache();
+      }
     }
   }
 

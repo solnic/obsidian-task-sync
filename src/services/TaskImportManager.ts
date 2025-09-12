@@ -29,23 +29,41 @@ export class TaskImportManager {
     taskData: ExternalTaskData,
     config: TaskImportConfig
   ): Promise<string> {
+    console.log("📝 TaskImportManager.createTaskFromData called");
+    console.log("📝 Task data:", taskData);
+    console.log("📝 Config:", config);
+
     const taskName = this.sanitizeTaskName(taskData.title);
     const taskFolder = this.determineTaskFolder(config);
     const taskPath = `${taskFolder}/${taskName}.md`;
 
+    console.log("📝 Sanitized task name:", taskName);
+    console.log("📝 Task folder:", taskFolder);
+    console.log("📝 Task path:", taskPath);
+
     // Check if task already exists
-    if (await this.taskExists(taskPath, taskData.id)) {
-      throw new Error(`Task already exists: ${taskPath}`);
+    const taskExists = await this.taskExists(taskPath, taskData.id);
+    console.log("📝 Task exists check:", taskExists);
+
+    if (taskExists) {
+      const error = `Task already exists: ${taskPath}`;
+      console.error("📝 Error:", error);
+      throw new Error(error);
     }
 
     // Ensure the task folder exists before creating the file
+    console.log("📝 Ensuring folder exists:", taskFolder);
     await this.ensureFolderExists(taskFolder);
 
     // Generate task content with front-matter and body
+    console.log("📝 Generating task content...");
     const taskContent = this.generateCompleteTaskContent(taskData, config);
+    console.log("📝 Generated content length:", taskContent.length);
 
     // Create the task file
+    console.log("📝 Creating file at:", taskPath);
     await this.vault.create(taskPath, taskContent);
+    console.log("📝 File created successfully");
 
     return taskPath;
   }

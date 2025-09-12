@@ -22,11 +22,15 @@ import {
 } from "../types/apple-reminders";
 import { TaskImportManager } from "./TaskImportManager";
 import { taskStore } from "../stores/taskStore";
+import { ExternalDataCache } from "./ExternalDataCache";
 import * as osascript from "node-osascript";
 
 export class AppleRemindersService {
   private settings: TaskSyncSettings;
   private taskImportManager?: TaskImportManager;
+  private cache?: ExternalDataCache;
+  private readonly CACHE_DURATION = 60 * 60 * 1000; // 1 hour cache duration
+  private isInitialized = false;
 
   constructor(settings: TaskSyncSettings) {
     this.settings = settings;
@@ -40,10 +44,95 @@ export class AppleRemindersService {
   }
 
   /**
+   * Initialize the service with cache
+   */
+  async initialize(cache: ExternalDataCache): Promise<void> {
+    this.cache = cache;
+    this.isInitialized = true;
+  }
+
+  /**
    * Update settings reference (for when settings are changed)
    */
   updateSettings(newSettings: TaskSyncSettings): void {
+    // Check if Apple Reminders specific settings have changed
+    const oldAppleSettings = this.settings.appleRemindersIntegration;
+    const newAppleSettings = newSettings.appleRemindersIntegration;
+
+    console.log("🍎 updateSettings called", {
+      oldEnabled: oldAppleSettings.enabled,
+      newEnabled: newAppleSettings.enabled,
+      oldIncludeCompleted: oldAppleSettings.includeCompletedReminders,
+      newIncludeCompleted: newAppleSettings.includeCompletedReminders,
+      oldExcludeAllDay: oldAppleSettings.excludeAllDayReminders,
+      newExcludeAllDay: newAppleSettings.excludeAllDayReminders,
+      oldLists: oldAppleSettings.reminderLists,
+      newLists: newAppleSettings.reminderLists,
+    });
+
+    // More robust comparison for arrays
+    const oldListsSorted = [...oldAppleSettings.reminderLists].sort();
+    const newListsSorted = [...newAppleSettings.reminderLists].sort();
+
+    const settingsChanged =
+      oldAppleSettings.enabled !== newAppleSettings.enabled ||
+      oldAppleSettings.includeCompletedReminders !==
+        newAppleSettings.includeCompletedReminders ||
+      oldAppleSettings.excludeAllDayReminders !==
+        newAppleSettings.excludeAllDayReminders ||
+      JSON.stringify(oldListsSorted) !== JSON.stringify(newListsSorted);
+
     this.settings = newSettings;
+
+    // Only clear cache if Apple Reminders specific settings changed AND service is initialized
+    if (settingsChanged && this.isInitialized) {
+      console.log("🍎 Apple Reminders settings changed, clearing cache");
+      this.clearCache();
+    } else if (settingsChanged && !this.isInitialized) {
+      console.log(
+        "🍎 Apple Reminders settings changed during initialization, preserving cache"
+      );
+    } else {
+      console.log("🍎 Apple Reminders settings unchanged, preserving cache");
+    }
+  }
+
+  /**
+   * Clear all caches
+   */
+  async clearCache(): Promise<void> {
+    if (this.cache) {
+      // Clear reminder lists cache
+      await this.cache.delete("apple-reminders-lists");
+
+      // Clear all possible reminder cache keys
+      // Generate all possible combinations of cache keys
+      const completedOptions = [true, false];
+      const allDayOptions = [true, false];
+
+      for (const includeCompleted of completedOptions) {
+        for (const excludeAllDay of allDayOptions) {
+          const key = this.generateRemindersCacheKey({
+            includeCompleted,
+            excludeAllDay,
+          });
+          await this.cache.delete(key);
+        }
+      }
+    }
+  }
+
+  /**
+   * Generate cache key for reminders based on filter
+   * Note: listNames are excluded from cache key since list filtering is now done in memory
+   */
+  private generateRemindersCacheKey(filter?: AppleRemindersFilter): string {
+    const parts = [
+      "apple-reminders",
+      filter?.includeCompleted ? "completed" : "incomplete",
+      filter?.excludeAllDay ? "no-allday" : "with-allday",
+    ];
+    return parts.join("|");
   }
 
   /**
@@ -118,11 +207,24 @@ export class AppleRemindersService {
   }
 
   /**
-   * Fetch all available reminder lists
+   * Fetch all available reminder lists with persistent caching
    */
   async fetchReminderLists(): Promise<
     AppleRemindersResult<AppleRemindersList[]>
   > {
+    const cacheKey = "apple-reminders-lists";
+
+    // Check cache first
+    if (this.cache) {
+      const cachedLists = await this.cache.get<AppleRemindersList[]>(cacheKey);
+      if (cachedLists) {
+        return {
+          success: true,
+          data: cachedLists,
+        };
+      }
+    }
+
     const permissionCheck = await this.checkPermissions();
     if (!permissionCheck.success) {
       return {
@@ -145,6 +247,13 @@ export class AppleRemindersService {
         reminderCount: 0, // We'll get this separately if needed
       }));
 
+      // Cache the result
+      if (this.cache) {
+        await this.cache.set(cacheKey, reminderLists, {
+          duration: this.CACHE_DURATION,
+        });
+      }
+
       return {
         success: true,
         data: reminderLists,
@@ -162,11 +271,31 @@ export class AppleRemindersService {
   }
 
   /**
-   * Fetch reminders from specified lists or all lists
+   * Fetch reminders from specified lists or all lists with persistent caching
    */
   async fetchReminders(
     filter?: AppleRemindersFilter
   ): Promise<AppleRemindersResult<AppleReminder[]>> {
+    const cacheKey = this.generateRemindersCacheKey(filter);
+
+    // Check cache first
+    if (this.cache) {
+      const cachedReminders = await this.cache.get<AppleReminder[]>(cacheKey);
+      if (cachedReminders) {
+        console.log(
+          `🍎 Cache hit for key: ${cacheKey}, returning ${cachedReminders.length} reminders`
+        );
+        return {
+          success: true,
+          data: cachedReminders,
+        };
+      } else {
+        console.log(
+          `🍎 Cache miss for key: ${cacheKey}, fetching from Apple Reminders`
+        );
+      }
+    }
+
     const permissionCheck = await this.checkPermissions();
     if (!permissionCheck.success) {
       return {
@@ -179,15 +308,13 @@ export class AppleRemindersService {
       const lists = await this.executeAppleScript(
         'tell application "Reminders" to return properties of lists'
       );
+
       const allReminders: AppleReminder[] = [];
+      const processedLists = Array.isArray(lists) ? lists : [];
 
-      for (const list of Array.isArray(lists) ? lists : []) {
-        // Skip lists not in filter if specified
-        if (filter?.listNames && !filter.listNames.includes(list.name)) {
-          continue;
-        }
-
+      for (const list of processedLists) {
         // Skip lists not in settings if configured
+        // Note: listNames filter is now handled in memory, not at fetch level
         const configuredLists =
           this.settings.appleRemindersIntegration.reminderLists;
         if (
@@ -197,16 +324,37 @@ export class AppleRemindersService {
           continue;
         }
 
-        // Get reminders from this list
-        const reminders = await this.executeAppleScript(
-          `tell list list_name in application "Reminders"
-            set buffer to ((current date) - hours * 1)
-            return properties of reminders whose completion date comes after buffer or completed is false
-          end tell`,
-          { list_name: list.name }
-        );
+        // Determine if we should include completed reminders
+        const includeCompleted =
+          filter?.includeCompleted ??
+          this.settings.appleRemindersIntegration.includeCompletedReminders;
 
-        for (const reminder of Array.isArray(reminders) ? reminders : []) {
+        // Get reminders from this list with appropriate filter
+        let appleScriptQuery: string;
+        if (includeCompleted) {
+          // Get all reminders (both completed and incomplete)
+          appleScriptQuery = `tell list list_name in application "Reminders"
+            return properties of reminders
+          end tell`;
+        } else {
+          // Get only incomplete reminders
+          appleScriptQuery = `tell list list_name in application "Reminders"
+            return properties of reminders whose completed is false
+          end tell`;
+        }
+
+        let reminders;
+        try {
+          reminders = await this.executeAppleScript(appleScriptQuery, {
+            list_name: list.name,
+          });
+        } catch (scriptError) {
+          continue; // Skip this list and continue with others
+        }
+
+        const processedReminders = Array.isArray(reminders) ? reminders : [];
+
+        for (const reminder of processedReminders) {
           // Apply filters
           if (!this.shouldIncludeReminder(reminder, filter)) {
             continue;
@@ -216,6 +364,16 @@ export class AppleRemindersService {
             this.transformAppleScriptReminderToAppleReminder(reminder, list);
           allReminders.push(appleReminder);
         }
+      }
+
+      // Cache the result
+      if (this.cache) {
+        await this.cache.set(cacheKey, allReminders, {
+          duration: this.CACHE_DURATION,
+        });
+        console.log(
+          `🍎 Cached ${allReminders.length} reminders with key: ${cacheKey}`
+        );
       }
 
       return {
@@ -242,16 +400,21 @@ export class AppleRemindersService {
     config: TaskImportConfig
   ): Promise<ImportResult> {
     if (!this.taskImportManager) {
-      const error =
-        "Import dependencies not initialized. Call setImportDependencies() first.";
-      throw new Error(error);
+      throw new Error(
+        "Import dependencies not initialized. Call setImportDependencies() first."
+      );
     }
 
     try {
       const taskData = this.transformReminderToTaskData(reminder);
 
       // Check if task is already imported using task store
-      if (taskStore.isTaskImported(taskData.sourceType, taskData.id)) {
+      const isAlreadyImported = taskStore.isTaskImported(
+        taskData.sourceType,
+        taskData.id
+      );
+
+      if (isAlreadyImported) {
         return {
           success: true,
           skipped: true,
@@ -348,8 +511,19 @@ export class AppleRemindersService {
     reminder: any,
     filter?: AppleRemindersFilter
   ): boolean {
+    console.log("🍎 shouldIncludeReminder checking:", reminder.name, {
+      completed: reminder.completed,
+      allDay: reminder.allDay,
+      priority: reminder.priority,
+      dueDate: reminder.dueDate,
+    });
+
     // Check completion status
     if (filter?.includeCompleted === false && reminder.completed) {
+      console.log(
+        "🍎 Excluding reminder (filter excludes completed):",
+        reminder.name
+      );
       return false;
     }
 
@@ -358,11 +532,19 @@ export class AppleRemindersService {
       !this.settings.appleRemindersIntegration.includeCompletedReminders &&
       reminder.completed
     ) {
+      console.log(
+        "🍎 Excluding reminder (settings exclude completed):",
+        reminder.name
+      );
       return false;
     }
 
     // Check all-day reminders
     if (filter?.excludeAllDay && reminder.allDay) {
+      console.log(
+        "🍎 Excluding reminder (filter excludes all-day):",
+        reminder.name
+      );
       return false;
     }
 
@@ -370,6 +552,10 @@ export class AppleRemindersService {
       this.settings.appleRemindersIntegration.excludeAllDayReminders &&
       reminder.allDay
     ) {
+      console.log(
+        "🍎 Excluding reminder (settings exclude all-day):",
+        reminder.name
+      );
       return false;
     }
 
@@ -380,12 +566,22 @@ export class AppleRemindersService {
         filter.priorityRange.min !== undefined &&
         priority < filter.priorityRange.min
       ) {
+        console.log(
+          "🍎 Excluding reminder (priority too low):",
+          reminder.name,
+          priority
+        );
         return false;
       }
       if (
         filter.priorityRange.max !== undefined &&
         priority > filter.priorityRange.max
       ) {
+        console.log(
+          "🍎 Excluding reminder (priority too high):",
+          reminder.name,
+          priority
+        );
         return false;
       }
     }
@@ -394,13 +590,24 @@ export class AppleRemindersService {
     if (filter?.dueDateRange && reminder.dueDate) {
       const dueDate = new Date(reminder.dueDate);
       if (filter.dueDateRange.start && dueDate < filter.dueDateRange.start) {
+        console.log(
+          "🍎 Excluding reminder (due date too early):",
+          reminder.name,
+          dueDate
+        );
         return false;
       }
       if (filter.dueDateRange.end && dueDate > filter.dueDateRange.end) {
+        console.log(
+          "🍎 Excluding reminder (due date too late):",
+          reminder.name,
+          dueDate
+        );
         return false;
       }
     }
 
+    console.log("🍎 Including reminder:", reminder.name);
     return true;
   }
 

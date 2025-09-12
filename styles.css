@@ -1699,7 +1699,7 @@ Provides consistent styling for all UI components
   overflow-x: hidden;
   min-height: 0;
   max-height: 100%;
-  height: 0;
+  height: auto;
 }
 
 .task-sync-task-list {

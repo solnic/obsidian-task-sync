@@ -82,10 +82,20 @@
   function filterReminders(
     state: "active" | "completed" | "all"
   ): AppleReminder[] {
-    if (state === "all") {
-      return reminders;
+    let filtered = reminders;
+
+    // Filter by selected list first
+    if (currentList) {
+      filtered = filtered.filter(
+        (reminder) => reminder.list.name === currentList
+      );
     }
-    return reminders.filter((reminder) =>
+
+    // Then filter by completion state
+    if (state === "all") {
+      return filtered;
+    }
+    return filtered.filter((reminder) =>
       state === "completed" ? reminder.completed : !reminder.completed
     );
   }
@@ -111,6 +121,7 @@
 
     try {
       const result = await appleRemindersService.fetchReminderLists();
+
       if (result.success) {
         reminderLists = result.data;
       } else {
@@ -128,11 +139,17 @@
    */
   function refreshImportStatus(): void {
     const importedReminderIds = new Set<string>();
+
     for (const reminder of reminders) {
-      if (taskStore.isTaskImported("apple-reminders", reminder.id)) {
+      const isImported = taskStore.isTaskImported(
+        "apple-reminders",
+        reminder.id
+      );
+      if (isImported) {
         importedReminderIds.add(reminder.id);
       }
     }
+
     importedReminders = importedReminderIds;
   }
 
@@ -145,15 +162,17 @@
     error = null;
 
     try {
+      // Always fetch all reminders (no list filtering at API level)
+      // List filtering will be done in memory via filterReminders()
       const filter = {
         includeCompleted:
           settings.appleRemindersIntegration.includeCompletedReminders,
-        listNames: currentList ? [currentList] : undefined,
         excludeAllDay:
           settings.appleRemindersIntegration.excludeAllDayReminders,
       };
 
       const result = await appleRemindersService.fetchReminders(filter);
+
       if (result.success) {
         reminders = result.data;
         // Refresh import status after loading reminders
@@ -169,9 +188,8 @@
     }
   }
 
-  async function setList(listName: string | null): Promise<void> {
+  function setList(listName: string | null): void {
     currentList = listName;
-    await loadReminders();
   }
 
   function setStateFilter(state: "active" | "completed" | "all"): void {
@@ -238,11 +256,17 @@
     }
   }
 
+  // Method to force refresh import status without reloading reminders
+  function forceRefreshImportStatus(): void {
+    refreshImportStatus();
+  }
+
   // Expose methods for the wrapper
   $effect(() => {
     if (typeof window !== "undefined") {
       (window as any).__appleRemindersServiceMethods = {
         refresh,
+        forceRefreshImportStatus,
       };
     }
   });

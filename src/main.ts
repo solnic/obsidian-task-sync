@@ -37,6 +37,7 @@ import {
 import { GitHubService } from "./services/GitHubService";
 import { AppleRemindersService } from "./services/AppleRemindersService";
 import { TaskImportManager } from "./services/TaskImportManager";
+import { ExternalDataCache } from "./services/ExternalDataCache";
 import { TasksView, TASKS_VIEW_TYPE } from "./views/TasksView";
 import { ContextTabView, CONTEXT_TAB_VIEW_TYPE } from "./views/ContextTabView";
 import { TaskImportConfig } from "./types/integrations";
@@ -85,6 +86,7 @@ export default class TaskSyncPlugin extends Plugin {
   areaPropertyHandler: AreaPropertyHandler;
   projectPropertyHandler: ProjectPropertyHandler;
   entityCacheHandler: EntityCacheHandler;
+  externalDataCache: ExternalDataCache;
   githubService: GitHubService;
   appleRemindersService: AppleRemindersService;
   taskImportManager: TaskImportManager;
@@ -139,10 +141,16 @@ export default class TaskSyncPlugin extends Plugin {
       this.settings
     );
 
+    // Initialize external data cache
+    this.externalDataCache = new ExternalDataCache(this);
+    await this.externalDataCache.initialize();
+
     this.githubService = new GitHubService(this.settings);
+    await this.githubService.initialize(this.externalDataCache);
 
     // Initialize Apple Reminders service (only on macOS)
     this.appleRemindersService = new AppleRemindersService(this.settings);
+    await this.appleRemindersService.initialize(this.externalDataCache);
 
     // Initialize import services
     this.taskImportManager = new TaskImportManager(
@@ -391,6 +399,10 @@ export default class TaskSyncPlugin extends Plugin {
     await projectStore.saveData();
     await areaStore.saveData();
 
+    if (this.externalDataCache) {
+      await this.externalDataCache.onUnload();
+    }
+
     if (this.fileChangeListener) {
       this.fileChangeListener.cleanup();
     }
@@ -431,6 +443,10 @@ export default class TaskSyncPlugin extends Plugin {
 
     if (this.githubService) {
       this.githubService.updateSettings(this.settings);
+    }
+
+    if (this.appleRemindersService) {
+      this.appleRemindersService.updateSettings(this.settings);
     }
 
     if (this.taskImportManager) {
@@ -1351,6 +1367,7 @@ export default class TaskSyncPlugin extends Plugin {
 
       // Fetch reminders
       const remindersResult = await this.appleRemindersService.fetchReminders();
+
       if (!remindersResult.success) {
         new Notice(
           `Failed to fetch reminders: ${remindersResult.error?.message}`
@@ -1359,10 +1376,13 @@ export default class TaskSyncPlugin extends Plugin {
       }
 
       const reminders = remindersResult.data || [];
+
       if (reminders.length === 0) {
         new Notice("No reminders found");
         return;
       }
+
+      console.log("🍎 Starting import of", reminders.length, "reminders");
 
       // Import each reminder
       let imported = 0;
@@ -1372,6 +1392,7 @@ export default class TaskSyncPlugin extends Plugin {
       for (const reminder of reminders) {
         try {
           const config = this.getDefaultImportConfig();
+
           const result = await this.appleRemindersService.importReminderAsTask(
             reminder,
             config
@@ -1385,22 +1406,32 @@ export default class TaskSyncPlugin extends Plugin {
             }
           } else {
             failed++;
-            console.error(
-              `Failed to import reminder ${reminder.title}:`,
-              result.error
-            );
           }
         } catch (error: any) {
           failed++;
-          console.error(`Error importing reminder ${reminder.title}:`, error);
         }
+      }
+
+      // Wait for file system events to be processed
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      // Refresh task store to ensure UI is updated
+      await taskStore.refreshEntities();
+
+      // Additional delay to ensure UI can process the changes
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      // Refresh Apple Reminders view if it's open
+      const appleRemindersViewMethods = (window as any)
+        .__appleRemindersServiceMethods;
+      if (appleRemindersViewMethods && appleRemindersViewMethods.refresh) {
+        await appleRemindersViewMethods.refresh();
       }
 
       new Notice(
         `Import complete: ${imported} imported, ${skipped} skipped, ${failed} failed`
       );
     } catch (error: any) {
-      console.error("Failed to import Apple Reminders:", error);
       new Notice(`Error importing reminders: ${error.message}`);
     }
   }
