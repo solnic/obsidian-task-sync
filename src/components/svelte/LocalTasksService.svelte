@@ -6,11 +6,7 @@
   import SearchInput from "./SearchInput.svelte";
   import FilterDropdown from "./FilterDropdown.svelte";
   import LocalTaskItem from "./LocalTaskItem.svelte";
-  import {
-    filterLocalTasks,
-    getFilterOptions,
-    getContextFilters,
-  } from "../../utils/contextFiltering";
+  import { getFilterOptions } from "../../utils/contextFiltering";
   import type { Task } from "../../types/entities";
   import type { FileContext } from "../../main";
 
@@ -40,14 +36,8 @@
   $effect(() => {
     const unsubscribe = contextStore.subscribe((value) => {
       currentContext = value;
-
-      // Get filters based on new context
-      const filters = getContextFilters(value);
-
-      // Reset all filters first, then apply context filters
-      selectedProject = filters.project;
-      selectedArea = filters.area;
-      selectedParentTask = filters.parentTask;
+      // Note: No longer automatically setting filters based on context
+      // Users should manually set filters as needed
     });
     return unsubscribe;
   });
@@ -57,13 +47,50 @@
     return getFilterOptions(tasks);
   });
 
-  // Computed filtered tasks with context and additional filters
+  // Computed filtered tasks with manual filters only
   let filteredTasks = $derived.by(() => {
-    // Start with context-based filtering
-    let filtered = filterLocalTasks(tasks, currentContext, {
-      project: selectedProject,
-      area: selectedArea,
-      parentTask: selectedParentTask,
+    // Start with all tasks, apply only manual filters
+    let filtered = tasks.filter((task) => {
+      // Project filter
+      if (selectedProject) {
+        const taskProject =
+          typeof task.project === "string"
+            ? task.project.replace(/^\[\[|\]\]$/g, "")
+            : task.project;
+        if (taskProject !== selectedProject) {
+          return false;
+        }
+      }
+
+      // Area filter
+      if (selectedArea) {
+        let taskAreas: string[] = [];
+        if (task.areas) {
+          if (Array.isArray(task.areas)) {
+            taskAreas = task.areas.map((area) =>
+              typeof area === "string" ? area.replace(/^\[\[|\]\]$/g, "") : area
+            );
+          } else if (typeof (task.areas as any) === "string") {
+            taskAreas = [(task.areas as any).replace(/^\[\[|\]\]$/g, "")];
+          }
+        }
+        if (!taskAreas.includes(selectedArea)) {
+          return false;
+        }
+      }
+
+      // Parent task filter
+      if (selectedParentTask) {
+        const taskParent =
+          typeof task.parentTask === "string"
+            ? task.parentTask.replace(/^\[\[|\]\]$/g, "")
+            : task.parentTask;
+        if (taskParent !== selectedParentTask) {
+          return false;
+        }
+      }
+
+      return true;
     });
 
     // Apply search filter

@@ -177,7 +177,7 @@
 
   .task-sync-item-title {
     font-weight: 600;
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-normal);
     line-height: 1.3;
     margin-bottom: 2px;
