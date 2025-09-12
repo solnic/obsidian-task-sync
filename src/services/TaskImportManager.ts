@@ -270,28 +270,53 @@ export class TaskImportManager {
 
   /**
    * Map external status to internal status format
+   * Uses configured task statuses from settings instead of hardcoded values
    */
   private mapExternalStatus(externalStatus: string): string {
     const status = externalStatus.toLowerCase();
+    const taskStatuses = this.settings.taskStatuses;
 
+    // Find appropriate status based on external status
     switch (status) {
       case "open":
       case "todo":
       case "new":
-        return "todo";
+        // Find first non-done, non-in-progress status (typically "Backlog")
+        const backlogStatus = taskStatuses.find(
+          (s) => !s.isDone && !s.isInProgress
+        );
+        return backlogStatus?.name || taskStatuses[0]?.name || "Backlog";
+
       case "in_progress":
       case "in-progress":
       case "working":
-        return "in-progress";
+        // Find first in-progress status
+        const inProgressStatus = taskStatuses.find((s) => s.isInProgress);
+        return inProgressStatus?.name || "In Progress";
+
       case "closed":
       case "done":
       case "completed":
-        return "done";
+        // Find first done status
+        const doneStatus = taskStatuses.find((s) => s.isDone);
+        return doneStatus?.name || "Done";
+
       case "cancelled":
       case "canceled":
-        return "cancelled";
+        // Look for a cancelled status, otherwise use first non-done status
+        const cancelledStatus = taskStatuses.find((s) =>
+          s.name.toLowerCase().includes("cancel")
+        );
+        return (
+          cancelledStatus?.name ||
+          taskStatuses.find((s) => !s.isDone)?.name ||
+          taskStatuses[0]?.name ||
+          "Backlog"
+        );
+
       default:
-        return "todo";
+        // Default to first configured status (typically "Backlog")
+        return taskStatuses[0]?.name || "Backlog";
     }
   }
 

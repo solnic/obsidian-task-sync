@@ -278,6 +278,14 @@
     }
   });
 
+  // Watch for changes in the task store and refresh import status
+  $effect(() => {
+    // This effect will run whenever the task store changes
+    taskStore.getEntities(); // Access entities to trigger reactivity
+    // Refresh import status whenever task store entities change
+    refreshImportStatus();
+  });
+
   onDestroy(() => {
     // Save current filter state when component is destroyed
     saveRecentlyUsedFilters();
@@ -1146,11 +1154,7 @@
         {:else}
           {#each filteredIssues as issue}
             {@const isImporting = importingIssues.has(issue.number)}
-            {@const isImported = $taskStore.entities.some(
-              (task) =>
-                task.source?.name === "github" &&
-                task.source?.key === `github-${issue.id}`
-            )}
+            {@const isImported = importedIssues.has(issue.number)}
             <GitHubIssueItem
               {issue}
               isHovered={hoveredIssue === issue.number}
@@ -1172,11 +1176,7 @@
         {:else}
           {#each filteredPullRequests as pr}
             {@const isImporting = importingPullRequests.has(pr.number)}
-            {@const isImported = $taskStore.entities.some(
-              (task) =>
-                task.source?.name === "github" &&
-                task.source?.key === `github-pr-${pr.id}`
-            )}
+            {@const isImported = importedPullRequests.has(pr.number)}
             <GitHubPullRequestItem
               pullRequest={pr}
               isHovered={hoveredPullRequest === pr.number}

@@ -17,7 +17,7 @@ import {
   AppleRemindersPermission,
   AppleRemindersFilter,
 } from "../types/apple-reminders";
-import { taskStore } from "../stores/taskStore";
+
 import { AbstractService } from "./AbstractService";
 import { CacheManager } from "../cache/CacheManager";
 import { SchemaCache } from "../cache/SchemaCache";
@@ -390,52 +390,12 @@ export class AppleRemindersService extends AbstractService {
     reminder: AppleReminder,
     config: TaskImportConfig
   ): Promise<ImportResult> {
-    if (!this.taskImportManager) {
-      throw new Error(
-        "Import dependencies not initialized. Call setImportDependencies() first."
-      );
-    }
-
-    try {
-      const taskData = this.transformReminderToTaskData(reminder);
-
-      // Check if task is already imported using task store
-      const isAlreadyImported = taskStore.isTaskImported(
-        taskData.sourceType,
-        taskData.id
-      );
-
-      if (isAlreadyImported) {
-        return {
-          success: true,
-          skipped: true,
-          reason: "Task already imported",
-        };
-      }
-
-      // Enhance config with reminder-specific settings
-      const enhancedConfig = this.enhanceConfigWithReminderData(
-        reminder,
-        config
-      );
-
-      // Create the task
-      const taskPath = await this.taskImportManager.createTaskFromData(
-        taskData,
-        enhancedConfig
-      );
-
-      // Task store will automatically pick up the new task via file watchers
-      return {
-        success: true,
-        taskPath,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
+    return this.importExternalItem(
+      reminder,
+      config,
+      this.transformReminderToTaskData.bind(this),
+      this.enhanceConfigWithReminderData.bind(this)
+    );
   }
 
   /**

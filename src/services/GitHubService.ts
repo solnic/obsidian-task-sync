@@ -17,7 +17,7 @@ import {
 } from "../types/integrations";
 import { GitHubLabelTypeMapper } from "./GitHubLabelTypeMapper";
 import { LabelTypeMapper } from "../types/label-mapping";
-import { taskStore } from "../stores/taskStore";
+
 import { AbstractService } from "./AbstractService";
 import { SchemaCache } from "../cache/SchemaCache";
 import {
@@ -667,44 +667,12 @@ export class GitHubService extends AbstractService {
     issue: GitHubIssue,
     config: TaskImportConfig
   ): Promise<ImportResult> {
-    if (!this.taskImportManager) {
-      const error =
-        "Import dependencies not initialized. Call setImportDependencies() first.";
-      throw new Error(error);
-    }
-
-    try {
-      const taskData = this.transformIssueToTaskData(issue);
-
-      // Check if task is already imported using task store
-      if (taskStore.isTaskImported(taskData.sourceType, taskData.id)) {
-        return {
-          success: true,
-          skipped: true,
-          reason: "Task already imported",
-        };
-      }
-
-      // Enhance config with label-based task type mapping
-      const enhancedConfig = this.enhanceConfigWithLabelMapping(issue, config);
-
-      // Create the task
-      const taskPath = await this.taskImportManager.createTaskFromData(
-        taskData,
-        enhancedConfig
-      );
-
-      // Task store will automatically pick up the new task via file watchers
-      return {
-        success: true,
-        taskPath,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
+    return this.importExternalItem(
+      issue,
+      config,
+      this.transformIssueToTaskData.bind(this),
+      this.enhanceConfigWithLabelMapping.bind(this)
+    );
   }
 
   /**
@@ -714,47 +682,12 @@ export class GitHubService extends AbstractService {
     pullRequest: GitHubPullRequest,
     config: TaskImportConfig
   ): Promise<ImportResult> {
-    if (!this.taskImportManager) {
-      const error =
-        "Import dependencies not initialized. Call setImportDependencies() first.";
-      throw new Error(error);
-    }
-
-    try {
-      const taskData = this.transformPullRequestToTaskData(pullRequest);
-
-      // Check if task is already imported using task store
-      if (taskStore.isTaskImported(taskData.sourceType, taskData.id)) {
-        return {
-          success: true,
-          skipped: true,
-          reason: "Task already imported",
-        };
-      }
-
-      // Enhance config with label-based task type mapping
-      const enhancedConfig = this.enhanceConfigWithLabelMapping(
-        pullRequest,
-        config
-      );
-
-      // Create the task
-      const taskPath = await this.taskImportManager.createTaskFromData(
-        taskData,
-        enhancedConfig
-      );
-
-      // Task store will automatically pick up the new task via file watchers
-      return {
-        success: true,
-        taskPath,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message,
-      };
-    }
+    return this.importExternalItem(
+      pullRequest,
+      config,
+      this.transformPullRequestToTaskData.bind(this),
+      this.enhanceConfigWithLabelMapping.bind(this)
+    );
   }
 
   /**

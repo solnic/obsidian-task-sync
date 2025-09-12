@@ -3,6 +3,12 @@ import { TaskSyncSettings } from "../main";
 import { CacheManager } from "../cache/CacheManager";
 import { SchemaCache } from "../cache/SchemaCache";
 import { TaskImportManager } from "./TaskImportManager";
+import {
+  ExternalTaskData,
+  TaskImportConfig,
+  ImportResult,
+} from "../types/integrations";
+import { taskStore } from "../stores/taskStore";
 
 export interface ServiceFilter {
   field: string;
@@ -96,5 +102,61 @@ export abstract class AbstractService {
    */
   updateSettings(newSettings: TaskSyncSettings): void {
     this.settings = newSettings;
+  }
+
+  /**
+   * Common import functionality for all services
+   * Handles the standard import flow: check dependencies, transform data, check duplicates, create task
+   */
+  protected async importExternalItem<T>(
+    externalItem: T,
+    config: TaskImportConfig,
+    transformFunction: (item: T) => ExternalTaskData,
+    enhanceConfigFunction?: (
+      item: T,
+      config: TaskImportConfig
+    ) => TaskImportConfig
+  ): Promise<ImportResult> {
+    if (!this.taskImportManager) {
+      const error =
+        "Import dependencies not initialized. Call setImportDependencies() first.";
+      throw new Error(error);
+    }
+
+    try {
+      // Transform external item to standardized task data
+      const taskData = transformFunction(externalItem);
+
+      // Check if task is already imported using task store
+      if (taskStore.isTaskImported(taskData.sourceType, taskData.id)) {
+        return {
+          success: true,
+          skipped: true,
+          reason: "Task already imported",
+        };
+      }
+
+      // Enhance config with service-specific data if function provided
+      const enhancedConfig = enhanceConfigFunction
+        ? enhanceConfigFunction(externalItem, config)
+        : config;
+
+      // Create the task
+      const taskPath = await this.taskImportManager.createTaskFromData(
+        taskData,
+        enhancedConfig
+      );
+
+      // Task store will automatically pick up the new task via file watchers
+      return {
+        success: true,
+        taskPath,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
   }
 }
