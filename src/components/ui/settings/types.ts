@@ -98,6 +98,22 @@ export interface AppleRemindersIntegrationSettings {
   preservePriority: boolean;
 }
 
+// Apple Calendar integration interfaces
+export interface AppleCalendarIntegrationSettings {
+  enabled: boolean;
+  username: string; // Apple ID for iCloud Calendar
+  appSpecificPassword: string; // App-specific password for CalDAV
+  selectedCalendars: string[]; // Array of calendar names to include
+  includeAllDayEvents: boolean;
+  includeBusyEvents: boolean;
+  includeFreeEvents: boolean;
+  daysAhead: number; // Number of days to look ahead for events
+  daysBehind: number; // Number of days to look back for events
+  includeLocation: boolean;
+  includeNotes: boolean;
+  timeFormat: "12h" | "24h";
+}
+
 export interface TaskSyncSettings {
   tasksFolder: string;
   projectsFolder: string;
@@ -130,6 +146,8 @@ export interface TaskSyncSettings {
   githubIntegration: GitHubIntegrationSettings;
   // Apple Reminders integration settings
   appleRemindersIntegration: AppleRemindersIntegrationSettings;
+  // Apple Calendar integration settings
+  appleCalendarIntegration: AppleCalendarIntegrationSettings;
 }
 
 export interface ValidationResult {

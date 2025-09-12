@@ -79,6 +79,21 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
     importNotesAsDescription: true,
     preservePriority: true,
   },
+  // Apple Calendar integration defaults
+  appleCalendarIntegration: {
+    enabled: false,
+    username: "", // Apple ID
+    appSpecificPassword: "", // App-specific password
+    selectedCalendars: [], // Empty array means include all calendars
+    includeAllDayEvents: true,
+    includeBusyEvents: true,
+    includeFreeEvents: false,
+    daysAhead: 1, // Look ahead 1 day
+    daysBehind: 0, // Don't look back
+    includeLocation: true,
+    includeNotes: false,
+    timeFormat: "24h" as const,
+  },
 };
 
 /**

@@ -1809,6 +1809,118 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             });
         });
     }
+
+    // Apple Calendar Integration Section
+    section.createEl("h3", {
+      text: "Apple Calendar",
+      cls: "task-sync-subsection-header",
+    });
+
+    // Apple Calendar integration toggle
+    new Setting(section)
+      .setName("Enable Apple Calendar Integration")
+      .setDesc(
+        "Connect to iCloud Calendar via CalDAV to insert events into daily notes"
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settings.appleCalendarIntegration.enabled)
+          .onChange(async (value) => {
+            this.plugin.settings.appleCalendarIntegration.enabled = value;
+            await this.plugin.saveSettings();
+
+            // Refresh the section to show/hide additional settings
+            section.empty();
+            this.createIntegrationsSection(container);
+          });
+      });
+
+    // Only show additional settings if Apple Calendar integration is enabled
+    if (this.plugin.settings.appleCalendarIntegration.enabled) {
+      // Apple ID (username)
+      new Setting(section)
+        .setName("Apple ID")
+        .setDesc("Your Apple ID email address for iCloud Calendar access")
+        .addText((text) => {
+          text
+            .setPlaceholder("your-email@icloud.com")
+            .setValue(this.plugin.settings.appleCalendarIntegration.username)
+            .onChange(async (value) => {
+              this.plugin.settings.appleCalendarIntegration.username = value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // App-specific password
+      new Setting(section)
+        .setName("App-Specific Password")
+        .setDesc(
+          "Generate an app-specific password in your Apple ID settings for CalDAV access"
+        )
+        .addText((text) => {
+          text
+            .setPlaceholder("xxxx-xxxx-xxxx-xxxx")
+            .setValue(
+              this.plugin.settings.appleCalendarIntegration.appSpecificPassword
+            )
+            .onChange(async (value) => {
+              this.plugin.settings.appleCalendarIntegration.appSpecificPassword =
+                value;
+              await this.plugin.saveSettings();
+            });
+          // Make it a password field
+          text.inputEl.type = "password";
+        });
+
+      // Include location
+      new Setting(section)
+        .setName("Include Location")
+        .setDesc("Include event location in the inserted calendar events")
+        .addToggle((toggle) => {
+          toggle
+            .setValue(
+              this.plugin.settings.appleCalendarIntegration.includeLocation
+            )
+            .onChange(async (value) => {
+              this.plugin.settings.appleCalendarIntegration.includeLocation =
+                value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Include notes
+      new Setting(section)
+        .setName("Include Notes")
+        .setDesc(
+          "Include event descriptions/notes in the inserted calendar events"
+        )
+        .addToggle((toggle) => {
+          toggle
+            .setValue(
+              this.plugin.settings.appleCalendarIntegration.includeNotes
+            )
+            .onChange(async (value) => {
+              this.plugin.settings.appleCalendarIntegration.includeNotes =
+                value;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Time format
+      new Setting(section)
+        .setName("Time Format")
+        .setDesc("Choose between 12-hour or 24-hour time format")
+        .addDropdown((dropdown) => {
+          dropdown
+            .addOption("12h", "12-hour (AM/PM)")
+            .addOption("24h", "24-hour")
+            .setValue(this.plugin.settings.appleCalendarIntegration.timeFormat)
+            .onChange(async (value: "12h" | "24h") => {
+              this.plugin.settings.appleCalendarIntegration.timeFormat = value;
+              await this.plugin.saveSettings();
+            });
+        });
+    }
   }
 
   hide(): void {

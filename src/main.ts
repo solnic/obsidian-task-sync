@@ -49,6 +49,7 @@ import {
 } from "./components/ui/settings";
 import { GitHubService } from "./services/GitHubService";
 import { AppleRemindersService } from "./services/AppleRemindersService";
+import { AppleCalendarService } from "./services/AppleCalendarService";
 import { TaskImportManager } from "./services/TaskImportManager";
 import { CacheManager } from "./cache/CacheManager";
 import { TasksView, TASKS_VIEW_TYPE } from "./views/TasksView";
@@ -108,6 +109,7 @@ export default class TaskSyncPlugin extends Plugin {
   cacheManager: CacheManager;
   githubService: GitHubService;
   appleRemindersService: AppleRemindersService;
+  appleCalendarService: AppleCalendarService;
   taskImportManager: TaskImportManager;
   taskFileManager: TaskFileManager;
   areaFileManager: AreaFileManager;
@@ -173,6 +175,10 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize Apple Reminders service (only on macOS)
     this.appleRemindersService = new AppleRemindersService(this.settings);
     await this.appleRemindersService.initialize(this.cacheManager);
+
+    // Initialize Apple Calendar service
+    this.appleCalendarService = new AppleCalendarService(this.settings);
+    await this.appleCalendarService.initialize(this.cacheManager);
 
     // Initialize import services
     this.taskImportManager = new TaskImportManager(
@@ -466,6 +472,25 @@ export default class TaskSyncPlugin extends Plugin {
       });
     }
 
+    // Apple Calendar Commands
+    if (this.appleCalendarService.isPlatformSupported()) {
+      this.addCommand({
+        id: "insert-calendar-events",
+        name: "Insert Calendar Events",
+        callback: async () => {
+          await this.insertCalendarEvents();
+        },
+      });
+
+      this.addCommand({
+        id: "check-apple-calendar-permissions",
+        name: "Check Apple Calendar Permissions",
+        callback: async () => {
+          await this.checkAppleCalendarPermissions();
+        },
+      });
+    }
+
     this.addCommand({
       id: "open-context-tab",
       name: "Open Context Tab",
@@ -485,6 +510,11 @@ export default class TaskSyncPlugin extends Plugin {
 
     if (this.fileChangeListener) {
       this.fileChangeListener.cleanup();
+    }
+
+    // Cleanup Apple Calendar service
+    if (this.appleCalendarService) {
+      this.appleCalendarService.cleanup();
     }
 
     if (this.eventManager) {
@@ -1607,6 +1637,101 @@ export default class TaskSyncPlugin extends Plugin {
       }
     } catch (error: any) {
       console.error("Error checking Apple Reminders permissions:", error);
+      new Notice(`Error checking permissions: ${error.message}`);
+    }
+  }
+
+  /**
+   * Insert calendar events into current daily note
+   */
+  private async insertCalendarEvents(): Promise<void> {
+    if (!this.appleCalendarService.isEnabled()) {
+      new Notice(
+        "Apple Calendar integration is not enabled. Please configure it in settings."
+      );
+      return;
+    }
+
+    try {
+      // Get current daily note or create one
+      const dailyNoteResult =
+        await this.dailyNoteService.ensureTodayDailyNote();
+      if (!dailyNoteResult.file) {
+        new Notice("Could not find or create daily note");
+        return;
+      }
+      const dailyNote = dailyNoteResult.file;
+
+      // Get calendar events for today
+      const today = new Date();
+      const startOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
+      const endOfDay = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() + 1
+      );
+
+      const events = await this.appleCalendarService.getTodayEvents();
+
+      if (events.length === 0) {
+        new Notice("No calendar events found for today");
+        return;
+      }
+
+      // Format events
+      const { DefaultCalendarEventFormatter } = await import(
+        "./services/CalendarEventFormatter"
+      );
+      const formatter = new DefaultCalendarEventFormatter();
+
+      const config = this.settings.appleCalendarIntegration;
+      const formattedEvents = formatter.formatEvents(events, {
+        includeTime: true,
+        includeLocation: config.includeLocation,
+        includeDescription: config.includeNotes,
+        timeFormat: config.timeFormat,
+        groupByCalendar: true,
+        showCalendarName: false,
+        markdown: {
+          useBullets: true,
+          useCheckboxes: false,
+          calendarHeaderLevel: 3,
+        },
+      });
+
+      // Insert into daily note
+      const content = await this.app.vault.read(dailyNote);
+      const newContent =
+        content + "\n\n## Calendar Events\n\n" + formattedEvents + "\n";
+      await this.app.vault.modify(dailyNote, newContent);
+
+      new Notice(`Inserted ${events.length} calendar events into daily note`);
+    } catch (error: any) {
+      console.error("Error inserting calendar events:", error);
+      new Notice(`Error inserting calendar events: ${error.message}`);
+    }
+  }
+
+  /**
+   * Check Apple Calendar permissions
+   */
+  private async checkAppleCalendarPermissions(): Promise<void> {
+    try {
+      const hasPermissions = await this.appleCalendarService.checkPermissions();
+
+      if (hasPermissions) {
+        new Notice("✅ Apple Calendar access is working");
+      } else {
+        new Notice(
+          "❌ Apple Calendar access failed. Please check your credentials in settings."
+        );
+      }
+    } catch (error: any) {
+      console.error("Error checking Apple Calendar permissions:", error);
       new Notice(`Error checking permissions: ${error.message}`);
     }
   }
