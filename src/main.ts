@@ -54,6 +54,10 @@ import { TaskImportManager } from "./services/TaskImportManager";
 import { CacheManager } from "./cache/CacheManager";
 import { TasksView, TASKS_VIEW_TYPE } from "./views/TasksView";
 import { ContextTabView, CONTEXT_TAB_VIEW_TYPE } from "./views/ContextTabView";
+import {
+  TaskPlanningView,
+  TASK_PLANNING_VIEW_TYPE,
+} from "./views/TaskPlanningView";
 import { TaskImportConfig } from "./types/integrations";
 import { taskStore } from "./stores/taskStore";
 import { projectStore } from "./stores/projectStore";
@@ -329,6 +333,15 @@ export default class TaskSyncPlugin extends Plugin {
       (leaf) => new ContextTabView(leaf)
     );
 
+    // Register Task Planning view
+    this.registerView(
+      TASK_PLANNING_VIEW_TYPE,
+      (leaf) =>
+        new TaskPlanningView(leaf, this.appleCalendarService, {
+          appleCalendarIntegration: this.settings.appleCalendarIntegration,
+        })
+    );
+
     // Wait for layout ready, then populate stores and create views
     this.app.workspace.onLayoutReady(async () => {
       console.log("Layout ready - populating stores from vault");
@@ -339,6 +352,7 @@ export default class TaskSyncPlugin extends Plugin {
       // Initialize views after stores are populated
       this.initializeTasksView();
       this.initializeContextTabView();
+      this.initializeTaskPlanningView();
 
       // Register markdown processor after layout is ready
       this.registerTaskTodoMarkdownProcessor();
@@ -794,6 +808,27 @@ export default class TaskSyncPlugin extends Plugin {
 
     await rightLeaf.setViewState({
       type: CONTEXT_TAB_VIEW_TYPE,
+      active: false,
+    });
+  }
+
+  /**
+   * Initialize Task Planning view in the right sidebar if it doesn't already exist
+   */
+  private async initializeTaskPlanningView(): Promise<void> {
+    const existingLeaves = this.app.workspace.getLeavesOfType(
+      TASK_PLANNING_VIEW_TYPE
+    );
+
+    if (existingLeaves.length > 0) {
+      console.log("✅ Task Planning view already exists, skipping creation");
+      return; // View already exists
+    }
+
+    const rightLeaf = this.app.workspace.getRightLeaf(false);
+
+    await rightLeaf.setViewState({
+      type: TASK_PLANNING_VIEW_TYPE,
       active: false,
     });
   }

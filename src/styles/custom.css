@@ -1,1709 +1,9 @@
-/* Main CSS file that imports all styles for the Task Sync plugin */
-
-/* Import Schedule-X default theme first (provides base functionality) */
-
-.sx__calendar-wrapper ul,
-.sx__date-picker-wrapper ul,
-.sx__date-picker-popup ul {
-  list-style: none;
-  padding: 0;
-}
-
-.sx__calendar-wrapper input,
-.sx__calendar-wrapper button,
-.sx__date-picker-wrapper input,
-.sx__date-picker-wrapper button,
-.sx__date-picker-popup input,
-.sx__date-picker-popup button {
-  font-family: inherit;
-  outline: none;
-}
-
-.sx__calendar-wrapper button,
-.sx__date-picker-wrapper button,
-.sx__date-picker-popup button {
-  background-color: inherit;
-  outline: 0;
-  border: none;
-  cursor: pointer;
-}
-
-:root {
-  --sx-color-primary: #6750a4;
-  --sx-color-on-primary: #fff;
-  --sx-color-primary-container: #eaddff;
-  --sx-color-on-primary-container: #21005e;
-  --sx-color-secondary: #625b71;
-  --sx-color-on-secondary: #fff;
-  --sx-color-secondary-container: #e8def8;
-  --sx-color-on-secondary-container: #1e192b;
-  --sx-color-tertiary: #7d5260;
-  --sx-color-on-tertiary: #fff;
-  --sx-color-tertiary-container: #ffd8e4;
-  --sx-color-on-tertiary-container: #370b1e;
-  --sx-color-surface: #fef7ff;
-  --sx-color-surface-dim: #ded8e1;
-  --sx-color-surface-bright: #fef7ff;
-  --sx-color-on-surface: #1c1b1f;
-  --sx-color-surface-container: #f3edf7;
-  --sx-color-surface-container-low: #f7f2fa;
-  --sx-color-surface-container-high: #ece6f0;
-  --sx-color-background: #fff;
-  --sx-color-on-background: #1c1b1f;
-  --sx-color-outline: #79747e;
-  --sx-color-outline-variant: #c4c7c5;
-  --sx-color-shadow: #000;
-  --sx-color-surface-tint: #6750a4;
-  --sx-color-neutral: var(--sx-color-outline);
-  --sx-color-neutral-variant: var(--sx-color-outline-variant);
-  --sx-internal-color-gray-ripple-background: #e0e0e0;
-  --sx-internal-color-light-gray: #fafafa;
-  --sx-internal-color-text: #000;
-}
-
-.is-dark {
-  --sx-color-primary: #d0bcff;
-  --sx-color-on-primary: #371e73;
-  --sx-color-primary-container: #4f378b;
-  --sx-color-on-primary-container: #eaddff;
-  --sx-color-secondary: #ccc2dc;
-  --sx-color-on-secondary: #332d41;
-  --sx-color-secondary-container: #4a4458;
-  --sx-color-on-secondary-container: #e8def8;
-  --sx-color-tertiary: #efb8c8;
-  --sx-color-on-tertiary: #492532;
-  --sx-color-tertiary-container: #633b48;
-  --sx-color-on-tertiary-container: #ffd8e4;
-  --sx-color-surface: #141218;
-  --sx-color-surface-dim: #141218;
-  --sx-color-surface-bright: #3b383e;
-  --sx-color-on-surface: #e6e1e5;
-  --sx-color-surface-container: #211f26;
-  --sx-color-surface-container-low: #1d1b20;
-  --sx-color-surface-container-high: #2b2930;
-  --sx-color-background: #141218;
-  --sx-color-on-background: #e6e1e5;
-  --sx-color-outline: #938f99;
-  --sx-color-outline-variant: #444746;
-  --sx-color-shadow: #000;
-  --sx-color-surface-tint: #d0bcff;
-  --sx-internal-color-text: #fff;
-}
-
-:root {
-  --sx-spacing-padding1: 4px;
-  --sx-spacing-padding2: 8px;
-  --sx-spacing-padding3: 12px;
-  --sx-spacing-padding4: 16px;
-  --sx-spacing-padding6: 24px;
-  --sx-spacing-modal-padding: 16px;
-}
-
-:root {
-  --sx-box-shadow-level3: 0 3px 6px 0 rgb(0 0 0 / 16%),
-    0 3px 6px 0 rgb(0 0 0 / 23%);
-  --sx-rounding-extra-small: 4px;
-  --sx-rounding-small: 8px;
-  --sx-rounding-extra-large: 28px;
-  --sx-border: 1px solid var(--sx-color-outline-variant);
-}
-
-.is-dark {
-  --sx-border: 1px solid var(--sx-color-outline-variant);
-}
-
-:root {
-  --sx-font-small: 0.875rem;
-  --sx-font-extra-small: 0.75rem;
-  --sx-font-large: 1.125rem;
-  --sx-font-extra-large: 1.25rem;
-}
-
-@keyframes sx-ripple {
-  0% {
-    width: 0;
-    height: 0;
-    opacity: 0.16;
-  }
-  40% {
-    width: 100px;
-    height: 100px;
-    opacity: 0.08;
-  }
-  100% {
-    width: 150px;
-    height: 150px;
-    opacity: 0;
-  }
-}
-
-.sx__ripple {
-  position: relative;
-  overflow: hidden;
-}
-
-.sx__ripple::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background-color: currentcolor;
-  opacity: 0.1;
-  visibility: hidden;
-  z-index: 2;
-}
-
-.sx__ripple:active::before {
-  visibility: visible;
-}
-
-.sx__ripple:not(:active)::before {
-  animation: sx-ripple 0.75s cubic-bezier(0, 0.1, 0.8, 1);
-  transition: visibility 0.75s step-end;
-}
-
-@keyframes sx-ripple-wide {
-  0% {
-    width: 0;
-    height: 0;
-    opacity: 0.16;
-  }
-  40% {
-    width: 300px;
-    height: 100px;
-    opacity: 0.08;
-  }
-  100% {
-    width: 450px;
-    height: 150px;
-    opacity: 0;
-  }
-}
-
-.sx__ripple--wide {
-  position: relative;
-  overflow: hidden;
-}
-
-.sx__ripple--wide::before {
-  content: "";
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0;
-  height: 0;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background-color: currentcolor;
-  opacity: 0.1;
-  visibility: hidden;
-  z-index: 2;
-}
-
-.sx__ripple--wide:active::before {
-  visibility: visible;
-}
-
-.sx__ripple--wide::before {
-  border-radius: var(--sx-rounding-small);
-}
-
-.sx__ripple--wide:not(:active)::before {
-  animation: sx-ripple-wide 0.75s cubic-bezier(0, 0.1, 0.8, 1);
-  transition: visibility 0.75s step-end;
-}
-
-.sx__chevron-wrapper {
-  position: relative;
-  border-radius: 50%;
-  min-height: 48px;
-  min-width: 48px;
-  cursor: pointer;
-  transition: background-color 0.2s ease-in-out;
-  font-size: 0;
-}
-
-.sx__chevron-wrapper:active {
-  background-color: var(--sx-internal-color-gray-ripple-background);
-}
-
-.sx__chevron-wrapper:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.sx__chevron-wrapper:hover, .sx__chevron-wrapper:focus {
-  background-color: var(--sx-color-surface-dim);
-}
-
-.is-dark .sx__chevron-wrapper:hover, .is-dark .sx__chevron-wrapper:focus {
-  background-color: var(--sx-color-surface-container-high);
-}
-
-.sx__chevron-wrapper .sx__chevron {
-  position: absolute;
-  top: 50%;
-  width: 0.6rem;
-  height: 0.6rem;
-  border-width: 0.2rem 0.2rem 0 0;
-  border-style: solid;
-  border-color: var(--sx-internal-color-text);
-}
-
-.sx__chevron--previous {
-  left: calc(50% + 0.125rem);
-  transform: translate(-50%, -50%) rotate(225deg);
-}
-
-[dir=rtl] .sx__chevron--previous {
-  left: calc(50% - 0.125rem);
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-
-.sx__chevron--next {
-  left: calc(50% - 0.125rem);
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-
-[dir=rtl] .sx__chevron--next {
-  left: calc(50% + 0.125rem);
-  transform: translate(-50%, -50%) rotate(225deg);
-}
-
-.sx__date-picker-wrapper {
-  position: relative;
-  color: var(--sx-color-on-background);
-  width: fit-content;
-}
-
-.sx__date-picker-wrapper.has-full-width {
-  width: 100%;
-}
-
-.sx__date-picker-wrapper.is-disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.sx__date-picker-wrapper * {
-  color: var(--sx-color-on-background);
-  box-sizing: border-box;
-}
-
-.sx__date-input-wrapper {
-  position: relative;
-}
-
-.sx__date-input-chevron-wrapper {
-  position: absolute;
-  top: 50%;
-  right: 1rem;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  padding: 0;
-  transition: transform 0.2s ease-in-out;
-}
-
-.sx__date-input-chevron-wrapper:focus {
-  border: 2px solid var(--sx-color-primary);
-}
-
-.is-disabled .sx__date-input-chevron-wrapper {
-  pointer-events: none;
-  cursor: not-allowed;
-}
-
-.sx__date-input--active .sx__date-input-chevron-wrapper {
-  transform: translateY(-50%) rotate(180deg);
-}
-
-[dir=rtl] .sx__date-input-chevron-wrapper {
-  left: 1rem;
-  right: auto;
-}
-
-.sx__date-input-chevron {
-  width: 1rem;
-  height: 1rem;
-  pointer-events: none;
-  filter: brightness(0.7);
-}
-
-.sx__date-input {
-  font-size: 1rem;
-  padding: var(--sx-spacing-padding4);
-  border: var(--sx-border);
-  border-radius: var(--sx-rounding-extra-small);
-  cursor: pointer;
-  background-color: var(--sx-color-background);
-  width: 100%;
-}
-
-.is-disabled .sx__date-input {
-  pointer-events: none;
-}
-
-.sx__date-input--active .sx__date-input {
-  border-color: var(--sx-color-primary);
-  outline: 1px solid var(--sx-color-primary);
-}
-
-.sx__date-input-label {
-  position: absolute;
-  top: 0;
-  inset-inline-start: 12px;
-  padding: 0 var(--sx-spacing-padding1);
-  background-color: var(--sx-color-background);
-  font-size: 0.75rem;
-  color: var(--sx-color-neutral);
-  line-height: 1rem;
-  transform: translateY(-50%);
-  transition: transform 0.2s ease-in-out;
-  pointer-events: none;
-}
-
-.sx__date-input--active .sx__date-input-label {
-  color: var(--sx-color-primary);
-}
-
-.is-dark .sx__date-input-label {
-  display: none;
-}
-
-.sx__date-picker-popup {
-  position: absolute;
-  height: fit-content;
-  z-index: 1;
-  top: calc(100% + 1px);
-  width: 20.75rem;
-  max-width: 500px;
-  max-height: 400px;
-  overflow: scroll;
-  box-shadow: var(--sx-box-shadow-level3);
-  padding: var(--sx-spacing-modal-padding);
-  background-color: var(--sx-color-background);
-  color: var(--sx-internal-color-text);
-}
-
-.sx__date-picker-popup.is-dark {
-  background-color: var(--sx-color-surface-container-high);
-}
-
-.sx__date-picker-popup.bottom-end {
-  left: auto;
-  right: 0;
-  transform: translateX(0);
-}
-
-.sx__date-picker-popup.top-start {
-  inset: auto auto calc(100% + 1rem) 0;
-  transform: translateX(0);
-}
-
-.sx__date-picker-popup.top-end {
-  inset: auto 0 calc(100% + 1rem) auto;
-  transform: translateX(0);
-}
-
-.sx__date-picker__years-view {
-  margin: 0;
-}
-
-.sx__date-picker__years-accordion__expand-button {
-  width: 100%;
-  border-radius: 0;
-  background-color: transparent;
-  font-size: 1rem;
-  padding: 1em;
-  transition: background-color 0.2s ease-in-out;
-  color: var(--sx-internal-color-text);
-}
-
-.sx__is-expanded .sx__date-picker__years-accordion__expand-button {
-  background-color: var(--sx-color-surface-container);
-}
-
-.sx__date-picker__years-accordion__expand-button:hover {
-  background-color: var(--sx-color-surface-dim);
-}
-
-.sx__date-picker__years-accordion__expand-button:active {
-  background-color: var(--sx-internal-color-gray-ripple-background);
-}
-
-.sx__date-picker__years-view-accordion__panel {
-  display: flex;
-  flex-wrap: wrap;
-}
-
-.sx__date-picker__years-view-accordion__month {
-  flex: 1 0 33.3333%;
-  background-color: transparent;
-  border: 0;
-  font-size: 0.9rem;
-  padding: 0.5em 0;
-  border-radius: 25px;
-  color: var(--sx-internal-color-text);
-}
-
-.sx__date-picker__years-view-accordion__month:hover {
-  background-color: var(--sx-color-primary);
-  color: var(--sx-color-on-primary);
-}
-
-.sx__date-picker__day-names {
-  display: flex;
-  width: 100%;
-  justify-content: space-evenly;
-  margin-bottom: 0.5em;
-}
-
-.sx__date-picker__day-names .sx__date-picker__day,
-.sx__date-picker__day-names .sx__date-picker__day-name {
-  flex: 1;
-  text-align: center;
-}
-
-.sx__date-picker__day-name {
-  font-weight: 700;
-  color: var(--sx-color-neutral-variant);
-}
-
-.sx__date-picker__month-view-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 1em;
-}
-
-.sx__date-picker__month-view-header .sx__chevron-wrapper:hover {
-  background-color: var(--sx-color-surface-dim);
-}
-
-.sx__date-picker__month-view-header__month-year {
-  font-size: 1.5rem;
-  font-weight: 300;
-  color: var(--sx-internal-color-text);
-}
-
-.sx__date-picker__month-view-header__month-year:hover {
-  color: var(--sx-color-primary);
-  text-decoration: underline;
-}
-
-.sx__date-picker__week {
-  display: flex;
-  width: 100%;
-  justify-content: space-evenly;
-  margin-bottom: 0.5em;
-}
-
-.sx__date-picker__week .sx__date-picker__day,
-.sx__date-picker__week .sx__date-picker__day-name {
-  flex: 1;
-  text-align: center;
-}
-
-.sx__date-picker__day {
-  background-color: transparent;
-  border-radius: 50%;
-  width: 2.5rem;
-  height: 2.5rem;
-  color: var(--sx-internal-color-text);
-}
-
-.sx__date-picker__day:hover {
-  background-color: var(--sx-color-surface-dim);
-}
-
-.sx__date-picker__day:focus {
-  outline-offset: -2px;
-  outline: 2px solid var(--sx-color-primary);
-}
-
-.sx__date-picker__day:disabled {
-  color: var(--sx-color-neutral-variant);
-  cursor: not-allowed;
-}
-
-.sx__date-picker__day.is-leading-or-trailing {
-  color: var(--sx-color-neutral-variant);
-}
-
-.sx__date-picker__day.sx__date-picker__day--selected {
-  background-color: var(--sx-color-primary-container);
-  color: var(--sx-color-on-primary-container);
-}
-
-.sx__date-picker__day.sx__date-picker__day--today {
-  background-color: var(--sx-color-primary);
-  color: var(--sx-color-on-primary);
-}
-
-:root {
-  --sx-calendar-header-input-font-size: clamp(12px, 0.875rem, 28px);
-  --sx-calendar-header-popup-z-index: 3;
-  --sx-calendar-week-grid-padding-left: 75px;
-}
-
-:root .sx__date-picker-popup.is-teleported {
-  z-index: 3;
-}
-
-.sx__calendar-wrapper {
-  height: 100%;
-  display: flex;
-  color: var(--sx-internal-color-text);
-}
-
-.sx__calendar-wrapper * {
-  box-sizing: border-box;
-}
-
-.sx__calendar {
-  position: relative;
-  flex: 1;
-  height: 100%;
-  border: var(--sx-border);
-  border-radius: var(--sx-rounding-small);
-  display: flex;
-  flex-flow: column;
-  background-color: var(--sx-color-background);
-  overflow: hidden;
-}
-
-.sx__view-container {
-  position: relative;
-  flex: 1;
-  overflow-y: auto;
-  scroll-behavior: smooth;
-}
-
-.sx__slide-left {
-  animation: sx-slide-left 0.3s ease-out;
-}
-
-@keyframes sx-slide-left {
-  0% {
-    transform: translateX(8%);
-    filter: blur(0.25rem);
-    opacity: 0.1;
-  }
-  100% {
-    transform: translateX(0);
-    filter: blur(0);
-    opacity: 1;
-  }
-}
-
-.sx__slide-right {
-  animation: sx-slide-right 0.3s ease-out;
-}
-
-@keyframes sx-slide-right {
-  0% {
-    transform: translateX(-8%);
-    filter: blur(0.25rem);
-    opacity: 0.1;
-  }
-  100% {
-    transform: translateX(0);
-    filter: blur(0);
-    opacity: 1;
-  }
-}
-
-.sx__calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: var(--sx-spacing-padding4);
-  gap: var(--sx-spacing-padding4);
-  flex-wrap: wrap;
-}
-
-.sx__calendar-header .sx__date-input {
-  padding: var(--sx-spacing-padding3) var(--sx-spacing-padding4);
-  font-size: var(--sx-calendar-header-input-font-size);
-}
-
-.sx__calendar-header .sx__date-picker-popup {
-  z-index: var(--sx-calendar-header-popup-z-index);
-}
-
-.sx__calendar-header-content {
-  display: flex;
-  align-items: center;
-  gap: var(--sx-spacing-padding4);
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-.sx__forward-backward-navigation {
-  height: 45px;
-}
-
-.sx__is-calendar-small .sx__forward-backward-navigation, .is-list-view .sx__forward-backward-navigation {
-  display: none;
-}
-
-.sx__calendar-header__week-number {
-  border-radius: 4px;
-  background-color: #eceef1;
-  color: var(--sx-color-on-surface);
-  padding: var(--sx-spacing-padding1) var(--sx-spacing-padding2);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.is-dark .sx__calendar-header__week-number {
-  background-color: #4a4458;
-}
-
-.sx__range-heading {
-  font-size: clamp(16px, 1.25rem, 24px);
-  max-width: 12.5rem; /* 200px with a browser using standard font size */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sx__is-calendar-small .sx__range-heading {
-  font-size: 16px;
-}
-
-.is-list-view .sx__range-heading {
-  display: none;
-}
-
-.sx__today-button {
-  padding: var(--sx-spacing-padding3) var(--sx-spacing-padding4);
-  border-radius: var(--sx-rounding-extra-small);
-  font-size: var(--sx-calendar-header-input-font-size);
-  color: var(--sx-internal-color-text);
-}
-
-.sx__today-button:active {
-  background-color: var(--sx-internal-color-gray-ripple-background);
-}
-
-.sx__is-calendar-small .sx__today-button {
-  display: none;
-}
-
-.sx__calendar-header .sx__today-button {
-  border: var(--sx-border);
-}
-
-.sx__today-button:hover, .sx__today-button:focus {
-  background-color: var(--sx-internal-color-light-gray);
-}
-
-.is-dark .sx__today-button:hover, .is-dark .sx__today-button:focus {
-  background-color: var(--sx-color-surface-container-low);
-}
-
-.sx__view-selection {
-  position: relative;
-  font-size: var(--sx-calendar-header-input-font-size);
-}
-
-.sx__view-selection-label {
-  position: absolute;
-  top: 0;
-  inset-inline-start: 12px;
-  padding: 0 var(--sx-spacing-padding1);
-  background-color: var(--sx-color-background);
-  font-size: 0.75rem;
-  color: var(--sx-color-neutral);
-  line-height: 1rem;
-  transform: translateY(-50%);
-  transition: transform 0.2s ease-in-out;
-  pointer-events: none;
-  z-index: 1;
-}
-
-.is-dark .sx__view-selection-label {
-  display: none;
-}
-
-.sx__view-selection-selected-item {
-  height: 100%;
-  width: fit-content;
-  padding: var(--sx-spacing-padding3) var(--sx-spacing-padding4);
-  cursor: pointer;
-  border-radius: var(--sx-rounding-extra-small);
-  border: var(--sx-border);
-  display: flex;
-  align-items: center;
-  gap: var(--sx-spacing-padding2);
-}
-
-.sx__view-selection-selected-item:hover {
-  background-color: var(--sx-internal-color-light-gray);
-}
-
-.is-dark .sx__view-selection-selected-item:hover {
-  background-color: var(--sx-color-surface-container-low);
-}
-
-.sx__view-selection-chevron {
-  width: 1rem;
-  height: 1rem;
-  pointer-events: none;
-  filter: brightness(0.7);
-  transition: transform 0.2s ease-in-out;
-}
-
-.sx__view-selection.is-open .sx__view-selection-chevron {
-  transform: rotate(180deg);
-}
-
-.sx__view-selection-items {
-  position: absolute;
-  top: 100%;
-  box-shadow: var(--sx-box-shadow-level3);
-  margin: 0;
-  background-color: var(--sx-color-background);
-  z-index: var(--sx-calendar-header-popup-z-index);
-}
-
-.is-dark .sx__view-selection-items {
-  background-color: var(--sx-color-surface-container-high);
-}
-
-.sx__view-selection-item {
-  padding: var(--sx-spacing-padding4) var(--sx-spacing-padding6);
-  cursor: pointer;
-}
-
-.sx__view-selection-item:hover, .sx__view-selection-item:focus {
-  background-color: var(--sx-color-primary);
-  color: var(--sx-color-on-primary);
-}
-
-.sx__view-selection-item.is-selected {
-  background-color: var(--sx-color-surface-dim);
-}
-
-.sx__view-selection-item.is-selected:hover, .sx__view-selection-item.is-selected:focus {
-  background-color: var(--sx-color-primary);
-  color: var(--sx-color-on-primary);
-}
-
-.sx__month-grid-wrapper {
-  display: flex;
-  flex-flow: column;
-  height: 100%;
-}
-
-.sx__month-grid-week__week-number {
-  display: flex;
-  justify-content: center;
-  padding-top: 12px;
-  background-color: #eceef1;
-  color: var(--sx-color-on-surface);
-  width: 1.5rem;
-  font-size: 0.75rem;
-}
-
-.is-dark .sx__month-grid-week__week-number {
-  background-color: #4a4458;
-}
-
-.sx__month-grid-week {
-  border-top: var(--sx-border);
-  flex: 1;
-  display: flex;
-}
-
-.sx__month-grid-week:first-child .sx__month-grid-week__week-number {
-  padding-top: 26px;
-}
-
-.sx__month-grid-day {
-  position: relative;
-  padding: var(--sx-spacing-padding2) 0;
-  flex: 1;
-}
-
-.sx__month-grid-day:not(:last-child) {
-  border-inline-end: var(--sx-border);
-}
-
-.sx__month-grid-day--dragover {
-  background-color: var(--sx-color-surface-container);
-}
-
-.sx__month-grid-day__header {
-  display: flex;
-  flex-flow: column;
-  align-items: center;
-}
-
-.sx__month-grid-day__header-day-name {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: var(--sx-color-neutral);
-}
-
-.sx__month-grid-day__header-date {
-  font-size: var(--sx-font-extra-small);
-  margin-bottom: var(--sx-spacing-padding1);
-  border-radius: 50%;
-  height: 24px;
-  width: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.sx__month-grid-day__header-date.sx__is-today {
-  background-color: var(--sx-color-primary);
-  color: var(--sx-color-on-primary);
-}
-
-.sx__month-grid-day__events-more {
-  width: calc(100% - 10px);
-  font-size: var(--sx-font-extra-small);
-  color: var(--sx-color-neutral);
-  margin: var(--sx-spacing-padding1) 0;
-  padding: var(--sx-spacing-padding1);
-  border-radius: var(--sx-rounding-extra-small);
-  cursor: pointer;
-  transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
-}
-
-.sx__month-grid-day__events-more:hover {
-  background-color: var(--sx-color-surface-container);
-  color: var(--sx-color-on-surface);
-}
-
-.sx__month-grid-background-event {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 100%;
-  width: 100%;
-}
-
-.sx__month-grid-day__events {
-  display: grid;
-  grid-gap: 4px;
-}
-
-.sx__month-grid-cell {
-  height: clamp(20px, 1.25rem, 24px);
-}
-
-.sx__month-grid-event {
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: var(--sx-spacing-padding1);
-  border-radius: var(--sx-rounding-extra-small);
-  font-size: clamp(12px, var(--sx-font-extra-small), 14px);
-  overflow: hidden;
-  white-space: nowrap;
-  z-index: 1;
-}
-
-.sx__month-grid-event.is-event-new {
-  animation: sx-grow-event 0.3s ease-in-out forwards;
-}
-
-@keyframes sx-grow-event {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.sx__month-grid-event-time {
-  margin-right: 4px;
-}
-
-.sx__month-grid-blocker {
-  pointer-events: none;
-}
-
-.sx__month-agenda-week {
-  display: flex;
-}
-
-.sx__month-agenda-week:not(:first-child) {
-  border-top: var(--sx-border);
-}
-
-.sx__month-agenda-week__week-number {
-  text-align: center;
-  background-color: #eceef1;
-  color: var(--sx-color-on-surface);
-  width: 1.5rem;
-  font-size: 0.75rem;
-  padding-top: 9px;
-}
-
-.is-dark .sx__month-agenda-week__week-number {
-  background-color: #4a4458;
-}
-
-.sx__month-agenda-day {
-  padding: var(--sx-spacing-padding2);
-  flex: 1;
-  display: flex;
-  flex-flow: column;
-  align-items: center;
-  height: 3rem;
-  border-radius: var(--sx-rounding-extra-small);
-  color: var(--sx-internal-color-text);
-}
-
-.sx__month-agenda-day--active {
-  box-shadow: inset 0 0 0 3px var(--sx-color-primary);
-}
-
-.sx__month-agenda-day__event-icons {
-  margin-top: 4px;
-  display: flex;
-  grid-gap: 3px;
-}
-
-.sx__month-agenda-day__event-icon {
-  height: 6px;
-  width: 6px;
-  border-radius: 50%;
-  filter: brightness(1.6);
-}
-
-.is-dark .sx__month-agenda-day__event-icon {
-  filter: initial;
-}
-
-.sx__month-agenda-day-names {
-  display: flex;
-  padding: var(--sx-spacing-padding2) 0;
-  font-size: var(--sx-font-extra-small);
-  color: var(--sx-color-neutral);
-}
-
-.sx__month-agenda-day-names.sx__has-week-numbers {
-  padding-inline-start: 1.5rem;
-}
-
-.sx__month-agenda-day-name {
-  flex: 1;
-  display: flex;
-  justify-content: center;
-}
-
-.sx__month-agenda-events {
-  padding: 0 var(--sx-spacing-padding2);
-}
-
-.sx__month-agenda-event {
-  padding: var(--sx-spacing-padding2);
-  margin-bottom: var(--sx-spacing-padding2);
-  border-radius: var(--sx-rounding-extra-small);
-  font-size: var(--sx-font-small);
-}
-
-.sx__month-agenda-event.is-event-new {
-  animation: sx-grow-event 0.3s ease-in-out forwards;
-}
-
-@keyframes sx-grow-event {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.sx__month-agenda-event:first-child {
-  margin-top: var(--sx-spacing-padding2);
-}
-
-.sx__month-agenda-event__title {
-  font-weight: 600;
-}
-
-.sx__month-agenda-event__has-icon {
-  display: flex;
-  align-items: center;
-}
-
-.sx__month-agenda-events__empty {
-  margin-top: var(--sx-spacing-padding4);
-  display: flex;
-  justify-content: center;
-}
-
-.sx__week-wrapper {
-  position: relative;
-}
-
-.sx__week-grid {
-  position: relative;
-  padding-left: var(--sx-calendar-week-grid-padding-left);
-  display: flex;
-  height: var(--sx-week-grid-height);
-  overflow: hidden;
-}
-
-.sx__week-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background-color: var(--sx-color-background);
-}
-
-.sx__week-header-content {
-  position: relative;
-}
-
-.sx__week-header-border {
-  position: absolute;
-  width: 100%;
-  bottom: 0;
-  border-bottom: var(--sx-border);
-  border-left: 250px solid transparent;
-}
-
-.sx__list-wrapper {
-  padding: 0;
-  background-color: var(--sx-color-background);
-  height: 100%;
-  overflow-y: auto;
-  position: relative;
-  scroll-behavior: smooth;
-}
-
-.sx__list-day {
-  padding: 0;
-  background-color: var(--sx-color-background);
-  will-change: opacity;
-  transform: translateZ(0);
-}
-
-.sx__list-day-header {
-  padding: var(--sx-spacing-padding2) var(--sx-spacing-padding4);
-  background-color: var(--sx-color-surface-container-low);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.sx__list-day-date {
-  font-size: var(--sx-font-extra-small);
-  font-weight: 600;
-  color: var(--sx-color-neutral);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.sx__list-day-events {
-  padding: 0 16px;
-  background: var(--sx-color-background);
-}
-
-.sx__list-event {
-  padding: 0.75rem 0;
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.sx__list-event:not(:first-child) {
-  border-top: var(--sx-border);
-}
-
-.sx__list-event-color-line {
-  width: 3px;
-  height: 24px;
-  border-radius: 2px;
-  flex-shrink: 0;
-}
-
-.sx__list-event-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  width: 100%;
-}
-
-.sx__list-event-title {
-  font-size: 1em;
-  color: var(--sx-color-on-background);
-  flex: 1;
-}
-
-.sx__list-event-times {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  min-width: 80px;
-  gap: 2px;
-}
-
-.sx__list-event-start-time {
-  font-size: 0.85em;
-  color: var(--sx-color-on-background);
-}
-
-.sx__list-event-end-time {
-  font-size: 0.85em;
-  color: var(--sx-color-neutral);
-}
-
-.sx__list-event-arrow {
-  font-size: 0.85em;
-  color: var(--sx-color-neutral);
-  line-height: 1;
-}
-
-.sx__list-event-all-day {
-  font-size: 0.85em;
-  color: var(--sx-color-neutral);
-}
-
-.sx__list-day-margin {
-  height: 16px;
-}
-
-.sx__list-no-events {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: var(--sx-color-neutral);
-  font-size: var(--sx-font-extra-small);
-  text-align: center;
-}
-
-.sx__week-grid__time-axis {
-  display: flex;
-  flex-flow: column;
-  position: absolute;
-  right: 0;
-  top: var(--sx-week-grid-offset-top);
-  width: calc(100% - 60px);
-}
-
-.sx__week-grid__hour {
-  position: relative;
-  height: var(--sx-week-grid-hour-height);
-  border-top: var(--sx-border);
-  font-size: var(--sx-font-extra-small);
-}
-
-.sx__week-grid__hour:first-child {
-  visibility: hidden;
-}
-
-.sx__week-grid__hour-text {
-  position: absolute;
-  left: -43px;
-  top: -0.75em;
-  color: var(--sx-color-neutral);
-}
-
-.sx__time-grid-day {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-left: var(--sx-border);
-}
-
-.sx__week-grid__date-axis {
-  padding-left: var(--sx-calendar-week-grid-padding-left);
-  display: flex;
-}
-
-.sx__week-grid__date {
-  flex: 1;
-  display: flex;
-  flex-flow: column;
-  align-items: center;
-  padding: var(--sx-spacing-padding3) 0;
-  gap: var(--sx-spacing-padding1);
-}
-
-.sx__week-grid__day-name {
-  text-transform: uppercase;
-  font-size: var(--sx-font-extra-small);
-  color: var(--sx-color-neutral);
-  font-weight: 500;
-}
-
-.sx__week-grid__date--is-today .sx__week-grid__day-name {
-  color: var(--sx-color-primary);
-  font-weight: 700;
-}
-
-.sx__week-grid__date-number {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--sx-font-extra-large);
-  font-weight: 500;
-  color: var(--sx-color-neutral);
-  height: 2em;
-  width: 2em;
-}
-
-.sx__week-grid__date--is-today .sx__week-grid__date-number {
-  background-color: var(--sx-color-primary);
-  color: var(--sx-color-on-primary);
-  border-radius: 50%;
-}
-
-.sx__time-grid-event {
-  width: calc(100% - 10px);
-  padding: var(--sx-spacing-padding1);
-  position: absolute;
-  border-radius: var(--sx-rounding-extra-small);
-  font-size: var(--sx-font-extra-small);
-  overflow: hidden;
-  -webkit-user-select: none;
-  user-select: none;
-}
-
-.sx__time-grid-event.is-event-copy {
-  opacity: 0.5;
-  box-shadow: var(--sx-box-shadow-level3);
-  z-index: 1;
-  transition: transform 0.15s ease-in-out;
-}
-
-.sx__time-grid-event.is-event-new {
-  animation: sx-grow-event 0.3s ease-in-out forwards;
-}
-
-@keyframes sx-grow-event {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-[data-has-dnd=true] .sx__time-grid-event {
-  touch-action: none;
-}
-
-.sx__is-resizing .sx__time-grid-event:has(+ .is-event-copy) {
-  opacity: 0;
-}
-
-.sx__is-resizing .is-event-copy {
-  opacity: 1;
-}
-
-.sx__time-grid-event-inner {
-  position: relative;
-  height: 100%;
-}
-
-.sx__time-grid-event-resize-handle {
-  display: block;
-  position: absolute;
-  width: 100%;
-  bottom: 0;
-  cursor: ns-resize;
-  height: clamp(10px, 20px, 50%);
-  touch-action: none;
-}
-
-.sx__time-grid-event-title {
-  font-weight: 600;
-}
-
-.sx__time-grid-event-time,
-.sx__time-grid-event-people,
-.sx__time-grid-event-location {
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-}
-
-.sx__title-and-time-compact {
-  display: flex;
-  align-items: center;
-  gap: var(--sx-spacing-padding2);
-}
-
-.sx__title-and-time-compact .sx__time-grid-event-title {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sx__title-and-time-compact .sx__time-grid-event-time {
-  flex-shrink: 0;
-}
-
-.sx__event-icon {
-  min-width: 15px;
-  min-height: 15px;
-  max-width: 15px;
-  max-height: 15px;
-  margin-inline-end: var(--sx-spacing-padding2);
-}
-
-.sx__date-grid {
-  display: flex;
-  padding-left: var(--sx-calendar-week-grid-padding-left);
-}
-
-.sx__date-grid-day {
-  position: relative;
-  width: 100%;
-  display: grid;
-  grid-gap: 2px;
-  /* needed for the draw plugin */
-}
-
-.sx__date-grid-day .sx__spacer {
-  display: var(--sx-draw-plugin-spacer-display, none);
-  height: var(--sx-draw-plugin-spacer);
-}
-
-.sx__date-grid-event {
-  z-index: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-  padding: var(--sx-spacing-padding1);
-  border-radius: var(--sx-rounding-extra-small);
-  font-size: clamp(12px, var(--sx-font-extra-small), 14px);
-  font-weight: 600;
-  user-select: none;
-}
-
-.sx__date-grid-event:has(.sx__date-grid-event--left-overflow) {
-  margin-left: 10px;
-}
-
-.sx__date-grid-event:has(.sx__date-grid-event--right-overflow) {
-  margin-right: 10px;
-}
-
-.sx__date-grid-event.is-event-new {
-  animation: sx-grow-event 0.3s ease-in-out forwards;
-}
-
-@keyframes sx-grow-event {
-  0% {
-    transform: scale(0);
-    opacity: 0;
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-}
-
-.sx__date-grid-event .sx__date-grid-event--left-overflow {
-  position: absolute;
-  z-index: 1;
-  width: 10px;
-  height: 100%;
-  left: -10px;
-  clip-path: polygon(100% 0, 0 50%, 100% 100%, 100% 0);
-}
-
-.sx__date-grid-event .sx__date-grid-event--right-overflow {
-  position: absolute;
-  z-index: 1;
-  width: 10px;
-  height: 100%;
-  right: -10px;
-  clip-path: polygon(0 0, 100% 50%, 0 100%, 0 0);
-}
-
-.sx__date-grid-event.sx__date-grid-event--copy {
-  z-index: 2;
-  box-shadow: var(--sx-box-shadow-level3);
-  transition-property: transform, width;
-  transition-duration: 0.15s;
-  transition-timing-function: ease-in-out;
-}
-
-.sx__date-grid-event-text {
-  width: calc(100% - var(--sx-spacing-padding1) * 2);
-  left: var(--sx-spacing-padding1);
-  position: absolute;
-  text-overflow: ellipsis;
-  overflow-x: hidden;
-  white-space: nowrap;
-}
-
-.sx__date-grid-event-text .sx__date-grid-event-time {
-  font-weight: initial;
-}
-
-.sx__date-grid-cell {
-  height: clamp(20px, 1.25rem, 24px);
-}
-
-.sx__date-grid-event-resize-handle {
-  position: absolute;
-  right: 0;
-  height: 100%;
-  width: clamp(10px, 15px, 50%);
-  cursor: ew-resize;
-  z-index: 1;
-  touch-action: none;
-}
-
-[dir=rtl] .sx__date-grid-event-resize-handle {
-  left: 0;
-  right: auto;
-}
-
-.sx__date-grid-background-event {
-  position: absolute;
-  height: 100%;
-  width: 100%;
-  top: 0;
-  left: 0;
-  z-index: -1;
-}
-
-:root {
-  --sx-week-grid-height: 0;
-  --sx-time-axis-height: 0;
-  --sx-week-grid-hour-height: 0;
-  --sx-week-grid-offset-top: 0;
-}
-
-.sx__event-modal {
-  visibility: hidden;
-  position: fixed;
-  top: var(--sx-event-modal-top);
-  left: var(--sx-event-modal-left);
-  width: 400px;
-  max-width: 100%;
-  height: fit-content;
-  background-color: var(--sx-color-background);
-  z-index: 2;
-}
-
-.sx__event-modal.is-open {
-  animation: slide-sideways;
-  animation-duration: 0.3s;
-  visibility: initial;
-}
-
-.is-dark .sx__event-modal {
-  background-color: var(--sx-color-surface-container-high);
-}
-
-.sx__event-modal-default {
-  padding: var(--sx-spacing-padding6);
-  background-color: var(--sx-color-background);
-  box-shadow: 0 24px 38px 3px rgba(0, 0, 0, 0.14), 0 9px 46px 8px rgba(0, 0, 0, 0.12), 0 11px 15px -7px rgba(0, 0, 0, 0.2);
-  border-radius: var(--sx-rounding-small);
-  max-height: 250px;
-  overflow-y: scroll;
-}
-
-@keyframes slide-sideways {
-  from {
-    opacity: 0;
-    transform: translateX(var(--sx-event-modal-animation-start));
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.sx__event-modal .sx__event-icon {
-  min-width: 16px;
-  min-height: 16px;
-  max-width: 16px;
-  max-height: 16px;
-  margin-inline-end: var(--sx-spacing-padding2);
-}
-
-.sx__event-modal__color-icon {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border-radius: 25%;
-  margin-inline-end: var(--sx-spacing-padding3);
-}
-
-.sx__has-icon {
-  display: grid;
-  align-items: flex-start;
-  grid-template-columns: 30px 1fr;
-  margin-bottom: var(--sx-spacing-padding2);
-}
-
-.sx__has-icon .sx__event-icon {
-  margin-top: 2px;
-}
-
-.sx__has-icon .sx__event-modal__color-icon {
-  margin-top: 4px;
-}
-
-.sx__event-modal__title {
-  font-size: var(--sx-font-large);
-}
-
-.sx__event-modal__time {
-  font-size: var(--sx-font-small);
-}
-
-.sx__current-time-indicator {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: #f00;
-  z-index: 0;
-}
-
-.sx__current-time-indicator::before {
-  content: "";
-  position: absolute;
-  left: -5px;
-  top: -4px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: #f00;
-}
-
-.sx__current-time-indicator-full-week {
-  width: calc(100% - var(--sx-calendar-week-grid-padding-left));
-  position: absolute;
-  inset: 0 0 0 var(--sx-calendar-week-grid-padding-left);
-  height: 2px;
-  background-color: rgba(255, 0, 0, 0.38);
-}
-
-/* Import Schedule-X Obsidian theme overrides (customizes for Obsidian) */
-
-/**
- * Schedule-X Obsidian Theme Overrides
- *
- * This file provides Obsidian-specific overrides for the Schedule-X calendar component.
- * It works on top of the default Schedule-X theme to integrate with Obsidian's design system.
- *
- * The approach uses CSS variable overrides and targeted style adjustments for seamless integration.
- */
-
-/* ===== OBSIDIAN COLOR SYSTEM OVERRIDES ===== */
-
-.sx-svelte-calendar-wrapper {
-  /* Override Schedule-X color variables with Obsidian equivalents */
-  --sx-color-primary: var(--interactive-accent);
-  --sx-color-on-primary: var(--text-on-accent);
-  --sx-color-primary-container: var(--interactive-accent-hover);
-  --sx-color-on-primary-container: var(--text-on-accent);
-
-  /* Surface colors - core Obsidian backgrounds */
-  --sx-color-surface: var(--background-primary);
-  --sx-color-surface-dim: var(--background-modifier-border);
-  --sx-color-surface-bright: var(--background-primary);
-  --sx-color-on-surface: var(--text-normal);
-  --sx-color-surface-container: var(--background-secondary);
-  --sx-color-surface-container-low: var(--background-primary);
-  --sx-color-surface-container-high: var(--background-modifier-hover);
-
-  /* Background colors */
-  --sx-color-background: var(--background-primary);
-  --sx-color-on-background: var(--text-normal);
-
-  /* Outline colors */
-  --sx-color-outline: var(--background-modifier-border);
-  --sx-color-outline-variant: var(--background-modifier-border-hover);
-
-  /* Shadow and surface tint */
-  --sx-color-shadow: var(--shadow-color);
-  --sx-color-surface-tint: var(--interactive-accent);
-
-  /* Neutral colors */
-  --sx-color-neutral: var(--text-muted);
-  --sx-color-neutral-variant: var(--text-faint);
-
-  /* Internal colors for Schedule-X specific elements */
-  --sx-internal-color-gray-ripple-background: var(--background-modifier-hover);
-  --sx-internal-color-light-gray: var(--background-modifier-hover);
-  --sx-internal-color-text: var(--text-normal);
-}
-
-/* ===== DESIGN TOKENS ===== */
-
-.sx-svelte-calendar-wrapper {
-  /* Spacing and borders */
-  --sx-border: 1px solid var(--background-modifier-border);
-  --sx-box-shadow-level3: var(--shadow-s);
-
-  /* Border radius */
-  --sx-rounding-small: var(--radius-m);
-  --sx-rounding-extra-large: var(--radius-l);
-
-  /* Typography */
-  --sx-font-small: var(--font-text-size);
-  --sx-font-extra-small: calc(var(--font-text-size) * 0.875);
-
-  /* Z-index for popups */
-  --sx-calendar-header-popup-z-index: var(--layer-popover);
-}
-
-/* ===== ESSENTIAL CALENDAR OVERRIDES ===== */
-
-/* Calendar wrapper sizing for Obsidian integration */
-
-.sx-svelte-calendar-wrapper {
-  width: 100%;
-  height: 600px;
-  max-width: 100%;
-  max-height: 90vh;
-  font-family: var(--font-interface);
-}
-
-/* Ensure proper font inheritance */
-
-.sx__calendar-wrapper *,
-.sx__date-picker-wrapper *,
-.sx__date-picker-popup * {
-  font-family: var(--font-interface);
-  color: var(--text-normal);
-}
-
-/* Import our custom styles */
-
 /*
 Task Sync Plugin Styles
 Provides consistent styling for all UI components
 */
 
 /* Enhanced Modal Styles */
-
 .task-sync-create-task {
   max-width: 600px;
   max-height: 90vh;
@@ -1759,7 +59,6 @@ Provides consistent styling for all UI components
 }
 
 /* Form Styles */
-
 .task-sync-form {
   display: flex;
   flex-direction: column;
@@ -1806,7 +105,6 @@ Provides consistent styling for all UI components
 }
 
 /* Base button styles - unified for all task-sync buttons */
-
 .task-sync-button-base,
 .task-sync-form-actions button,
 .task-sync-cancel-button,
@@ -1866,7 +164,6 @@ Provides consistent styling for all UI components
 }
 
 /* Enhanced modal-specific styles */
-
 .task-sync-required-field {
   border-left: 3px solid var(--interactive-accent) !important;
 }
@@ -1883,7 +180,6 @@ Provides consistent styling for all UI components
 }
 
 /* Setting component overrides for better modal integration */
-
 .task-sync-modal-content .setting-item {
   border: none;
   padding: 12px 0;
@@ -1923,7 +219,6 @@ Provides consistent styling for all UI components
 }
 
 /* Loading, Error, and Success States */
-
 .task-sync-modal-loading,
 .task-sync-modal-error,
 .task-sync-modal-success {
@@ -1962,7 +257,6 @@ Provides consistent styling for all UI components
 }
 
 /* Tab Styles */
-
 .task-sync-modal-tabs {
   display: flex;
   flex-direction: column;
@@ -2001,7 +295,6 @@ Provides consistent styling for all UI components
 }
 
 /* Info Box Styles */
-
 .task-sync-info-box {
   padding: 0.75rem;
   border-radius: 4px;
@@ -2028,7 +321,6 @@ Provides consistent styling for all UI components
 }
 
 /* Divider */
-
 .task-sync-divider {
   border: none;
   height: 1px;
@@ -2037,13 +329,11 @@ Provides consistent styling for all UI components
 }
 
 /* Button Overrides */
-
 .task-sync-modal button {
   font-family: var(--font-interface);
 }
 
 /* Responsive Design */
-
 @media (max-width: 768px) {
   .task-sync-modal {
     max-width: 95vw;
@@ -2061,7 +351,6 @@ Provides consistent styling for all UI components
 }
 
 /* Dashboard Styles */
-
 .task-sync-dashboard {
   max-width: 1000px;
   max-height: 90vh;
@@ -2114,7 +403,6 @@ Provides consistent styling for all UI components
 }
 
 /* Statistics Cards */
-
 .task-sync-dashboard-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -2154,7 +442,6 @@ Provides consistent styling for all UI components
 }
 
 /* Dashboard Sections */
-
 .task-sync-dashboard-section {
   margin-bottom: 2rem;
 }
@@ -2167,7 +454,6 @@ Provides consistent styling for all UI components
 }
 
 /* Filters */
-
 .task-sync-dashboard-filters {
   display: flex;
   gap: 1rem;
@@ -2201,7 +487,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task List */
-
 .task-sync-task-list {
   display: flex;
   flex-direction: column;
@@ -2304,7 +589,6 @@ Provides consistent styling for all UI components
 }
 
 /* Project List */
-
 .task-sync-project-list {
   display: flex;
   flex-direction: column;
@@ -2352,7 +636,6 @@ Provides consistent styling for all UI components
 }
 
 /* Area List */
-
 .task-sync-area-list {
   display: flex;
   flex-direction: column;
@@ -2391,7 +674,6 @@ Provides consistent styling for all UI components
 }
 
 /* Empty State */
-
 .task-sync-empty-state {
   text-align: center;
   padding: 3rem 2rem;
@@ -2410,7 +692,6 @@ Provides consistent styling for all UI components
 }
 
 /* Responsive Dashboard */
-
 @media (max-width: 768px) {
   .task-sync-dashboard-header {
     flex-direction: column;
@@ -2445,7 +726,6 @@ Provides consistent styling for all UI components
 }
 
 /* Picker Component Styles */
-
 .task-sync-picker-group {
   margin-bottom: 1rem;
 }
@@ -2485,14 +765,12 @@ Provides consistent styling for all UI components
 }
 
 /* Special styling for "Create New" options */
-
 .task-sync-picker-group select option[value="__create_new__"] {
   color: var(--interactive-accent);
   font-weight: 500;
 }
 
 /* Enhanced Settings Panel Styles */
-
 .task-sync-settings {
   max-width: 800px;
   margin: 0 auto;
@@ -2555,7 +833,6 @@ Provides consistent styling for all UI components
 }
 
 /* Section spacing and visual separation */
-
 .task-sync-settings-section:not(:last-child) {
   border-bottom: 1px solid var(--background-modifier-border-hover);
   padding-bottom: 2rem;
@@ -2582,7 +859,6 @@ Provides consistent styling for all UI components
 }
 
 /* Setting validation styles */
-
 .task-sync-setting-error {
   border-left: 3px solid var(--text-error) !important;
   background: var(--background-modifier-error-hover) !important;
@@ -2593,7 +869,6 @@ Provides consistent styling for all UI components
 }
 
 /* Responsive settings */
-
 @media (max-width: 768px) {
   .task-sync-settings-tab-headers {
     flex-wrap: wrap;
@@ -2607,7 +882,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Type Badge Styles */
-
 .task-type-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -2623,7 +897,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Priority Badge Styles */
-
 .task-priority-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -2639,7 +912,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Status Badge Styles */
-
 .task-status-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -2655,7 +927,6 @@ Provides consistent styling for all UI components
 }
 
 /* Placeholder Badge Styles */
-
 .task-sync-placeholder-badge {
   display: inline-block;
   padding: 2px 8px;
@@ -2671,7 +942,6 @@ Provides consistent styling for all UI components
 }
 
 /* TaskItem Badge Styles */
-
 .task-sync-category-badge,
 .task-sync-status-badge,
 .task-sync-priority-badge,
@@ -2715,7 +985,6 @@ Provides consistent styling for all UI components
 }
 
 /* TaskItem Badge Container - Legacy */
-
 .task-sync-item-badges {
   display: flex;
   gap: 6px;
@@ -2724,7 +993,6 @@ Provides consistent styling for all UI components
 }
 
 /* New Two-Row Badge Layout */
-
 .task-sync-item-badges-row {
   display: flex;
   gap: 6px;
@@ -2742,7 +1010,6 @@ Provides consistent styling for all UI components
 }
 
 /* TaskItem Footer */
-
 .task-sync-item-footer {
   margin-top: 8px;
   padding-top: 6px;
@@ -2796,7 +1063,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Priority Colors */
-
 .task-priority-blue {
   background-color: #3b82f6;
 }
@@ -2838,7 +1104,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Status Colors */
-
 .task-status-blue {
   background-color: #3b82f6;
 }
@@ -2880,7 +1145,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Priority Colors */
-
 .task-priority-blue {
   background-color: #3b82f6;
 }
@@ -2922,7 +1186,6 @@ Provides consistent styling for all UI components
 }
 
 /* Dark theme adjustments */
-
 .theme-dark .task-type-blue {
   background-color: #2563eb;
 }
@@ -2964,7 +1227,6 @@ Provides consistent styling for all UI components
 }
 
 /* Dark theme adjustments for priority badges */
-
 .theme-dark .task-priority-blue {
   background-color: #2563eb;
 }
@@ -3006,7 +1268,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Type Settings Styles */
-
 .task-type-preview {
   margin-left: 10px;
   display: inline-flex;
@@ -3014,7 +1275,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Priority Settings Styles */
-
 .task-priority-preview {
   margin-left: 10px;
   display: inline-flex;
@@ -3022,7 +1282,6 @@ Provides consistent styling for all UI components
 }
 
 /* Settings Actions Styles */
-
 .task-sync-settings-actions {
   margin-top: 1.5rem;
   padding-top: 1rem;
@@ -3067,7 +1326,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Creation Modal Styles */
-
 .task-sync-create-task {
   max-width: 650px;
 }
@@ -3095,7 +1353,6 @@ Provides consistent styling for all UI components
 }
 
 /* Form field improvements for task creation */
-
 .task-sync-create-task .task-sync-form-group textarea {
   min-height: 80px;
   resize: vertical;
@@ -3110,7 +1367,6 @@ Provides consistent styling for all UI components
 }
 
 /* Form layout improvements */
-
 .task-sync-create-task .task-sync-form {
   max-height: 500px;
   overflow-y: auto;
@@ -3136,7 +1392,6 @@ Provides consistent styling for all UI components
 }
 
 /* Linear-style Task Create Modal */
-
 .task-sync-create-task .modal-content {
   padding: 0;
   max-width: 800px;
@@ -3151,8 +1406,9 @@ Provides consistent styling for all UI components
   background: var(--background-primary);
 }
 
-/* Main content */
 
+
+/* Main content */
 .task-sync-main-content {
   flex: 1;
   padding: 24px;
@@ -3197,7 +1453,6 @@ Provides consistent styling for all UI components
 }
 
 /* Properties toolbar */
-
 .task-sync-properties-toolbar {
   padding: 16px 24px 0;
 }
@@ -3238,7 +1493,6 @@ Provides consistent styling for all UI components
 }
 
 /* Footer */
-
 .task-sync-modal-footer {
   padding: 16px 24px 24px;
   border-top: 1px solid var(--background-modifier-border);
@@ -3280,7 +1534,6 @@ Provides consistent styling for all UI components
 }
 
 /* Badge Selector Menu */
-
 .task-sync-selector-menu {
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
@@ -3316,7 +1569,6 @@ Provides consistent styling for all UI components
 }
 
 /* Recently used item container with clear button */
-
 .task-sync-selector-item-container {
   display: flex;
   align-items: center;
@@ -3359,7 +1611,6 @@ Provides consistent styling for all UI components
 }
 
 /* Auto-suggest search input */
-
 .task-sync-selector-search {
   padding: 4px;
   border-bottom: 1px solid var(--background-modifier-border);
@@ -3395,7 +1646,6 @@ Provides consistent styling for all UI components
 }
 
 /* Autocomplete */
-
 .task-sync-autocomplete {
   position: absolute;
   top: 100%;
@@ -3411,7 +1661,6 @@ Provides consistent styling for all UI components
 }
 
 /* Action Buttons */
-
 .task-sync-action-buttons {
   display: flex;
   justify-content: flex-end;
@@ -3511,7 +1760,6 @@ Provides consistent styling for all UI components
 }
 
 /* Unified Task List Container Styles */
-
 .task-sync-task-list-container {
   flex: 1;
   overflow-y: auto;
@@ -3557,7 +1805,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task List Container Scrollbar styling */
-
 .task-sync-task-list-container::-webkit-scrollbar {
   width: 8px;
 }
@@ -3576,7 +1823,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Source Display - Legacy */
-
 .task-sync-item-source {
   margin-top: 4px;
   margin-bottom: 4px;
@@ -3604,7 +1850,6 @@ Provides consistent styling for all UI components
 }
 
 /* New Clean Source Display */
-
 .task-sync-item-source-inline {
   margin-top: 2px;
 }
@@ -3616,7 +1861,6 @@ Provides consistent styling for all UI components
 }
 
 /* Task Item Header Styles */
-
 .task-sync-item-header {
   margin-bottom: 6px;
 }
@@ -3659,7 +1903,6 @@ Provides consistent styling for all UI components
 }
 
 /* Action Overlay Styles */
-
 .task-sync-action-overlay {
   position: absolute;
   top: 0;
@@ -3704,7 +1947,6 @@ Provides consistent styling for all UI components
 }
 
 /* Local Task Item Styles */
-
 .local-task-item-wrapper {
   cursor: pointer;
   border-radius: 6px;
@@ -3719,6 +1961,8 @@ Provides consistent styling for all UI components
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
 }
+
+
 
 .add-to-today-button,
 .open-task-button {
@@ -3740,7 +1984,6 @@ Provides consistent styling for all UI components
 }
 
 /* Service Switcher Styles */
-
 .service-switcher-vertical {
   display: flex;
   flex-direction: column;
@@ -3795,7 +2038,6 @@ Provides consistent styling for all UI components
 }
 
 /* Badge Styles */
-
 .task-sync-tag-badge {
   display: inline-block;
   padding: 2px 6px;
@@ -3888,7 +2130,6 @@ Provides consistent styling for all UI components
 }
 
 /* Service Content */
-
 .service-content {
   flex: 1;
   display: flex;
@@ -3927,6 +2168,10 @@ Provides consistent styling for all UI components
   overflow: hidden; /* Prevent content from overflowing */
 }
 
+
+
+
+
 .task-sync-tab-header {
   display: flex;
   margin-bottom: 8px;
@@ -3962,7 +2207,6 @@ Provides consistent styling for all UI components
 }
 
 /* Tab button specific styles */
-
 button.tab-item {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
@@ -3984,7 +2228,6 @@ button.tab-item.active {
 }
 
 /* Repository Selector - scoped to task-sync */
-
 .task-sync-repository-selector {
   margin-bottom: 8px;
 }
@@ -4000,7 +2243,6 @@ button.tab-item.active {
 }
 
 /* Issue Filters - scoped to task-sync */
-
 .task-sync-issue-filters {
   display: flex;
   flex-direction: column;
@@ -4024,7 +2266,6 @@ button.tab-item.active {
 }
 
 /* Unified Task Service Header Styles */
-
 .local-tasks-header,
 .apple-reminders-header,
 .github-service-header,
@@ -4033,7 +2274,6 @@ button.tab-item.active {
 }
 
 /* LocalTasks Unified Header - matches ContextWidget styling */
-
 .local-tasks-unified-header {
   display: flex;
   align-items: center;
@@ -4096,7 +2336,6 @@ button.tab-item.active {
 }
 
 /* Filter rows */
-
 .task-sync-filter-row {
   display: flex;
   gap: 16px;
@@ -4115,7 +2354,6 @@ button.tab-item.active {
 }
 
 /* Filter groups */
-
 .task-sync-filter-group {
   display: flex;
 }
@@ -4135,7 +2373,6 @@ button.tab-item.active {
 }
 
 /* Local tasks filters - simple horizontal layout */
-
 .task-sync-local-filters {
   display: flex;
   gap: 16px;
@@ -4144,7 +2381,6 @@ button.tab-item.active {
 }
 
 /* Filter Toggle Buttons - unified style for type and state filters */
-
 .task-sync-type-filters,
 .task-sync-state-filters {
   display: flex;
@@ -4174,7 +2410,6 @@ button.tab-item.active {
 }
 
 /* Legacy state filter styles for backward compatibility */
-
 .task-sync-state-filters {
   display: flex;
   gap: 4px;
@@ -4233,7 +2468,6 @@ button.tab-item.active {
 }
 
 /* Import All Button */
-
 .task-sync-import-all-button {
   padding: 4px 8px;
   border: 1px solid var(--interactive-accent);
@@ -4253,7 +2487,6 @@ button.tab-item.active {
 }
 
 /* Content Section */
-
 .github-issues-content {
   flex: 1;
   overflow-y: auto;
@@ -4275,7 +2508,6 @@ button.tab-item.active {
 }
 
 /* Task Lists - unified class for all list types */
-
 .task-sync-task-list {
   display: flex;
   flex-direction: column;
@@ -4283,7 +2515,6 @@ button.tab-item.active {
 }
 
 /* State Messages */
-
 .task-sync-disabled-message,
 .task-sync-error-message,
 .task-sync-loading-indicator,
@@ -4339,7 +2570,6 @@ button.tab-item.active {
 }
 
 /* Import overlay that appears on hover */
-
 .task-sync-import-overlay {
   position: absolute;
   top: 0;
@@ -4400,7 +2630,6 @@ button.tab-item.active {
 }
 
 /* Import Button - scoped to task-sync */
-
 .task-sync-import-button {
   border: 1px solid var(--interactive-accent);
   background: var(--interactive-accent);
@@ -4418,7 +2647,6 @@ button.tab-item.active {
 }
 
 /* Import Status Indicators - scoped to task-sync */
-
 .task-sync-import-status {
   padding: 8px 16px;
   border-radius: 6px;
@@ -4522,7 +2750,6 @@ button.tab-item.active {
 }
 
 /* GitHub Issues View Scrollbar styling */
-
 .github-issues-content::-webkit-scrollbar {
   width: 8px;
 }
@@ -4541,7 +2768,6 @@ button.tab-item.active {
 }
 
 /* Local Tasks Content Scrollbar styling */
-
 .local-tasks-content::-webkit-scrollbar {
   width: 8px;
 }
@@ -4560,7 +2786,6 @@ button.tab-item.active {
 }
 
 /* Linear-inspired Task Create Modal Styles */
-
 .task-sync-modal {
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
@@ -4684,7 +2909,6 @@ button.tab-item.active {
 }
 
 /* Linear-inspired Properties Toolbar */
-
 .task-sync-properties-toolbar {
   display: flex;
   flex-direction: column;
@@ -4738,7 +2962,6 @@ button.tab-item.active {
 }
 
 /* Dot-style badge layout */
-
 .task-sync-dot-badge {
   display: inline-flex !important;
   align-items: center;
@@ -4761,7 +2984,6 @@ button.tab-item.active {
 }
 
 /* Text-style badge for project/area */
-
 .task-sync-text-badge {
   display: inline-flex !important;
   align-items: center;
@@ -4824,7 +3046,6 @@ button.tab-item.active {
 }
 
 /* Filter Button Styles */
-
 .task-sync-filter-button {
   display: inline-flex;
   align-items: center;
@@ -4861,7 +3082,6 @@ button.tab-item.active {
 }
 
 /* Active state */
-
 .task-sync-filter-button.active {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
@@ -4869,7 +3089,6 @@ button.tab-item.active {
 }
 
 /* Variant: State (for GitHub View state filters) */
-
 .task-sync-filter-button--state {
   padding: 4px 8px;
   font-size: 11px;
@@ -4894,7 +3113,6 @@ button.tab-item.active {
 }
 
 /* Extra fields section */
-
 .task-sync-extra-fields {
   display: flex;
   flex-direction: column;
@@ -4975,7 +3193,6 @@ button.tab-item.active {
 }
 
 /* Context Tab View Styles */
-
 .context-tab-view-container {
   display: flex;
   flex-direction: column;
@@ -5003,7 +3220,6 @@ button.tab-item.active {
 }
 
 /* Loading State */
-
 .context-tab-loading {
   display: flex;
   flex-direction: column;
@@ -5020,7 +3236,6 @@ button.tab-item.active {
 }
 
 /* Error State */
-
 .context-tab-error {
   display: flex;
   flex-direction: column;
@@ -5050,7 +3265,6 @@ button.tab-item.active {
 }
 
 /* Empty State */
-
 .context-tab-empty {
   display: flex;
   flex-direction: column;
@@ -5087,7 +3301,6 @@ button.tab-item.active {
 }
 
 /* Entity Display */
-
 .context-tab-entity {
   display: flex;
   flex-direction: column;
@@ -5122,7 +3335,6 @@ button.tab-item.active {
 }
 
 /* Properties Section - Linear Style */
-
 .entity-properties {
   display: flex;
   flex-direction: column;
@@ -5234,7 +3446,6 @@ button.tab-item.active {
 }
 
 /* Actions Section */
-
 .entity-actions {
   display: flex;
   flex-direction: column;
@@ -5294,7 +3505,6 @@ button.tab-item.active {
 }
 
 /* Context Tab View Responsive */
-
 @media (max-width: 400px) {
   .context-tab-content {
     padding: 12px;
@@ -5322,7 +3532,6 @@ button.tab-item.active {
 }
 
 /* Context Tab View Scrollbar */
-
 .context-tab-content::-webkit-scrollbar {
   width: 8px;
 }
@@ -5341,7 +3550,6 @@ button.tab-item.active {
 }
 
 /* Task Todo Markdown Processor Styles */
-
 .task-sync-todo-badges {
   display: inline-flex;
   gap: 4px;
@@ -5378,7 +3586,6 @@ button.tab-item.active {
 }
 
 /* Enhanced todo items with task links */
-
 li[data-task] .task-sync-todo-badges {
   opacity: 0.8;
   transition: opacity 0.2s ease;
@@ -5389,13 +3596,11 @@ li[data-task]:hover .task-sync-todo-badges {
 }
 
 /* Ensure badges don't interfere with checkbox styling */
-
 li[data-task] .task-list-item-checkbox {
   margin-right: 8px;
 }
 
 /* Responsive design for smaller screens */
-
 @media (max-width: 768px) {
   .task-sync-todo-badges {
     flex-direction: column;
@@ -5413,7 +3618,6 @@ li[data-task] .task-list-item-checkbox {
 }
 
 /* Task Planning View Styles */
-
 .task-planning-view {
   display: flex;
   flex-direction: column;
@@ -5492,7 +3696,6 @@ li[data-task] .task-list-item-checkbox {
 }
 
 /* Task Planning View - Calendar Integration */
-
 .calendar-wrapper {
   flex: 1;
   min-height: 600px;
@@ -5502,7 +3705,6 @@ li[data-task] .task-list-item-checkbox {
 }
 
 /* Responsive design for Task Planning */
-
 @media (max-width: 768px) {
   .task-planning-filters {
     padding: 12px;

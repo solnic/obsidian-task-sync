@@ -61,6 +61,7 @@ const context = await esbuild.context({
   logLevel: "info",
   sourcemap: prod ? false : 'inline',
   treeShaking: true,
+  conditions: ['svelte'],
   define: {
     'global': 'globalThis',
     'process.env.NODE_ENV': '"production"'

@@ -4,8 +4,10 @@
   "description": "Sync tasks between Obsidian and external systems with project/area organization",
   "main": "src/main.ts",
   "scripts": {
-    "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "dev": "npm run build:css && node esbuild.config.mjs",
+    "build": "npm run build:css && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "build:css": "postcss src/styles/main.css -o styles.css",
+    "build:css:watch": "postcss src/styles/main.css -o styles.css --watch",
     "test": "npm run test:unit && npm run test:e2e:headless",
     "test:unit": "vitest run",
     "test:ci": "vitest run",
@@ -56,6 +58,9 @@
     "esbuild-svelte": "^0.9.3",
     "jsdom": "^26.0.0",
     "obsidian": "latest",
+    "postcss": "^8.5.6",
+    "postcss-cli": "^11.0.1",
+    "postcss-import": "^16.1.1",
     "svelte": "^5.38.7",
     "ts-node": "^10.9.2",
     "tslib": "^2.8.1",
@@ -65,11 +70,16 @@
   },
   "dependencies": {
     "@octokit/rest": "^22.0.0",
+    "@schedule-x/calendar": "^3.1.2",
+    "@schedule-x/svelte": "^3.0.0",
+    "@schedule-x/theme-default": "^3.1.2",
     "@types/js-yaml": "^4.0.9",
+    "ical.js": "^2.2.1",
     "js-yaml": "^4.1.0",
     "node-osascript": "^2.1.0",
     "pluralize": "^8.0.0",
     "superjson": "^2.2.2",
+    "temporal-polyfill": "^0.3.0",
     "zod": "^4.1.8"
   }
 }
