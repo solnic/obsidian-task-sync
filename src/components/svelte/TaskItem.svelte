@@ -219,8 +219,7 @@
   }
 
   .task-sync-task-list-item.imported {
-    border-color: var(--color-green);
-    background: var(--background-modifier-success);
+    border-left: 3px solid var(--interactive-accent);
   }
 
   .task-sync-task-list-item.selected {

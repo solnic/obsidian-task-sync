@@ -1906,6 +1906,22 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             });
         });
 
+      // Default area for imported events
+      new Setting(section)
+        .setName("Default Area")
+        .setDesc(
+          "Default area to assign to imported calendar events (leave empty for no area)"
+        )
+        .addText((text) => {
+          text
+            .setPlaceholder("Calendar Events")
+            .setValue(this.plugin.settings.appleCalendarIntegration.defaultArea)
+            .onChange(async (value) => {
+              this.plugin.settings.appleCalendarIntegration.defaultArea = value;
+              await this.plugin.saveSettings();
+            });
+        });
+
       // Time format
       new Setting(section)
         .setName("Time Format")
@@ -1918,6 +1934,79 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             .onChange(async (value: "12h" | "24h") => {
               this.plugin.settings.appleCalendarIntegration.timeFormat = value;
               await this.plugin.saveSettings();
+            });
+        });
+
+      // Day view configuration section
+      section.createEl("h4", {
+        text: "Day View Configuration",
+        cls: "task-sync-subsection-header",
+      });
+
+      // Start hour
+      new Setting(section)
+        .setName("Start Hour")
+        .setDesc("Starting hour for the day view (0-23)")
+        .addDropdown((dropdown) => {
+          for (let i = 0; i < 24; i++) {
+            const hour = i.toString().padStart(2, "0");
+            dropdown.addOption(i.toString(), `${hour}:00`);
+          }
+          dropdown
+            .setValue(
+              this.plugin.settings.appleCalendarIntegration.startHour.toString()
+            )
+            .onChange(async (value) => {
+              const hour = parseInt(value);
+              if (!isNaN(hour) && hour >= 0 && hour < 24) {
+                this.plugin.settings.appleCalendarIntegration.startHour = hour;
+                await this.plugin.saveSettings();
+              }
+            });
+        });
+
+      // End hour
+      new Setting(section)
+        .setName("End Hour")
+        .setDesc("Ending hour for the day view (1-24)")
+        .addDropdown((dropdown) => {
+          for (let i = 1; i <= 24; i++) {
+            const hour = i === 24 ? "00" : i.toString().padStart(2, "0");
+            const label = i === 24 ? "24:00 (Midnight)" : `${hour}:00`;
+            dropdown.addOption(i.toString(), label);
+          }
+          dropdown
+            .setValue(
+              this.plugin.settings.appleCalendarIntegration.endHour.toString()
+            )
+            .onChange(async (value) => {
+              const hour = parseInt(value);
+              if (!isNaN(hour) && hour >= 1 && hour <= 24) {
+                this.plugin.settings.appleCalendarIntegration.endHour = hour;
+                await this.plugin.saveSettings();
+              }
+            });
+        });
+
+      // Time increment
+      new Setting(section)
+        .setName("Time Increment")
+        .setDesc("Time slot increment in minutes")
+        .addDropdown((dropdown) => {
+          dropdown
+            .addOption("15", "15 minutes")
+            .addOption("30", "30 minutes")
+            .addOption("60", "60 minutes")
+            .setValue(
+              this.plugin.settings.appleCalendarIntegration.timeIncrement.toString()
+            )
+            .onChange(async (value) => {
+              const increment = parseInt(value);
+              if (!isNaN(increment) && [15, 30, 60].includes(increment)) {
+                this.plugin.settings.appleCalendarIntegration.timeIncrement =
+                  increment;
+                await this.plugin.saveSettings();
+              }
             });
         });
     }

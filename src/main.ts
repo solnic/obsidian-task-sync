@@ -521,6 +521,14 @@ export default class TaskSyncPlugin extends Plugin {
         this.activateContextTabView();
       },
     });
+
+    this.addCommand({
+      id: "open-task-planning",
+      name: "Open Task Planning",
+      callback: () => {
+        this.activateTaskPlanningView();
+      },
+    });
   }
 
   async onunload() {
@@ -551,12 +559,62 @@ export default class TaskSyncPlugin extends Plugin {
   async loadSettings() {
     const loadedData = await this.loadData();
 
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
+    if (!loadedData) {
+      // First time installation - use defaults and save them
+      console.log(
+        "Task Sync: First time installation, creating default settings"
+      );
+      this.settings = { ...DEFAULT_SETTINGS };
+      await this.saveData(this.settings);
+    } else {
+      // Settings exist - load them and migrate if needed
+      this.settings = loadedData as TaskSyncSettings;
+      await this.migrateSettings();
+    }
 
     // Initialize previous settings for comparison
     this.previousSettings = { ...this.settings };
 
     this.validateSettings();
+  }
+
+  /**
+   * Migrate settings when new properties are added
+   */
+  private async migrateSettings(): Promise<void> {
+    let needsSave = false;
+
+    // Check if appleCalendarIntegration is missing new properties
+    if (this.settings.appleCalendarIntegration) {
+      const defaults = DEFAULT_SETTINGS.appleCalendarIntegration;
+      const current = this.settings.appleCalendarIntegration;
+
+      if (typeof current.startHour === "undefined") {
+        current.startHour = defaults.startHour;
+        needsSave = true;
+      }
+      if (typeof current.endHour === "undefined") {
+        current.endHour = defaults.endHour;
+        needsSave = true;
+      }
+      if (typeof current.timeIncrement === "undefined") {
+        current.timeIncrement = defaults.timeIncrement;
+        needsSave = true;
+      }
+    } else {
+      // Missing entire appleCalendarIntegration object
+      this.settings.appleCalendarIntegration = {
+        ...DEFAULT_SETTINGS.appleCalendarIntegration,
+      };
+      needsSave = true;
+    }
+
+    // Add other migration checks here as needed for future updates
+
+    if (needsSave) {
+      console.log("Task Sync: Migrated settings to include new properties");
+      await this.saveData(this.settings);
+    }
   }
 
   async saveSettings(skipTemplateUpdate = false) {
@@ -606,6 +664,19 @@ export default class TaskSyncPlugin extends Plugin {
         view.updateSettings({
           githubIntegration: this.settings.githubIntegration,
           appleRemindersIntegration: this.settings.appleRemindersIntegration,
+        });
+      }
+    });
+
+    // Update Task Planning views
+    const taskPlanningLeaves = this.app.workspace.getLeavesOfType(
+      TASK_PLANNING_VIEW_TYPE
+    );
+    taskPlanningLeaves.forEach((leaf) => {
+      const view = leaf.view as TaskPlanningView;
+      if (view && view.updateSettings) {
+        view.updateSettings({
+          appleCalendarIntegration: this.settings.appleCalendarIntegration,
         });
       }
     });
@@ -858,6 +929,27 @@ export default class TaskSyncPlugin extends Plugin {
       const rightLeaf = this.app.workspace.getRightLeaf(false);
       await rightLeaf.setViewState({
         type: CONTEXT_TAB_VIEW_TYPE,
+        active: true,
+      });
+    }
+  }
+
+  /**
+   * Activate the Task Planning view (bring it to focus)
+   */
+  private async activateTaskPlanningView(): Promise<void> {
+    const existingLeaves = this.app.workspace.getLeavesOfType(
+      TASK_PLANNING_VIEW_TYPE
+    );
+
+    if (existingLeaves.length > 0) {
+      // Activate existing view
+      this.app.workspace.revealLeaf(existingLeaves[0]);
+    } else {
+      // Create new view in right sidebar
+      const rightLeaf = this.app.workspace.getRightLeaf(false);
+      await rightLeaf.setViewState({
+        type: TASK_PLANNING_VIEW_TYPE,
         active: true,
       });
     }

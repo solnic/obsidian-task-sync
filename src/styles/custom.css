@@ -3689,18 +3689,9 @@ li[data-task] .task-list-item-checkbox {
 
 .calendar-wrapper {
   flex: 1;
-  min-height: 600px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-/* Task Planning View - Calendar Integration */
-.calendar-wrapper {
-  flex: 1;
-  min-height: 600px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  min-height: 0; /* Allow flex child to shrink */
+  height: 100%; /* Take full available height */
+  /* Remove border and border radius to match Tasks tab styling */
   overflow: hidden;
 }
 
@@ -3715,10 +3706,64 @@ li[data-task] .task-list-item-checkbox {
   }
 
   .calendar-wrapper {
-    min-height: 400px;
+    min-height: 300px; /* Smaller minimum for mobile */
   }
 
   .calendar-filter-list {
     max-height: 150px;
   }
+}
+
+/* Task Planning View Calendar Improvements */
+
+/* Hide the large date header (SAT 13) - it's redundant and takes too much space */
+.task-planning-view .calendar-wrapper .sx__week-grid__date-axis {
+  display: none !important;
+}
+
+.task-planning-view .calendar-wrapper .sx__range-heading {
+  display: none !important;
+}
+
+/* Improved FilterButton dropdown styling with clean checkboxes */
+.task-sync-selector-menu .task-sync-selector-item.selected {
+  background: transparent !important;
+  position: relative;
+  padding-left: 24px;
+}
+
+.task-sync-selector-menu .task-sync-selector-item.selected::before {
+  content: "✓";
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--interactive-accent);
+  font-weight: bold;
+  font-size: 12px;
+}
+
+/* Enhanced hover states for calendar dropdown items */
+.task-sync-selector-menu .task-sync-selector-item:not(.selected) {
+  padding-left: 24px;
+}
+
+.task-sync-selector-menu .task-sync-selector-item:hover:not(.selected) {
+  background: var(--background-modifier-hover) !important;
+  border-left: 3px solid var(--interactive-accent);
+  padding-left: 21px; /* Adjust for border */
+}
+
+.filter-button-menu .menu-item:not(.selected) {
+  padding-left: 24px;
+}
+
+.filter-button-menu .menu-item {
+  padding: 6px 12px 6px 24px;
+  border-radius: 4px;
+  transition: background-color 0.1s ease;
+}
+
+.filter-button-menu .menu-item:hover {
+  background: var(--background-modifier-hover) !important;
 }

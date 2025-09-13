@@ -67,6 +67,9 @@ export interface TaskImportConfig {
 
   /** Whether to add the imported task to today's daily note */
   addToToday?: boolean;
+
+  /** Do Date for the imported task */
+  doDate?: Date;
 }
 
 /**

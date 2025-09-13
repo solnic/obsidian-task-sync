@@ -787,9 +787,9 @@ export class AppleCalendarService
       title: event.title,
       description: description || undefined,
       status: "open", // Calendar events are typically "open" tasks
-      priority: "Medium", // Default priority for calendar events
+      priority: undefined, // Calendar events should NOT have priority set
       assignee: undefined, // Calendar events don't have assignees
-      labels: [event.calendar.name], // Use calendar name as a label
+      labels: [], // Don't include calendar name as tags
       createdAt: event.startDate, // Use start date as creation date
       updatedAt: event.startDate, // Use start date as update date
       externalUrl: event.url || `calendar://event/${event.id}`,
@@ -830,14 +830,21 @@ export class AppleCalendarService
    * Enhance import config with calendar event-specific data
    */
   private enhanceConfigWithEventData(
-    _event: CalendarEvent,
+    event: CalendarEvent,
     config: TaskImportConfig
   ): TaskImportConfig {
+    // Get the default area from settings
+    const defaultArea = this.settings.appleCalendarIntegration.defaultArea;
+
     return {
       ...config,
-      taskType: config.taskType || "Meeting", // Default to "Meeting" for calendar events
-      // In daily planning mode, assign to Events area
-      targetArea: config.addToToday ? "Events" : config.targetArea,
+      taskType: config.taskType || "Events", // Set category to "Events"
+      // Use default area from settings, or "Events" in daily planning mode
+      targetArea: config.addToToday
+        ? "Events"
+        : config.targetArea || defaultArea,
+      // Set Do Date to the event start date
+      doDate: config.doDate || event.startDate,
     };
   }
 }

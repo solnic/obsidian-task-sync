@@ -159,14 +159,40 @@ export class TaskImportManager {
       frontMatter.tags = [];
     }
 
+    // Do Date - from config if provided
+    if (config.doDate) {
+      frontMatter["Do Date"] = config.doDate.toISOString().split("T")[0];
+    }
+
     // Source - internal tracking for imported tasks
-    frontMatter.source = {
-      name: taskData.sourceType,
-      key: taskData.id,
-      url: taskData.externalUrl,
-    };
+    if (taskData.sourceType === "apple-calendar") {
+      frontMatter.source = {
+        calendar: this.getSourceDisplayName(taskData),
+        key: taskData.id,
+        url: taskData.externalUrl,
+      };
+    } else {
+      frontMatter.source = {
+        name: this.getSourceDisplayName(taskData),
+        key: taskData.id,
+        url: taskData.externalUrl,
+      };
+    }
 
     return frontMatter;
+  }
+
+  /**
+   * Get display name for source based on task data
+   */
+  private getSourceDisplayName(taskData: ExternalTaskData): string {
+    if (
+      taskData.sourceType === "apple-calendar" &&
+      taskData.sourceData?.calendar?.name
+    ) {
+      return taskData.sourceData.calendar.name;
+    }
+    return taskData.sourceType;
   }
 
   /**

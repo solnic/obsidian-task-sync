@@ -78,7 +78,22 @@
       defaultView: "day",
       selectedDate: today,
       locale: "en-US",
+      weekOptions: {
+        gridHeight: 800, // Reduced from default 1600px to make hours more compact
+      },
       timezone: scheduleXTimezone as any,
+      isDark: document.body.classList.contains("theme-dark"),
+      // Configure day view boundaries
+      dayBoundaries: {
+        start:
+          settings.appleCalendarIntegration.startHour
+            .toString()
+            .padStart(2, "0") + ":00",
+        end:
+          settings.appleCalendarIntegration.endHour
+            .toString()
+            .padStart(2, "0") + ":00",
+      },
     });
   }
 
@@ -116,6 +131,40 @@
       error = `Failed to load calendars: ${err.message}`;
     } finally {
       isLoading = false;
+    }
+  }
+
+  // Check for previously imported events
+  async function checkPreviouslyImportedEvents() {
+    if (!plugin || calendarEvents.length === 0) {
+      return;
+    }
+
+    try {
+      // Get all tasks from the task store
+      const tasks = plugin.getCachedTasks();
+
+      // Check which calendar events have already been imported
+      const newImportedEvents = new Set<string>();
+
+      for (const event of calendarEvents) {
+        // Look for tasks with matching source information
+        // For calendar events, check both old format (name) and new format (calendar)
+        const matchingTask = tasks.find(
+          (task: any) =>
+            (task.source?.calendar === event.calendar.name ||
+              task.source?.name === event.calendar.name) &&
+            task.source?.key === event.id
+        );
+
+        if (matchingTask) {
+          newImportedEvents.add(event.id);
+        }
+      }
+
+      importedEvents = newImportedEvents;
+    } catch (err: any) {
+      console.warn("Failed to check previously imported events:", err);
     }
   }
 
@@ -204,6 +253,7 @@
           end: end,
           description: event.description || "",
           location: event.location || "",
+          colorName: "neutral", // Use neutral color scheme for all events
           _originalEvent: event, // Store reference to original event
         };
       } catch (err) {
@@ -218,6 +268,7 @@
           end: later,
           description: event.description || "",
           location: event.location || "",
+          colorName: "neutral", // Use neutral color scheme for all events
           _originalEvent: event, // Store reference to original event
         };
       }
@@ -251,6 +302,11 @@
     setTimeout(() => {
       setupEventHoverOverlays();
     }, 100);
+
+    // Check for previously imported events
+    setTimeout(() => {
+      checkPreviouslyImportedEvents();
+    }, 200);
   }
 
   // Setup hover overlays for Schedule-X calendar events
@@ -451,6 +507,13 @@
     ...availableCalendars.map((cal) => cal.name),
   ]);
 
+  // Selected calendar names for FilterButton
+  let selectedCalendarNames = $derived(
+    availableCalendars
+      .filter((cal) => selectedCalendarIds.includes(cal.id))
+      .map((cal) => cal.name)
+  );
+
   // Current calendar filter display value
   let currentCalendarFilterValue = $derived.by(() => {
     if (selectedCalendarIds.length === 0) {
@@ -459,9 +522,9 @@
       const calendar = availableCalendars.find(
         (cal) => cal.id === selectedCalendarIds[0]
       );
-      return calendar?.name || "1 selected";
+      return calendar?.name || "1 calendar";
     } else {
-      return `${selectedCalendarIds.length} selected`;
+      return `${selectedCalendarIds.length} calendars`;
     }
   });
 
@@ -656,6 +719,8 @@
                 autoSuggest={true}
                 allowClear={true}
                 isActive={selectedCalendarIds.length > 0}
+                selectedOptions={selectedCalendarNames}
+                keepMenuOpen={true}
               />
             {/if}
           </div>

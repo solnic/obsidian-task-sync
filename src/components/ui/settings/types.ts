@@ -112,6 +112,11 @@ export interface AppleCalendarIntegrationSettings {
   includeLocation: boolean;
   includeNotes: boolean;
   timeFormat: "12h" | "24h";
+  defaultArea: string; // Default area for imported calendar events
+  // Day view configuration
+  startHour: number; // Start hour for day view (0-23)
+  endHour: number; // End hour for day view (1-24)
+  timeIncrement: number; // Time increment in minutes (15, 30, 60)
 }
 
 export interface TaskSyncSettings {

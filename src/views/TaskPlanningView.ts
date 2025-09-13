@@ -75,6 +75,14 @@ export class TaskPlanningView extends ItemView {
   }
 
   /**
+   * Update settings and refresh the view
+   */
+  updateSettings(newSettings: TaskPlanningViewSettings): void {
+    this.settings = newSettings;
+    this.refresh();
+  }
+
+  /**
    * Refresh the view
    */
   async refresh(): Promise<void> {

@@ -93,6 +93,11 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
     includeLocation: true,
     includeNotes: false,
     timeFormat: "24h" as const,
+    defaultArea: "", // Default area for imported calendar events
+    // Day view configuration defaults
+    startHour: 8, // Start at 8 AM
+    endHour: 18, // End at 6 PM
+    timeIncrement: 15, // 15-minute increments
   },
 };
 

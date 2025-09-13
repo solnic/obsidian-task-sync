@@ -17,6 +17,8 @@
     isActive?: boolean; // Whether the filter is currently active (has a non-default value)
     recentlyUsedItems?: string[]; // List of recently used items (for showing clear buttons)
     onRemoveRecentItem?: (item: string) => void; // Callback to remove item from recently used list
+    selectedOptions?: string[]; // List of currently selected options (for multi-select)
+    keepMenuOpen?: boolean; // Whether to keep menu open after selection (for multi-select)
   }
 
   let {
@@ -32,6 +34,8 @@
     isActive = false,
     recentlyUsedItems = [],
     onRemoveRecentItem,
+    selectedOptions = [],
+    keepMenuOpen = false,
   }: Props = $props();
 
   let buttonEl: HTMLButtonElement;
@@ -148,8 +152,13 @@
           // Click on text selects the option
           textSpan.addEventListener("click", () => {
             onselect(option);
-            menu.remove();
-            isMenuOpen = false;
+            if (!keepMenuOpen) {
+              menu.remove();
+              isMenuOpen = false;
+            } else {
+              // Update the menu to reflect new selection state
+              updateMenuOptions(menu);
+            }
           });
 
           // Click on clear button removes from recent items
@@ -163,13 +172,18 @@
           // Regular item without clear button
           const item = menu.createDiv("task-sync-selector-item");
           item.textContent = option;
-          if (option === currentValue) {
+          if (option === currentValue || selectedOptions.includes(option)) {
             item.addClass("selected");
           }
           item.addEventListener("click", () => {
             onselect(option);
-            menu.remove();
-            isMenuOpen = false;
+            if (!keepMenuOpen) {
+              menu.remove();
+              isMenuOpen = false;
+            } else {
+              // Update the menu to reflect new selection state
+              updateMenuOptions(menu);
+            }
           });
         }
       }
@@ -196,13 +210,15 @@
       } else {
         const item = menu.createDiv("task-sync-selector-item");
         item.textContent = option;
-        if (option === currentValue) {
+        if (option === currentValue || selectedOptions.includes(option)) {
           item.addClass("selected");
         }
         item.addEventListener("click", () => {
           onselect(option);
-          menu.remove();
-          isMenuOpen = false;
+          if (!keepMenuOpen) {
+            menu.remove();
+            isMenuOpen = false;
+          }
         });
       }
     });
