@@ -197,6 +197,37 @@
 </div>
 
 <style>
+  .task-sync-task-list-item {
+    position: relative;
+    padding: 12px;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    background: var(--background-primary);
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .task-sync-task-list-item:hover {
+    border-color: var(--interactive-accent);
+    background: var(--background-primary-alt);
+  }
+
+  .task-sync-task-list-item.hovered {
+    border-color: var(--interactive-accent);
+    background: var(--background-primary-alt);
+  }
+
+  .task-sync-task-list-item.imported {
+    border-color: var(--color-green);
+    background: var(--background-modifier-success);
+  }
+
+  .task-sync-task-list-item.selected {
+    border-color: var(--interactive-accent);
+    background: var(--background-modifier-hover);
+  }
+
   .task-sync-item-header {
     margin-bottom: 0.25rem;
   }

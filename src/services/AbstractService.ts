@@ -3,6 +3,7 @@ import { TaskSyncSettings } from "../main";
 import { CacheManager } from "../cache/CacheManager";
 import { SchemaCache } from "../cache/SchemaCache";
 import { TaskImportManager } from "./TaskImportManager";
+import { DailyNoteService } from "./DailyNoteService";
 import {
   ExternalTaskData,
   TaskImportConfig,
@@ -20,6 +21,7 @@ export abstract class AbstractService {
   protected settings: TaskSyncSettings;
   protected cacheManager: CacheManager;
   protected taskImportManager?: TaskImportManager;
+  protected dailyNoteService?: DailyNoteService;
 
   constructor(settings: TaskSyncSettings) {
     this.settings = settings;
@@ -47,6 +49,13 @@ export abstract class AbstractService {
    */
   setImportDependencies(taskImportManager: TaskImportManager): void {
     this.taskImportManager = taskImportManager;
+  }
+
+  /**
+   * Set daily note service (for dependency injection)
+   */
+  setDailyNoteService(dailyNoteService: DailyNoteService): void {
+    this.dailyNoteService = dailyNoteService;
   }
 
   /**
@@ -129,10 +138,22 @@ export abstract class AbstractService {
 
       // Check if task is already imported using task store
       if (taskStore.isTaskImported(taskData.sourceType, taskData.id)) {
+        // If task already exists and addToToday is requested, still add to today
+        if (config.addToToday && this.dailyNoteService) {
+          const existingTask = taskStore.findTaskBySource(
+            taskData.sourceType,
+            taskData.id
+          );
+          if (existingTask?.filePath) {
+            await this.dailyNoteService.addTaskToToday(existingTask.filePath);
+          }
+        }
         return {
           success: true,
           skipped: true,
           reason: "Task already imported",
+          taskPath: taskStore.findTaskBySource(taskData.sourceType, taskData.id)
+            ?.filePath,
         };
       }
 
@@ -147,7 +168,15 @@ export abstract class AbstractService {
         enhancedConfig
       );
 
-      // Task store will automatically pick up the new task via file watchers
+      // Manually refresh the task store to ensure the new task is immediately available
+      // This prevents race conditions with duplicate detection
+      await taskStore.refreshTasks();
+
+      // If addToToday is requested, add the task to today's daily note
+      if (config.addToToday && this.dailyNoteService) {
+        await this.dailyNoteService.addTaskToToday(taskPath);
+      }
+
       return {
         success: true,
         taskPath,

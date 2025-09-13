@@ -7,12 +7,14 @@ import { App, Vault, TFile } from "obsidian";
 import { ExternalTaskData, TaskImportConfig } from "../types/integrations";
 import { TaskSyncSettings } from "../components/ui/settings/types";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
+import { AreaFileManager } from "./AreaFileManager";
 
 export class TaskImportManager {
   constructor(
     private app: App,
     private vault: Vault,
-    private settings: TaskSyncSettings
+    private settings: TaskSyncSettings,
+    private areaFileManager?: AreaFileManager
   ) {}
 
   /**
@@ -39,6 +41,11 @@ export class TaskImportManager {
     if (taskExists) {
       const error = `Task already exists: ${taskPath}`;
       throw new Error(error);
+    }
+
+    // Ensure target area exists if specified
+    if (config.targetArea) {
+      await this.ensureAreaExists(config.targetArea);
     }
 
     await this.ensureFolderExists(taskFolder);
@@ -204,6 +211,35 @@ export class TaskImportManager {
   async taskExists(taskPath: string, externalId: string): Promise<boolean> {
     const file = this.vault.getAbstractFileByPath(taskPath);
     return file instanceof TFile;
+  }
+
+  /**
+   * Ensure an area exists, creating it if necessary
+   */
+  async ensureAreaExists(areaName: string): Promise<void> {
+    if (!this.areaFileManager) {
+      return; // Skip if area file manager not available
+    }
+
+    // Check if area already exists
+    const areaFolder = this.settings.areasFolder;
+    const areaPath = `${areaFolder}/${areaName}.md`;
+    const existingArea = this.vault.getAbstractFileByPath(areaPath);
+
+    if (existingArea instanceof TFile) {
+      return; // Area already exists
+    }
+
+    // Create the area
+    try {
+      await this.areaFileManager.createAreaFile({
+        title: areaName,
+        description: `Auto-created area for ${areaName}`,
+      });
+    } catch (error) {
+      console.warn(`Failed to create area "${areaName}":`, error);
+      // Don't throw error - continue with task creation even if area creation fails
+    }
   }
 
   /**

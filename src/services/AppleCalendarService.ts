@@ -30,6 +30,11 @@ import {
 import { TaskSyncSettings } from "../components/ui/settings/types";
 import { requestUrl } from "obsidian";
 import ICAL from "ical.js";
+import {
+  ExternalTaskData,
+  TaskImportConfig,
+  ImportResult,
+} from "../types/integrations";
 
 // Simple CalDAV calendar interface
 interface SimpleCalDAVCalendar {
@@ -736,6 +741,103 @@ export class AppleCalendarService
         account: calendar.account,
         type: calendar.type,
       },
+    };
+  }
+
+  /**
+   * Import calendar event as Obsidian task
+   */
+  async importEventAsTask(
+    event: CalendarEvent,
+    config: TaskImportConfig
+  ): Promise<ImportResult> {
+    return this.importExternalItem(
+      event,
+      config,
+      this.transformEventToTaskData.bind(this),
+      this.enhanceConfigWithEventData.bind(this)
+    );
+  }
+
+  /**
+   * Transform calendar event to ExternalTaskData format
+   */
+  private transformEventToTaskData(event: CalendarEvent): ExternalTaskData {
+    // Create a meaningful description from event details
+    let description = "";
+    if (event.description) {
+      description += event.description;
+    }
+
+    // Add event timing information
+    const timeInfo = this.formatEventTimeInfo(event);
+    if (timeInfo) {
+      description += description ? `\n\n${timeInfo}` : timeInfo;
+    }
+
+    // Add location if available
+    if (event.location) {
+      description += description
+        ? `\n\nLocation: ${event.location}`
+        : `Location: ${event.location}`;
+    }
+
+    return {
+      id: event.id,
+      title: event.title,
+      description: description || undefined,
+      status: "open", // Calendar events are typically "open" tasks
+      priority: "Medium", // Default priority for calendar events
+      assignee: undefined, // Calendar events don't have assignees
+      labels: [event.calendar.name], // Use calendar name as a label
+      createdAt: event.startDate, // Use start date as creation date
+      updatedAt: event.startDate, // Use start date as update date
+      externalUrl: event.url || `calendar://event/${event.id}`,
+      sourceType: "apple-calendar",
+      sourceData: event,
+    };
+  }
+
+  /**
+   * Format event time information for task description
+   */
+  private formatEventTimeInfo(event: CalendarEvent): string {
+    if (event.allDay) {
+      const startDate = event.startDate.toLocaleDateString();
+      const endDate = event.endDate.toLocaleDateString();
+
+      if (startDate === endDate) {
+        return `📅 All day event on ${startDate}`;
+      } else {
+        return `📅 All day event from ${startDate} to ${endDate}`;
+      }
+    } else {
+      const startDateTime = event.startDate.toLocaleString();
+      const endDateTime = event.endDate.toLocaleString();
+
+      // Check if same day
+      if (event.startDate.toDateString() === event.endDate.toDateString()) {
+        const startTime = event.startDate.toLocaleTimeString();
+        const endTime = event.endDate.toLocaleTimeString();
+        return `🕐 ${event.startDate.toLocaleDateString()} from ${startTime} to ${endTime}`;
+      } else {
+        return `🕐 From ${startDateTime} to ${endDateTime}`;
+      }
+    }
+  }
+
+  /**
+   * Enhance import config with calendar event-specific data
+   */
+  private enhanceConfigWithEventData(
+    _event: CalendarEvent,
+    config: TaskImportConfig
+  ): TaskImportConfig {
+    return {
+      ...config,
+      taskType: config.taskType || "Meeting", // Default to "Meeting" for calendar events
+      // In daily planning mode, assign to Events area
+      targetArea: config.addToToday ? "Events" : config.targetArea,
     };
   }
 }

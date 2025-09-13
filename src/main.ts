@@ -184,12 +184,7 @@ export default class TaskSyncPlugin extends Plugin {
     this.appleCalendarService = new AppleCalendarService(this.settings);
     await this.appleCalendarService.initialize(this.cacheManager);
 
-    // Initialize import services
-    this.taskImportManager = new TaskImportManager(
-      this.app,
-      this.app.vault,
-      this.settings
-    );
+    // Initialize file managers first
     this.taskFileManager = new TaskFileManager(
       this.app,
       this.app.vault,
@@ -204,6 +199,14 @@ export default class TaskSyncPlugin extends Plugin {
       this.app,
       this.app.vault,
       this.settings
+    );
+
+    // Initialize import services with dependencies
+    this.taskImportManager = new TaskImportManager(
+      this.app,
+      this.app.vault,
+      this.settings,
+      this.areaFileManager
     );
 
     // Initialize TodoPromotionService
@@ -238,9 +241,15 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Wire up GitHub service with import dependencies
     this.githubService.setImportDependencies(this.taskImportManager);
+    this.githubService.setDailyNoteService(this.dailyNoteService);
 
     // Wire up Apple Reminders service with import dependencies
     this.appleRemindersService.setImportDependencies(this.taskImportManager);
+    this.appleRemindersService.setDailyNoteService(this.dailyNoteService);
+
+    // Wire up Apple Calendar service with import dependencies
+    this.appleCalendarService.setImportDependencies(this.taskImportManager);
+    this.appleCalendarService.setDailyNoteService(this.dailyNoteService);
 
     // Ensure templates exist
     await this.templateManager.ensureTemplatesExist();

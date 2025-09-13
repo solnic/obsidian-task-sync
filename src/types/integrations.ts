@@ -39,7 +39,7 @@ export interface ExternalTaskData {
   externalUrl: string;
 
   /** Source system type */
-  sourceType: "github" | "linear" | "apple-reminders";
+  sourceType: "github" | "linear" | "apple-reminders" | "apple-calendar";
 
   /** Raw data from source system for reference */
   sourceData: Record<string, any>;
@@ -64,6 +64,9 @@ export interface TaskImportConfig {
 
   /** Whether to preserve assignee information */
   preserveAssignee?: boolean;
+
+  /** Whether to add the imported task to today's daily note */
+  addToToday?: boolean;
 }
 
 /**
@@ -96,7 +99,7 @@ export interface ImportedTaskMetadata {
   externalId: string;
 
   /** Source system */
-  externalSource: "github" | "linear" | "apple-reminders";
+  externalSource: "github" | "linear" | "apple-reminders" | "apple-calendar";
 
   /** Path to the created Obsidian task */
   taskPath: string;

@@ -1,0 +1,209 @@
+<script lang="ts">
+  /**
+   * CalendarEventItem - Specialized TaskItem for calendar events
+   */
+
+  import TaskItem from "./TaskItem.svelte";
+  import type { CalendarEvent } from "../../types/calendar";
+
+  interface Props {
+    event: CalendarEvent;
+    isHovered?: boolean;
+    isImported?: boolean;
+    isImporting?: boolean;
+    onHover?: (hovered: boolean) => void;
+    onImport?: (event: CalendarEvent) => void;
+    dayPlanningMode?: boolean;
+    testId?: string;
+  }
+
+  let {
+    event,
+    isHovered = false,
+    isImported = false,
+    isImporting = false,
+    onHover,
+    onImport,
+    dayPlanningMode = false,
+    testId,
+  }: Props = $props();
+
+  // Convert event data to TaskItem format
+  let subtitle = $derived(event.calendar.name);
+
+  let meta = $derived.by(() => {
+    const parts: string[] = [];
+
+    // Add time information
+    if (event.allDay) {
+      const startDate = event.startDate.toLocaleDateString();
+      const endDate = event.endDate.toLocaleDateString();
+
+      if (startDate === endDate) {
+        parts.push(`All day on ${startDate}`);
+      } else {
+        parts.push(`All day from ${startDate} to ${endDate}`);
+      }
+    } else {
+      // Check if same day
+      if (event.startDate.toDateString() === event.endDate.toDateString()) {
+        const startTime = event.startDate.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        const endTime = event.endDate.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        parts.push(
+          `${event.startDate.toLocaleDateString()} ${startTime} - ${endTime}`
+        );
+      } else {
+        parts.push(
+          `${event.startDate.toLocaleString()} - ${event.endDate.toLocaleString()}`
+        );
+      }
+    }
+
+    // Add location if available
+    if (event.location) {
+      parts.push(`📍 ${event.location}`);
+    }
+
+    return parts.join(" • ");
+  });
+
+  let badges = $derived.by(() => {
+    const result: Array<{
+      text: string;
+      type: "category" | "status" | "priority" | "project" | "area";
+    }> = [];
+
+    // Add event type badge
+    result.push({
+      text: event.allDay ? "All Day" : "Timed",
+      type: "category",
+    });
+
+    // Add status badge (events are always "active")
+    result.push({
+      text: "Active",
+      type: "status",
+    });
+
+    return result;
+  });
+
+  let labels = $derived.by(() => {
+    const result: Array<{ name: string; color?: string }> = [];
+
+    // Add calendar as a label
+    result.push({
+      name: event.calendar.name,
+      color: event.calendar.color,
+    });
+
+    // Add time indicator
+    if (event.allDay) {
+      result.push({
+        name: "All Day",
+        color: "#6366f1", // Indigo color for all-day events
+      });
+    } else {
+      result.push({
+        name: "Timed Event",
+        color: "#059669", // Green color for timed events
+      });
+    }
+
+    return result;
+  });
+
+  function handleImport() {
+    onImport?.(event);
+  }
+</script>
+
+{#snippet actionSnippet()}
+  <div class="import-actions">
+    {#if isImported}
+      <span class="import-status imported" data-testid="imported-indicator">
+        ✓ Imported
+      </span>
+    {:else if isImporting}
+      <span class="import-status importing" data-testid="importing-indicator">
+        ⏳ Importing...
+      </span>
+    {:else}
+      <button
+        class="import-button"
+        title={dayPlanningMode ? "Add to today" : "Import this event as a task"}
+        onclick={handleImport}
+        data-testid={dayPlanningMode
+          ? "add-to-today-button"
+          : "event-import-button"}
+      >
+        {dayPlanningMode ? "Add to today" : "Import"}
+      </button>
+    {/if}
+  </div>
+{/snippet}
+
+<TaskItem
+  title={event.title}
+  {subtitle}
+  {meta}
+  {badges}
+  {labels}
+  createdAt={event.startDate}
+  {isHovered}
+  {isImported}
+  {onHover}
+  {testId}
+  actionContent={true}
+  actions={actionSnippet}
+/>
+
+<style>
+  .import-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 16px;
+  }
+
+  .import-button {
+    padding: 8px 16px;
+    border: 1px solid var(--interactive-accent);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .import-button:hover {
+    background: var(--interactive-accent-hover);
+    border-color: var(--interactive-accent-hover);
+  }
+
+  .import-status {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .import-status.imported {
+    background: var(--color-green);
+    color: white;
+  }
+
+  .import-status.importing {
+    background: var(--color-yellow);
+    color: var(--text-normal);
+  }
+</style>
