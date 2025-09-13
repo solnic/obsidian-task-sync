@@ -597,8 +597,9 @@
     isNonLocalService={true}
     serviceName="Task Planning"
   >
-    <!-- Calendar Filter Section -->
-    <div class="task-planning-filters">
+    <!-- Header Section with Filters -->
+    <div class="task-planning-header">
+      <!-- Filter Section -->
       <div class="task-sync-filter-section">
         <div class="task-sync-filter-row">
           <div class="task-sync-filter-group">
@@ -662,8 +663,8 @@
       </div>
     </div>
 
-    <!-- Calendar View Section -->
-    <div class="task-planning-calendar">
+    <!-- Content Section -->
+    <div class="task-sync-task-list-container">
       {#if calendarApp}
         <div class="calendar-wrapper">
           <ScheduleXCalendar {calendarApp} />
