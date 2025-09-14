@@ -671,9 +671,24 @@
 
     try {
       availableLabels = await githubService.fetchLabels(currentRepository);
+
+      // Validate selected labels against available labels
+      // Remove any selected labels that are no longer available
+      const availableLabelNames = availableLabels.map((label) => label.name);
+      const validSelectedLabels = selectedLabels.filter((label) =>
+        availableLabelNames.includes(label)
+      );
+
+      if (validSelectedLabels.length !== selectedLabels.length) {
+        selectedLabels = validSelectedLabels;
+        setLabelsFilter(validSelectedLabels);
+      }
     } catch (err: any) {
       console.warn("Failed to load labels:", err.message);
       availableLabels = [];
+      // Clear selected labels if we can't load available labels
+      selectedLabels = [];
+      setLabelsFilter([]);
     }
   }
 
@@ -699,6 +714,9 @@
       issues = [];
       pullRequests = [];
       availableLabels = [];
+      // Clear selected labels since no repository is selected
+      selectedLabels = [];
+      setLabelsFilter([]);
     }
   }
 
@@ -731,12 +749,17 @@
     // Save current filter state
     saveRecentlyUsedFilters();
 
-    // Reset repository selection when changing organization
-    if (org && !currentRepository.startsWith(org + "/")) {
-      const firstRepoInOrg = filteredRepositories[0];
-      if (firstRepoInOrg) {
-        setRepository(firstRepoInOrg.full_name);
+    if (org) {
+      // Reset repository selection when changing organization
+      if (!currentRepository.startsWith(org + "/")) {
+        const firstRepoInOrg = filteredRepositories[0];
+        if (firstRepoInOrg) {
+          setRepository(firstRepoInOrg.full_name);
+        }
       }
+    } else {
+      // Clear repository selection when no organization is selected
+      setRepository(null);
     }
   }
 
@@ -1157,6 +1180,7 @@
             {@const isImported = importedIssues.has(issue.number)}
             <GitHubIssueItem
               {issue}
+              repository={currentRepository}
               isHovered={hoveredIssue === issue.number}
               {isImported}
               {isImporting}

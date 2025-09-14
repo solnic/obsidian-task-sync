@@ -8,6 +8,7 @@
 
   interface Props {
     issue: GitHubIssue;
+    repository?: string; // Repository name in format "owner/repo"
     isHovered?: boolean;
     isImported?: boolean;
     isImporting?: boolean;
@@ -19,6 +20,7 @@
 
   let {
     issue,
+    repository,
     isHovered = false,
     isImported = false,
     isImporting = false,
@@ -63,6 +65,9 @@
       color: label.color ? `#${label.color}` : undefined,
     }));
   });
+
+  // Location for footer (repository name)
+  let location = $derived(repository ? `Repository: ${repository}` : undefined);
 
   function handleImport() {
     onImport?.(issue);
@@ -112,6 +117,7 @@
   {meta}
   {badges}
   {labels}
+  {location}
   createdAt={new Date(issue.created_at)}
   {isHovered}
   {isImported}

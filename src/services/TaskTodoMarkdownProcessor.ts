@@ -13,6 +13,7 @@ import {
 import { TaskSyncSettings } from "../main";
 import { TaskFileManager } from "./TaskFileManager";
 import { taskMentionStore } from "../stores/taskMentionStore";
+import { getOptimalTextColor } from "../utils/colorUtils";
 
 export class TaskTodoMarkdownProcessor {
   private app: App;
@@ -291,6 +292,7 @@ export class TaskTodoMarkdownProcessor {
     const color = this.getCategoryColor(category);
     if (color) {
       badge.style.backgroundColor = color;
+      badge.style.color = getOptimalTextColor(color);
     }
 
     return badge;
@@ -309,6 +311,7 @@ export class TaskTodoMarkdownProcessor {
     const color = this.getPriorityColor(priority);
     if (color) {
       badge.style.backgroundColor = color;
+      badge.style.color = getOptimalTextColor(color);
     }
 
     return badge;
@@ -327,6 +330,7 @@ export class TaskTodoMarkdownProcessor {
     const color = this.getStatusColor(status);
     if (color) {
       badge.style.backgroundColor = color;
+      badge.style.color = getOptimalTextColor(color);
     }
 
     return badge;

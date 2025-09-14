@@ -1198,7 +1198,8 @@ Provides consistent styling for all UI components
   border-radius: 12px;
   font-size: 0.75em;
   font-weight: 500;
-  color: white;
+  /* Dynamic text color will be set via JavaScript based on background brightness */
+  color: var(--badge-text-color, white);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   min-width: 60px;
   text-align: center;

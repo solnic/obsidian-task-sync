@@ -208,7 +208,8 @@
       return; // Already importing
     }
 
-    importingReminders.add(reminder.id);
+    // Create new Set to trigger reactivity
+    importingReminders = new Set([...importingReminders, reminder.id]);
 
     try {
       const config = dependencies.getDefaultImportConfig();
@@ -239,10 +240,12 @@
 
         if (result.success && !result.skipped) {
           new Notice(`Imported reminder: ${reminder.title}`);
-          importedReminders.add(reminder.id);
+          // Create new Set to trigger reactivity
+          importedReminders = new Set([...importedReminders, reminder.id]);
         } else if (result.skipped) {
           new Notice(`Reminder already imported: ${reminder.title}`);
-          importedReminders.add(reminder.id);
+          // Create new Set to trigger reactivity
+          importedReminders = new Set([...importedReminders, reminder.id]);
         } else {
           new Notice(
             `Failed to import reminder: ${result.error || "Unknown error"}`
@@ -255,7 +258,10 @@
         `Error importing reminder: ${error.message || "Unknown error"}`
       );
     } finally {
-      importingReminders.delete(reminder.id);
+      // Create new Set to trigger reactivity
+      const newImportingReminders = new Set(importingReminders);
+      newImportingReminders.delete(reminder.id);
+      importingReminders = newImportingReminders;
     }
   }
 

@@ -3,6 +3,8 @@
    * TagBadge - Standardized badge for tags/labels
    */
 
+  import { getOptimalTextColor } from "../../../utils/colorUtils";
+
   interface Props {
     tag: string;
     color?: string;
@@ -13,7 +15,9 @@
   let { tag, color, size = "medium", className = "" }: Props = $props();
 
   let badgeColor = $derived(color || "var(--background-modifier-border)");
-  let textColor = $derived(color ? "white" : "var(--text-muted)");
+  let textColor = $derived(
+    color ? getOptimalTextColor(color) : "var(--text-muted)"
+  );
   let sizeClass = $derived(`task-sync-badge-${size}`);
 </script>
 

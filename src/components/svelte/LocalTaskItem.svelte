@@ -4,11 +4,6 @@
    */
 
   import TaskItem from "./TaskItem.svelte";
-  import CategoryBadge from "./badges/CategoryBadge.svelte";
-  import StatusBadge from "./badges/StatusBadge.svelte";
-  import PriorityBadge from "./badges/PriorityBadge.svelte";
-  import ProjectBadge from "./badges/ProjectBadge.svelte";
-  import AreaBadge from "./badges/AreaBadge.svelte";
   import { extractDisplayValue } from "../../utils/linkUtils";
   import type { Task } from "../../types/entities";
 
@@ -54,12 +49,9 @@
     return result;
   });
 
-  // Second row badges (project and areas)
-  let secondaryBadges = $derived.by(() => {
-    const result: Array<{
-      text: string;
-      type: "category" | "status" | "priority" | "project" | "area";
-    }> = [];
+  // Location for footer (project and areas)
+  let location = $derived.by(() => {
+    const parts: string[] = [];
 
     if (task.project) {
       // Extract display value from project (handles wiki links properly)
@@ -68,21 +60,22 @@
           ? extractDisplayValue(task.project) ||
             task.project.replace(/^\[\[|\]\]$/g, "")
           : task.project;
-      result.push({ text: cleanProject, type: "project" });
+      parts.push(`Project: ${cleanProject}`);
     }
 
     if (task.areas && Array.isArray(task.areas) && task.areas.length > 0) {
-      task.areas.forEach((area) => {
+      const cleanAreas = task.areas.map((area) => {
         // Extract display value from areas (handles wiki links properly)
-        const cleanArea =
-          typeof area === "string"
-            ? extractDisplayValue(area) || area.replace(/^\[\[|\]\]$/g, "")
-            : area;
-        result.push({ text: cleanArea, type: "area" });
+        return typeof area === "string"
+          ? extractDisplayValue(area) || area.replace(/^\[\[|\]\]$/g, "")
+          : area;
       });
+      parts.push(
+        `Area${cleanAreas.length > 1 ? "s" : ""}: ${cleanAreas.join(", ")}`
+      );
     }
 
-    return result;
+    return parts.join(" • ");
   });
 
   function handleAddToToday() {
@@ -118,58 +111,14 @@
 
 <TaskItem
   title={task.title}
+  badges={primaryBadges}
+  {location}
+  source={task.source}
   {isHovered}
   {onHover}
-  source={task.source}
-  customContent={true}
   actionContent={true}
   actions={actionSnippet}
   {testId}
->
-  <!-- Clean two-row layout -->
-  <div class="task-sync-item-header">
-    <div class="task-sync-item-title">{task.title}</div>
-
-    <!-- Source information inline with title if available -->
-    {#if task.source}
-      <div class="task-sync-item-source-inline">
-        <span class="task-sync-source-text">
-          from {task.source.name}
-          {#if task.source.key}
-            #{task.source.key}
-          {/if}
-        </span>
-      </div>
-    {/if}
-  </div>
-
-  <!-- First row: category, priority, status badges -->
-  {#if primaryBadges.length > 0}
-    <div class="task-sync-item-badges-row task-sync-item-badges-primary">
-      {#each primaryBadges as badge}
-        {#if badge.type === "category"}
-          <CategoryBadge category={badge.text} size="small" />
-        {:else if badge.type === "status"}
-          <StatusBadge status={badge.text} size="small" />
-        {:else if badge.type === "priority"}
-          <PriorityBadge priority={badge.text} size="small" />
-        {/if}
-      {/each}
-    </div>
-  {/if}
-
-  <!-- Second row: project and area badges -->
-  {#if secondaryBadges.length > 0}
-    <div class="task-sync-item-badges-row task-sync-item-badges-secondary">
-      {#each secondaryBadges as badge}
-        {#if badge.type === "project"}
-          <ProjectBadge project={badge.text} size="small" />
-        {:else if badge.type === "area"}
-          <AreaBadge area={badge.text} size="small" />
-        {/if}
-      {/each}
-    </div>
-  {/if}
-</TaskItem>
+/>
 
 <!-- Styles moved to styles.css for consistency -->

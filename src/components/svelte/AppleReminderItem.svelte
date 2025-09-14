@@ -29,7 +29,7 @@
   }: Props = $props();
 
   // Convert reminder data to TaskItem format
-  let subtitle = $derived(reminder.list.name);
+  // No subtitle needed - list name is shown as a label
 
   let meta = $derived.by(() => {
     const parts: string[] = [];
@@ -45,8 +45,7 @@
       parts.push(`Priority: ${priorityLabel}`);
     }
 
-    // Removed redundant status display since it's shown in badges
-    parts.push(reminder.creationDate.toLocaleDateString());
+    // Creation date is shown in footer, no need to duplicate here
 
     return parts.join(" • ");
   });
@@ -80,12 +79,6 @@
   let labels = $derived.by(() => {
     const result: Array<{ name: string; color?: string }> = [];
 
-    // Add list as a label
-    result.push({
-      name: reminder.list.name,
-      color: reminder.list.color,
-    });
-
     // Add all-day indicator if applicable
     if (reminder.allDay) {
       result.push({
@@ -96,6 +89,9 @@
 
     return result;
   });
+
+  // Location for footer (list name)
+  let location = $derived(`List: ${reminder.list.name}`);
 
   function handleImport() {
     onImport?.(reminder);
@@ -131,10 +127,10 @@
 
 <TaskItem
   title={reminder.title}
-  {subtitle}
   {meta}
   {badges}
   {labels}
+  {location}
   createdAt={reminder.creationDate}
   {isHovered}
   {isImported}

@@ -68,6 +68,7 @@
         data-testid="{testId}-refresh"
       >
         <span class="refresh-icon">↻</span>
+        <span class="refresh-text">Refresh</span>
       </button>
     {/if}
   </div>
@@ -94,6 +95,8 @@
     background: var(--background-primary);
     color: var(--text-normal);
     font-size: 13px;
+    height: 32px;
+    box-sizing: border-box;
     transition: border-color 0.2s ease;
   }
 
@@ -111,9 +114,9 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
+    gap: 6px;
     height: 32px;
-    padding: 0;
+    padding: 0 12px;
     border: 1px solid var(--background-modifier-border);
     border-radius: 6px;
     background: var(--background-primary);
@@ -121,6 +124,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
     flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .refresh-button:hover:not(:disabled) {
@@ -136,5 +140,10 @@
   .refresh-icon {
     font-size: 14px;
     line-height: 1;
+  }
+
+  .refresh-text {
+    font-size: 13px;
+    font-weight: 500;
   }
 </style>

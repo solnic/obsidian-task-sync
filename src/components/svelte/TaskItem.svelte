@@ -12,6 +12,7 @@
   import ProjectBadge from "./badges/ProjectBadge.svelte";
   import AreaBadge from "./badges/AreaBadge.svelte";
   import type { TaskSource } from "../../types/entities";
+  import { getOptimalTextColor } from "../../utils/colorUtils";
 
   interface Props {
     // Core item data
@@ -25,6 +26,7 @@
     }>; // standardized badges
     source?: TaskSource; // External source information
     createdAt?: Date; // Creation date for footer display
+    location?: string; // Location info for footer (e.g., "Project: MyProject", "List: Work")
 
     // State
     isHovered?: boolean;
@@ -52,6 +54,7 @@
     badges = [],
     source,
     createdAt,
+    location,
     isHovered = false,
     isImported = false,
     isSelected = false,
@@ -169,7 +172,9 @@
           {#each labels as label}
             <span
               class="task-sync-item-label"
-              style={label.color ? `background-color: ${label.color}` : ""}
+              style={label.color
+                ? `background-color: ${label.color}; color: ${getOptimalTextColor(label.color)}`
+                : ""}
             >
               {label.name}
             </span>
@@ -178,12 +183,17 @@
       {/if}
     {/if}
 
-    <!-- Footer with created at info -->
-    {#if createdAt}
+    <!-- Footer with location and created at info -->
+    {#if location || createdAt}
       <div class="task-sync-item-footer">
-        <span class="task-sync-created-at">
-          Created {createdAt.toLocaleDateString()}
-        </span>
+        {#if location}
+          <span class="task-sync-location">{location}</span>
+        {/if}
+        {#if createdAt}
+          <span class="task-sync-created-at">
+            Created {createdAt.toLocaleDateString()}
+          </span>
+        {/if}
       </div>
     {/if}
   </div>
