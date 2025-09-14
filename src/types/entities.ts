@@ -63,6 +63,7 @@ export interface Task extends BaseEntity, HasDataView {
   project?: string; // PROJECT
   areas?: string[]; // AREAS
   doDate?: string; // DO_DATE - date when task should be done
+  dueDate?: string; // DUE_DATE - deadline for task completion
   tags?: string[]; // TAGS
 
   // Internal attributes (not front-matter)

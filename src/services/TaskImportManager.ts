@@ -164,6 +164,11 @@ export class TaskImportManager {
       frontMatter["Do Date"] = config.doDate.toISOString().split("T")[0];
     }
 
+    // Due Date - from external task data if provided
+    if (taskData.dueDate) {
+      frontMatter["Due Date"] = taskData.dueDate.toISOString().split("T")[0];
+    }
+
     // Source - internal tracking for imported tasks
     if (taskData.sourceType === "apple-calendar") {
       frontMatter.source = {

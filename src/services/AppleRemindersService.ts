@@ -253,6 +253,60 @@ export class AppleRemindersService extends AbstractService {
   }
 
   /**
+   * Fallback method to fetch reminders sequentially (non-concurrent)
+   * Used when the single AppleScript approach fails
+   */
+  private async fetchRemindersSequentially(
+    listsToProcess: any[],
+    filter?: AppleRemindersFilter,
+    includeCompleted?: boolean
+  ): Promise<AppleRemindersResult<AppleReminder[]>> {
+    const allReminders: AppleReminder[] = [];
+
+    // Prepare AppleScript query for individual list processing
+    const appleScriptQuery = includeCompleted
+      ? `tell list list_name in application "Reminders"
+          return properties of reminders
+        end tell`
+      : `tell list list_name in application "Reminders"
+          return properties of reminders whose completed is false
+        end tell`;
+
+    // Process lists one by one (sequential, not concurrent)
+    for (const list of listsToProcess) {
+      try {
+        const reminders = await this.executeAppleScript(appleScriptQuery, {
+          list_name: list.name,
+        });
+
+        const processedReminders = Array.isArray(reminders) ? reminders : [];
+
+        for (const reminder of processedReminders) {
+          // Apply filters
+          if (!this.shouldIncludeReminder(reminder, filter)) {
+            continue;
+          }
+
+          const appleReminder: AppleReminder =
+            this.transformAppleScriptReminderToAppleReminder(reminder, list);
+          allReminders.push(appleReminder);
+        }
+      } catch (scriptError) {
+        console.warn(
+          `🍎 Failed to fetch reminders from list "${list.name}":`,
+          scriptError
+        );
+        // Continue with other lists even if one fails
+      }
+    }
+
+    return {
+      success: true,
+      data: allReminders,
+    };
+  }
+
+  /**
    * Fetch reminders from specified lists or all lists with persistent caching
    */
   async fetchReminders(
@@ -311,53 +365,90 @@ export class AppleRemindersService extends AbstractService {
         filter?.includeCompleted ??
         this.settings.appleRemindersIntegration.includeCompletedReminders;
 
-      // Prepare AppleScript query
+      // Build list of list names to query
+      const listNames = listsToProcess.map((list) => list.name);
+
+      // If no lists to process, return empty array
+      if (listNames.length === 0) {
+        return {
+          success: true,
+          data: [],
+        };
+      }
+
+      // Prepare AppleScript query to fetch all reminders from all lists in one call
+      // This avoids concurrent script execution which can cause timeouts
+      const listNamesScript = listNames.map((name) => `"${name}"`).join(", ");
       const appleScriptQuery = includeCompleted
-        ? `tell list list_name in application "Reminders"
-            return properties of reminders
+        ? `tell application "Reminders"
+            set targetLists to {${listNamesScript}}
+            set allReminders to {}
+            repeat with listName in targetLists
+              try
+                set listReminders to properties of reminders in list listName
+                repeat with reminderProps in listReminders
+                  set reminderProps to reminderProps & {listName:listName}
+                  set end of allReminders to reminderProps
+                end repeat
+              on error
+                -- Skip lists that can't be accessed
+              end try
+            end repeat
+            return allReminders
           end tell`
-        : `tell list list_name in application "Reminders"
-            return properties of reminders whose completed is false
+        : `tell application "Reminders"
+            set targetLists to {${listNamesScript}}
+            set allReminders to {}
+            repeat with listName in targetLists
+              try
+                set listReminders to properties of reminders in list listName whose completed is false
+                repeat with reminderProps in listReminders
+                  set reminderProps to reminderProps & {listName:listName}
+                  set end of allReminders to reminderProps
+                end repeat
+              on error
+                -- Skip lists that can't be accessed
+              end try
+            end repeat
+            return allReminders
           end tell`;
 
-      // Process all lists concurrently for better performance
-      const listPromises = listsToProcess.map(async (list) => {
-        try {
-          const reminders = await this.executeAppleScript(appleScriptQuery, {
-            list_name: list.name,
-          });
+      try {
+        // Execute single AppleScript to get all reminders from all lists
+        const allReminderData = await this.executeAppleScript(appleScriptQuery);
+        const processedReminders = Array.isArray(allReminderData)
+          ? allReminderData
+          : [];
 
-          const processedReminders = Array.isArray(reminders) ? reminders : [];
-          const filteredReminders: AppleReminder[] = [];
-
-          for (const reminder of processedReminders) {
-            // Apply filters
-            if (!this.shouldIncludeReminder(reminder, filter)) {
-              continue;
-            }
-
-            const appleReminder: AppleReminder =
-              this.transformAppleScriptReminderToAppleReminder(reminder, list);
-            filteredReminders.push(appleReminder);
+        // Process each reminder and match it to its list
+        for (const reminderData of processedReminders) {
+          // Apply filters
+          if (!this.shouldIncludeReminder(reminderData, filter)) {
+            continue;
           }
 
-          return filteredReminders;
-        } catch (scriptError) {
-          console.warn(
-            `🍎 Failed to fetch reminders from list "${list.name}":`,
-            scriptError
-          );
-          return []; // Return empty array for failed lists
+          // Find the corresponding list object
+          const listName = reminderData.listName;
+          const list = listsToProcess.find((l) => l.name === listName);
+
+          if (list) {
+            const appleReminder: AppleReminder =
+              this.transformAppleScriptReminderToAppleReminder(
+                reminderData,
+                list
+              );
+            allReminders.push(appleReminder);
+          }
         }
-      });
-
-      // Wait for all lists to be processed concurrently
-      const listResults = await Promise.all(listPromises);
-
-      // Flatten all results into a single array
-      listResults.forEach((reminders) => {
-        allReminders.push(...reminders);
-      });
+      } catch (scriptError) {
+        console.warn(`🍎 Failed to fetch reminders:`, scriptError);
+        // Fall back to sequential processing if the single script fails
+        return this.fetchRemindersSequentially(
+          listsToProcess,
+          filter,
+          includeCompleted
+        );
+      }
 
       // Cache the result
       if (this.remindersCache) {
@@ -414,6 +505,7 @@ export class AppleRemindersService extends AbstractService {
       labels: [reminder.list.name], // Use list name as a label
       createdAt: reminder.creationDate,
       updatedAt: reminder.modificationDate,
+      dueDate: reminder.dueDate, // Include due date from Apple Reminders
       externalUrl: reminder.url || `reminder://${reminder.id}`,
       sourceType: "apple-reminders",
       sourceData: reminder,

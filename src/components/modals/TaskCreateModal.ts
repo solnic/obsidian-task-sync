@@ -28,6 +28,7 @@ export interface TaskCreateData {
   status: string;
   priority?: string;
   content?: string; // Changed from description to content
+  dueDate?: string;
 }
 
 export class TaskCreateModal extends Modal {
@@ -48,7 +49,7 @@ export class TaskCreateModal extends Modal {
   constructor(
     app: App,
     plugin: TaskSyncPlugin,
-    context: FileContext = { type: "none" },
+    context: FileContext = { type: "none" }
   ) {
     super(app);
     this.plugin = plugin;
@@ -172,12 +173,12 @@ export class TaskCreateModal extends Modal {
   private createCategoryBadgeSelector(container: HTMLElement): void {
     const selectedType =
       this.plugin.settings.taskTypes.find(
-        (t) => t.name === this.formData.category,
+        (t) => t.name === this.formData.category
       ) || this.plugin.settings.taskTypes[0];
 
     this.categoryBadge = createTypeBadge(
       selectedType,
-      "task-sync-clickable-badge",
+      "task-sync-clickable-badge"
     );
     container.appendChild(this.categoryBadge);
 
@@ -191,13 +192,13 @@ export class TaskCreateModal extends Modal {
 
   private createPriorityBadgeSelector(container: HTMLElement): void {
     const selectedPriority = this.plugin.settings.taskPriorities.find(
-      (p) => p.name === this.formData.priority,
+      (p) => p.name === this.formData.priority
     );
 
     if (selectedPriority) {
       this.priorityBadge = createPriorityBadge(
         selectedPriority,
-        "task-sync-clickable-badge",
+        "task-sync-clickable-badge"
       );
     } else {
       this.priorityBadge = container.createEl("span", {
@@ -214,7 +215,7 @@ export class TaskCreateModal extends Modal {
         (priority: TaskPriority) => {
           this.formData.priority = priority.name;
           this.updatePriorityBadge();
-        },
+        }
       );
     });
   }
@@ -222,12 +223,12 @@ export class TaskCreateModal extends Modal {
   private createStatusBadgeSelector(container: HTMLElement): void {
     const selectedStatus =
       this.plugin.settings.taskStatuses.find(
-        (s) => s.name === this.formData.status,
+        (s) => s.name === this.formData.status
       ) || this.plugin.settings.taskStatuses[0];
 
     this.statusBadge = createStatusBadge(
       selectedStatus,
-      "task-sync-clickable-badge",
+      "task-sync-clickable-badge"
     );
     container.appendChild(this.statusBadge);
 
@@ -321,7 +322,7 @@ export class TaskCreateModal extends Modal {
   // Badge selector methods
   private showTypeSelector(
     badgeEl: HTMLElement,
-    onSelect: (type: TaskType) => void,
+    onSelect: (type: TaskType) => void
   ): void {
     const menu = this.createSelectorMenu(badgeEl);
 
@@ -339,7 +340,7 @@ export class TaskCreateModal extends Modal {
 
   private showPrioritySelector(
     badgeEl: HTMLElement,
-    onSelect: (priority: TaskPriority) => void,
+    onSelect: (priority: TaskPriority) => void
   ): void {
     const menu = this.createSelectorMenu(badgeEl);
 
@@ -369,7 +370,7 @@ export class TaskCreateModal extends Modal {
 
   private showStatusSelector(
     badgeEl: HTMLElement,
-    onSelect: (status: TaskStatus) => void,
+    onSelect: (status: TaskStatus) => void
   ): void {
     const menu = this.createSelectorMenu(badgeEl);
 
@@ -413,12 +414,12 @@ export class TaskCreateModal extends Modal {
   // Badge update methods
   private updateCategoryBadge(): void {
     const selectedType = this.plugin.settings.taskTypes.find(
-      (t) => t.name === this.formData.category,
+      (t) => t.name === this.formData.category
     );
     if (selectedType && this.categoryBadge) {
       const newBadge = createTypeBadge(
         selectedType,
-        "task-sync-clickable-badge",
+        "task-sync-clickable-badge"
       );
       this.categoryBadge.replaceWith(newBadge);
       this.categoryBadge = newBadge;
@@ -435,14 +436,14 @@ export class TaskCreateModal extends Modal {
 
   private updatePriorityBadge(): void {
     const selectedPriority = this.plugin.settings.taskPriorities.find(
-      (p) => p.name === this.formData.priority,
+      (p) => p.name === this.formData.priority
     );
 
     let newBadge: HTMLElement;
     if (selectedPriority) {
       newBadge = createPriorityBadge(
         selectedPriority,
-        "task-sync-clickable-badge",
+        "task-sync-clickable-badge"
       );
     } else {
       newBadge = document.createElement("span");
@@ -462,7 +463,7 @@ export class TaskCreateModal extends Modal {
           (priority: TaskPriority) => {
             this.formData.priority = priority.name;
             this.updatePriorityBadge();
-          },
+          }
         );
       });
     }
@@ -470,12 +471,12 @@ export class TaskCreateModal extends Modal {
 
   private updateStatusBadge(): void {
     const selectedStatus = this.plugin.settings.taskStatuses.find(
-      (s) => s.name === this.formData.status,
+      (s) => s.name === this.formData.status
     );
     if (selectedStatus && this.statusBadge) {
       const newBadge = createStatusBadge(
         selectedStatus,
-        "task-sync-clickable-badge",
+        "task-sync-clickable-badge"
       );
       this.statusBadge.replaceWith(newBadge);
       this.statusBadge = newBadge;
@@ -496,7 +497,7 @@ export class TaskCreateModal extends Modal {
     const projectFiles = this.app.vault
       .getMarkdownFiles()
       .filter((file) =>
-        file.path.startsWith(this.plugin.settings.projectsFolder + "/"),
+        file.path.startsWith(this.plugin.settings.projectsFolder + "/")
       )
       .map((file) => file.basename);
 
@@ -508,7 +509,7 @@ export class TaskCreateModal extends Modal {
     const areaFiles = this.app.vault
       .getMarkdownFiles()
       .filter((file) =>
-        file.path.startsWith(this.plugin.settings.areasFolder + "/"),
+        file.path.startsWith(this.plugin.settings.areasFolder + "/")
       )
       .map((file) => file.basename);
 
@@ -517,7 +518,7 @@ export class TaskCreateModal extends Modal {
 
   private setupAutocomplete(
     inputEl: HTMLInputElement,
-    suggestions: string[],
+    suggestions: string[]
   ): void {
     let suggestEl: HTMLElement | null = null;
 
@@ -617,7 +618,7 @@ export class TaskCreateModal extends Modal {
   private showError(message: string): void {
     // Find or create error container
     let errorContainer = this.contentEl.querySelector(
-      ".task-sync-error",
+      ".task-sync-error"
     ) as HTMLElement;
     if (!errorContainer) {
       errorContainer = this.contentEl.createDiv("task-sync-error");

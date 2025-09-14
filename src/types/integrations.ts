@@ -35,6 +35,9 @@ export interface ExternalTaskData {
   /** Last update timestamp */
   updatedAt: Date;
 
+  /** Optional due date for task completion */
+  dueDate?: Date;
+
   /** URL to view task in external system */
   externalUrl: string;
 

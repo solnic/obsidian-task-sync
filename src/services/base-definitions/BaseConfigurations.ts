@@ -109,6 +109,12 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
     type: "date",
     frontmatter: true,
   },
+  DUE_DATE: {
+    key: "dueDate",
+    name: "Due Date",
+    type: "date",
+    frontmatter: true,
+  },
   TAGS: {
     key: "tags",
     name: "tags",
@@ -148,6 +154,7 @@ export const PROPERTY_SETS = {
     "STATUS",
     "PARENT_TASK",
     "DO_DATE",
+    "DUE_DATE",
     "TAGS",
   ] as const,
   TASKS_BASE: [
@@ -161,6 +168,7 @@ export const PROPERTY_SETS = {
     "STATUS",
     "PARENT_TASK",
     "DO_DATE",
+    "DUE_DATE",
     "TAGS",
     "CREATED_AT",
     "UPDATED_AT",

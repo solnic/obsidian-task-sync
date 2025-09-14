@@ -26,6 +26,7 @@ export interface TaskCreationData extends FileCreationData {
   status?: string;
   parentTask?: string;
   doDate?: string;
+  dueDate?: string;
   tags?: string[];
 }
 

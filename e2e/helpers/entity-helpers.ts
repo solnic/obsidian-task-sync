@@ -21,6 +21,7 @@ export async function createTask(
     status?: string;
     parentTask?: string;
     tags?: string[];
+    dueDate?: string;
   },
   content: string = ""
 ): Promise<any> {
