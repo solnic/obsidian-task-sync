@@ -62,6 +62,58 @@ export interface CalendarEvent {
 }
 
 /**
+ * Calendar event creation data
+ */
+export interface CalendarEventCreateData {
+  /** Event title */
+  title: string;
+
+  /** Event description/notes */
+  description?: string;
+
+  /** Event location */
+  location?: string;
+
+  /** Start date and time */
+  startDate: Date;
+
+  /** End date and time */
+  endDate: Date;
+
+  /** Whether this is an all-day event */
+  allDay?: boolean;
+
+  /** Target calendar ID */
+  calendarId: string;
+
+  /** Reminder settings (in minutes before event) */
+  reminders?: number[];
+
+  /** Additional provider-specific metadata */
+  metadata?: Record<string, any>;
+}
+
+/**
+ * Result of creating a calendar event
+ */
+export interface CalendarEventCreateResult {
+  /** Whether the creation was successful */
+  success: boolean;
+
+  /** The created event (if successful) */
+  event?: CalendarEvent;
+
+  /** Error message (if failed) */
+  error?: string;
+
+  /** External event ID for tracking */
+  externalEventId?: string;
+
+  /** URL to the created event */
+  eventUrl?: string;
+}
+
+/**
  * Calendar service interface that must be implemented by all calendar providers
  */
 export interface CalendarService {
@@ -87,6 +139,20 @@ export interface CalendarService {
 
   /** Get events for today */
   getTodayEvents(calendarIds?: string[]): Promise<CalendarEvent[]>;
+
+  /** Create a new calendar event */
+  createEvent(
+    eventData: CalendarEventCreateData
+  ): Promise<CalendarEventCreateResult>;
+
+  /** Update an existing calendar event */
+  updateEvent(
+    eventId: string,
+    eventData: Partial<CalendarEventCreateData>
+  ): Promise<CalendarEventCreateResult>;
+
+  /** Delete a calendar event */
+  deleteEvent(eventId: string): Promise<boolean>;
 
   /** Check if the service has necessary permissions */
   checkPermissions(): Promise<boolean>;
@@ -123,13 +189,22 @@ export interface CalendarEventFetchOptions {
  */
 export interface CalendarEventFormatter {
   /** Format a single event for display */
-  formatEvent(event: CalendarEvent, options?: CalendarEventFormatOptions): string;
+  formatEvent(
+    event: CalendarEvent,
+    options?: CalendarEventFormatOptions
+  ): string;
 
   /** Format multiple events for display */
-  formatEvents(events: CalendarEvent[], options?: CalendarEventFormatOptions): string;
+  formatEvents(
+    events: CalendarEvent[],
+    options?: CalendarEventFormatOptions
+  ): string;
 
   /** Format events grouped by calendar */
-  formatEventsByCalendar(events: CalendarEvent[], options?: CalendarEventFormatOptions): string;
+  formatEventsByCalendar(
+    events: CalendarEvent[],
+    options?: CalendarEventFormatOptions
+  ): string;
 }
 
 /**
@@ -161,10 +236,10 @@ export interface CalendarEventFormatOptions {
   markdown?: {
     /** Use bullet points for events */
     useBullets?: boolean;
-    
+
     /** Use checkboxes for events */
     useCheckboxes?: boolean;
-    
+
     /** Header level for calendar names (when grouping) */
     calendarHeaderLevel?: number;
   };

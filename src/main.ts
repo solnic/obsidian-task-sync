@@ -24,6 +24,10 @@ import {
   ProjectCreateModal,
   ProjectCreateData,
 } from "./components/modals/ProjectCreateModal";
+import {
+  TaskScheduleModal,
+  TaskScheduleData,
+} from "./components/modals/TaskScheduleModal";
 
 import { TaskSyncSettingTab } from "./components/ui/settings";
 import type {
@@ -50,6 +54,7 @@ import {
 import { GitHubService } from "./services/GitHubService";
 import { AppleRemindersService } from "./services/AppleRemindersService";
 import { AppleCalendarService } from "./services/AppleCalendarService";
+import { TaskSchedulingService } from "./services/TaskSchedulingService";
 import { TaskImportManager } from "./services/TaskImportManager";
 import { CacheManager } from "./cache/CacheManager";
 import { TasksView, TASKS_VIEW_TYPE } from "./views/TasksView";
@@ -59,6 +64,7 @@ import {
   TASK_PLANNING_VIEW_TYPE,
 } from "./views/TaskPlanningView";
 import { TaskImportConfig } from "./types/integrations";
+import { Task } from "./types/entities";
 import { taskStore } from "./stores/taskStore";
 import { projectStore } from "./stores/projectStore";
 import { areaStore } from "./stores/areaStore";
@@ -114,6 +120,7 @@ export default class TaskSyncPlugin extends Plugin {
   githubService: GitHubService;
   appleRemindersService: AppleRemindersService;
   appleCalendarService: AppleCalendarService;
+  taskSchedulingService: TaskSchedulingService;
   taskImportManager: TaskImportManager;
   taskFileManager: TaskFileManager;
   areaFileManager: AreaFileManager;
@@ -183,6 +190,11 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize Apple Calendar service
     this.appleCalendarService = new AppleCalendarService(this.settings);
     await this.appleCalendarService.initialize(this.cacheManager);
+
+    // Initialize Task Scheduling service
+    this.taskSchedulingService = new TaskSchedulingService(this.settings);
+    await this.taskSchedulingService.initialize(this.cacheManager);
+    this.taskSchedulingService.setCalendarService(this.appleCalendarService);
 
     // Initialize file managers first
     this.taskFileManager = new TaskFileManager(
@@ -512,6 +524,17 @@ export default class TaskSyncPlugin extends Plugin {
           await this.checkAppleCalendarPermissions();
         },
       });
+
+      // Task Scheduling Commands (only if scheduling is enabled)
+      if (this.settings.appleCalendarIntegration.schedulingEnabled) {
+        this.addCommand({
+          id: "schedule-task",
+          name: "Schedule Task",
+          callback: async () => {
+            await this.scheduleCurrentTask();
+          },
+        });
+      }
     }
 
     this.addCommand({
@@ -584,7 +607,7 @@ export default class TaskSyncPlugin extends Plugin {
   private async migrateSettings(): Promise<void> {
     let needsSave = false;
 
-    // Check if appleCalendarIntegration is missing new properties
+    // Check if appleCalendarIntegration is missing or has missing properties
     if (this.settings.appleCalendarIntegration) {
       const defaults = DEFAULT_SETTINGS.appleCalendarIntegration;
       const current = this.settings.appleCalendarIntegration;
@@ -601,10 +624,38 @@ export default class TaskSyncPlugin extends Plugin {
         current.timeIncrement = defaults.timeIncrement;
         needsSave = true;
       }
+      if (typeof current.schedulingEnabled === "undefined") {
+        current.schedulingEnabled = defaults.schedulingEnabled;
+        needsSave = true;
+      }
+      if (typeof current.defaultSchedulingCalendar === "undefined") {
+        current.defaultSchedulingCalendar = defaults.defaultSchedulingCalendar;
+        needsSave = true;
+      }
+      if (typeof current.defaultEventDuration === "undefined") {
+        current.defaultEventDuration = defaults.defaultEventDuration;
+        needsSave = true;
+      }
+      if (!Array.isArray(current.defaultReminders)) {
+        current.defaultReminders = [...defaults.defaultReminders];
+        needsSave = true;
+      }
+      if (typeof current.includeTaskDetailsInEvent === "undefined") {
+        current.includeTaskDetailsInEvent = defaults.includeTaskDetailsInEvent;
+        needsSave = true;
+      }
     } else {
       // Missing entire appleCalendarIntegration object
       this.settings.appleCalendarIntegration = {
         ...DEFAULT_SETTINGS.appleCalendarIntegration,
+      };
+      needsSave = true;
+    }
+
+    // Check if appleRemindersIntegration is missing
+    if (!this.settings.appleRemindersIntegration) {
+      this.settings.appleRemindersIntegration = {
+        ...DEFAULT_SETTINGS.appleRemindersIntegration,
       };
       needsSave = true;
     }
@@ -850,6 +901,94 @@ export default class TaskSyncPlugin extends Plugin {
     });
 
     modal.open();
+  }
+
+  /**
+   * Schedule the current task as a calendar event
+   */
+  private async scheduleCurrentTask(): Promise<void> {
+    if (!this.taskSchedulingService.isEnabled()) {
+      new Notice(
+        "Task scheduling is not enabled. Please configure it in settings."
+      );
+      return;
+    }
+
+    // Get the current file and check if it's a task
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile) {
+      new Notice("No active file. Please open a task file to schedule.");
+      return;
+    }
+
+    // Check if the current file is a task
+    const task = taskStore.findEntityByPath(activeFile.path);
+    if (!task) {
+      new Notice(
+        "Current file is not a task. Please open a task file to schedule."
+      );
+      return;
+    }
+
+    // Check if task is already scheduled
+    const isScheduled = await this.taskSchedulingService.isTaskScheduled(
+      task.filePath || ""
+    );
+    if (isScheduled) {
+      new Notice("This task is already scheduled.");
+      return;
+    }
+
+    // Open the scheduling modal
+    const modal = new TaskScheduleModal(this.app, this, task);
+
+    modal.onSubmit(async (scheduleData) => {
+      await this.scheduleTask(task, scheduleData);
+    });
+
+    modal.open();
+  }
+
+  /**
+   * Schedule a task with the given configuration
+   */
+  private async scheduleTask(
+    task: Task,
+    scheduleData: TaskScheduleData
+  ): Promise<void> {
+    try {
+      new Notice("Scheduling task...");
+
+      const config = {
+        targetCalendar: scheduleData.targetCalendar,
+        startDate: scheduleData.startDate,
+        endDate: scheduleData.endDate,
+        allDay: scheduleData.allDay,
+        location: scheduleData.location,
+        notes: scheduleData.notes,
+        includeTaskDetails: scheduleData.includeTaskDetails,
+        reminders: scheduleData.reminders,
+      };
+
+      const result = await this.taskSchedulingService.scheduleTask(
+        task,
+        config
+      );
+
+      if (result.success) {
+        new Notice(
+          `✅ Task scheduled successfully in ${scheduleData.targetCalendar}`
+        );
+
+        // Optionally refresh any open calendar views
+        // This could be extended to refresh calendar views if needed
+      } else {
+        new Notice(`❌ Failed to schedule task: ${result.error}`);
+      }
+    } catch (error: any) {
+      console.error("Failed to schedule task:", error);
+      new Notice(`❌ Failed to schedule task: ${error.message}`);
+    }
   }
 
   /**

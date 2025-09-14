@@ -98,6 +98,12 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
     startHour: 8, // Start at 8 AM
     endHour: 18, // End at 6 PM
     timeIncrement: 15, // 15-minute increments
+    // Task scheduling defaults
+    schedulingEnabled: false, // Disabled by default
+    defaultSchedulingCalendar: "", // No default calendar
+    defaultEventDuration: 60, // 1 hour default duration
+    defaultReminders: [15], // 15 minutes before event
+    includeTaskDetailsInEvent: true, // Include task details by default
   },
 };
 

@@ -2009,6 +2009,119 @@ export class TaskSyncSettingTab extends PluginSettingTab {
               }
             });
         });
+
+      // Task scheduling configuration section
+      section.createEl("h4", {
+        text: "Task Scheduling",
+        cls: "task-sync-subsection-header",
+      });
+
+      // Enable task scheduling
+      new Setting(section)
+        .setName("Enable Task Scheduling")
+        .setDesc("Allow scheduling tasks as calendar events")
+        .addToggle((toggle) => {
+          toggle
+            .setValue(
+              this.plugin.settings.appleCalendarIntegration.schedulingEnabled
+            )
+            .onChange(async (value) => {
+              this.plugin.settings.appleCalendarIntegration.schedulingEnabled =
+                value;
+              await this.plugin.saveSettings();
+
+              // Refresh the section to show/hide scheduling settings
+              section.empty();
+              this.createIntegrationsSection(container);
+            });
+        });
+
+      // Only show scheduling settings if enabled
+      if (this.plugin.settings.appleCalendarIntegration.schedulingEnabled) {
+        // Default scheduling calendar
+        new Setting(section)
+          .setName("Default Scheduling Calendar")
+          .setDesc("Default calendar to use when scheduling tasks as events")
+          .addText((text) => {
+            text
+              .setPlaceholder("Calendar name")
+              .setValue(
+                this.plugin.settings.appleCalendarIntegration
+                  .defaultSchedulingCalendar
+              )
+              .onChange(async (value) => {
+                this.plugin.settings.appleCalendarIntegration.defaultSchedulingCalendar =
+                  value;
+                await this.plugin.saveSettings();
+              });
+          });
+
+        // Default event duration
+        new Setting(section)
+          .setName("Default Event Duration")
+          .setDesc("Default duration for scheduled events in minutes")
+          .addText((text) => {
+            text
+              .setPlaceholder("60")
+              .setValue(
+                this.plugin.settings.appleCalendarIntegration.defaultEventDuration.toString()
+              )
+              .onChange(async (value) => {
+                const duration = parseInt(value);
+                if (!isNaN(duration) && duration > 0) {
+                  this.plugin.settings.appleCalendarIntegration.defaultEventDuration =
+                    duration;
+                  await this.plugin.saveSettings();
+                }
+              });
+          });
+
+        // Include task details in event
+        new Setting(section)
+          .setName("Include Task Details")
+          .setDesc("Include task details in the event description")
+          .addToggle((toggle) => {
+            toggle
+              .setValue(
+                this.plugin.settings.appleCalendarIntegration
+                  .includeTaskDetailsInEvent
+              )
+              .onChange(async (value) => {
+                this.plugin.settings.appleCalendarIntegration.includeTaskDetailsInEvent =
+                  value;
+                await this.plugin.saveSettings();
+              });
+          });
+
+        // Default reminders
+        new Setting(section)
+          .setName("Default Reminders")
+          .setDesc(
+            "Default reminder times in minutes before event (comma-separated)"
+          )
+          .addText((text) => {
+            text
+              .setPlaceholder("15, 60")
+              .setValue(
+                this.plugin.settings.appleCalendarIntegration.defaultReminders.join(
+                  ", "
+                )
+              )
+              .onChange(async (value) => {
+                try {
+                  const reminders = value
+                    .split(",")
+                    .map((s) => parseInt(s.trim()))
+                    .filter((n) => !isNaN(n) && n > 0);
+                  this.plugin.settings.appleCalendarIntegration.defaultReminders =
+                    reminders;
+                  await this.plugin.saveSettings();
+                } catch (error) {
+                  // Invalid input, ignore
+                }
+              });
+          });
+      }
     }
   }
 

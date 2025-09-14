@@ -26,6 +26,8 @@ import {
   CalendarEvent,
   CalendarService,
   CalendarEventFetchOptions,
+  CalendarEventCreateData,
+  CalendarEventCreateResult,
 } from "../types/calendar";
 import { TaskSyncSettings } from "../components/ui/settings/types";
 import { requestUrl } from "obsidian";
@@ -745,6 +747,184 @@ export class AppleCalendarService
   }
 
   /**
+   * Create a new calendar event
+   */
+  async createEvent(
+    eventData: CalendarEventCreateData
+  ): Promise<CalendarEventCreateResult> {
+    if (!this.credentials) {
+      return {
+        success: false,
+        error: "CalDAV credentials not configured",
+      };
+    }
+
+    try {
+      const calendarHome = await this.discoverCalendarHome();
+      const calendars = await this.fetchCalendarList(calendarHome);
+
+      // Find the target calendar
+      const targetCalendar = calendars.find(
+        (cal) =>
+          cal.displayName === eventData.calendarId ||
+          cal.url.includes(eventData.calendarId)
+      );
+
+      if (!targetCalendar) {
+        return {
+          success: false,
+          error: `Calendar not found: ${eventData.calendarId}`,
+        };
+      }
+
+      // Generate a unique event ID
+      const eventId = `${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 11)}`;
+      const eventUrl = `${targetCalendar.url}/${eventId}.ics`;
+
+      // Create iCal content
+      const icalContent = this.generateICalContent(eventData, eventId);
+
+      // Send PUT request to create the event
+      const response = await requestUrl({
+        url: eventUrl,
+        method: "PUT",
+        headers: {
+          Authorization: `Basic ${btoa(
+            `${this.credentials.username}:${this.credentials.password}`
+          )}`,
+          "Content-Type": "text/calendar; charset=utf-8",
+          "If-None-Match": "*", // Ensure we're creating a new event
+        },
+        body: icalContent,
+      });
+
+      if (response.status >= 200 && response.status < 300) {
+        // Convert the created event data back to CalendarEvent format
+        const createdEvent: CalendarEvent = {
+          id: eventId,
+          title: eventData.title,
+          description: eventData.description,
+          location: eventData.location,
+          startDate: eventData.startDate,
+          endDate: eventData.endDate,
+          allDay: eventData.allDay || false,
+          calendar: this.convertFromSimpleCalDAVCalendar(targetCalendar),
+          url: eventUrl,
+        };
+
+        return {
+          success: true,
+          event: createdEvent,
+          externalEventId: eventId,
+          eventUrl: eventUrl,
+        };
+      } else {
+        return {
+          success: false,
+          error: `Failed to create event: HTTP ${response.status}`,
+        };
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: `Failed to create event: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Update an existing calendar event
+   */
+  async updateEvent(
+    eventId: string,
+    eventData: Partial<CalendarEventCreateData>
+  ): Promise<CalendarEventCreateResult> {
+    if (!this.credentials) {
+      return {
+        success: false,
+        error: "CalDAV credentials not configured",
+      };
+    }
+
+    try {
+      // For now, we'll implement this as a delete + create operation
+      // A more sophisticated implementation would fetch the existing event and modify it
+      const deleteSuccess = await this.deleteEvent(eventId);
+      if (!deleteSuccess) {
+        return {
+          success: false,
+          error: "Failed to delete existing event for update",
+        };
+      }
+
+      // Create new event with updated data
+      if (
+        eventData.calendarId &&
+        eventData.title &&
+        eventData.startDate &&
+        eventData.endDate
+      ) {
+        return await this.createEvent(eventData as CalendarEventCreateData);
+      } else {
+        return {
+          success: false,
+          error: "Insufficient data for event update",
+        };
+      }
+    } catch (error: any) {
+      return {
+        success: false,
+        error: `Failed to update event: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Delete a calendar event
+   */
+  async deleteEvent(eventId: string): Promise<boolean> {
+    if (!this.credentials) {
+      return false;
+    }
+
+    try {
+      const calendarHome = await this.discoverCalendarHome();
+      const calendars = await this.fetchCalendarList(calendarHome);
+
+      // Try to find and delete the event from all calendars
+      for (const calendar of calendars) {
+        const eventUrl = `${calendar.url}/${eventId}.ics`;
+
+        try {
+          const response = await requestUrl({
+            url: eventUrl,
+            method: "DELETE",
+            headers: {
+              Authorization: `Basic ${btoa(
+                `${this.credentials.username}:${this.credentials.password}`
+              )}`,
+            },
+          });
+
+          if (response.status >= 200 && response.status < 300) {
+            return true;
+          }
+        } catch (error) {
+          // Continue to next calendar if this one fails
+          continue;
+        }
+      }
+
+      return false;
+    } catch (error: any) {
+      console.error("Failed to delete event:", error);
+      return false;
+    }
+  }
+
+  /**
    * Import calendar event as Obsidian task
    */
   async importEventAsTask(
@@ -757,6 +937,78 @@ export class AppleCalendarService
       this.transformEventToTaskData.bind(this),
       this.enhanceConfigWithEventData.bind(this)
     );
+  }
+
+  /**
+   * Generate iCal content for creating a calendar event
+   */
+  private generateICalContent(
+    eventData: CalendarEventCreateData,
+    eventId: string
+  ): string {
+    const now = new Date();
+    const formatDate = (date: Date): string => {
+      if (eventData.allDay) {
+        // For all-day events, use DATE format (YYYYMMDD)
+        return date.toISOString().split("T")[0].replace(/-/g, "");
+      } else {
+        // For timed events, use DATETIME format (YYYYMMDDTHHMMSSZ)
+        return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+      }
+    };
+
+    const startDateStr = formatDate(eventData.startDate);
+    const endDateStr = formatDate(eventData.endDate);
+    const createdDateStr = formatDate(now);
+
+    let icalContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Obsidian Task Sync//EN",
+      "CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT",
+      `UID:${eventId}`,
+      `DTSTAMP:${createdDateStr}`,
+      `CREATED:${createdDateStr}`,
+      `LAST-MODIFIED:${createdDateStr}`,
+      `SUMMARY:${eventData.title.replace(/\n/g, "\\n")}`,
+    ];
+
+    // Add date/time properties
+    if (eventData.allDay) {
+      icalContent.push(`DTSTART;VALUE=DATE:${startDateStr}`);
+      icalContent.push(`DTEND;VALUE=DATE:${endDateStr}`);
+    } else {
+      icalContent.push(`DTSTART:${startDateStr}`);
+      icalContent.push(`DTEND:${endDateStr}`);
+    }
+
+    // Add optional properties
+    if (eventData.description) {
+      icalContent.push(
+        `DESCRIPTION:${eventData.description.replace(/\n/g, "\\n")}`
+      );
+    }
+
+    if (eventData.location) {
+      icalContent.push(`LOCATION:${eventData.location.replace(/\n/g, "\\n")}`);
+    }
+
+    // Add reminders if specified
+    if (eventData.reminders && eventData.reminders.length > 0) {
+      for (const reminder of eventData.reminders) {
+        icalContent.push("BEGIN:VALARM");
+        icalContent.push("ACTION:DISPLAY");
+        icalContent.push(`TRIGGER:-PT${reminder}M`); // Minutes before event
+        icalContent.push(`DESCRIPTION:${eventData.title}`);
+        icalContent.push("END:VALARM");
+      }
+    }
+
+    icalContent.push("END:VEVENT");
+    icalContent.push("END:VCALENDAR");
+
+    return icalContent.join("\r\n");
   }
 
   /**

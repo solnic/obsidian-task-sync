@@ -988,6 +988,30 @@ async function resetPluginSettings(page: Page): Promise<void> {
             importNotesAsDescription: true,
             preservePriority: true,
           },
+          // Apple Calendar integration defaults
+          appleCalendarIntegration: {
+            enabled: false,
+            username: "",
+            appSpecificPassword: "",
+            selectedCalendars: [],
+            includeAllDayEvents: true,
+            includeBusyEvents: true,
+            includeFreeEvents: false,
+            daysAhead: 1,
+            daysBehind: 0,
+            includeLocation: true,
+            includeNotes: false,
+            timeFormat: "24h" as const,
+            defaultArea: "",
+            startHour: 8,
+            endHour: 18,
+            timeIncrement: 15,
+            schedulingEnabled: false,
+            defaultSchedulingCalendar: "",
+            defaultEventDuration: 60,
+            defaultReminders: [15],
+            includeTaskDetailsInEvent: true,
+          },
         };
 
         await plugin.saveSettings();

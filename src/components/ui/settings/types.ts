@@ -117,6 +117,12 @@ export interface AppleCalendarIntegrationSettings {
   startHour: number; // Start hour for day view (0-23)
   endHour: number; // End hour for day view (1-24)
   timeIncrement: number; // Time increment in minutes (15, 30, 60)
+  // Task scheduling configuration
+  schedulingEnabled: boolean; // Whether task scheduling is enabled
+  defaultSchedulingCalendar: string; // Default calendar for scheduling tasks
+  defaultEventDuration: number; // Default event duration in minutes
+  defaultReminders: number[]; // Default reminders (in minutes before event)
+  includeTaskDetailsInEvent: boolean; // Whether to include task details in event description
 }
 
 export interface TaskSyncSettings {
