@@ -170,19 +170,11 @@ export class TaskImportManager {
     }
 
     // Source - internal tracking for imported tasks
-    if (taskData.sourceType === "apple-calendar") {
-      frontMatter.source = {
-        calendar: this.getSourceDisplayName(taskData),
-        key: taskData.id,
-        url: taskData.externalUrl,
-      };
-    } else {
-      frontMatter.source = {
-        name: this.getSourceDisplayName(taskData),
-        key: taskData.id,
-        url: taskData.externalUrl,
-      };
-    }
+    frontMatter.source = {
+      name: this.getSourceDisplayName(taskData),
+      key: taskData.id,
+      url: taskData.externalUrl,
+    };
 
     return frontMatter;
   }
@@ -191,12 +183,6 @@ export class TaskImportManager {
    * Get display name for source based on task data
    */
   private getSourceDisplayName(taskData: ExternalTaskData): string {
-    if (
-      taskData.sourceType === "apple-calendar" &&
-      taskData.sourceData?.calendar?.name
-    ) {
-      return taskData.sourceData.calendar.name;
-    }
     return taskData.sourceType;
   }
 

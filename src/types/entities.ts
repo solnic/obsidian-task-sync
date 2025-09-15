@@ -40,7 +40,7 @@ export interface HasDataView {
 
 // External source tracking for imported tasks
 export interface TaskSource {
-  /** Source system name (e.g., 'github', 'linear', 'todo-promotion') */
+  /** Source system name (e.g., 'github', 'linear', 'todo-promotion', 'apple-calendar') */
   name: string;
   /** External identifier in the source system */
   key: string;

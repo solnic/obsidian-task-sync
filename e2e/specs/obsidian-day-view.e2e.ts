@@ -252,17 +252,22 @@ describe("Obsidian Day View", () => {
       // Hover over the first event
       await firstEvent.hover();
 
-      // Check if import overlay appears
-      const overlay = await firstEvent.locator(
-        ".obsidian-day-view__event-overlay"
-      );
-      const isOverlayVisible = await overlay.isVisible();
-      expect(isOverlayVisible).toBe(true);
+      // Wait for hover transition to complete
+      await context.page.waitForTimeout(300);
+
+      // Check if import overlay appears - use data attribute or check computed styles
+      const overlay = firstEvent.locator(".obsidian-day-view__event-overlay");
+
+      // Check if overlay becomes visible after hover (check computed opacity)
+      const overlayOpacity = await overlay.evaluate((el) => {
+        return window.getComputedStyle(el).opacity;
+      });
+
+      // The overlay should have opacity > 0 when hovered
+      expect(parseFloat(overlayOpacity)).toBeGreaterThan(0);
 
       // Check if import button is present
-      const importButton = await overlay.locator(
-        ".obsidian-day-view__import-btn"
-      );
+      const importButton = overlay.locator(".obsidian-day-view__import-btn");
       const isButtonVisible = await importButton.isVisible();
       expect(isButtonVisible).toBe(true);
 

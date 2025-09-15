@@ -1637,3 +1637,30 @@ export async function verifyAreaProperties(
     }
   }
 }
+
+/**
+ * Assert that a task property has a specific value
+ * This is a simpler version of verifyTaskProperties for single property checks
+ */
+export async function assertTaskProperty(
+  page: Page,
+  taskPath: string,
+  propertyName: string,
+  expectedValue: any
+): Promise<void> {
+  const properties = await getTaskProperties(page, taskPath);
+
+  if (!properties) {
+    throw new Error(`Task file not found: ${taskPath}`);
+  }
+
+  const actualValue = properties[propertyName];
+
+  if (JSON.stringify(actualValue) !== JSON.stringify(expectedValue)) {
+    throw new Error(
+      `Property "${propertyName}" mismatch in ${taskPath}. Expected: ${JSON.stringify(
+        expectedValue
+      )}, Actual: ${JSON.stringify(actualValue)}`
+    );
+  }
+}

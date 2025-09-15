@@ -53,7 +53,7 @@ This task has all properties but in wrong order.`
     const initialPropertyOrder = extractPropertyOrder(initialContent);
     console.log("Initial property order:", initialPropertyOrder);
 
-    // Expected order based on default schema (including Do Date which gets added during refresh)
+    // Expected order based on default schema (including Do Date and Due Date which get added during refresh)
     const expectedOrder = [
       "Title",
       "Type",
@@ -65,6 +65,7 @@ This task has all properties but in wrong order.`
       "Status",
       "Parent task",
       "Do Date",
+      "Due Date",
       "tags",
     ];
 
@@ -185,7 +186,7 @@ This task was created with default property order.`
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Update settings with custom property order (Done first, including DO_DATE)
+      // Update settings with custom property order (Done first, including DO_DATE and DUE_DATE)
       plugin.settings.taskPropertyOrder = [
         "DONE",
         "TITLE",
@@ -197,12 +198,13 @@ This task was created with default property order.`
         "STATUS",
         "PARENT_TASK",
         "DO_DATE",
+        "DUE_DATE",
         "TAGS",
       ];
       await plugin.saveSettings();
     });
 
-    // Expected order based on NEW custom settings (Done first, including Do Date)
+    // Expected order based on NEW custom settings (Done first, including Do Date and Due Date)
     const expectedCustomOrder = [
       "Done",
       "Title",
@@ -214,6 +216,7 @@ This task was created with default property order.`
       "Status",
       "Parent task",
       "Do Date",
+      "Due Date",
       "tags",
     ];
 
