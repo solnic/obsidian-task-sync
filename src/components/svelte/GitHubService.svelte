@@ -505,95 +505,40 @@
   }
 
   async function loadOrganizations(): Promise<void> {
-    if (!githubService.isEnabled()) {
-      console.log(
-        "🐙 GitHub service not enabled, skipping organization loading"
-      );
-      return;
-    }
+    const orgs = await githubService.fetchOrganizations();
 
-    console.log("🐙 Loading organizations...");
-    try {
-      const orgs = await githubService.fetchOrganizations();
-      console.log(
-        `🐙 Loaded ${orgs.length} organizations:`,
-        orgs.map((org) => org.login)
-      );
-      organizations = orgs;
-    } catch (err: any) {
-      console.error("🐙 Failed to load organizations:", err.message);
-      organizations = [];
-    }
+    organizations = orgs;
   }
 
   async function loadRepositories(): Promise<void> {
-    if (!githubService.isEnabled()) {
-      console.log("🐙 GitHub service not enabled, skipping repository loading");
-      return;
+    const userRepos = await githubService.fetchRepositories();
+    const orgRepos: GitHubRepository[] = [];
+
+    for (const org of organizations) {
+      const repos = await githubService.fetchRepositoriesForOrganization(
+        org.login
+      );
+      orgRepos.push(...repos);
     }
 
-    console.log("🐙 Loading repositories...");
-    try {
-      // Load user repositories
-      console.log("🐙 Loading user repositories...");
-      const userRepos = await githubService.fetchRepositories();
-      console.log(
-        `🐙 Loaded ${userRepos.length} user repositories:`,
-        userRepos.map((repo) => repo.full_name)
-      );
+    repositories = [...userRepos, ...orgRepos];
 
-      // Load organization repositories
-      console.log(
-        `🐙 Loading repositories for ${organizations.length} organizations...`
-      );
-      const orgRepos: GitHubRepository[] = [];
-      for (const org of organizations) {
-        try {
-          console.log(`🐙 Loading repositories for organization: ${org.login}`);
-          const repos = await githubService.fetchRepositoriesForOrganization(
-            org.login
-          );
-          console.log(
-            `🐙 Loaded ${repos.length} repositories for ${org.login}:`,
-            repos.map((repo) => repo.full_name)
-          );
-          orgRepos.push(...repos);
-        } catch (err: any) {
-          console.error(
-            `🐙 Failed to load repositories for organization ${org.login}:`,
-            err.message
-          );
-        }
-      }
+    const repositoryNames = repositories.map(
+      (repo: GitHubRepository) => repo.full_name
+    );
 
-      // Combine all repositories
-      repositories = [...userRepos, ...orgRepos];
-      console.log(
-        `🐙 Total repositories loaded: ${repositories.length} (${userRepos.length} user + ${orgRepos.length} org)`
-      );
+    settings.githubIntegration.repositories = repositoryNames;
 
-      const repositoryNames = repositories.map(
-        (repo: GitHubRepository) => repo.full_name
-      );
+    if (!currentRepository && settings.githubIntegration.defaultRepository) {
+      currentRepository = settings.githubIntegration.defaultRepository;
+    }
 
-      // Update settings with fetched repositories
-      settings.githubIntegration.repositories = repositoryNames;
+    const pluginInstance = (window as any).app?.plugins?.plugins?.[
+      "obsidian-task-sync"
+    ];
 
-      // Set default repository if not already set
-      if (!currentRepository && settings.githubIntegration.defaultRepository) {
-        currentRepository = settings.githubIntegration.defaultRepository;
-      }
-
-      // Save settings through the plugin (skip template update for repository list updates)
-      const pluginInstance = (window as any).app?.plugins?.plugins?.[
-        "obsidian-task-sync"
-      ];
-      if (pluginInstance) {
-        await pluginInstance.saveSettings(true); // Skip template update
-      }
-    } catch (err: any) {
-      console.error("🐙 Failed to load repositories:", err.message);
-      error = err.message || "Failed to load repositories";
+    if (pluginInstance) {
+      await pluginInstance.saveSettings(true); // Skip template update
     }
   }
 
