@@ -28,6 +28,359 @@ export interface ProjectAreaInfo {
 }
 
 // ============================================================================
+// FILTER ABSTRACTION SYSTEM
+// ============================================================================
+
+/**
+ * Base filter condition interface
+ */
+export interface FilterCondition {
+  toFilterString(): string;
+}
+
+/**
+ * Property-based filter condition
+ */
+export class PropertyFilter implements FilterCondition {
+  constructor(
+    private propertyKey: keyof typeof PROPERTY_REGISTRY,
+    private operator: "==" | "!=" | "contains" | "isEmpty" | "isNotEmpty",
+    private value?: any
+  ) {}
+
+  toFilterString(): string {
+    const prop = PROPERTY_REGISTRY[this.propertyKey];
+    if (!prop) {
+      throw new Error(`Unknown property: ${String(this.propertyKey)}`);
+    }
+
+    const propertyRef = this.getPropertyReference(prop);
+
+    switch (this.operator) {
+      case "==":
+        return `${propertyRef} == ${this.formatValue(prop, this.value)}`;
+      case "!=":
+        return `${propertyRef} != ${this.formatValue(prop, this.value)}`;
+      case "contains":
+        return `${propertyRef}.contains(${this.formatValue(prop, this.value)})`;
+      case "isEmpty":
+        return `${propertyRef}.isEmpty()`;
+      case "isNotEmpty":
+        return `!${propertyRef}.isEmpty()`;
+      default:
+        throw new Error(`Unsupported operator: ${this.operator}`);
+    }
+  }
+
+  private getPropertyReference(prop: PropertyDefinition): string {
+    // Use source if available (for computed properties)
+    if (prop.source) {
+      return prop.source;
+    }
+
+    // Special handling for certain properties that are referenced directly
+    // These properties are used directly in Obsidian Bases without the note[""] wrapper
+    if (
+      prop.name === "Project" ||
+      prop.name === "Areas" ||
+      prop.name === "Category" ||
+      prop.name === "Priority"
+    ) {
+      return prop.name;
+    }
+
+    // For front-matter properties, use note["PropertyName"] format
+    if (prop.frontmatter) {
+      return `note["${prop.name}"]`;
+    }
+
+    // For non-frontmatter properties, use the property name directly
+    return prop.name;
+  }
+
+  private formatValue(prop: PropertyDefinition, value: any): string {
+    if (value === undefined || value === null) {
+      return "null";
+    }
+
+    // Handle link properties for string values (regardless of property type)
+    if (prop.link && typeof value === "string") {
+      return `link("${value}")`;
+    }
+
+    if (prop.type === "string") {
+      return `"${value}"`;
+    }
+
+    if (prop.type === "checkbox") {
+      return value ? "true" : "false";
+    }
+
+    if (prop.type === "number") {
+      return String(value);
+    }
+
+    if (prop.type === "array" && Array.isArray(value)) {
+      if (prop.link) {
+        return `[${value.map((v) => `link("${v}")`).join(", ")}]`;
+      }
+      return `[${value.map((v) => `"${v}"`).join(", ")}]`;
+    }
+
+    return `"${value}"`;
+  }
+}
+
+/**
+ * File system filter condition
+ */
+export class FileSystemFilter implements FilterCondition {
+  constructor(
+    private property: "folder" | "name" | "path",
+    private operator: "==" | "!=" | "contains" | "startsWith" | "endsWith",
+    private value: string
+  ) {}
+
+  toFilterString(): string {
+    const propertyRef = `file.${this.property}`;
+
+    switch (this.operator) {
+      case "==":
+        return `${propertyRef} == "${this.value}"`;
+      case "!=":
+        return `${propertyRef} != "${this.value}"`;
+      case "contains":
+        return `${propertyRef}.contains("${this.value}")`;
+      case "startsWith":
+        return `${propertyRef}.startsWith("${this.value}")`;
+      case "endsWith":
+        return `${propertyRef}.endsWith("${this.value}")`;
+      default:
+        throw new Error(`Unsupported operator: ${this.operator}`);
+    }
+  }
+}
+
+/**
+ * Custom filter condition for complex expressions
+ */
+export class CustomFilter implements FilterCondition {
+  constructor(private expression: string) {}
+
+  toFilterString(): string {
+    return this.expression;
+  }
+}
+
+/**
+ * Composite filter that combines multiple conditions
+ */
+export class CompositeFilter implements FilterCondition {
+  private conditions: FilterCondition[] = [];
+
+  constructor(
+    private operator: "and" | "or",
+    conditions: FilterCondition[] = []
+  ) {
+    this.conditions = conditions;
+  }
+
+  add(condition: FilterCondition): CompositeFilter {
+    this.conditions.push(condition);
+    return this;
+  }
+
+  extend(other: CompositeFilter): CompositeFilter {
+    this.conditions.push(...other.conditions);
+    return this;
+  }
+
+  toFilterString(): string {
+    if (this.conditions.length === 0) {
+      return "";
+    }
+
+    if (this.conditions.length === 1) {
+      return this.conditions[0].toFilterString();
+    }
+
+    const conditionStrings = this.conditions.map((c) => c.toFilterString());
+    return conditionStrings.join(` ${this.operator} `);
+  }
+
+  toFilterObject(): any {
+    if (this.conditions.length === 0) {
+      return {};
+    }
+
+    if (this.conditions.length === 1) {
+      return this.conditions[0].toFilterString();
+    }
+
+    return {
+      [this.operator]: this.conditions.map((c) => c.toFilterString()),
+    };
+  }
+}
+
+/**
+ * Filter builder for creating common filter patterns
+ */
+export class FilterBuilder {
+  /**
+   * Create a filter for tasks in a specific folder
+   */
+  static inFolder(folderPath: string): FileSystemFilter {
+    return new FileSystemFilter("folder", "==", folderPath);
+  }
+
+  /**
+   * Create a filter for non-done items
+   */
+  static notDone(): PropertyFilter {
+    return new PropertyFilter("DONE", "==", false);
+  }
+
+  /**
+   * Create a filter for done items
+   */
+  static done(): PropertyFilter {
+    return new PropertyFilter("DONE", "==", true);
+  }
+
+  /**
+   * Create a filter for items without parent tasks
+   */
+  static noParentTask(): PropertyFilter {
+    return new PropertyFilter("PARENT_TASK", "isEmpty");
+  }
+
+  /**
+   * Create a filter for items in a specific project
+   */
+  static inProject(projectName: string): PropertyFilter {
+    return new PropertyFilter("PROJECT", "contains", projectName);
+  }
+
+  /**
+   * Create a filter for items in a specific area
+   */
+  static inArea(areaName: string): PropertyFilter {
+    return new PropertyFilter("AREAS", "contains", areaName);
+  }
+
+  /**
+   * Create a filter for items of a specific category
+   */
+  static ofCategory(categoryName: string): PropertyFilter {
+    return new PropertyFilter("CATEGORY", "==", categoryName);
+  }
+
+  /**
+   * Create a filter for items with a specific priority
+   */
+  static withPriority(priorityName: string): PropertyFilter {
+    return new PropertyFilter("PRIORITY", "==", priorityName);
+  }
+
+  /**
+   * Create a filter for child tasks of a specific parent
+   */
+  static childrenOf(parentTaskName: string): PropertyFilter {
+    return new PropertyFilter("PARENT_TASK", "==", parentTaskName);
+  }
+
+  /**
+   * Create a filter for a specific file name
+   */
+  static fileName(name: string): FileSystemFilter {
+    return new FileSystemFilter("name", "==", name);
+  }
+
+  /**
+   * Create a composite AND filter
+   */
+  static and(...conditions: FilterCondition[]): CompositeFilter {
+    return new CompositeFilter("and", conditions);
+  }
+
+  /**
+   * Create a composite OR filter
+   */
+  static or(...conditions: FilterCondition[]): CompositeFilter {
+    return new CompositeFilter("or", conditions);
+  }
+}
+
+// ============================================================================
+// PREDEFINED FILTER SETS
+// ============================================================================
+
+/**
+ * Common filter combinations that can be reused across different base types
+ */
+export const FILTER_PRESETS = {
+  /**
+   * Base filter for all task-related views
+   */
+  TASKS_BASE: (settings: TaskSyncSettings) =>
+    FilterBuilder.and(
+      FilterBuilder.inFolder(settings.tasksFolder),
+      FilterBuilder.notDone()
+    ),
+
+  /**
+   * Filter for top-level tasks (no parent)
+   */
+  TOP_LEVEL_TASKS: (settings: TaskSyncSettings) =>
+    FilterBuilder.and(
+      FilterBuilder.inFolder(settings.tasksFolder),
+      FilterBuilder.notDone(),
+      FilterBuilder.noParentTask()
+    ),
+
+  /**
+   * Filter for tasks in a specific project
+   */
+  PROJECT_TASKS: (settings: TaskSyncSettings, projectName: string) =>
+    FilterBuilder.and(
+      FilterBuilder.inFolder(settings.tasksFolder),
+      FilterBuilder.notDone(),
+      FilterBuilder.inProject(projectName),
+      FilterBuilder.noParentTask()
+    ),
+
+  /**
+   * Filter for tasks in a specific area
+   */
+  AREA_TASKS: (settings: TaskSyncSettings, areaName: string) =>
+    FilterBuilder.and(
+      FilterBuilder.inFolder(settings.tasksFolder),
+      FilterBuilder.notDone(),
+      FilterBuilder.inArea(areaName),
+      FilterBuilder.noParentTask()
+    ),
+
+  /**
+   * Filter for child tasks of a parent
+   */
+  CHILD_TASKS: (settings: TaskSyncSettings, parentTaskName: string) =>
+    FilterBuilder.and(
+      FilterBuilder.inFolder(settings.tasksFolder),
+      FilterBuilder.childrenOf(parentTaskName)
+    ),
+
+  /**
+   * Filter for all tasks related to a parent (parent + children)
+   */
+  RELATED_TASKS: (_settings: TaskSyncSettings, parentTaskName: string) =>
+    FilterBuilder.or(
+      FilterBuilder.fileName(parentTaskName),
+      FilterBuilder.childrenOf(parentTaskName)
+    ),
+} as const;
+
+// ============================================================================
 // SINGLE SOURCE OF TRUTH FOR ALL PROPERTIES
 // ============================================================================
 
@@ -351,6 +704,8 @@ export function generateTasksBase(
   settings: TaskSyncSettings,
   projectsAndAreas: ProjectAreaInfo[]
 ): string {
+  const defaultAreaName = projectsAndAreas.find((p) => p.type === "area").name;
+
   const config = {
     formulas: {
       Title: "link(file.name, Title)",
@@ -361,16 +716,11 @@ export function generateTasksBase(
       {
         type: "table",
         name: "Tasks",
-        filters: {
-          and: [
-            `file.folder == "${settings.tasksFolder}"`,
-            `Areas.contains(link("${
-              projectsAndAreas.find((p) => p.type === "area")?.name ||
-              "Task Sync"
-            }"))`,
-            `note["Parent task"].isEmpty()`,
-          ],
-        },
+        filters: FilterBuilder.and(
+          FilterBuilder.inFolder(settings.tasksFolder),
+          FilterBuilder.inArea(defaultAreaName),
+          FilterBuilder.noParentTask()
+        ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.TASK),
         columnSize: {
@@ -384,17 +734,13 @@ export function generateTasksBase(
       ...settings.taskTypes.map((taskType) => ({
         type: "table" as const,
         name: `All ${pluralize(taskType.name)}`,
-        filters: {
-          and: [
-            `file.folder == "${settings.tasksFolder}"`,
-            `Areas.contains(link("${
-              projectsAndAreas.find((p) => p.type === "area")?.name ||
-              "Task Sync"
-            }"))`,
-            `Category == "${taskType.name}"`,
-            `note["Parent task"].isEmpty()`,
-          ],
-        },
+        filters: FilterBuilder.and(
+          FilterBuilder.inFolder(settings.tasksFolder),
+          FilterBuilder.notDone(),
+          FilterBuilder.inArea(defaultAreaName),
+          FilterBuilder.ofCategory(taskType.name),
+          FilterBuilder.noParentTask()
+        ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
         sort: resolveSortConfig(SORT_CONFIGS.TASK),
       })),
@@ -403,17 +749,12 @@ export function generateTasksBase(
         settings.taskPriorities.map((priority) => ({
           type: "table" as const,
           name: `${pluralize(taskType.name)} • ${priority.name} priority`,
-          filters: {
-            and: [
-              `file.folder == "${settings.tasksFolder}"`,
-              `Areas.contains(link("${
-                projectsAndAreas.find((p) => p.type === "area")?.name ||
-                "Task Sync"
-              }"))`,
-              `Category == "${taskType.name}"`,
-              `Priority == "${priority.name}"`,
-            ],
-          },
+          filters: FilterBuilder.and(
+            FilterBuilder.inFolder(settings.tasksFolder),
+            FilterBuilder.inArea(defaultAreaName),
+            FilterBuilder.ofCategory(taskType.name),
+            FilterBuilder.withPriority(priority.name)
+          ).toFilterObject(),
           order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
           sort: resolveSortConfig(SORT_CONFIGS.TASK),
         }))
@@ -446,13 +787,10 @@ export function generateAreaBase(
       {
         type: "table",
         name: "Tasks",
-        filters: {
-          and: [
-            `file.folder == "${settings.tasksFolder}"`,
-            `Areas.contains(link("${area.name}"))`,
-            `note["Parent task"].isEmpty()`,
-          ],
-        },
+        filters: FILTER_PRESETS.AREA_TASKS(
+          settings,
+          area.name
+        ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.AREA),
         columnSize: {
@@ -466,14 +804,12 @@ export function generateAreaBase(
       ...settings.taskTypes.map((taskType) => ({
         type: "table" as const,
         name: `All ${pluralize(taskType.name)}`,
-        filters: {
-          and: [
-            `file.folder == "${settings.tasksFolder}"`,
-            `Areas.contains(link("${area.name}"))`,
-            `Category == "${taskType.name}"`,
-            `note["Parent task"].isEmpty()`,
-          ],
-        },
+        filters: FilterBuilder.and(
+          FilterBuilder.inFolder(settings.tasksFolder),
+          FilterBuilder.inArea(area.name),
+          FilterBuilder.ofCategory(taskType.name),
+          FilterBuilder.noParentTask()
+        ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.AREA),
       })),
@@ -482,14 +818,12 @@ export function generateAreaBase(
         settings.taskPriorities.map((priority) => ({
           type: "table" as const,
           name: `${pluralize(taskType.name)} • ${priority.name} priority`,
-          filters: {
-            and: [
-              `file.folder == "${settings.tasksFolder}"`,
-              `Areas.contains(link("${area.name}"))`,
-              `Category == "${taskType.name}"`,
-              `Priority == "${priority.name}"`,
-            ],
-          },
+          filters: FilterBuilder.and(
+            FilterBuilder.inFolder(settings.tasksFolder),
+            FilterBuilder.inArea(area.name),
+            FilterBuilder.ofCategory(taskType.name),
+            FilterBuilder.withPriority(priority.name)
+          ).toFilterObject(),
           order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
           sort: resolveSortConfig(SORT_CONFIGS.AREA),
         }))
@@ -522,13 +856,10 @@ export function generateProjectBase(
       {
         type: "table",
         name: "Tasks",
-        filters: {
-          and: [
-            `file.folder == "${settings.tasksFolder}"`,
-            `Project.contains(link("${project.name}"))`,
-            `note["Parent task"].isEmpty()`,
-          ],
-        },
+        filters: FILTER_PRESETS.PROJECT_TASKS(
+          settings,
+          project.name
+        ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.PROJECT),
         columnSize: {
@@ -542,14 +873,12 @@ export function generateProjectBase(
       ...settings.taskTypes.map((taskType) => ({
         type: "table" as const,
         name: `All ${pluralize(taskType.name)}`,
-        filters: {
-          and: [
-            `file.folder == "${settings.tasksFolder}"`,
-            `Project.contains(link("${project.name}"))`,
-            `Category == "${taskType.name}"`,
-            `note["Parent task"].isEmpty()`,
-          ],
-        },
+        filters: FilterBuilder.and(
+          FilterBuilder.inFolder(settings.tasksFolder),
+          FilterBuilder.inProject(project.name),
+          FilterBuilder.ofCategory(taskType.name),
+          FilterBuilder.noParentTask()
+        ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.PROJECT),
       })),
@@ -558,14 +887,12 @@ export function generateProjectBase(
         settings.taskPriorities.map((priority) => ({
           type: "table" as const,
           name: `${pluralize(taskType.name)} • ${priority.name} priority`,
-          filters: {
-            and: [
-              `file.folder == "${settings.tasksFolder}"`,
-              `Project.contains(link("${project.name}"))`,
-              `Category == "${taskType.name}"`,
-              `Priority == "${priority.name}"`,
-            ],
-          },
+          filters: FilterBuilder.and(
+            FilterBuilder.inFolder(settings.tasksFolder),
+            FilterBuilder.inProject(project.name),
+            FilterBuilder.ofCategory(taskType.name),
+            FilterBuilder.withPriority(priority.name)
+          ).toFilterObject(),
           order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
           sort: resolveSortConfig(SORT_CONFIGS.PROJECT),
         }))
@@ -598,12 +925,10 @@ export function generateParentTaskBase(
       {
         type: "table",
         name: "Child Tasks",
-        filters: {
-          and: [
-            `file.folder == "${settings.tasksFolder}"`,
-            `note["Parent task"] == link("${parentTaskName}")`,
-          ],
-        },
+        filters: FILTER_PRESETS.CHILD_TASKS(
+          settings,
+          parentTaskName
+        ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.TASK),
       },
@@ -611,12 +936,10 @@ export function generateParentTaskBase(
       {
         type: "table",
         name: "All Related",
-        filters: {
-          or: [
-            `file.name == "${parentTaskName}"`,
-            `note["Parent task"] == link("${parentTaskName}")`,
-          ],
-        },
+        filters: FILTER_PRESETS.RELATED_TASKS(
+          settings,
+          parentTaskName
+        ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.TASK),
       },

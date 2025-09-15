@@ -18,4 +18,12 @@ export {
   PROPERTY_SETS,
   VIEW_ORDERS,
   SORT_CONFIGS,
+  // Filter system exports
+  FilterCondition,
+  PropertyFilter,
+  FileSystemFilter,
+  CustomFilter,
+  CompositeFilter,
+  FilterBuilder,
+  FILTER_PRESETS,
 } from "./BaseConfigurations";

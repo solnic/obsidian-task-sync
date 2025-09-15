@@ -262,9 +262,11 @@ describe("Bases Integration UI", () => {
       .locator(".bases-view .bases-table-cell .internal-link")
       .allTextContents();
     const taskTitleText = taskTitles.join(" ");
+
     expect(taskTitleText).toContain("Mobile Login Screen");
-    expect(taskTitleText).toContain("Mobile API Integration");
     expect(taskTitleText).toContain("Mobile Testing");
+
+    expect(taskTitleText).not.toContain("Mobile API Integration");
   });
 
   test("should filter tasks correctly by task type in base UI views", async () => {
