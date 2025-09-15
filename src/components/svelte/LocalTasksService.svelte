@@ -1,15 +1,22 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { Notice } from "obsidian";
   import { getPluginContext, getContextStore } from "./context";
   import { taskStore } from "../../stores/taskStore";
   import SearchInput from "./SearchInput.svelte";
   import FilterButton from "./FilterButton.svelte";
+  import SortDropdown from "./SortDropdown.svelte";
   import LocalTaskItem from "./LocalTaskItem.svelte";
   import { getFilterOptions } from "../../utils/contextFiltering";
   import { extractDisplayValue } from "../../utils/linkUtils";
   import type { Task } from "../../types/entities";
   import type { FileContext } from "../../main";
+
+  interface SortField {
+    key: string;
+    label: string;
+    direction: "asc" | "desc";
+  }
 
   interface Props {
     dayPlanningMode?: boolean;
@@ -38,6 +45,24 @@
   let recentlyUsedProjects = $state<string[]>([]);
   let recentlyUsedAreas = $state<string[]>([]);
   let recentlyUsedSources = $state<string[]>([]);
+
+  // Sorting state
+  let sortFields = $state<SortField[]>([
+    { key: "updatedAt", label: "Updated", direction: "desc" },
+    { key: "title", label: "Title", direction: "asc" },
+  ]);
+
+  // Available sort fields
+  const availableSortFields = [
+    { key: "title", label: "Title" },
+    { key: "createdAt", label: "Created" },
+    { key: "updatedAt", label: "Updated" },
+    { key: "priority", label: "Priority" },
+    { key: "status", label: "Status" },
+    { key: "category", label: "Category" },
+    { key: "project", label: "Project" },
+    { key: "areas", label: "Areas" },
+  ];
 
   // Subscribe to context changes
   $effect(() => {
@@ -183,6 +208,11 @@
       filtered = searchTasks(searchQuery, filtered);
     }
 
+    // Apply sorting
+    if (sortFields.length > 0) {
+      filtered = sortTasks(filtered, sortFields);
+    }
+
     return filtered;
   });
 
@@ -209,6 +239,11 @@
     return unsubscribe;
   });
 
+  onDestroy(() => {
+    // Save current filter state when component is destroyed
+    saveRecentlyUsedFilters();
+  });
+
   function searchTasks(query: string, taskList: Task[]): Task[] {
     const lowerQuery = query.toLowerCase();
 
@@ -230,6 +265,113 @@
             (typeof (task.areas as any) === "string" &&
               (task.areas as any).toLowerCase().includes(lowerQuery))))
     );
+  }
+
+  function sortTasks(taskList: Task[], sortFields: SortField[]): Task[] {
+    return [...taskList].sort((a, b) => {
+      for (const field of sortFields) {
+        let aValue: any;
+        let bValue: any;
+
+        // Get values based on field key
+        switch (field.key) {
+          case "title":
+            aValue = a.title || "";
+            bValue = b.title || "";
+            break;
+          case "createdAt":
+            aValue = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            bValue = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            break;
+          case "updatedAt":
+            aValue = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+            bValue = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+            break;
+          case "priority":
+            // Priority order: High > Medium > Low > null
+            const priorityOrder = { High: 3, Medium: 2, Low: 1 };
+            aValue =
+              (a.priority &&
+                priorityOrder[a.priority as keyof typeof priorityOrder]) ||
+              0;
+            bValue =
+              (b.priority &&
+                priorityOrder[b.priority as keyof typeof priorityOrder]) ||
+              0;
+            break;
+          case "status":
+            aValue = a.status || "";
+            bValue = b.status || "";
+            break;
+          case "category":
+            aValue = a.category || "";
+            bValue = b.category || "";
+            break;
+          case "project":
+            aValue =
+              typeof a.project === "string"
+                ? extractDisplayValue(a.project) || a.project
+                : "";
+            bValue =
+              typeof b.project === "string"
+                ? extractDisplayValue(b.project) || b.project
+                : "";
+            break;
+          case "areas":
+            // For areas, use the first area for sorting
+            const aAreas = Array.isArray(a.areas)
+              ? a.areas
+              : a.areas
+                ? [a.areas]
+                : [];
+            const bAreas = Array.isArray(b.areas)
+              ? b.areas
+              : b.areas
+                ? [b.areas]
+                : [];
+            aValue =
+              aAreas.length > 0
+                ? typeof aAreas[0] === "string"
+                  ? extractDisplayValue(aAreas[0]) || aAreas[0]
+                  : aAreas[0]
+                : "";
+            bValue =
+              bAreas.length > 0
+                ? typeof bAreas[0] === "string"
+                  ? extractDisplayValue(bAreas[0]) || bAreas[0]
+                  : bAreas[0]
+                : "";
+            break;
+          default:
+            aValue = "";
+            bValue = "";
+        }
+
+        // Compare values
+        let comparison = 0;
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          comparison = aValue.localeCompare(bValue);
+        } else if (typeof aValue === "number" && typeof bValue === "number") {
+          comparison = aValue - bValue;
+        } else {
+          // Handle mixed types by converting to strings
+          comparison = String(aValue).localeCompare(String(bValue));
+        }
+
+        // Apply direction
+        if (field.direction === "desc") {
+          comparison = -comparison;
+        }
+
+        // If not equal, return the comparison result
+        if (comparison !== 0) {
+          return comparison;
+        }
+      }
+
+      // If all fields are equal, maintain original order
+      return 0;
+    });
   }
 
   async function refresh(): Promise<void> {
@@ -265,6 +407,9 @@
         if (data.localTasksCurrentFilters.showCompleted !== undefined) {
           showCompleted = data.localTasksCurrentFilters.showCompleted;
         }
+        if (data.localTasksCurrentFilters.sortFields !== undefined) {
+          sortFields = data.localTasksCurrentFilters.sortFields;
+        }
       }
     } catch (err: any) {
       console.warn("Failed to load recently used filters:", err.message);
@@ -279,12 +424,13 @@
         areas: recentlyUsedAreas,
         sources: recentlyUsedSources,
       };
-      // Also save current filter selections
+      // Also save current filter selections and sort state
       data.localTasksCurrentFilters = {
         project: selectedProject,
         area: selectedArea,
         source: selectedSource,
         showCompleted: showCompleted,
+        sortFields: sortFields,
       };
       await plugin.saveData(data);
     } catch (err: any) {
@@ -331,6 +477,11 @@
 
   function removeRecentlyUsedSource(source: string): void {
     recentlyUsedSources = recentlyUsedSources.filter((s) => s !== source);
+    saveRecentlyUsedFilters();
+  }
+
+  function handleSortChange(newSortFields: SortField[]): void {
+    sortFields = newSortFields;
     saveRecentlyUsedFilters();
   }
 
@@ -462,6 +613,17 @@
         >
           Show completed
         </button>
+      </div>
+
+      <!-- Sorting Section -->
+      <div class="task-sync-sort-section">
+        <SortDropdown
+          label="Sort by"
+          {sortFields}
+          availableFields={availableSortFields}
+          onSortChange={handleSortChange}
+          testId="local-tasks-sort"
+        />
       </div>
     </div>
   </div>

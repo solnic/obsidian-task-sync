@@ -4,6 +4,7 @@
   import { getPluginContext } from "./context";
   import FilterButton from "./FilterButton.svelte";
   import SearchInput from "./SearchInput.svelte";
+  import SortDropdown from "./SortDropdown.svelte";
   import GitHubIssueItem from "./GitHubIssueItem.svelte";
   import GitHubPullRequestItem from "./GitHubPullRequestItem.svelte";
   import type {
@@ -16,6 +17,12 @@
   import type { GitHubIntegrationSettings } from "../ui/settings/types";
   import type { TaskImportConfig } from "../../types/integrations";
   import { taskStore } from "../../stores/taskStore";
+
+  interface SortField {
+    key: string;
+    label: string;
+    direction: "asc" | "desc";
+  }
 
   interface Props {
     githubService: any;
@@ -71,11 +78,30 @@
   let recentlyUsedOrgs = $state<string[]>([]);
   let recentlyUsedRepos = $state<string[]>([]);
 
+  // Sorting state
+  let sortFields = $state<SortField[]>([
+    { key: "updatedAt", label: "Updated", direction: "desc" },
+    { key: "title", label: "Title", direction: "asc" },
+  ]);
+
+  // Available sort fields for GitHub issues/PRs
+  const availableSortFields = [
+    { key: "title", label: "Title" },
+    { key: "createdAt", label: "Created" },
+    { key: "updatedAt", label: "Updated" },
+    { key: "number", label: "Number" },
+    { key: "state", label: "State" },
+    { key: "assignee", label: "Assignee" },
+  ];
+
   // Computed
   let filteredIssues = $derived.by(() => {
     let filtered = filterIssues(currentState, assignedToMe, selectedLabels);
     if (searchQuery) {
       filtered = searchIssues(searchQuery, filtered);
+    }
+    if (sortFields.length > 0) {
+      filtered = sortGitHubItems(filtered, sortFields);
     }
     return filtered;
   });
@@ -88,6 +114,9 @@
     );
     if (searchQuery) {
       filtered = searchPullRequests(searchQuery, filtered);
+    }
+    if (sortFields.length > 0) {
+      filtered = sortGitHubItems(filtered, sortFields);
     }
     return filtered;
   });
@@ -346,6 +375,9 @@
         if (data.githubCurrentFilters.repository !== undefined) {
           currentRepository = data.githubCurrentFilters.repository;
         }
+        if (data.githubCurrentFilters.sortFields !== undefined) {
+          sortFields = data.githubCurrentFilters.sortFields;
+        }
       }
     } catch (err: any) {
       console.warn("Failed to load recently used filters:", err.message);
@@ -359,10 +391,11 @@
         organizations: recentlyUsedOrgs,
         repositories: recentlyUsedRepos,
       };
-      // Also save current filter selections
+      // Also save current filter selections and sort state
       data.githubCurrentFilters = {
         organization: currentOrganization,
         repository: currentRepository,
+        sortFields: sortFields,
       };
       await plugin.saveData(data);
     } catch (err: any) {
@@ -397,6 +430,11 @@
 
   function removeRecentlyUsedRepo(repo: string): void {
     recentlyUsedRepos = recentlyUsedRepos.filter((r) => r !== repo);
+    saveRecentlyUsedFilters();
+  }
+
+  function handleSortChange(newSortFields: SortField[]): void {
+    sortFields = newSortFields;
     saveRecentlyUsedFilters();
   }
 
@@ -502,6 +540,73 @@
         pr.title.toLowerCase().includes(lowerQuery) ||
         (pr.body && pr.body.toLowerCase().includes(lowerQuery))
     );
+  }
+
+  function sortGitHubItems<T extends GitHubIssue | GitHubPullRequest>(
+    items: T[],
+    sortFields: SortField[]
+  ): T[] {
+    return [...items].sort((a, b) => {
+      for (const field of sortFields) {
+        let aValue: any;
+        let bValue: any;
+
+        // Get values based on field key
+        switch (field.key) {
+          case "title":
+            aValue = a.title || "";
+            bValue = b.title || "";
+            break;
+          case "createdAt":
+            aValue = new Date(a.created_at).getTime();
+            bValue = new Date(b.created_at).getTime();
+            break;
+          case "updatedAt":
+            aValue = new Date(a.updated_at).getTime();
+            bValue = new Date(b.updated_at).getTime();
+            break;
+          case "number":
+            aValue = a.number;
+            bValue = b.number;
+            break;
+          case "state":
+            aValue = a.state || "";
+            bValue = b.state || "";
+            break;
+          case "assignee":
+            aValue = a.assignee?.login || "";
+            bValue = b.assignee?.login || "";
+            break;
+          default:
+            aValue = "";
+            bValue = "";
+        }
+
+        // Compare values
+        let comparison = 0;
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          comparison = aValue.localeCompare(bValue);
+        } else if (typeof aValue === "number" && typeof bValue === "number") {
+          comparison = aValue - bValue;
+        } else {
+          // Handle mixed types by converting to strings
+          comparison = String(aValue).localeCompare(String(bValue));
+        }
+
+        // Apply direction
+        if (field.direction === "desc") {
+          comparison = -comparison;
+        }
+
+        // If not equal, return the comparison result
+        if (comparison !== 0) {
+          return comparison;
+        }
+      }
+
+      // If all fields are equal, maintain original order
+      return 0;
+    });
   }
 
   async function loadOrganizations(): Promise<void> {
@@ -696,7 +801,7 @@
 
     if (org) {
       // Reset repository selection when changing organization
-      if (!currentRepository.startsWith(org + "/")) {
+      if (!currentRepository || !currentRepository.startsWith(org + "/")) {
         const firstRepoInOrg = filteredRepositories[0];
         if (firstRepoInOrg) {
           setRepository(firstRepoInOrg.full_name);
@@ -1017,7 +1122,13 @@
               options={organizationOptions}
               placeholder="Select organization"
               onselect={(value) =>
-                setOrganizationFilter(value === "---" ? null : value)}
+                setOrganizationFilter(
+                  value === "---" ||
+                    value === "" ||
+                    value === "Select organization"
+                    ? null
+                    : value
+                )}
               testId="organization-filter"
               autoSuggest={true}
               allowClear={true}
@@ -1037,6 +1148,10 @@
               onselect={(value) => {
                 if (value === "---") {
                   return; // Skip separator
+                }
+                if (value === "" || value === "Select repository") {
+                  setRepository(null);
+                  return;
                 }
                 // Convert display value back to full name
                 let fullName = value;
@@ -1097,6 +1212,15 @@
             />
           </div>
         </div>
+      </div>
+
+      <!-- Sort Section -->
+      <div class="task-sync-sort-section">
+        <SortDropdown
+          {sortFields}
+          availableFields={availableSortFields}
+          onSortChange={handleSortChange}
+        />
       </div>
     </div>
   </div>

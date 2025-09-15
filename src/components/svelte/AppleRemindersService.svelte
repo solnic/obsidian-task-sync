@@ -1,9 +1,10 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, onDestroy } from "svelte";
   import { Notice } from "obsidian";
   import { getPluginContext } from "./context";
   import FilterButton from "./FilterButton.svelte";
   import SearchInput from "./SearchInput.svelte";
+  import SortDropdown from "./SortDropdown.svelte";
   import AppleReminderItem from "./AppleReminderItem.svelte";
   import type {
     AppleReminder,
@@ -12,6 +13,12 @@
   import type { AppleRemindersIntegrationSettings } from "../ui/settings/types";
   import type { TaskImportConfig } from "../../types/integrations";
   import { taskStore } from "../../stores/taskStore";
+
+  interface SortField {
+    key: string;
+    label: string;
+    direction: "asc" | "desc";
+  }
 
   interface Props {
     appleRemindersService: any;
@@ -45,11 +52,30 @@
   let importedReminders = $state(new Set<string>());
   let hoveredReminder = $state<string | null>(null);
 
+  // Sorting state
+  let sortFields = $state<SortField[]>([
+    { key: "dueDate", label: "Due Date", direction: "asc" },
+    { key: "title", label: "Title", direction: "asc" },
+  ]);
+
+  // Available sort fields for Apple Reminders
+  const availableSortFields = [
+    { key: "title", label: "Title" },
+    { key: "dueDate", label: "Due Date" },
+    { key: "creationDate", label: "Created" },
+    { key: "modificationDate", label: "Modified" },
+    { key: "priority", label: "Priority" },
+    { key: "completed", label: "Completed" },
+  ];
+
   // Computed
   let filteredReminders = $derived.by(() => {
     let filtered = filterReminders(currentState);
     if (searchQuery) {
       filtered = searchReminders(searchQuery, filtered);
+    }
+    if (sortFields.length > 0) {
+      filtered = sortReminders(filtered, sortFields);
     }
     return filtered;
   });
@@ -70,6 +96,14 @@
 
       refreshImportStatus();
     }
+
+    // Load sort state
+    loadSortState();
+  });
+
+  onDestroy(() => {
+    // Save current sort state when component is destroyed
+    saveSortState();
   });
 
   // Watch for changes in the task store and refresh import status
@@ -113,6 +147,77 @@
         reminder.title.toLowerCase().includes(lowerQuery) ||
         (reminder.notes && reminder.notes.toLowerCase().includes(lowerQuery))
     );
+  }
+
+  function sortReminders(
+    reminderList: AppleReminder[],
+    sortFields: SortField[]
+  ): AppleReminder[] {
+    return [...reminderList].sort((a, b) => {
+      for (const field of sortFields) {
+        let aValue: any;
+        let bValue: any;
+
+        // Get values based on field key
+        switch (field.key) {
+          case "title":
+            aValue = a.title || "";
+            bValue = b.title || "";
+            break;
+          case "dueDate":
+            aValue = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+            bValue = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+            break;
+          case "creationDate":
+            aValue = a.creationDate ? new Date(a.creationDate).getTime() : 0;
+            bValue = b.creationDate ? new Date(b.creationDate).getTime() : 0;
+            break;
+          case "modificationDate":
+            aValue = a.modificationDate
+              ? new Date(a.modificationDate).getTime()
+              : 0;
+            bValue = b.modificationDate
+              ? new Date(b.modificationDate).getTime()
+              : 0;
+            break;
+          case "priority":
+            aValue = a.priority || 0;
+            bValue = b.priority || 0;
+            break;
+          case "completed":
+            aValue = a.completed ? 1 : 0;
+            bValue = b.completed ? 1 : 0;
+            break;
+          default:
+            aValue = "";
+            bValue = "";
+        }
+
+        // Compare values
+        let comparison = 0;
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          comparison = aValue.localeCompare(bValue);
+        } else if (typeof aValue === "number" && typeof bValue === "number") {
+          comparison = aValue - bValue;
+        } else {
+          // Handle mixed types by converting to strings
+          comparison = String(aValue).localeCompare(String(bValue));
+        }
+
+        // Apply direction
+        if (field.direction === "desc") {
+          comparison = -comparison;
+        }
+
+        // If not equal, return the comparison result
+        if (comparison !== 0) {
+          return comparison;
+        }
+      }
+
+      // If all fields are equal, maintain original order
+      return 0;
+    });
   }
 
   async function loadReminderLists(): Promise<void> {
@@ -219,6 +324,32 @@
     await appleRemindersService.clearCache();
     await loadReminderLists();
     await loadReminders();
+  }
+
+  function handleSortChange(newSortFields: SortField[]): void {
+    sortFields = newSortFields;
+    saveSortState();
+  }
+
+  async function saveSortState(): Promise<void> {
+    try {
+      const data = (await plugin.loadData()) || {};
+      data.appleRemindersSortFields = sortFields;
+      await plugin.saveData(data);
+    } catch (err: any) {
+      console.warn("Failed to save sort state:", err.message);
+    }
+  }
+
+  async function loadSortState(): Promise<void> {
+    try {
+      const data = await plugin.loadData();
+      if (data?.appleRemindersSortFields) {
+        sortFields = data.appleRemindersSortFields;
+      }
+    } catch (err: any) {
+      console.warn("Failed to load sort state:", err.message);
+    }
   }
 
   async function importReminder(reminder: AppleReminder): Promise<void> {
@@ -355,6 +486,15 @@
             />
           </div>
         </div>
+      </div>
+
+      <!-- Sort Section -->
+      <div class="task-sync-sort-section">
+        <SortDropdown
+          {sortFields}
+          availableFields={availableSortFields}
+          onSortChange={handleSortChange}
+        />
       </div>
     </div>
   </div>

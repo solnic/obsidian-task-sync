@@ -5,6 +5,9 @@
 
   import TaskItem from "./TaskItem.svelte";
   import type { GitHubPullRequest } from "../../services/GitHubService";
+  import { getPluginContext } from "./context";
+  import { taskStore } from "../../stores/taskStore";
+  import type { Task } from "../../types/entities";
 
   interface Props {
     pullRequest: GitHubPullRequest;
@@ -29,6 +32,8 @@
     dayPlanningMode = false,
     testId,
   }: Props = $props();
+
+  const { plugin } = getPluginContext();
 
   // Convert pull request data to TaskItem format
   let subtitle = $derived(`#${pullRequest.number}`);
@@ -87,10 +92,48 @@
   function handleSeeOnGitHub() {
     window.open(pullRequest.html_url, "_blank");
   }
+
+  async function handleOpenTask() {
+    try {
+      // Find the imported task file by searching for the GitHub PR URL or number
+      const tasks = taskStore.getEntities();
+      const matchingTask = tasks.find(
+        (task: Task) =>
+          task.source?.url === pullRequest.html_url ||
+          (task.source?.name === "GitHub" && task.title === pullRequest.title)
+      );
+
+      if (matchingTask && matchingTask.file) {
+        await plugin.app.workspace.getLeaf().openFile(matchingTask.file);
+      } else {
+        // Fallback: try to find by title
+        const vault = plugin.app.vault;
+        const files = vault.getMarkdownFiles();
+        const taskFile = files.find(
+          (file) => file.basename === pullRequest.title
+        );
+        if (taskFile) {
+          await plugin.app.workspace.getLeaf().openFile(taskFile);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to open task:", error);
+    }
+  }
 </script>
 
 {#snippet actionSnippet()}
   <div class="import-actions">
+    {#if isImported}
+      <button
+        class="open-task-button"
+        title="Open task"
+        onclick={handleOpenTask}
+        data-testid="open-task-button"
+      >
+        Open
+      </button>
+    {/if}
     <button
       class="github-link-button"
       title="See on GitHub"
@@ -198,5 +241,22 @@
   .github-link-button:hover {
     background: var(--background-modifier-hover);
     border-color: var(--interactive-hover);
+  }
+
+  .open-task-button {
+    padding: 8px 16px;
+    border: 1px solid var(--interactive-accent);
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+  }
+
+  .open-task-button:hover {
+    background: var(--interactive-accent-hover);
+    border-color: var(--interactive-accent-hover);
   }
 </style>
