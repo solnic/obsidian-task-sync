@@ -1203,6 +1203,7 @@
             {@const isImported = importedPullRequests.has(pr.number)}
             <GitHubPullRequestItem
               pullRequest={pr}
+              repository={currentRepository}
               isHovered={hoveredPullRequest === pr.number}
               {isImported}
               {isImporting}

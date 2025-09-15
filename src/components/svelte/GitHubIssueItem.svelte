@@ -59,15 +59,15 @@
     return result;
   });
 
+  // Location for footer (repository name)
+  let location = $derived(repository ? `Repository: ${repository}` : undefined);
+
   let labels = $derived.by(() => {
     return issue.labels.map((label) => ({
       name: label.name,
       color: label.color ? `#${label.color}` : undefined,
     }));
   });
-
-  // Location for footer (repository name)
-  let location = $derived(repository ? `Repository: ${repository}` : undefined);
 
   function handleImport() {
     onImport?.(issue);

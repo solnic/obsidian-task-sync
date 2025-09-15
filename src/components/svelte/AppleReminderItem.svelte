@@ -90,7 +90,7 @@
     return result;
   });
 
-  // Location for footer (list name)
+  // Location for footer (list name as badge)
   let location = $derived(`List: ${reminder.list.name}`);
 
   function handleImport() {

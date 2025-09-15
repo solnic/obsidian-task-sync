@@ -66,6 +66,10 @@ export interface Task extends BaseEntity, HasDataView {
   dueDate?: string; // DUE_DATE - deadline for task completion
   tags?: string[]; // TAGS
 
+  // File system properties (derived from file metadata)
+  createdAt?: Date; // CREATED_AT (from file.ctime)
+  updatedAt?: Date; // UPDATED_AT (from file.mtime)
+
   // Internal attributes (not front-matter)
   source?: TaskSource; // External source tracking
 }

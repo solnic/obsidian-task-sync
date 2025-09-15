@@ -40,6 +40,7 @@
   let searchQuery = $state("");
   let error = $state<string | null>(null);
   let isLoading = $state(false);
+  let loadingMessage = $state("Loading reminders...");
   let importingReminders = $state(new Set<string>());
   let importedReminders = $state(new Set<string>());
   let hoveredReminder = $state<string | null>(null);
@@ -160,6 +161,7 @@
 
     isLoading = true;
     error = null;
+    loadingMessage = "Checking cache...";
 
     try {
       // Always fetch all reminders (no list filtering at API level)
@@ -171,12 +173,21 @@
           settings.appleRemindersIntegration.excludeAllDayReminders,
       };
 
-      const result = await appleRemindersService.fetchReminders(filter);
+      loadingMessage = "Loading reminders from Apple Reminders...";
+      const result = await appleRemindersService.fetchReminders(
+        filter,
+        (message: string, percentage?: number) => {
+          loadingMessage =
+            percentage !== undefined ? `${message} (${percentage}%)` : message;
+        }
+      );
 
       if (result.success) {
+        loadingMessage = "Processing reminders...";
         reminders = result.data;
         // Refresh import status after loading reminders
         refreshImportStatus();
+        loadingMessage = "Complete";
       } else {
         error = result.error?.message || "Failed to load reminders";
       }
@@ -197,6 +208,13 @@
   }
 
   async function refresh(): Promise<void> {
+    // Normal refresh should use cache if available
+    // Only clear cache if user explicitly wants to force refresh
+    await loadReminderLists();
+    await loadReminders();
+  }
+
+  async function forceRefresh(): Promise<void> {
     // Force refresh by clearing cache first, then reloading
     await appleRemindersService.clearCache();
     await loadReminderLists();
@@ -348,7 +366,7 @@
         {error}
       </div>
     {:else if isLoading}
-      <div class="task-sync-loading-indicator">Loading reminders...</div>
+      <div class="task-sync-loading-indicator">{loadingMessage}</div>
     {:else}
       <div class="task-sync-task-list">
         {#if filteredReminders.length === 0}

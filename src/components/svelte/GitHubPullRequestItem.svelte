@@ -8,6 +8,7 @@
 
   interface Props {
     pullRequest: GitHubPullRequest;
+    repository?: string;
     isHovered?: boolean;
     isImported?: boolean;
     isImporting?: boolean;
@@ -19,6 +20,7 @@
 
   let {
     pullRequest,
+    repository,
     isHovered = false,
     isImported = false,
     isImporting = false,
@@ -67,10 +69,14 @@
     return result;
   });
 
+  // Location for footer (repository name)
+  let location = $derived(repository ? `Repository: ${repository}` : undefined);
+
   let labels = $derived.by(() => {
     return pullRequest.labels.map((label) => ({
       name: label.name,
-      color: label.color ? `#${label.color}` : undefined,
+      // Pull request labels don't have color in the current type definition
+      color: undefined as string | undefined,
     }));
   });
 
@@ -124,6 +130,7 @@
   {meta}
   {badges}
   {labels}
+  {location}
   createdAt={new Date(pullRequest.created_at)}
   {isHovered}
   {isImported}

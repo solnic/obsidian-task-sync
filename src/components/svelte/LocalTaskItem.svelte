@@ -49,7 +49,7 @@
     return result;
   });
 
-  // Location for footer (project and areas)
+  // Location for footer (project and area information)
   let location = $derived.by(() => {
     const parts: string[] = [];
 
@@ -70,12 +70,12 @@
           ? extractDisplayValue(area) || area.replace(/^\[\[|\]\]$/g, "")
           : area;
       });
-      parts.push(
-        `Area${cleanAreas.length > 1 ? "s" : ""}: ${cleanAreas.join(", ")}`
-      );
+      if (cleanAreas.length > 0) {
+        parts.push(`Area: ${cleanAreas.join(", ")}`);
+      }
     }
 
-    return parts.join(" • ");
+    return parts.length > 0 ? parts.join(" • ") : undefined;
   });
 
   function handleAddToToday() {
@@ -114,6 +114,7 @@
   badges={primaryBadges}
   {location}
   source={task.source}
+  createdAt={task.createdAt}
   {isHovered}
   {onHover}
   actionContent={true}

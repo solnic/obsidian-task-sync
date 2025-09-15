@@ -13,6 +13,7 @@
   import AreaBadge from "./badges/AreaBadge.svelte";
   import type { TaskSource } from "../../types/entities";
   import { getOptimalTextColor } from "../../utils/colorUtils";
+  import moment from "moment";
 
   interface Props {
     // Core item data
@@ -187,11 +188,21 @@
     {#if location || createdAt}
       <div class="task-sync-item-footer">
         {#if location}
-          <span class="task-sync-location">{location}</span>
+          <div class="task-sync-location">
+            {#if location.includes(":")}
+              {@const [label, value] = location.split(":").map((s) => s.trim())}
+              <span class="task-sync-location-badge">
+                <span class="task-sync-location-label">{label}</span>
+                <span class="task-sync-location-value">{value}</span>
+              </span>
+            {:else}
+              <span class="task-sync-location-text">{location}</span>
+            {/if}
+          </div>
         {/if}
         {#if createdAt}
           <span class="task-sync-created-at">
-            Created {createdAt.toLocaleDateString()}
+            {moment(createdAt).fromNow()}
           </span>
         {/if}
       </div>

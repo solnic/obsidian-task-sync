@@ -97,12 +97,17 @@ export class AppleRemindersService extends AbstractService {
    * Clear all caches
    */
   async clearCache(): Promise<void> {
+    console.log(
+      `🍎 Clearing Apple Reminders cache - this should only happen when settings change or user manually refreshes`
+    );
     // Clear all cache instances
     if (this.listsCache) {
       await this.listsCache.clear();
+      console.log(`🍎 Cleared lists cache`);
     }
     if (this.remindersCache) {
       await this.remindersCache.clear();
+      console.log(`🍎 Cleared reminders cache`);
     }
   }
 
@@ -259,7 +264,8 @@ export class AppleRemindersService extends AbstractService {
   private async fetchRemindersSequentially(
     listsToProcess: any[],
     filter?: AppleRemindersFilter,
-    includeCompleted?: boolean
+    includeCompleted?: boolean,
+    onProgress?: (message: string, percentage?: number) => void
   ): Promise<AppleRemindersResult<AppleReminder[]>> {
     const allReminders: AppleReminder[] = [];
 
@@ -273,7 +279,11 @@ export class AppleRemindersService extends AbstractService {
         end tell`;
 
     // Process lists one by one (sequential, not concurrent)
-    for (const list of listsToProcess) {
+    for (let i = 0; i < listsToProcess.length; i++) {
+      const list = listsToProcess[i];
+      const percentage = 50 + Math.round((i / listsToProcess.length) * 40);
+      onProgress?.(`Processing list: ${list.name}`, percentage);
+
       try {
         const reminders = await this.executeAppleScript(appleScriptQuery, {
           list_name: list.name,
@@ -310,18 +320,24 @@ export class AppleRemindersService extends AbstractService {
    * Fetch reminders from specified lists or all lists with persistent caching
    */
   async fetchReminders(
-    filter?: AppleRemindersFilter
+    filter?: AppleRemindersFilter,
+    onProgress?: (message: string, percentage?: number) => void
   ): Promise<AppleRemindersResult<AppleReminder[]>> {
     const cacheKey = this.generateRemindersCacheKey(filter);
+
+    // Report progress: checking cache
+    onProgress?.("Checking cache...", 0);
 
     // Check cache first
     if (this.remindersCache) {
       console.log(`🍎 Looking for cache key: ${cacheKey}`);
+      console.log(`🍎 Filter used for cache key:`, filter);
       const cachedReminders = await this.remindersCache.get(cacheKey);
       if (cachedReminders) {
         console.log(
           `🍎 Cache hit for key: ${cacheKey}, returning ${cachedReminders.length} reminders`
         );
+        onProgress?.("Loaded from cache", 100);
         return {
           success: true,
           data: cachedReminders,
@@ -333,7 +349,10 @@ export class AppleRemindersService extends AbstractService {
         // Debug: Check what keys are actually in the cache
         const availableKeys = await this.remindersCache.keys();
         console.log(`🍎 Available cache keys:`, availableKeys);
+        console.log(`🍎 Cache instance:`, this.remindersCache);
       }
+    } else {
+      console.log(`🍎 No reminders cache available!`);
     }
 
     const permissionCheck = await this.checkPermissions();
@@ -345,6 +364,9 @@ export class AppleRemindersService extends AbstractService {
     }
 
     try {
+      // Report progress: loading lists
+      onProgress?.("Loading reminder lists...", 10);
+
       const lists = await this.executeAppleScript(
         'tell application "Reminders" to return properties of lists'
       );
@@ -370,11 +392,18 @@ export class AppleRemindersService extends AbstractService {
 
       // If no lists to process, return empty array
       if (listNames.length === 0) {
+        onProgress?.("No lists to process", 100);
         return {
           success: true,
           data: [],
         };
       }
+
+      // Report progress: found lists
+      onProgress?.(
+        `Found ${listNames.length} lists: ${listNames.join(", ")}`,
+        20
+      );
 
       // Prepare AppleScript query to fetch all reminders from all lists in one call
       // This avoids concurrent script execution which can cause timeouts
@@ -414,13 +443,23 @@ export class AppleRemindersService extends AbstractService {
           end tell`;
 
       try {
+        // Report progress: fetching reminders
+        onProgress?.("Fetching reminders from Apple Reminders...", 40);
+
         // Execute single AppleScript to get all reminders from all lists
         const allReminderData = await this.executeAppleScript(appleScriptQuery);
         const processedReminders = Array.isArray(allReminderData)
           ? allReminderData
           : [];
 
+        // Report progress: processing reminders
+        onProgress?.(
+          `Processing ${processedReminders.length} reminders...`,
+          60
+        );
+
         // Process each reminder and match it to its list
+        let processedCount = 0;
         for (const reminderData of processedReminders) {
           // Apply filters
           if (!this.shouldIncludeReminder(reminderData, filter)) {
@@ -439,16 +478,36 @@ export class AppleRemindersService extends AbstractService {
               );
             allReminders.push(appleReminder);
           }
+
+          // Update progress periodically
+          processedCount++;
+          if (
+            processedCount % 10 === 0 ||
+            processedCount === processedReminders.length
+          ) {
+            const percentage =
+              60 +
+              Math.round((processedCount / processedReminders.length) * 30);
+            onProgress?.(
+              `Processed ${processedCount}/${processedReminders.length} reminders`,
+              percentage
+            );
+          }
         }
       } catch (scriptError) {
         console.warn(`🍎 Failed to fetch reminders:`, scriptError);
         // Fall back to sequential processing if the single script fails
+        onProgress?.("Falling back to sequential processing...", 50);
         return this.fetchRemindersSequentially(
           listsToProcess,
           filter,
-          includeCompleted
+          includeCompleted,
+          onProgress
         );
       }
+
+      // Report progress: caching results
+      onProgress?.(`Caching ${allReminders.length} reminders...`, 95);
 
       // Cache the result
       if (this.remindersCache) {
@@ -456,7 +515,19 @@ export class AppleRemindersService extends AbstractService {
         console.log(
           `🍎 Cached ${allReminders.length} reminders with key: ${cacheKey}`
         );
+        // Verify the cache was set correctly
+        const verifyCache = await this.remindersCache.get(cacheKey);
+        console.log(
+          `🍎 Cache verification: ${
+            verifyCache ? verifyCache.length : "null"
+          } reminders found for key: ${cacheKey}`
+        );
+      } else {
+        console.log(`🍎 No reminders cache available for setting!`);
       }
+
+      // Report completion
+      onProgress?.(`Loaded ${allReminders.length} reminders`, 100);
 
       return {
         success: true,

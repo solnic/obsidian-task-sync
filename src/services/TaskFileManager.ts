@@ -302,6 +302,9 @@ export class TaskFileManager extends FileManager {
       areas: areas,
       doDate: frontMatter["Do Date"],
       tags: frontMatter.tags,
+      // File system properties
+      createdAt: new Date(file.stat.ctime),
+      updatedAt: new Date(file.stat.mtime),
       source: frontMatter.source,
     };
   }

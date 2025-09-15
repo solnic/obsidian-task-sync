@@ -250,6 +250,22 @@
         recentlyUsedAreas = data.localTasksRecentlyUsed.areas || [];
         recentlyUsedSources = data.localTasksRecentlyUsed.sources || [];
       }
+
+      // Also restore current filter selections
+      if (data?.localTasksCurrentFilters) {
+        if (data.localTasksCurrentFilters.project !== undefined) {
+          selectedProject = data.localTasksCurrentFilters.project;
+        }
+        if (data.localTasksCurrentFilters.area !== undefined) {
+          selectedArea = data.localTasksCurrentFilters.area;
+        }
+        if (data.localTasksCurrentFilters.source !== undefined) {
+          selectedSource = data.localTasksCurrentFilters.source;
+        }
+        if (data.localTasksCurrentFilters.showCompleted !== undefined) {
+          showCompleted = data.localTasksCurrentFilters.showCompleted;
+        }
+      }
     } catch (err: any) {
       console.warn("Failed to load recently used filters:", err.message);
     }
@@ -262,6 +278,13 @@
         projects: recentlyUsedProjects,
         areas: recentlyUsedAreas,
         sources: recentlyUsedSources,
+      };
+      // Also save current filter selections
+      data.localTasksCurrentFilters = {
+        project: selectedProject,
+        area: selectedArea,
+        source: selectedSource,
+        showCompleted: showCompleted,
       };
       await plugin.saveData(data);
     } catch (err: any) {
@@ -374,6 +397,7 @@
             if (newProject) {
               addRecentlyUsedProject(newProject);
             }
+            saveRecentlyUsedFilters();
           }}
           placeholder="All projects"
           testId="project-filter"
@@ -395,6 +419,7 @@
             if (newArea) {
               addRecentlyUsedArea(newArea);
             }
+            saveRecentlyUsedFilters();
           }}
           placeholder="All areas"
           testId="area-filter"
@@ -414,6 +439,7 @@
             if (newSource) {
               addRecentlyUsedSource(newSource);
             }
+            saveRecentlyUsedFilters();
           }}
           placeholder="All sources"
           testId="source-filter"
@@ -426,7 +452,10 @@
         <!-- Show completed toggle -->
         <button
           class="task-sync-filter-toggle {showCompleted ? 'active' : ''}"
-          onclick={() => (showCompleted = !showCompleted)}
+          onclick={() => {
+            showCompleted = !showCompleted;
+            saveRecentlyUsedFilters();
+          }}
           data-testid="show-completed-toggle"
           type="button"
           title="Toggle showing completed tasks"
