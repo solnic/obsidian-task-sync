@@ -297,54 +297,44 @@ describe("Obsidian Day View", () => {
     const events = context.page.locator(
       '[data-testid="obsidian-day-view-event"]'
     );
-    const eventCount = await events.count();
 
-    if (eventCount > 0) {
-      const firstEvent = events.first();
+    const firstEvent = events.first();
 
-      // Hover over the first event
-      await firstEvent.hover();
+    // Hover over the first event
+    await firstEvent.hover();
 
-      // Wait for hover transition to complete using smart waiting
-      await context.page.waitForFunction(
-        () => {
-          const overlay = document.querySelector(
-            '[data-testid="obsidian-day-view-event-overlay"]'
-          );
-          if (!overlay) return false;
-          const opacity = window.getComputedStyle(overlay).opacity;
-          return parseFloat(opacity) > 0;
-        },
-        { timeout: 5000 }
-      );
+    // Wait for hover transition to complete using smart waiting
+    await context.page.waitForFunction(
+      () => {
+        const overlay = document.querySelector(
+          '[data-testid="obsidian-day-view-event-overlay"]'
+        );
+        if (!overlay) return false;
+        const opacity = window.getComputedStyle(overlay).opacity;
+        return parseFloat(opacity) > 0;
+      },
+      { timeout: 5000 }
+    );
 
-      // Check if import overlay appears - use data attribute
-      const overlay = firstEvent.locator(
-        '[data-testid="obsidian-day-view-event-overlay"]'
-      );
+    // Check if import overlay appears - use data attribute
+    const overlay = firstEvent.locator(
+      '[data-testid="obsidian-day-view-event-overlay"]'
+    );
 
-      // Check if overlay becomes visible after hover (check computed opacity)
-      const overlayOpacity = await overlay.evaluate((el) => {
-        return window.getComputedStyle(el).opacity;
-      });
+    // Check if overlay becomes visible after hover (check computed opacity)
+    const overlayOpacity = await overlay.evaluate((el) => {
+      return window.getComputedStyle(el).opacity;
+    });
 
-      // The overlay should have opacity > 0 when hovered
-      expect(parseFloat(overlayOpacity)).toBeGreaterThan(0);
+    // The overlay should have opacity > 0 when hovered
+    expect(parseFloat(overlayOpacity)).toBeGreaterThan(0);
 
-      // Check if import button is present
-      const importButton = overlay.locator(
-        '[data-testid="obsidian-day-view-import-btn"]'
-      );
-      const isButtonVisible = await importButton.isVisible();
-      expect(isButtonVisible).toBe(true);
+    // Check if import button is present
+    const importButton = overlay.locator(
+      '[data-testid="obsidian-day-view-import-btn"]'
+    );
 
-      // Check button text
-      const buttonText = await importButton.textContent();
-      expect(buttonText).toMatch(/(Import|Add to today)/);
-
-      console.log(`Event overlay shows button: "${buttonText}"`);
-    } else {
-      console.log("No events found to test hover functionality");
-    }
+    const buttonText = await importButton.textContent();
+    expect(buttonText).toMatch(/(Import|Add to today)/);
   });
 });
