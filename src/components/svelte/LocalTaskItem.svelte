@@ -4,6 +4,7 @@
    */
 
   import TaskItem from "./TaskItem.svelte";
+  import ImportButton from "./ImportButton.svelte";
   import { extractDisplayValue } from "../../utils/linkUtils";
   import type { Task } from "../../types/entities";
 
@@ -100,14 +101,12 @@
 {#snippet actionSnippet()}
   <div class="task-actions">
     {#if dayPlanningMode}
-      <button
-        class="add-to-today-button"
+      <ImportButton
+        dayPlanningMode={true}
         title="Add to today"
-        onclick={handleAddToToday}
-        data-testid="add-to-today-button"
-      >
-        Add to today
-      </button>
+        testId="add-to-today-button"
+        onImport={handleAddToToday}
+      />
     {:else}
       <button
         class="open-task-button"
@@ -143,5 +142,3 @@
   actions={actionSnippet}
   {testId}
 />
-
-<!-- Styles moved to styles.css for consistency -->

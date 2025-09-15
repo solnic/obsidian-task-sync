@@ -160,60 +160,52 @@ export abstract class AbstractService {
       throw new Error(error);
     }
 
-    try {
-      // Transform external item to standardized task data
-      const taskData = transformFunction(externalItem);
+    const taskData = transformFunction(externalItem);
 
-      // Check if task is already imported using task store
-      if (taskStore.isTaskImported(taskData.sourceType, taskData.id)) {
-        // If task already exists and addToToday is requested, still add to today
-        if (config.addToToday && this.dailyNoteService) {
-          const existingTask = taskStore.findTaskBySource(
-            taskData.sourceType,
-            taskData.id
-          );
-          if (existingTask?.filePath) {
-            await this.dailyNoteService.addTaskToToday(existingTask.filePath);
-          }
-        }
-        return {
-          success: true,
-          skipped: true,
-          reason: "Task already imported",
-          taskPath: taskStore.findTaskBySource(taskData.sourceType, taskData.id)
-            ?.filePath,
-        };
-      }
-
-      // Enhance config with service-specific data if function provided
-      const enhancedConfig = enhanceConfigFunction
-        ? enhanceConfigFunction(externalItem, config)
-        : config;
-
-      // Create the task
-      const taskPath = await this.taskImportManager.createTaskFromData(
-        taskData,
-        enhancedConfig
-      );
-
-      // Manually refresh the task store to ensure the new task is immediately available
-      // This prevents race conditions with duplicate detection
-      await taskStore.refreshTasks();
-
-      // If addToToday is requested, add the task to today's daily note
+    // Check if task is already imported using task store
+    if (taskStore.isTaskImported(taskData.sourceType, taskData.id)) {
+      // If task already exists and addToToday is requested, still add to today
       if (config.addToToday && this.dailyNoteService) {
-        await this.dailyNoteService.addTaskToToday(taskPath);
+        const existingTask = taskStore.findTaskBySource(
+          taskData.sourceType,
+          taskData.id
+        );
+        if (existingTask?.filePath) {
+          await this.dailyNoteService.addTaskToToday(existingTask.filePath);
+        }
       }
-
       return {
         success: true,
-        taskPath,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        error: error.message,
+        skipped: true,
+        reason: "Task already imported",
+        taskPath: taskStore.findTaskBySource(taskData.sourceType, taskData.id)
+          ?.filePath,
       };
     }
+
+    // Enhance config with service-specific data if function provided
+    const enhancedConfig = enhanceConfigFunction
+      ? enhanceConfigFunction(externalItem, config)
+      : config;
+
+    // Create the task
+    const taskPath = await this.taskImportManager.createTaskFromData(
+      taskData,
+      enhancedConfig
+    );
+
+    // Manually refresh the task store to ensure the new task is immediately available
+    // This prevents race conditions with duplicate detection
+    await taskStore.refreshTasks();
+
+    // If addToToday is requested, add the task to today's daily note
+    if (config.addToToday && this.dailyNoteService) {
+      await this.dailyNoteService.addTaskToToday(taskPath);
+    }
+
+    return {
+      success: true,
+      taskPath,
+    };
   }
 }

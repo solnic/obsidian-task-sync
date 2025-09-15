@@ -5,6 +5,7 @@
 
   import { getPluginContext } from "./context";
   import { EventDetailsModal } from "../modals/EventDetailsModal";
+  import ImportButton from "./ImportButton.svelte";
 
   interface Props {
     events?: CalendarEvent[];
@@ -392,28 +393,14 @@
                       Open
                     </button>
                     {#if onImportEvent}
-                      <button
-                        class="obsidian-day-view__action-btn obsidian-day-view__import-btn"
-                        data-testid="obsidian-day-view-import-btn"
-                        disabled={importedEvents.has(event.id) ||
-                          importingEvents.has(event.id)}
-                        onclick={(e) => {
-                          e.stopPropagation();
-                          onImportEvent?.(event);
-                        }}
-                      >
-                        {#if importedEvents.has(event.id)}
-                          {isDailyPlanningMode
-                            ? "✓ Added to today"
-                            : "✓ Imported"}
-                        {:else if importingEvents.has(event.id)}
-                          {isDailyPlanningMode
-                            ? "⏳ Adding..."
-                            : "⏳ Importing..."}
-                        {:else}
-                          {isDailyPlanningMode ? "Add to today" : "Import"}
-                        {/if}
-                      </button>
+                      <ImportButton
+                        isImported={importedEvents.has(event.id)}
+                        isImporting={importingEvents.has(event.id)}
+                        dayPlanningMode={isDailyPlanningMode}
+                        testId="obsidian-day-view-import-btn"
+                        size="small"
+                        onImport={() => onImportEvent?.(event)}
+                      />
                     {/if}
                   </div>
                 </div>

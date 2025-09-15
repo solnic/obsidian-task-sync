@@ -635,7 +635,6 @@ Provides consistent styling for all UI components
 .task-sync-cancel-button,
 .task-sync-create-button,
 .task-sync-submit-button,
-.task-sync-import-button,
 .task-sync-filter-toggle {
   padding: 8px 16px;
   border-radius: 6px;
@@ -3242,45 +3241,7 @@ button.tab-item.active {
   font-weight: 500;
 }
 
-/* Import Button - scoped to task-sync */
-.task-sync-import-button {
-  border: 1px solid var(--interactive-accent);
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  font-size: 0.875rem;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
 
-.task-sync-import-button:hover {
-  background: var(--interactive-accent-hover);
-  border-color: var(--interactive-accent-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-/* Import Status Indicators - scoped to task-sync */
-.task-sync-import-status {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.task-sync-import-status.imported {
-  background: var(--color-green);
-  color: var(--text-on-accent);
-  border: 1px solid var(--color-green);
-}
-
-.task-sync-import-status.importing {
-  background: var(--color-orange);
-  color: var(--text-on-accent);
-  border: 1px solid var(--color-orange);
-  animation: pulse 1.5s ease-in-out infinite;
-}
 
 @keyframes pulse {
 

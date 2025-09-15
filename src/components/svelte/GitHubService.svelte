@@ -190,10 +190,7 @@
     });
 
     const orgs = Array.from(orgSet).sort();
-    console.log(
-      `🐙 UI: Available organizations from API (${organizations.length}) + repositories (${repositories.length}):`,
-      orgs
-    );
+
     return orgs;
   });
 
@@ -204,8 +201,10 @@
     const otherOrgs = allOrgs.filter((org) => !recentOrgs.includes(org));
 
     const options: string[] = [];
+
     if (recentOrgs.length > 0) {
       options.push(...recentOrgs);
+
       if (otherOrgs.length > 0) {
         options.push("---"); // Separator
         options.push(...otherOrgs);
@@ -214,7 +213,6 @@
       options.push(...otherOrgs);
     }
 
-    console.log(`🐙 UI: Organization options computed:`, options);
     return options;
   });
 
@@ -261,49 +259,23 @@
   });
 
   onMount(async () => {
-    console.log("🐙 INIT: GitHub component mounting...");
     if (githubService.isEnabled()) {
-      console.log(
-        "🐙 INIT: GitHub service is enabled, starting initialization..."
-      );
-      try {
-        // First, load recently used filters to restore state
-        console.log("🐙 INIT: Loading recently used filters...");
-        await loadRecentlyUsedFilters();
+      await loadRecentlyUsedFilters();
 
-        // Then load other data - organizations first, then repositories
-        console.log("🐙 INIT: Starting parallel loading of user and data...");
-        await Promise.all([
-          loadCurrentUser(),
-          loadOrganizations().then(async () => {
-            console.log(
-              "🐙 INIT: Organizations loaded, now loading repositories..."
-            );
-            await loadRepositories();
-            if (currentRepository) {
-              console.log(
-                `🐙 INIT: Loading issues and labels for repository: ${currentRepository}`
-              );
-              await loadIssues();
-              await loadLabels();
-            } else {
-              console.log("🐙 INIT: No current repository set");
-            }
-          }),
-        ]);
+      await Promise.all([
+        loadCurrentUser(),
 
-        console.log("🐙 INIT: Refreshing import status...");
-        refreshImportStatus();
-        console.log("🐙 INIT: GitHub component initialization completed");
-      } catch (err: any) {
-        console.error(
-          "🐙 INIT: Failed to initialize GitHub component:",
-          err.message
-        );
-        error = err.message || "Failed to load GitHub data";
-      }
-    } else {
-      console.log("🐙 INIT: GitHub service is not enabled");
+        loadOrganizations().then(async () => {
+          await loadRepositories();
+
+          if (currentRepository) {
+            await loadIssues();
+            await loadLabels();
+          }
+        }),
+      ]);
+
+      refreshImportStatus();
     }
   });
 
@@ -814,49 +786,24 @@
   }
 
   async function refresh(): Promise<void> {
-    console.log("🐙 REFRESH: Starting GitHub data refresh...");
-
-    // Force refresh by clearing cache first
-    console.log("🐙 REFRESH: Clearing cache...");
     await githubService.clearCache();
 
-    // Reload organizations first, then repositories
-    console.log("🐙 REFRESH: Loading organizations...");
     await loadOrganizations();
-
-    console.log("🐙 REFRESH: Loading repositories...");
     await loadRepositories();
 
     if (currentRepository) {
-      console.log(
-        `🐙 REFRESH: Loading issues for repository: ${currentRepository}`
-      );
-      await loadIssues();
-      if (activeTab === "pull-requests") {
-        console.log(
-          `🐙 REFRESH: Loading pull requests for repository: ${currentRepository}`
-        );
+      if (activeTab === "issues") {
+        await loadIssues();
+      } else if (activeTab === "pull-requests") {
         await loadPullRequests();
       }
-    } else {
-      console.log("🐙 REFRESH: No current repository selected");
     }
-
-    console.log("🐙 REFRESH: Refresh completed");
   }
 
   async function importIssue(issue: GitHubIssue): Promise<void> {
-    if (!githubService.isEnabled()) {
-      plugin.app.workspace.trigger(
-        "notice",
-        "GitHub service not available. Please check your configuration."
-      );
-      return;
-    }
-
     try {
       importingIssues.add(issue.number);
-      importingIssues = new Set(importingIssues); // Trigger reactivity
+      importingIssues = new Set(importingIssues);
 
       const config = dependencies.getDefaultImportConfig();
       const result = await githubService.importIssueAsTask(issue, config);

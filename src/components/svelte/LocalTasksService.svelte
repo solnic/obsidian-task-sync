@@ -666,7 +666,3 @@
     {/if}
   </div>
 </div>
-
-<style>
-  /* No local styles needed - using LocalTaskItem component */
-</style>
