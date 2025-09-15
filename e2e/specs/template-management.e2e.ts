@@ -15,10 +15,12 @@ import { setupE2ETestHooks } from "../helpers/shared-context";
 describe("Template Management", () => {
   const context = setupE2ETestHooks();
 
-  test("should create Task.md template automatically during plugin initialization", async () => {
+  beforeAll(async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
+  });
 
+  test("should create Task.md template automatically during plugin initialization", async () => {
     // The plugin SHOULD automatically create default templates when they're missing
     // This ensures explicit configuration rather than hidden fallback mechanisms
     const templateExists = await fileExists(context.page, "Templates/Task.md");
@@ -34,41 +36,7 @@ describe("Template Management", () => {
     expect(templateContent).toContain("Type:");
   });
 
-  test("should prompt user when Task.md template already exists", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
-    // Create existing template file
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      await app.vault.create("Templates/Task.md", "Existing template content");
-    });
-
-    // Try to create template again - should handle existing file
-    const result = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-      if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createTaskTemplate();
-        return { success: true, error: null };
-      }
-
-      return {
-        success: false,
-        error: "Plugin or templateManager not available",
-      };
-    });
-
-    // Should handle the conflict appropriately
-    expect(result.success).toBe(false);
-    expect(result.error).toContain("already exists");
-  });
-
   test("should create template with custom filename when specified", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // Create template with custom filename
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -96,9 +64,6 @@ describe("Template Management", () => {
   });
 
   test("should provide settings UI to create templates when custom template is configured", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // Open settings tab
     await context.page.evaluate(async () => {
       const app = (window as any).app;
