@@ -4,6 +4,57 @@
  */
 
 /**
+ * Raw AppleScript reminder object as returned by "properties of reminder"
+ * This represents the exact structure returned by AppleScript
+ */
+export interface AppleScriptReminder {
+  /** Unique identifier string */
+  id: string;
+
+  /** Reminder title/name */
+  name: string;
+
+  /** Reminder body/notes content */
+  body: string;
+
+  /** Completion status */
+  completed: boolean;
+
+  /** Completion date (if completed) */
+  completionDate: Date | null;
+
+  /** Creation date */
+  creationDate: Date;
+
+  /** Last modification date */
+  modificationDate: Date;
+
+  /** Due date (if set) */
+  dueDate: Date | null;
+
+  /** Priority level (0-9) */
+  priority: number;
+
+  /** Whether this is an all-day reminder */
+  allDay: boolean;
+}
+
+/**
+ * Raw AppleScript list object as returned by "properties of list"
+ * This represents the exact structure returned by AppleScript
+ */
+export interface AppleScriptList {
+  /** Unique identifier string */
+  id: string;
+
+  /** List name */
+  name: string;
+
+  /** List color */
+  color: string;
+}
+
+/**
  * Apple Reminders configuration interface
  * Extends the base TaskSyncConfig with Apple Reminders specific options
  */
@@ -101,7 +152,7 @@ export enum AppleRemindersPermission {
   NOT_DETERMINED = "notDetermined",
   DENIED = "denied",
   AUTHORIZED = "authorized",
-  RESTRICTED = "restricted"
+  RESTRICTED = "restricted",
 }
 
 /**
@@ -115,7 +166,7 @@ export enum AppleRemindersError {
   LIST_NOT_FOUND = "LIST_NOT_FOUND",
   REMINDER_NOT_FOUND = "REMINDER_NOT_FOUND",
   TIMEOUT = "TIMEOUT",
-  UNKNOWN = "UNKNOWN"
+  UNKNOWN = "UNKNOWN",
 }
 
 /**
