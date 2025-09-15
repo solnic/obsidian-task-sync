@@ -38,6 +38,9 @@ export interface ExternalTaskData {
   /** Optional due date for task completion */
   dueDate?: Date;
 
+  /** Optional reminder timestamps */
+  reminders?: Date[];
+
   /** URL to view task in external system */
   externalUrl: string;
 

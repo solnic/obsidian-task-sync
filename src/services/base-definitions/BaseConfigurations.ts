@@ -122,6 +122,13 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
     default: [],
     frontmatter: true,
   },
+  REMINDERS: {
+    key: "reminders",
+    name: "Reminders",
+    type: "array",
+    default: [],
+    frontmatter: true,
+  },
   CREATED_AT: {
     key: "createdAt",
     name: "Created At",
@@ -156,6 +163,7 @@ export const PROPERTY_SETS = {
     "DO_DATE",
     "DUE_DATE",
     "TAGS",
+    "REMINDERS",
   ] as const,
   TASKS_BASE: [
     "TITLE",
@@ -170,6 +178,7 @@ export const PROPERTY_SETS = {
     "DO_DATE",
     "DUE_DATE",
     "TAGS",
+    "REMINDERS",
     "CREATED_AT",
     "UPDATED_AT",
   ] as const,

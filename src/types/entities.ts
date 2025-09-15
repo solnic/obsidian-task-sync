@@ -48,6 +48,8 @@ export interface TaskSource {
   url?: string;
   /** Additional metadata for the source */
   metadata?: Record<string, any>;
+  /** Canonical data returned by the external service (raw, unprocessed) */
+  data?: Record<string, any>;
 }
 
 // Task entity - core system properties

@@ -169,11 +169,21 @@ export class TaskImportManager {
       frontMatter["Due Date"] = taskData.dueDate.toISOString().split("T")[0];
     }
 
+    // Reminders - from external task data if provided
+    if (taskData.reminders && taskData.reminders.length > 0) {
+      frontMatter.Reminders = taskData.reminders.map((reminder) =>
+        reminder.toISOString()
+      );
+    } else {
+      frontMatter.Reminders = [];
+    }
+
     // Source - internal tracking for imported tasks
     frontMatter.source = {
       name: this.getSourceDisplayName(taskData),
       key: taskData.id,
       url: taskData.externalUrl,
+      data: taskData.sourceData, // Store canonical service data for universal access
     };
 
     return frontMatter;

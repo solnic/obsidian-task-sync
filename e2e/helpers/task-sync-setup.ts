@@ -780,16 +780,7 @@ export async function getFileContent(
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(path);
 
-      if (!file) {
-        return null;
-      }
-
-      try {
-        return await app.vault.read(file);
-      } catch (error) {
-        console.log(`Error reading file ${path}:`, error.message);
-        return null;
-      }
+      return await app.vault.read(file);
     },
     { path: filePath }
   );
