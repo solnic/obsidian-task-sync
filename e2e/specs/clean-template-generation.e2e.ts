@@ -57,7 +57,6 @@ describe("Clean Template Generation", () => {
     expect(templateContent).toContain("tags:");
 
     // Should have configured default values (values are quoted in YAML)
-    expect(templateContent).toContain('Priority: "Low"');
     expect(templateContent).toContain("Done: false");
     expect(templateContent).toContain('Status: "Backlog"');
 

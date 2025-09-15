@@ -409,7 +409,7 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
     key: "priority",
     name: "Priority",
     type: "string",
-    default: "Low",
+    default: null,
     frontmatter: true,
   },
   AREAS: {
