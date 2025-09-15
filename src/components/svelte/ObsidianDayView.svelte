@@ -241,13 +241,17 @@
   );
 </script>
 
-<div class="obsidian-day-view">
+<div class="obsidian-day-view" data-testid="obsidian-day-view">
   <!-- Header with zoom controls (left), date navigation (center), today button (right) -->
-  <div class="obsidian-day-view__header">
+  <div class="obsidian-day-view__header" data-testid="obsidian-day-view-header">
     <!-- Zoom Controls (Left) -->
-    <div class="obsidian-day-view__zoom-controls">
+    <div
+      class="obsidian-day-view__zoom-controls"
+      data-testid="obsidian-day-view-zoom-controls"
+    >
       <button
         class="obsidian-day-view__zoom-btn"
+        data-testid="obsidian-day-view-zoom-out-btn"
         onclick={zoomOut}
         disabled={zoomLevel === 0}
         title="Zoom out (show more hours)"
@@ -256,6 +260,7 @@
       </button>
       <button
         class="obsidian-day-view__zoom-btn"
+        data-testid="obsidian-day-view-zoom-in-btn"
         onclick={zoomIn}
         disabled={zoomLevel === ZOOM_LEVELS.length - 1}
         title="Zoom in (show fewer hours)"
@@ -297,14 +302,25 @@
   </div>
 
   <!-- Time slots container -->
-  <div class="obsidian-day-view__content">
-    <div class="obsidian-day-view__time-column">
+  <div
+    class="obsidian-day-view__content"
+    data-testid="obsidian-day-view-content"
+  >
+    <div
+      class="obsidian-day-view__time-column"
+      data-testid="obsidian-day-view-time-column"
+    >
       {#each timeSlots as hour}
         <div
           class="obsidian-day-view__time-slot"
+          data-testid="obsidian-day-view-time-slot"
+          data-hour={hour}
           style="height: {currentZoom.hourHeight}px"
         >
-          <div class="obsidian-day-view__time-label">
+          <div
+            class="obsidian-day-view__time-label"
+            data-testid="obsidian-day-view-time-label"
+          >
             {formatHour(hour)}
           </div>
           <div class="obsidian-day-view__time-content">
@@ -313,38 +329,60 @@
                 class="obsidian-day-view__event {zoomLevel <= 1
                   ? 'obsidian-day-view__event--compact'
                   : ''}"
+                data-testid="obsidian-day-view-event"
                 style="background-color: {event.calendar?.color || '#3b82f6'}"
                 role="button"
                 tabindex="0"
+                data-event-id={event.id}
                 data-event-title={event.title}
                 data-calendar-name={event.calendar?.name}
                 data-calendar-color={event.calendar?.color}
               >
                 {#if zoomLevel <= 1}
                   <!-- Compact layout for low zoom levels -->
-                  <div class="obsidian-day-view__event-content-compact">
-                    <span class="obsidian-day-view__event-title"
+                  <div
+                    class="obsidian-day-view__event-content-compact"
+                    data-testid="obsidian-day-view-event-content-compact"
+                  >
+                    <span
+                      class="obsidian-day-view__event-title"
+                      data-testid="obsidian-day-view-event-title"
                       >{event.title}</span
                     >
-                    <span class="obsidian-day-view__event-time"
+                    <span
+                      class="obsidian-day-view__event-time"
+                      data-testid="obsidian-day-view-event-time"
                       >{formatEventTime(event)}</span
                     >
                   </div>
                 {:else}
                   <!-- Standard layout for higher zoom levels -->
-                  <div class="obsidian-day-view__event-title">
+                  <div
+                    class="obsidian-day-view__event-title"
+                    data-testid="obsidian-day-view-event-title"
+                  >
                     {event.title}
                   </div>
-                  <div class="obsidian-day-view__event-time">
+                  <div
+                    class="obsidian-day-view__event-time"
+                    data-testid="obsidian-day-view-event-time"
+                  >
                     {formatEventTime(event)}
                   </div>
                 {/if}
 
                 <!-- Event overlay with actions -->
-                <div class="obsidian-day-view__event-overlay">
-                  <div class="obsidian-day-view__event-actions">
+                <div
+                  class="obsidian-day-view__event-overlay"
+                  data-testid="obsidian-day-view-event-overlay"
+                >
+                  <div
+                    class="obsidian-day-view__event-actions"
+                    data-testid="obsidian-day-view-event-actions"
+                  >
                     <button
                       class="obsidian-day-view__action-btn obsidian-day-view__open-btn"
+                      data-testid="obsidian-day-view-open-btn"
                       onclick={(e) => {
                         e.stopPropagation();
                         openEventModal(event);
@@ -356,6 +394,7 @@
                     {#if onImportEvent}
                       <button
                         class="obsidian-day-view__action-btn obsidian-day-view__import-btn"
+                        data-testid="obsidian-day-view-import-btn"
                         disabled={importedEvents.has(event.id) ||
                           importingEvents.has(event.id)}
                         onclick={(e) => {

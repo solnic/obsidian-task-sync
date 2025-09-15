@@ -26,26 +26,32 @@ describe("Obsidian Day View", () => {
     });
 
     // Check if our custom day view is rendered
-    await context.page.waitForSelector(".obsidian-day-view", {
+    await context.page.waitForSelector('[data-testid="obsidian-day-view"]', {
       state: "visible",
       timeout: 5000,
     });
 
     // Check for header with date and zoom controls
-    await context.page.waitForSelector(".obsidian-day-view__header", {
-      state: "visible",
-      timeout: 5000,
-    });
+    await context.page.waitForSelector(
+      '[data-testid="obsidian-day-view-header"]',
+      {
+        state: "visible",
+        timeout: 5000,
+      }
+    );
 
     // Check for zoom controls (back in day view header)
-    await context.page.waitForSelector(".obsidian-day-view__zoom-btn", {
-      state: "visible",
-      timeout: 5000,
-    });
+    await context.page.waitForSelector(
+      '[data-testid="obsidian-day-view-zoom-controls"]',
+      {
+        state: "visible",
+        timeout: 5000,
+      }
+    );
 
     // Check for time slots
-    const timeSlots = await context.page.locator(
-      ".obsidian-day-view__time-slot"
+    const timeSlots = context.page.locator(
+      '[data-testid="obsidian-day-view-time-slot"]'
     );
     const timeSlotCount = await timeSlots.count();
     expect(timeSlotCount).toBeGreaterThan(0);
@@ -64,14 +70,14 @@ describe("Obsidian Day View", () => {
     });
 
     // Wait for day view to be visible
-    await context.page.waitForSelector(".obsidian-day-view", {
+    await context.page.waitForSelector('[data-testid="obsidian-day-view"]', {
       state: "visible",
       timeout: 5000,
     });
 
     // Check that hour labels are displayed correctly
-    const timeLabels = await context.page.locator(
-      ".obsidian-day-view__time-label"
+    const timeLabels = context.page.locator(
+      '[data-testid="obsidian-day-view-time-label"]'
     );
     const labelCount = await timeLabels.count();
     expect(labelCount).toBeGreaterThan(0);
@@ -81,15 +87,17 @@ describe("Obsidian Day View", () => {
     expect(firstLabel).toMatch(/\d+\s+(AM|PM)/);
 
     // Check that two-digit hours don't wrap (should be on single line)
-    const tenAmLabel = await context.page.locator(
-      ".obsidian-day-view__time-label",
+    const tenAmLabel = context.page.locator(
+      '[data-testid="obsidian-day-view-time-label"]',
       {
         hasText: "10 AM",
       }
     );
 
     if ((await tenAmLabel.count()) > 0) {
-      const labelHeight = await tenAmLabel.evaluate((el) => el.offsetHeight);
+      const labelHeight = await tenAmLabel.evaluate(
+        (el) => (el as HTMLElement).offsetHeight
+      );
       const lineHeight = await tenAmLabel.evaluate((el) => {
         const style = window.getComputedStyle(el);
         return parseFloat(style.lineHeight);
@@ -116,52 +124,74 @@ describe("Obsidian Day View", () => {
     });
 
     // Wait for day view to be visible
-    await context.page.waitForSelector(".obsidian-day-view", {
+    await context.page.waitForSelector('[data-testid="obsidian-day-view"]', {
       state: "visible",
       timeout: 5000,
     });
 
     // Count initial time slots
-    const initialTimeSlots = await context.page.locator(
-      ".obsidian-day-view__time-slot"
+    const initialTimeSlots = context.page.locator(
+      '[data-testid="obsidian-day-view-time-slot"]'
     );
     const initialCount = await initialTimeSlots.count();
 
-    // Click zoom in button (the + button) - back in day view header
-    const zoomButtons = await context.page.locator(
-      ".obsidian-day-view__zoom-btn"
+    // First zoom out to ensure we can zoom in (since we might start at max zoom)
+    const zoomOutButton = context.page.locator(
+      '[data-testid="obsidian-day-view-zoom-out-btn"]'
     );
-    const zoomInButton = zoomButtons.nth(1); // Second button is the + button
+
+    // Check if zoom out button is enabled
+    const isZoomOutEnabled = await zoomOutButton.isEnabled();
+    if (isZoomOutEnabled) {
+      await zoomOutButton.click();
+
+      // Wait for the view to update using smart waiting
+      await context.page.waitForFunction(
+        (expectedCount) => {
+          const timeSlots = document.querySelectorAll(
+            '[data-testid="obsidian-day-view-time-slot"]'
+          );
+          return timeSlots.length !== expectedCount;
+        },
+        initialCount,
+        { timeout: 5000 }
+      );
+    }
+
+    // Count time slots after zoom out (should be more)
+    const zoomedOutTimeSlots = context.page.locator(
+      '[data-testid="obsidian-day-view-time-slot"]'
+    );
+    const zoomedOutCount = await zoomedOutTimeSlots.count();
+
+    // Now zoom in
+    const zoomInButton = context.page.locator(
+      '[data-testid="obsidian-day-view-zoom-in-btn"]'
+    );
     await zoomInButton.click();
 
-    // Wait a moment for the view to update
-    await context.page.waitForTimeout(500);
-
-    // Count time slots after zoom in (should be fewer)
-    const zoomedTimeSlots = await context.page.locator(
-      ".obsidian-day-view__time-slot"
+    // Wait for the view to update using smart waiting
+    await context.page.waitForFunction(
+      (expectedCount) => {
+        const timeSlots = document.querySelectorAll(
+          '[data-testid="obsidian-day-view-time-slot"]'
+        );
+        return timeSlots.length !== expectedCount;
+      },
+      zoomedOutCount,
+      { timeout: 5000 }
     );
-    const zoomedCount = await zoomedTimeSlots.count();
 
-    expect(zoomedCount).toBeLessThan(initialCount);
-
-    // Click zoom out button (the - button)
-    const zoomOutButton = zoomButtons.nth(0); // First button is the - button
-    await zoomOutButton.click();
-
-    // Wait a moment for the view to update
-    await context.page.waitForTimeout(500);
-
-    // Count should be back to original or more
-    const finalTimeSlots = await context.page.locator(
-      ".obsidian-day-view__time-slot"
+    // Count time slots after zoom in (should be fewer than zoomed out)
+    const zoomedInTimeSlots = context.page.locator(
+      '[data-testid="obsidian-day-view-time-slot"]'
     );
-    const finalCount = await finalTimeSlots.count();
+    const zoomedInCount = await zoomedInTimeSlots.count();
 
-    expect(finalCount).toBeGreaterThanOrEqual(initialCount);
+    expect(zoomedInCount).toBeLessThan(zoomedOutCount);
 
     console.log(
-      `Time slots: initial=${initialCount}, zoomed=${zoomedCount}, final=${finalCount}`
+      `Time slots: initial=${initialCount}, zoomedOut=${zoomedOutCount}, zoomedIn=${zoomedInCount}`
     );
   });
 
@@ -176,7 +206,7 @@ describe("Obsidian Day View", () => {
     });
 
     // Look for the "Load Test Events" button
-    const loadTestEventsButton = await context.page.locator("button", {
+    const loadTestEventsButton = context.page.locator("button", {
       hasText: "Load Test Events",
     });
 
@@ -184,11 +214,21 @@ describe("Obsidian Day View", () => {
       // Click the load test events button
       await loadTestEventsButton.click();
 
-      // Wait for events to load
-      await context.page.waitForTimeout(1000);
+      // Wait for events to load using smart waiting
+      await context.page.waitForFunction(
+        () => {
+          const events = document.querySelectorAll(
+            '[data-testid="obsidian-day-view-event"]'
+          );
+          return events.length > 0;
+        },
+        { timeout: 5000 }
+      );
 
       // Check if events are displayed in the day view
-      const events = await context.page.locator(".obsidian-day-view__event");
+      const events = context.page.locator(
+        '[data-testid="obsidian-day-view-event"]'
+      );
       const eventCount = await events.count();
 
       expect(eventCount).toBeGreaterThan(0);
@@ -196,13 +236,13 @@ describe("Obsidian Day View", () => {
       // Check that events have titles
       const firstEvent = events.first();
       const eventTitle = await firstEvent
-        .locator(".obsidian-day-view__event-title")
+        .locator('[data-testid="obsidian-day-view-event-title"]')
         .textContent();
       expect(eventTitle).toBeTruthy();
 
       // Check that events have time information
       const eventTime = await firstEvent
-        .locator(".obsidian-day-view__event-time")
+        .locator('[data-testid="obsidian-day-view-event-time"]')
         .textContent();
       expect(eventTime).toMatch(/\d+:\d+\s+(AM|PM)\s+-\s+\d+:\d+\s+(AM|PM)/);
 
@@ -214,7 +254,9 @@ describe("Obsidian Day View", () => {
       );
 
       // Still check if any events are visible
-      const events = await context.page.locator(".obsidian-day-view__event");
+      const events = context.page.locator(
+        '[data-testid="obsidian-day-view-event"]'
+      );
       const eventCount = await events.count();
       console.log(
         `Found ${eventCount} events in day view without loading test events`
@@ -233,17 +275,28 @@ describe("Obsidian Day View", () => {
     });
 
     // Load test events if button is available
-    const loadTestEventsButton = await context.page.locator("button", {
+    const loadTestEventsButton = context.page.locator("button", {
       hasText: "Load Test Events",
     });
 
     if ((await loadTestEventsButton.count()) > 0) {
       await loadTestEventsButton.click();
-      await context.page.waitForTimeout(1000);
+      // Wait for events to load using smart waiting
+      await context.page.waitForFunction(
+        () => {
+          const events = document.querySelectorAll(
+            '[data-testid="obsidian-day-view-event"]'
+          );
+          return events.length > 0;
+        },
+        { timeout: 5000 }
+      );
     }
 
     // Check if events are present
-    const events = await context.page.locator(".obsidian-day-view__event");
+    const events = context.page.locator(
+      '[data-testid="obsidian-day-view-event"]'
+    );
     const eventCount = await events.count();
 
     if (eventCount > 0) {
@@ -252,11 +305,23 @@ describe("Obsidian Day View", () => {
       // Hover over the first event
       await firstEvent.hover();
 
-      // Wait for hover transition to complete
-      await context.page.waitForTimeout(300);
+      // Wait for hover transition to complete using smart waiting
+      await context.page.waitForFunction(
+        () => {
+          const overlay = document.querySelector(
+            '[data-testid="obsidian-day-view-event-overlay"]'
+          );
+          if (!overlay) return false;
+          const opacity = window.getComputedStyle(overlay).opacity;
+          return parseFloat(opacity) > 0;
+        },
+        { timeout: 5000 }
+      );
 
-      // Check if import overlay appears - use data attribute or check computed styles
-      const overlay = firstEvent.locator(".obsidian-day-view__event-overlay");
+      // Check if import overlay appears - use data attribute
+      const overlay = firstEvent.locator(
+        '[data-testid="obsidian-day-view-event-overlay"]'
+      );
 
       // Check if overlay becomes visible after hover (check computed opacity)
       const overlayOpacity = await overlay.evaluate((el) => {
@@ -267,7 +332,9 @@ describe("Obsidian Day View", () => {
       expect(parseFloat(overlayOpacity)).toBeGreaterThan(0);
 
       // Check if import button is present
-      const importButton = overlay.locator(".obsidian-day-view__import-btn");
+      const importButton = overlay.locator(
+        '[data-testid="obsidian-day-view-import-btn"]'
+      );
       const isButtonVisible = await importButton.isVisible();
       expect(isButtonVisible).toBe(true);
 
