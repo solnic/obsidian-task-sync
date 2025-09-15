@@ -704,7 +704,49 @@ export function generateTasksBase(
   settings: TaskSyncSettings,
   projectsAndAreas: ProjectAreaInfo[]
 ): string {
-  const defaultAreaName = projectsAndAreas.find((p) => p.type === "area").name;
+  // Build dynamic filters based on available projects and areas
+  const baseFilters: FilterCondition[] = [
+    FilterBuilder.inFolder(settings.tasksFolder),
+    FilterBuilder.noParentTask(),
+  ];
+
+  // Add area/project filters if we have any
+  if (projectsAndAreas.length > 0) {
+    const areas = projectsAndAreas.filter((p) => p.type === "area");
+    const projects = projectsAndAreas.filter((p) => p.type === "project");
+
+    if (areas.length > 0 && projects.length > 0) {
+      // If we have both areas and projects, create an OR filter
+      baseFilters.push(
+        FilterBuilder.or(
+          ...areas.map((area) => FilterBuilder.inArea(area.name)),
+          ...projects.map((project) => FilterBuilder.inProject(project.name))
+        )
+      );
+    } else if (areas.length > 0) {
+      // Only areas available
+      if (areas.length === 1) {
+        baseFilters.push(FilterBuilder.inArea(areas[0].name));
+      } else {
+        baseFilters.push(
+          FilterBuilder.or(
+            ...areas.map((area) => FilterBuilder.inArea(area.name))
+          )
+        );
+      }
+    } else if (projects.length > 0) {
+      // Only projects available
+      if (projects.length === 1) {
+        baseFilters.push(FilterBuilder.inProject(projects[0].name));
+      } else {
+        baseFilters.push(
+          FilterBuilder.or(
+            ...projects.map((project) => FilterBuilder.inProject(project.name))
+          )
+        );
+      }
+    }
+  }
 
   const config = {
     formulas: {
@@ -716,11 +758,7 @@ export function generateTasksBase(
       {
         type: "table",
         name: "Tasks",
-        filters: FilterBuilder.and(
-          FilterBuilder.inFolder(settings.tasksFolder),
-          FilterBuilder.inArea(defaultAreaName),
-          FilterBuilder.noParentTask()
-        ).toFilterObject(),
+        filters: FilterBuilder.and(...baseFilters).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.TASK),
         columnSize: {
@@ -737,7 +775,6 @@ export function generateTasksBase(
         filters: FilterBuilder.and(
           FilterBuilder.inFolder(settings.tasksFolder),
           FilterBuilder.notDone(),
-          FilterBuilder.inArea(defaultAreaName),
           FilterBuilder.ofCategory(taskType.name),
           FilterBuilder.noParentTask()
         ).toFilterObject(),
@@ -751,7 +788,6 @@ export function generateTasksBase(
           name: `${pluralize(taskType.name)} • ${priority.name} priority`,
           filters: FilterBuilder.and(
             FilterBuilder.inFolder(settings.tasksFolder),
-            FilterBuilder.inArea(defaultAreaName),
             FilterBuilder.ofCategory(taskType.name),
             FilterBuilder.withPriority(priority.name)
           ).toFilterObject(),
