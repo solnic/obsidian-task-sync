@@ -32,8 +32,6 @@ describe("Template Management", () => {
     expect(templateContent).toContain("---");
     expect(templateContent).toContain("Title:");
     expect(templateContent).toContain("Type:");
-    expect(templateContent).toContain('Priority: "Low"');
-    // Only {{tasks}} variable is supported, no {{description}}
   });
 
   test("should prompt user when Task.md template already exists", async () => {

@@ -49,9 +49,9 @@
     return result;
   });
 
-  // Location for footer (project and area information)
-  let location = $derived.by(() => {
-    const parts: string[] = [];
+  // Create footer badges for project, area, and source
+  const footerBadges = $derived.by(() => {
+    const badges = [];
 
     if (task.project) {
       // Extract display value from project (handles wiki links properly)
@@ -60,7 +60,7 @@
           ? extractDisplayValue(task.project) ||
             task.project.replace(/^\[\[|\]\]$/g, "")
           : task.project;
-      parts.push(`Project: ${cleanProject}`);
+      badges.push({ type: "Project", text: cleanProject });
     }
 
     if (task.areas && Array.isArray(task.areas) && task.areas.length > 0) {
@@ -71,11 +71,15 @@
           : area;
       });
       if (cleanAreas.length > 0) {
-        parts.push(`Area: ${cleanAreas.join(", ")}`);
+        badges.push({ type: "Area", text: cleanAreas.join(", ") });
       }
     }
 
-    return parts.length > 0 ? parts.join(" • ") : undefined;
+    if (task.source) {
+      badges.push({ type: "Source", text: task.source.name });
+    }
+
+    return badges;
   });
 
   function handleAddToToday() {
@@ -85,36 +89,54 @@
   function handleOpenTask() {
     onClick?.();
   }
+
+  function handleOpenOnService() {
+    if (task.source?.url) {
+      window.open(task.source.url, "_blank");
+    }
+  }
 </script>
 
 {#snippet actionSnippet()}
-  {#if dayPlanningMode}
-    <button
-      class="add-to-today-button"
-      title="Add to today"
-      onclick={handleAddToToday}
-      data-testid="add-to-today-button"
-    >
-      Add to today
-    </button>
-  {:else}
-    <button
-      class="open-task-button"
-      title="Open task"
-      onclick={handleOpenTask}
-      data-testid="open-task-button"
-    >
-      Open
-    </button>
-  {/if}
+  <div class="task-actions">
+    {#if dayPlanningMode}
+      <button
+        class="add-to-today-button"
+        title="Add to today"
+        onclick={handleAddToToday}
+        data-testid="add-to-today-button"
+      >
+        Add to today
+      </button>
+    {:else}
+      <button
+        class="open-task-button"
+        title="Open task"
+        onclick={handleOpenTask}
+        data-testid="open-task-button"
+      >
+        Open
+      </button>
+    {/if}
+    {#if task.source?.url}
+      <button
+        class="open-on-service-button"
+        title="Open on {task.source.name}"
+        onclick={handleOpenOnService}
+        data-testid="open-on-service-button"
+      >
+        Open on {task.source.name}
+      </button>
+    {/if}
+  </div>
 {/snippet}
 
 <TaskItem
   title={task.title}
   badges={primaryBadges}
-  {location}
-  source={task.source}
+  {footerBadges}
   createdAt={task.createdAt}
+  updatedAt={task.updatedAt}
   {isHovered}
   {onHover}
   actionContent={true}

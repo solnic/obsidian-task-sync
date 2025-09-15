@@ -11,7 +11,8 @@
   import PriorityBadge from "./badges/PriorityBadge.svelte";
   import ProjectBadge from "./badges/ProjectBadge.svelte";
   import AreaBadge from "./badges/AreaBadge.svelte";
-  import type { TaskSource } from "../../types/entities";
+  import LabelBadge from "./badges/LabelBadge.svelte";
+
   import { getOptimalTextColor } from "../../utils/colorUtils";
   import moment from "moment";
 
@@ -25,9 +26,9 @@
       text: string;
       type: "category" | "status" | "priority" | "project" | "area";
     }>; // standardized badges
-    source?: TaskSource; // External source information
+    footerBadges?: Array<{ type: string; text: string }>; // Footer badges (project, area, source)
     createdAt?: Date; // Creation date for footer display
-    location?: string; // Location info for footer (e.g., "Project: MyProject", "List: Work")
+    updatedAt?: Date; // Updated date for footer display
 
     // State
     isHovered?: boolean;
@@ -53,9 +54,9 @@
     meta,
     labels = [],
     badges = [],
-    source,
+    footerBadges = [],
     createdAt,
-    location,
+    updatedAt,
     isHovered = false,
     isImported = false,
     isSelected = false,
@@ -121,21 +122,6 @@
         <div class="task-sync-item-meta">{meta}</div>
       {/if}
 
-      {#if source}
-        <div class="task-sync-item-source">
-          <span
-            class="task-sync-source-badge"
-            title="Imported from {source.name}"
-          >
-            <span class="task-sync-source-icon">🔗</span>
-            {source.name}
-            {#if source.key}
-              <span class="task-sync-source-key">#{source.key}</span>
-            {/if}
-          </span>
-        </div>
-      {/if}
-
       {#if badges.length > 0}
         <div class="task-sync-item-badges">
           {#each badges as badge}
@@ -184,27 +170,50 @@
       {/if}
     {/if}
 
-    <!-- Footer with location and created at info -->
-    {#if location || createdAt}
+    <!-- Footer with badges and timestamp info -->
+    {#if footerBadges.length > 0 || createdAt || updatedAt}
       <div class="task-sync-item-footer">
-        {#if location}
-          <div class="task-sync-location">
-            {#if location.includes(":")}
-              {@const [label, value] = location.split(":").map((s) => s.trim())}
-              <span class="task-sync-location-badge">
-                <span class="task-sync-location-label">{label}</span>
-                <span class="task-sync-location-value">{value}</span>
-              </span>
-            {:else}
-              <span class="task-sync-location-text">{location}</span>
-            {/if}
-          </div>
-        {/if}
-        {#if createdAt}
-          <span class="task-sync-created-at">
-            {moment(createdAt).fromNow()}
-          </span>
-        {/if}
+        <div class="task-sync-footer-left">
+          {#each footerBadges as badge}
+            <LabelBadge label={badge.type} value={badge.text} size="small" />
+          {/each}
+        </div>
+        <div class="task-sync-footer-right">
+          {#if updatedAt}
+            <span
+              class="task-sync-timestamp"
+              title="Last updated: {moment(updatedAt).format(
+                'MMMM Do YYYY, h:mm:ss a'
+              )}"
+            >
+              Updated {moment(updatedAt)
+                .fromNow()
+                .replace(/\bminutes?\b/g, "min")
+                .replace(/\bhours?\b/g, "hr")
+                .replace(/\bdays?\b/g, "d")
+                .replace(/\bmonths?\b/g, "mo")
+                .replace(/\byears?\b/g, "y")}
+            </span>
+          {/if}
+          {#if createdAt}
+            <span
+              class="task-sync-timestamp"
+              title="Created: {moment(createdAt).format(
+                'MMMM Do YYYY, h:mm:ss a'
+              )}"
+            >
+              {#if updatedAt}
+                &nbsp;•&nbsp;
+              {/if}Created {moment(createdAt)
+                .fromNow()
+                .replace(/\bminutes?\b/g, "min")
+                .replace(/\bhours?\b/g, "hr")
+                .replace(/\bdays?\b/g, "d")
+                .replace(/\bmonths?\b/g, "mo")
+                .replace(/\byears?\b/g, "y")}
+            </span>
+          {/if}
+        </div>
       </div>
     {/if}
   </div>
@@ -249,7 +258,7 @@
   }
 
   .task-sync-item-header {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.5rem;
   }
 
   .task-sync-item-title {
