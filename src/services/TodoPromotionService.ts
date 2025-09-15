@@ -205,6 +205,7 @@ export class TodoPromotionService {
 
   /**
    * Revert a promoted todo back to its original format
+   * Works with any promoted todo item under cursor
    */
   async revertPromotedTodo(): Promise<TodoRevertResult> {
     try {
@@ -216,66 +217,150 @@ export class TodoPromotionService {
         };
       }
 
-      // Get tasks that were promoted from todos in the current file
-      const tasks = taskStore.getEntities();
-      const promotedTasks = tasks.filter(
-        (task) =>
-          task.source?.name === "todo-promotion" &&
-          task.source?.metadata?.sourceFile === activeFile.path
-      );
-
-      if (promotedTasks.length === 0) {
+      const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
+      if (!markdownView) {
         return {
           success: false,
-          message: "No promoted todos found in this file",
+          message: "No active markdown view found",
         };
       }
 
-      // For now, revert all promoted todos in the file
-      // In a full implementation, this could show a selection modal
-      let revertedCount = 0;
-      for (const task of promotedTasks) {
-        try {
-          // Restore the original todo line
-          if (
-            task.source?.metadata?.originalLine &&
-            task.source?.metadata?.lineNumber !== undefined
-          ) {
-            const file = this.app.vault.getAbstractFileByPath(activeFile.path);
-            if (file instanceof TFile) {
-              const content = await this.app.vault.read(file);
-              const lines = content.split("\n");
-              const lineNumber = task.source.metadata.lineNumber;
+      const editor = markdownView.editor;
+      const cursor = editor.getCursor();
 
-              if (lineNumber < lines.length) {
-                lines[lineNumber] = task.source.metadata.originalLine;
-                await this.app.vault.modify(file, lines.join("\n"));
-              }
-            }
-          }
+      // Find the promoted todo under cursor
+      const promotedTodoInfo = await this.findPromotedTodoUnderCursor(
+        activeFile,
+        cursor.line
+      );
 
-          // Remove the task file
-          if (task.file) {
-            await this.app.vault.delete(task.file);
-          }
-
-          revertedCount++;
-        } catch (error) {
-          console.error(`Failed to revert promoted todo ${task.id}:`, error);
-        }
+      if (!promotedTodoInfo) {
+        return {
+          success: false,
+          message: "No promoted todo found under cursor",
+        };
       }
 
-      return {
-        success: true,
-        message: `Reverted ${revertedCount} promoted todo(s)`,
-        revertedCount,
-      };
+      const { taskMention, taskFile } = promotedTodoInfo;
+
+      try {
+        // Restore the original todo line
+        await this.restoreOriginalTodoLine(activeFile, taskMention);
+
+        // Remove the task file
+        if (taskFile) {
+          await this.app.vault.delete(taskFile);
+        }
+
+        // Remove the task mention from the store
+        await taskMentionStore.removeEntity(
+          taskMention.filePath || taskMention.id
+        );
+
+        // Remove the task from the task store
+        const tasks = taskStore.getEntities();
+        const correspondingTask = tasks.find(
+          (task) =>
+            task.source?.name === "todo-promotion" &&
+            task.source?.metadata?.taskMentionId === taskMention.id
+        );
+
+        if (correspondingTask) {
+          await taskStore.removeEntity(
+            correspondingTask.filePath || correspondingTask.id
+          );
+        }
+
+        // Refresh base views if auto-update is enabled
+        if (this.settings.autoUpdateBaseViews) {
+          await this.refreshBaseViewsCallback();
+        }
+
+        return {
+          success: true,
+          message: `Reverted promoted todo: ${taskMention.taskTitle}`,
+          revertedCount: 1,
+        };
+      } catch (error) {
+        console.error(
+          `Failed to revert promoted todo ${taskMention.id}:`,
+          error
+        );
+        return {
+          success: false,
+          message: "Failed to revert promoted todo",
+        };
+      }
     } catch (error) {
       console.error("Failed to revert promoted todo:", error);
       return {
         success: false,
         message: "Failed to revert promoted todo",
       };
+    }
+  }
+
+  /**
+   * Find a promoted todo under the cursor
+   */
+  private async findPromotedTodoUnderCursor(
+    file: TFile,
+    lineNumber: number
+  ): Promise<{ taskMention: TaskMention; taskFile: TFile | null } | null> {
+    // Get the line content to check if it's a promoted todo
+    const content = await this.app.vault.read(file);
+    const lines = content.split("\n");
+
+    if (lineNumber >= lines.length) {
+      return null;
+    }
+
+    const line = lines[lineNumber];
+
+    // Check if this line contains a task link (promoted todo format)
+    const taskLinkMatch = line.match(/\[\[([^\]]+)\]\]/);
+    if (!taskLinkMatch) {
+      return null;
+    }
+
+    const taskTitle = taskLinkMatch[1];
+
+    // Find the corresponding task mention
+    const taskMention = taskMentionStore.getMentionByLocation(
+      file.path,
+      lineNumber
+    );
+    if (!taskMention) {
+      return null;
+    }
+
+    // Find the corresponding task file
+    const taskPath = `${this.settings.tasksFolder}/${taskTitle}.md`;
+    const taskFile = this.app.vault.getAbstractFileByPath(taskPath);
+
+    return {
+      taskMention,
+      taskFile: taskFile instanceof TFile ? taskFile : null,
+    };
+  }
+
+  /**
+   * Restore the original todo line from a task mention
+   */
+  private async restoreOriginalTodoLine(
+    file: TFile,
+    taskMention: TaskMention
+  ): Promise<void> {
+    const content = await this.app.vault.read(file);
+    const lines = content.split("\n");
+
+    if (taskMention.lineNumber < lines.length) {
+      // Reconstruct the original todo line
+      const checkboxState = taskMention.completed ? "[x]" : "[ ]";
+      const originalLine = `${taskMention.indentation}${taskMention.listMarker} ${checkboxState} ${taskMention.mentionText}`;
+
+      lines[taskMention.lineNumber] = originalLine;
+      await this.app.vault.modify(file, lines.join("\n"));
     }
   }
 
