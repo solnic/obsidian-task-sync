@@ -29,7 +29,6 @@
   }: Props = $props();
 
   // Convert reminder data to TaskItem format
-  // No subtitle needed - list name is shown as a label
 
   let meta = $derived.by(() => {
     const parts: string[] = [];
@@ -45,8 +44,6 @@
       parts.push(`Priority: ${priorityLabel}`);
     }
 
-    // Creation date is shown in footer, no need to duplicate here
-
     return parts.join(" • ");
   });
 
@@ -56,13 +53,11 @@
       type: "category" | "status" | "priority" | "project" | "area";
     }> = [];
 
-    // Add status badge
     result.push({
       text: reminder.completed ? "Completed" : "Active",
       type: "status",
     });
 
-    // Add priority badge if set
     if (reminder.priority > 0) {
       const priorityLabels = ["", "Low", "Medium", "High"];
       const priorityLabel =
@@ -83,7 +78,7 @@
     if (reminder.allDay) {
       result.push({
         name: "All Day",
-        color: "#6366f1", // Indigo color for all-day reminders
+        color: "#6366f1",
       });
     }
 
@@ -137,6 +132,7 @@
   {labels}
   {footerBadges}
   createdAt={reminder.creationDate}
+  updatedAt={reminder.modificationDate}
   {isHovered}
   {isImported}
   {onHover}

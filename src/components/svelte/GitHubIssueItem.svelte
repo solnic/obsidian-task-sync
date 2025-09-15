@@ -8,6 +8,7 @@
   import { getPluginContext } from "./context";
   import { taskStore } from "../../stores/taskStore";
   import type { Task } from "../../types/entities";
+  import moment from "moment";
 
   interface Props {
     issue: GitHubIssue;
@@ -164,6 +165,7 @@
   {footerBadges}
   {labels}
   createdAt={new Date(issue.created_at)}
+  updatedAt={new Date(issue.updated_at)}
   {isHovered}
   {isImported}
   {onHover}

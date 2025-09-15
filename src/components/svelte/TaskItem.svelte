@@ -9,8 +9,6 @@
   import CategoryBadge from "./badges/CategoryBadge.svelte";
   import StatusBadge from "./badges/StatusBadge.svelte";
   import PriorityBadge from "./badges/PriorityBadge.svelte";
-  import ProjectBadge from "./badges/ProjectBadge.svelte";
-  import AreaBadge from "./badges/AreaBadge.svelte";
   import LabelBadge from "./badges/LabelBadge.svelte";
 
   import { getOptimalTextColor } from "../../utils/colorUtils";

@@ -125,10 +125,10 @@ export interface AppleReminder {
   /** Completion date (if completed) */
   completionDate?: Date;
 
-  /** Creation date (may be undefined if not available from AppleScript) */
+  /** Creation date */
   creationDate?: Date;
 
-  /** Modification date (may be undefined if not available from AppleScript) */
+  /** Modification date */
   modificationDate?: Date;
 
   /** Due date (if set) */
