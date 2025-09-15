@@ -114,6 +114,29 @@
         {#if subtitle}
           <div class="task-sync-item-subtitle">{subtitle}</div>
         {/if}
+        {#if updatedAt}
+          <span
+            class="task-sync-timestamp"
+            title="Last updated: {moment(updatedAt).format(
+              'MMMM Do YYYY, h:mm:ss a'
+            )}"
+          >
+            Updated {moment(updatedAt).fromNow()}
+          </span>
+        {/if}
+        {#if createdAt}
+          <span
+            class="task-sync-timestamp"
+            title="Created: {moment(createdAt).format(
+              'MMMM Do YYYY, h:mm:ss a'
+            )}"
+          >
+            {#if updatedAt}
+              &nbsp;•&nbsp;
+            {/if}
+            Created {moment(createdAt).fromNow()}
+          </span>
+        {/if}
       </div>
 
       {#if meta}
@@ -165,7 +188,7 @@
     {/if}
 
     <!-- Footer with badges and timestamp info -->
-    {#if footerBadges.length > 0 || createdAt || updatedAt}
+    {#if footerBadges.length > 0}
       <div class="task-sync-item-footer">
         <div class="task-sync-footer-left">
           {#each footerBadges as badge}
@@ -173,29 +196,7 @@
           {/each}
         </div>
         <div class="task-sync-footer-right">
-          {#if updatedAt}
-            <span
-              class="task-sync-timestamp"
-              title="Last updated: {moment(updatedAt).format(
-                'MMMM Do YYYY, h:mm:ss a'
-              )}"
-            >
-              Updated {moment(updatedAt).fromNow()}
-            </span>
-          {/if}
-          {#if createdAt}
-            <span
-              class="task-sync-timestamp"
-              title="Created: {moment(createdAt).format(
-                'MMMM Do YYYY, h:mm:ss a'
-              )}"
-            >
-              {#if updatedAt}
-                &nbsp;•&nbsp;
-              {/if}
-              Created {moment(createdAt).fromNow()}
-            </span>
-          {/if}
+          <!-- placeholder -->
         </div>
       </div>
     {/if}
