@@ -143,10 +143,6 @@
                 color={getBadgeColor(badge.type, badge.text)}
                 size="small"
               />
-            {:else if badge.type === "project"}
-              <ProjectBadge project={badge.text} size="small" />
-            {:else if badge.type === "area"}
-              <AreaBadge area={badge.text} size="small" />
             {:else}
               <span class="task-sync-generic-badge">{badge.text}</span>
             {/if}
@@ -175,7 +171,7 @@
       <div class="task-sync-item-footer">
         <div class="task-sync-footer-left">
           {#each footerBadges as badge}
-            <LabelBadge label={badge.type} value={badge.text} size="small" />
+            <LabelBadge label={badge.type} value={badge.text} size="medium" />
           {/each}
         </div>
         <div class="task-sync-footer-right">
@@ -186,13 +182,7 @@
                 'MMMM Do YYYY, h:mm:ss a'
               )}"
             >
-              Updated {moment(updatedAt)
-                .fromNow()
-                .replace(/\bminutes?\b/g, "min")
-                .replace(/\bhours?\b/g, "hr")
-                .replace(/\bdays?\b/g, "d")
-                .replace(/\bmonths?\b/g, "mo")
-                .replace(/\byears?\b/g, "y")}
+              Updated {moment(updatedAt).fromNow()}
             </span>
           {/if}
           {#if createdAt}
@@ -204,13 +194,8 @@
             >
               {#if updatedAt}
                 &nbsp;•&nbsp;
-              {/if}Created {moment(createdAt)
-                .fromNow()
-                .replace(/\bminutes?\b/g, "min")
-                .replace(/\bhours?\b/g, "hr")
-                .replace(/\bdays?\b/g, "d")
-                .replace(/\bmonths?\b/g, "mo")
-                .replace(/\byears?\b/g, "y")}
+              {/if}
+              Created {moment(createdAt).fromNow()}
             </span>
           {/if}
         </div>

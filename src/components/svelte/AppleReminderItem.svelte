@@ -11,10 +11,10 @@
     isHovered?: boolean;
     isImported?: boolean;
     isImporting?: boolean;
-    onHover?: (hovered: boolean) => void;
-    onImport?: (reminder: AppleReminder) => void;
     dayPlanningMode?: boolean;
     testId?: string;
+    onHover?: (hovered: boolean) => void;
+    onImport?: (reminder: AppleReminder) => void;
   }
 
   let {
@@ -90,8 +90,13 @@
     return result;
   });
 
-  // Location for footer (list name as badge)
-  let location = $derived(`List: ${reminder.list.name}`);
+  let footerBadges = $derived.by(() => {
+    const badges = [];
+
+    badges.push({ type: "List", text: reminder.list.name });
+
+    return badges;
+  });
 
   function handleImport() {
     onImport?.(reminder);
@@ -130,7 +135,7 @@
   {meta}
   {badges}
   {labels}
-  {location}
+  {footerBadges}
   createdAt={reminder.creationDate}
   {isHovered}
   {isImported}

@@ -15,10 +15,10 @@
     isHovered?: boolean;
     isImported?: boolean;
     isImporting?: boolean;
-    onHover?: (hovered: boolean) => void;
-    onImport?: (issue: GitHubIssue) => void;
     dayPlanningMode?: boolean;
     testId?: string;
+    onHover?: (hovered: boolean) => void;
+    onImport?: (issue: GitHubIssue) => void;
   }
 
   let {
@@ -35,7 +35,6 @@
 
   const { plugin } = getPluginContext();
 
-  // Convert issue data to TaskItem format
   let subtitle = $derived(`#${issue.number}`);
 
   let meta = $derived.by(() => {
@@ -64,14 +63,19 @@
     return result;
   });
 
-  // Location for footer (repository name)
-  let location = $derived(repository ? `Repository: ${repository}` : undefined);
-
   let labels = $derived.by(() => {
     return issue.labels.map((label) => ({
       name: label.name,
       color: label.color ? `#${label.color}` : undefined,
     }));
+  });
+
+  let footerBadges = $derived.by(() => {
+    const badges = [];
+
+    badges.push({ type: "Repo", text: repository });
+
+    return badges;
   });
 
   function handleImport() {
@@ -157,8 +161,8 @@
   {subtitle}
   {meta}
   {badges}
+  {footerBadges}
   {labels}
-  {location}
   createdAt={new Date(issue.created_at)}
   {isHovered}
   {isImported}
