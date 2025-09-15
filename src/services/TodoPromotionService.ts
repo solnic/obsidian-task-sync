@@ -98,17 +98,20 @@ export class TodoPromotionService {
       const parentTodo = note.findParentTodo(todoItem);
 
       if (parentTodo) {
+        // Extract the actual task name from the parent todo text (remove link syntax if present)
+        const parentTaskTitle = parentTodo.text.replace(/^\[\[(.+)\]\]$/, "$1");
+
         // Check if parent task already exists
         const parentTaskPath = `${
           this.settings.tasksFolder
-        }/${createSafeFileName(parentTodo.text)}.md`;
+        }/${createSafeFileName(parentTaskTitle)}`;
         const parentExists = await this.app.vault.adapter.exists(
           parentTaskPath
         );
 
         if (parentExists) {
           // Parent task exists, we'll link to it
-          parentTaskName = parentTodo.text;
+          parentTaskName = parentTaskTitle;
         } else {
           // Parent task doesn't exist, user should create it first
           return {
@@ -167,6 +170,9 @@ export class TodoPromotionService {
       );
 
       await this.createTaskCallback(taskData);
+
+      // Update any existing child tasks to set this as their parent
+      await this.updateChildTasksParent(todoItem, activeFile, todoItem.text);
 
       // Replace the todo line with a link to the created task
       await this.replaceTodoLineWithLink(todoItem, activeFile);
@@ -270,6 +276,46 @@ export class TodoPromotionService {
         success: false,
         message: "Failed to revert promoted todo",
       };
+    }
+  }
+
+  /**
+   * Update existing child tasks to set the newly created parent task
+   */
+  private async updateChildTasksParent(
+    parentTodoItem: NoteTodoItem,
+    file: TFile,
+    parentTaskTitle: string
+  ): Promise<void> {
+    // Get all TaskMentions from this file
+    const fileMentions = taskMentionStore.getMentionsForFile(file.path);
+
+    // Find child todos that are indented more than the parent
+    const childMentions = fileMentions.filter((mention: TaskMention) => {
+      // Check if this mention is a child of the parent todo
+      return (
+        mention.lineNumber > parentTodoItem.lineNumber &&
+        mention.indentation > parentTodoItem.indentation
+      );
+    });
+
+    // Update each child task to set the parent
+    for (const childMention of childMentions) {
+      if (childMention.taskPath) {
+        // Get the task file
+        const taskFile = this.app.vault.getAbstractFileByPath(
+          childMention.taskPath
+        );
+        if (taskFile instanceof TFile) {
+          // Update the Parent task property
+          await this.app.fileManager.processFrontMatter(
+            taskFile,
+            (frontmatter) => {
+              frontmatter["Parent task"] = `[[${parentTaskTitle}]]`;
+            }
+          );
+        }
+      }
     }
   }
 
