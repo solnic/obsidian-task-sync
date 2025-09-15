@@ -86,6 +86,14 @@
     }));
   });
 
+  let footerBadges = $derived.by(() => {
+    const badges = [];
+
+    badges.push({ type: "Repo", text: repository });
+
+    return badges;
+  });
+
   function handleImport() {
     onImport?.(pullRequest);
   }
@@ -168,8 +176,9 @@
   {meta}
   {badges}
   {labels}
-  {location}
+  {footerBadges}
   createdAt={new Date(pullRequest.created_at)}
+  updatedAt={new Date(pullRequest.updated_at)}
   {isHovered}
   {isImported}
   {onHover}
