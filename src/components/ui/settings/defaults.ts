@@ -98,6 +98,7 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
     startHour: 8, // Start at 8 AM
     endHour: 18, // End at 6 PM
     timeIncrement: 15, // 15-minute increments
+    zoomLevel: 1, // Default zoom level (second level)
     // Task scheduling defaults
     schedulingEnabled: false, // Disabled by default
     defaultSchedulingCalendar: "", // No default calendar

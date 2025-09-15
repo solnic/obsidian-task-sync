@@ -4,6 +4,7 @@
   import "temporal-polyfill/global";
   import TabView from "./TabView.svelte";
   import FilterButton from "./FilterButton.svelte";
+  import SearchInput from "./SearchInput.svelte";
   import { getPluginContext, currentFileContext } from "./context";
   import { Notice } from "obsidian";
   import type { AppleCalendarService } from "../../services/AppleCalendarService";
@@ -32,12 +33,7 @@
     currentContext = context;
   });
 
-  // Computed properties
-  let shouldShowOverlays = $derived(
-    currentContext.type === "project" ||
-      currentContext.type === "area" ||
-      currentContext.type === "daily"
-  );
+  // Computed properties - removed unused shouldShowOverlays
 
   let isDailyPlanningMode = $derived(currentContext.type === "daily");
 
@@ -47,6 +43,9 @@
   let availableCalendars = $state<Calendar[]>([]);
   let selectedCalendarIds = $state<string[]>([]);
   let calendarEvents = $state<CalendarEvent[]>([]);
+  let filteredEvents = $state<CalendarEvent[]>([]);
+  let searchQuery = $state("");
+  // Zoom level is now managed by ObsidianDayView
   // Set selectedDate to today at midnight to avoid time comparison issues
   let selectedDate = $state(
     new Date(
@@ -271,6 +270,34 @@
     }
   }
 
+  // Zoom controls are now handled by ObsidianDayView
+
+  // Search functionality
+  function searchEvents(
+    query: string,
+    eventList: CalendarEvent[]
+  ): CalendarEvent[] {
+    if (!query.trim()) {
+      return eventList;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    return eventList.filter(
+      (event) =>
+        event.title.toLowerCase().includes(lowerQuery) ||
+        (event.description &&
+          event.description.toLowerCase().includes(lowerQuery)) ||
+        (event.location && event.location.toLowerCase().includes(lowerQuery)) ||
+        (event.calendar?.name &&
+          event.calendar.name.toLowerCase().includes(lowerQuery))
+    );
+  }
+
+  // Reactive filtering
+  $effect(() => {
+    filteredEvents = searchEvents(searchQuery, calendarEvents);
+  });
+
   // Import calendar event as task
   async function importEvent(event: CalendarEvent): Promise<void> {
     try {
@@ -429,6 +456,17 @@
     <div class="task-planning-header">
       <!-- Filter Section -->
       <div class="task-sync-filter-section">
+        <!-- Search Input -->
+        <div class="search-and-filters">
+          <SearchInput
+            bind:value={searchQuery}
+            placeholder="Search calendar events..."
+            onInput={(value) => (searchQuery = value)}
+            testId="calendar-search-input"
+            showRefreshButton={false}
+          />
+        </div>
+
         <div class="task-sync-filter-row">
           <div class="task-sync-filter-group">
             {#if isLoading && availableCalendars.length === 0}
@@ -482,11 +520,12 @@
                 placeholder="All calendars"
                 testId="calendar-filter"
                 autoSuggest={true}
-                allowClear={true}
                 isActive={selectedCalendarIds.length > 0}
                 selectedOptions={selectedCalendarNames}
                 keepMenuOpen={true}
               />
+
+              <!-- Zoom controls moved to ObsidianDayView header -->
             {/if}
           </div>
         </div>
@@ -497,7 +536,7 @@
     <div class="task-sync-task-list-container">
       <div class="calendar-wrapper">
         <ObsidianDayView
-          events={calendarEvents}
+          events={filteredEvents}
           {selectedDate}
           onImportEvent={importEvent}
           {importedEvents}

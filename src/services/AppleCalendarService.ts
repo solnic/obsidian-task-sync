@@ -490,36 +490,7 @@ export class AppleCalendarService
         allEvents.push(...events);
       }
 
-      // Cache the results
-      if (this.eventsCache) {
-        const cacheKey = `events-${startDate.toISOString()}-${endDate.toISOString()}`;
-        const appleEvents = allEvents.map((event) => ({
-          id: event.id,
-          title: event.title,
-          startDate: event.startDate,
-          endDate: event.endDate,
-          allDay: event.allDay,
-          location: event.location || "",
-          description: event.description || "",
-          calendar: {
-            id: event.calendar.id,
-            name: event.calendar.name,
-            visible: event.calendar.visible,
-            description: event.calendar.description || "",
-            color: event.calendar.color || "#007AFF",
-            account: "iCloud",
-            type: "calendar",
-          },
-          url: event.url || "",
-          status: "confirmed" as const,
-          availability: "busy" as const,
-          attendees: [] as AppleCalendarAttendee[],
-          organizer: undefined as AppleCalendarAttendee | undefined,
-          recurrenceRule: undefined as string | undefined,
-        }));
-        await this.eventsCache.set(cacheKey, appleEvents);
-      }
-
+      // Events are not cached to ensure fresh data
       return allEvents;
     } catch (error: any) {
       throw new Error(`Failed to fetch events: ${error.message}`);

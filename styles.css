@@ -1643,12 +1643,28 @@ Provides consistent styling for all UI components
   background: var(--background-secondary);
   border-bottom: 1px solid var(--background-modifier-border);
   flex-shrink: 0;
+  gap: 16px;
+}
+
+/* Zoom Controls (Left side) */
+
+.obsidian-day-view__zoom-controls {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.obsidian-day-view__date-navigation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .obsidian-day-view__date {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
 }
 
 .obsidian-day-view__day-name {
@@ -1667,23 +1683,105 @@ Provides consistent styling for all UI components
   line-height: 1;
 }
 
-.obsidian-day-view__zoom-controls {
-  display: flex;
-  gap: 4px;
-}
-
-.obsidian-day-view__zoom-btn {
+.obsidian-day-view__nav-btn {
   width: 32px;
   height: 32px;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
   color: var(--text-normal);
   border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.obsidian-day-view__nav-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.obsidian-day-view__nav-btn:active {
+  background: var(--background-modifier-active);
+}
+
+.obsidian-day-view__today-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.obsidian-day-view__today-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.obsidian-day-view__today-btn:active {
+  background: var(--background-modifier-active);
+}
+
+.obsidian-day-view__zoom-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.task-planning-zoom-controls {
+  display: flex;
+  gap: 4px;
+  margin-left: 12px;
+}
+
+.task-planning-zoom-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.task-planning-zoom-btn:hover:not(:disabled) {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.task-planning-zoom-btn:active:not(:disabled) {
+  background: var(--background-modifier-active);
+}
+
+.task-planning-zoom-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.obsidian-day-view__zoom-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-muted);
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 500;
   transition: all 0.2s ease;
 }
@@ -1691,6 +1789,12 @@ Provides consistent styling for all UI components
 .obsidian-day-view__zoom-btn:hover:not(:disabled) {
   background: var(--background-modifier-hover);
   border-color: var(--interactive-accent);
+  color: var(--text-normal);
+}
+
+.obsidian-day-view__zoom-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .obsidian-day-view__zoom-btn:active:not(:disabled) {
@@ -1745,7 +1849,7 @@ Provides consistent styling for all UI components
 }
 
 .obsidian-day-view__event {
-  background: #3b82f6;
+  /* background color is set via inline style from event.calendar?.color */
   border-radius: 6px;
   padding: 8px 12px;
   margin-bottom: 4px;
@@ -1787,6 +1891,38 @@ Provides consistent styling for all UI components
   font-weight: 400;
 }
 
+/* Compact layout for low zoom levels */
+
+.obsidian-day-view__event--compact {
+  padding: 4px 8px;
+}
+
+.obsidian-day-view__event-content-compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 16px;
+}
+
+.obsidian-day-view__event--compact .obsidian-day-view__event-title {
+  font-weight: 500;
+  margin-bottom: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.obsidian-day-view__event--compact .obsidian-day-view__event-time {
+  font-size: 10px;
+  opacity: 0.9;
+  font-weight: 400;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
 .obsidian-day-view__event-overlay {
   position: absolute;
   top: 0;
@@ -1803,7 +1939,14 @@ Provides consistent styling for all UI components
   border-radius: 6px;
 }
 
-.obsidian-day-view__import-btn {
+.obsidian-day-view__event-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+}
+
+.obsidian-day-view__action-btn {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border: none;
@@ -1815,15 +1958,113 @@ Provides consistent styling for all UI components
   transition: all 0.2s ease;
 }
 
-.obsidian-day-view__import-btn:hover:not(:disabled) {
+.obsidian-day-view__action-btn:hover:not(:disabled) {
   background: var(--interactive-accent-hover);
   transform: scale(1.05);
 }
 
-.obsidian-day-view__import-btn:disabled {
+.obsidian-day-view__action-btn:disabled {
   opacity: 0.7;
   cursor: not-allowed;
   transform: none;
+}
+
+.obsidian-day-view__open-btn {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.obsidian-day-view__open-btn:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+/* Event Details Modal */
+
+.obsidian-day-view__modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.obsidian-day-view__modal {
+  background: var(--background-primary);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  max-width: 500px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.obsidian-day-view__modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.obsidian-day-view__modal-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.obsidian-day-view__modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.obsidian-day-view__modal-close:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.obsidian-day-view__modal-content {
+  padding: 20px;
+  overflow-y: auto;
+  max-height: calc(80vh - 80px);
+}
+
+.obsidian-day-view__modal-field {
+  display: flex;
+  margin-bottom: 12px;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.obsidian-day-view__modal-field:last-child {
+  margin-bottom: 0;
+}
+
+.obsidian-day-view__modal-field label {
+  font-weight: 500;
+  color: var(--text-muted);
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.obsidian-day-view__modal-field span {
+  color: var(--text-normal);
+  word-break: break-word;
 }
 
 /* Dark theme adjustments */

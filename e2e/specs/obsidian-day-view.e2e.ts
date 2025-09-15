@@ -37,7 +37,7 @@ describe("Obsidian Day View", () => {
       timeout: 5000,
     });
 
-    // Check for zoom controls
+    // Check for zoom controls (back in day view header)
     await context.page.waitForSelector(".obsidian-day-view__zoom-btn", {
       state: "visible",
       timeout: 5000,
@@ -127,7 +127,7 @@ describe("Obsidian Day View", () => {
     );
     const initialCount = await initialTimeSlots.count();
 
-    // Click zoom in button (the + button)
+    // Click zoom in button (the + button) - back in day view header
     const zoomButtons = await context.page.locator(
       ".obsidian-day-view__zoom-btn"
     );
