@@ -50,13 +50,10 @@ describe("Template Management", () => {
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin && plugin.templateManager) {
-        try {
-          await plugin.templateManager.createTaskTemplate();
-          return { success: true, error: null };
-        } catch (error) {
-          return { success: false, error: error.message };
-        }
+        await plugin.templateManager.createTaskTemplate();
+        return { success: true, error: null };
       }
+
       return {
         success: false,
         error: "Plugin or templateManager not available",
