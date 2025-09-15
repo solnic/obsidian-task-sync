@@ -1,10 +1,4 @@
 /* Main CSS file that imports all styles for the Task Sync plugin */
 
-/* Import Schedule-X default theme first (provides base functionality) */
-@import '@schedule-x/theme-default/dist/index.css';
-
-/* Import Schedule-X Obsidian theme overrides (customizes for Obsidian) */
-@import './schedule-x-obsidian-theme.css';
-
 /* Import our custom styles */
 @import './custom.css';

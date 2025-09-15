@@ -4,6 +4,7 @@
   import moment from "moment";
 
   import { getPluginContext } from "./context";
+  import { EventDetailsModal } from "../modals/EventDetailsModal";
 
   interface Props {
     events?: CalendarEvent[];
@@ -14,21 +15,24 @@
     isDailyPlanningMode?: boolean;
   }
 
+  // Helper function to get today at midnight
+  function getTodayAtMidnight(): Date {
+    const today = new Date();
+    return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  }
+
   let {
     events = [],
-    selectedDate = new Date(),
+    selectedDate = $bindable(getTodayAtMidnight()),
     onImportEvent = null,
     importedEvents = new Set(),
     importingEvents = new Set(),
     isDailyPlanningMode = false,
   }: Props = $props();
 
-  // Modal state for event details
-  let showEventModal = $state(false);
-  let selectedEventForModal = $state<CalendarEvent | null>(null);
-
   // Zoom management
   let zoomLevel = $state(1); // Default zoom level
+  let pluginContext: any = null; // Store plugin context to avoid lifecycle issues
 
   // Calculate optimal zoom level based on time increment
   function calculateOptimalZoomLevel(timeIncrement: number): number {
@@ -46,23 +50,19 @@
   }
 
   onMount(async () => {
-    console.log("🔍 ObsidianDayView mounted!");
-    console.log("🔍 Events on mount:", events);
-    console.log("🔍 Selected date on mount:", selectedDate);
-
-    // Load zoom level from settings
+    // Store plugin context for later use
     try {
-      const { plugin } = getPluginContext();
-      const savedZoomLevel = plugin.settings.appleCalendarIntegration.zoomLevel;
+      pluginContext = getPluginContext();
+      const savedZoomLevel =
+        pluginContext.plugin.settings.appleCalendarIntegration.zoomLevel;
       if (savedZoomLevel !== undefined) {
         zoomLevel = savedZoomLevel;
       } else {
         // Calculate optimal zoom based on time increment
         zoomLevel = calculateOptimalZoomLevel(
-          plugin.settings.appleCalendarIntegration.timeIncrement
+          pluginContext.plugin.settings.appleCalendarIntegration.timeIncrement
         );
       }
-      console.log("🔍 Zoom level on mount:", zoomLevel);
     } catch (error) {
       console.error("Failed to load zoom level from settings:", error);
     }
@@ -87,11 +87,29 @@
   // Debug reactive statements
   $effect(() => {
     console.log(`🔍 ObsidianDayView - Events: ${events.length} events`);
-    console.log(`🔍 ObsidianDayView - Selected Date: ${selectedDate}`);
-    console.log(`🔍 ObsidianDayView - Current Date: ${currentDate}`);
+    console.log(
+      `🔍 ObsidianDayView - Selected Date: ${selectedDate.toDateString()}`
+    );
+    console.log(
+      `🔍 ObsidianDayView - Current Date: ${currentDate.toDateString()}`
+    );
     console.log(`🔍 ObsidianDayView - Zoom Level: ${zoomLevel}`);
     console.log(`🔍 ObsidianDayView - Current Zoom:`, currentZoom);
+    console.log(`🔍 ObsidianDayView - Time Slots:`, timeSlots);
+
     if (events.length > 0) {
+      console.log(
+        `🔍 ObsidianDayView - All events:`,
+        events.map((e) => ({
+          id: e.id,
+          title: e.title,
+          startDate: e.startDate.toISOString(),
+          endDate: e.endDate.toISOString(),
+          allDay: e.allDay,
+          calendar: e.calendar?.name,
+        }))
+      );
+
       console.log(`🔍 First event:`, events[0]);
       console.log(`🔍 First event startDate:`, events[0].startDate);
       console.log(`🔍 First event startDate type:`, typeof events[0].startDate);
@@ -100,6 +118,8 @@
         moment(events[0].startDate).format("YYYY-MM-DD HH:mm Z")
       );
     }
+
+    console.log(`🔍 ObsidianDayView - Events by hour:`, eventsByHour);
   });
 
   // Zoom functions
@@ -120,9 +140,11 @@
   // Save zoom level to settings
   async function saveZoomLevel() {
     try {
-      const { plugin } = getPluginContext();
-      plugin.settings.appleCalendarIntegration.zoomLevel = zoomLevel;
-      await plugin.saveSettings();
+      if (pluginContext?.plugin) {
+        pluginContext.plugin.settings.appleCalendarIntegration.zoomLevel =
+          zoomLevel;
+        await pluginContext.plugin.saveSettings();
+      }
     } catch (error) {
       console.error("Failed to save zoom level:", error);
     }
@@ -141,17 +163,14 @@
   };
 
   const goToToday = () => {
-    selectedDate = new Date();
+    selectedDate = getTodayAtMidnight();
   };
 
   const openEventModal = (event: CalendarEvent) => {
-    selectedEventForModal = event;
-    showEventModal = true;
-  };
-
-  const closeEventModal = () => {
-    showEventModal = false;
-    selectedEventForModal = null;
+    if (pluginContext?.plugin?.app) {
+      const modal = new EventDetailsModal(pluginContext.plugin.app, event);
+      modal.open();
+    }
   };
 
   const formatHour = (hour: number): string => {
@@ -162,12 +181,15 @@
   };
 
   const getEventsForHour = (hour: number): CalendarEvent[] => {
-    if (!events || events.length === 0) return [];
+    if (!events || events.length === 0) {
+      return [];
+    }
 
     const filteredEvents = events.filter((event) => {
       const eventMoment = moment(event.startDate);
+      const currentMoment = moment(currentDate);
       const eventHour = eventMoment.hour();
-      const sameDay = eventMoment.isSame(moment(currentDate), "day");
+      const sameDay = eventMoment.isSame(currentMoment, "day");
 
       return eventHour === hour && sameDay;
     });
@@ -294,6 +316,9 @@
                 style="background-color: {event.calendar?.color || '#3b82f6'}"
                 role="button"
                 tabindex="0"
+                data-event-title={event.title}
+                data-calendar-name={event.calendar?.name}
+                data-calendar-color={event.calendar?.color}
               >
                 {#if zoomLevel <= 1}
                   <!-- Compact layout for low zoom levels -->
@@ -361,73 +386,3 @@
     </div>
   </div>
 </div>
-
-<!-- Event Details Modal -->
-{#if showEventModal && selectedEventForModal}
-  <div
-    class="obsidian-day-view__modal-backdrop"
-    onclick={closeEventModal}
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="event-modal-title"
-  >
-    <div
-      class="obsidian-day-view__modal"
-      onclick={(e) => e.stopPropagation()}
-      role="document"
-    >
-      <div class="obsidian-day-view__modal-header">
-        <h3 id="event-modal-title" class="obsidian-day-view__modal-title">
-          Event Details
-        </h3>
-        <button
-          class="obsidian-day-view__modal-close"
-          onclick={closeEventModal}
-          title="Close"
-        >
-          ×
-        </button>
-      </div>
-
-      <div class="obsidian-day-view__modal-content">
-        <div class="obsidian-day-view__modal-field">
-          <label>Title:</label>
-          <span>{selectedEventForModal.title}</span>
-        </div>
-
-        <div class="obsidian-day-view__modal-field">
-          <label>Time:</label>
-          <span>{formatEventTime(selectedEventForModal)}</span>
-        </div>
-
-        {#if selectedEventForModal.location}
-          <div class="obsidian-day-view__modal-field">
-            <label>Location:</label>
-            <span>{selectedEventForModal.location}</span>
-          </div>
-        {/if}
-
-        {#if selectedEventForModal.description}
-          <div class="obsidian-day-view__modal-field">
-            <label>Description:</label>
-            <span>{selectedEventForModal.description}</span>
-          </div>
-        {/if}
-
-        <div class="obsidian-day-view__modal-field">
-          <label>Calendar:</label>
-          <span
-            style="color: {selectedEventForModal.calendar?.color || '#3b82f6'}"
-          >
-            {selectedEventForModal.calendar?.name || "Unknown"}
-          </span>
-        </div>
-
-        <div class="obsidian-day-view__modal-field">
-          <label>All Day:</label>
-          <span>{selectedEventForModal.allDay ? "Yes" : "No"}</span>
-        </div>
-      </div>
-    </div>
-  </div>
-{/if}

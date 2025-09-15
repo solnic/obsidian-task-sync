@@ -43,6 +43,7 @@ interface SimpleCalDAVCalendar {
   url: string;
   displayName: string;
   ctag: string;
+  color?: string;
 }
 
 // Simple CalDAV event interface
@@ -340,12 +341,14 @@ export class AppleCalendarService
     calendarHome: string
   ): Promise<SimpleCalDAVCalendar[]> {
     const propfindBody = `<?xml version="1.0" encoding="utf-8" ?>
-<d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:cs="http://calendarserver.org/ns/">
+<d:propfind xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:cs="http://calendarserver.org/ns/" xmlns:ic="http://apple.com/ns/ical/">
   <d:prop>
     <d:displayname />
     <d:resourcetype />
     <c:supported-calendar-component-set />
     <d:getctag />
+    <ic:calendar-color />
+    <cs:calendar-color />
   </d:prop>
 </d:propfind>`;
 
@@ -422,10 +425,27 @@ export class AppleCalendarService
         const ctagElement = response.querySelector("getctag");
         const ctag = ctagElement?.textContent?.trim() || "";
 
+        // Extract calendar color (try both Apple and CalendarServer namespaces)
+        const appleColorElement = response.querySelector("calendar-color");
+        const calendarServerColorElement =
+          response.querySelector("calendar-color");
+        let color =
+          appleColorElement?.textContent?.trim() ||
+          calendarServerColorElement?.textContent?.trim();
+
+        // Clean up color format (remove alpha if present, ensure # prefix)
+        if (color) {
+          color = color.replace(/^#?([A-Fa-f0-9]{6})[A-Fa-f0-9]{2}?$/, "#$1");
+          if (!color.startsWith("#")) {
+            color = "#" + color;
+          }
+        }
+
         calendars.push({
           url: href,
           displayName,
           ctag,
+          color,
         });
       });
 
@@ -442,12 +462,34 @@ export class AppleCalendarService
   private convertFromSimpleCalDAVCalendar(
     calendar: SimpleCalDAVCalendar
   ): AppleCalendar {
+    // Define a set of default colors for calendars if no color is provided
+    const defaultColors = [
+      "#007AFF", // Blue
+      "#FF3B30", // Red
+      "#FF9500", // Orange
+      "#FFCC00", // Yellow
+      "#34C759", // Green
+      "#5856D6", // Purple
+      "#FF2D92", // Pink
+      "#64D2FF", // Light Blue
+    ];
+
+    // Use calendar color if available, otherwise pick a default color based on calendar name hash
+    let color = calendar.color;
+    if (!color) {
+      const hash = calendar.displayName.split("").reduce((a, b) => {
+        a = (a << 5) - a + b.charCodeAt(0);
+        return a & a;
+      }, 0);
+      color = defaultColors[Math.abs(hash) % defaultColors.length];
+    }
+
     return {
       id: calendar.url,
       name: calendar.displayName,
       visible: true,
       description: "",
-      color: "#007AFF", // Default blue color
+      color: color,
       account: "iCloud",
       type: "calendar",
     };
@@ -460,41 +502,35 @@ export class AppleCalendarService
     calendarIds: string[],
     startDate: Date,
     endDate: Date,
-    options?: CalendarEventFetchOptions
+    _options?: CalendarEventFetchOptions
   ): Promise<CalendarEvent[]> {
     if (!this.credentials) {
       throw new Error("CalDAV credentials not configured");
     }
 
-    try {
-      const calendarHome = await this.discoverCalendarHome();
-      const calendars = await this.fetchCalendarList(calendarHome);
+    const calendarHome = await this.discoverCalendarHome();
+    const calendars = await this.fetchCalendarList(calendarHome);
 
-      const targetCalendars =
-        calendarIds.length > 0
-          ? calendars.filter(
-              (cal) =>
-                calendarIds.includes(cal.displayName) ||
-                calendarIds.includes(cal.url)
-            )
-          : calendars;
+    const targetCalendars =
+      calendarIds.length > 0
+        ? calendars.filter(
+            (cal) =>
+              calendarIds.includes(cal.displayName) ||
+              calendarIds.includes(cal.url)
+          )
+        : calendars;
 
-      const allEvents: CalendarEvent[] = [];
+    const allEvents: CalendarEvent[] = [];
 
-      for (const calendar of targetCalendars) {
-        const events = await this.fetchCalendarEvents(
-          calendar,
-          startDate,
-          endDate
-        );
-        allEvents.push(...events);
-      }
-
-      // Events are not cached to ensure fresh data
-      return allEvents;
-    } catch (error: any) {
-      throw new Error(`Failed to fetch events: ${error.message}`);
+    for (const calendar of targetCalendars) {
+      const events = await this.fetchCalendarEvents(
+        calendar,
+        startDate,
+        endDate
+      );
+      allEvents.push(...events);
     }
+    return allEvents;
   }
 
   /**
@@ -532,7 +568,13 @@ export class AppleCalendarService
       { Depth: "1" }
     );
 
-    const events = this.parseCalendarEventsResponse(response, calendar);
+    const events = this.parseCalendarEventsResponse(
+      response,
+      calendar,
+      startDate,
+      endDate
+    );
+
     return events;
   }
 
@@ -541,7 +583,9 @@ export class AppleCalendarService
    */
   private parseCalendarEventsResponse(
     xml: string,
-    calendar: SimpleCalDAVCalendar
+    calendar: SimpleCalDAVCalendar,
+    requestedStartDate: Date,
+    requestedEndDate: Date
   ): CalendarEvent[] {
     const events: CalendarEvent[] = [];
 
@@ -576,8 +620,16 @@ export class AppleCalendarService
           return;
         }
 
+        // Keep iCal data logging for debugging
+        console.log(`🔍 AppleCalendarService: Raw iCal data:`, icalData);
+
         // Parse the iCal data
-        const event = this.parseICalEvent(icalData, calendar);
+        const event = this.parseICalEvent(
+          icalData,
+          calendar,
+          requestedStartDate,
+          requestedEndDate
+        );
         if (event) {
           events.push(event);
         }
@@ -590,17 +642,20 @@ export class AppleCalendarService
   }
 
   /**
-   * Parse iCal event data using ical.js library
+   * Parse iCal event data using ical.js library and expand recurring events
    */
   private parseICalEvent(
     icalData: string,
-    calendar: SimpleCalDAVCalendar
+    calendar: SimpleCalDAVCalendar,
+    requestedStartDate: Date,
+    requestedEndDate: Date
   ): CalendarEvent | null {
     try {
       const calendarObj: Calendar = {
         id: calendar.url,
         name: calendar.displayName,
         visible: true,
+        color: calendar.color,
       };
 
       // Parse the iCal data using ical.js
@@ -617,13 +672,42 @@ export class AppleCalendarService
       const event = new ICAL.Event(vevent);
 
       // Convert ICAL dates to JavaScript Date objects
-      const startDate = event.startDate
-        ? event.startDate.toJSDate()
-        : new Date();
-      const endDate = event.endDate ? event.endDate.toJSDate() : startDate;
+      let startDate = event.startDate ? event.startDate.toJSDate() : new Date();
+      let endDate = event.endDate ? event.endDate.toJSDate() : startDate;
 
       // Determine if it's an all-day event
       const allDay = event.startDate ? event.startDate.isDate : false;
+
+      // Check if this is a recurring event that CalDAV has expanded
+      // If the original event date is outside our requested range but we got it back,
+      // it means CalDAV expanded a recurring event for our date range
+      const originalEventDate = new Date(startDate);
+      const isOutsideRequestedRange =
+        originalEventDate < requestedStartDate ||
+        originalEventDate > requestedEndDate;
+
+      if (isOutsideRequestedRange) {
+        // For recurring events, we need to adjust the dates to fall within the requested range
+        // This is a simplified approach - we'll move the event to the requested date
+        // while preserving the time of day
+        const originalTime = {
+          hours: startDate.getHours(),
+          minutes: startDate.getMinutes(),
+          seconds: startDate.getSeconds(),
+        };
+
+        const duration = endDate.getTime() - startDate.getTime();
+
+        // Set the event to occur on the requested date with the original time
+        startDate = new Date(requestedStartDate);
+        startDate.setHours(
+          originalTime.hours,
+          originalTime.minutes,
+          originalTime.seconds
+        );
+
+        endDate = new Date(startDate.getTime() + duration);
+      }
 
       const finalEvent: CalendarEvent = {
         id: event.uid || `${calendar.url}-${Date.now()}`,
@@ -1061,12 +1145,10 @@ export class AppleCalendarService
 
     return {
       ...config,
-      taskType: config.taskType || "Events", // Set category to "Events"
-      // Use default area from settings, or "Events" in daily planning mode
+      taskType: config.taskType,
       targetArea: config.addToToday
         ? "Events"
         : config.targetArea || defaultArea,
-      // Set Do Date to the event start date
       doDate: config.doDate || event.startDate,
     };
   }

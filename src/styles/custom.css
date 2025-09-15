@@ -3,6 +3,48 @@ Task Sync Plugin Styles
 Provides consistent styling for all UI components
 */
 
+/* Event Details Modal Styles */
+.event-details-container {
+  padding: 16px 0;
+}
+
+.event-detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.event-detail-row:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.event-detail-row strong {
+  min-width: 80px;
+  color: var(--text-muted);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.event-detail-row span,
+.event-detail-row div {
+  color: var(--text-normal);
+  flex: 1;
+  word-wrap: break-word;
+}
+
+.modal-button-container {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
 /* Obsidian Day View for Schedule-X - Sunsama-inspired design */
 .obsidian-day-view {
   display: flex;

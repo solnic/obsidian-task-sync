@@ -10,8 +10,7 @@ This directory contains the source CSS files for the Task Sync plugin.
 ## Build Process
 
 The CSS build process uses PostCSS to combine:
-1. Schedule-X default theme CSS from `@schedule-x/theme-default`
-2. Our custom plugin styles from `custom.css`
+1. Our custom plugin styles from `custom.css`
 
 ### Commands
 
@@ -32,8 +31,3 @@ The build process generates `styles.css` in the root directory, which is:
 1. Add your custom styles to `custom.css`
 2. Run `npm run build:css` to regenerate `styles.css`
 3. For external CSS libraries, add them as imports in `main.css`
-
-## External Dependencies
-
-Currently imports:
-- `@schedule-x/theme-default` - Calendar component styling

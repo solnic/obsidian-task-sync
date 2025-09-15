@@ -130,84 +130,42 @@
     }
   }
 
-  // Load calendar events
-  async function loadEvents() {
-    if (selectedCalendarIds.length === 0) {
-      calendarEvents = [];
-      updateSelectedDate();
-      return;
-    }
-
+  // Load calendar events for a specific date
+  async function loadEvents(targetDate?: Date) {
     try {
       isLoading = true;
       error = null;
 
-      const today = new Date();
-      const startDate = new Date(today);
+      const dateToUse = targetDate || selectedDate;
+      const startDate = new Date(dateToUse);
       startDate.setHours(0, 0, 0, 0);
 
-      const endDate = new Date(today);
+      const endDate = new Date(dateToUse);
       endDate.setHours(23, 59, 59, 999);
 
+      // If no calendars are selected, use all available calendars
+      const calendarIdsToUse =
+        selectedCalendarIds.length === 0
+          ? availableCalendars.map((cal) => cal.id)
+          : selectedCalendarIds;
+
       const events = await appleCalendarService.getEvents(
-        selectedCalendarIds,
+        calendarIdsToUse,
         startDate,
         endDate
       );
 
       calendarEvents = events;
-      updateSelectedDate();
+
+      // Check for previously imported events
+      setTimeout(() => {
+        checkPreviouslyImportedEvents();
+      }, 200);
     } catch (err: any) {
       error = `Failed to load events: ${err.message}`;
     } finally {
       isLoading = false;
     }
-  }
-
-  // Update selected date when events are loaded
-  function updateSelectedDate() {
-    if (calendarEvents.length > 0) {
-      const today = new Date();
-      const hasEventsToday = calendarEvents.some((event) => {
-        const eventDate = new Date(event.startDate);
-        return (
-          eventDate.getDate() === today.getDate() &&
-          eventDate.getMonth() === today.getMonth() &&
-          eventDate.getFullYear() === today.getFullYear()
-        );
-      });
-
-      if (hasEventsToday) {
-        // Stay on today if we have events
-        selectedDate = new Date(
-          today.getFullYear(),
-          today.getMonth(),
-          today.getDate()
-        );
-      } else {
-        // Navigate to the first event's date
-        const firstEvent = calendarEvents[0];
-        const eventDate = new Date(firstEvent.startDate);
-        selectedDate = new Date(
-          eventDate.getFullYear(),
-          eventDate.getMonth(),
-          eventDate.getDate()
-        );
-      }
-    } else {
-      // No events, default to today
-      const today = new Date();
-      selectedDate = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
-      );
-    }
-
-    // Check for previously imported events
-    setTimeout(() => {
-      checkPreviouslyImportedEvents();
-    }, 200);
   }
 
   // Calendar filter options for FilterButton
@@ -225,7 +183,10 @@
 
   // Current calendar filter display value
   let currentCalendarFilterValue = $derived.by(() => {
-    if (selectedCalendarIds.length === 0) {
+    if (
+      selectedCalendarIds.length === 0 ||
+      selectedCalendarIds.length === availableCalendars.length
+    ) {
       return "All calendars";
     } else if (selectedCalendarIds.length === 1) {
       const calendar = availableCalendars.find(
@@ -240,7 +201,15 @@
   // Handle calendar filter selection (multi-select)
   function handleCalendarFilterSelect(calendarName: string) {
     if (calendarName === "All calendars") {
-      selectedCalendarIds = [];
+      // Toggle between all calendars and no calendars
+      if (
+        selectedCalendarIds.length === availableCalendars.length ||
+        selectedCalendarIds.length === 0
+      ) {
+        selectedCalendarIds = []; // Will be treated as "all calendars" in loadEvents
+      } else {
+        selectedCalendarIds = availableCalendars.map((cal) => cal.id);
+      }
     } else {
       const calendar = availableCalendars.find(
         (cal) => cal.name === calendarName
@@ -295,7 +264,27 @@
 
   // Reactive filtering
   $effect(() => {
+    console.log(
+      `🔍 TaskPlanningView: Filtering ${calendarEvents.length} events with query: "${searchQuery}"`
+    );
     filteredEvents = searchEvents(searchQuery, calendarEvents);
+    console.log(
+      `🔍 TaskPlanningView: Filtered to ${filteredEvents.length} events`
+    );
+  });
+
+  // Reactive effect to reload events when selectedDate changes
+  $effect(() => {
+    if (availableCalendars.length > 0) {
+      loadEvents(selectedDate);
+    }
+  });
+
+  // Separate effect to reload events when calendar selection changes
+  $effect(() => {
+    if (availableCalendars.length > 0 && selectedCalendarIds) {
+      loadEvents(selectedDate);
+    }
   });
 
   // Import calendar event as task
@@ -435,7 +424,11 @@
 
     console.log("Test events created:", testEvents);
     calendarEvents = testEvents;
-    updateSelectedDate();
+
+    // Check for previously imported events
+    setTimeout(() => {
+      checkPreviouslyImportedEvents();
+    }, 200);
   }
 
   // Initialize on mount
@@ -537,7 +530,7 @@
       <div class="calendar-wrapper">
         <ObsidianDayView
           events={filteredEvents}
-          {selectedDate}
+          bind:selectedDate
           onImportEvent={importEvent}
           {importedEvents}
           {importingEvents}
