@@ -86,6 +86,8 @@
 
   onMount(() => {
     if (appleRemindersService.isEnabled()) {
+      isLoading = true;
+
       loadReminderLists()
         .then(() => {
           return loadReminders();

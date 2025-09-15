@@ -259,6 +259,8 @@
   });
 
   onMount(async () => {
+    isLoading = true;
+
     if (githubService.isEnabled()) {
       await loadRecentlyUsedFilters();
 
