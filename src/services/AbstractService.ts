@@ -114,6 +114,34 @@ export abstract class AbstractService {
   }
 
   /**
+   * Protected fetch method that guarantees cache persistence
+   * Services should implement fetchItems instead of handling caching manually
+   */
+  protected async fetch<T>(
+    cache: SchemaCache<T[]> | undefined,
+    cacheKey: string,
+    fetchItemsFunction: () => Promise<T[]>
+  ): Promise<T[]> {
+    // Check cache first
+    if (cache) {
+      const cachedItems = await cache.get(cacheKey);
+      if (cachedItems) {
+        return cachedItems;
+      }
+    }
+
+    // Fetch fresh data
+    const items = await fetchItemsFunction();
+
+    // Cache the result - this guarantees persistence
+    if (cache) {
+      await cache.set(cacheKey, items);
+    }
+
+    return items;
+  }
+
+  /**
    * Common import functionality for all services
    * Handles the standard import flow: check dependencies, transform data, check duplicates, create task
    */
