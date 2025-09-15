@@ -208,8 +208,8 @@
   }
 
   async function refresh(): Promise<void> {
-    // Normal refresh should use cache if available
-    // Only clear cache if user explicitly wants to force refresh
+    // Clear cache to ensure we get fresh data from Apple Reminders
+    await appleRemindersService.clearCache();
     await loadReminderLists();
     await loadReminders();
   }

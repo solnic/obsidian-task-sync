@@ -243,6 +243,109 @@ describe("Apple Reminders Integration", () => {
     });
   });
 
+  test("should clear cache when refresh button is clicked", async () => {
+    // Skip this test on non-macOS platforms since Apple Reminders is not available
+    const platform = await context.page.evaluate(() => process.platform);
+    if (platform !== "darwin") {
+      // On non-macOS platforms, we can only test that the refresh button exists
+      // and that clicking it doesn't cause errors, but we can't test actual Apple Reminders functionality
+      console.log(
+        "Skipping Apple Reminders refresh test on non-macOS platform"
+      );
+      return;
+    }
+
+    // Enable Apple Reminders integration
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      if (plugin) {
+        plugin.settings.appleRemindersIntegration.enabled = true;
+        await plugin.saveSettings();
+      }
+    });
+
+    // Open Tasks view
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      await app.commands.executeCommandById(
+        "obsidian-task-sync:open-tasks-view"
+      );
+    });
+
+    // Wait for the view to load
+    await context.page.waitForSelector('[data-testid="tasks-view"]', {
+      timeout: 5000,
+    });
+
+    // Switch to Apple Reminders service
+    await context.page.click('[data-service-id="apple-reminders"]');
+
+    // Wait for Apple Reminders service to load
+    await context.page.waitForSelector(
+      '[data-testid="apple-reminders-service"]',
+      {
+        timeout: 5000,
+      }
+    );
+
+    // Check if refresh button exists and click it
+    const refreshButtonExists = await context.page.isVisible(
+      '[data-testid="apple-reminders-search-input-refresh"]'
+    );
+
+    if (refreshButtonExists) {
+      // Mock the clearCache method to track if it's called
+      const cacheCleared = await context.page.evaluate(async () => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+        if (!plugin || !plugin.appleRemindersService) {
+          return false;
+        }
+
+        let cacheClearCalled = false;
+        const originalClearCache = plugin.appleRemindersService.clearCache;
+
+        // Mock clearCache to track if it's called
+        plugin.appleRemindersService.clearCache = async function () {
+          cacheClearCalled = true;
+          return originalClearCache.call(this);
+        };
+
+        // Click the refresh button
+        const refreshButton = document.querySelector(
+          '[data-testid="apple-reminders-search-input-refresh"]'
+        );
+        if (refreshButton) {
+          (refreshButton as HTMLElement).click();
+
+          // Wait a bit for the refresh to process
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+
+        // Restore original method
+        plugin.appleRemindersService.clearCache = originalClearCache;
+
+        return cacheClearCalled;
+      });
+
+      expect(cacheCleared).toBe(true);
+    }
+
+    // Disable Apple Reminders integration for cleanup
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      if (plugin) {
+        plugin.settings.appleRemindersIntegration.enabled = false;
+        await plugin.saveSettings();
+      }
+    });
+  });
+
   test("should not show Apple Reminders service when disabled", async () => {
     // Ensure Apple Reminders integration is disabled
     await context.page.evaluate(async () => {

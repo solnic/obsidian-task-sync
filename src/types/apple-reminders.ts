@@ -14,23 +14,26 @@ export interface AppleScriptReminder {
   /** Reminder title/name */
   name: string;
 
-  /** Reminder body/notes content */
+  /** Reminder body/notes content - AppleScript returns string or "missing value" */
   body: string;
 
   /** Completion status */
   completed: boolean;
 
-  /** Completion date (if completed) */
-  completionDate: Date | null;
+  /** Completion date (if completed) - AppleScript returns string or "missing value" */
+  completionDate: string | null;
 
-  /** Creation date */
-  creationDate: Date;
+  /** Creation date - AppleScript returns string like "Thursday, 29 May 2025 at 20:37:46" */
+  creationDate: string;
 
-  /** Last modification date */
-  modificationDate: Date;
+  /** Last modification date - AppleScript returns string like "Friday, 22 August 2025 at 21:26:12" */
+  modificationDate: string;
 
-  /** Due date (if set) */
-  dueDate: Date | null;
+  /** Due date (if set) - AppleScript returns string or "missing value" */
+  dueDate: string | null;
+
+  /** Remind me date (if set) - AppleScript returns string or "missing value" */
+  remindMeDate: string | null;
 
   /** Priority level (0-9) */
   priority: number;
@@ -122,14 +125,17 @@ export interface AppleReminder {
   /** Completion date (if completed) */
   completionDate?: Date;
 
-  /** Creation date */
-  creationDate: Date;
+  /** Creation date (may be undefined if not available from AppleScript) */
+  creationDate?: Date;
 
-  /** Modification date */
-  modificationDate: Date;
+  /** Modification date (may be undefined if not available from AppleScript) */
+  modificationDate?: Date;
 
   /** Due date (if set) */
   dueDate?: Date;
+
+  /** Reminder timestamps (from "remind me date" field) */
+  reminders?: Date[];
 
   /** Priority level (0-9, where 0 is no priority) */
   priority: number;

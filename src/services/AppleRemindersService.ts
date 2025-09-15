@@ -9,6 +9,7 @@ import {
   ImportResult,
 } from "../types/integrations";
 import { TaskSyncSettings } from "../components/ui/settings/types";
+import moment from "moment";
 import {
   AppleReminder,
   AppleRemindersList,
@@ -400,6 +401,7 @@ export class AppleRemindersService extends AbstractService {
           : `tell application "Reminders" to return properties of reminders in list "${list.name}" whose completed is false`;
 
         const reminders = await this.executeAppleScript(script);
+
         const processedReminders: AppleScriptReminder[] = Array.isArray(
           reminders
         )
@@ -450,6 +452,9 @@ export class AppleRemindersService extends AbstractService {
   private transformReminderToTaskData(
     reminder: AppleReminder
   ): ExternalTaskData {
+    // Use current date as fallback for missing dates
+    const now = new Date();
+
     return {
       id: reminder.id,
       title: reminder.title,
@@ -458,32 +463,47 @@ export class AppleRemindersService extends AbstractService {
       priority: this.mapReminderPriorityToTaskPriority(reminder.priority),
       assignee: undefined, // Apple Reminders doesn't have assignees
       labels: [reminder.list.name], // Use list name as a label
-      createdAt: reminder.creationDate,
-      updatedAt: reminder.modificationDate,
+      createdAt: reminder.creationDate || now,
+      updatedAt: reminder.modificationDate || now,
       dueDate: reminder.dueDate, // Include due date from Apple Reminders
+      reminders: reminder.reminders, // Include reminder timestamps
       externalUrl: reminder.url || `reminder://${reminder.id}`,
       sourceType: "apple-reminders",
-      sourceData: reminder,
+      sourceData: reminder, // Store the processed AppleReminder data
     };
   }
 
   /**
    * Transform AppleScript reminder data to AppleReminder format
-   * Uses confident transformation based on known AppleScript structure
+   * Handles AppleScript date strings and "missing value" cases
    */
   private transformAppleScriptReminderToAppleReminder(
     scriptReminder: AppleScriptReminder,
     list: AppleScriptList
   ): AppleReminder {
+    // Parse remind me date and convert to reminders array
+    const reminders: Date[] = [];
+    if (scriptReminder.remindMeDate) {
+      const reminderDate = this.parseAppleScriptDate(
+        scriptReminder.remindMeDate
+      );
+      if (reminderDate) {
+        reminders.push(reminderDate);
+      }
+    }
+
     return {
       id: scriptReminder.id,
       title: scriptReminder.name,
-      notes: scriptReminder.body,
+      notes: this.parseAppleScriptValue(scriptReminder.body),
       completed: scriptReminder.completed,
-      completionDate: scriptReminder.completionDate || undefined,
-      creationDate: scriptReminder.creationDate,
-      modificationDate: scriptReminder.modificationDate,
-      dueDate: scriptReminder.dueDate || undefined,
+      completionDate: this.parseAppleScriptDate(scriptReminder.completionDate),
+      creationDate: this.parseAppleScriptDate(scriptReminder.creationDate),
+      modificationDate: this.parseAppleScriptDate(
+        scriptReminder.modificationDate
+      ),
+      dueDate: this.parseAppleScriptDate(scriptReminder.dueDate),
+      reminders: reminders.length > 0 ? reminders : undefined,
       priority: scriptReminder.priority,
       list: {
         id: list.id,
@@ -493,6 +513,55 @@ export class AppleRemindersService extends AbstractService {
       allDay: scriptReminder.allDay,
       url: `reminder://${scriptReminder.id}`,
     };
+  }
+
+  /**
+   * Parse AppleScript date string to Date object using Obsidian's moment
+   * Handles "missing value" and various date formats from AppleScript
+   */
+  private parseAppleScriptDate(value: any): Date | undefined {
+    if (!value || value === "missing value" || typeof value !== "string") {
+      return undefined;
+    }
+
+    try {
+      // AppleScript returns dates in format like "Thursday, 29 May 2025 at 20:37:46"
+      // or "Monday, 15 September 2025 at 00:00:00"
+
+      // Try using moment to parse the AppleScript date format
+      const momentDate = moment(value, [
+        "dddd, DD MMMM YYYY [at] HH:mm:ss",
+        "dddd, D MMMM YYYY [at] HH:mm:ss",
+        "dddd, DD MMM YYYY [at] HH:mm:ss",
+        "dddd, D MMM YYYY [at] HH:mm:ss",
+      ]);
+
+      if (momentDate.isValid()) {
+        return momentDate.toDate();
+      }
+
+      // Fallback: try direct parsing with moment
+      const fallbackMoment = moment(value);
+      if (fallbackMoment.isValid()) {
+        return fallbackMoment.toDate();
+      }
+
+      console.warn(`🍎 Failed to parse AppleScript date: ${value}`);
+      return undefined;
+    } catch (error) {
+      console.warn(`🍎 Error parsing AppleScript date "${value}":`, error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Parse AppleScript value, handling "missing value" cases
+   */
+  private parseAppleScriptValue(value: any): string | undefined {
+    if (!value || value === "missing value") {
+      return undefined;
+    }
+    return typeof value === "string" ? value : String(value);
   }
 
   /**
@@ -545,17 +614,20 @@ export class AppleRemindersService extends AbstractService {
 
     // Check due date range
     if (filter?.dueDateRange && reminder.dueDate) {
-      if (
-        filter.dueDateRange.start &&
-        reminder.dueDate < filter.dueDateRange.start
-      ) {
-        return false;
-      }
-      if (
-        filter.dueDateRange.end &&
-        reminder.dueDate > filter.dueDateRange.end
-      ) {
-        return false;
+      const parsedDueDate = this.parseAppleScriptDate(reminder.dueDate);
+      if (parsedDueDate) {
+        if (
+          filter.dueDateRange.start &&
+          parsedDueDate < filter.dueDateRange.start
+        ) {
+          return false;
+        }
+        if (
+          filter.dueDateRange.end &&
+          parsedDueDate > filter.dueDateRange.end
+        ) {
+          return false;
+        }
       }
     }
 

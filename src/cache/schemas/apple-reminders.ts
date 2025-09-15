@@ -17,8 +17,8 @@ export const AppleReminderSchema = z.object({
   notes: z.string().optional(),
   completed: z.boolean(),
   completionDate: z.date().optional(),
-  creationDate: z.date(),
-  modificationDate: z.date(),
+  creationDate: z.date().optional(), // Made optional since AppleScript can return undefined
+  modificationDate: z.date().optional(), // Made optional since AppleScript can return undefined
   dueDate: z.date().optional(),
   priority: z.number(), // 0-9 priority level
   list: AppleRemindersListSchema,
