@@ -265,7 +265,7 @@ describe("Todo Promotion E2E", () => {
     );
   });
 
-  test("should promote nested todos and create parent-child relationships", async () => {
+  test("should promote individual todo without auto-creating children", async () => {
     await createTestFolders(context.page);
 
     // Create a test file with nested todos
@@ -287,9 +287,9 @@ describe("Todo Promotion E2E", () => {
 
     // Execute the promote todo command
     await executeCommand(context, "Task Sync: Promote Todo to Task");
-    await context.page.waitForTimeout(4000);
+    await context.page.waitForTimeout(2000);
 
-    // Verify all tasks were created
+    // Verify only the parent task was created (no auto-creation of children)
     const parentExists = await fileExists(
       context.page,
       "Tasks/Parent task with children.md"
@@ -308,39 +308,19 @@ describe("Todo Promotion E2E", () => {
     );
 
     expect(parentExists).toBe(true);
-    expect(child1Exists).toBe(true);
-    expect(child2Exists).toBe(true);
-    expect(child3Exists).toBe(true);
+    expect(child1Exists).toBe(false); // Should not auto-create children
+    expect(child2Exists).toBe(false);
+    expect(child3Exists).toBe(false);
 
-    // Verify child tasks have parent task set
-    const child1Content = await getFileContent(
-      context.page,
-      "Tasks/First child task.md"
-    );
-    expect(child1Content).toContain(
-      `Parent task: "${createFullyQualifiedLink(
-        "Parent task with children",
-        "Tasks"
-      )}"`
-    );
-
-    // Verify completed child task has correct status
-    const child3Content = await getFileContent(
-      context.page,
-      "Tasks/Completed child task.md"
-    );
-    expect(child3Content).toContain("Done: true");
-    expect(child3Content).toContain("Status: Done");
-
-    // Verify all todo lines were replaced with links
+    // Verify the original file was updated with a link to the parent task only
     const updatedContent = await getFileContent(
       context.page,
       "Areas/Nested.md"
     );
-    expect(updatedContent).toContain("[[Parent task with children]]");
-    expect(updatedContent).toContain("[[First child task]]");
-    expect(updatedContent).toContain("[[Second child task]]");
-    expect(updatedContent).toContain("[[Completed child task]]");
+    expect(updatedContent).toContain("- [ ] [[Parent task with children]]");
+    expect(updatedContent).toContain("  - [ ] First child task"); // Children remain as todos
+    expect(updatedContent).toContain("  - [ ] Second child task");
+    expect(updatedContent).toContain("  - [x] Completed child task");
   });
 
   test("should not double-linkify already promoted parent todos", async () => {
@@ -394,7 +374,7 @@ describe("Todo Promotion E2E", () => {
     expect(updatedContent).toContain("[[Child to promote later]]");
   });
 
-  test("should set parent task property when promoting sub-todo", async () => {
+  test("should promote sub-todo without auto-creating parent", async () => {
     await createTestFolders(context.page);
 
     // Create a test file with nested todos
@@ -415,9 +395,9 @@ describe("Todo Promotion E2E", () => {
 
     // Execute the promote todo command
     await executeCommand(context, "Task Sync: Promote Todo to Task");
-    await context.page.waitForTimeout(3000);
+    await context.page.waitForTimeout(2000);
 
-    // Verify both tasks were created
+    // Verify only the sub-task was created (no auto-creation of parent)
     const parentExists = await fileExists(
       context.page,
       "Tasks/Main parent task.md"
@@ -426,20 +406,15 @@ describe("Todo Promotion E2E", () => {
       context.page,
       "Tasks/Sub-task to promote.md"
     );
-    expect(parentExists).toBe(true);
+    expect(parentExists).toBe(false); // Should not auto-create parent
     expect(childExists).toBe(true);
 
-    // Verify child task has parent task property set using API
-    const childFrontMatter = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Sub-task to promote.md"
-      );
-    });
-
-    expect(childFrontMatter["Parent task"]).toBe(
-      createFullyQualifiedLink("Main parent task", "Tasks")
+    // Verify the original file was updated with only the sub-task replaced
+    const updatedContent = await getFileContent(
+      context.page,
+      "Areas/SubTask.md"
     );
+    expect(updatedContent).toContain("- [ ] Main parent task"); // Parent remains as todo
+    expect(updatedContent).toContain("  - [ ] [[Sub-task to promote]]"); // Sub-task becomes link
   });
 });

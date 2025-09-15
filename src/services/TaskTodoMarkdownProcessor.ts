@@ -12,7 +12,6 @@ import {
 } from "obsidian";
 import { TaskSyncSettings } from "../main";
 import { TaskFileManager } from "./TaskFileManager";
-import { taskMentionStore } from "../stores/taskMentionStore";
 import { getOptimalTextColor } from "../utils/colorUtils";
 
 export class TaskTodoMarkdownProcessor {
