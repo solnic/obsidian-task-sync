@@ -34,6 +34,7 @@
   let isLoading = $state(false);
   let hoveredTask = $state<string | null>(null);
   let currentContext = $state<FileContext>({ type: "none" });
+  let tasksInToday = $state<Set<string>>(new Set()); // Track which tasks are already in today's daily note
 
   // Additional filter state
   let selectedProject = $state<string | null>(null);
@@ -223,6 +224,13 @@
     hoveredTask = null;
   });
 
+  // Check which tasks are in today's daily note when tasks change
+  $effect(() => {
+    if (tasks.length > 0) {
+      checkTasksInToday();
+    }
+  });
+
   // Note: No longer using context filters for automatic filtering
 
   onMount(() => {
@@ -378,6 +386,8 @@
     try {
       // Force refresh by reloading all tasks from filesystem
       await taskStore.refreshTasks();
+      // Also check which tasks are in today's daily note
+      await checkTasksInToday();
     } catch (err: any) {
       console.error("Failed to refresh tasks:", err);
     }
@@ -485,6 +495,28 @@
     saveRecentlyUsedFilters();
   }
 
+  async function checkTasksInToday(): Promise<void> {
+    try {
+      const newTasksInToday = new Set<string>();
+
+      // Check each task to see if it's in today's daily note
+      for (const task of tasks) {
+        if (task.filePath) {
+          const isInToday = await plugin.dailyNoteService.isTaskInToday(
+            task.filePath
+          );
+          if (isInToday) {
+            newTasksInToday.add(task.filePath);
+          }
+        }
+      }
+
+      tasksInToday = newTasksInToday;
+    } catch (error: any) {
+      console.error("Error checking tasks in today's daily note:", error);
+    }
+  }
+
   async function addToToday(task: Task): Promise<void> {
     try {
       // Use the DailyNoteService to add the task to today's daily note
@@ -494,6 +526,10 @@
 
       if (result.success) {
         new Notice(`Added "${task.title}" to today's daily note`);
+        // Update the state to reflect that this task is now in today's daily note
+        if (task.filePath) {
+          tasksInToday = new Set([...tasksInToday, task.filePath]);
+        }
       } else {
         new Notice(
           `Failed to add task to today: ${result.error || "Unknown error"}`
@@ -656,6 +692,9 @@
               }}
               {dayPlanningMode}
               onAddToToday={addToToday}
+              isInToday={task.filePath
+                ? tasksInToday.has(task.filePath)
+                : false}
               testId="local-task-item-{task.title
                 .replace(/\s+/g, '-')
                 .toLowerCase()}"

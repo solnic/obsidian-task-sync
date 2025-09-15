@@ -15,6 +15,7 @@
     onClick?: () => void;
     dayPlanningMode?: boolean;
     onAddToToday?: (task: Task) => void;
+    isInToday?: boolean;
     testId?: string;
   }
 
@@ -25,6 +26,7 @@
     onClick,
     dayPlanningMode = false,
     onAddToToday,
+    isInToday = false,
     testId,
   }: Props = $props();
 
@@ -106,6 +108,7 @@
         title="Add to today"
         testId="add-to-today-button"
         onImport={handleAddToToday}
+        isImported={isInToday}
       />
     {:else}
       <button

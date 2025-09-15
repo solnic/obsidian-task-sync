@@ -300,6 +300,65 @@ describe("LocalTasksService", () => {
     expect(dailyNoteContent).toContain("- [ ] [[Daily Planning Task]]");
   });
 
+  test("should reflect front-matter property changes in Local Tasks view", async () => {
+    // Create a test task
+    const taskTitle = "Front-matter Update Test Task";
+    await createTask(context, {
+      title: taskTitle,
+      priority: "Low",
+      status: "Backlog",
+    });
+
+    // Open Tasks view and switch to local service
+    await openTasksView(context.page);
+    const localTab = context.page.locator('[data-testid="service-local"]');
+    await localTab.click();
+
+    // Wait for the task to appear in the view
+    const taskTestId = `local-task-item-${taskTitle
+      .toLowerCase()
+      .replace(/\s+/g, "-")}`;
+    await context.page.waitForSelector(`[data-testid="${taskTestId}"]`, {
+      timeout: 10000,
+    });
+
+    // Verify initial state - should show "Low" priority
+    const taskItem = context.page.locator(`[data-testid="${taskTestId}"]`);
+    const initialContent = await taskItem.textContent();
+    expect(initialContent).toContain("Low");
+
+    // Update the task's front-matter directly
+    await context.page.evaluate(async (title) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(`Tasks/${title}.md`);
+
+      if (file) {
+        await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
+          frontmatter.Priority = "High";
+          frontmatter.Status = "In Progress";
+        });
+      }
+    }, taskTitle);
+
+    // Wait for the change to be processed and reflected in the UI
+    // The system should automatically refresh when front-matter changes
+    await context.page.waitForFunction(
+      (testId) => {
+        const element = document.querySelector(`[data-testid="${testId}"]`);
+        return (
+          element && element.textContent && element.textContent.includes("High")
+        );
+      },
+      taskTestId,
+      { timeout: 10000 }
+    );
+
+    // Verify the priority has been updated in the UI
+    const updatedContent = await taskItem.textContent();
+    expect(updatedContent).toContain("High");
+    expect(updatedContent).toContain("In Progress");
+  });
+
   test("should refresh stores and load all existing tasks on plugin initialization", async () => {
     // Create tasks directly in the vault (simulating existing files)
     const taskTitles = [

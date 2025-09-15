@@ -107,7 +107,7 @@ export class DailyNoteService {
   }
 
   /**
-   * Add a task link to today's daily note
+   * Add a task link to today's daily note and set the Do Date property
    * @param taskPath Path to the task file
    * @returns Result of the operation
    */
@@ -136,38 +136,45 @@ export class DailyNoteService {
       const taskLink = `- [ ] [[${taskTitle}]]`;
 
       // Check if task already exists to avoid duplicates
-      if (currentContent.includes(taskLink)) {
-        return {
-          success: true,
-          dailyNotePath: dailyNoteResult.path,
-        };
-      }
+      const taskAlreadyExists = currentContent.includes(taskLink);
 
-      // Find or create a "Tasks" section
-      let updatedContent: string;
-      if (currentContent.includes("## Tasks")) {
-        // Add to existing Tasks section - find the line and add after it
-        const lines = currentContent.split("\n");
-        const tasksIndex = lines.findIndex(
-          (line) => line.trim() === "## Tasks"
-        );
-        if (tasksIndex !== -1) {
-          lines.splice(tasksIndex + 1, 0, taskLink);
-          updatedContent = lines.join("\n");
-        } else {
-          // Fallback if we can't find the exact line
-          updatedContent = currentContent.replace(
-            "## Tasks",
-            `## Tasks\n${taskLink}`
+      if (!taskAlreadyExists) {
+        // Find or create a "Tasks" section
+        let updatedContent: string;
+        if (currentContent.includes("## Tasks")) {
+          // Add to existing Tasks section - find the line and add after it
+          const lines = currentContent.split("\n");
+          const tasksIndex = lines.findIndex(
+            (line) => line.trim() === "## Tasks"
           );
+          if (tasksIndex !== -1) {
+            lines.splice(tasksIndex + 1, 0, taskLink);
+            updatedContent = lines.join("\n");
+          } else {
+            // Fallback if we can't find the exact line
+            updatedContent = currentContent.replace(
+              "## Tasks",
+              `## Tasks\n${taskLink}`
+            );
+          }
+        } else {
+          // Add Tasks section at the end
+          updatedContent = currentContent.trim() + `\n\n## Tasks\n${taskLink}`;
         }
-      } else {
-        // Add Tasks section at the end
-        updatedContent = currentContent.trim() + `\n\n## Tasks\n${taskLink}`;
+
+        // Write back to the daily note
+        await this.vault.modify(dailyNoteResult.file!, updatedContent);
       }
 
-      // Write back to the daily note
-      await this.vault.modify(dailyNoteResult.file!, updatedContent);
+      // Set the Do Date property in the task's front-matter to today's date
+      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+
+      await this.app.fileManager.processFrontMatter(taskFile, (frontmatter) => {
+        // Only set Do Date if it's not already set or if it's different from today
+        if (!frontmatter["Do Date"] || frontmatter["Do Date"] !== today) {
+          frontmatter["Do Date"] = today;
+        }
+      });
 
       return {
         success: true,
@@ -179,6 +186,48 @@ export class DailyNoteService {
         dailyNotePath: "",
         error: error.message,
       };
+    }
+  }
+
+  /**
+   * Check if a task is already in today's daily note
+   * @param taskPath Path to the task file
+   * @returns True if the task is already in today's daily note
+   */
+  async isTaskInToday(taskPath: string): Promise<boolean> {
+    try {
+      // Get today's daily note path
+      const dailyNotePath = await this.getTodayDailyNotePath();
+
+      // Check if the daily note exists
+      const dailyNoteFile = this.vault.getAbstractFileByPath(dailyNotePath);
+      if (!dailyNoteFile || !(dailyNoteFile instanceof TFile)) {
+        return false;
+      }
+
+      // Get the task file to extract the title
+      const taskFile = this.vault.getAbstractFileByPath(taskPath);
+      if (!taskFile || !(taskFile instanceof TFile)) {
+        return false;
+      }
+
+      // Extract task title from file name (remove .md extension)
+      const taskTitle = taskFile.name.replace(/\.md$/, "");
+
+      // Read the daily note content
+      const dailyNoteContent = await this.vault.read(dailyNoteFile);
+
+      // Check if the task link exists in the daily note
+      const taskLink = `- [ ] [[${taskTitle}]]`;
+      const taskLinkCompleted = `- [x] [[${taskTitle}]]`;
+
+      return (
+        dailyNoteContent.includes(taskLink) ||
+        dailyNoteContent.includes(taskLinkCompleted)
+      );
+    } catch (error: any) {
+      console.error("Error checking if task is in today's daily note:", error);
+      return false;
     }
   }
 

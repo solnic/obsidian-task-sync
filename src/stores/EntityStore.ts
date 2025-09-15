@@ -247,13 +247,17 @@ export abstract class EntityStore<T extends BaseEntity> {
 
     this.app.vault.on("modify", (file) => {
       if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
-        // Don't await here to avoid blocking the event handler
-        this.refreshEntities().catch((error) => {
-          console.error(
-            `Failed to refresh ${this.storageKey}s after file modification:`,
-            error
-          );
-        });
+        // Add a small delay to allow metadata cache to update
+        // This is necessary because the metadata cache might not be immediately updated
+        // when front-matter is modified programmatically
+        setTimeout(() => {
+          this.refreshEntities().catch((error) => {
+            console.error(
+              `Failed to refresh ${this.storageKey}s after file modification:`,
+              error
+            );
+          });
+        }, 200); // 200ms delay to allow metadata cache to update
       }
     });
 
