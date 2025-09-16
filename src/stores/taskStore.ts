@@ -3,13 +3,18 @@
  * Provides a centralized, reactive API for task operations and queries
  */
 
-import { derived, get } from "svelte/store";
+import { derived } from "svelte/store";
 import { EntityStore } from "./EntityStore";
 import { Task } from "../types/entities";
+import { PROPERTY_SETS } from "../services/base-definitions/BaseConfigurations";
 
 class TaskStore extends EntityStore<Task> {
   constructor() {
     super("taskStore");
+  }
+
+  protected getPropertySet(): readonly string[] {
+    return PROPERTY_SETS.TASK_FRONTMATTER;
   }
 
   // Derived stores for common queries

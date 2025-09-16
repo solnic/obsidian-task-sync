@@ -9,9 +9,10 @@ import { TaskSyncSettings } from "../main";
 import { TaskFileManager } from "./TaskFileManager";
 import { BaseManager } from "./BaseManager";
 import { TemplateManager } from "./TemplateManager";
+import { Task } from "../types/entities";
 import { taskStore } from "../stores/taskStore";
 import { taskMentionStore } from "../stores/taskMentionStore";
-import { Note, NoteFactory, NoteTodoItem } from "./NoteService";
+import { NoteFactory, NoteTodoItem } from "./NoteService";
 import { TaskMention } from "../types/entities";
 import {
   createSafeFileName,
@@ -48,7 +49,7 @@ export class TodoPromotionService {
     private taskFileManager: TaskFileManager,
     private baseManager: BaseManager,
     private templateManager: TemplateManager,
-    private createTaskCallback: (taskData: any) => Promise<void>,
+    private createTaskCallback: (taskData: any) => Promise<Task>,
     private detectCurrentFileContextCallback: () => FileContext,
     private refreshBaseViewsCallback: () => Promise<void>
   ) {

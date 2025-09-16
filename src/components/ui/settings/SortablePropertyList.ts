@@ -3,7 +3,7 @@
  * Provides drag-and-drop functionality for reordering task properties
  */
 
-import { PROPERTY_REGISTRY } from "../../../services/base-definitions/BaseConfigurations";
+import { PROPERTY_REGISTRY } from "../../../types/properties";
 
 export interface SortablePropertyListOptions {
   container: HTMLElement;

@@ -64,7 +64,7 @@ import {
   TASK_PLANNING_VIEW_TYPE,
 } from "./views/TaskPlanningView";
 import { TaskImportConfig } from "./types/integrations";
-import { Task } from "./types/entities";
+import { Task, Project, Area } from "./types/entities";
 import { taskStore } from "./stores/taskStore";
 import { projectStore } from "./stores/projectStore";
 import { areaStore } from "./stores/areaStore";
@@ -132,6 +132,20 @@ export default class TaskSyncPlugin extends Plugin {
   taskMentionSyncHandler: TaskMentionSyncHandler;
   private markdownProcessor: MarkdownPostProcessor;
 
+  public get stores(): {
+    taskStore: typeof taskStore;
+    projectStore: typeof projectStore;
+    areaStore: typeof areaStore;
+    taskMentionStore: typeof taskMentionStore;
+  } {
+    return {
+      taskStore: taskStore,
+      projectStore: projectStore,
+      areaStore: areaStore,
+      taskMentionStore: taskMentionStore,
+    };
+  }
+
   // Expose store access methods for e2e testing
   public getCachedTasks() {
     return taskStore.getEntities();
@@ -154,9 +168,12 @@ export default class TaskSyncPlugin extends Plugin {
     ]);
   }
 
+<<<<<<< HEAD
   // Global context system
   private currentContext: FileContext = { type: "none" };
 
+=======
+>>>>>>> 7dac42a (Refactor entity handling)
   async onload() {
     console.log("Loading Task Sync Plugin");
 
@@ -1189,30 +1206,43 @@ export default class TaskSyncPlugin extends Plugin {
     return { ...this.currentContext };
   }
 
-  // Task creation logic
-  // This is the SINGLE METHOD for creating tasks - all task creation must go through this method
-  // to ensure consistent property setting and context handling
-  async createTask(taskData: any): Promise<void> {
+  // Create a new task
+  async createTask(taskData: any): Promise<Task> {
     const content = taskData.content || taskData.description;
 
-    const taskPath = await this.taskFileManager.createTaskFile(
-      taskData,
-      content
-    );
+    return await this.taskFileManager
+      .createTaskFile(taskData, content)
+      .then(async (filePath) => {
+        const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+
+        return this.taskFileManager
+          .waitForMetadataCache(file)
+          .then(async (_) => {
+            return this.stores.taskStore.findEntityByPath(filePath);
+          });
+      });
   }
 
   /**
    * Create a new area
    */
-  private async createArea(areaData: AreaCreateData): Promise<void> {
+  public async createArea(areaData: AreaCreateData): Promise<Area> {
     const areaCreationData = {
       title: areaData.name,
       description: areaData.description,
     };
 
-    const areaPath = await this.areaFileManager.createAreaFile(
-      areaCreationData
-    );
+    const area = await this.areaFileManager
+      .createAreaFile(areaCreationData)
+      .then(async (filePath) => {
+        const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+
+        return this.areaFileManager
+          .waitForMetadataCache(file)
+          .then(async (_) => {
+            return this.stores.areaStore.findEntityByPath(filePath);
+          });
+      });
 
     if (
       this.settings.areaBasesEnabled &&
@@ -1220,25 +1250,35 @@ export default class TaskSyncPlugin extends Plugin {
     ) {
       await this.baseManager.createOrUpdateAreaBase({
         name: areaData.name,
-        path: areaPath,
+        path: area.filePath,
         type: "area",
       });
     }
+
+    return area;
   }
 
   /**
    * Create a new project
    */
-  private async createProject(projectData: ProjectCreateData): Promise<void> {
+  public async createProject(projectData: ProjectCreateData): Promise<Project> {
     const projectCreationData = {
       title: projectData.name,
       description: projectData.description,
       areas: projectData.areas,
     };
 
-    const projectPath = await this.projectFileManager.createProjectFile(
-      projectCreationData
-    );
+    const project = await this.projectFileManager
+      .createProjectFile(projectCreationData)
+      .then(async (filePath) => {
+        const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+
+        return this.projectFileManager
+          .waitForMetadataCache(file)
+          .then(async (_) => {
+            return this.stores.projectStore.findEntityByPath(filePath);
+          });
+      });
 
     if (
       this.settings.projectBasesEnabled &&
@@ -1246,10 +1286,12 @@ export default class TaskSyncPlugin extends Plugin {
     ) {
       await this.baseManager.createOrUpdateProjectBase({
         name: projectData.name,
-        path: projectPath,
+        path: project.filePath,
         type: "project",
       });
     }
+
+    return project;
   }
 
   // Base Management Methods

@@ -233,10 +233,16 @@ export abstract class FileManager {
   ): Promise<{ hasChanges: boolean; propertiesChanged: number }>;
 
   /**
+   * Abstract method for loading entity from file
+   * Must be implemented by concrete classes
+   */
+  abstract loadEntity(file: TFile, cache?: any): Promise<any>;
+
+  /**
    * Wait for metadata cache to have front-matter for the given file
    * Uses polling approach to be more reliable with rapid file creation
    */
-  protected async waitForMetadataCache(file: TFile): Promise<any> {
+  public async waitForMetadataCache(file: TFile): Promise<any> {
     const maxAttempts = 50; // 5 seconds total (50 * 100ms)
     let attempts = 0;
 

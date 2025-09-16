@@ -5,9 +5,9 @@
 
 import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../main";
+import { PROPERTY_REGISTRY } from "../types/properties";
 import {
   PROPERTY_SETS,
-  PROPERTY_REGISTRY,
   generateAreaFrontMatter as getAreaPropertyDefinitions,
   generateProjectFrontMatter as getProjectPropertyDefinitions,
   generateTaskFrontMatter as getTaskPropertyDefinitions,
@@ -331,7 +331,10 @@ export class TemplateManager {
     // Always set Type to 'Area' for area templates
     frontMatterData.Type = "Area";
 
-    return this.generateFrontMatter(frontMatterData);
+    const baseContent = this.generateFrontMatter(frontMatterData);
+
+    // Add content section with description and tasks variables
+    return baseContent + "\n\n{{description}}\n\n## Tasks\n\n{{tasks}}";
   }
 
   /**
@@ -389,7 +392,10 @@ export class TemplateManager {
     // Always set Type to 'Project' for project templates
     frontMatterData.Type = "Project";
 
-    return this.generateFrontMatter(frontMatterData);
+    const baseContent = this.generateFrontMatter(frontMatterData);
+
+    // Add content section with description and tasks variables
+    return baseContent + "\n\n{{description}}\n\n## Tasks\n\n{{tasks}}";
   }
 
   /**

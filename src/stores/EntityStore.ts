@@ -6,6 +6,7 @@
 import { writable, get, type Writable, type Readable } from "svelte/store";
 import { App, TFile, Plugin } from "obsidian";
 import { BaseEntity } from "../types/entities";
+import { PROPERTY_REGISTRY } from "../types/properties";
 
 export interface EntityStoreState<T> {
   entities: T[];
@@ -34,6 +35,11 @@ export abstract class EntityStore<T extends BaseEntity> {
 
   // Track ongoing refresh operations
   private refreshPromise: Promise<void> | null = null;
+
+  /**
+   * Returns the property keys that should be processed from front-matter for this entity type
+   */
+  protected abstract getPropertySet(): readonly string[];
 
   constructor(storageKey: string) {
     this.storageKey = storageKey;
@@ -193,6 +199,70 @@ export abstract class EntityStore<T extends BaseEntity> {
   }
 
   /**
+   * Update an entity's properties from front-matter data
+   * Uses PROPERTY_REGISTRY to determine which properties come from front-matter
+   */
+  updateEntityFromFrontmatter(entity: T, frontmatter: Record<string, any>): T {
+    const updatedEntity = { ...entity };
+
+    // Iterate through all properties in the registry
+    for (const [, propertyDef] of Object.entries(PROPERTY_REGISTRY)) {
+      // Only update properties that come from front-matter
+      if (!propertyDef.frontmatter) {
+        continue;
+      }
+
+      const frontmatterKey = propertyDef.name;
+      const entityKey = propertyDef.key;
+
+      // Update entity property if it exists in front-matter
+      if (frontmatterKey in frontmatter) {
+        let value = frontmatter[frontmatterKey];
+
+        // Clean link formatting for link properties
+        if (propertyDef.link && value) {
+          if (typeof value === "string") {
+            value = value.replace(/^\[\[|\]\]$/g, "");
+          } else if (Array.isArray(value)) {
+            value = value.map((item) =>
+              typeof item === "string" ? item.replace(/^\[\[|\]\]$/g, "") : item
+            );
+          }
+        }
+
+        (updatedEntity as any)[entityKey] = value;
+      }
+    }
+
+    return updatedEntity;
+  }
+
+  /**
+   * Handle metadata changes for individual files
+   * Updates the entity in-place using front-matter data
+   */
+  private async handleMetadataChange(file: TFile, cache: any): Promise<void> {
+    const existingEntity = this.findEntityByPath(file.path);
+
+    if (!existingEntity) {
+      const newEntity = await this.fileManager.loadEntity(file);
+
+      if (newEntity) {
+        await this.upsertEntity(newEntity);
+      }
+
+      return newEntity;
+    }
+
+    const updatedEntity = this.updateEntityFromFrontmatter(
+      existingEntity,
+      cache.frontmatter
+    );
+
+    await this.upsertEntity(updatedEntity);
+  }
+
+  /**
    * Load all entities from the file system
    */
   private async loadAllEntities(): Promise<T[]> {
@@ -224,55 +294,39 @@ export abstract class EntityStore<T extends BaseEntity> {
   }
 
   /**
-   * Set up file system watchers for reactive updates
+   * Set up file system watchers for reactive updates using MetadataCache events
+   * This provides more stable and reliable updates compared to vault modify events
    */
   private setupFileWatchers() {
-    this.app.vault.on("create", (file) => {
-      if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
-        // Don't await here to avoid blocking the event handler
-        this.refreshEntities().catch((error) => {
-          console.error(
-            `Failed to refresh ${this.storageKey}s after file creation:`,
-            error
-          );
-        });
+    // Use MetadataCache 'changed' event for file modifications
+    this.app.metadataCache.on("changed", (file, _data, cache) => {
+      if (file.path.startsWith(this.folder + "/")) {
+        this.handleMetadataChange(file, cache);
       }
     });
 
-    this.app.vault.on("delete", (file) => {
-      if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
+    // Use MetadataCache 'deleted' event for file deletions
+    this.app.metadataCache.on("deleted", (file, _prevCache) => {
+      if (file.path.startsWith(this.folder + "/")) {
         this.removeEntity(file.path);
       }
     });
 
-    this.app.vault.on("modify", (file) => {
-      if (file instanceof TFile && file.path.startsWith(this.folder + "/")) {
-        // Add a small delay to allow metadata cache to update
-        // This is necessary because the metadata cache might not be immediately updated
-        // when front-matter is modified programmatically
-        setTimeout(() => {
-          this.refreshEntities().catch((error) => {
+    // Still use vault events for rename as MetadataCache doesn't handle these
+    this.app.vault.on("rename", (file, oldPath) => {
+      if (file.path.startsWith(this.folder + "/")) {
+        this.refreshEntities()
+          .then(() => {
+            console.log(
+              `Refreshed ${this.storageKey}s after renaming ${oldPath} -> ${file.path}`
+            );
+          })
+          .catch((error) => {
             console.error(
-              `Failed to refresh ${this.storageKey}s after file modification:`,
+              `Failed to refresh ${this.storageKey}s after file rename:`,
               error
             );
           });
-        }, 200); // 200ms delay to allow metadata cache to update
-      }
-    });
-
-    this.app.vault.on("rename", (file, oldPath) => {
-      if (
-        (file instanceof TFile && file.path.startsWith(this.folder + "/")) ||
-        oldPath.startsWith(this.folder + "/")
-      ) {
-        // Don't await here to avoid blocking the event handler
-        this.refreshEntities().catch((error) => {
-          console.error(
-            `Failed to refresh ${this.storageKey}s after file rename:`,
-            error
-          );
-        });
       }
     });
   }

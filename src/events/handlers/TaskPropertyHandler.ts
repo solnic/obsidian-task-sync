@@ -11,7 +11,6 @@ import {
   TaskEventData,
 } from "../EventTypes";
 import { TaskSyncSettings } from "../../main";
-import { PROPERTY_REGISTRY } from "../../services/base-definitions/BaseConfigurations";
 
 /**
  * Handler that sets default property values for newly created tasks

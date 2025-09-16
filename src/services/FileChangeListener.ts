@@ -48,26 +48,32 @@ export class FileChangeListener {
   }
 
   /**
-   * Initialize the file change listener
+   * Initialize the file change listener using MetadataCache events for better stability
    */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
       return;
     }
 
-    console.log("FileChangeListener: Initializing...");
+    console.log(
+      "FileChangeListener: Initializing with MetadataCache events..."
+    );
 
-    // Register vault event listeners
-    this.vault.on("modify", this.onFileModified.bind(this));
+    // Use MetadataCache 'changed' event instead of vault 'modify' for better stability
+    this.app.metadataCache.on("changed", this.onFileModified.bind(this));
+    this.app.metadataCache.on("deleted", this.onFileDeleted.bind(this));
+
+    // Still use vault events for create and rename as MetadataCache doesn't handle these
     this.vault.on("create", this.onFileCreated.bind(this));
-    this.vault.on("delete", this.onFileDeleted.bind(this));
     this.vault.on("rename", this.onFileRenamed.bind(this));
 
     // Initialize file states for existing files
     await this.initializeFileStates();
 
     this.isInitialized = true;
-    console.log("FileChangeListener: Initialized successfully");
+    console.log(
+      "FileChangeListener: Initialized successfully with MetadataCache events"
+    );
   }
 
   /**
@@ -80,10 +86,12 @@ export class FileChangeListener {
 
     console.log("FileChangeListener: Cleaning up...");
 
+    // Remove MetadataCache event listeners
+    this.app.metadataCache.off("changed", this.onFileModified.bind(this));
+    this.app.metadataCache.off("deleted", this.onFileDeleted.bind(this));
+
     // Remove vault event listeners
-    this.vault.off("modify", this.onFileModified.bind(this));
     this.vault.off("create", this.onFileCreated.bind(this));
-    this.vault.off("delete", this.onFileDeleted.bind(this));
     this.vault.off("rename", this.onFileRenamed.bind(this));
 
     // Clear state
@@ -225,9 +233,13 @@ export class FileChangeListener {
   }
 
   /**
-   * Handle file modification events
+   * Handle file modification events from MetadataCache 'changed'
    */
-  private async onFileModified(file: TFile): Promise<void> {
+  private async onFileModified(
+    file: TFile,
+    _data: string,
+    _cache: any
+  ): Promise<void> {
     if (!this.isRelevantFile(file)) {
       return;
     }
@@ -307,9 +319,9 @@ export class FileChangeListener {
   }
 
   /**
-   * Handle file deletion events
+   * Handle file deletion events from MetadataCache 'deleted'
    */
-  private async onFileDeleted(file: TFile): Promise<void> {
+  private async onFileDeleted(file: TFile, _prevCache: any): Promise<void> {
     if (!this.isRelevantFile(file)) {
       return;
     }

@@ -12,6 +12,11 @@ class TaskMentionStore extends EntityStore<TaskMention> {
     super("taskMentionStore");
   }
 
+  protected getPropertySet(): readonly string[] {
+    // TaskMentions don't have front-matter properties, they're internal entities
+    return [] as const;
+  }
+
   // Derived stores for common queries
   public mentionsByFile = derived(this._store, ($store) => {
     const mentionsByFile = new Map<string, TaskMention[]>();

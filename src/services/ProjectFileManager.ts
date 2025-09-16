@@ -71,7 +71,9 @@ export class ProjectFileManager extends FileManager {
   ): Promise<string> {
     // Try to read template content
     try {
-      return await this.readProjectTemplate();
+      const templateContent = await this.readProjectTemplate();
+      // Process {{description}} variable in template content
+      return this.processDescriptionVariable(templateContent, data.description);
     } catch (error) {
       // Template doesn't exist - use default content
       return [
@@ -99,13 +101,32 @@ export class ProjectFileManager extends FileManager {
   }
 
   /**
+   * Process {{description}} variable in content and replace with actual description
+   * @param content - Content that may contain {{description}} variable
+   * @param description - Description to replace the variable with
+   * @returns Processed content with {{description}} replaced
+   */
+  private processDescriptionVariable(
+    content: string,
+    description?: string
+  ): string {
+    if (!content.includes("{{description}}")) {
+      return content;
+    }
+
+    return content.replace(/\{\{description\}\}/g, description || "");
+  }
+
+  /**
    * Load a Project entity from an Obsidian TFile
    * @param file - The TFile to load
+   * @param cache - Optional metadata cache to use instead of waiting for cache
    * @returns Project entity
    * @throws Error if file is not a valid project
    */
-  async loadEntity(file: TFile): Promise<Project> {
-    const frontMatter = await this.waitForMetadataCache(file);
+  async loadEntity(file: TFile, cache?: any): Promise<Project> {
+    const frontMatter =
+      cache?.frontmatter || (await this.waitForMetadataCache(file));
 
     if (frontMatter.Type !== "Project") {
       return;

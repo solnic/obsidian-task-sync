@@ -4,6 +4,17 @@
  */
 
 // Main exports
+export { PropertyDefinition, PROPERTY_REGISTRY } from "../../types/properties";
+
+export {
+  FilterCondition,
+  PropertyFilter,
+  FileSystemFilter,
+  CustomFilter,
+  CompositeFilter,
+  FilterBuilder,
+} from "../../types/filters";
+
 export {
   generateTasksBase,
   generateAreaBase,
@@ -13,17 +24,8 @@ export {
   generateProjectFrontMatter,
   generateAreaFrontMatter,
   ProjectAreaInfo,
-  PropertyDefinition,
-  PROPERTY_REGISTRY,
   PROPERTY_SETS,
   VIEW_ORDERS,
   SORT_CONFIGS,
-  // Filter system exports
-  FilterCondition,
-  PropertyFilter,
-  FileSystemFilter,
-  CustomFilter,
-  CompositeFilter,
-  FilterBuilder,
   FILTER_PRESETS,
 } from "./BaseConfigurations";

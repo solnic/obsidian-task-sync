@@ -7,10 +7,8 @@
 import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../main";
 import { FileManager, FileCreationData } from "./FileManager";
-import {
-  PROPERTY_REGISTRY,
-  PROPERTY_SETS,
-} from "./base-definitions/BaseConfigurations";
+import { PROPERTY_REGISTRY } from "../types/properties";
+import { PROPERTY_SETS } from "./base-definitions/BaseConfigurations";
 import { Task } from "../types/entities";
 import { createWikiLink, createLinkFormat } from "../utils/linkUtils";
 
@@ -250,11 +248,13 @@ export class TaskFileManager extends FileManager {
   /**
    * Load a Task entity from an Obsidian TFile
    * @param file - The TFile to load
+   * @param cache - Optional metadata cache to use instead of waiting for cache
    * @returns Task entity
    * @throws Error if file is not a valid task
    */
-  async loadEntity(file: TFile): Promise<Task> {
-    const frontMatter = await this.waitForMetadataCache(file);
+  async loadEntity(file: TFile, cache?: any): Promise<Task> {
+    const frontMatter =
+      cache?.frontmatter || (await this.waitForMetadataCache(file));
 
     if (frontMatter.Type !== "Task") {
       return;

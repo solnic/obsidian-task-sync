@@ -12,6 +12,11 @@ class ProjectStore extends EntityStore<Project> {
     super("projectStore");
   }
 
+  protected getPropertySet(): readonly string[] {
+    // Projects use a subset of properties
+    return ["TITLE", "TYPE", "AREAS", "TAGS"] as const;
+  }
+
   // Derived stores for common queries
   public activeProjects = derived(
     this._store,

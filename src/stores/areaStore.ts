@@ -13,6 +13,11 @@ class AreaStore extends EntityStore<Area> {
     super("areaStore");
   }
 
+  protected getPropertySet(): readonly string[] {
+    // Areas use a subset of properties
+    return ["TITLE", "TYPE", "TAGS"] as const;
+  }
+
   // Derived stores for common queries
   public activeAreas = derived(
     this._store,
@@ -73,33 +78,6 @@ class AreaStore extends EntityStore<Area> {
       total: entities.length,
     };
   }
-
-  // Methods disabled since Area entity doesn't have isActive/goals/purpose/vision properties
-  // /**
-  //  * Update area status
-  //  */
-  // async updateAreaStatus(filePath: string, isActive: boolean): Promise<void> {
-  //   const area = this.findEntityByPath(filePath);
-  //   if (area) {
-  //     const updatedArea = { ...area, isActive };
-  //     await this.upsertEntity(updatedArea);
-  //   }
-  // }
-
-  // /**
-  //  * Get areas that need attention (no purpose, vision, or goals)
-  //  */
-  // getAreasNeedingAttention(): Area[] {
-  //   const entities = this.getEntities();
-  //   return entities.filter(
-  //     (area) =>
-  //       area.isActive !== false &&
-  //       (!area.purpose ||
-  //         !area.vision ||
-  //         !area.goals ||
-  //         area.goals.length === 0)
-  //   );
-  // }
 }
 
 // Export singleton instance
