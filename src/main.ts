@@ -63,6 +63,10 @@ import {
   TaskPlanningView,
   TASK_PLANNING_VIEW_TYPE,
 } from "./views/TaskPlanningView";
+import {
+  DailyPlanningView,
+  DAILY_PLANNING_VIEW_TYPE,
+} from "./views/DailyPlanningView";
 import { TaskImportConfig } from "./types/integrations";
 import { Task, Project, Area } from "./types/entities";
 import { taskStore } from "./stores/taskStore";
@@ -70,10 +74,15 @@ import { projectStore } from "./stores/projectStore";
 import { areaStore } from "./stores/areaStore";
 import { TodoPromotionService } from "./services/TodoPromotionService";
 import { DailyNoteService } from "./services/DailyNoteService";
-import { initializeContextStore } from "./components/svelte/context";
+import {
+  initializeContextStore,
+  currentFileContext,
+} from "./components/svelte/context";
 import { TaskMentionDetectionService } from "./services/TaskMentionDetectionService";
 import { TaskMentionSyncHandler } from "./events/handlers/TaskMentionSyncHandler";
 import { taskMentionStore } from "./stores/taskMentionStore";
+import { scheduleStore } from "./stores/scheduleStore";
+import { dailyPlanningStore } from "./stores/dailyPlanningStore";
 
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
@@ -84,6 +93,7 @@ export interface FileContext {
   type: "project" | "area" | "task" | "daily" | "none";
   name?: string;
   path?: string;
+  dailyPlanningMode?: boolean; // Whether Daily Planning wizard is currently active
 }
 
 // Todo item detection interface
@@ -137,12 +147,16 @@ export default class TaskSyncPlugin extends Plugin {
     projectStore: typeof projectStore;
     areaStore: typeof areaStore;
     taskMentionStore: typeof taskMentionStore;
+    scheduleStore: typeof scheduleStore;
+    dailyPlanningStore: typeof dailyPlanningStore;
   } {
     return {
       taskStore: taskStore,
       projectStore: projectStore,
       areaStore: areaStore,
       taskMentionStore: taskMentionStore,
+      scheduleStore: scheduleStore,
+      dailyPlanningStore: dailyPlanningStore,
     };
   }
 
@@ -168,12 +182,6 @@ export default class TaskSyncPlugin extends Plugin {
     ]);
   }
 
-<<<<<<< HEAD
-  // Global context system
-  private currentContext: FileContext = { type: "none" };
-
-=======
->>>>>>> 7dac42a (Refactor entity handling)
   async onload() {
     console.log("Loading Task Sync Plugin");
 
@@ -380,6 +388,20 @@ export default class TaskSyncPlugin extends Plugin {
         })
     );
 
+    // Register Daily Planning view
+    this.registerView(
+      DAILY_PLANNING_VIEW_TYPE,
+      (leaf) =>
+        new DailyPlanningView(
+          leaf,
+          this.appleCalendarService,
+          this.dailyNoteService,
+          {
+            appleCalendarIntegration: this.settings.appleCalendarIntegration,
+          }
+        )
+    );
+
     // Wait for layout ready, then populate stores and create views
     this.app.workspace.onLayoutReady(async () => {
       console.log("Layout ready - populating stores from vault");
@@ -567,6 +589,14 @@ export default class TaskSyncPlugin extends Plugin {
       name: "Open Task Planning",
       callback: () => {
         this.activateTaskPlanningView();
+      },
+    });
+
+    this.addCommand({
+      id: "start-daily-planning",
+      name: "Start daily planning",
+      callback: async () => {
+        await this.startDailyPlanning();
       },
     });
   }
@@ -1111,6 +1141,53 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
+  /**
+   * Start daily planning - opens daily note and creates Daily Planning view above it
+   */
+  private async startDailyPlanning(): Promise<void> {
+    try {
+      // Ensure today's daily note exists
+      const dailyNoteResult =
+        await this.dailyNoteService.ensureTodayDailyNote();
+
+      // Open the daily note if it's not already open
+      if (dailyNoteResult.file) {
+        await this.app.workspace.openLinkText(
+          dailyNoteResult.file.path,
+          "",
+          false
+        );
+      }
+
+      // Create or activate Daily Planning view above the daily note
+      await this.activateDailyPlanningView();
+    } catch (error: any) {
+      console.error("Error starting daily planning:", error);
+      new Notice(`Failed to start daily planning: ${error.message}`);
+    }
+  }
+
+  /**
+   * Activate the Daily Planning view (bring it to focus)
+   */
+  private async activateDailyPlanningView(): Promise<void> {
+    const existingLeaves = this.app.workspace.getLeavesOfType(
+      DAILY_PLANNING_VIEW_TYPE
+    );
+
+    if (existingLeaves.length > 0) {
+      // Activate existing view
+      this.app.workspace.revealLeaf(existingLeaves[0]);
+    } else {
+      // Create new view in main area (above daily note)
+      const mainLeaf = this.app.workspace.getLeaf("tab");
+      await mainLeaf.setViewState({
+        type: DAILY_PLANNING_VIEW_TYPE,
+        active: true,
+      });
+    }
+  }
+
   private detectCurrentFileContext(): FileContext {
     const activeFile = this.app.workspace.getActiveFile();
 
@@ -1189,13 +1266,24 @@ export default class TaskSyncPlugin extends Plugin {
   private updateCurrentContext(): void {
     const newContext = this.detectCurrentFileContext();
 
-    // Only update if context actually changed
+    // Get current context from store to compare
+    let currentStoreContext: FileContext = { type: "none" };
+    currentFileContext.subscribe((context) => {
+      currentStoreContext = context;
+    })();
+
+    // Only update if context actually changed (preserve dailyPlanningMode)
     if (
-      this.currentContext.type !== newContext.type ||
-      this.currentContext.name !== newContext.name
+      currentStoreContext.type !== newContext.type ||
+      currentStoreContext.name !== newContext.name ||
+      currentStoreContext.path !== newContext.path
     ) {
-      this.currentContext = newContext;
-      console.log("🔄 Context updated:", this.currentContext);
+      // Update the context store, preserving dailyPlanningMode
+      currentFileContext.update((context) => ({
+        ...newContext,
+        dailyPlanningMode: context.dailyPlanningMode || false,
+      }));
+      console.log("🔄 Context updated:", newContext);
     }
   }
 
@@ -1203,7 +1291,13 @@ export default class TaskSyncPlugin extends Plugin {
    * Get the current context
    */
   getCurrentContext(): FileContext {
-    return { ...this.currentContext };
+    // Get the current context from the store to include daily planning mode
+    let storeContext: FileContext = { type: "none" };
+    currentFileContext.subscribe((context) => {
+      storeContext = context;
+    })();
+
+    return storeContext;
   }
 
   // Create a new task
@@ -2172,6 +2266,9 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize task mention store
     taskMentionStore.initialize(this.app, this, "");
+
+    // Initialize schedule store
+    await scheduleStore.initialize(this.app, this);
 
     // Refresh all stores to load existing files
     await taskStore.refreshEntities();

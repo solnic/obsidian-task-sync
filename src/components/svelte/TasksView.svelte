@@ -56,6 +56,11 @@
     return currentContext.type === "daily";
   });
 
+  // Get Daily Planning wizard mode from context store
+  let dailyPlanningWizardMode = $derived(
+    currentContext.dailyPlanningMode || false
+  );
+
   // Available services with native Obsidian icons
   const services = [
     {
@@ -188,7 +193,7 @@
               {dayPlanningMode}
             />
           {:else if activeService === "local"}
-            <LocalTasksService {dayPlanningMode} />
+            <LocalTasksService {dayPlanningMode} {dailyPlanningWizardMode} />
           {:else if activeService === "apple-reminders"}
             <AppleRemindersService
               {appleRemindersService}

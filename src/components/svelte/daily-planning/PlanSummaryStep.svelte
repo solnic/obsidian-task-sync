@@ -1,0 +1,169 @@
+<script lang="ts">
+  /**
+   * Step 3: Plan Summary
+   * Shows final plan summary and confirmation to add tasks to daily note
+   */
+
+  import type { Task } from "../../../types/entities";
+  import type { CalendarEvent } from "../../../types/calendar";
+  import { dailyPlanningStore } from "../../../stores/dailyPlanningStore";
+
+  interface Props {
+    finalPlan: { tasks: Task[]; events: CalendarEvent[] };
+    tasksToMoveToToday: Task[];
+  }
+
+  let { finalPlan, tasksToMoveToToday }: Props = $props();
+
+  // Get scheduled tasks from the daily planning store
+  let dailyPlanningState = $state(dailyPlanningStore);
+  let scheduledTasks = $derived($dailyPlanningState.scheduledTasks);
+</script>
+
+<div class="plan-summary">
+  <h4>Plan Summary</h4>
+  <p>Review your plan for today and confirm to add tasks to your daily note.</p>
+
+  <!-- Final Plan Preview -->
+  <div class="plan-preview">
+    {#if finalPlan.events.length > 0}
+      <div class="plan-section">
+        <h5>📅 Calendar Events ({finalPlan.events.length})</h5>
+        <div class="preview-list">
+          {#each finalPlan.events as event}
+            <div class="preview-item event">
+              <span class="preview-time">
+                {new Date(event.startDate).toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                  hour12: true,
+                })}
+              </span>
+              <span class="preview-title">{event.title}</span>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
+    {#if finalPlan.tasks.length > 0}
+      <div class="plan-section">
+        <h5>✅ Tasks ({finalPlan.tasks.length})</h5>
+        <div class="preview-list">
+          {#each finalPlan.tasks as task}
+            {@const isFromPlanning = scheduledTasks.includes(task)}
+            <div class="preview-item task">
+              <span class="preview-title">{task.title}</span>
+              {#if tasksToMoveToToday.includes(task)}
+                <span class="preview-badge moved">Moved from yesterday</span>
+              {:else if isFromPlanning}
+                <span class="preview-badge scheduled"
+                  >Scheduled during planning</span
+                >
+              {/if}
+            </div>
+          {/each}
+        </div>
+      </div>
+    {:else}
+      <div class="no-tasks">
+        <p>No tasks planned for today.</p>
+      </div>
+    {/if}
+  </div>
+</div>
+
+<style>
+  .plan-summary h4 {
+    margin-bottom: 20px;
+    color: var(--text-normal);
+  }
+
+  .plan-summary p {
+    margin-bottom: 20px;
+    color: var(--text-muted);
+  }
+
+  .plan-preview {
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 20px;
+    background: var(--background-secondary);
+  }
+
+  .plan-section {
+    margin-bottom: 25px;
+  }
+
+  .plan-section:last-child {
+    margin-bottom: 0;
+  }
+
+  .plan-section h5 {
+    margin-bottom: 15px;
+    color: var(--text-normal);
+    font-size: 16px;
+  }
+
+  .preview-list {
+    margin-bottom: 10px;
+  }
+
+  .preview-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    border-radius: 6px;
+    border: 1px solid var(--background-modifier-border);
+  }
+
+  .preview-item.event {
+    background: var(--color-blue-rgb);
+    background: rgba(var(--color-blue-rgb), 0.1);
+    border-color: var(--color-blue);
+  }
+
+  .preview-item.task {
+    background: var(--color-green-rgb);
+    background: rgba(var(--color-green-rgb), 0.1);
+    border-color: var(--color-green);
+  }
+
+  .preview-time {
+    font-size: 12px;
+    color: var(--text-muted);
+    min-width: 70px;
+    font-weight: 500;
+  }
+
+  .preview-title {
+    font-size: 14px;
+    color: var(--text-normal);
+    flex: 1;
+  }
+
+  .preview-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .preview-badge.moved {
+    background: var(--color-orange);
+    color: white;
+  }
+
+  .preview-badge.scheduled {
+    background: var(--color-blue);
+    color: white;
+  }
+
+  .no-tasks {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-muted);
+  }
+</style>

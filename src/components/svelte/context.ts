@@ -20,6 +20,7 @@ export function getPluginContext(): PluginContext {
 // Reactive context store for tracking current file context
 export const currentFileContext: Writable<FileContext> = writable({
   type: "none",
+  dailyPlanningMode: false,
 });
 
 /**
@@ -39,7 +40,7 @@ export function initializeContextStore(plugin: TaskSyncPlugin): void {
 
   // Register workspace events to update context
   plugin.registerEvent(
-    plugin.app.workspace.on("active-leaf-change", updateContext),
+    plugin.app.workspace.on("active-leaf-change", updateContext)
   );
 
   plugin.registerEvent(plugin.app.workspace.on("file-open", updateContext));
@@ -50,4 +51,25 @@ export function initializeContextStore(plugin: TaskSyncPlugin): void {
  */
 export function getContextStore(): Writable<FileContext> {
   return currentFileContext;
+}
+
+/**
+ * Update the daily planning mode in the context store
+ */
+export function setDailyPlanningMode(isActive: boolean): void {
+  currentFileContext.update((context) => ({
+    ...context,
+    dailyPlanningMode: isActive,
+  }));
+}
+
+/**
+ * Get the current daily planning mode
+ */
+export function getDailyPlanningMode(): boolean {
+  let currentMode = false;
+  currentFileContext.subscribe((context) => {
+    currentMode = context.dailyPlanningMode || false;
+  })();
+  return currentMode;
 }

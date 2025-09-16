@@ -40,6 +40,11 @@
 
   // Determine button text based on state and mode
   let buttonText = $derived.by(() => {
+    // If a custom title is provided, use it for the button text
+    if (title) {
+      return title;
+    }
+
     if (isImported) {
       return dayPlanningMode ? "✓ Added to today" : "✓ Imported";
     } else if (isImporting) {
@@ -52,22 +57,24 @@
   // Determine default title if not provided
   let buttonTitle = $derived.by(() => {
     if (title) return title;
-    
+
     if (isImported || isImporting) return "";
-    
+
     return dayPlanningMode ? "Add to today" : "Import";
   });
 
   // Determine test ID if not provided
   let buttonTestId = $derived.by(() => {
     if (testId) return testId;
-    
+
     if (dayPlanningMode) {
       return "add-to-today-button";
     } else {
-      return isImported ? "imported-indicator" : 
-             isImporting ? "importing-indicator" : 
-             "import-button";
+      return isImported
+        ? "imported-indicator"
+        : isImporting
+          ? "importing-indicator"
+          : "import-button";
     }
   });
 
@@ -77,20 +84,20 @@
   // Determine CSS classes
   let cssClasses = $derived.by(() => {
     const classes = ["import-button"];
-    
+
     classes.push(`import-button--${size}`);
     classes.push(`import-button--${variant}`);
-    
+
     if (isImported) {
       classes.push("import-button--imported");
     } else if (isImporting) {
       classes.push("import-button--importing");
     }
-    
+
     if (isDisabled) {
       classes.push("import-button--disabled");
     }
-    
+
     return classes.join(" ");
   });
 
@@ -102,11 +109,7 @@
 </script>
 
 {#if isImported || isImporting}
-  <span
-    class={cssClasses}
-    data-testid={buttonTestId}
-    title={buttonTitle}
-  >
+  <span class={cssClasses} data-testid={buttonTestId} title={buttonTitle}>
     {buttonText}
   </span>
 {:else}
@@ -198,7 +201,8 @@
 
   /* Pulse animation for importing state */
   @keyframes pulse {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 1;
     }
     50% {

@@ -7,6 +7,12 @@
   import ImportButton from "./ImportButton.svelte";
   import { extractDisplayValue } from "../../utils/linkUtils";
   import type { Task } from "../../types/entities";
+  import {
+    dailyPlanningStore,
+    scheduleTaskForToday,
+    unscheduleTask,
+    isTaskScheduled,
+  } from "../../stores/dailyPlanningStore";
 
   interface Props {
     task: Task;
@@ -14,6 +20,7 @@
     onHover?: (hovered: boolean) => void;
     onClick?: () => void;
     dayPlanningMode?: boolean;
+    dailyPlanningWizardMode?: boolean;
     onAddToToday?: (task: Task) => void;
     isInToday?: boolean;
     testId?: string;
@@ -25,10 +32,17 @@
     onHover,
     onClick,
     dayPlanningMode = false,
+    dailyPlanningWizardMode = false,
     onAddToToday,
     isInToday = false,
     testId,
   }: Props = $props();
+
+  // Track daily planning state
+  let dailyPlanningState = $state(dailyPlanningStore);
+  let isScheduled = $derived(
+    isTaskScheduled(task, $dailyPlanningState.scheduledTasks)
+  );
 
   // Convert task data to TaskItem format - first row badges (category, priority, status)
   let primaryBadges = $derived.by(() => {
@@ -89,6 +103,18 @@
     onAddToToday?.(task);
   }
 
+  function handleScheduleForToday() {
+    if (isScheduled) {
+      // Unschedule the task
+      unscheduleTask(task);
+      console.log("Unscheduled task:", task.title);
+    } else {
+      // Schedule the task for today
+      scheduleTaskForToday(task);
+      console.log("Scheduling task for today:", task.title);
+    }
+  }
+
   function handleOpenTask() {
     onClick?.();
   }
@@ -102,7 +128,15 @@
 
 {#snippet actionSnippet()}
   <div class="task-actions">
-    {#if dayPlanningMode}
+    {#if dailyPlanningWizardMode}
+      <ImportButton
+        dayPlanningMode={false}
+        title={isScheduled ? "✓ Scheduled" : "Schedule for today"}
+        testId="schedule-for-today-button"
+        onImport={handleScheduleForToday}
+        isImported={isScheduled}
+      />
+    {:else if dayPlanningMode}
       <ImportButton
         dayPlanningMode={true}
         title="Add to today"

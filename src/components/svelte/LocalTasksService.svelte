@@ -20,9 +20,11 @@
 
   interface Props {
     dayPlanningMode?: boolean;
+    dailyPlanningWizardMode?: boolean;
   }
 
-  let { dayPlanningMode = false }: Props = $props();
+  let { dayPlanningMode = false, dailyPlanningWizardMode = false }: Props =
+    $props();
 
   const { plugin } = getPluginContext();
   const contextStore = getContextStore();
@@ -691,6 +693,7 @@
                 }
               }}
               {dayPlanningMode}
+              {dailyPlanningWizardMode}
               onAddToToday={addToToday}
               isInToday={task.filePath
                 ? tasksInToday.has(task.filePath)
