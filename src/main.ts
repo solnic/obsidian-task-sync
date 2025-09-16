@@ -45,6 +45,7 @@ import { EntityCacheHandler } from "./events/handlers/EntityCacheHandler";
 import {
   GitHubSettingsHandler,
   AppleRemindersSettingsHandler,
+  TaskStatusSettingsHandler,
 } from "./events/handlers/SettingsChangeHandler";
 import {
   DEFAULT_SETTINGS,
@@ -126,6 +127,7 @@ export default class TaskSyncPlugin extends Plugin {
   entityCacheHandler: EntityCacheHandler;
   githubSettingsHandler: GitHubSettingsHandler;
   appleRemindersSettingsHandler: AppleRemindersSettingsHandler;
+  taskStatusSettingsHandler: TaskStatusSettingsHandler;
   cacheManager: CacheManager;
   githubService: GitHubService;
   appleRemindersService: AppleRemindersService;
@@ -331,6 +333,9 @@ export default class TaskSyncPlugin extends Plugin {
     this.appleRemindersSettingsHandler = new AppleRemindersSettingsHandler(
       this.appleRemindersService
     );
+    this.taskStatusSettingsHandler = new TaskStatusSettingsHandler(
+      this.statusDoneHandler
+    );
 
     // Register event handlers
     this.eventManager.registerHandler(this.statusDoneHandler);
@@ -340,6 +345,7 @@ export default class TaskSyncPlugin extends Plugin {
     this.eventManager.registerHandler(this.entityCacheHandler);
     this.eventManager.registerHandler(this.githubSettingsHandler);
     this.eventManager.registerHandler(this.appleRemindersSettingsHandler);
+    this.eventManager.registerHandler(this.taskStatusSettingsHandler);
     this.eventManager.registerHandler(this.taskMentionSyncHandler);
 
     // Initialize file change listener

@@ -9,12 +9,15 @@ import {
   PluginEvent,
   SettingsChangedEventData,
 } from "../EventTypes";
+import { StatusDoneHandler } from "./StatusDoneHandler";
 
 /**
  * Abstract base class for handling settings changes
  * Services can extend this to react to specific settings sections
  */
-export abstract class SettingsChangeHandler implements EventHandler<SettingsChangedEventData> {
+export abstract class SettingsChangeHandler
+  implements EventHandler<SettingsChangedEventData>
+{
   /**
    * The settings sections this handler cares about
    */
@@ -45,22 +48,24 @@ export abstract class SettingsChangeHandler implements EventHandler<SettingsChan
     }
 
     const data = event.data as SettingsChangedEventData;
-    return (
-      data.hasChanges && 
-      this.getWatchedSections().includes(data.section)
-    );
+    return data.hasChanges && this.getWatchedSections().includes(data.section);
   }
 
   /**
    * Handle the settings change event
    */
-  async handle(event: PluginEvent & { data: SettingsChangedEventData }): Promise<void> {
+  async handle(
+    event: PluginEvent & { data: SettingsChangedEventData }
+  ): Promise<void> {
     const { section, oldSettings, newSettings } = event.data;
-    
+
     try {
       await this.handleSettingsChange(section, oldSettings, newSettings);
     } catch (error) {
-      console.error(`SettingsChangeHandler: Error handling settings change for section '${section}':`, error);
+      console.error(
+        `SettingsChangeHandler: Error handling settings change for section '${section}':`,
+        error
+      );
     }
   }
 }
@@ -78,18 +83,24 @@ export class GitHubSettingsHandler extends SettingsChangeHandler {
   }
 
   protected getWatchedSections(): string[] {
-    return ['githubIntegration'];
+    return ["githubIntegration"];
   }
 
-  async handleSettingsChange(section: string, oldSettings: any, newSettings: any): Promise<void> {
-    if (section === 'githubIntegration') {
-      console.log("🐙 GitHub settings changed via event system, clearing cache");
-      
+  async handleSettingsChange(
+    section: string,
+    oldSettings: any,
+    newSettings: any
+  ): Promise<void> {
+    if (section === "githubIntegration") {
+      console.log(
+        "🐙 GitHub settings changed via event system, clearing cache"
+      );
+
       // Update the service's internal settings
       if (this.githubService && this.githubService.updateSettingsInternal) {
         this.githubService.updateSettingsInternal(newSettings);
       }
-      
+
       // Clear cache
       if (this.githubService && this.githubService.clearCache) {
         this.githubService.clearCache();
@@ -111,22 +122,78 @@ export class AppleRemindersSettingsHandler extends SettingsChangeHandler {
   }
 
   protected getWatchedSections(): string[] {
-    return ['appleRemindersIntegration'];
+    return ["appleRemindersIntegration"];
   }
 
-  async handleSettingsChange(section: string, oldSettings: any, newSettings: any): Promise<void> {
-    if (section === 'appleRemindersIntegration') {
-      console.log("🍎 Apple Reminders settings changed via event system, clearing cache");
-      
+  async handleSettingsChange(
+    section: string,
+    oldSettings: any,
+    newSettings: any
+  ): Promise<void> {
+    if (section === "appleRemindersIntegration") {
+      console.log(
+        "🍎 Apple Reminders settings changed via event system, clearing cache"
+      );
+
       // Update the service's internal settings
-      if (this.appleRemindersService && this.appleRemindersService.updateSettingsInternal) {
+      if (
+        this.appleRemindersService &&
+        this.appleRemindersService.updateSettingsInternal
+      ) {
         this.appleRemindersService.updateSettingsInternal(newSettings);
       }
-      
+
       // Clear cache
       if (this.appleRemindersService && this.appleRemindersService.clearCache) {
         this.appleRemindersService.clearCache();
       }
+    }
+  }
+}
+
+/**
+ * Task Status Settings Change Handler
+ * Handles changes to task status configurations and updates StatusDoneHandler
+ */
+export class TaskStatusSettingsHandler extends SettingsChangeHandler {
+  private statusDoneHandler: StatusDoneHandler;
+
+  constructor(statusDoneHandler: StatusDoneHandler) {
+    super();
+    this.statusDoneHandler = statusDoneHandler;
+  }
+
+  protected getWatchedSections(): string[] {
+    return ["taskStatuses"];
+  }
+
+  async handleSettingsChange(
+    section: string,
+    oldSettings: any,
+    newSettings: any
+  ): Promise<void> {
+    if (section === "taskStatuses") {
+      console.log(
+        "⚙️ Task status settings changed via event system, updating StatusDoneHandler"
+      );
+
+      // Update the StatusDoneHandler with the new task status settings
+      // We need to reconstruct the full settings object with the new taskStatuses
+      const currentSettings = this.statusDoneHandler.getSettings();
+      const updatedSettings = {
+        ...currentSettings,
+        taskStatuses: newSettings,
+      };
+
+      this.statusDoneHandler.updateSettings(updatedSettings);
+
+      console.log(
+        "TaskStatusSettingsHandler: StatusDoneHandler updated with new task status configuration",
+        {
+          oldStatuses: oldSettings?.length || 0,
+          newStatuses: newSettings?.length || 0,
+        }
+      );
     }
   }
 }

@@ -19,10 +19,7 @@ import { TaskSyncSettings } from "../../components/ui/settings";
 export class StatusDoneHandler implements EventHandler {
   private processingFiles: Map<string, Set<string>> = new Map();
 
-  constructor(
-    private app: App,
-    private settings: TaskSyncSettings,
-  ) {}
+  constructor(private app: App, private settings: TaskSyncSettings) {}
 
   /**
    * Update the settings reference for this handler
@@ -30,6 +27,13 @@ export class StatusDoneHandler implements EventHandler {
    */
   updateSettings(newSettings: TaskSyncSettings): void {
     this.settings = newSettings;
+  }
+
+  /**
+   * Get the current settings reference for this handler
+   */
+  getSettings(): TaskSyncSettings {
+    return this.settings;
   }
 
   /**
@@ -51,7 +55,11 @@ export class StatusDoneHandler implements EventHandler {
 
     // For debugging: always log what we're deciding
     console.log(
-      `StatusDoneHandler: shouldHandle ${event.type} for ${filePath}: ${!isProcessing} (processing types: ${Array.from(processingTypes).join(", ")})`,
+      `StatusDoneHandler: shouldHandle ${
+        event.type
+      } for ${filePath}: ${!isProcessing} (processing types: ${Array.from(
+        processingTypes
+      ).join(", ")})`
     );
 
     return !isProcessing;
@@ -71,7 +79,7 @@ export class StatusDoneHandler implements EventHandler {
           break;
         default:
           console.warn(
-            `StatusDoneHandler: Unsupported event type: ${event.type}`,
+            `StatusDoneHandler: Unsupported event type: ${event.type}`
           );
       }
     } catch (error) {
@@ -83,17 +91,17 @@ export class StatusDoneHandler implements EventHandler {
    * Handle status change events
    */
   private async handleStatusChanged(
-    data: StatusChangedEventData,
+    data: StatusChangedEventData
   ): Promise<void> {
     const { filePath, newStatus, frontmatter } = data;
 
     console.log(
-      `StatusDoneHandler: Processing STATUS_CHANGED for ${filePath}: ${data.oldStatus} -> ${newStatus}`,
+      `StatusDoneHandler: Processing STATUS_CHANGED for ${filePath}: ${data.oldStatus} -> ${newStatus}`
     );
 
     // Find the status configuration
     const statusConfig = this.settings.taskStatuses.find(
-      (s) => s.name === newStatus,
+      (s) => s.name === newStatus
     );
     if (!statusConfig) {
       console.warn(`StatusDoneHandler: Unknown status "${newStatus}"`);
@@ -105,17 +113,17 @@ export class StatusDoneHandler implements EventHandler {
     const shouldBeDone = statusConfig.isDone;
 
     console.log(
-      `StatusDoneHandler: Status "${newStatus}" isDone=${shouldBeDone}, current Done=${currentDone}`,
+      `StatusDoneHandler: Status "${newStatus}" isDone=${shouldBeDone}, current Done=${currentDone}`
     );
 
     if (currentDone !== shouldBeDone) {
       console.log(
-        `StatusDoneHandler: Updating Done field for ${filePath} from ${currentDone} to ${shouldBeDone}`,
+        `StatusDoneHandler: Updating Done field for ${filePath} from ${currentDone} to ${shouldBeDone}`
       );
       await this.updateDoneField(filePath, shouldBeDone, true); // Allow override when triggered by status change
     } else {
       console.log(
-        `StatusDoneHandler: Done field already correct for ${filePath}`,
+        `StatusDoneHandler: Done field already correct for ${filePath}`
       );
     }
   }
@@ -127,25 +135,25 @@ export class StatusDoneHandler implements EventHandler {
     const { filePath, newDone, frontmatter } = data;
 
     console.log(
-      `StatusDoneHandler: Processing DONE_CHANGED for ${filePath}: ${data.oldDone} -> ${newDone}`,
+      `StatusDoneHandler: Processing DONE_CHANGED for ${filePath}: ${data.oldDone} -> ${newDone}`
     );
 
     // Get current status
     const currentStatus = frontmatter.Status;
     if (!currentStatus) {
       console.log(
-        `StatusDoneHandler: No status field found for ${filePath}, skipping`,
+        `StatusDoneHandler: No status field found for ${filePath}, skipping`
       );
       return; // No status to sync with
     }
 
     // Find current status configuration
     const currentStatusConfig = this.settings.taskStatuses.find(
-      (s) => s.name === currentStatus,
+      (s) => s.name === currentStatus
     );
     if (!currentStatusConfig) {
       console.warn(
-        `StatusDoneHandler: Unknown current status "${currentStatus}"`,
+        `StatusDoneHandler: Unknown current status "${currentStatus}"`
       );
       return;
     }
@@ -154,7 +162,7 @@ export class StatusDoneHandler implements EventHandler {
     const statusShouldBeDone = currentStatusConfig.isDone;
 
     console.log(
-      `StatusDoneHandler: Current status "${currentStatus}" isDone=${statusShouldBeDone}, new Done=${newDone}`,
+      `StatusDoneHandler: Current status "${currentStatus}" isDone=${statusShouldBeDone}, new Done=${newDone}`
     );
 
     if (newDone !== statusShouldBeDone) {
@@ -163,21 +171,21 @@ export class StatusDoneHandler implements EventHandler {
 
       if (targetStatus && targetStatus.name !== currentStatus) {
         console.log(
-          `StatusDoneHandler: Updating Status field for ${filePath} from ${currentStatus} to ${targetStatus.name}`,
+          `StatusDoneHandler: Updating Status field for ${filePath} from ${currentStatus} to ${targetStatus.name}`
         );
         await this.updateStatusField(filePath, targetStatus.name);
       } else if (!targetStatus) {
         console.warn(
-          `StatusDoneHandler: No appropriate status found for Done=${newDone}`,
+          `StatusDoneHandler: No appropriate status found for Done=${newDone}`
         );
       } else {
         console.log(
-          `StatusDoneHandler: Target status "${targetStatus.name}" is same as current, no change needed`,
+          `StatusDoneHandler: Target status "${targetStatus.name}" is same as current, no change needed`
         );
       }
     } else {
       console.log(
-        `StatusDoneHandler: Status field already correct for ${filePath}`,
+        `StatusDoneHandler: Status field already correct for ${filePath}`
       );
     }
   }
@@ -186,11 +194,11 @@ export class StatusDoneHandler implements EventHandler {
    * Find an appropriate status based on done state
    */
   private findAppropriateStatus(
-    isDone: boolean,
+    isDone: boolean
   ): { name: string; isDone: boolean } | null {
     // Find the first status that matches the done state
     const matchingStatuses = this.settings.taskStatuses.filter(
-      (s) => s.isDone === isDone,
+      (s) => s.isDone === isDone
     );
 
     if (matchingStatuses.length === 0) {
@@ -229,7 +237,7 @@ export class StatusDoneHandler implements EventHandler {
   private async updateDoneField(
     filePath: string,
     newDone: boolean,
-    allowOverride: boolean = false,
+    allowOverride: boolean = false
   ): Promise<void> {
     await this.updateFrontmatterField(filePath, "Done", newDone, allowOverride);
   }
@@ -239,7 +247,7 @@ export class StatusDoneHandler implements EventHandler {
    */
   private async updateStatusField(
     filePath: string,
-    newStatus: string,
+    newStatus: string
   ): Promise<void> {
     await this.updateFrontmatterField(filePath, "Status", newStatus, true); // Allow override when triggered by done change
   }
@@ -251,7 +259,7 @@ export class StatusDoneHandler implements EventHandler {
     filePath: string,
     fieldName: string,
     newValue: any,
-    allowOverride: boolean = false,
+    allowOverride: boolean = false
   ): Promise<void> {
     // Determine the event type we're processing based on the field being updated
     const eventType =
@@ -261,7 +269,7 @@ export class StatusDoneHandler implements EventHandler {
     const processingTypes = this.processingFiles.get(filePath) || new Set();
     if (processingTypes.has(eventType) && !allowOverride) {
       console.log(
-        `StatusDoneHandler: Skipping ${fieldName} update for ${filePath} - already processing ${eventType}`,
+        `StatusDoneHandler: Skipping ${fieldName} update for ${filePath} - already processing ${eventType}`
       );
       return;
     }
@@ -281,19 +289,19 @@ export class StatusDoneHandler implements EventHandler {
       const updatedContent = this.updateFrontmatterInContent(
         content,
         fieldName,
-        newValue,
+        newValue
       );
 
       if (updatedContent !== content) {
         await this.app.vault.modify(file, updatedContent);
         console.log(
-          `StatusDoneHandler: Updated ${fieldName} to ${newValue} in ${filePath}`,
+          `StatusDoneHandler: Updated ${fieldName} to ${newValue} in ${filePath}`
         );
       }
     } catch (error) {
       console.error(
         `StatusDoneHandler: Error updating ${fieldName} in ${filePath}:`,
-        error,
+        error
       );
     } finally {
       // Remove this specific event type from processing set after a shorter delay
@@ -306,7 +314,7 @@ export class StatusDoneHandler implements EventHandler {
           }
         }
         console.log(
-          `StatusDoneHandler: Released processing lock for ${eventType} on ${filePath}`,
+          `StatusDoneHandler: Released processing lock for ${eventType} on ${filePath}`
         );
       }, 50);
     }
@@ -318,7 +326,7 @@ export class StatusDoneHandler implements EventHandler {
   private updateFrontmatterInContent(
     content: string,
     fieldName: string,
-    newValue: any,
+    newValue: any
   ): string {
     const frontmatterRegex = /^(---\n)([\s\S]*?)(\n---)/;
     const match = content.match(frontmatterRegex);
@@ -354,7 +362,7 @@ export class StatusDoneHandler implements EventHandler {
     const updatedFrontmatter = updatedLines.join("\n");
     return content.replace(
       frontmatterRegex,
-      `${start}${updatedFrontmatter}${end}`,
+      `${start}${updatedFrontmatter}${end}`
     );
   }
 
