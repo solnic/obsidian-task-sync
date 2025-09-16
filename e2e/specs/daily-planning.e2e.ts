@@ -293,4 +293,126 @@ describe("Daily Planning", () => {
       await context.page.waitForTimeout(2000);
     }
   });
+
+  test("should not show duplicated tasks when moving tasks from yesterday to today", async () => {
+    // Create multiple tasks scheduled for yesterday
+    const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+
+    const taskPaths = await context.page.evaluate(async (yesterdayString) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const paths = [];
+      for (let i = 1; i <= 4; i++) {
+        const path = await plugin.taskFileManager.createTaskFile({
+          title: `Yesterday Task ${i}`,
+          description: `Task ${i} from yesterday that should be moved to today`,
+          done: false,
+          doDate: yesterdayString,
+        });
+        paths.push(path);
+      }
+      return paths;
+    }, yesterdayString);
+
+    expect(taskPaths).toHaveLength(4);
+
+    // Start daily planning
+    await executeCommand(context, "Start daily planning");
+
+    // Wait for daily planning view to open
+    await context.page.waitForSelector('[data-testid="daily-planning-view"]', {
+      timeout: 10000,
+    });
+
+    // STEP 1: Review Yesterday's Tasks
+    await context.page.waitForSelector('[data-testid="step-1"]', {
+      timeout: 5000,
+    });
+
+    // Wait for and verify all 4 tasks appear in yesterday's not completed section
+    await context.page.waitForSelector('[data-testid="not-completed-task"]', {
+      timeout: 10000,
+    });
+
+    const yesterdayTasks = context.page.locator(
+      '[data-testid="not-completed-task"]'
+    );
+    const yesterdayTaskCount = await yesterdayTasks.count();
+    expect(yesterdayTaskCount).toBeGreaterThanOrEqual(4);
+
+    // Move unfinished tasks to today using the "Move to Today" button
+    const moveToTodayButton = context.page.locator(
+      '[data-testid="move-to-today-button"]'
+    );
+    if (await moveToTodayButton.isVisible()) {
+      await moveToTodayButton.click();
+
+      // Wait for the move operation to complete
+      await context.page.waitForTimeout(2000);
+    }
+
+    // Navigate to step 2
+    await context.page.click('[data-testid="next-button"]');
+
+    // STEP 2: Today's Agenda
+    await context.page.waitForSelector('[data-testid="step-2"]', {
+      timeout: 5000,
+    });
+
+    // Wait for tasks to appear in today's agenda
+    await context.page.waitForSelector('[data-testid="scheduled-task"]', {
+      timeout: 10000,
+    });
+
+    // Navigate to step 3 to see the final plan
+    await context.page.click('[data-testid="next-button"]');
+
+    // STEP 3: Plan Summary
+    await context.page.waitForSelector('[data-testid="step-3"]', {
+      timeout: 5000,
+    });
+
+    // Count how many times each task appears in the final plan
+    const taskCounts = await context.page.evaluate(() => {
+      const taskItems = Array.from(
+        document.querySelectorAll(".preview-item.task .preview-title")
+      );
+      const counts: Record<string, number> = {};
+
+      taskItems.forEach((item) => {
+        const title = item.textContent?.trim() || "";
+        counts[title] = (counts[title] || 0) + 1;
+      });
+
+      return counts;
+    });
+
+    console.log("Task counts in final plan:", taskCounts);
+
+    // Verify that each moved task appears exactly once (no duplicates)
+    for (let i = 1; i <= 4; i++) {
+      const taskTitle = `Yesterday Task ${i}`;
+      expect(taskCounts[taskTitle]).toBe(1);
+      if (taskCounts[taskTitle] !== 1) {
+        console.error(
+          `Task "${taskTitle}" should appear exactly once, but appears ${taskCounts[taskTitle]} times`
+        );
+      }
+    }
+
+    // Also verify by counting total task items with "Moved from yesterday" badge
+    const movedTasksCount = await context.page
+      .locator(".preview-item.task:has(.preview-badge.moved)")
+      .count();
+    expect(movedTasksCount).toBe(4);
+
+    // Verify all tasks have the "moved" badge since we only moved yesterday's tasks
+    const tasksWithMovedBadge = await context.page
+      .locator(".preview-item.task .preview-badge.moved")
+      .count();
+    expect(tasksWithMovedBadge).toBe(4);
+  });
 });

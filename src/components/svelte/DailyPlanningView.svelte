@@ -201,8 +201,16 @@
     // Get scheduled tasks from the store
     const scheduledTasks = getScheduledTasks();
 
+    // Combine all tasks and remove duplicates based on file path
+    // Prioritize tasks from tasksToMoveToToday to preserve "moved" badge logic
+    const allTasks = [...tasksToMoveToToday, ...todayTasks, ...scheduledTasks];
+    const uniqueTasks = allTasks.filter((task, index, array) => {
+      // Keep only the first occurrence of each task based on file path
+      return array.findIndex((t) => t.filePath === task.filePath) === index;
+    });
+
     finalPlan = {
-      tasks: [...todayTasks, ...tasksToMoveToToday, ...scheduledTasks],
+      tasks: uniqueTasks,
       events: todayEvents,
     };
   }
