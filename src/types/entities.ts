@@ -4,6 +4,7 @@
  */
 
 import { TFile } from "obsidian";
+import { PROPERTY_REGISTRY } from "./properties";
 
 // Base interface for all entities
 export interface BaseEntity {
@@ -74,6 +75,66 @@ export interface Task extends BaseEntity, HasDataView {
 
   // Internal attributes (not front-matter)
   source?: TaskSource; // External source tracking
+}
+
+/**
+ * Utility functions for Task entity property handling
+ */
+export class TaskUtils {
+  /**
+   * Update a task entity's properties from front-matter data
+   * Uses PROPERTY_REGISTRY to determine which properties come from front-matter
+   */
+  static updateTaskFromFrontmatter(
+    task: Task,
+    frontmatter: Record<string, any>
+  ): Task {
+    const updatedTask = { ...task };
+
+    // Iterate through all properties in the registry
+    for (const [, propertyDef] of Object.entries(PROPERTY_REGISTRY)) {
+      // Only update properties that come from front-matter
+      if (!propertyDef.frontmatter) {
+        continue;
+      }
+
+      const frontmatterKey = propertyDef.name;
+      const entityKey = propertyDef.key as keyof Task;
+      const frontmatterValue = frontmatter[frontmatterKey];
+
+      if (frontmatterValue !== undefined) {
+        // Handle different property types
+        if (
+          propertyDef.type === "date" &&
+          typeof frontmatterValue === "string"
+        ) {
+          // Parse date strings to Date objects
+          const parsedDate = new Date(frontmatterValue);
+          if (!isNaN(parsedDate.getTime())) {
+            (updatedTask as any)[entityKey] = parsedDate;
+          }
+        } else if (
+          propertyDef.type === "array" &&
+          Array.isArray(frontmatterValue)
+        ) {
+          (updatedTask as any)[entityKey] = [...frontmatterValue];
+        } else {
+          (updatedTask as any)[entityKey] = frontmatterValue;
+        }
+      }
+    }
+
+    return updatedTask;
+  }
+
+  /**
+   * Get the property set for Task front-matter properties
+   */
+  static getFrontmatterPropertySet(): readonly string[] {
+    return Object.entries(PROPERTY_REGISTRY)
+      .filter(([, prop]) => prop.frontmatter)
+      .map(([key]) => key);
+  }
 }
 
 // Task mention entity - represents a todo item that links to a task

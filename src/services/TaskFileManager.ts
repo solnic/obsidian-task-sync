@@ -9,7 +9,7 @@ import { TaskSyncSettings } from "../main";
 import { FileManager, FileCreationData } from "./FileManager";
 import { PROPERTY_REGISTRY } from "../types/properties";
 import { PROPERTY_SETS } from "./base-definitions/BaseConfigurations";
-import { Task } from "../types/entities";
+import { Task, TaskUtils } from "../types/entities";
 import { createWikiLink, createLinkFormat } from "../utils/linkUtils";
 import moment from "moment";
 
@@ -314,27 +314,35 @@ export class TaskFileManager extends FileManager {
       return undefined;
     };
 
-    return {
+    // Create base task entity
+    const baseTask: Task = {
       id: this.generateId(),
       file,
       filePath: file.path,
-      title: frontMatter.Title,
-      type: frontMatter.Type,
-      category: frontMatter.Category,
-      priority: frontMatter.Priority,
-      status: frontMatter.Status,
-      done: frontMatter.Done,
-      parentTask: cleanLinkFormat(frontMatter["Parent task"]),
-      project: cleanLinkFormat(frontMatter.Project),
-      areas: areas,
-      doDate: parseDate(frontMatter["Do Date"]),
-      dueDate: parseDate(frontMatter["Due Date"]),
-      tags: frontMatter.tags,
+      title: "",
       // File system properties
       createdAt: new Date(file.stat.ctime),
       updatedAt: new Date(file.stat.mtime),
-      source: frontMatter.source,
+      // Source is not loaded from front-matter - it's set separately as an internal property
+      source: undefined,
     };
+
+    // Use utility function to update properties from front-matter
+    const taskWithFrontmatter = TaskUtils.updateTaskFromFrontmatter(
+      baseTask,
+      frontMatter
+    );
+
+    // Handle special cases that need custom processing
+    taskWithFrontmatter.parentTask = cleanLinkFormat(
+      frontMatter["Parent task"]
+    );
+    taskWithFrontmatter.project = cleanLinkFormat(frontMatter.Project);
+    taskWithFrontmatter.areas = areas;
+    taskWithFrontmatter.doDate = parseDate(frontMatter["Do Date"]);
+    taskWithFrontmatter.dueDate = parseDate(frontMatter["Due Date"]);
+
+    return taskWithFrontmatter;
   }
 
   /**

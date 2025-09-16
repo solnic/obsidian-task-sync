@@ -1309,18 +1309,22 @@ export default class TaskSyncPlugin extends Plugin {
   // Create a new task
   async createTask(taskData: any): Promise<Task> {
     const content = taskData.content || taskData.description;
+    const source = taskData.source; // Extract source before creating file
 
-    return await this.taskFileManager
-      .createTaskFile(taskData, content)
-      .then(async (filePath) => {
-        const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+    const filePath = await this.taskFileManager.createTaskFile(
+      taskData,
+      content
+    );
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
 
-        return this.taskFileManager
-          .waitForMetadataCache(file)
-          .then(async (_) => {
-            return this.stores.taskStore.findEntityByPath(filePath);
-          });
-      });
+    await this.taskFileManager.waitForMetadataCache(file);
+
+    // Set source if provided (for todo promotion and other internal sources)
+    if (source) {
+      await this.stores.taskStore.setTaskSource(filePath, source);
+    }
+
+    return this.stores.taskStore.findEntityByPath(filePath);
   }
 
   /**

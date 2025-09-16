@@ -178,13 +178,8 @@ export class TaskImportManager {
       frontMatter.Reminders = [];
     }
 
-    // Source - internal tracking for imported tasks
-    frontMatter.source = {
-      name: this.getSourceDisplayName(taskData),
-      key: taskData.id,
-      url: taskData.externalUrl,
-      data: taskData.sourceData, // Store canonical service data for universal access
-    };
+    // Note: Source is no longer stored in front-matter
+    // It will be set as an internal property after task creation
 
     return frontMatter;
   }

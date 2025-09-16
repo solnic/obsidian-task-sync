@@ -124,4 +124,10 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
     source: "file.mtime",
     frontmatter: false, // This comes from file system, not front-matter
   },
+  SOURCE: {
+    key: "source",
+    name: "Source",
+    type: "string",
+    frontmatter: false, // Internal property, not stored in front-matter
+  },
 };

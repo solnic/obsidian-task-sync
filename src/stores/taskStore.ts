@@ -5,7 +5,7 @@
 
 import { derived } from "svelte/store";
 import { EntityStore } from "./EntityStore";
-import { Task } from "../types/entities";
+import { Task, TaskSource } from "../types/entities";
 import { PROPERTY_SETS } from "../services/base-definitions/BaseConfigurations";
 import {
   getTasksForToday,
@@ -73,6 +73,19 @@ class TaskStore extends EntityStore<Task> {
   getTasksBySource(sourceName: string): Task[] {
     const entities = this.getEntities();
     return entities.filter((task) => task.source?.name === sourceName);
+  }
+
+  /**
+   * Set source information on a task by file path
+   * This is used for imported tasks where source is not stored in front-matter
+   */
+  async setTaskSource(filePath: string, source: TaskSource): Promise<void> {
+    const task = this.findEntityByPath(filePath);
+
+    if (task) {
+      const updatedTask = { ...task, source };
+      await this.upsertEntity(updatedTask);
+    }
   }
 
   /**

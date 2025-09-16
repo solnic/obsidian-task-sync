@@ -198,6 +198,15 @@ export abstract class AbstractService {
     // This prevents race conditions with duplicate detection
     await taskStore.refreshTasks();
 
+    // Set source information on the task (not stored in front-matter)
+    const source = {
+      name: taskData.sourceType,
+      key: taskData.id,
+      url: taskData.externalUrl,
+      data: taskData.sourceData,
+    };
+    await taskStore.setTaskSource(taskPath, source);
+
     // If addToToday is requested, add the task to today's daily note
     if (config.addToToday && this.dailyNoteService) {
       await this.dailyNoteService.addTaskToToday(taskPath);
