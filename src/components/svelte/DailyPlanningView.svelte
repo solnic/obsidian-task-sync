@@ -67,20 +67,27 @@
     await loadInitialData();
   });
 
-  // Subscribe to task store changes and update today's tasks reactively
+  // Subscribe to task store changes using proper Svelte store subscription
+  let taskStoreState = $state();
+
+  // Subscribe to the task store
   $effect(() => {
-    // This effect will run whenever the task store changes
-    taskStore.getEntities(); // Access entities to trigger reactivity
+    const unsubscribe = taskStore.subscribe((state) => {
+      taskStoreState = state;
 
-    // Only update if we're not currently loading to avoid conflicts
-    if (!isLoading) {
-      // Update today's tasks when task store changes
-      todayTasks = taskStore.getTasksForToday();
+      // Only update if we're not currently loading to avoid conflicts
+      if (!isLoading && !state.loading) {
+        // Update today's tasks when task store changes
+        const newTodayTasks = taskStore.getTasksForToday();
+        todayTasks = newTodayTasks;
 
-      // Update yesterday's tasks as well in case they changed
-      const yesterdayTasksGrouped = taskStore.getYesterdayTasksGrouped();
-      yesterdayTasks = yesterdayTasksGrouped;
-    }
+        // Update yesterday's tasks as well in case they changed
+        const yesterdayTasksGrouped = taskStore.getYesterdayTasksGrouped();
+        yesterdayTasks = yesterdayTasksGrouped;
+      }
+    });
+
+    return unsubscribe;
   });
 
   onDestroy(() => {
@@ -107,12 +114,6 @@
       if (appleCalendarService.isEnabled()) {
         todayEvents = await appleCalendarService.getTodayEvents();
       }
-
-      console.log("Daily Planning data loaded:", {
-        yesterdayTasks,
-        todayTasks: todayTasks.length,
-        todayEvents: todayEvents.length,
-      });
     } catch (err: any) {
       console.error("Error loading daily planning data:", err);
       error = err.message || "Failed to load planning data";
@@ -154,8 +155,6 @@
 
       // Task store will be updated automatically via file change listeners
       // The reactive effect will update todayTasks automatically
-
-      console.log(`Moved ${unfinishedTasks.length} unfinished tasks to today`);
     } catch (err: any) {
       console.error("Error moving tasks to today:", err);
       error = err.message || "Failed to move tasks";

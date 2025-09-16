@@ -102,7 +102,8 @@ class TaskStore extends EntityStore<Task> {
    * Get tasks scheduled for today
    */
   getTasksForToday(): Task[] {
-    return getTasksForToday(this.getEntities());
+    const entities = this.getEntities();
+    return getTasksForToday(entities);
   }
 
   /**

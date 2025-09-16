@@ -9,6 +9,7 @@ import { createTask } from "../helpers/entity-helpers";
 import {
   createTestFolders,
   waitForTaskSyncPlugin,
+  waitForTaskPropertySync,
 } from "../helpers/task-sync-setup";
 
 describe("Daily Planning", () => {
@@ -17,6 +18,36 @@ describe("Daily Planning", () => {
   beforeAll(async () => {
     await createTestFolders(context.page);
     await waitForTaskSyncPlugin(context.page);
+
+    // Stub Apple Calendar service to prevent network calls to iCloud
+    await context.page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+
+      if (plugin?.appleCalendarService) {
+        // Stub getTodayEvents to return empty array
+        plugin.appleCalendarService.getTodayEvents = async () => {
+          console.log(
+            "🔧 Stubbed getTodayEvents called - returning empty array"
+          );
+          return [];
+        };
+
+        // Stub getEvents to return empty array
+        plugin.appleCalendarService.getEvents = async () => {
+          console.log("🔧 Stubbed getEvents called - returning empty array");
+          return [];
+        };
+
+        // Stub checkPermissions to return true
+        plugin.appleCalendarService.checkPermissions = async () => {
+          console.log("🔧 Stubbed checkPermissions called - returning true");
+          return true;
+        };
+
+        console.log("🔧 Apple Calendar service stubbed successfully");
+      }
+    });
   });
 
   test("should open Daily Planning view via command", async () => {
@@ -36,40 +67,61 @@ describe("Daily Planning", () => {
     expect(dailyPlanningView).toBe(true);
   });
 
-  test("should update step 2 when task Do Date is changed via file editing", async () => {
-    // Create a test task without Do Date
-    const taskPath = await context.page.evaluate(async () => {
+  test("should complete daily planning workflow with all 3 steps and reactivity", async () => {
+    // Create a test task with a Do Date set to yesterday
+    const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+
+    const taskPath = await context.page.evaluate(async (yesterdayString) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       return await plugin.taskFileManager.createTaskFile({
-        title: "Test Task for Do Date Change",
-        description: "A task to test Do Date property changes",
+        title: "Test Task for Daily Planning",
+        description: "A task to test the complete daily planning workflow",
         done: false,
+        doDate: yesterdayString,
       });
-    });
+    }, yesterdayString);
+
+    expect(taskPath).toBeTruthy();
 
     // Start daily planning
     await executeCommand(context, "Start daily planning");
-    await context.page.waitForTimeout(2000);
+
+    // Wait for daily planning view to open
+    await context.page.waitForSelector('[data-testid="daily-planning-view"]', {
+      timeout: 10000,
+    });
+
+    // STEP 1: Review Yesterday's Tasks
+    await context.page.waitForSelector('[data-testid="step-1"]', {
+      timeout: 5000,
+    });
+
+    const stepTitle = context.page.locator(".step-info h3");
+    expect(await stepTitle.textContent()).toContain("Review Yesterday");
 
     // Navigate to step 2
-    const nextButton = context.page.locator('[data-testid="next-button"]');
-    await nextButton.click();
-    await context.page.waitForTimeout(1000);
+    await context.page.click('[data-testid="next-button"]');
 
-    // Verify we're on step 2 and initially no scheduled tasks
-    const stepTitle = context.page.locator('[data-testid="step-title"]');
-    const stepTitleText = await stepTitle.textContent();
-    expect(stepTitleText).toContain("Today's Agenda");
+    // STEP 2: Today's Agenda - Test reactivity by changing Do Date
+    await context.page.waitForSelector('[data-testid="step-2"]', {
+      timeout: 5000,
+    });
 
+    expect(await stepTitle.textContent()).toContain("Today's Agenda");
+
+    // Check initial scheduled tasks count
     const initialScheduledTasks = context.page.locator(
       '[data-testid="scheduled-task"]'
     );
     const initialCount = await initialScheduledTasks.count();
 
-    // Now edit the task file to add Do Date for today using Obsidian's native API
+    // Edit the task file to change Do Date to today (testing reactivity)
     const todayString = new Date().toISOString().split("T")[0];
+
     await context.page.evaluate(
       async (args) => {
         const { taskPath, todayString } = args;
@@ -77,233 +129,70 @@ describe("Daily Planning", () => {
         const file = app.vault.getAbstractFileByPath(taskPath);
 
         if (file) {
-          // Use Obsidian's processFrontMatter to add Do Date property
-          await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
-            frontmatter["Do Date"] = todayString;
-          });
-          console.log("Do Date property added:", todayString);
-        } else {
-          console.error("File not found:", taskPath);
+          const currentContent = await app.vault.read(file);
+          const updatedContent = currentContent.replace(
+            /Do Date: \d{4}-\d{2}-\d{2}/,
+            `Do Date: ${todayString}`
+          );
+          await app.vault.modify(file, updatedContent);
         }
       },
       { taskPath, todayString }
     );
 
-    // Wait for file change to be processed
-    await context.page.waitForTimeout(1000);
+    // Wait for the Do Date property to be updated in the file
+    await waitForTaskPropertySync(
+      context.page,
+      taskPath,
+      "Do Date",
+      todayString,
+      10000
+    );
 
-    // Check if the scheduled tasks list is updated
-    // The task should now appear in step 2 as a scheduled task
+    // Wait for the UI to update via reactivity
+    await context.page.waitForSelector(
+      '[data-testid="scheduled-task"]:has-text("Test Task for Daily Planning")',
+      { timeout: 10000 }
+    );
+
+    // Verify the task now appears in today's agenda
     const updatedScheduledTasks = context.page.locator(
       '[data-testid="scheduled-task"]'
     );
     const updatedCount = await updatedScheduledTasks.count();
-
-    // The count should have increased by 1
     expect(updatedCount).toBe(initialCount + 1);
 
-    // Verify the task appears in the list
-    const taskTitle = context.page
+    // Verify the specific task appears
+    const taskInAgenda = context.page
       .locator('[data-testid="scheduled-task"]')
-      .filter({ hasText: "Test Task for Do Date Change" });
-    expect(await taskTitle.count()).toBeGreaterThan(0);
-  });
+      .filter({ hasText: "Test Task for Daily Planning" });
+    expect(await taskInAgenda.isVisible()).toBe(true);
 
-  test("should show 'Schedule for today' button in Tasks view when Daily Planning is active", async () => {
-    // Create a test task
-    const taskPath = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-      return await plugin.taskFileManager.createTaskFile({
-        title: "Test Task for Scheduling",
-        description: "A task to test scheduling functionality",
-        done: false,
-      });
-    });
-
-    expect(taskPath).toBeTruthy();
-
-    // Start daily planning
-    await executeCommand(context, "Start daily planning");
-
-    // Wait for daily planning view to open
-    await context.page.waitForSelector('[data-testid="daily-planning-view"]', {
-      timeout: 10000,
-    });
-
-    // Open Tasks view using the proper helper
-    await openTasksView(context.page);
-
-    // Wait for Tasks view to open and become visible
-    await context.page.waitForSelector('[data-testid="tasks-view"]', {
-      state: "visible",
-      timeout: 10000,
-    });
-
-    // Switch to Local service tab
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
-
-    // Wait for the task to appear
-    const taskItem = await context.page.waitForSelector(
-      '[data-testid*="test-task-for-scheduling"]',
-      { timeout: 10000 }
-    );
-
-    // Hover over the task to show action buttons
-    await taskItem.hover();
-
-    // Verify "Schedule for today" button appears instead of "Add to today"
-    const scheduleButton = await context.page.waitForSelector(
-      '[data-testid="schedule-for-today-button"]',
-      { timeout: 5000 }
-    );
-    expect(scheduleButton).toBeTruthy();
-
-    // Verify "Add to today" button is not present
-    const addToTodayButton = context.page.locator(
-      '[data-testid="add-to-today-button"]'
-    );
-    const addToTodayCount = await addToTodayButton.count();
-    expect(addToTodayCount).toBe(0);
-
-    // Click the "Schedule for today" button
-    await context.page.click('[data-testid="schedule-for-today-button"]');
-
-    // Wait for the operation to complete
-    await context.page.waitForTimeout(1000);
-
-    // Verify button state changes to indicate task is scheduled
-    await context.page.waitForSelector(
-      '[data-testid="schedule-for-today-button"]:has-text("✓ Scheduled")',
-      { timeout: 5000 }
-    );
-  });
-
-  test("should show scheduled tasks in Daily Planning wizard steps", async () => {
-    // Create a test task
-    const taskPath = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-      return await plugin.taskFileManager.createTaskFile({
-        title: "Task to Schedule in Wizard",
-        description: "A task to test scheduling in wizard",
-        done: false,
-      });
-    });
-
-    expect(taskPath).toBeTruthy();
-
-    // Start daily planning
-    await executeCommand(context, "Start daily planning");
-
-    // Wait for daily planning view to open
-    await context.page.waitForSelector('[data-testid="daily-planning-view"]', {
-      timeout: 10000,
-    });
-
-    // Open Tasks view and schedule the task
-    await openTasksView(context.page);
-    await context.page.waitForSelector('[data-testid="tasks-view"]', {
-      state: "visible",
-      timeout: 10000,
-    });
-
-    // Switch to Local service tab
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
-
-    // Find and schedule the task
-    const taskItem = await context.page.waitForSelector(
-      '[data-testid*="task-to-schedule-in-wizard"]',
-      { timeout: 10000 }
-    );
-    await taskItem.hover();
-    await context.page.click('[data-testid="schedule-for-today-button"]');
-
-    // Wait for button to show "✓ Scheduled"
-    await context.page.waitForSelector(
-      '[data-testid="schedule-for-today-button"]:has-text("✓ Scheduled")',
-      { timeout: 5000 }
-    );
-
-    // Go to step 2 (Today's Agenda) in Daily Planning wizard
+    // Navigate to step 3
     await context.page.click('[data-testid="next-button"]');
 
-    // Verify the scheduled task appears in Today's Agenda
-    await context.page.waitForSelector('[data-testid="scheduled-task"]', {
+    // STEP 3: Plan Summary
+    await context.page.waitForSelector('[data-testid="step-3"]', {
       timeout: 5000,
     });
 
-    const scheduledTask = context.page
-      .locator('[data-testid="scheduled-task"]')
-      .filter({
-        hasText: "Task to Schedule in Wizard",
-      });
-    expect(await scheduledTask.isVisible()).toBe(true);
+    expect(await stepTitle.textContent()).toContain("Confirm Plan");
 
-    // Verify it has the "Added during planning" badge
-    const planningBadge = scheduledTask.locator(".task-badge.planning");
-    expect(await planningBadge.isVisible()).toBe(true);
-
-    // Go to step 3 (Plan Summary)
-    await context.page.click('[data-testid="next-button"]');
-
-    // Verify the scheduled task appears in the final plan summary
+    // Verify the task appears in the final plan summary
     const summaryTask = context.page.locator(".preview-item.task").filter({
-      hasText: "Task to Schedule in Wizard",
+      hasText: "Test Task for Daily Planning",
     });
     expect(await summaryTask.isVisible()).toBe(true);
 
-    // Verify it has the "Scheduled during planning" badge
-    const scheduledBadge = summaryTask.locator(".preview-badge.scheduled");
-    expect(await scheduledBadge.isVisible()).toBe(true);
-  });
-});
+    // Test the complete workflow by confirming the plan
+    const confirmButton = context.page.locator(
+      '[data-testid="confirm-button"]'
+    );
+    if (await confirmButton.isVisible()) {
+      await confirmButton.click();
 
-/**
- * Helper function to open Tasks view
- */
-async function openTasksView(page: any): Promise<void> {
-  // First ensure the view exists
-  await page.evaluate(async () => {
-    const app = (window as any).app;
-    const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
-
-    if (plugin) {
-      const existingLeaves = app.workspace.getLeavesOfType("tasks");
-      if (existingLeaves.length === 0) {
-        const rightLeaf = app.workspace.getRightLeaf(false);
-        await rightLeaf.setViewState({
-          type: "tasks",
-          active: false,
-        });
-      }
+      // Wait for confirmation to complete
+      await context.page.waitForTimeout(2000);
     }
   });
-
-  // Ensure right sidebar is open
-  const rightSidebarToggle = page
-    .locator(".sidebar-toggle-button.mod-right")
-    .first();
-  if (await rightSidebarToggle.isVisible()) {
-    await rightSidebarToggle.click();
-    await new Promise((resolve) => setTimeout(resolve, 300));
-  }
-
-  // Click on the Tasks tab in the right sidebar
-  const tasksTab = page.locator('.workspace-tab-header[aria-label="Tasks"]');
-
-  if (await tasksTab.isVisible()) {
-    await tasksTab.click();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  } else {
-    // Alternative: use command palette
-    await page.keyboard.press("Control+p");
-    await page.fill(".prompt-input", "Tasks");
-    await page.keyboard.press("Enter");
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-}
+});

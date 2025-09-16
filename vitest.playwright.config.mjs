@@ -12,10 +12,10 @@ export default defineConfig({
     globals: true,
     include: ['e2e/**/*.e2e.ts'],
     exclude: ['tests/**/*'],
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    testTimeout: 10000,
+    hookTimeout: 10000,
     fileParallelism: true,
-    minWorkers: 6,
+    minWorkers: 10,
     maxConcurrency: 1,
     pool: 'threads',
     poolOptions: {

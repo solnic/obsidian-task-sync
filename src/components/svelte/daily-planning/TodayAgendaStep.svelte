@@ -28,10 +28,14 @@
   }: Props = $props();
 
   // Get scheduled tasks from the daily planning store
-  let scheduledTasks = $derived($dailyPlanningStore.scheduledTasks);
+  let scheduledTasks = $derived.by(() => {
+    return $dailyPlanningStore.scheduledTasks;
+  });
 
   // Combine existing today tasks with newly scheduled tasks
-  let allTodayTasks = $derived([...todayTasks, ...scheduledTasks]);
+  let allTodayTasks = $derived.by(() => {
+    return [...todayTasks, ...scheduledTasks];
+  });
 
   async function handleUnschedule(task: Task) {
     await onUnscheduleTask(task);

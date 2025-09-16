@@ -20,10 +20,13 @@ export const dailyPlanningStore = writable<DailyPlanningState>(initialState);
  * Add a task to the scheduled tasks list
  */
 export function scheduleTaskForToday(task: Task): void {
-  dailyPlanningStore.update((state) => ({
-    ...state,
-    scheduledTasks: [...state.scheduledTasks, task],
-  }));
+  dailyPlanningStore.update((state) => {
+    const newScheduledTasks = [...state.scheduledTasks, task];
+    return {
+      ...state,
+      scheduledTasks: newScheduledTasks,
+    };
+  });
 }
 
 /**
