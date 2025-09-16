@@ -178,11 +178,12 @@ describe("GitHubOrgRepoMapper", () => {
       expect(result.targetArea).toBeUndefined();
     });
 
-    it("should preserve existing areas and project if not overridden", () => {
+    it("should override existing areas and project with GitHub mappings", () => {
       const mappings: GitHubOrgRepoMapping[] = [
         {
           repository: "microsoft/vscode",
           targetArea: "Development",
+          targetProject: "VSCode",
           priority: 1,
         },
       ];
@@ -194,8 +195,8 @@ describe("GitHubOrgRepoMapper", () => {
         targetProject: "Existing Project",
       };
       const result = mapper.enhanceImportConfig("microsoft/vscode", config);
-      expect(result.targetArea).toBe("Existing Area"); // Should preserve existing
-      expect(result.targetProject).toBe("Existing Project"); // Should preserve existing
+      expect(result.targetArea).toBe("Development"); // Should override with GitHub mapping
+      expect(result.targetProject).toBe("VSCode"); // Should override with GitHub mapping
     });
   });
 

@@ -3,7 +3,7 @@
  * Tests the area creation command, modal, and base generation
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   getFileContent,

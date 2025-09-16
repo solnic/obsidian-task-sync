@@ -3,7 +3,7 @@
  * Tests the file change listener and event system in actual Obsidian environment
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import {
   createTestFolders,
@@ -30,7 +30,7 @@ describe("Status and Done Field Synchronization", () => {
         status: "Backlog",
         tags: ["test"],
       },
-      "This is a test task for status/done synchronization.",
+      "This is a test task for status/done synchronization."
     );
 
     // Wait for file to be created and processed
@@ -45,7 +45,7 @@ describe("Status and Done Field Synchronization", () => {
         const content = await app.vault.read(file);
         const updatedContent = content.replace(
           "Status: Backlog",
-          "Status: Done",
+          "Status: Done"
         );
         await app.vault.modify(file, updatedContent);
       }
@@ -81,7 +81,7 @@ describe("Status and Done Field Synchronization", () => {
         status: "Done",
         tags: ["test"],
       },
-      "This task was completed but needs to be reopened.",
+      "This task was completed but needs to be reopened."
     );
 
     // Wait for file to be created and processed
@@ -96,7 +96,7 @@ describe("Status and Done Field Synchronization", () => {
         const content = await app.vault.read(file);
         const updatedContent = content.replace(
           "Status: Done",
-          "Status: In Progress",
+          "Status: In Progress"
         );
         await app.vault.modify(file, updatedContent);
       }
@@ -132,7 +132,7 @@ describe("Status and Done Field Synchronization", () => {
         status: "In Progress",
         tags: ["test"],
       },
-      "This task is in progress but will be marked as done.",
+      "This task is in progress but will be marked as done."
     );
 
     // Wait for file to be created and processed
@@ -181,7 +181,7 @@ describe("Status and Done Field Synchronization", () => {
         status: "Done",
         tags: ["test"],
       },
-      "This task was finished but needs to be reopened.",
+      "This task was finished but needs to be reopened."
     );
 
     // Wait for file to be created and processed
@@ -230,7 +230,7 @@ describe("Status and Done Field Synchronization", () => {
         status: "Backlog",
         tags: ["test"],
       },
-      "This task tests that we don't create infinite loops.",
+      "This task tests that we don't create infinite loops."
     );
 
     // Wait for file to be created and processed
@@ -252,7 +252,7 @@ describe("Status and Done Field Synchronization", () => {
         const content = await app.vault.read(file);
         const updatedContent = content.replace(
           "Status: Backlog",
-          "Status: Done",
+          "Status: Done"
         );
         await app.vault.modify(file, updatedContent);
       }
@@ -296,7 +296,7 @@ describe("Status and Done Field Synchronization", () => {
         "Tasks/No Frontmatter Task.md",
         `This is a task without frontmatter.
 
-It should not cause errors in the event system.`,
+It should not cause errors in the event system.`
       );
     });
 
@@ -307,7 +307,7 @@ It should not cause errors in the event system.`,
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/No Frontmatter Task.md",
+        "Tasks/No Frontmatter Task.md"
       );
 
       if (file) {
@@ -329,7 +329,7 @@ ${content}`;
     const fileContent = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/No Frontmatter Task.md",
+        "Tasks/No Frontmatter Task.md"
       );
       return file ? await app.vault.read(file) : null;
     });
@@ -354,7 +354,7 @@ Status: Done
 Done: false
 ---
 
-This is a note outside the task folders.`,
+This is a note outside the task folders.`
       );
     });
 
@@ -370,7 +370,7 @@ This is a note outside the task folders.`,
         const content = await app.vault.read(file);
         const updatedContent = content.replace(
           "Status: Done",
-          "Status: Backlog",
+          "Status: Backlog"
         );
         await app.vault.modify(file, updatedContent);
       }
@@ -429,7 +429,7 @@ Parent task:
 tags: test
 ---
 
-This task tests custom status configurations.`,
+This task tests custom status configurations.`
       );
     });
 
@@ -440,14 +440,14 @@ This task tests custom status configurations.`,
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/Custom Status Task.md",
+        "Tasks/Custom Status Task.md"
       );
 
       if (file) {
         const content = await app.vault.read(file);
         const updatedContent = content.replace(
           "Status: Backlog",
-          "Status: Completed",
+          "Status: Completed"
         );
         await app.vault.modify(file, updatedContent);
       }
@@ -460,7 +460,7 @@ This task tests custom status configurations.`,
     const fileContent = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/Custom Status Task.md",
+        "Tasks/Custom Status Task.md"
       );
       return file ? await app.vault.read(file) : null;
     });

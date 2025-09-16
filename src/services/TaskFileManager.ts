@@ -323,8 +323,6 @@ export class TaskFileManager extends FileManager {
       // File system properties
       createdAt: new Date(file.stat.ctime),
       updatedAt: new Date(file.stat.mtime),
-      // Source is not loaded from front-matter - it's set separately as an internal property
-      source: undefined,
     };
 
     // Use utility function to update properties from front-matter

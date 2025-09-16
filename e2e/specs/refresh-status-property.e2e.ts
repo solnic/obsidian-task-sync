@@ -1,4 +1,4 @@
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   waitForTaskSyncPlugin,
@@ -22,7 +22,7 @@ describe("Refresh Status Property", () => {
 Title: Minimal Task
 ---
 
-This task has only a title.`,
+This task has only a title.`
       );
     });
 
@@ -37,7 +37,7 @@ This task has only a title.`,
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return await plugin.taskFileManager.loadFrontMatter(
-        "Tasks/Minimal Task.md",
+        "Tasks/Minimal Task.md"
       );
     });
 

@@ -3,7 +3,7 @@
  * Tests the task type management interface in plugin settings
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   openTaskSyncSettings,
@@ -47,7 +47,7 @@ describe("Task Type Configuration", () => {
         .locator(".setting-item")
         .filter({ hasText: "Add New Task Category" });
       expect(await addTypeSection.isVisible()).toBe(true);
-    },
+    }
   );
 
   test("should display default task types", { timeout: 15000 }, async () => {
@@ -103,7 +103,7 @@ describe("Task Type Configuration", () => {
     expect(await addSection.isVisible()).toBe(true);
 
     const newTypeInput = addSection.locator(
-      'input[placeholder*="Epic, Story, Research"]',
+      'input[placeholder*="Epic, Story, Research"]'
     );
     await newTypeInput.fill("Epic");
 
@@ -136,7 +136,7 @@ describe("Task Type Configuration", () => {
         .filter({ hasText: "Add New Task Category" });
 
       const newTypeInput = addSection.locator(
-        'input[placeholder*="Epic, Story, Research"]',
+        'input[placeholder*="Epic, Story, Research"]'
       );
       await newTypeInput.fill("Bug");
 
@@ -152,7 +152,7 @@ describe("Task Type Configuration", () => {
         .filter({ hasText: "Bug" });
       const bugCount = await bugSettings.count();
       expect(bugCount).toBe(1);
-    },
+    }
   );
 
   test(
@@ -168,7 +168,7 @@ describe("Task Type Configuration", () => {
         .filter({ hasText: "Add New Task Category" });
 
       const newTypeInput = addSection.locator(
-        'input[placeholder*="Epic, Story, Research"]',
+        'input[placeholder*="Epic, Story, Research"]'
       );
       await newTypeInput.fill("   ");
 
@@ -184,7 +184,7 @@ describe("Task Type Configuration", () => {
         .filter({ hasText: /^\s*$/ });
       const emptyCount = await emptySettings.count();
       expect(emptyCount).toBe(0);
-    },
+    }
   );
 
   test("should remove task type", { timeout: 15000 }, async () => {
@@ -196,7 +196,7 @@ describe("Task Type Configuration", () => {
       .locator(".setting-item")
       .filter({ hasText: "Add New Task Category" });
     const newTypeInput = addSection.locator(
-      'input[placeholder*="Epic, Story, Research"]',
+      'input[placeholder*="Epic, Story, Research"]'
     );
     await newTypeInput.fill("Story");
 
@@ -254,7 +254,7 @@ describe("Task Type Configuration", () => {
         .locator("button")
         .filter({ hasText: "Delete" });
       expect(await deleteButton.isVisible()).toBe(false);
-    },
+    }
   );
 
   test(
@@ -289,7 +289,7 @@ describe("Task Type Configuration", () => {
         .locator(".setting-item")
         .filter({ hasText: "Add New Task Category" });
       const newTypeInput = addSection.locator(
-        'input[placeholder*="Epic, Story, Research"]',
+        'input[placeholder*="Epic, Story, Research"]'
       );
       await newTypeInput.fill("Research");
 
@@ -309,14 +309,14 @@ describe("Task Type Configuration", () => {
         const plugin = app.plugins.plugins["obsidian-task-sync"];
         if (plugin && plugin.settings && plugin.settings.taskTypes) {
           return plugin.settings.taskTypes.some(
-            (t: any) => t.name === "Research",
+            (t: any) => t.name === "Research"
           );
         }
         return false;
       });
 
       expect(hasResearchTaskType).toBe(true);
-    },
+    }
   );
 
   test(
@@ -351,7 +351,7 @@ describe("Task Type Configuration", () => {
         .locator(".setting-item")
         .filter({ hasText: "Add New Task Category" });
       const newTypeInput = addSection.locator(
-        'input[placeholder*="Epic, Story, Research"]',
+        'input[placeholder*="Epic, Story, Research"]'
       );
       await newTypeInput.fill("Epic");
 
@@ -381,7 +381,7 @@ describe("Task Type Configuration", () => {
         async () => {
           const app = (window as any).app;
           const baseFile = app.vault.getAbstractFileByPath(
-            "Bases/Sync Test.base",
+            "Bases/Sync Test.base"
           );
           if (baseFile) {
             const content = await app.vault.read(baseFile);
@@ -392,7 +392,7 @@ describe("Task Type Configuration", () => {
           }
           return false;
         },
-        { timeout: 10000 },
+        { timeout: 10000 }
       );
 
       const deleteButton = epicSetting
@@ -406,7 +406,7 @@ describe("Task Type Configuration", () => {
         async () => {
           const app = (window as any).app;
           const baseFile = app.vault.getAbstractFileByPath(
-            "Bases/Sync Test.base",
+            "Bases/Sync Test.base"
           );
           if (baseFile) {
             const content = await app.vault.read(baseFile);
@@ -417,7 +417,7 @@ describe("Task Type Configuration", () => {
           }
           return false;
         },
-        { timeout: 10000 },
+        { timeout: 10000 }
       );
 
       const stillHasEpicTaskType = await context.page.evaluate(async () => {
@@ -434,7 +434,7 @@ describe("Task Type Configuration", () => {
       const baseContent = await context.page.evaluate(async () => {
         const app = (window as any).app;
         const baseFile = app.vault.getAbstractFileByPath(
-          "Bases/Sync Test.base",
+          "Bases/Sync Test.base"
         );
         if (baseFile) {
           return await app.vault.read(baseFile);
@@ -444,7 +444,7 @@ describe("Task Type Configuration", () => {
 
       expect(baseContent).not.toContain("name: Epics");
       expect(baseContent).not.toContain('Category == "Epic"');
-    },
+    }
   );
 
   test(
@@ -459,7 +459,7 @@ describe("Task Type Configuration", () => {
         .locator(".setting-item")
         .filter({ hasText: "Add New Task Category" });
       const newTypeInput = addSection.locator(
-        'input[placeholder*="Epic, Story, Research"]',
+        'input[placeholder*="Epic, Story, Research"]'
       );
       await newTypeInput.fill("User Story (UI/UX)");
 
@@ -474,6 +474,6 @@ describe("Task Type Configuration", () => {
         .first();
       await userStorySetting.waitFor({ state: "visible", timeout: 5000 });
       expect(await userStorySetting.isVisible()).toBe(true);
-    },
+    }
   );
 });

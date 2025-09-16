@@ -3,7 +3,7 @@
  * Tests the complete DailyNoteService functionality in a real Obsidian environment
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   fileExists,

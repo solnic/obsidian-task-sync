@@ -3,7 +3,7 @@
  * Tests that bases are regenerated with correct filter syntax and type badges
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   getFileContent,

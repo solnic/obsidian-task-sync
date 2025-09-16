@@ -49,7 +49,7 @@ export class GitHubOrgRepoMapper {
     }
 
     const [owner, repo] = repository.split("/", 2);
-    
+
     // Sort mappings by priority (higher priority first), then by specificity
     const sortedMappings = this.getSortedMappings();
 
@@ -67,7 +67,11 @@ export class GitHubOrgRepoMapper {
 
     // Then, try to find organization match
     for (const mapping of sortedMappings) {
-      if (mapping.organization && mapping.organization === owner && !mapping.repository) {
+      if (
+        mapping.organization &&
+        mapping.organization === owner &&
+        !mapping.repository
+      ) {
         return {
           targetArea: mapping.targetArea,
           targetProject: mapping.targetProject,
@@ -91,20 +95,20 @@ export class GitHubOrgRepoMapper {
     config: TaskImportConfig
   ): TaskImportConfig {
     const mapping = this.resolveMapping(repository);
-    
+
     if (mapping.matchType === "none") {
       return config;
     }
 
     const enhancedConfig = { ...config };
 
-    // Apply area mapping if found and not already set
-    if (mapping.targetArea && !enhancedConfig.targetArea) {
+    // Apply area mapping if found - GitHub mappings take precedence over existing config
+    if (mapping.targetArea) {
       enhancedConfig.targetArea = mapping.targetArea;
     }
 
-    // Apply project mapping if found and not already set
-    if (mapping.targetProject && !enhancedConfig.targetProject) {
+    // Apply project mapping if found - GitHub mappings take precedence over existing config
+    if (mapping.targetProject) {
       enhancedConfig.targetProject = mapping.targetProject;
     }
 
@@ -137,7 +141,9 @@ export class GitHubOrgRepoMapper {
    * @param repository Repository in format 'owner/repo'
    * @returns Mapping for the repository if it exists
    */
-  getMappingForRepository(repository: string): GitHubOrgRepoMapping | undefined {
+  getMappingForRepository(
+    repository: string
+  ): GitHubOrgRepoMapping | undefined {
     return this.mappings.find((mapping) => mapping.repository === repository);
   }
 

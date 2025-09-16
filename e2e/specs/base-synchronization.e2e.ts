@@ -3,7 +3,7 @@
  * Tests that bases are properly updated when settings change
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   getFileContent,

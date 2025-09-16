@@ -2,7 +2,7 @@
  * E2E tests for GitHub import functionality with organization/repository mapping
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("GitHub Import with Organization/Repository Mapping", () => {

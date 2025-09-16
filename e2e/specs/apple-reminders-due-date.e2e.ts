@@ -2,7 +2,7 @@
  * E2E tests for Apple Reminders due date support
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
 import { assertTaskProperty } from "../helpers/task-sync-setup";

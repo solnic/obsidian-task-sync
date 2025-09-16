@@ -1,4 +1,4 @@
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   waitForTaskSyncPlugin,
@@ -31,7 +31,7 @@ Parent task:
 tags: test
 ---
 
-This task is completed.`,
+This task is completed.`
       );
 
       // Create uncompleted task (should appear at top)
@@ -49,7 +49,7 @@ Parent task:
 tags: test
 ---
 
-This task is not completed.`,
+This task is not completed.`
       );
 
       // Create another completed task (should also appear at bottom)
@@ -67,7 +67,7 @@ Parent task:
 tags: test
 ---
 
-This task is also completed.`,
+This task is also completed.`
       );
 
       // Create another uncompleted task (should appear at top)
@@ -85,7 +85,7 @@ Parent task:
 tags: test
 ---
 
-This task is also not completed.`,
+This task is also not completed.`
       );
     });
 
@@ -138,7 +138,7 @@ This task is also not completed.`,
 
     // Check that Done is the first sort property
     const sortSectionMatch = baseContent.match(
-      /sort:\s*\n((?:\s*-\s*property:.*\n\s*direction:.*\n?)*)/,
+      /sort:\s*\n((?:\s*-\s*property:.*\n\s*direction:.*\n?)*)/
     );
     expect(sortSectionMatch).toBeTruthy();
 
@@ -148,7 +148,7 @@ This task is also not completed.`,
 
     // Verify direction is ASC for Done property
     const firstSortDirection = sortSection.match(
-      /^\s*-\s*property:\s*Done\s*\n\s*direction:\s*(.+)/,
+      /^\s*-\s*property:\s*Done\s*\n\s*direction:\s*(.+)/
     );
     expect(firstSortDirection![1].trim()).toBe("ASC");
   });
@@ -167,7 +167,7 @@ Title: Development
 Type: Area
 ---
 
-Development area for testing.`,
+Development area for testing.`
       );
     });
 
@@ -189,7 +189,7 @@ Parent task:
 tags: dev
 ---
 
-Development task 1.`,
+Development task 1.`
       );
 
       await app.vault.create(
@@ -206,7 +206,7 @@ Parent task:
 tags: dev
 ---
 
-Development task 2.`,
+Development task 2.`
       );
     });
 
@@ -236,7 +236,7 @@ Development task 2.`,
 
     console.log(
       "Files in Bases folder after area creation:",
-      basesFilesAfterArea,
+      basesFilesAfterArea
     );
 
     // Read the generated area base file (should be directly in Bases folder, not Bases/Areas)
@@ -257,7 +257,7 @@ Development task 2.`,
 
     // Check that Done is the first sort property in area base too
     const sortSectionMatch = areaBaseContent.match(
-      /sort:\s*\n((?:\s*-\s*property:.*\n\s*direction:.*\n?)*)/,
+      /sort:\s*\n((?:\s*-\s*property:.*\n\s*direction:.*\n?)*)/
     );
     expect(sortSectionMatch).toBeTruthy();
 

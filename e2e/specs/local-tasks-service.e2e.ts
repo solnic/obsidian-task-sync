@@ -3,7 +3,7 @@
  * Tests that local tasks from the vault are displayed and can be searched
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import {
   createTestFolders,

@@ -2,7 +2,7 @@
  * E2E tests for GitHub Pull Requests Integration
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createTestFolders } from "../helpers/task-sync-setup";
 import { toggleSidebar } from "../helpers/plugin-setup";

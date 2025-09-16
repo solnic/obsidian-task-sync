@@ -3,7 +3,7 @@
  * Tests the creation and configuration of individual area and project bases
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   getFileContent,

@@ -3,7 +3,7 @@
  * Tests that GitHub issues are actually imported to the correct area/project with proper label mapping
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   verifyTaskProperties,

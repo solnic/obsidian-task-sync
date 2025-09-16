@@ -3,7 +3,7 @@
  * Tests that reverting works with any promoted todo under cursor
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   getFileContent,
   fileExists,

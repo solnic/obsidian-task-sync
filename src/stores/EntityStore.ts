@@ -285,12 +285,34 @@ export abstract class EntityStore<T extends BaseEntity> {
 
     const entities: T[] = [];
 
+    // Get current persisted entities to preserve non-frontmatter data like source
+    const currentState = get(this._store);
+    const persistedEntitiesMap = new Map<string, T>();
+    currentState.entities.forEach((entity) => {
+      if (entity.filePath) {
+        persistedEntitiesMap.set(entity.filePath, entity);
+      }
+    });
+
     for (const file of entityFiles) {
       const entityData = await this.parseFileToEntity(file);
 
       // It is fine to skip files that are not valid entities
       if (entityData) {
-        entities.push(entityData);
+        // Merge with persisted data to preserve non-frontmatter properties like source
+        const persistedEntity = persistedEntitiesMap.get(file.path);
+        if (persistedEntity) {
+          // Merge file data with persisted data, prioritizing file data for frontmatter properties
+          const mergedEntity = {
+            ...persistedEntity, // Start with persisted data (includes source, etc.)
+            ...entityData, // Override with fresh file data (frontmatter properties)
+            file: entityData.file, // Always use fresh file reference
+          };
+
+          entities.push(mergedEntity);
+        } else {
+          entities.push(entityData);
+        }
       }
     }
 

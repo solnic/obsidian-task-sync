@@ -2,7 +2,7 @@
  * E2E tests for Apple Reminders integration
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Apple Reminders Integration", () => {

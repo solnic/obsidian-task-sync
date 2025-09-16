@@ -3,7 +3,7 @@
  * Tests the markdown processor that enhances todo items with task badges
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   waitForTaskSyncPlugin,

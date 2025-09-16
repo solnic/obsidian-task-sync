@@ -3,7 +3,7 @@
  * Tests that import status is preserved across plugin restarts
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { createTestFolders } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { toggleSidebar } from "../helpers/plugin-setup";
