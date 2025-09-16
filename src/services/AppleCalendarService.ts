@@ -37,6 +37,7 @@ import {
   TaskImportConfig,
   ImportResult,
 } from "../types/integrations";
+import { generateId, generatePrefixedId } from "../utils/idGenerator";
 
 // Simple CalDAV calendar interface
 interface SimpleCalDAVCalendar {
@@ -710,7 +711,7 @@ export class AppleCalendarService
       }
 
       const finalEvent: CalendarEvent = {
-        id: event.uid || `${calendar.url}-${Date.now()}`,
+        id: event.uid || generatePrefixedId("calendar"),
         title: event.summary || "Untitled Event",
         startDate,
         endDate,
@@ -833,9 +834,7 @@ export class AppleCalendarService
       }
 
       // Generate a unique event ID
-      const eventId = `${Date.now()}-${Math.random()
-        .toString(36)
-        .substring(2, 11)}`;
+      const eventId = generateId();
       const eventUrl = `${targetCalendar.url}/${eventId}.ics`;
 
       // Create iCal content

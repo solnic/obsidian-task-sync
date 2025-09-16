@@ -11,6 +11,7 @@ import {
   type Readable,
 } from "svelte/store";
 import { App, Plugin } from "obsidian";
+import { generatePrefixedId } from "../utils/idGenerator";
 import {
   DailySchedule,
   SchedulePersistenceData,
@@ -245,9 +246,7 @@ export class ScheduleStore {
    * Generate a unique ID for schedules
    */
   private generateId(): string {
-    return `schedule-${Date.now()}-${Math.random()
-      .toString(36)
-      .substring(2, 11)}`;
+    return generatePrefixedId("schedule");
   }
 
   /**

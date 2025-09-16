@@ -7,6 +7,7 @@
 import { App, Vault, TFile, normalizePath } from "obsidian";
 import { TaskSyncSettings } from "../main";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
+import { generateId } from "../utils/idGenerator";
 
 /**
  * Interface for file creation data
@@ -265,7 +266,7 @@ export abstract class FileManager {
    * Common method used by all file managers for entity ID generation
    */
   protected generateId(): string {
-    return Date.now().toString(36) + Math.random().toString(36).substring(2);
+    return generateId();
   }
 
   // ============================================================================
