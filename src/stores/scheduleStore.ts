@@ -3,9 +3,19 @@
  * Handles CRUD operations for schedules and provides reactive updates
  */
 
-import { derived, writable, get, type Writable, type Readable } from "svelte/store";
+import {
+  derived,
+  writable,
+  get,
+  type Writable,
+  type Readable,
+} from "svelte/store";
 import { App, Plugin } from "obsidian";
-import { DailySchedule, SchedulePersistenceData, ScheduleCreateData } from "../types/schedule";
+import {
+  DailySchedule,
+  SchedulePersistenceData,
+  ScheduleCreateData,
+} from "../types/schedule";
 import { Task } from "../types/entities";
 import { CalendarEvent } from "../types/calendar";
 
@@ -61,7 +71,7 @@ export class ScheduleStore {
     );
 
     if (data.tasks) {
-      data.tasks.forEach(task => schedule.addTask(task));
+      data.tasks.forEach((task) => schedule.addTask(task));
     }
 
     if (data.events) {
@@ -133,8 +143,10 @@ export class ScheduleStore {
    */
   findScheduleByDate(date: Date): DailySchedule | null {
     const state = get(this._store);
-    const dateString = date.toISOString().split('T')[0];
-    return state.schedules.find((s) => s.getDateString() === dateString) || null;
+    const dateString = date.toISOString().split("T")[0];
+    return (
+      state.schedules.find((s) => s.getDateString() === dateString) || null
+    );
   }
 
   /**
@@ -143,11 +155,11 @@ export class ScheduleStore {
   async getTodaySchedule(): Promise<DailySchedule> {
     const today = new Date();
     let schedule = this.findScheduleByDate(today);
-    
+
     if (!schedule) {
       schedule = await this.createSchedule({ date: today });
     }
-    
+
     return schedule;
   }
 
@@ -158,11 +170,11 @@ export class ScheduleStore {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     let schedule = this.findScheduleByDate(yesterday);
-    
+
     if (!schedule) {
       schedule = await this.createSchedule({ date: yesterday });
     }
-    
+
     return schedule;
   }
 
@@ -180,7 +192,10 @@ export class ScheduleStore {
   /**
    * Remove a task from a schedule
    */
-  async removeTaskFromSchedule(scheduleId: string, taskId: string): Promise<void> {
+  async removeTaskFromSchedule(
+    scheduleId: string,
+    taskId: string
+  ): Promise<void> {
     const schedule = this.findScheduleById(scheduleId);
     if (schedule) {
       schedule.removeTask(taskId);
@@ -191,7 +206,10 @@ export class ScheduleStore {
   /**
    * Add events to a schedule
    */
-  async addEventsToSchedule(scheduleId: string, events: CalendarEvent[]): Promise<void> {
+  async addEventsToSchedule(
+    scheduleId: string,
+    events: CalendarEvent[]
+  ): Promise<void> {
     const schedule = this.findScheduleById(scheduleId);
     if (schedule) {
       schedule.addEvents(events);
@@ -227,7 +245,9 @@ export class ScheduleStore {
    * Generate a unique ID for schedules
    */
   private generateId(): string {
-    return `schedule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    return `schedule-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(2, 11)}`;
   }
 
   /**
@@ -243,28 +263,30 @@ export class ScheduleStore {
 
         if (persistedData.schedules && persistedData.schedules.length > 0) {
           // Restore schedules from persisted data
-          const restoredSchedules = persistedData.schedules.map((scheduleData: any) => {
-            const schedule = new DailySchedule(
-              scheduleData.id,
-              new Date(scheduleData.date),
-              scheduleData.dailyNotePath
-            );
-            
-            // Restore properties
-            schedule.createdAt = new Date(scheduleData.createdAt);
-            schedule.updatedAt = new Date(scheduleData.updatedAt);
-            schedule.dailyNoteExists = scheduleData.dailyNoteExists || false;
-            schedule.isPlanned = scheduleData.isPlanned || false;
-            schedule.planningCompletedAt = scheduleData.planningCompletedAt 
-              ? new Date(scheduleData.planningCompletedAt) 
-              : undefined;
-            
-            // Restore tasks and events
-            schedule.tasks = scheduleData.tasks || [];
-            schedule.events = scheduleData.events || [];
-            
-            return schedule;
-          });
+          const restoredSchedules = persistedData.schedules.map(
+            (scheduleData: any) => {
+              const schedule = new DailySchedule(
+                scheduleData.id,
+                new Date(scheduleData.date),
+                scheduleData.dailyNotePath
+              );
+
+              // Restore properties
+              schedule.createdAt = new Date(scheduleData.createdAt);
+              schedule.updatedAt = new Date(scheduleData.updatedAt);
+              schedule.dailyNoteExists = scheduleData.dailyNoteExists || false;
+              schedule.isPlanned = scheduleData.isPlanned || false;
+              schedule.planningCompletedAt = scheduleData.planningCompletedAt
+                ? new Date(scheduleData.planningCompletedAt)
+                : undefined;
+
+              // Restore tasks and events
+              schedule.tasks = scheduleData.tasks || [];
+              schedule.events = scheduleData.events || [];
+
+              return schedule;
+            }
+          );
 
           // Update store with restored schedules
           this._store.update((state) => ({
@@ -275,7 +297,9 @@ export class ScheduleStore {
               : new Date(),
           }));
 
-          console.log(`${this.storageKey}: Restored ${restoredSchedules.length} schedules from storage`);
+          console.log(
+            `${this.storageKey}: Restored ${restoredSchedules.length} schedules from storage`
+          );
         }
       }
     } catch (error) {
@@ -314,20 +338,16 @@ export class ScheduleStore {
 export const scheduleStore = new ScheduleStore();
 
 // Derived stores for common queries
-export const todaySchedule = derived(
-  scheduleStore,
-  ($store) => {
-    const today = new Date().toISOString().split('T')[0];
-    return $store.schedules.find(s => s.getDateString() === today) || null;
-  }
-);
+export const todaySchedule = derived(scheduleStore, ($store) => {
+  const today = new Date().toISOString().split("T")[0];
+  return $store.schedules.find((s) => s.getDateString() === today) || null;
+});
 
-export const yesterdaySchedule = derived(
-  scheduleStore,
-  ($store) => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayString = yesterday.toISOString().split('T')[0];
-    return $store.schedules.find(s => s.getDateString() === yesterdayString) || null;
-  }
-);
+export const yesterdaySchedule = derived(scheduleStore, ($store) => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayString = yesterday.toISOString().split("T")[0];
+  return (
+    $store.schedules.find((s) => s.getDateString() === yesterdayString) || null
+  );
+});
