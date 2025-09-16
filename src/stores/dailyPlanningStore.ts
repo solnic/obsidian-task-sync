@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { writable, get } from "svelte/store";
 import type { Task } from "../types/entities";
 
 /**
@@ -64,11 +64,8 @@ export function setDailyPlanningActive(isActive: boolean): void {
  * Get all scheduled tasks
  */
 export function getScheduledTasks(): Task[] {
-  let tasks: Task[] = [];
-  dailyPlanningStore.subscribe((state) => {
-    tasks = state.scheduledTasks;
-  })();
-  return tasks;
+  const state = get(dailyPlanningStore);
+  return state.scheduledTasks;
 }
 
 /**
