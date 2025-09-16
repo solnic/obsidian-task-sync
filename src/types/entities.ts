@@ -64,8 +64,8 @@ export interface Task extends BaseEntity, HasDataView {
   parentTask?: string; // PARENT_TASK
   project?: string; // PROJECT
   areas?: string[]; // AREAS
-  doDate?: string; // DO_DATE - date when task should be done
-  dueDate?: string; // DUE_DATE - deadline for task completion
+  doDate?: Date; // DO_DATE - date when task should be done
+  dueDate?: Date; // DUE_DATE - deadline for task completion
   tags?: string[]; // TAGS
 
   // File system properties (derived from file metadata)

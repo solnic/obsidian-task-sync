@@ -62,7 +62,10 @@ export function isTomorrow(dateString: string): boolean {
  * Filter tasks by Do Date property
  */
 export function filterTasksByDoDate(tasks: Task[], targetDate: string): Task[] {
-  return tasks.filter((task) => task.doDate === targetDate);
+  return tasks.filter((task) => {
+    if (!task.doDate) return false;
+    return getDateString(task.doDate) === targetDate;
+  });
 }
 
 /**
@@ -132,7 +135,7 @@ export function getTodayTasksGrouped(tasks: Task[]): {
  * Check if a task has a Do Date set
  */
 export function hasDoDate(task: Task): boolean {
-  return !!(task.doDate && task.doDate.trim() !== "");
+  return !!(task.doDate instanceof Date);
 }
 
 /**
@@ -158,7 +161,7 @@ export function getOverdueTasks(tasks: Task[]): Task[] {
     if (!hasDoDate(task) || task.done) {
       return false;
     }
-    return task.doDate! < today;
+    return getDateString(task.doDate!) < today;
   });
 }
 
@@ -171,7 +174,7 @@ export function getUpcomingTasks(tasks: Task[]): Task[] {
     if (!hasDoDate(task)) {
       return false;
     }
-    return task.doDate! > today;
+    return getDateString(task.doDate!) > today;
   });
 }
 
@@ -190,7 +193,8 @@ export function getTasksForDateRange(
     if (!hasDoDate(task)) {
       return false;
     }
-    return task.doDate! >= startString && task.doDate! <= endString;
+    const taskDateString = getDateString(task.doDate!);
+    return taskDateString >= startString && taskDateString <= endString;
   });
 }
 

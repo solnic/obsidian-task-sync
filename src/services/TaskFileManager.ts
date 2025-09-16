@@ -11,6 +11,7 @@ import { PROPERTY_REGISTRY } from "../types/properties";
 import { PROPERTY_SETS } from "./base-definitions/BaseConfigurations";
 import { Task } from "../types/entities";
 import { createWikiLink, createLinkFormat } from "../utils/linkUtils";
+import moment from "moment";
 
 /**
  * Interface for task creation data
@@ -23,8 +24,8 @@ export interface TaskCreationData extends FileCreationData {
   done?: boolean;
   status?: string;
   parentTask?: string;
-  doDate?: string;
-  dueDate?: string;
+  doDate?: Date;
+  dueDate?: Date;
   tags?: string[];
 }
 
@@ -205,6 +206,11 @@ export class TaskFileManager extends FileManager {
       let value = data[prop.key];
 
       if (value !== undefined && value !== null) {
+        // Convert Date objects to ISO date strings for front-matter
+        if (prop.type === "date" && value instanceof Date) {
+          value = value.toISOString().split("T")[0]; // YYYY-MM-DD format
+        }
+
         // Format as links if the property has link: true
         if (prop.link) {
           const folder = this.getLinkFolder(prop.key);
@@ -287,6 +293,27 @@ export class TaskFileManager extends FileManager {
       }
     }
 
+    // Helper function to parse date strings to Date objects using moment.js
+    const parseDate = (dateValue: any): Date | undefined => {
+      if (!dateValue || dateValue === "") {
+        return undefined;
+      }
+
+      if (dateValue instanceof Date) {
+        return dateValue;
+      }
+
+      if (typeof dateValue === "string") {
+        // Use moment.js for reliable date parsing
+        const momentDate = moment(dateValue);
+        if (momentDate.isValid()) {
+          return momentDate.toDate();
+        }
+      }
+
+      return undefined;
+    };
+
     return {
       id: this.generateId(),
       file,
@@ -300,7 +327,8 @@ export class TaskFileManager extends FileManager {
       parentTask: cleanLinkFormat(frontMatter["Parent task"]),
       project: cleanLinkFormat(frontMatter.Project),
       areas: areas,
-      doDate: frontMatter["Do Date"],
+      doDate: parseDate(frontMatter["Do Date"]),
+      dueDate: parseDate(frontMatter["Due Date"]),
       tags: frontMatter.tags,
       // File system properties
       createdAt: new Date(file.stat.ctime),

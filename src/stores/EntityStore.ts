@@ -7,6 +7,7 @@ import { writable, get, type Writable, type Readable } from "svelte/store";
 import { App, TFile, Plugin } from "obsidian";
 import { BaseEntity } from "../types/entities";
 import { PROPERTY_REGISTRY } from "../types/properties";
+import moment from "moment";
 
 export interface EntityStoreState<T> {
   entities: T[];
@@ -218,6 +219,16 @@ export abstract class EntityStore<T extends BaseEntity> {
       // Update entity property if it exists in front-matter
       if (frontmatterKey in frontmatter) {
         let value = frontmatter[frontmatterKey];
+
+        // Convert date strings to Date objects for date properties using moment.js
+        if (propertyDef.type === "date" && value) {
+          if (typeof value === "string" && value !== "") {
+            const momentDate = moment(value);
+            value = momentDate.isValid() ? momentDate.toDate() : undefined;
+          } else {
+            value = undefined;
+          }
+        }
 
         // Clean link formatting for link properties
         if (propertyDef.link && value) {
