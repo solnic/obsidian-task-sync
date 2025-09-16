@@ -7,7 +7,6 @@
 import { Octokit } from "@octokit/rest";
 import { requestUrl } from "obsidian";
 import {
-  GitHubIntegrationSettings,
   GitHubOrgRepoMapping,
   TaskSyncSettings,
 } from "../components/ui/settings/types";
