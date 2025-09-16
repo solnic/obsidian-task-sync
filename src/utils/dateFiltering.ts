@@ -6,10 +6,13 @@
 import { Task } from "../types/entities";
 
 /**
- * Get date string in YYYY-MM-DD format
+ * Get date string in YYYY-MM-DD format using local timezone
  */
 export function getDateString(date: Date): string {
-  return date.toISOString().split("T")[0];
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 /**
@@ -63,8 +66,8 @@ export function isTomorrow(dateString: string): boolean {
  */
 export function filterTasksByDoDate(tasks: Task[], targetDate: string): Task[] {
   return tasks.filter((task) => {
-    if (!task.doDate) return false;
-    return getDateString(task.doDate) === targetDate;
+    if (!hasDoDate(task)) return false;
+    return getDateString(task.doDate!) === targetDate;
   });
 }
 
@@ -227,13 +230,14 @@ export function getTasksForNextWeek(tasks: Task[]): Task[] {
 }
 
 /**
- * Parse a date string and return a Date object
+ * Parse a date string and return a Date object in local timezone
  */
 export function parseDoDate(doDate: string): Date | null {
   try {
-    // If doDate matches YYYY-MM-DD, append time and Z
+    // If doDate matches YYYY-MM-DD, create date in local timezone
     if (/^\d{4}-\d{2}-\d{2}$/.test(doDate)) {
-      const date = new Date(doDate + "T00:00:00.000Z");
+      const [year, month, day] = doDate.split("-").map(Number);
+      const date = new Date(year, month - 1, day); // month is 0-indexed
       return isNaN(date.getTime()) ? null : date;
     } else {
       const date = new Date(doDate);

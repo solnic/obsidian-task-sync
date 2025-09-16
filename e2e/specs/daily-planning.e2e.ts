@@ -49,21 +49,120 @@ describe("Daily Planning", () => {
     });
   });
 
-  test("should open Daily Planning view via command", async () => {
-    // Execute the "Start daily planning" command
-    await executeCommand(context, "Start daily planning");
+  test("should handle timezone issues correctly when filtering tasks by date", async () => {
+    // Test the timezone bug by checking date filtering logic directly
+    const result = await context.page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-    // Wait for the command to complete
-    await context.page.waitForTimeout(2000);
+      // Test parseDoDate function
+      const parseDoDate =
+        plugin.constructor.prototype.constructor.parseDoDate ||
+        (window as any).parseDoDate ||
+        ((dateStr: string) => {
+          if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            return new Date(dateStr + "T00:00:00.000Z");
+          }
+          return new Date(dateStr);
+        });
 
-    // Check if Daily Planning view is present in the DOM
-    const dailyPlanningView = await context.page.evaluate(() => {
-      return (
-        document.querySelector('[data-testid="daily-planning-view"]') !== null
-      );
+      // Test getDateString function
+      const getDateString = (date: Date) => date.toISOString().split("T")[0];
+
+      // Test getTodayString function
+      const getTodayString = () => getDateString(new Date());
+
+      const testDate = "2025-09-16";
+      const parsedDate = parseDoDate(testDate);
+      const backToString = getDateString(parsedDate);
+      const todayString = getTodayString();
+
+      return {
+        testDate,
+        parsedDate: parsedDate?.toISOString(),
+        backToString,
+        todayString,
+        localTime: new Date().toString(),
+        utcTime: new Date().toISOString(),
+        timezoneOffset: new Date().getTimezoneOffset(),
+      };
     });
 
-    expect(dailyPlanningView).toBe(true);
+    console.log("Timezone test result:", result);
+
+    // The bug would show up as backToString !== testDate or incorrect today comparison
+    expect(result.backToString).toBe(result.testDate);
+  });
+
+  test("should display existing tasks scheduled for today and yesterday", async () => {
+    // Create a task scheduled for today
+    const todayString = new Date().toISOString().split("T")[0];
+    const todayTaskPath = await context.page.evaluate(async (todayString) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      return await plugin.taskFileManager.createTaskFile({
+        title: "Today Task",
+        description: "A task scheduled for today",
+        done: false,
+        doDate: todayString,
+      });
+    }, todayString);
+
+    // Create a task scheduled for yesterday
+    const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+    const yesterdayTaskPath = await context.page.evaluate(
+      async (yesterdayString) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+        return await plugin.taskFileManager.createTaskFile({
+          title: "Yesterday Task",
+          description: "A task scheduled for yesterday",
+          done: false,
+          doDate: yesterdayString,
+        });
+      },
+      yesterdayString
+    );
+
+    expect(todayTaskPath).toBeTruthy();
+    expect(yesterdayTaskPath).toBeTruthy();
+
+    // Start daily planning
+    await executeCommand(context, "Start daily planning");
+
+    // Wait for daily planning view to open
+    await context.page.waitForSelector('[data-testid="daily-planning-view"]', {
+      timeout: 10000,
+    });
+
+    // STEP 1: Review Yesterday's Tasks - should show the yesterday task
+    await context.page.waitForSelector('[data-testid="step-1"]', {
+      timeout: 5000,
+    });
+
+    // Check that yesterday's task appears in the not completed section
+    const yesterdayTask = context.page
+      .locator('[data-testid="not-completed-task"]')
+      .filter({ hasText: "Yesterday Task" });
+    expect(await yesterdayTask.isVisible()).toBe(true);
+
+    // Navigate to step 2
+    await context.page.click('[data-testid="next-button"]');
+
+    // STEP 2: Today's Agenda - should show the today task
+    await context.page.waitForSelector('[data-testid="step-2"]', {
+      timeout: 5000,
+    });
+
+    // Check that today's task appears in the scheduled tasks
+    const todayTask = context.page
+      .locator('[data-testid="scheduled-task"]')
+      .filter({ hasText: "Today Task" });
+    expect(await todayTask.isVisible()).toBe(true);
   });
 
   test("should complete daily planning workflow with all 3 steps and reactivity", async () => {

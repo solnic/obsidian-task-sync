@@ -5,6 +5,7 @@
 
 import { TFile } from "obsidian";
 import { PROPERTY_REGISTRY } from "./properties";
+import { parseDoDate } from "../utils/dateFiltering";
 
 // Base interface for all entities
 export interface BaseEntity {
@@ -104,15 +105,18 @@ export class TaskUtils {
 
       if (frontmatterValue !== undefined) {
         // Handle different property types
-        if (
-          propertyDef.type === "date" &&
-          typeof frontmatterValue === "string"
-        ) {
-          // Parse date strings to Date objects
-          const parsedDate = new Date(frontmatterValue);
-          if (!isNaN(parsedDate.getTime())) {
-            (updatedTask as any)[entityKey] = parsedDate;
+        if (propertyDef.type === "date") {
+          // Parse date values to Date objects using robust parsing
+          if (frontmatterValue instanceof Date) {
+            (updatedTask as any)[entityKey] = frontmatterValue;
+          } else if (typeof frontmatterValue === "string") {
+            const parsedDate = parseDoDate(frontmatterValue);
+            if (parsedDate) {
+              (updatedTask as any)[entityKey] = parsedDate;
+            }
+            // If parsing fails, don't set the property (leave it undefined)
           }
+          // For other types (numbers, objects, etc.), don't set the property
         } else if (
           propertyDef.type === "array" &&
           Array.isArray(frontmatterValue)
