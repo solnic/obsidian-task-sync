@@ -9,7 +9,7 @@ import { Task } from "../types/entities";
  * Get date string in YYYY-MM-DD format
  */
 export function getDateString(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split("T")[0];
 }
 
 /**
@@ -62,7 +62,7 @@ export function isTomorrow(dateString: string): boolean {
  * Filter tasks by Do Date property
  */
 export function filterTasksByDoDate(tasks: Task[], targetDate: string): Task[] {
-  return tasks.filter(task => task.doDate === targetDate);
+  return tasks.filter((task) => task.doDate === targetDate);
 }
 
 /**
@@ -96,17 +96,23 @@ export function getTasksForDate(tasks: Task[], date: Date): Task[] {
 /**
  * Group tasks by completion status
  */
-export function groupTasksByCompletion(tasks: Task[]): { done: Task[]; notDone: Task[] } {
+export function groupTasksByCompletion(tasks: Task[]): {
+  done: Task[];
+  notDone: Task[];
+} {
   return {
-    done: tasks.filter(task => task.done === true),
-    notDone: tasks.filter(task => task.done !== true)
+    done: tasks.filter((task) => task.done === true),
+    notDone: tasks.filter((task) => task.done !== true),
   };
 }
 
 /**
  * Get tasks from yesterday grouped by completion status
  */
-export function getYesterdayTasksGrouped(tasks: Task[]): { done: Task[]; notDone: Task[] } {
+export function getYesterdayTasksGrouped(tasks: Task[]): {
+  done: Task[];
+  notDone: Task[];
+} {
   const yesterdayTasks = getTasksForYesterday(tasks);
   return groupTasksByCompletion(yesterdayTasks);
 }
@@ -114,7 +120,10 @@ export function getYesterdayTasksGrouped(tasks: Task[]): { done: Task[]; notDone
 /**
  * Get tasks from today grouped by completion status
  */
-export function getTodayTasksGrouped(tasks: Task[]): { done: Task[]; notDone: Task[] } {
+export function getTodayTasksGrouped(tasks: Task[]): {
+  done: Task[];
+  notDone: Task[];
+} {
   const todayTasks = getTasksForToday(tasks);
   return groupTasksByCompletion(todayTasks);
 }
@@ -123,21 +132,21 @@ export function getTodayTasksGrouped(tasks: Task[]): { done: Task[]; notDone: Ta
  * Check if a task has a Do Date set
  */
 export function hasDoDate(task: Task): boolean {
-  return !!(task.doDate && task.doDate.trim() !== '');
+  return !!(task.doDate && task.doDate.trim() !== "");
 }
 
 /**
  * Get tasks without a Do Date
  */
 export function getTasksWithoutDoDate(tasks: Task[]): Task[] {
-  return tasks.filter(task => !hasDoDate(task));
+  return tasks.filter((task) => !hasDoDate(task));
 }
 
 /**
  * Get tasks with a Do Date
  */
 export function getTasksWithDoDate(tasks: Task[]): Task[] {
-  return tasks.filter(task => hasDoDate(task));
+  return tasks.filter((task) => hasDoDate(task));
 }
 
 /**
@@ -145,7 +154,7 @@ export function getTasksWithDoDate(tasks: Task[]): Task[] {
  */
 export function getOverdueTasks(tasks: Task[]): Task[] {
   const today = getTodayString();
-  return tasks.filter(task => {
+  return tasks.filter((task) => {
     if (!hasDoDate(task) || task.done) {
       return false;
     }
@@ -158,7 +167,7 @@ export function getOverdueTasks(tasks: Task[]): Task[] {
  */
 export function getUpcomingTasks(tasks: Task[]): Task[] {
   const today = getTodayString();
-  return tasks.filter(task => {
+  return tasks.filter((task) => {
     if (!hasDoDate(task)) {
       return false;
     }
@@ -169,11 +178,15 @@ export function getUpcomingTasks(tasks: Task[]): Task[] {
 /**
  * Get tasks for a date range
  */
-export function getTasksForDateRange(tasks: Task[], startDate: Date, endDate: Date): Task[] {
+export function getTasksForDateRange(
+  tasks: Task[],
+  startDate: Date,
+  endDate: Date
+): Task[] {
   const startString = getDateString(startDate);
   const endString = getDateString(endDate);
-  
-  return tasks.filter(task => {
+
+  return tasks.filter((task) => {
     if (!hasDoDate(task)) {
       return false;
     }
@@ -188,10 +201,10 @@ export function getTasksForThisWeek(tasks: Task[]): Task[] {
   const today = new Date();
   const startOfWeek = new Date(today);
   startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
-  
+
   const endOfWeek = new Date(startOfWeek);
   endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
-  
+
   return getTasksForDateRange(tasks, startOfWeek, endOfWeek);
 }
 
@@ -202,10 +215,10 @@ export function getTasksForNextWeek(tasks: Task[]): Task[] {
   const today = new Date();
   const startOfNextWeek = new Date(today);
   startOfNextWeek.setDate(today.getDate() - today.getDay() + 7); // Next Sunday
-  
+
   const endOfNextWeek = new Date(startOfNextWeek);
   endOfNextWeek.setDate(startOfNextWeek.getDate() + 6); // Next Saturday
-  
+
   return getTasksForDateRange(tasks, startOfNextWeek, endOfNextWeek);
 }
 
@@ -214,8 +227,14 @@ export function getTasksForNextWeek(tasks: Task[]): Task[] {
  */
 export function parseDoDate(doDate: string): Date | null {
   try {
-    const date = new Date(doDate + 'T00:00:00.000Z');
-    return isNaN(date.getTime()) ? null : date;
+    // If doDate matches YYYY-MM-DD, append time and Z
+    if (/^\d{4}-\d{2}-\d{2}$/.test(doDate)) {
+      const date = new Date(doDate + "T00:00:00.000Z");
+      return isNaN(date.getTime()) ? null : date;
+    } else {
+      const date = new Date(doDate);
+      return isNaN(date.getTime()) ? null : date;
+    }
   } catch {
     return null;
   }
@@ -225,11 +244,11 @@ export function parseDoDate(doDate: string): Date | null {
  * Format a date for display
  */
 export function formatDateForDisplay(date: Date): string {
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
   });
 }
 
@@ -238,11 +257,11 @@ export function formatDateForDisplay(date: Date): string {
  */
 export function getRelativeDateDescription(dateString: string): string {
   if (isToday(dateString)) {
-    return 'Today';
+    return "Today";
   } else if (isYesterday(dateString)) {
-    return 'Yesterday';
+    return "Yesterday";
   } else if (isTomorrow(dateString)) {
-    return 'Tomorrow';
+    return "Tomorrow";
   } else {
     const date = parseDoDate(dateString);
     return date ? formatDateForDisplay(date) : dateString;
