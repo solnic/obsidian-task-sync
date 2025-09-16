@@ -485,6 +485,19 @@ export class TaskFileManager extends FileManager {
   // ============================================================================
 
   /**
+   * Check if a Type value represents a valid task type
+   * @param type - The Type value to check
+   * @returns True if the type is a valid task type
+   */
+  private isValidTaskType(type: string): boolean {
+    // Get configured task types from settings
+    const configuredTaskTypes = this.settings.taskTypes.map(
+      (taskType) => taskType.name
+    );
+    return configuredTaskTypes.includes(type);
+  }
+
+  /**
    * Get task properties in the custom order from settings
    * @returns Array of property definitions in the correct order
    */
@@ -594,8 +607,13 @@ export class TaskFileManager extends FileManager {
     // Extract existing front-matter
     const existingFrontMatter = this.extractFrontMatterData(fullContent);
 
-    // Check if file has correct Type property for tasks
-    if (existingFrontMatter.Type && existingFrontMatter.Type !== "Task") {
+    // Check if file should be processed as a task file
+    // Skip files that have a Type property that clearly indicates they're not tasks
+    if (
+      existingFrontMatter.Type &&
+      existingFrontMatter.Type !== "Task" &&
+      !this.isValidTaskType(existingFrontMatter.Type)
+    ) {
       return { hasChanges: false, propertiesChanged: 0 };
     }
 

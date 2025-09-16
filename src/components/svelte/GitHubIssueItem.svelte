@@ -10,7 +10,6 @@
   import { getPluginContext } from "./context";
   import { taskStore } from "../../stores/taskStore";
   import type { Task } from "../../types/entities";
-  import moment from "moment";
 
   interface Props {
     issue: GitHubIssue;
@@ -133,7 +132,7 @@
       {isImported}
       {isImporting}
       {dayPlanningMode}
-      title={dayPlanningMode ? "Add to today" : "Import this issue as a task"}
+      title={dayPlanningMode ? "Add to today" : undefined}
       testId={dayPlanningMode
         ? "add-to-today-button"
         : isImported

@@ -44,8 +44,8 @@
     isTaskScheduled(task, $dailyPlanningStore.scheduledTasks)
   );
 
-  // Determine if task is imported (has a source)
-  const isImported = $derived(!!task.source);
+  // Local tasks should not display imported styling - this is redundant
+  const isImported = $derived(false);
 
   // Convert task data to TaskItem format - first row badges (category, priority, status)
   let primaryBadges = $derived.by(() => {
