@@ -5,6 +5,7 @@
 
   import TaskItem from "./TaskItem.svelte";
   import ImportButton from "./ImportButton.svelte";
+  import SeeOnServiceButton from "./SeeOnServiceButton.svelte";
   import { extractDisplayValue } from "../../utils/linkUtils";
   import type { Task } from "../../types/entities";
   import {
@@ -42,6 +43,9 @@
   let isScheduled = $derived(
     isTaskScheduled(task, $dailyPlanningStore.scheduledTasks)
   );
+
+  // Determine if task is imported (has a source)
+  const isImported = $derived(!!task.source);
 
   // Convert task data to TaskItem format - first row badges (category, priority, status)
   let primaryBadges = $derived.by(() => {
@@ -117,12 +121,6 @@
   function handleOpenTask() {
     onClick?.();
   }
-
-  function handleOpenOnService() {
-    if (task.source?.url) {
-      window.open(task.source.url, "_blank");
-    }
-  }
 </script>
 
 {#snippet actionSnippet()}
@@ -154,14 +152,11 @@
       </button>
     {/if}
     {#if task.source?.url}
-      <button
-        class="open-on-service-button"
-        title="Open on {task.source.name}"
-        onclick={handleOpenOnService}
-        data-testid="open-on-service-button"
-      >
-        Open on {task.source.name}
-      </button>
+      <SeeOnServiceButton
+        serviceName={task.source.name}
+        url={task.source.url}
+        testId="see-on-service-button"
+      />
     {/if}
   </div>
 {/snippet}
@@ -173,6 +168,7 @@
   createdAt={task.createdAt}
   updatedAt={task.updatedAt}
   {isHovered}
+  {isImported}
   {onHover}
   actionContent={true}
   actions={actionSnippet}

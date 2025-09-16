@@ -8,9 +8,17 @@ import { setupE2ETestHooks } from "../helpers/shared-context";
 import {
   createTestFolders,
   waitForAddToTodayOperation,
+  waitForElementVisible,
 } from "../helpers/task-sync-setup";
 import { toggleSidebar } from "../helpers/plugin-setup";
 import { createTask } from "../helpers/entity-helpers";
+import {
+  configureGitHubIntegration,
+  openGitHubIssuesView,
+  stubGitHubWithFixtures,
+  clickIssueImportButton,
+  waitForIssueImportComplete,
+} from "../helpers/github-integration-helpers";
 
 describe("LocalTasksService", () => {
   const context = setupE2ETestHooks();
@@ -460,6 +468,38 @@ This is a test task created directly in the vault.`;
     for (const title of taskTitles) {
       expect(allTaskText).toContain(title);
     }
+  });
+
+  test("should not display imported badge for non-imported tasks", async () => {
+    // Create a regular task (not imported)
+    await createTask(context, {
+      title: "Regular Local Task",
+      category: "Feature",
+      priority: "Medium",
+      status: "Backlog",
+    });
+
+    // Open Tasks view and switch to local service
+    await openTasksView(context.page);
+    const localTab = context.page.locator('[data-testid="service-local"]');
+    await localTab.click();
+
+    // Wait for tasks to load
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
+      timeout: 10000,
+    });
+
+    // Find the regular task item
+    const taskItem = context.page
+      .locator('[data-testid^="local-task-item-"]')
+      .filter({ hasText: "Regular Local Task" })
+      .first();
+    await taskItem.waitFor({ state: "visible", timeout: 5000 });
+
+    // Check that the task does NOT have the imported badge
+    const importedBadge = taskItem.locator(".imported-badge");
+    const badgeCount = await importedBadge.count();
+    expect(badgeCount).toBe(0);
   });
 });
 

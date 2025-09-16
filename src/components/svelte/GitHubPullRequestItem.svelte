@@ -5,6 +5,7 @@
 
   import TaskItem from "./TaskItem.svelte";
   import ImportButton from "./ImportButton.svelte";
+  import SeeOnServiceButton from "./SeeOnServiceButton.svelte";
   import type { GitHubPullRequest } from "../../services/GitHubService";
   import { getPluginContext } from "./context";
   import { taskStore } from "../../stores/taskStore";
@@ -98,10 +99,6 @@
     onImport?.(pullRequest);
   }
 
-  function handleSeeOnGitHub() {
-    window.open(pullRequest.html_url, "_blank");
-  }
-
   async function handleOpenTask() {
     try {
       // Find the imported task file by searching for the GitHub PR URL or number
@@ -143,14 +140,11 @@
         Open
       </button>
     {/if}
-    <button
-      class="github-link-button"
-      title="See on GitHub"
-      onclick={handleSeeOnGitHub}
-      data-testid="see-on-github-button"
-    >
-      See on GitHub
-    </button>
+    <SeeOnServiceButton
+      serviceName="GitHub"
+      url={pullRequest.html_url}
+      testId="see-on-github-button"
+    />
     <ImportButton
       {isImported}
       {isImporting}
@@ -188,23 +182,6 @@
 />
 
 <style>
-  .github-link-button {
-    padding: 8px 16px;
-    border: 1px solid var(--interactive-normal);
-    background: var(--background-primary);
-    color: var(--text-normal);
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-  }
-
-  .github-link-button:hover {
-    background: var(--background-modifier-hover);
-    border-color: var(--interactive-hover);
-  }
-
   .open-task-button {
     padding: 8px 16px;
     border: 1px solid var(--interactive-accent);

@@ -202,6 +202,16 @@
     {/if}
   </div>
 
+  <!-- Imported badge - shows in top-right corner -->
+  {#if isImported}
+    <div
+      class="imported-badge"
+      title="This item was imported from an external source"
+    >
+      ✓ imported
+    </div>
+  {/if}
+
   <!-- Action overlay snippet -->
   {#if actionContent && isHovered && actions}
     <div class="task-sync-action-overlay">

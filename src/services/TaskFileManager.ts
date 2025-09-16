@@ -632,13 +632,31 @@ export class TaskFileManager extends FileManager {
       }
     }
 
-    // Remove obsolete fields (fields not in current schema) - but be conservative
+    // Remove obsolete fields - only remove fields that are clearly from Task Sync plugin
+    // and no longer defined in the current schema. Be very conservative to preserve
+    // user-defined fields and fields from other plugins.
     const validFields = new Set(Object.keys(currentSchema));
+
+    // Define fields that are known to be from Task Sync plugin and can be safely removed
+    // if they're no longer in the schema. This is a whitelist approach - only remove
+    // fields we're certain about.
+    const knownTaskSyncFields = new Set([
+      // Legacy fields that might have been used in older versions
+      "Sub-tasks",
+      "Subtasks",
+      "Parent Task",
+      "ParentTask",
+      // Any other legacy Task Sync fields can be added here
+    ]);
+
     for (const fieldName of Object.keys(updatedFrontMatter)) {
-      // Only remove fields that are clearly not part of the schema
-      // Keep common fields that might be used by other plugins
-      const commonFields = ["tags", "aliases", "cssclass", "publish"];
-      if (!validFields.has(fieldName) && !commonFields.includes(fieldName)) {
+      // Only remove fields that are:
+      // 1. Not in the current schema AND
+      // 2. Are known to be legacy Task Sync fields
+      if (!validFields.has(fieldName) && knownTaskSyncFields.has(fieldName)) {
+        console.log(
+          `Task Sync: Removing obsolete Task Sync field '${fieldName}' from ${filePath}`
+        );
         delete updatedFrontMatter[fieldName];
         hasChanges = true;
         propertiesChanged++;
