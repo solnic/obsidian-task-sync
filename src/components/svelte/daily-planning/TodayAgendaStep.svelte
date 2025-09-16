@@ -28,8 +28,7 @@
   }: Props = $props();
 
   // Get scheduled tasks from the daily planning store
-  let dailyPlanningState = $state(dailyPlanningStore);
-  let scheduledTasks = $derived($dailyPlanningState.scheduledTasks);
+  let scheduledTasks = $derived($dailyPlanningStore.scheduledTasks);
 
   // Combine existing today tasks with newly scheduled tasks
   let allTodayTasks = $derived([...todayTasks, ...scheduledTasks]);

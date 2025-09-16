@@ -39,9 +39,8 @@
   }: Props = $props();
 
   // Track daily planning state
-  let dailyPlanningState = $state(dailyPlanningStore);
   let isScheduled = $derived(
-    isTaskScheduled(task, $dailyPlanningState.scheduledTasks)
+    isTaskScheduled(task, $dailyPlanningStore.scheduledTasks)
   );
 
   // Convert task data to TaskItem format - first row badges (category, priority, status)
