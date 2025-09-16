@@ -96,7 +96,16 @@
       "state": "open",
       "assignee": "",
       "labels": []
-    }
+    },
+    "labelTypeMapping": {
+      "bug": "Bug",
+      "enhancement": "Feature",
+      "feature": "Feature",
+      "improvement": "Improvement",
+      "chore": "Chore",
+      "documentation": "Chore"
+    },
+    "orgRepoMappings": []
   },
   "appleRemindersIntegration": {
     "enabled": false,

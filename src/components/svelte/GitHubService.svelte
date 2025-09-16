@@ -808,7 +808,11 @@
       importingIssues = new Set(importingIssues);
 
       const config = dependencies.getDefaultImportConfig();
-      const result = await githubService.importIssueAsTask(issue, config);
+      const result = await githubService.importIssueAsTask(
+        issue,
+        config,
+        currentRepository
+      );
 
       // Handle successful import or existing task
       if (result.success) {
@@ -900,7 +904,11 @@
       importingPullRequests = new Set(importingPullRequests); // Trigger reactivity
 
       const config = dependencies.getDefaultImportConfig();
-      const result = await githubService.importPullRequestAsTask(pr, config);
+      const result = await githubService.importPullRequestAsTask(
+        pr,
+        config,
+        currentRepository
+      );
 
       if (result.success) {
         if (result.skipped) {

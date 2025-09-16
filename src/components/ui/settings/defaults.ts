@@ -67,6 +67,7 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
       chore: "Chore",
       documentation: "Chore",
     },
+    orgRepoMappings: [],
   },
   // Apple Reminders integration defaults
   appleRemindersIntegration: {

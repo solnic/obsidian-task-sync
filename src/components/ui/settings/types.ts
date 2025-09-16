@@ -77,6 +77,20 @@ export interface GitHubIssueFilters {
   labels: string[];
 }
 
+// Organization/Repository mapping configuration
+export interface GitHubOrgRepoMapping {
+  /** Organization name (e.g., 'microsoft') */
+  organization?: string;
+  /** Repository name in format 'owner/repo' (e.g., 'microsoft/vscode') */
+  repository?: string;
+  /** Target area to assign to imported tasks */
+  targetArea?: string;
+  /** Target project to assign to imported tasks */
+  targetProject?: string;
+  /** Priority of this mapping (higher numbers take precedence) */
+  priority?: number;
+}
+
 export interface GitHubIntegrationSettings {
   enabled: boolean;
   personalAccessToken: string;
@@ -84,6 +98,7 @@ export interface GitHubIntegrationSettings {
   defaultRepository: string; // Default 'owner/repo' string
   issueFilters: GitHubIssueFilters;
   labelTypeMapping: Record<string, string>; // Map GitHub labels to task types
+  orgRepoMappings: GitHubOrgRepoMapping[]; // Map organizations/repositories to areas/projects
 }
 
 // Apple Reminders integration interfaces

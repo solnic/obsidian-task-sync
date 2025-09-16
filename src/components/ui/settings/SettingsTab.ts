@@ -14,6 +14,7 @@ import {
   TASK_STATUS_COLORS,
   TaskStatusColor,
   FileSuggestOptions,
+  GitHubOrgRepoMapping,
 } from "./types";
 import { DEFAULT_SETTINGS } from "./defaults";
 import {
@@ -1657,6 +1658,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
               await this.plugin.saveSettings();
             });
         });
+
+      // Organization/Repository Mappings
+      this.createGitHubOrgRepoMappingsSection(section);
     }
 
     // Apple Reminders Integration Section
@@ -2129,6 +2133,179 @@ export class TaskSyncSettingTab extends PluginSettingTab {
     // Clean up suggest components
     this.suggestComponents.forEach((component) => component.destroy());
     this.suggestComponents = [];
+  }
+
+  /**
+   * Create GitHub Organization/Repository Mappings section
+   */
+  private createGitHubOrgRepoMappingsSection(container: HTMLElement): void {
+    // Section header
+    container.createEl("h3", {
+      text: "Organization/Repository Mappings",
+      cls: "task-sync-subsection-header",
+    });
+
+    // Description
+    const desc = container.createDiv("task-sync-setting-description");
+    desc.innerHTML = `
+      <p>Map GitHub organizations and repositories to specific areas and projects.
+      When importing issues or pull requests, they will be automatically assigned to the configured area/project.</p>
+      <p><strong>Repository mappings</strong> take precedence over organization mappings.</p>
+    `;
+
+    // Add mapping button
+    new Setting(container)
+      .setName("Add Organization/Repository Mapping")
+      .setDesc("Create a new mapping between GitHub org/repo and area/project")
+      .addButton((button) => {
+        button
+          .setButtonText("Add Mapping")
+          .setCta()
+          .onClick(() => {
+            this.addOrgRepoMapping(container);
+          });
+      });
+
+    // Display existing mappings
+    this.displayOrgRepoMappings(container);
+  }
+
+  /**
+   * Add a new organization/repository mapping
+   */
+  private addOrgRepoMapping(container: HTMLElement): void {
+    const newMapping: GitHubOrgRepoMapping = {
+      organization: "",
+      repository: "",
+      targetArea: "",
+      targetProject: "",
+      priority: 0,
+    };
+
+    // Ensure orgRepoMappings array exists
+    if (!this.plugin.settings.githubIntegration.orgRepoMappings) {
+      this.plugin.settings.githubIntegration.orgRepoMappings = [];
+    }
+
+    this.plugin.settings.githubIntegration.orgRepoMappings.push(newMapping);
+    this.plugin.saveSettings();
+
+    // Refresh the mappings display
+    this.displayOrgRepoMappings(container);
+  }
+
+  /**
+   * Display existing organization/repository mappings
+   */
+  private displayOrgRepoMappings(container: HTMLElement): void {
+    // Remove existing mapping displays
+    const existingMappings = container.querySelectorAll(".org-repo-mapping");
+    existingMappings.forEach((el) => el.remove());
+
+    const mappings = this.plugin.settings.githubIntegration.orgRepoMappings;
+
+    mappings.forEach((mapping, index) => {
+      const mappingContainer = container.createDiv("org-repo-mapping");
+
+      // Mapping header with delete button
+      const header = mappingContainer.createDiv("mapping-header");
+      header.createEl("h4", { text: `Mapping ${index + 1}` });
+
+      const deleteButton = header.createEl("button", {
+        text: "Delete",
+        cls: "mod-warning",
+      });
+      deleteButton.onclick = () => {
+        this.plugin.settings.githubIntegration.orgRepoMappings.splice(index, 1);
+        this.plugin.saveSettings();
+        this.displayOrgRepoMappings(container);
+      };
+
+      // Organization field
+      new Setting(mappingContainer)
+        .setName("Organization")
+        .setDesc(
+          "GitHub organization name (e.g., 'microsoft'). Leave empty for repository-specific mapping."
+        )
+        .addText((text) => {
+          text
+            .setPlaceholder("organization-name")
+            .setValue(mapping.organization || "")
+            .onChange(async (value) => {
+              this.plugin.settings.githubIntegration.orgRepoMappings[
+                index
+              ].organization = value.trim() || undefined;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Repository field
+      new Setting(mappingContainer)
+        .setName("Repository")
+        .setDesc(
+          "Specific repository in format 'owner/repo' (e.g., 'microsoft/vscode'). Leave empty for organization-wide mapping."
+        )
+        .addText((text) => {
+          text
+            .setPlaceholder("owner/repository")
+            .setValue(mapping.repository || "")
+            .onChange(async (value) => {
+              this.plugin.settings.githubIntegration.orgRepoMappings[
+                index
+              ].repository = value.trim() || undefined;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Target Area field
+      new Setting(mappingContainer)
+        .setName("Target Area")
+        .setDesc("Area to assign imported tasks to")
+        .addText((text) => {
+          text
+            .setPlaceholder("Area name")
+            .setValue(mapping.targetArea || "")
+            .onChange(async (value) => {
+              this.plugin.settings.githubIntegration.orgRepoMappings[
+                index
+              ].targetArea = value.trim() || undefined;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Target Project field
+      new Setting(mappingContainer)
+        .setName("Target Project")
+        .setDesc("Project to assign imported tasks to")
+        .addText((text) => {
+          text
+            .setPlaceholder("Project name")
+            .setValue(mapping.targetProject || "")
+            .onChange(async (value) => {
+              this.plugin.settings.githubIntegration.orgRepoMappings[
+                index
+              ].targetProject = value.trim() || undefined;
+              await this.plugin.saveSettings();
+            });
+        });
+
+      // Priority field
+      new Setting(mappingContainer)
+        .setName("Priority")
+        .setDesc("Priority of this mapping (higher numbers take precedence)")
+        .addText((text) => {
+          text
+            .setPlaceholder("0")
+            .setValue(mapping.priority?.toString() || "0")
+            .onChange(async (value) => {
+              const priority = parseInt(value) || 0;
+              this.plugin.settings.githubIntegration.orgRepoMappings[
+                index
+              ].priority = priority;
+              await this.plugin.saveSettings();
+            });
+        });
+    });
   }
 }
 

@@ -1597,8 +1597,8 @@ export default class TaskSyncPlugin extends Plugin {
         return;
       }
 
-      const issue = await this.fetchIssueFromUrl(issueUrl);
-      if (!issue) {
+      const issueData = await this.fetchIssueFromUrl(issueUrl);
+      if (!issueData) {
         new Notice("Failed to fetch GitHub issue");
         return;
       }
@@ -1606,13 +1606,17 @@ export default class TaskSyncPlugin extends Plugin {
       // Use default import configuration
       const config = this.getDefaultImportConfig();
 
-      const result = await this.githubService.importIssueAsTask(issue, config);
+      const result = await this.githubService.importIssueAsTask(
+        issueData.issue,
+        config,
+        issueData.repository
+      );
 
       if (result.success) {
         if (result.skipped) {
           new Notice(`Issue already imported: ${result.reason}`);
         } else {
-          new Notice(`Successfully imported issue: ${issue.title}`);
+          new Notice(`Successfully imported issue: ${issueData.issue.title}`);
         }
       } else {
         new Notice(`Failed to import issue: ${result.error}`);
@@ -1658,7 +1662,8 @@ export default class TaskSyncPlugin extends Plugin {
         try {
           const result = await this.githubService.importIssueAsTask(
             issue,
-            config
+            config,
+            repository
           );
 
           if (result.success) {
@@ -1753,7 +1758,9 @@ export default class TaskSyncPlugin extends Plugin {
   /**
    * Fetch GitHub issue from URL
    */
-  private async fetchIssueFromUrl(url: string): Promise<any | null> {
+  private async fetchIssueFromUrl(
+    url: string
+  ): Promise<{ issue: any; repository: string } | null> {
     try {
       // Parse GitHub issue URL
       const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/issues\/(\d+)/);
@@ -1775,7 +1782,7 @@ export default class TaskSyncPlugin extends Plugin {
         return null;
       }
 
-      return issue;
+      return { issue, repository };
     } catch (error: any) {
       console.error("Error fetching issue from URL:", error);
       return null;

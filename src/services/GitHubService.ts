@@ -8,6 +8,7 @@ import { Octokit } from "@octokit/rest";
 import { requestUrl } from "obsidian";
 import {
   GitHubIntegrationSettings,
+  GitHubOrgRepoMapping,
   TaskSyncSettings,
 } from "../components/ui/settings/types";
 import {
@@ -34,6 +35,7 @@ import {
   GitHubRepository as GitHubRepositoryType,
   GitHubOrganization as GitHubOrganizationType,
 } from "../cache/schemas/github";
+import { GitHubOrgRepoMapper } from "./GitHubOrgRepoMapper";
 
 // Use schema types directly
 export type GitHubIssue = GitHubIssueType;
@@ -82,6 +84,7 @@ export interface GitHubPullRequest {
 export class GitHubService extends AbstractService {
   private octokit: Octokit | null = null;
   private labelTypeMapper: LabelTypeMapper;
+  private orgRepoMapper: GitHubOrgRepoMapper;
 
   // Cache instances
   private issuesCache?: SchemaCache<GitHubIssueList>;
@@ -100,6 +103,12 @@ export class GitHubService extends AbstractService {
     this.labelTypeMapper = GitHubLabelTypeMapper.createWithDefaults(
       hasCustomMappings ? { labelToTypeMapping: customMappings } : undefined
     );
+
+    // Initialize organization/repository mapper
+    this.orgRepoMapper = new GitHubOrgRepoMapper(
+      settings.githubIntegration.orgRepoMappings || []
+    );
+
     this.initializeOctokit();
   }
 
@@ -151,6 +160,27 @@ export class GitHubService extends AbstractService {
    */
   getLabelTypeMapping(): Record<string, string> {
     return this.labelTypeMapper.getLabelMapping();
+  }
+
+  /**
+   * Set organization/repository mapping configuration
+   */
+  setOrgRepoMappings(mappings: GitHubOrgRepoMapping[]): void {
+    this.orgRepoMapper.setMappings(mappings);
+  }
+
+  /**
+   * Get current organization/repository mapping configuration
+   */
+  getOrgRepoMappings(): GitHubOrgRepoMapping[] {
+    return this.orgRepoMapper.getMappings();
+  }
+
+  /**
+   * Get the organization/repository mapper instance
+   */
+  getOrgRepoMapper(): GitHubOrgRepoMapper {
+    return this.orgRepoMapper;
   }
 
   /**
@@ -210,6 +240,9 @@ export class GitHubService extends AbstractService {
       const mergedMappings = { ...defaultMappings, ...customMappings };
       this.labelTypeMapper.setLabelMapping(mergedMappings);
     }
+
+    // Update organization/repository mapper with new settings
+    this.orgRepoMapper.setMappings(newGitHubSettings.orgRepoMappings || []);
     // If no custom mappings, keep the existing mappings (which should be defaults)
 
     // Reinitialize Octokit with new settings
@@ -665,13 +698,14 @@ export class GitHubService extends AbstractService {
    */
   async importIssueAsTask(
     issue: GitHubIssue,
-    config: TaskImportConfig
+    config: TaskImportConfig,
+    repository?: string
   ): Promise<ImportResult> {
     return this.importExternalItem(
       issue,
       config,
       this.transformIssueToTaskData.bind(this),
-      this.enhanceConfigWithLabelMapping.bind(this)
+      (item, cfg) => this.enhanceConfigWithMappings(item, cfg, repository)
     );
   }
 
@@ -680,13 +714,14 @@ export class GitHubService extends AbstractService {
    */
   async importPullRequestAsTask(
     pullRequest: GitHubPullRequest,
-    config: TaskImportConfig
+    config: TaskImportConfig,
+    repository?: string
   ): Promise<ImportResult> {
     return this.importExternalItem(
       pullRequest,
       config,
       this.transformPullRequestToTaskData.bind(this),
-      this.enhanceConfigWithLabelMapping.bind(this)
+      (item, cfg) => this.enhanceConfigWithMappings(item, cfg, repository)
     );
   }
 
@@ -755,16 +790,25 @@ export class GitHubService extends AbstractService {
   }
 
   /**
-   * Enhance import configuration with label-based task type mapping
+   * Enhance import configuration with both label mapping and organization/repository mapping
    */
-  private enhanceConfigWithLabelMapping(
-    issue: GitHubIssue,
-    config: TaskImportConfig
+  private enhanceConfigWithMappings(
+    issue: GitHubIssue | GitHubPullRequest,
+    config: TaskImportConfig,
+    repository?: string
   ): TaskImportConfig {
-    const enhancedConfig = { ...config };
+    let enhancedConfig = { ...config };
 
     try {
-      // Always try to map task type from labels (even if one is already set)
+      // First, apply organization/repository mappings if repository is provided
+      if (repository) {
+        enhancedConfig = this.orgRepoMapper.enhanceImportConfig(
+          repository,
+          enhancedConfig
+        );
+      }
+
+      // Then, apply label-based task type mapping
       if (!issue.labels) {
         issue.labels = [];
       }
@@ -789,6 +833,17 @@ export class GitHubService extends AbstractService {
     } catch (error: any) {
       throw error;
     }
+  }
+
+  /**
+   * Enhance import configuration with label-based task type mapping
+   * @deprecated Use enhanceConfigWithMappings instead
+   */
+  private enhanceConfigWithLabelMapping(
+    issue: GitHubIssue,
+    config: TaskImportConfig
+  ): TaskImportConfig {
+    return this.enhanceConfigWithMappings(issue, config);
   }
 
   /**

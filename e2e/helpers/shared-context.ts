@@ -976,6 +976,15 @@ async function resetPluginSettings(page: Page): Promise<void> {
               assignee: "",
               labels: [],
             },
+            labelTypeMapping: {
+              bug: "Bug",
+              enhancement: "Feature",
+              feature: "Feature",
+              improvement: "Improvement",
+              chore: "Chore",
+              documentation: "Chore",
+            },
+            orgRepoMappings: [],
           },
           // Apple Reminders integration defaults
           appleRemindersIntegration: {
