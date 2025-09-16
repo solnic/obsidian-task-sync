@@ -2,14 +2,13 @@
  * E2E tests for context-aware modal functionality
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeAll } from "vitest";
 import {
   createTestFolders,
-  isElementVisible,
-  isElementEnabled,
   waitForElementVisible,
   verifyTaskProperties,
   createFullyQualifiedLink,
+  getFileContent,
 } from "../helpers/task-sync-setup";
 import { setupE2ETestHooks, openFile } from "../helpers/shared-context";
 import { createProject } from "../helpers/entity-helpers";
@@ -22,9 +21,6 @@ describe("Context-Aware Task Modal", () => {
   });
 
   test("should create a task when form is submitted", async () => {
-    await createTestFolders(context.page);
-
-    // Open modal
     await context.page.keyboard.press("Control+p");
     await context.page.fill(".prompt-input", "Add Task");
     await context.page.keyboard.press("Enter");
@@ -59,16 +55,6 @@ describe("Context-Aware Task Modal", () => {
       state: "detached",
     });
 
-    // Verify task file was created
-    const taskExists = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(
-        "Tasks/Test Task Creation.md"
-      );
-      return file !== null;
-    });
-    expect(taskExists).toBe(true);
-
     // Verify task properties using helper
     const expectedProperties: Record<string, any> = {
       Title: "Test Task Creation",
@@ -93,16 +79,10 @@ describe("Context-Aware Task Modal", () => {
     );
 
     // Verify task content (description)
-    const taskContent = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(
-        "Tasks/Test Task Creation.md"
-      );
-      if (file) {
-        return await app.vault.read(file);
-      }
-      return null;
-    });
+    const taskContent = await getFileContent(
+      context.page,
+      "Tasks/Test Task Creation.md"
+    );
 
     expect(taskContent).toContain("This is a test task description");
   });

@@ -5,7 +5,6 @@
 
 import { test, expect, describe, beforeAll } from "vitest";
 import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
-import { createTask } from "../helpers/entity-helpers";
 import {
   createTestFolders,
   waitForTaskSyncPlugin,

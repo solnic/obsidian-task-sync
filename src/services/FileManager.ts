@@ -243,7 +243,7 @@ export abstract class FileManager {
    * Uses polling approach to be more reliable with rapid file creation
    */
   public async waitForMetadataCache(file: TFile): Promise<any> {
-    const maxAttempts = 50; // 5 seconds total (50 * 100ms)
+    const maxAttempts = 100;
     let attempts = 0;
 
     while (attempts < maxAttempts) {
