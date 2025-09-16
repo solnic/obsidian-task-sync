@@ -95,14 +95,14 @@ describe("Individual Base Generation", () => {
     // Check if individual project base was created
     const baseFileExists = await fileExists(
       context.page,
-      "Bases/Website Redesign.base",
+      "Bases/Website Redesign.base"
     );
     expect(baseFileExists).toBe(true);
 
     // Check base file content structure
     const baseContent = await getFileContent(
       context.page,
-      "Bases/Website Redesign.base",
+      "Bases/Website Redesign.base"
     );
 
     // Check properties section
@@ -137,14 +137,14 @@ describe("Individual Base Generation", () => {
   test("should respect area bases enabled setting", async () => {
     await createTestFolders(context.page);
 
+    // Disable area bases and enable project bases via UI
+    await configureBasesSettings(context, false, true);
+
     // Create an area file using entity helper
     await createArea(context, {
       name: "Finance",
       description: "## Notes\n\nFinance area for budgeting and investments.",
     });
-
-    // Disable area bases and enable project bases via UI
-    await configureBasesSettings(context, false, true);
 
     // Trigger regeneration via command
     await executeCommand(context, "Task Sync: Refresh");
@@ -177,7 +177,7 @@ describe("Individual Base Generation", () => {
     // Check that individual project base was NOT created
     const baseFileExists = await fileExists(
       context.page,
-      "Bases/Mobile App.base",
+      "Bases/Mobile App.base"
     );
     expect(baseFileExists).toBe(false);
   });
