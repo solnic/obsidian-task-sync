@@ -14,7 +14,7 @@ class ProjectStore extends EntityStore<Project> {
 
   protected getPropertySet(): readonly string[] {
     // Projects use a subset of properties
-    return ["TITLE", "TYPE", "AREAS", "TAGS"] as const;
+    return ["NAME", "TYPE", "AREAS", "TAGS"] as const;
   }
 
   // Derived stores for common queries

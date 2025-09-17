@@ -1,0 +1,26 @@
+[
+  {
+    "id": "work-list",
+    "name": "Work",
+    "color": "#007AFF",
+    "reminderCount": 5
+  },
+  {
+    "id": "personal-list",
+    "name": "Personal",
+    "color": "#FF6B6B",
+    "reminderCount": 3
+  },
+  {
+    "id": "shopping-list",
+    "name": "Shopping",
+    "color": "#4ECDC4",
+    "reminderCount": 8
+  },
+  {
+    "id": "projects-list",
+    "name": "Projects",
+    "color": "#FFE66D",
+    "reminderCount": 2
+  }
+]

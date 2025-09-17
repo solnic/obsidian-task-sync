@@ -1,19 +1,11 @@
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
-import {
-  createTestFolders,
-  getFileContent,
-  fileExists,
-  waitForTaskSyncPlugin,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+import { test, expect, describe, beforeEach } from "vitest";
+import { getFileContent, fileExists, executeCommand } from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Template Refresh Bug", () => {
   const context = setupE2ETestHooks();
 
   test("should not corrupt Area and Project templates during refresh", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // Delete any existing templates first to avoid conflicts
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -175,9 +167,6 @@ tags: {{tags}}
   });
 
   test("should create missing templates during refresh", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // Configure templates in settings but don't create the files
     await context.page.evaluate(async () => {
       const app = (window as any).app;

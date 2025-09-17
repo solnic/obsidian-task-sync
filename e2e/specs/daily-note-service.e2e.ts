@@ -3,22 +3,13 @@
  * Tests the complete DailyNoteService functionality in a real Obsidian environment
  */
 
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
-import {
-  createTestFolders,
-  fileExists,
-  waitForTaskSyncPlugin,
-} from "../helpers/task-sync-setup";
+import { test, expect, describe, beforeEach } from "vitest";
+import { fileExists } from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
 
 describe("DailyNoteService", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-  });
 
   test("should get today's daily note path", async () => {
     const todayPath = await context.page.evaluate(async () => {

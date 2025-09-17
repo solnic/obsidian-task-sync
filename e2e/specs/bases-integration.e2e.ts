@@ -1,13 +1,6 @@
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
-import {
-  createTestFolders,
-  waitForTaskSyncPlugin,
-} from "../helpers/task-sync-setup";
-import {
-  setupE2ETestHooks,
-  openFile,
-  waitForBaseView,
-} from "../helpers/shared-context";
+import { test, expect, describe, beforeEach } from "vitest";
+import { openFile, waitForBaseView } from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 import {
   createTask,
   createArea,
@@ -18,9 +11,6 @@ describe("Bases Integration UI", () => {
   const context = setupE2ETestHooks();
 
   async function setupTest() {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // Enable base generation for testing
     await context.page.evaluate(async () => {
       const app = (window as any).app;

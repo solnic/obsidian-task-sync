@@ -32,7 +32,9 @@ function loadFixture(service: string, fixtureName: string): any {
     return JSON.parse(fixtureContent);
   } catch (error) {
     throw new Error(
-      `Failed to parse fixture file ${fixturePath}: ${error.message}`
+      `Failed to parse fixture file ${fixturePath}: ${
+        error instanceof Error ? error.message : String(error)
+      }`
     );
   }
 }
@@ -75,9 +77,13 @@ export async function stubAPI(
 
   if (service === "github") {
     await stubGitHubAPI(page, method, fixtureData);
+  } else if (service === "apple-calendar") {
+    await stubAppleCalendarAPI(page, method, fixtureData);
+  } else if (service === "apple-reminders") {
+    await stubAppleRemindersAPI(page, method, fixtureData);
   } else {
     throw new Error(
-      `Unsupported service: ${service}. Supported services: github`
+      `Unsupported service: ${service}. Supported services: github, apple-calendar, apple-reminders`
     );
   }
 }
@@ -95,8 +101,16 @@ async function stubGitHubAPI(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (!plugin || !plugin.githubService) {
-        throw new Error("Task Sync plugin or GitHub service not found");
+      if (!plugin) {
+        throw new Error("Task Sync plugin not found");
+      }
+
+      // Get GitHub service through IntegrationManager
+      const githubService = plugin.integrationManager?.getGitHubService();
+      if (!githubService) {
+        throw new Error(
+          "GitHub service not found - ensure GitHub integration is enabled"
+        );
       }
 
       // Map method names to actual GitHub service method names
@@ -122,14 +136,139 @@ async function stubGitHubAPI(
         mappedMethod.charAt(0).toUpperCase() + mappedMethod.slice(1)
       }`;
 
-      if (!plugin.githubService[originalMethodKey]) {
-        plugin.githubService[originalMethodKey] =
-          plugin.githubService[mappedMethod];
+      if (!githubService[originalMethodKey]) {
+        githubService[originalMethodKey] = githubService[mappedMethod];
       }
 
       // Stub the method
-      plugin.githubService[mappedMethod] = async (...args: any[]) => {
+      githubService[mappedMethod] = async (...args: any[]) => {
         console.log(`🔧 Stubbed ${methodName} called with args:`, args);
+        return data;
+      };
+    },
+    { methodName: method, data: fixtureData }
+  );
+}
+
+/**
+ * Stub Apple Calendar API methods specifically
+ */
+async function stubAppleCalendarAPI(
+  page: Page,
+  method: string,
+  fixtureData: any
+): Promise<void> {
+  await page.evaluate(
+    async ({ methodName, data }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      if (!plugin) {
+        throw new Error("Task Sync plugin not found");
+      }
+
+      const appleCalendarService = plugin.appleCalendarService;
+      if (!appleCalendarService) {
+        throw new Error("Apple Calendar service not found");
+      }
+
+      // Map method names to actual service methods
+      const methodMap: Record<string, string> = {
+        getCalendars: "getCalendars",
+        getEvents: "getEvents",
+        getTodayEvents: "getTodayEvents",
+        checkPermissions: "checkPermissions",
+        requestPermissions: "requestPermissions",
+        createEvent: "createEvent",
+      };
+
+      const mappedMethod = methodMap[methodName];
+      if (!mappedMethod) {
+        throw new Error(
+          `Unknown Apple Calendar method: ${methodName}. Available methods: ${Object.keys(
+            methodMap
+          ).join(", ")}`
+        );
+      }
+
+      // Store original method if not already stored
+      const originalMethodKey = `_original${
+        mappedMethod.charAt(0).toUpperCase() + mappedMethod.slice(1)
+      }`;
+
+      if (!appleCalendarService[originalMethodKey]) {
+        appleCalendarService[originalMethodKey] =
+          appleCalendarService[mappedMethod];
+      }
+
+      // Stub the method
+      appleCalendarService[mappedMethod] = async (...args: any[]) => {
+        console.log(
+          `🔧 Stubbed Apple Calendar ${methodName} called with args:`,
+          args
+        );
+        return data;
+      };
+    },
+    { methodName: method, data: fixtureData }
+  );
+}
+
+/**
+ * Stub Apple Reminders API methods specifically
+ */
+async function stubAppleRemindersAPI(
+  page: Page,
+  method: string,
+  fixtureData: any
+): Promise<void> {
+  await page.evaluate(
+    async ({ methodName, data }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      if (!plugin) {
+        throw new Error("Task Sync plugin not found");
+      }
+
+      const appleRemindersService = plugin.appleRemindersService;
+      if (!appleRemindersService) {
+        throw new Error("Apple Reminders service not found");
+      }
+
+      // Map method names to actual service methods
+      const methodMap: Record<string, string> = {
+        fetchReminders: "fetchReminders",
+        fetchLists: "fetchLists",
+        checkPermissions: "checkPermissions",
+        clearCache: "clearCache",
+      };
+
+      const mappedMethod = methodMap[methodName];
+      if (!mappedMethod) {
+        throw new Error(
+          `Unknown Apple Reminders method: ${methodName}. Available methods: ${Object.keys(
+            methodMap
+          ).join(", ")}`
+        );
+      }
+
+      // Store original method if not already stored
+      const originalMethodKey = `_original${
+        mappedMethod.charAt(0).toUpperCase() + mappedMethod.slice(1)
+      }`;
+
+      if (!appleRemindersService[originalMethodKey]) {
+        appleRemindersService[originalMethodKey] =
+          appleRemindersService[mappedMethod];
+      }
+
+      // Stub the method
+      appleRemindersService[mappedMethod] = async (...args: any[]) => {
+        console.log(
+          `🔧 Stubbed Apple Reminders ${methodName} called with args:`,
+          args
+        );
         return data;
       };
     },
@@ -143,9 +282,13 @@ async function stubGitHubAPI(
 export async function restoreAPI(page: Page, service: string): Promise<void> {
   if (service === "github") {
     await restoreGitHubAPI(page);
+  } else if (service === "apple-calendar") {
+    await restoreAppleCalendarAPI(page);
+  } else if (service === "apple-reminders") {
+    await restoreAppleRemindersAPI(page);
   } else {
     throw new Error(
-      `Unsupported service: ${service}. Supported services: github`
+      `Unsupported service: ${service}. Supported services: github, apple-calendar, apple-reminders`
     );
   }
 }
@@ -158,7 +301,13 @@ async function restoreGitHubAPI(page: Page): Promise<void> {
     const app = (window as any).app;
     const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-    if (!plugin || !plugin.githubService) {
+    if (!plugin) {
+      return;
+    }
+
+    // Get GitHub service through IntegrationManager
+    const githubService = plugin.integrationManager?.getGitHubService();
+    if (!githubService) {
       return;
     }
 
@@ -170,12 +319,91 @@ async function restoreGitHubAPI(page: Page): Promise<void> {
         methodName.charAt(0).toUpperCase() + methodName.slice(1)
       }`;
 
-      if (plugin.githubService[originalMethodKey]) {
-        plugin.githubService[methodName] =
-          plugin.githubService[originalMethodKey];
-        delete plugin.githubService[originalMethodKey];
+      if (githubService[originalMethodKey]) {
+        githubService[methodName] = githubService[originalMethodKey];
+        delete githubService[originalMethodKey];
       }
     });
+  });
+}
+
+/**
+ * Restore Apple Calendar API methods specifically
+ */
+async function restoreAppleCalendarAPI(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+    if (!plugin) {
+      return;
+    }
+
+    const appleCalendarService = plugin.appleCalendarService;
+    if (!appleCalendarService) {
+      return;
+    }
+
+    // Restore all original methods
+    const methodNames = [
+      "getCalendars",
+      "getEvents",
+      "getTodayEvents",
+      "checkPermissions",
+      "requestPermissions",
+      "createEvent",
+    ];
+
+    for (const methodName of methodNames) {
+      const originalMethodKey = `_original${
+        methodName.charAt(0).toUpperCase() + methodName.slice(1)
+      }`;
+
+      if (appleCalendarService[originalMethodKey]) {
+        appleCalendarService[methodName] =
+          appleCalendarService[originalMethodKey];
+        delete appleCalendarService[originalMethodKey];
+      }
+    }
+  });
+}
+
+/**
+ * Restore Apple Reminders API methods specifically
+ */
+async function restoreAppleRemindersAPI(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+    if (!plugin) {
+      return;
+    }
+
+    const appleRemindersService = plugin.appleRemindersService;
+    if (!appleRemindersService) {
+      return;
+    }
+
+    // Restore all original methods
+    const methodNames = [
+      "fetchReminders",
+      "fetchLists",
+      "checkPermissions",
+      "clearCache",
+    ];
+
+    for (const methodName of methodNames) {
+      const originalMethodKey = `_original${
+        methodName.charAt(0).toUpperCase() + methodName.slice(1)
+      }`;
+
+      if (appleRemindersService[originalMethodKey]) {
+        appleRemindersService[methodName] =
+          appleRemindersService[originalMethodKey];
+        delete appleRemindersService[originalMethodKey];
+      }
+    }
   });
 }
 
@@ -216,6 +444,8 @@ export async function stubGitHubAPIs(
     repositories?: string;
     pullRequests?: string;
     organizations?: string;
+    currentUser?: string;
+    labels?: string;
   }
 ): Promise<void> {
   // Load fixture data
@@ -233,6 +463,12 @@ export async function stubGitHubAPIs(
   if (fixtures.organizations) {
     fixtureData.organizations = loadFixture("github", fixtures.organizations);
   }
+  if (fixtures.currentUser) {
+    fixtureData.currentUser = loadFixture("github", fixtures.currentUser);
+  }
+  if (fixtures.labels) {
+    fixtureData.labels = loadFixture("github", fixtures.labels);
+  }
 
   // Store fixture data globally so it persists across plugin reloads
   await page.evaluate((data) => {
@@ -243,49 +479,51 @@ export async function stubGitHubAPIs(
       const app = (window as any).app;
       const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
 
-      if (!plugin?.githubService) {
+      // Get GitHub service through IntegrationManager
+      const githubService = plugin?.integrationManager?.getGitHubService();
+      if (!githubService) {
         return false;
       }
 
       // Only stub if not already stubbed
-      if (plugin.githubService.__isStubbed) {
+      if (githubService.__isStubbed) {
         return true;
       }
 
       // Store originals
-      plugin.githubService.__originals = {
-        fetchIssues: plugin.githubService.fetchIssues,
-        fetchRepositories: plugin.githubService.fetchRepositories,
-        fetchPullRequests: plugin.githubService.fetchPullRequests,
-        fetchOrganizations: plugin.githubService.fetchOrganizations,
+      githubService.__originals = {
+        fetchIssues: githubService.fetchIssues,
+        fetchRepositories: githubService.fetchRepositories,
+        fetchPullRequests: githubService.fetchPullRequests,
+        fetchOrganizations: githubService.fetchOrganizations,
         fetchRepositoriesForOrganization:
-          plugin.githubService.fetchRepositoriesForOrganization,
+          githubService.fetchRepositoriesForOrganization,
+        getCurrentUser: githubService.getCurrentUser,
+        fetchLabels: githubService.fetchLabels,
       };
 
       // Install stubs
-      plugin.githubService.fetchIssues = async () => {
+      githubService.fetchIssues = async () => {
         console.log("🔧 Stubbed fetchIssues called");
         return (window as any).__githubApiStubs?.issues || [];
       };
 
-      plugin.githubService.fetchRepositories = async () => {
+      githubService.fetchRepositories = async () => {
         console.log("🔧 Stubbed fetchRepositories called");
         return (window as any).__githubApiStubs?.repositories || [];
       };
 
-      plugin.githubService.fetchPullRequests = async () => {
+      githubService.fetchPullRequests = async () => {
         console.log("🔧 Stubbed fetchPullRequests called");
         return (window as any).__githubApiStubs?.pullRequests || [];
       };
 
-      plugin.githubService.fetchOrganizations = async () => {
+      githubService.fetchOrganizations = async () => {
         console.log("🔧 Stubbed fetchOrganizations called");
         return (window as any).__githubApiStubs?.organizations || [];
       };
 
-      plugin.githubService.fetchRepositoriesForOrganization = async (
-        org: string
-      ) => {
+      githubService.fetchRepositoriesForOrganization = async (org: string) => {
         console.log(
           `🔧 Stubbed fetchRepositoriesForOrganization called for: ${org}`
         );
@@ -295,7 +533,17 @@ export async function stubGitHubAPIs(
         );
       };
 
-      plugin.githubService.__isStubbed = true;
+      githubService.getCurrentUser = async () => {
+        console.log("🔧 Stubbed getCurrentUser called");
+        return (window as any).__githubApiStubs?.currentUser || null;
+      };
+
+      githubService.fetchLabels = async (repository: string) => {
+        console.log(`🔧 Stubbed fetchLabels called for: ${repository}`);
+        return (window as any).__githubApiStubs?.labels || [];
+      };
+
+      githubService.__isStubbed = true;
       return true;
     };
 
@@ -312,16 +560,23 @@ export async function restoreGitHubAPIs(page: Page): Promise<void> {
     const app = (window as any).app;
     const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
 
-    if (plugin?.githubService?.__originals) {
-      plugin.githubService.fetchIssues =
-        plugin.githubService.__originals.fetchIssues;
-      plugin.githubService.fetchRepositories =
-        plugin.githubService.__originals.fetchRepositories;
-      plugin.githubService.fetchPullRequests =
-        plugin.githubService.__originals.fetchPullRequests;
+    // Get GitHub service through IntegrationManager
+    const githubService = plugin?.integrationManager?.getGitHubService();
+    if (githubService?.__originals) {
+      githubService.fetchIssues = githubService.__originals.fetchIssues;
+      githubService.fetchRepositories =
+        githubService.__originals.fetchRepositories;
+      githubService.fetchPullRequests =
+        githubService.__originals.fetchPullRequests;
+      githubService.fetchOrganizations =
+        githubService.__originals.fetchOrganizations;
+      githubService.fetchRepositoriesForOrganization =
+        githubService.__originals.fetchRepositoriesForOrganization;
+      githubService.getCurrentUser = githubService.__originals.getCurrentUser;
+      githubService.fetchLabels = githubService.__originals.fetchLabels;
 
-      delete plugin.githubService.__originals;
-      delete plugin.githubService.__isStubbed;
+      delete githubService.__originals;
+      delete githubService.__isStubbed;
     }
 
     // Clean up global stubs
@@ -339,6 +594,198 @@ export async function ensureGitHubStubsInstalled(page: Page): Promise<void> {
       (window as any).__installGitHubStubs();
     }
   });
+}
+
+/**
+ * Simple Apple Calendar API stubbing that persists across plugin reloads
+ * Uses global window storage to maintain stubs
+ */
+export async function stubAppleCalendarAPIs(
+  page: Page,
+  fixtures: {
+    calendars?: string;
+    events?: string;
+    todayEvents?: string;
+    permissions?: string;
+  }
+): Promise<void> {
+  // Load fixture data
+  const fixtureData: any = {};
+
+  if (fixtures.calendars) {
+    fixtureData.calendars = loadFixture("apple-calendar", fixtures.calendars);
+  }
+  if (fixtures.events) {
+    fixtureData.events = loadFixture("apple-calendar", fixtures.events);
+  }
+  if (fixtures.todayEvents) {
+    fixtureData.todayEvents = loadFixture(
+      "apple-calendar",
+      fixtures.todayEvents
+    );
+  }
+  if (fixtures.permissions) {
+    fixtureData.permissions = loadFixture(
+      "apple-calendar",
+      fixtures.permissions
+    );
+  }
+
+  await page.evaluate((fixtureData) => {
+    // Store fixture data globally
+    (window as any).__appleCalendarApiStubs = fixtureData;
+
+    // Create a global stub installer that can be called after plugin reloads
+    (window as any).__installAppleCalendarStubs = () => {
+      const app = (window as any).app;
+      const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+
+      const appleCalendarService = plugin?.appleCalendarService;
+      if (!appleCalendarService) {
+        return false;
+      }
+
+      // Only stub if not already stubbed
+      if (appleCalendarService.__isStubbed) {
+        return true;
+      }
+
+      // Store originals
+      appleCalendarService.__originals = {
+        getCalendars: appleCalendarService.getCalendars,
+        getEvents: appleCalendarService.getEvents,
+        getTodayEvents: appleCalendarService.getTodayEvents,
+        checkPermissions: appleCalendarService.checkPermissions,
+      };
+
+      // Install stubs
+      appleCalendarService.getCalendars = async () => {
+        console.log("🔧 Stubbed Apple Calendar getCalendars called");
+        return (window as any).__appleCalendarApiStubs?.calendars || [];
+      };
+
+      appleCalendarService.getEvents = async () => {
+        console.log("🔧 Stubbed Apple Calendar getEvents called");
+        return (window as any).__appleCalendarApiStubs?.events || [];
+      };
+
+      appleCalendarService.getTodayEvents = async () => {
+        console.log("🔧 Stubbed Apple Calendar getTodayEvents called");
+        return (window as any).__appleCalendarApiStubs?.todayEvents || [];
+      };
+
+      appleCalendarService.checkPermissions = async () => {
+        console.log("🔧 Stubbed Apple Calendar checkPermissions called");
+        return (window as any).__appleCalendarApiStubs?.permissions !==
+          undefined
+          ? (window as any).__appleCalendarApiStubs?.permissions
+          : true;
+      };
+
+      appleCalendarService.__isStubbed = true;
+      return true;
+    };
+
+    // Install stubs immediately if plugin is available
+    (window as any).__installAppleCalendarStubs();
+  }, fixtureData);
+}
+
+/**
+ * Simple Apple Reminders API stubbing that persists across plugin reloads
+ * Uses global window storage to maintain stubs
+ */
+export async function stubAppleRemindersAPIs(
+  page: Page,
+  fixtures: {
+    reminders?: string;
+    lists?: string;
+    permissions?: string;
+  }
+): Promise<void> {
+  // Load fixture data
+  const fixtureData: any = {};
+
+  if (fixtures.reminders) {
+    fixtureData.reminders = loadFixture("apple-reminders", fixtures.reminders);
+  }
+  if (fixtures.lists) {
+    fixtureData.lists = loadFixture("apple-reminders", fixtures.lists);
+  }
+  if (fixtures.permissions) {
+    fixtureData.permissions = loadFixture(
+      "apple-reminders",
+      fixtures.permissions
+    );
+  }
+
+  await page.evaluate((fixtureData) => {
+    // Store fixture data globally
+    (window as any).__appleRemindersApiStubs = fixtureData;
+
+    // Create a global stub installer that can be called after plugin reloads
+    (window as any).__installAppleRemindersStubs = () => {
+      const app = (window as any).app;
+      const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+
+      const appleRemindersService = plugin?.appleRemindersService;
+      if (!appleRemindersService) {
+        return false;
+      }
+
+      // Only stub if not already stubbed
+      if (appleRemindersService.__isStubbed) {
+        return true;
+      }
+
+      // Store originals
+      appleRemindersService.__originals = {
+        fetchReminders: appleRemindersService.fetchReminders,
+        fetchLists: appleRemindersService.fetchLists,
+        checkPermissions: appleRemindersService.checkPermissions,
+        clearCache: appleRemindersService.clearCache,
+      };
+
+      // Install stubs
+      appleRemindersService.fetchReminders = async () => {
+        console.log("🔧 Stubbed Apple Reminders fetchReminders called");
+        return {
+          success: true,
+          data: (window as any).__appleRemindersApiStubs?.reminders || [],
+        };
+      };
+
+      appleRemindersService.fetchLists = async () => {
+        console.log("🔧 Stubbed Apple Reminders fetchLists called");
+        return {
+          success: true,
+          data: (window as any).__appleRemindersApiStubs?.lists || [],
+        };
+      };
+
+      appleRemindersService.checkPermissions = async () => {
+        console.log("🔧 Stubbed Apple Reminders checkPermissions called");
+        return {
+          success: true,
+          data:
+            (window as any).__appleRemindersApiStubs?.permissions !== undefined
+              ? (window as any).__appleRemindersApiStubs?.permissions
+              : "AUTHORIZED",
+        };
+      };
+
+      appleRemindersService.clearCache = async () => {
+        console.log("🔧 Stubbed Apple Reminders clearCache called");
+        return;
+      };
+
+      appleRemindersService.__isStubbed = true;
+      return true;
+    };
+
+    // Install stubs immediately if plugin is available
+    (window as any).__installAppleRemindersStubs();
+  }, fixtureData);
 }
 
 /**

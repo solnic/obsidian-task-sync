@@ -2,25 +2,20 @@
  * End-to-end tests for todo promotion functionality
  */
 
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
+import { test, expect, describe, beforeEach } from "vitest";
 import {
   getFileContent,
   fileExists,
-  createTestFolders,
   createFullyQualifiedLink,
-} from "../helpers/task-sync-setup";
-import {
-  setupE2ETestHooks,
   executeCommand,
   openFile,
-} from "../helpers/shared-context";
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Todo Promotion E2E", () => {
   const context = setupE2ETestHooks();
 
   test("should promote incomplete todo to task", async () => {
-    await createTestFolders(context.page);
-
     // Create a simple test file with just a todo item
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -56,8 +51,6 @@ describe("Todo Promotion E2E", () => {
   });
 
   test("should promote completed todo to task", async () => {
-    await createTestFolders(context.page);
-
     // Create a simple test file with a completed todo item
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -93,8 +86,6 @@ describe("Todo Promotion E2E", () => {
   });
 
   test("should handle indented todo items", async () => {
-    await createTestFolders(context.page);
-
     // Create a simple test file with an indented todo item
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -127,8 +118,6 @@ describe("Todo Promotion E2E", () => {
   });
 
   test("should show notice when no todo found", async () => {
-    await createTestFolders(context.page);
-
     // Create a test file without todo items
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -156,8 +145,6 @@ describe("Todo Promotion E2E", () => {
   });
 
   test("should work with different list markers", async () => {
-    await createTestFolders(context.page);
-
     // Create a simple test file with asterisk todo item
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -189,8 +176,6 @@ describe("Todo Promotion E2E", () => {
   });
 
   test("should set context properties correctly when promoting todo in area", async () => {
-    await createTestFolders(context.page);
-
     // Create a test file in Areas folder
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -228,8 +213,6 @@ describe("Todo Promotion E2E", () => {
   });
 
   test("should set context properties correctly when promoting todo in project", async () => {
-    await createTestFolders(context.page);
-
     // Create a test file in Projects folder
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -266,8 +249,6 @@ describe("Todo Promotion E2E", () => {
   });
 
   test("should promote individual todo without auto-creating children", async () => {
-    await createTestFolders(context.page);
-
     // Create a test file with nested todos
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -324,8 +305,6 @@ describe("Todo Promotion E2E", () => {
   });
 
   test("should not double-linkify already promoted parent todos", async () => {
-    await createTestFolders(context.page);
-
     // Create a test file with nested todos
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -375,8 +354,6 @@ describe("Todo Promotion E2E", () => {
   });
 
   test("should promote sub-todo without auto-creating parent", async () => {
-    await createTestFolders(context.page);
-
     // Create a test file with nested todos
     await context.page.evaluate(async () => {
       const app = (window as any).app;

@@ -1088,6 +1088,12 @@ export class AppleCalendarService
         : `Location: ${event.location}`;
     }
 
+    // Ensure dates are Date objects (handle both Date objects and string dates from fixtures)
+    const startDate =
+      event.startDate instanceof Date
+        ? event.startDate
+        : new Date(event.startDate);
+
     return {
       id: event.id,
       title: event.title,
@@ -1096,8 +1102,8 @@ export class AppleCalendarService
       priority: undefined, // Calendar events should NOT have priority set
       assignee: undefined, // Calendar events don't have assignees
       labels: [], // Don't include calendar name as tags
-      createdAt: event.startDate, // Use start date as creation date
-      updatedAt: event.startDate, // Use start date as update date
+      createdAt: startDate, // Use start date as creation date
+      updatedAt: startDate, // Use start date as update date
       externalUrl: event.url || `calendar://event/${event.id}`,
       sourceType: "apple-calendar",
       sourceData: event,
@@ -1108,24 +1114,32 @@ export class AppleCalendarService
    * Format event time information for task description
    */
   private formatEventTimeInfo(event: CalendarEvent): string {
-    if (event.allDay) {
-      const startDate = event.startDate.toLocaleDateString();
-      const endDate = event.endDate.toLocaleDateString();
+    // Ensure dates are Date objects (handle both Date objects and string dates from fixtures)
+    const startDate =
+      event.startDate instanceof Date
+        ? event.startDate
+        : new Date(event.startDate);
+    const endDate =
+      event.endDate instanceof Date ? event.endDate : new Date(event.endDate);
 
-      if (startDate === endDate) {
-        return `📅 All day event on ${startDate}`;
+    if (event.allDay) {
+      const startDateStr = startDate.toLocaleDateString();
+      const endDateStr = endDate.toLocaleDateString();
+
+      if (startDateStr === endDateStr) {
+        return `📅 All day event on ${startDateStr}`;
       } else {
-        return `📅 All day event from ${startDate} to ${endDate}`;
+        return `📅 All day event from ${startDateStr} to ${endDateStr}`;
       }
     } else {
-      const startDateTime = event.startDate.toLocaleString();
-      const endDateTime = event.endDate.toLocaleString();
+      const startDateTime = startDate.toLocaleString();
+      const endDateTime = endDate.toLocaleString();
 
       // Check if same day
-      if (event.startDate.toDateString() === event.endDate.toDateString()) {
-        const startTime = event.startDate.toLocaleTimeString();
-        const endTime = event.endDate.toLocaleTimeString();
-        return `🕐 ${event.startDate.toLocaleDateString()} from ${startTime} to ${endTime}`;
+      if (startDate.toDateString() === endDate.toDateString()) {
+        const startTime = startDate.toLocaleTimeString();
+        const endTime = endDate.toLocaleTimeString();
+        return `🕐 ${startDate.toLocaleDateString()} from ${startTime} to ${endTime}`;
       } else {
         return `🕐 From ${startDateTime} to ${endDateTime}`;
       }
@@ -1142,13 +1156,19 @@ export class AppleCalendarService
     // Get the default area from settings
     const defaultArea = this.settings.appleCalendarIntegration.defaultArea;
 
+    // Ensure startDate is a Date object (handle both Date objects and string dates from fixtures)
+    const startDate =
+      event.startDate instanceof Date
+        ? event.startDate
+        : new Date(event.startDate);
+
     return {
       ...config,
       taskType: config.taskType,
       targetArea: config.addToToday
         ? "Events"
         : config.targetArea || defaultArea,
-      doDate: config.doDate || event.startDate,
+      doDate: config.doDate || startDate,
     };
   }
 }

@@ -3,9 +3,8 @@ import {
   createTestFolders,
   getFileContent,
   fileExists,
-  waitForTaskSyncPlugin,
   verifyTaskProperties,
-} from "../helpers/task-sync-setup";
+} from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Task Template Usage", () => {
@@ -13,7 +12,6 @@ describe("Task Template Usage", () => {
 
   test("should use template when defaultTaskTemplate is configured", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create a task template with custom content
     await context.page.evaluate(async () => {
@@ -97,7 +95,6 @@ This task was created from a template!
 
   test("should prevent empty template settings through validation", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Try to set template to empty string - validation should reset it to default
     const templateAfterValidation = await context.page.evaluate(async () => {
@@ -146,7 +143,6 @@ This task was created from a template!
 
   test("should process {{tasks}} variable correctly", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create a template with {{tasks}} variable (the only supported variable)
     await context.page.evaluate(async () => {

@@ -5,7 +5,7 @@ import {
   fileExists,
   verifyProjectProperties,
   verifyAreaProperties,
-} from "../helpers/task-sync-setup";
+} from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Template {{tasks}} Syntax", () => {

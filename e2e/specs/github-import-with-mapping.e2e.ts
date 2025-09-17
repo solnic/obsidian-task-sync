@@ -4,6 +4,7 @@
 
 import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
+import { enableIntegration } from "../helpers/global";
 
 describe("GitHub Import with Organization/Repository Mapping", () => {
   const context = setupE2ETestHooks();
@@ -39,15 +40,18 @@ describe("GitHub Import with Organization/Repository Mapping", () => {
     const enhancedConfig = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin && plugin.githubService) {
-        const baseConfig = {
-          targetArea: "",
-          targetProject: "",
-          taskType: "Task",
-        };
+      if (plugin && plugin.integrationManager) {
+        const githubService = plugin.integrationManager.getGitHubService();
+        if (githubService) {
+          const baseConfig = {
+            targetArea: "",
+            targetProject: "",
+            taskType: "Task",
+          };
 
-        const mapper = plugin.githubService.getOrgRepoMapper();
-        return mapper.enhanceImportConfig("microsoft/any-repo", baseConfig);
+          const mapper = githubService.getOrgRepoMapper();
+          return mapper.enhanceImportConfig("microsoft/any-repo", baseConfig);
+        }
       }
       return null;
     });

@@ -8,13 +8,13 @@ import {
   createTestFolders,
   getFileContent,
   fileExists,
-  waitForTaskSyncPlugin,
   waitForBaseFile,
   waitForBasesRegeneration,
   toggleSetting,
   fillSetting,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+  executeCommand,
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createArea, createProject } from "../helpers/entity-helpers";
 
 describe("Base Regeneration", () => {
@@ -25,7 +25,6 @@ describe("Base Regeneration", () => {
     { timeout: 15000 },
     async () => {
       await createTestFolders(context.page);
-      await waitForTaskSyncPlugin(context.page);
 
       // Create the numbered folder structure first
       await createArea(context, {
@@ -77,7 +76,6 @@ describe("Base Regeneration", () => {
     { timeout: 15000 },
     async () => {
       await createTestFolders(context.page);
-      await waitForTaskSyncPlugin(context.page);
 
       // Create a project using the default folder structure
       await createProject(context, {
@@ -175,7 +173,6 @@ describe("Base Regeneration", () => {
     { timeout: 15000 },
     async () => {
       await createTestFolders(context.page);
-      await waitForTaskSyncPlugin(context.page);
 
       // Trigger regeneration via command (task types are already configured by default)
       await executeCommand(context, "Task Sync: Refresh");
@@ -217,7 +214,6 @@ describe("Base Regeneration", () => {
     { timeout: 15000 },
     async () => {
       await createTestFolders(context.page);
-      await waitForTaskSyncPlugin(context.page);
 
       // Create both area and project
       await createArea(context, {
@@ -295,7 +291,6 @@ describe("Base Regeneration", () => {
     { timeout: 15000 },
     async () => {
       await createTestFolders(context.page);
-      await waitForTaskSyncPlugin(context.page);
 
       // Create files with special characters
       await createArea(context, {

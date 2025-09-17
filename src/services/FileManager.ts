@@ -10,14 +10,6 @@ import { sanitizeFileName } from "../utils/fileNameSanitizer";
 import { generateId } from "../utils/idGenerator";
 
 /**
- * Interface for file creation data
- */
-export interface FileCreationData {
-  title: string;
-  [key: string]: any;
-}
-
-/**
  * Abstract base class for file management operations
  * Provides common functionality for file creation, front-matter handling, and content management
  */
@@ -214,12 +206,6 @@ export abstract class FileManager {
   }
 
   /**
-   * Abstract method for creating entity-specific files
-   * Must be implemented by concrete classes
-   */
-  abstract createEntityFile(data: FileCreationData): Promise<string>;
-
-  /**
    * Abstract method for getting properties in order
    * Must be implemented by concrete classes
    */
@@ -294,8 +280,31 @@ export abstract class FileManager {
     for (const line of lines) {
       const match = line.match(/^([^:]+):\s*(.*)$/);
       if (match) {
-        const [, key, value] = match;
-        data[key.trim()] = value.trim();
+        const [, key, rawValue] = match;
+        const value = rawValue.trim();
+
+        // Basic type conversion for common YAML values
+        let parsedValue: any = value;
+        if (value === "true") {
+          parsedValue = true;
+        } else if (value === "false") {
+          parsedValue = false;
+        } else if (value === "null" || value === "") {
+          parsedValue = null;
+        } else if (/^\d+$/.test(value)) {
+          parsedValue = parseInt(value, 10);
+        } else if (/^\d+\.\d+$/.test(value)) {
+          parsedValue = parseFloat(value);
+        } else if (value.startsWith("[") && value.endsWith("]")) {
+          // Simple array parsing for basic arrays
+          try {
+            parsedValue = JSON.parse(value);
+          } catch {
+            parsedValue = value; // Keep as string if parsing fails
+          }
+        }
+
+        data[key.trim()] = parsedValue;
       }
     }
 

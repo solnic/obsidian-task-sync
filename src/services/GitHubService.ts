@@ -301,11 +301,11 @@ export class GitHubService extends AbstractService {
    */
   private initializeOctokit(): void {
     if (
-      this.settings.githubIntegration.enabled &&
-      this.settings.githubIntegration.personalAccessToken
+      this.settings.githubIntegration?.enabled &&
+      this.settings.githubIntegration?.personalAccessToken
     ) {
       this.octokit = new Octokit({
-        auth: this.settings.githubIntegration.personalAccessToken,
+        auth: this.settings.githubIntegration?.personalAccessToken,
         userAgent: "obsidian-task-sync",
         request: {
           fetch: this.createObsidianFetch(),
@@ -318,7 +318,7 @@ export class GitHubService extends AbstractService {
    * Check if GitHub integration is enabled and properly configured
    */
   isEnabled(): boolean {
-    return this.settings.githubIntegration.enabled && !!this.octokit;
+    return this.settings.githubIntegration?.enabled && !!this.octokit;
   }
 
   /**

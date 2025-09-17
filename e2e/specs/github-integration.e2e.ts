@@ -4,13 +4,13 @@
 
 import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
-import { createTestFolders } from "../helpers/task-sync-setup";
-import { toggleSidebar } from "../helpers/plugin-setup";
 import {
-  openGitHubSettings,
-  toggleGitHubIntegration,
-  configureGitHubToken,
-  configureGitHubIntegration,
+  toggleSidebar,
+  openView,
+  enableIntegration,
+  switchToTaskService,
+} from "../helpers/global";
+import {
   openGitHubIssuesView,
   stubGitHubWithFixtures,
 } from "../helpers/github-integration-helpers";
@@ -18,28 +18,26 @@ import {
 describe("GitHub Integration", () => {
   const context = setupE2ETestHooks();
 
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-  });
-
   beforeEach(async () => {
     await toggleSidebar(context.page, "right", true);
   });
 
   test("should filter repositories by organization when organization is selected", async () => {
-    await configureGitHubIntegration(context.page, {
-      enabled: true,
-      repository: "solnic/obsidian-task-sync",
-      token: "fake-token-for-testing",
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
     });
 
     await stubGitHubWithFixtures(context.page, {
       repositories: "repositories-with-orgs",
       issues: "issues-basic",
       organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
     });
 
-    await openGitHubIssuesView(context.page);
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "github");
 
     // First check that repository filter shows full names when no org is selected
     const repositoryFilter = context.page.locator(

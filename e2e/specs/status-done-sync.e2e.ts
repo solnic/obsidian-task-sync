@@ -5,10 +5,7 @@
 
 import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
-import {
-  createTestFolders,
-  waitForTaskSyncPlugin,
-} from "../helpers/task-sync-setup";
+import { createTestFolders } from "../helpers/global";
 import { createTask } from "../helpers/entity-helpers";
 
 const context = setupE2ETestHooks();
@@ -16,7 +13,6 @@ const context = setupE2ETestHooks();
 describe("Status and Done Field Synchronization", () => {
   test("should update Done field when Status changes to a done status", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create a task with initial status using entity helper
     await createTask(
@@ -67,7 +63,6 @@ describe("Status and Done Field Synchronization", () => {
 
   test("should update Done field when Status changes to a non-done status", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create a task with done status using entity helper
     await createTask(
@@ -118,7 +113,6 @@ describe("Status and Done Field Synchronization", () => {
 
   test("should update Status field when Done changes to true", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create a task with non-done status using entity helper
     await createTask(
@@ -167,7 +161,6 @@ describe("Status and Done Field Synchronization", () => {
 
   test("should update Status field when Done changes to false", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create a task with done status using entity helper
     await createTask(
@@ -216,7 +209,6 @@ describe("Status and Done Field Synchronization", () => {
 
   test("should not create infinite loops when both fields change", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create a task using entity helper
     await createTask(
@@ -286,7 +278,6 @@ describe("Status and Done Field Synchronization", () => {
 
   test("should handle files without frontmatter gracefully", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create a task without frontmatter
     await context.page.evaluate(async () => {
@@ -340,11 +331,16 @@ ${content}`;
 
   test("should only process files in configured folders", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create a file outside the configured folders
     await context.page.evaluate(async () => {
       const app = (window as any).app;
+
+      // Ensure Notes folder exists
+      const notesFolder = app.vault.getAbstractFileByPath("Notes");
+      if (!notesFolder) {
+        await app.vault.createFolder("Notes");
+      }
 
       await app.vault.create(
         "Notes/Random Note.md",
@@ -392,7 +388,6 @@ This is a note outside the task folders.`
 
   test("should handle custom status configurations", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Configure custom statuses with isDone properties
     await context.page.evaluate(async () => {

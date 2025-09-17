@@ -6,13 +6,12 @@
 
 import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
-  createTestFolders,
   createTestTaskFile,
   getFileContent,
   fileExists,
   verifyTaskProperties,
   createFullyQualifiedLink,
-} from "../helpers/task-sync-setup";
+} from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createArea, createTask } from "../helpers/entity-helpers";
 
@@ -20,8 +19,6 @@ describe("File Name Sanitization and Base Formulas", () => {
   const context = setupE2ETestHooks();
 
   test("should create task with invalid characters and generate proper base", async () => {
-    await createTestFolders(context.page);
-
     // Create a task with invalid characters in the name
     const taskName = "Project: Website/Mobile*App";
     const sanitizedTaskName = "Project- Website-Mobile-App";
@@ -50,8 +47,6 @@ describe("File Name Sanitization and Base Formulas", () => {
   });
 
   test("should create area with invalid characters and generate proper base", async () => {
-    await createTestFolders(context.page);
-
     // Create an area with invalid characters using the helper
     const areaName = "Development: Frontend/Backend*";
     await createArea(context, {
@@ -86,8 +81,6 @@ describe("File Name Sanitization and Base Formulas", () => {
   });
 
   test("should handle basic file name sanitization", async () => {
-    await createTestFolders(context.page);
-
     // Test basic sanitization case
     const testCase = {
       input: "Project: Website/Mobile*App",

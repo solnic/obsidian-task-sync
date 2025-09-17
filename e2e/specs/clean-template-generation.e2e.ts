@@ -4,12 +4,7 @@
  */
 
 import { test, expect, describe, beforeAll, beforeEach } from "vitest";
-import {
-  createTestFolders,
-  waitForTaskSyncPlugin,
-  getFileContent,
-  fileExists,
-} from "../helpers/task-sync-setup";
+import { getFileContent, fileExists } from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
 
@@ -17,9 +12,6 @@ describe("Clean Template Generation", () => {
   const context = setupE2ETestHooks();
 
   test("should generate task template with configured default values", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // Create a task template using the TemplateManager
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -69,9 +61,6 @@ describe("Clean Template Generation", () => {
   });
 
   test("should create task from clean template and set default values via handler", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // First create a clean template
     await context.page.evaluate(async () => {
       const app = (window as any).app;

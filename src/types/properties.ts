@@ -20,6 +20,12 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
     source: "formula.Title",
     frontmatter: true,
   },
+  NAME: {
+    key: "name",
+    name: "Name",
+    type: "string",
+    frontmatter: true,
+  },
   TYPE: {
     key: "type",
     name: "Type",
@@ -88,12 +94,14 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
     key: "doDate",
     name: "Do Date",
     type: "date",
+    default: null,
     frontmatter: true,
   },
   DUE_DATE: {
     key: "dueDate",
     name: "Due Date",
     type: "date",
+    default: null,
     frontmatter: true,
   },
   TAGS: {

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "test-calendar-1",
+    "name": "Work Calendar",
+    "description": "Work-related events and meetings",
+    "color": "#007AFF",
+    "visible": true,
+    "metadata": {
+      "account": "iCloud",
+      "type": "CalDAV"
+    }
+  },
+  {
+    "id": "test-calendar-2", 
+    "name": "Personal Calendar",
+    "description": "Personal events and appointments",
+    "color": "#FF6B6B",
+    "visible": true,
+    "metadata": {
+      "account": "iCloud",
+      "type": "CalDAV"
+    }
+  },
+  {
+    "id": "test-calendar-3",
+    "name": "Project Calendar",
+    "description": "Project deadlines and milestones",
+    "color": "#4ECDC4",
+    "visible": false,
+    "metadata": {
+      "account": "Exchange",
+      "type": "Exchange"
+    }
+  }
+]

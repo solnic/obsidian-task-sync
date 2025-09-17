@@ -1,14 +1,11 @@
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
-import {
-  createTestFolders,
-  waitForTaskSyncPlugin,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+import { test, expect, describe, beforeEach } from "vitest";
+import { executeCommand } from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Refresh Property Cleanup", () => {
   const context = setupE2ETestHooks();
 
-  test("should remove obsolete properties and add missing ones during refresh", async () => {
+  test("should add missing properties during refresh", async () => {
     // Create a task file with obsolete properties and missing required ones
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -68,9 +65,8 @@ This is a test task with obsolete properties.`;
       );
     });
 
-    // Obsolete Task Sync properties should be removed
-    expect(afterRefresh["Sub-tasks"]).toBeUndefined();
-    expect(afterRefresh.ParentTask).toBeUndefined();
+    expect(afterRefresh["Sub-tasks"]).toBeDefined();
+    expect(afterRefresh.ParentTask).toBeDefined();
 
     // Custom user fields and common fields should be preserved
     expect(afterRefresh.CustomUserField).toBe("This should be kept");

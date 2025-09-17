@@ -5,12 +5,10 @@
 
 import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
-  createTestFolders,
   getFileContent,
   fileExists,
-  waitForTaskSyncPlugin,
   waitForBasesRegeneration,
-} from "../helpers/task-sync-setup";
+} from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createArea, createProject } from "../helpers/entity-helpers";
 
@@ -21,12 +19,6 @@ describe("Base Synchronization", () => {
     "should sync bases when new task type is added",
     { timeout: 15000 },
     async () => {
-      await createTestFolders(context.page);
-
-      // Wait for plugin to be ready
-      await waitForTaskSyncPlugin(context.page);
-
-      // Create an area and project using helpers
       await createArea(context, {
         name: "Health",
         description: "Health tracking area.",
@@ -132,8 +124,6 @@ describe("Base Synchronization", () => {
   );
 
   test("should sync bases when task type is removed", async () => {
-    await createTestFolders(context.page);
-
     // Create an area using helper
     await createArea(context, {
       name: "Work",
@@ -217,8 +207,6 @@ describe("Base Synchronization", () => {
     "should respect autoSyncAreaProjectBases setting",
     { timeout: 15000 },
     async () => {
-      await createTestFolders(context.page);
-
       // Create an area
       await createArea(context, {
         name: "Learning",
@@ -294,8 +282,6 @@ describe("Base Synchronization", () => {
   );
 
   test("should sync only enabled base types", async () => {
-    await createTestFolders(context.page);
-
     // Create both area and project
     await createArea(context, {
       name: "Technology",
@@ -367,8 +353,6 @@ describe("Base Synchronization", () => {
   });
 
   test("should handle empty task types list gracefully", async () => {
-    await createTestFolders(context.page);
-
     // Create an area
     await createArea(context, {
       name: "Personal",
@@ -419,8 +403,6 @@ describe("Base Synchronization", () => {
   });
 
   test("should maintain base structure integrity during sync", async () => {
-    await createTestFolders(context.page);
-
     // Create a project
     await createProject(context, {
       name: "Documentation",

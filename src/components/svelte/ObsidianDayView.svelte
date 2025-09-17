@@ -85,44 +85,6 @@
   let currentZoom = $derived(ZOOM_LEVELS[zoomLevel]);
   let currentDate = $derived(selectedDate);
 
-  // Debug reactive statements
-  $effect(() => {
-    console.log(`🔍 ObsidianDayView - Events: ${events.length} events`);
-    console.log(
-      `🔍 ObsidianDayView - Selected Date: ${selectedDate.toDateString()}`
-    );
-    console.log(
-      `🔍 ObsidianDayView - Current Date: ${currentDate.toDateString()}`
-    );
-    console.log(`🔍 ObsidianDayView - Zoom Level: ${zoomLevel}`);
-    console.log(`🔍 ObsidianDayView - Current Zoom:`, currentZoom);
-    console.log(`🔍 ObsidianDayView - Time Slots:`, timeSlots);
-
-    if (events.length > 0) {
-      console.log(
-        `🔍 ObsidianDayView - All events:`,
-        events.map((e) => ({
-          id: e.id,
-          title: e.title,
-          startDate: e.startDate.toISOString(),
-          endDate: e.endDate.toISOString(),
-          allDay: e.allDay,
-          calendar: e.calendar?.name,
-        }))
-      );
-
-      console.log(`🔍 First event:`, events[0]);
-      console.log(`🔍 First event startDate:`, events[0].startDate);
-      console.log(`🔍 First event startDate type:`, typeof events[0].startDate);
-      console.log(
-        `🔍 First event moment:`,
-        moment(events[0].startDate).format("YYYY-MM-DD HH:mm Z")
-      );
-    }
-
-    console.log(`🔍 ObsidianDayView - Events by hour:`, eventsByHour);
-  });
-
   // Zoom functions
   function zoomIn() {
     if (zoomLevel < ZOOM_LEVELS.length - 1) {
@@ -140,14 +102,10 @@
 
   // Save zoom level to settings
   async function saveZoomLevel() {
-    try {
-      if (pluginContext?.plugin) {
-        pluginContext.plugin.settings.appleCalendarIntegration.zoomLevel =
-          zoomLevel;
-        await pluginContext.plugin.saveSettings();
-      }
-    } catch (error) {
-      console.error("Failed to save zoom level:", error);
+    if (pluginContext.plugin) {
+      pluginContext.plugin.settings.appleCalendarIntegration.zoomLevel =
+        zoomLevel;
+      await pluginContext.plugin.saveSettings();
     }
   }
 

@@ -1,0 +1,65 @@
+[
+  {
+    "id": "event-1",
+    "title": "Team Meeting",
+    "description": "Weekly team sync meeting",
+    "location": "Conference Room A",
+    "startDate": "2024-01-15T10:00:00.000Z",
+    "endDate": "2024-01-15T11:00:00.000Z",
+    "allDay": false,
+    "calendar": {
+      "id": "test-calendar-1",
+      "name": "Work Calendar",
+      "description": "Work-related events and meetings",
+      "color": "#007AFF",
+      "visible": true,
+      "metadata": {
+        "account": "iCloud",
+        "type": "CalDAV"
+      }
+    },
+    "url": "calendar://event/event-1"
+  },
+  {
+    "id": "event-2",
+    "title": "Doctor Appointment",
+    "description": "Annual checkup",
+    "location": "Medical Center",
+    "startDate": "2024-01-16T14:30:00.000Z",
+    "endDate": "2024-01-16T15:30:00.000Z",
+    "allDay": false,
+    "calendar": {
+      "id": "test-calendar-2",
+      "name": "Personal Calendar",
+      "description": "Personal events and appointments",
+      "color": "#FF6B6B",
+      "visible": true,
+      "metadata": {
+        "account": "iCloud",
+        "type": "CalDAV"
+      }
+    },
+    "url": "calendar://event/event-2"
+  },
+  {
+    "id": "event-3",
+    "title": "All Day Conference",
+    "description": "Annual company conference",
+    "location": "Main Auditorium",
+    "startDate": "2024-01-20T00:00:00.000Z",
+    "endDate": "2024-01-21T00:00:00.000Z",
+    "allDay": true,
+    "calendar": {
+      "id": "test-calendar-1",
+      "name": "Work Calendar",
+      "description": "Work-related events and meetings",
+      "color": "#007AFF",
+      "visible": true,
+      "metadata": {
+        "account": "iCloud",
+        "type": "CalDAV"
+      }
+    },
+    "url": "calendar://event/event-3"
+  }
+]

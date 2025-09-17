@@ -1,0 +1,21 @@
+{
+  "id": "cal-event-123",
+  "title": "Test Calendar Event",
+  "description": "This is a test calendar event",
+  "location": "Conference Room B",
+  "startDate": "2024-01-15T10:00:00.000Z",
+  "endDate": "2024-01-15T11:00:00.000Z",
+  "allDay": false,
+  "calendar": {
+    "id": "test-cal",
+    "name": "Work Calendar",
+    "description": "Work-related events",
+    "color": "#FF0000",
+    "visible": true,
+    "metadata": {
+      "account": "iCloud",
+      "type": "CalDAV"
+    }
+  },
+  "url": "calendar://event/cal-event-123"
+}

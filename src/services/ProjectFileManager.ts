@@ -6,15 +6,15 @@
 
 import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../main";
-import { FileManager, FileCreationData } from "./FileManager";
+import { FileManager } from "./FileManager";
 import { generateProjectFrontMatter } from "./base-definitions/BaseConfigurations";
 import { Project } from "../types/entities";
 
 /**
  * Interface for project creation data
  */
-export interface ProjectCreationData extends FileCreationData {
-  title: string;
+export interface ProjectCreationData {
+  name: string;
   areas?: string | string[];
   description?: string;
 }
@@ -42,21 +42,34 @@ export class ProjectFileManager extends FileManager {
 
     // Get content from template if not provided
     let fileContent = content;
+    let rawTemplateContent: string | undefined;
     if (!fileContent) {
+      // Read raw template content for front-matter extraction
+      try {
+        rawTemplateContent = await this.readProjectTemplate();
+      } catch (error) {
+        // Template doesn't exist, use default content
+      }
       fileContent = await this.getProjectTemplateContent(data);
     }
 
     // Process {{tasks}} variable in content
-    const processedContent = this.processTasksVariable(fileContent, data.title);
+    const processedContent = this.processTasksVariable(fileContent, data.name);
 
     const filePath = await this.createFile(
       projectFolder,
-      data.title,
+      data.name,
       processedContent
     );
-    const frontMatterData = this.generateProjectFrontMatterObject(data);
-
+    const frontMatterData = this.generateProjectFrontMatterObject(
+      data,
+      rawTemplateContent
+    );
     await this.updateFrontMatter(filePath, frontMatterData);
+
+    // Wait for the metadata cache to be updated after front-matter changes
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+    await this.waitForMetadataCache(file);
 
     return filePath;
   }
@@ -72,8 +85,10 @@ export class ProjectFileManager extends FileManager {
     // Try to read template content
     try {
       const templateContent = await this.readProjectTemplate();
+      // Extract only the body content (after front-matter) from template
+      const bodyContent = this.extractBodyContent(templateContent);
       // Process {{description}} variable in template content
-      return this.processDescriptionVariable(templateContent, data.description);
+      return this.processDescriptionVariable(bodyContent, data.description);
     } catch (error) {
       // Template doesn't exist - use default content
       return [
@@ -88,6 +103,24 @@ export class ProjectFileManager extends FileManager {
         "",
       ].join("\n");
     }
+  }
+
+  /**
+   * Extract body content from template (content after front-matter)
+   * @param content - Full template content including front-matter
+   * @returns Body content without front-matter
+   */
+  private extractBodyContent(content: string): string {
+    // Check if content starts with front-matter
+    const frontMatterMatch = content.match(
+      /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/
+    );
+    if (frontMatterMatch) {
+      // Return content after front-matter
+      return frontMatterMatch[2] || "";
+    }
+    // No front-matter found, return entire content
+    return content;
   }
 
   /**
@@ -141,13 +174,6 @@ export class ProjectFileManager extends FileManager {
       areas: frontMatter.Areas,
       tags: frontMatter.tags,
     };
-  }
-
-  /**
-   * Implementation of abstract method from FileManager
-   */
-  async createEntityFile(data: FileCreationData): Promise<string> {
-    return this.createProjectFile(data as ProjectCreationData);
   }
 
   /**
@@ -274,10 +300,12 @@ export class ProjectFileManager extends FileManager {
   /**
    * Generate front-matter object for project files
    * @param data - Project creation data
+   * @param templateContent - Template content to extract front-matter from
    * @returns Front-matter object
    */
   private generateProjectFrontMatterObject(
-    data: ProjectCreationData
+    data: ProjectCreationData,
+    templateContent?: string
   ): Record<string, any> {
     const areas = Array.isArray(data.areas)
       ? data.areas
@@ -285,10 +313,36 @@ export class ProjectFileManager extends FileManager {
       ? data.areas.split(",").map((s) => s.trim())
       : [];
 
-    return {
-      Name: data.title,
+    // Start with basic properties
+    const frontMatterData: Record<string, any> = {
+      Name: data.name,
       Type: "Project",
       Areas: areas,
     };
+
+    // If template content is provided, extract and merge front-matter from it
+    if (templateContent) {
+      const templateFrontMatter =
+        this.extractTemplateFrontMatter(templateContent);
+      if (templateFrontMatter) {
+        // Merge template front-matter with basic properties
+        // Basic properties take precedence over template properties
+        Object.assign(templateFrontMatter, frontMatterData);
+        return templateFrontMatter;
+      }
+    }
+
+    return frontMatterData;
+  }
+
+  /**
+   * Extract front-matter from template content using existing parsing utilities
+   * @param content - Template content
+   * @returns Parsed front-matter object or null if not found
+   */
+  private extractTemplateFrontMatter(
+    content: string
+  ): Record<string, any> | null {
+    return this.extractFrontMatterData(content);
   }
 }

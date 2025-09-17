@@ -3,24 +3,17 @@
  * Tests the complete add to today functionality across different contexts
  */
 
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
+import { test, expect, describe, beforeEach } from "vitest";
 import {
-  createTestFolders,
   fileExists,
-  waitForTaskSyncPlugin,
-  waitForFileUpdate,
   waitForAddToTodayOperation,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+  executeCommand,
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
 
 describe("Add to Today Functionality", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-  });
 
   test("should add current task to today via command palette", async () => {
     // Create a test task

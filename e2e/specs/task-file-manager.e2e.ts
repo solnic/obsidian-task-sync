@@ -3,24 +3,17 @@
  * Tests the complete TaskFileManager functionality in a real Obsidian environment
  */
 
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
+import { test, expect, describe, beforeEach } from "vitest";
 import {
-  createTestFolders,
   fileExists,
-  waitForTaskSyncPlugin,
   verifyTaskProperties,
   createFullyQualifiedLink,
-} from "../helpers/task-sync-setup";
+} from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
 
 describe("TaskFileManager Service", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-  });
 
   test("should create task file with sanitized name and proper front-matter", async () => {
     const taskData = {
@@ -255,9 +248,6 @@ This is the main content of the task.
   });
 
   test("should create task with description as file content, not just in front-matter", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // Test creating a task file with description
     const taskData = {
       title: "Task with Description",
@@ -341,5 +331,86 @@ This is the main content of the task.
       Done: false,
       Status: "Backlog",
     });
+  });
+
+  test("should update file properties using property sets and processFrontmatter", async () => {
+    // Create a task with some properties
+    await createTask(context, {
+      title: "Property Set Test Task",
+      priority: "Low",
+      areas: ["Development"],
+      done: false,
+      status: "Todo",
+    });
+
+    // Add some extra properties that should be removed
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(
+        "Tasks/Property Set Test Task.md"
+      );
+      const content = await app.vault.read(file);
+
+      // Add obsolete properties that should be removed
+      const updatedContent = content.replace(
+        "Status: Todo",
+        "Status: Todo\nObsoleteField: should be removed\nAnotherOldField: also removed"
+      );
+
+      await app.vault.modify(file, updatedContent);
+    });
+
+    // Test updating file properties using the refactored method
+    const result = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const taskFileManager = plugin.taskFileManager;
+
+      return await taskFileManager.updateTaskFileProperties(
+        "Tasks/Property Set Test Task.md"
+      );
+    });
+
+    // Verify the method detected changes
+    expect(result.hasChanges).toBe(true);
+    expect(result.propertiesChanged).toBeGreaterThan(0);
+
+    // Verify the file now only contains properties from the property set
+    const finalContent = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(
+        "Tasks/Property Set Test Task.md"
+      );
+      return await app.vault.read(file);
+    });
+
+    // Should contain all required properties from TASK_FRONTMATTER set
+    expect(finalContent).toContain("Title:");
+    expect(finalContent).toContain("Type:");
+    expect(finalContent).toContain("Priority:");
+    expect(finalContent).toContain("Areas:");
+    expect(finalContent).toContain("Done:");
+    expect(finalContent).toContain("Status:");
+
+    // Verify properties are in the correct order (Title should come first)
+    const lines: string[] = finalContent.split("\n");
+    const frontMatterStart: number = lines.findIndex((line) => line === "---");
+    const frontMatterEnd: number = lines.findIndex(
+      (line: string, index: number) =>
+        index > frontMatterStart && line === "---"
+    );
+    const frontMatterLines: string[] = lines.slice(
+      frontMatterStart + 1,
+      frontMatterEnd
+    );
+
+    const titleIndex: number = frontMatterLines.findIndex((line) =>
+      line.startsWith("Title:")
+    );
+    const typeIndex: number = frontMatterLines.findIndex((line) =>
+      line.startsWith("Type:")
+    );
+
+    expect(titleIndex).toBeLessThan(typeIndex); // Title should come before Type
   });
 });

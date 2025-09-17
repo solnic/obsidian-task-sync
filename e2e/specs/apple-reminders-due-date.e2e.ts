@@ -5,7 +5,7 @@
 import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
-import { assertTaskProperty } from "../helpers/task-sync-setup";
+import { assertTaskProperty } from "../helpers/global";
 
 describe("Apple Reminders Due Date Support", () => {
   const context = setupE2ETestHooks();
@@ -103,24 +103,7 @@ describe("Apple Reminders Due Date Support", () => {
     // Verify the task was created without due date
     await assertTaskProperty(context.page, task.filePath, "Title", taskTitle);
     await assertTaskProperty(context.page, task.filePath, "Priority", "Low");
-
-    // Check that Due Date property is not set (should be empty/undefined)
-    const dueDateValue = await context.page.evaluate(async (path) => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(path);
-      if (!file) return null;
-
-      const content = await app.vault.read(file);
-      const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-      if (!frontMatterMatch) return null;
-
-      const frontMatter = frontMatterMatch[1];
-      const dueDateMatch = frontMatter.match(/^Due Date:\s*(.*)$/m);
-      return dueDateMatch ? dueDateMatch[1].trim() : undefined;
-    }, task.filePath);
-
-    // Due Date should either be undefined or empty
-    expect(dueDateValue === undefined || dueDateValue === "").toBe(true);
+    await assertTaskProperty(context.page, task.filePath, "Due Date", null);
   });
 
   test("should validate Due Date property definition", async () => {

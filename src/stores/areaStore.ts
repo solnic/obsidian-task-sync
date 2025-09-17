@@ -15,7 +15,7 @@ class AreaStore extends EntityStore<Area> {
 
   protected getPropertySet(): readonly string[] {
     // Areas use a subset of properties
-    return ["TITLE", "TYPE", "TAGS"] as const;
+    return ["NAME", "TYPE", "TAGS"] as const;
   }
 
   // Derived stores for common queries

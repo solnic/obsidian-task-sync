@@ -3,29 +3,20 @@
  * Tests that local tasks from the vault are displayed and can be searched
  */
 
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
+import { test, expect, describe, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import {
-  createTestFolders,
   waitForAddToTodayOperation,
-  waitForElementVisible,
-} from "../helpers/task-sync-setup";
-import { toggleSidebar } from "../helpers/plugin-setup";
+  enableIntegration,
+  openView,
+  switchToTaskService,
+  toggleSidebar,
+} from "../helpers/global";
 import { createTask } from "../helpers/entity-helpers";
-import {
-  configureGitHubIntegration,
-  openGitHubIssuesView,
-  stubGitHubWithFixtures,
-  clickIssueImportButton,
-  waitForIssueImportComplete,
-} from "../helpers/github-integration-helpers";
+import { stubGitHubWithFixtures } from "../helpers/github-integration-helpers";
 
 describe("LocalTasksService", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-  });
 
   beforeEach(async () => {
     await toggleSidebar(context.page, "right", true);
@@ -48,13 +39,12 @@ describe("LocalTasksService", () => {
     });
 
     // Open Tasks view and switch to local service
-    await openTasksView(context.page);
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "local");
 
     // Wait for tasks to load
     await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
-      timeout: 10000,
+      timeout: 5000,
     });
 
     // Verify tasks are displayed
@@ -82,13 +72,12 @@ describe("LocalTasksService", () => {
     });
 
     // Open Tasks view and switch to local service
-    await openTasksView(context.page);
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "local");
 
     // Wait for tasks to load
     await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
-      timeout: 10000,
+      timeout: 5000,
     });
 
     // Use search input
@@ -97,13 +86,23 @@ describe("LocalTasksService", () => {
     );
     await searchInput.fill("Search Test");
 
-    // Wait for filtering to apply
-    await context.page.waitForTimeout(500);
+    // Wait for filtering to apply using smart waiting
+    await context.page.waitForFunction(
+      () => {
+        const allTasks = document.querySelectorAll(
+          '[data-testid^="local-task-item-"]'
+        );
+        const visibleTasks = Array.from(allTasks).filter(
+          (task) => (task as HTMLElement).offsetParent !== null
+        );
+        return visibleTasks.length === 1;
+      },
+      { timeout: 5000 }
+    );
 
     // Verify only matching task is shown
-    const visibleTasks = context.page.locator(
-      '[data-testid^="local-task-item-"]:visible'
-    );
+    const allTasks = context.page.locator('[data-testid^="local-task-item-"]');
+    const visibleTasks = allTasks.filter({ hasText: "Search Test Task" });
     const visibleCount = await visibleTasks.count();
     expect(visibleCount).toBe(1);
 
@@ -118,15 +117,23 @@ describe("LocalTasksService", () => {
       category: "Feature",
     });
 
-    // Open Tasks view and switch to GitHub service (which shows context widget)
-    await openTasksView(context.page);
-    const githubTab = context.page.locator('[data-testid="service-github"]');
-    await githubTab.click();
-
-    // Wait for GitHub service to load
-    await context.page.waitForSelector('[data-testid="github-service"]', {
-      timeout: 10000,
+    // Enable GitHub integration first
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
     });
+
+    // Stub GitHub APIs
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "issues-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Open Tasks view and switch to GitHub service (which shows context widget)
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "github");
 
     // Should show context widget in tasks view for GitHub service
     await context.page.waitForSelector(
@@ -142,19 +149,16 @@ describe("LocalTasksService", () => {
       '[data-testid="tasks-view"] .context-widget'
     );
 
-    // Action labels are no longer displayed (replaced by icons)
-
     // Check no context message
     const noContext = await contextWidget.locator(".no-context").textContent();
     expect(noContext).toBe("No context");
 
     // Switch back to local service to test local task functionality
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
+    await switchToTaskService(context.page, "local");
 
     // Wait for tasks to load
     await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
-      timeout: 10000,
+      timeout: 5000,
     });
 
     // Initially should show "Open" button on hover (not in daily note mode)
@@ -170,18 +174,11 @@ describe("LocalTasksService", () => {
   });
 
   test("should add task to today's daily note in day planning mode", async () => {
-    // Create a test task directly using plugin API
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-      const taskData = {
-        title: "Daily Planning Task",
-        category: "Feature",
-        priority: "High",
-      };
-
-      await plugin.createTask(taskData);
+    // Create a test task using the helper
+    await createTask(context, {
+      title: "Daily Planning Task",
+      category: "Feature",
+      priority: "High",
     });
 
     // Create a daily note to simulate day planning mode
@@ -222,15 +219,23 @@ describe("LocalTasksService", () => {
       }
     }, dailyNotePath);
 
-    // Open Tasks view and switch to GitHub service to check context widget
-    await openTasksView(context.page);
-    const githubTab = context.page.locator('[data-testid="service-github"]');
-    await githubTab.click();
-
-    // Wait for GitHub service to load
-    await context.page.waitForSelector('[data-testid="github-service"]', {
-      timeout: 10000,
+    // Enable GitHub integration first
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
     });
+
+    // Stub GitHub APIs
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "issues-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Open Tasks view and switch to GitHub service to check context widget
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "github");
 
     // Wait for the context to update to daily note mode
     await context.page.waitForSelector(
@@ -252,17 +257,14 @@ describe("LocalTasksService", () => {
       .textContent();
     expect(serviceName).toBe("GitHub");
 
-    // Action labels are no longer displayed (replaced by icons)
-
     // Switch to local service to test day planning functionality
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
+    await switchToTaskService(context.page, "local");
 
     // Wait for tasks to load
     await context.page.waitForSelector(
       '[data-testid="local-task-item-daily-planning-task"]',
       {
-        timeout: 10000,
+        timeout: 5000,
       }
     );
 
@@ -278,9 +280,6 @@ describe("LocalTasksService", () => {
       timeout: 5000,
     });
 
-    // Wait a moment for the button to be fully interactive
-    await context.page.waitForTimeout(200);
-
     // Click the "Add to today" button
     const addToTodayButton = context.page.locator(
       '[data-testid="add-to-today-button"]'
@@ -292,7 +291,7 @@ describe("LocalTasksService", () => {
       context.page,
       dailyNotePath,
       "- [ ] [[Daily Planning Task]]",
-      10000
+      5000
     );
 
     // Verify the task was added to the daily note
@@ -318,16 +317,15 @@ describe("LocalTasksService", () => {
     });
 
     // Open Tasks view and switch to local service
-    await openTasksView(context.page);
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "local");
 
     // Wait for the task to appear in the view
     const taskTestId = `local-task-item-${taskTitle
       .toLowerCase()
       .replace(/\s+/g, "-")}`;
     await context.page.waitForSelector(`[data-testid="${taskTestId}"]`, {
-      timeout: 10000,
+      timeout: 5000,
     });
 
     // Verify initial state - should show "Low" priority
@@ -358,7 +356,7 @@ describe("LocalTasksService", () => {
         );
       },
       taskTestId,
-      { timeout: 10000 }
+      { timeout: 5000 }
     );
 
     // Verify the priority has been updated in the UI
@@ -393,8 +391,17 @@ This is a test task created directly in the vault.`;
       }, title);
     }
 
-    // Wait for files to be created
-    await context.page.waitForTimeout(1000);
+    // Wait for files to be created using smart waiting
+    await context.page.waitForFunction(
+      (titles) => {
+        const app = (window as any).app;
+        return titles.every((title: string) =>
+          app.vault.getAbstractFileByPath(`Tasks/${title}.md`)
+        );
+      },
+      taskTitles,
+      { timeout: 5000 }
+    );
 
     // Simulate plugin restart by disabling and re-enabling
     await context.page.evaluate(async () => {
@@ -407,9 +414,6 @@ This is a test task created directly in the vault.`;
       // Re-enable plugin (this should trigger store refresh)
       await pluginManager.enablePlugin("obsidian-task-sync");
     });
-
-    // Wait for plugin to fully initialize
-    await context.page.waitForTimeout(3000);
 
     // Wait for all store refreshes to complete after plugin restart
     await context.page.evaluate(async () => {
@@ -428,37 +432,26 @@ This is a test task created directly in the vault.`;
     // Should have loaded all tasks including the 3 new ones (plus any existing from previous tests)
     expect(finalTaskCount).toBeGreaterThanOrEqual(3);
 
-    // Ensure right sidebar is open and Tasks view is accessible
-    await toggleSidebar(context.page, "right", true);
-    await context.page.waitForTimeout(1000);
-
     // Open Tasks view and verify tasks are displayed
-    await openTasksView(context.page);
-
-    // Wait for Tasks view to be fully loaded
-    await context.page.waitForSelector('[data-testid="service-local"]', {
-      state: "visible",
-      timeout: 10000,
-    });
-
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
-
-    // Wait for tasks to appear in UI
-    await context.page.waitForFunction(
-      () => {
-        const taskItems = document.querySelectorAll(
-          '[data-testid^="local-task-item-"]'
-        );
-        return taskItems.length >= 3;
-      },
-      { timeout: 10000 }
-    );
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "local");
 
     // Verify all tasks are displayed in the UI
     const taskItems = context.page.locator('[data-testid^="local-task-item-"]');
-    const taskCount = await taskItems.count();
 
+    // Wait for tasks to be loaded
+    await context.page.waitForFunction(
+      (expectedCount) => {
+        const items = document.querySelectorAll(
+          '[data-testid^="local-task-item-"]'
+        );
+        return items.length >= expectedCount;
+      },
+      3,
+      { timeout: 5000 }
+    );
+
+    const taskCount = await taskItems.count();
     expect(taskCount).toBeGreaterThanOrEqual(3);
 
     // Verify our test tasks are present
@@ -480,13 +473,12 @@ This is a test task created directly in the vault.`;
     });
 
     // Open Tasks view and switch to local service
-    await openTasksView(context.page);
-    const localTab = context.page.locator('[data-testid="service-local"]');
-    await localTab.click();
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "local");
 
     // Wait for tasks to load
     await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
-      timeout: 10000,
+      timeout: 5000,
     });
 
     // Find the regular task item
@@ -502,39 +494,3 @@ This is a test task created directly in the vault.`;
     expect(badgeCount).toBe(0);
   });
 });
-
-/**
- * Helper function to open Tasks view
- */
-async function openTasksView(page: any): Promise<void> {
-  // First ensure the view exists
-  await page.evaluate(async () => {
-    const app = (window as any).app;
-    const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
-
-    if (plugin) {
-      const existingLeaves = app.workspace.getLeavesOfType("tasks");
-      if (existingLeaves.length === 0) {
-        const rightLeaf = app.workspace.getRightLeaf(false);
-        await rightLeaf.setViewState({
-          type: "tasks",
-          active: false,
-        });
-      }
-    }
-  });
-
-  // Click on the Tasks tab in the right sidebar
-  const tasksTab = page.locator('.workspace-tab-header[aria-label="Tasks"]');
-
-  if (await tasksTab.isVisible()) {
-    await tasksTab.click();
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  } else {
-    // Alternative: use command palette
-    await page.keyboard.press("Control+p");
-    await page.fill(".prompt-input", "Tasks");
-    await page.keyboard.press("Enter");
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-}

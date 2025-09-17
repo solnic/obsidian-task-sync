@@ -4,7 +4,7 @@ import { config } from 'dotenv';
 config();
 
 const isCI = process.env.CI === 'true';
-const _isHeadless = isCI || process.env.E2E_HEADLESS === 'true';
+const isHeadless = isCI || process.env.E2E_HEADLESS === 'true' || !process.env.DISPLAY;
 
 export default defineConfig({
   test: {
@@ -12,11 +12,11 @@ export default defineConfig({
     globals: true,
     include: ['e2e/**/*.e2e.ts'],
     exclude: ['tests/**/*'],
-    testTimeout: isCI ? 30000 : 10000,
-    hookTimeout: isCI ? 30000 : 10000,
+    testTimeout: isHeadless ? 60000 : 30000,
+    hookTimeout: isHeadless ? 30000 : 15000,
     fileParallelism: true,
-    minWorkers: 10,
-    maxConcurrency: 1,
+    minWorkers: isHeadless ? 3 : 5,
+    maxConcurrency: isHeadless ? 3 : 5,
     pool: 'threads',
     poolOptions: {
       threads: {

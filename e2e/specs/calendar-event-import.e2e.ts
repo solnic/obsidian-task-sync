@@ -1,13 +1,8 @@
 import { test, expect, describe, beforeAll } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
-import { waitForTaskSyncPlugin } from "../helpers/task-sync-setup";
 
 describe("Calendar Event Import", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await waitForTaskSyncPlugin(context.page);
-  });
 
   test("should have calendar event import functionality available", async () => {
     // Check if AppleCalendarService has the importEventAsTask method

@@ -52,9 +52,11 @@ import {
   TASK_TYPE_COLORS,
   validateFolderPath,
 } from "./components/ui/settings";
+import { PROPERTY_SETS } from "./services/base-definitions/BaseConfigurations";
 import { GitHubService } from "./services/GitHubService";
 import { AppleRemindersService } from "./services/AppleRemindersService";
 import { AppleCalendarService } from "./services/AppleCalendarService";
+import { IntegrationManager } from "./services/IntegrationManager";
 import { TaskSchedulingService } from "./services/TaskSchedulingService";
 import { TaskImportManager } from "./services/TaskImportManager";
 import { CacheManager } from "./cache/CacheManager";
@@ -84,6 +86,7 @@ import { TaskMentionSyncHandler } from "./events/handlers/TaskMentionSyncHandler
 import { taskMentionStore } from "./stores/taskMentionStore";
 import { scheduleStore } from "./stores/scheduleStore";
 import { dailyPlanningStore } from "./stores/dailyPlanningStore";
+import { settingsStore } from "./stores/settingsStore";
 
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
@@ -129,6 +132,7 @@ export default class TaskSyncPlugin extends Plugin {
   appleRemindersSettingsHandler: AppleRemindersSettingsHandler;
   taskStatusSettingsHandler: TaskStatusSettingsHandler;
   cacheManager: CacheManager;
+  integrationManager: IntegrationManager;
   githubService: GitHubService;
   appleRemindersService: AppleRemindersService;
   appleCalendarService: AppleCalendarService;
@@ -151,6 +155,7 @@ export default class TaskSyncPlugin extends Plugin {
     taskMentionStore: typeof taskMentionStore;
     scheduleStore: typeof scheduleStore;
     dailyPlanningStore: typeof dailyPlanningStore;
+    settingsStore: typeof settingsStore;
   } {
     return {
       taskStore: taskStore,
@@ -159,6 +164,7 @@ export default class TaskSyncPlugin extends Plugin {
       taskMentionStore: taskMentionStore,
       scheduleStore: scheduleStore,
       dailyPlanningStore: dailyPlanningStore,
+      settingsStore: settingsStore,
     };
   }
 
@@ -190,12 +196,6 @@ export default class TaskSyncPlugin extends Plugin {
     // Load settings
     await this.loadSettings();
 
-    // Initialize services
-    console.log("🔧 Initializing services with settings:", {
-      taskTypes: this.settings.taskTypes,
-      githubIntegration: this.settings.githubIntegration,
-    });
-
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
     this.templateManager = new TemplateManager(
@@ -206,13 +206,6 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize cache manager
     this.cacheManager = new CacheManager(this);
-
-    this.githubService = new GitHubService(this.settings);
-    await this.githubService.initialize(this.cacheManager);
-
-    // Initialize Apple Reminders service (only on macOS)
-    this.appleRemindersService = new AppleRemindersService(this.settings);
-    await this.appleRemindersService.initialize(this.cacheManager);
 
     // Initialize Apple Calendar service
     this.appleCalendarService = new AppleCalendarService(this.settings);
@@ -278,13 +271,18 @@ export default class TaskSyncPlugin extends Plugin {
     // Full population will happen in onLayoutReady after vault is loaded
     await this.initializeStores();
 
-    // Wire up GitHub service with import dependencies
-    this.githubService.setImportDependencies(this.taskImportManager);
-    this.githubService.setDailyNoteService(this.dailyNoteService);
+    // Initialize IntegrationManager to handle reactive service management
+    this.integrationManager = new IntegrationManager(
+      this.cacheManager,
+      this.taskImportManager,
+      this.dailyNoteService,
+      this.settings
+    );
 
-    // Wire up Apple Reminders service with import dependencies
-    this.appleRemindersService.setImportDependencies(this.taskImportManager);
-    this.appleRemindersService.setDailyNoteService(this.dailyNoteService);
+    // Get services from integration manager for backward compatibility
+    this.githubService = this.integrationManager.getGitHubService();
+    this.appleRemindersService =
+      this.integrationManager.getAppleRemindersService();
 
     // Wire up Apple Calendar service with import dependencies
     this.appleCalendarService.setImportDependencies(this.taskImportManager);
@@ -364,19 +362,10 @@ export default class TaskSyncPlugin extends Plugin {
     this.registerView(
       TASKS_VIEW_TYPE,
       (leaf) =>
-        new TasksView(
-          leaf,
-          this.githubService,
-          this.appleRemindersService,
-          {
-            githubIntegration: this.settings.githubIntegration,
-            appleRemindersIntegration: this.settings.appleRemindersIntegration,
-          },
-          {
-            taskImportManager: this.taskImportManager,
-            getDefaultImportConfig: () => this.getDefaultImportConfig(),
-          }
-        )
+        new TasksView(leaf, this.integrationManager, {
+          taskImportManager: this.taskImportManager,
+          getDefaultImportConfig: () => this.getDefaultImportConfig(),
+        })
     );
 
     // Register Context Tab view
@@ -410,9 +399,6 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Wait for layout ready, then populate stores and create views
     this.app.workspace.onLayoutReady(async () => {
-      console.log("Layout ready - populating stores from vault");
-
-      // Now that vault is fully loaded, populate stores with existing files
       await this.populateStoresFromVault();
 
       // Initialize views after stores are populated
@@ -422,188 +408,192 @@ export default class TaskSyncPlugin extends Plugin {
 
       // Register markdown processor after layout is ready
       this.registerTaskTodoMarkdownProcessor();
-    });
 
-    // Note: Removed automatic folder creation - Obsidian handles this automatically
-    // Base files and templates will be created on-demand when needed
-
-    // Add commands
-    this.addCommand({
-      id: "add-task",
-      name: "Add Task",
-      callback: () => {
-        this.openTaskCreateModal();
-      },
-    });
-
-    this.addCommand({
-      id: "refresh",
-      name: "Refresh",
-      callback: async () => {
-        await this.refresh();
-      },
-    });
-
-    this.addCommand({
-      id: "refresh-base-views",
-      name: "Refresh Base Views",
-      callback: async () => {
-        await this.refreshBaseViews();
-      },
-    });
-
-    this.addCommand({
-      id: "create-area",
-      name: "Create Area",
-      callback: () => {
-        this.openAreaCreateModal();
-      },
-    });
-
-    this.addCommand({
-      id: "create-project",
-      name: "Create Project",
-      callback: () => {
-        this.openProjectCreateModal();
-      },
-    });
-
-    this.addCommand({
-      id: "promote-todo-to-task",
-      name: "Promote Todo to Task",
-      callback: async () => {
-        const result = await this.todoPromotionService.promoteTodoToTask();
-        new Notice(result.message);
-      },
-    });
-
-    // Add cache management commands
-    this.addCommand({
-      id: "clear-all-caches",
-      name: "Clear all caches",
-      callback: async () => {
-        await this.cacheManager.clearAllCaches();
-        new Notice("All caches cleared");
-      },
-    });
-
-    this.addCommand({
-      id: "show-cache-stats",
-      name: "Show cache statistics",
-      callback: async () => {
-        const stats = await this.cacheManager.getStats();
-        const message = stats
-          .map((s) => `${s.cacheKey}: ${s.keyCount} entries`)
-          .join("\n");
-        new Notice(`Cache statistics:\n${message}`);
-      },
-    });
-
-    this.addCommand({
-      id: "revert-promoted-todo",
-      name: "Revert Promoted Todo",
-      callback: async () => {
-        const result = await this.todoPromotionService.revertPromotedTodo();
-        new Notice(result.message);
-      },
-    });
-
-    this.addCommand({
-      id: "add-to-today",
-      name: "Add to Today",
-      callback: async () => {
-        await this.addCurrentTaskToToday();
-      },
-    });
-
-    // GitHub Import Commands
-    this.addCommand({
-      id: "import-github-issue",
-      name: "Import GitHub Issue",
-      callback: async () => {
-        await this.importGitHubIssue();
-      },
-    });
-
-    this.addCommand({
-      id: "import-all-github-issues",
-      name: "Import All GitHub Issues",
-      callback: async () => {
-        await this.importAllGitHubIssues();
-      },
-    });
-
-    // Apple Reminders Import Commands (only on macOS)
-    if (this.appleRemindersService.isPlatformSupported()) {
       this.addCommand({
-        id: "import-apple-reminders",
-        name: "Import Apple Reminders",
-        callback: async () => {
-          await this.importAppleReminders();
+        id: "add-task",
+        name: "Add Task",
+        callback: () => {
+          this.openTaskCreateModal();
         },
       });
 
       this.addCommand({
-        id: "check-apple-reminders-permissions",
-        name: "Check Apple Reminders Permissions",
+        id: "refresh",
+        name: "Refresh",
         callback: async () => {
-          await this.checkAppleRemindersPermissions();
-        },
-      });
-    }
-
-    // Apple Calendar Commands
-    if (this.appleCalendarService.isPlatformSupported()) {
-      this.addCommand({
-        id: "insert-calendar-events",
-        name: "Insert Calendar Events",
-        callback: async () => {
-          await this.insertCalendarEvents();
+          await this.refresh();
         },
       });
 
       this.addCommand({
-        id: "check-apple-calendar-permissions",
-        name: "Check Apple Calendar Permissions",
+        id: "refresh-base-views",
+        name: "Refresh Base Views",
         callback: async () => {
-          await this.checkAppleCalendarPermissions();
+          await this.refreshBaseViews();
         },
       });
 
-      // Task Scheduling Commands (only if scheduling is enabled)
-      if (this.settings.appleCalendarIntegration.schedulingEnabled) {
+      this.addCommand({
+        id: "create-area",
+        name: "Create Area",
+        callback: () => {
+          this.openAreaCreateModal();
+        },
+      });
+
+      this.addCommand({
+        id: "create-project",
+        name: "Create Project",
+        callback: () => {
+          this.openProjectCreateModal();
+        },
+      });
+
+      this.addCommand({
+        id: "promote-todo-to-task",
+        name: "Promote Todo to Task",
+        callback: async () => {
+          const result = await this.todoPromotionService.promoteTodoToTask();
+          new Notice(result.message);
+        },
+      });
+
+      // Add cache management commands
+      this.addCommand({
+        id: "clear-all-caches",
+        name: "Clear all caches",
+        callback: async () => {
+          await this.cacheManager.clearAllCaches();
+          new Notice("All caches cleared");
+        },
+      });
+
+      this.addCommand({
+        id: "show-cache-stats",
+        name: "Show cache statistics",
+        callback: async () => {
+          const stats = await this.cacheManager.getStats();
+          const message = stats
+            .map((s) => `${s.cacheKey}: ${s.keyCount} entries`)
+            .join("\n");
+          new Notice(`Cache statistics:\n${message}`);
+        },
+      });
+
+      this.addCommand({
+        id: "revert-promoted-todo",
+        name: "Revert Promoted Todo",
+        callback: async () => {
+          const result = await this.todoPromotionService.revertPromotedTodo();
+          new Notice(result.message);
+        },
+      });
+
+      this.addCommand({
+        id: "add-to-today",
+        name: "Add to Today",
+        callback: async () => {
+          await this.addCurrentTaskToToday();
+        },
+      });
+
+      // GitHub Import Commands
+      this.addCommand({
+        id: "import-github-issue",
+        name: "Import GitHub Issue",
+        callback: async () => {
+          await this.importGitHubIssue();
+        },
+      });
+
+      this.addCommand({
+        id: "import-all-github-issues",
+        name: "Import All GitHub Issues",
+        callback: async () => {
+          await this.importAllGitHubIssues();
+        },
+      });
+
+      this.addCommand({
+        id: "open-tasks-view",
+        name: "Open Tasks view",
+        callback: async () => {
+          await this.activateTasksView();
+        },
+      });
+
+      this.addCommand({
+        id: "open-context-tab",
+        name: "Open Context Tab",
+        callback: async () => {
+          await this.activateContextTabView();
+        },
+      });
+
+      this.addCommand({
+        id: "open-task-planning",
+        name: "Open Task Planning",
+        callback: async () => {
+          await this.activateTaskPlanningView();
+        },
+      });
+
+      this.addCommand({
+        id: "start-daily-planning",
+        name: "Start daily planning",
+        callback: async () => {
+          await this.startDailyPlanning();
+        },
+      });
+
+      // Apple Reminders Import Commands (only on macOS)
+      if (this.appleRemindersService?.isPlatformSupported()) {
         this.addCommand({
-          id: "schedule-task",
-          name: "Schedule Task",
+          id: "import-apple-reminders",
+          name: "Import Apple Reminders",
           callback: async () => {
-            await this.scheduleCurrentTask();
+            await this.importAppleReminders();
+          },
+        });
+
+        this.addCommand({
+          id: "check-apple-reminders-permissions",
+          name: "Check Apple Reminders Permissions",
+          callback: async () => {
+            await this.checkAppleRemindersPermissions();
           },
         });
       }
-    }
 
-    this.addCommand({
-      id: "open-context-tab",
-      name: "Open Context Tab",
-      callback: () => {
-        this.activateContextTabView();
-      },
-    });
+      // Apple Calendar Commands
+      if (this.appleCalendarService.isPlatformSupported()) {
+        this.addCommand({
+          id: "insert-calendar-events",
+          name: "Insert Calendar Events",
+          callback: async () => {
+            await this.insertCalendarEvents();
+          },
+        });
 
-    this.addCommand({
-      id: "open-task-planning",
-      name: "Open Task Planning",
-      callback: () => {
-        this.activateTaskPlanningView();
-      },
-    });
+        this.addCommand({
+          id: "check-apple-calendar-permissions",
+          name: "Check Apple Calendar Permissions",
+          callback: async () => {
+            await this.checkAppleCalendarPermissions();
+          },
+        });
 
-    this.addCommand({
-      id: "start-daily-planning",
-      name: "Start daily planning",
-      callback: async () => {
-        await this.startDailyPlanning();
-      },
+        // Task Scheduling Commands (only if scheduling is enabled)
+        if (this.settings.appleCalendarIntegration.schedulingEnabled) {
+          this.addCommand({
+            id: "schedule-task",
+            name: "Schedule Task",
+            callback: async () => {
+              await this.scheduleCurrentTask();
+            },
+          });
+        }
+      }
     });
   }
 
@@ -650,6 +640,9 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize previous settings for comparison
     this.previousSettings = { ...this.settings };
+
+    // Initialize settings store with loaded settings
+    settingsStore.initialize(this.settings);
 
     this.validateSettings();
   }
@@ -713,6 +706,44 @@ export default class TaskSyncPlugin extends Plugin {
       needsSave = true;
     }
 
+    // Check if githubIntegration is missing
+    if (!this.settings.githubIntegration) {
+      this.settings.githubIntegration = {
+        ...DEFAULT_SETTINGS.githubIntegration,
+      };
+      needsSave = true;
+    }
+
+    // Migrate taskPropertyOrder to include any missing properties
+    if (this.settings.taskPropertyOrder) {
+      const currentProperties = new Set(this.settings.taskPropertyOrder);
+      const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
+      const missingProperties = requiredProperties.filter(
+        (prop) => !currentProperties.has(prop)
+      );
+
+      if (missingProperties.length > 0) {
+        // Add missing properties to the end of the current order
+        this.settings.taskPropertyOrder = [
+          ...this.settings.taskPropertyOrder,
+          ...missingProperties,
+        ];
+        needsSave = true;
+        console.log(
+          `Task Sync: Added missing properties to taskPropertyOrder: ${missingProperties.join(
+            ", "
+          )}`
+        );
+      }
+    } else {
+      // If taskPropertyOrder is missing entirely, use the default
+      this.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
+      needsSave = true;
+      console.log(
+        "Task Sync: Initialized missing taskPropertyOrder with defaults"
+      );
+    }
+
     // Add other migration checks here as needed for future updates
 
     if (needsSave) {
@@ -730,6 +761,9 @@ export default class TaskSyncPlugin extends Plugin {
       : null;
 
     await this.saveData(this.settings);
+
+    // Update settings store with new settings
+    settingsStore.updateSettings(this.settings);
 
     // Emit settings change events for different sections
     if (this.eventManager && oldSettings) {
@@ -760,17 +794,8 @@ export default class TaskSyncPlugin extends Plugin {
       this.taskImportManager.updateSettings(this.settings);
     }
 
-    // Update UI views
-    const tasksLeaves = this.app.workspace.getLeavesOfType(TASKS_VIEW_TYPE);
-    tasksLeaves.forEach((leaf) => {
-      const view = leaf.view as TasksView;
-      if (view && view.updateSettings) {
-        view.updateSettings({
-          githubIntegration: this.settings.githubIntegration,
-          appleRemindersIntegration: this.settings.appleRemindersIntegration,
-        });
-      }
-    });
+    // TasksView settings are now reactive through the settings store
+    // No manual update needed
 
     // Update Task Planning views
     const taskPlanningLeaves = this.app.workspace.getLeavesOfType(
@@ -788,9 +813,6 @@ export default class TaskSyncPlugin extends Plugin {
     // Update other managers
     if (this.templateManager) {
       this.templateManager.updateSettings(this.settings);
-      if (!skipTemplateUpdate) {
-        await this.templateManager.updateTemplatesOnSettingsChange();
-      }
     }
 
     if (this.baseManager) {
@@ -900,6 +922,45 @@ export default class TaskSyncPlugin extends Plugin {
         (this.settings as any)[field] = (DEFAULT_SETTINGS as any)[field];
       }
     });
+
+    // Validate critical arrays - these are MANDATORY and cannot be empty
+    if (
+      !Array.isArray(this.settings.taskTypes) ||
+      this.settings.taskTypes.length === 0
+    ) {
+      console.warn(`Task Sync: taskTypes is empty or invalid, using defaults`);
+      this.settings.taskTypes = [...DEFAULT_SETTINGS.taskTypes];
+    }
+
+    if (
+      !Array.isArray(this.settings.taskPriorities) ||
+      this.settings.taskPriorities.length === 0
+    ) {
+      console.warn(
+        `Task Sync: taskPriorities is empty or invalid, using defaults`
+      );
+      this.settings.taskPriorities = [...DEFAULT_SETTINGS.taskPriorities];
+    }
+
+    if (
+      !Array.isArray(this.settings.taskStatuses) ||
+      this.settings.taskStatuses.length === 0
+    ) {
+      console.warn(
+        `Task Sync: taskStatuses is empty or invalid, using defaults`
+      );
+      this.settings.taskStatuses = [...DEFAULT_SETTINGS.taskStatuses];
+    }
+
+    if (
+      !Array.isArray(this.settings.taskPropertyOrder) ||
+      this.settings.taskPropertyOrder.length === 0
+    ) {
+      console.warn(
+        `Task Sync: taskPropertyOrder is empty or invalid, using defaults`
+      );
+      this.settings.taskPropertyOrder = [...DEFAULT_SETTINGS.taskPropertyOrder];
+    }
   }
 
   // UI Methods
@@ -1106,6 +1167,29 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
+   * Activate the Tasks view (bring it to focus)
+   */
+  private async activateTasksView(): Promise<void> {
+    const existingLeaves = this.app.workspace.getLeavesOfType(TASKS_VIEW_TYPE);
+
+    if (existingLeaves.length > 0) {
+      // Ensure right sidebar is expanded
+      this.app.workspace.rightSplit.expand();
+      // Activate existing view
+      this.app.workspace.revealLeaf(existingLeaves[0]);
+    } else {
+      // Ensure right sidebar is expanded
+      this.app.workspace.rightSplit.expand();
+      // Create new view in right sidebar
+      const rightLeaf = this.app.workspace.getRightLeaf(false);
+      await rightLeaf.setViewState({
+        type: TASKS_VIEW_TYPE,
+        active: true,
+      });
+    }
+  }
+
+  /**
    * Activate the Context Tab view (bring it to focus)
    */
   private async activateContextTabView(): Promise<void> {
@@ -1114,9 +1198,13 @@ export default class TaskSyncPlugin extends Plugin {
     );
 
     if (existingLeaves.length > 0) {
+      // Ensure right sidebar is expanded
+      this.app.workspace.rightSplit.expand();
       // Activate existing view
       this.app.workspace.revealLeaf(existingLeaves[0]);
     } else {
+      // Ensure right sidebar is expanded
+      this.app.workspace.rightSplit.expand();
       // Create new view in right sidebar
       const rightLeaf = this.app.workspace.getRightLeaf(false);
       await rightLeaf.setViewState({
@@ -1135,9 +1223,13 @@ export default class TaskSyncPlugin extends Plugin {
     );
 
     if (existingLeaves.length > 0) {
+      // Ensure right sidebar is expanded
+      this.app.workspace.rightSplit.expand();
       // Activate existing view
       this.app.workspace.revealLeaf(existingLeaves[0]);
     } else {
+      // Ensure right sidebar is expanded
+      this.app.workspace.rightSplit.expand();
       // Create new view in right sidebar
       const rightLeaf = this.app.workspace.getRightLeaf(false);
       await rightLeaf.setViewState({
@@ -1332,21 +1424,23 @@ export default class TaskSyncPlugin extends Plugin {
    */
   public async createArea(areaData: AreaCreateData): Promise<Area> {
     const areaCreationData = {
-      title: areaData.name,
+      name: areaData.name,
       description: areaData.description,
     };
 
-    const area = await this.areaFileManager
-      .createAreaFile(areaCreationData)
-      .then(async (filePath) => {
-        const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+    const filePath = await this.areaFileManager.createAreaFile(
+      areaCreationData
+    );
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
 
-        return this.areaFileManager
-          .waitForMetadataCache(file)
-          .then(async (_) => {
-            return this.stores.areaStore.findEntityByPath(filePath);
-          });
-      });
+    // Wait for metadata cache to be updated
+    await this.areaFileManager.waitForMetadataCache(file);
+
+    // Load the entity directly from the file manager
+    const area = await this.areaFileManager.loadEntity(file);
+
+    // Add the entity to the store
+    await this.stores.areaStore.upsertEntity(area);
 
     if (
       this.settings.areaBasesEnabled &&
@@ -1367,22 +1461,24 @@ export default class TaskSyncPlugin extends Plugin {
    */
   public async createProject(projectData: ProjectCreateData): Promise<Project> {
     const projectCreationData = {
-      title: projectData.name,
+      name: projectData.name,
       description: projectData.description,
       areas: projectData.areas,
     };
 
-    const project = await this.projectFileManager
-      .createProjectFile(projectCreationData)
-      .then(async (filePath) => {
-        const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+    const filePath = await this.projectFileManager.createProjectFile(
+      projectCreationData
+    );
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
 
-        return this.projectFileManager
-          .waitForMetadataCache(file)
-          .then(async (_) => {
-            return this.stores.projectStore.findEntityByPath(filePath);
-          });
-      });
+    // Wait for metadata cache to be updated
+    await this.projectFileManager.waitForMetadataCache(file);
+
+    // Load the entity directly from the file manager
+    const project = await this.projectFileManager.loadEntity(file);
+
+    // Add the entity to the store
+    await this.stores.projectStore.upsertEntity(project);
 
     if (
       this.settings.projectBasesEnabled &&

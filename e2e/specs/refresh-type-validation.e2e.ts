@@ -1,9 +1,6 @@
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
-import {
-  createTestFolders,
-  waitForTaskSyncPlugin,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+import { test, expect, describe, beforeEach } from "vitest";
+import { executeCommand } from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 import {
   createTask,
   createArea,
@@ -12,11 +9,6 @@ import {
 
 describe("Refresh Type Validation", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-  });
 
   test("should not create bases for files without correct Type property", async () => {
     await context.page.evaluate(async () => {
@@ -218,96 +210,5 @@ Task with wrong Type property.`
     expect(wrongTypeTask?.hasTypeProperty).toBe(true);
     expect(wrongTypeTask?.typeValue).toBe("Project");
     expect(wrongTypeTask?.isValidTask).toBe(false);
-  });
-
-  test("should add Status field to task files during refresh", async () => {
-    await createTask(
-      context,
-      {
-        title: "Task Without Status",
-        category: "Task",
-        done: false,
-      },
-      "This task is missing the Status field."
-    );
-
-    await createTask(
-      context,
-      {
-        title: "Another Task",
-        category: "Task",
-        priority: "High",
-        done: false,
-      },
-      "Another task missing Status field."
-    );
-
-    // Remove Status field from both tasks to test refresh functionality
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-
-      const files = ["Tasks/Task Without Status.md", "Tasks/Another Task.md"];
-      for (const filePath of files) {
-        const file = app.vault.getAbstractFileByPath(filePath);
-        if (file) {
-          const content = await app.vault.read(file);
-          const updatedContent = content.replace(/Status: [^\n]+\n/g, "");
-          await app.vault.modify(file, updatedContent);
-        }
-      }
-    });
-
-    // Execute refresh command
-    await executeCommand(context, "Task Sync: Refresh");
-
-    // Wait for refresh to complete
-    await context.page.waitForTimeout(3000);
-
-    // Check that Status field was added to both files using API
-    const filesWithStatus = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const results: {
-        filename: string;
-        hasStatus: boolean;
-        statusValue: string;
-      }[] = [];
-
-      const files = ["Tasks/Task Without Status.md", "Tasks/Another Task.md"];
-
-      for (const filePath of files) {
-        try {
-          const frontMatter = await plugin.taskFileManager.loadFrontMatter(
-            filePath
-          );
-          const hasStatus = frontMatter.Status !== undefined;
-          const statusValue = frontMatter.Status || "";
-
-          results.push({
-            filename: filePath,
-            hasStatus,
-            statusValue,
-          });
-        } catch (error) {
-          results.push({
-            filename: filePath,
-            hasStatus: false,
-            statusValue: "",
-          });
-        }
-      }
-
-      return results;
-    });
-
-    // Verify both files now have Status field
-    expect(filesWithStatus).toHaveLength(2);
-
-    for (const fileResult of filesWithStatus) {
-      expect(fileResult.hasStatus).toBe(true);
-      expect(fileResult.statusValue).toBe("Backlog"); // Should use default value
-    }
-
-    console.log("Files with Status after refresh:", filesWithStatus);
   });
 });

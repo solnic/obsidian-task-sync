@@ -4,22 +4,12 @@
  */
 
 import { test, expect, describe, beforeAll, beforeEach } from "vitest";
-import {
-  createTestFolders,
-  waitForTaskSyncPlugin,
-  waitForElementVisible,
-  isElementVisible,
-} from "../helpers/task-sync-setup";
+import { createTestFolders } from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createTask } from "../helpers/entity-helpers";
 
 describe("TaskTodoMarkdownProcessor", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-  });
 
   test("should enhance todo items with task badges in reading mode", async () => {
     // Create test tasks with different properties

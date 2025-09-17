@@ -1578,91 +1578,86 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           });
       });
 
-    // Only show additional settings if GitHub integration is enabled
-    if (this.plugin.settings.githubIntegration.enabled) {
-      // Personal Access Token
-      new Setting(section)
-        .setName("GitHub Personal Access Token")
-        .setDesc(
-          "Your GitHub PAT for API access. Create one at github.com/settings/tokens"
-        )
-        .addText((text) => {
-          text
-            .setPlaceholder("ghp_...")
-            .setValue(
-              this.plugin.settings.githubIntegration.personalAccessToken
-            )
-            .onChange(async (value) => {
-              const validation = validateGitHubToken(value);
-              if (validation.isValid) {
-                this.plugin.settings.githubIntegration.personalAccessToken =
-                  value;
-                await this.plugin.saveSettings();
-                this.clearValidationError("github-token");
-              } else {
-                this.setValidationError(
-                  "github-token",
-                  validation.error || "Invalid token"
-                );
-              }
-            });
-
-          // Set input type to password for security
-          text.inputEl.type = "password";
-          text.inputEl.style.fontFamily = "monospace";
-        });
-
-      // Default repository
-      new Setting(section)
-        .setName("Default Repository")
-        .setDesc("Default repository to load issues from (format: owner/repo)")
-        .addText((text) => {
-          text
-            .setPlaceholder("owner/repository")
-            .setValue(this.plugin.settings.githubIntegration.defaultRepository)
-            .onChange(async (value) => {
-              this.plugin.settings.githubIntegration.defaultRepository = value;
-              await this.plugin.saveSettings();
-            });
-        });
-
-      // Issue filters
-      new Setting(section)
-        .setName("Default Issue State")
-        .setDesc("Default state filter for GitHub issues")
-        .addDropdown((dropdown) => {
-          dropdown
-            .addOption("open", "Open")
-            .addOption("closed", "Closed")
-            .addOption("all", "All")
-            .setValue(this.plugin.settings.githubIntegration.issueFilters.state)
-            .onChange(async (value: "open" | "closed" | "all") => {
-              this.plugin.settings.githubIntegration.issueFilters.state = value;
-              await this.plugin.saveSettings();
-            });
-        });
-
-      new Setting(section)
-        .setName("Default Assignee Filter")
-        .setDesc(
-          'Default assignee filter (leave empty for all, "me" for your issues)'
-        )
-        .addText((text) => {
-          text
-            .setPlaceholder("me, username, or empty")
-            .setValue(
-              this.plugin.settings.githubIntegration.issueFilters.assignee
-            )
-            .onChange(async (value) => {
-              this.plugin.settings.githubIntegration.issueFilters.assignee =
+    // Personal Access Token
+    new Setting(section)
+      .setName("GitHub Personal Access Token")
+      .setDesc(
+        "Your GitHub PAT for API access. Create one at github.com/settings/tokens"
+      )
+      .addText((text) => {
+        text
+          .setPlaceholder("ghp_...")
+          .setValue(this.plugin.settings.githubIntegration.personalAccessToken)
+          .onChange(async (value) => {
+            const validation = validateGitHubToken(value);
+            if (validation.isValid) {
+              this.plugin.settings.githubIntegration.personalAccessToken =
                 value;
               await this.plugin.saveSettings();
-            });
-        });
+              this.clearValidationError("github-token");
+            } else {
+              this.setValidationError(
+                "github-token",
+                validation.error || "Invalid token"
+              );
+            }
+          });
 
-      // Organization/Repository Mappings
-      this.createGitHubOrgRepoMappingsSection(section);
-    }
+        // Set input type to password for security
+        text.inputEl.type = "password";
+        text.inputEl.style.fontFamily = "monospace";
+      });
+
+    // Default repository
+    new Setting(section)
+      .setName("Default Repository")
+      .setDesc("Default repository to load issues from (format: owner/repo)")
+      .addText((text) => {
+        text
+          .setPlaceholder("owner/repository")
+          .setValue(this.plugin.settings.githubIntegration.defaultRepository)
+          .onChange(async (value) => {
+            this.plugin.settings.githubIntegration.defaultRepository = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    // Issue filters
+    new Setting(section)
+      .setName("Default Issue State")
+      .setDesc("Default state filter for GitHub issues")
+      .addDropdown((dropdown) => {
+        dropdown
+          .addOption("open", "Open")
+          .addOption("closed", "Closed")
+          .addOption("all", "All")
+          .setValue(this.plugin.settings.githubIntegration.issueFilters.state)
+          .onChange(async (value: "open" | "closed" | "all") => {
+            this.plugin.settings.githubIntegration.issueFilters.state = value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    new Setting(section)
+      .setName("Default Assignee Filter")
+      .setDesc(
+        'Default assignee filter (leave empty for all, "me" for your issues)'
+      )
+      .addText((text) => {
+        text
+          .setPlaceholder("me, username, or empty")
+          .setValue(
+            this.plugin.settings.githubIntegration.issueFilters.assignee
+          )
+          .onChange(async (value) => {
+            this.plugin.settings.githubIntegration.issueFilters.assignee =
+              value;
+            await this.plugin.saveSettings();
+          });
+      });
+
+    // Organization/Repository Mappings
+    this.createGitHubOrgRepoMappingsSection(section);
 
     // Apple Reminders Integration Section
     section.createEl("h3", {
@@ -2207,10 +2202,4 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       },
     });
   }
-}
-
-// Export for testing
-export function createGitHubIntegrationSection() {
-  // This is just for testing that the function exists
-  return true;
 }

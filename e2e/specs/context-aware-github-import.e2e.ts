@@ -3,17 +3,18 @@
  * Tests that GitHub issues are actually imported to the correct area/project with proper label mapping
  */
 
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
+import { test, expect, describe, beforeEach } from "vitest";
 import {
-  createTestFolders,
   verifyTaskProperties,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, openFile } from "../helpers/shared-context";
-import { toggleSidebar } from "../helpers/plugin-setup";
+  openFile,
+  enableIntegration,
+  openView,
+  switchToTaskService,
+  toggleSidebar,
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createProject, createArea } from "../helpers/entity-helpers";
 import {
-  configureGitHubIntegration,
-  openGitHubIssuesView,
   stubGitHubWithFixtures,
   clickIssueImportButton,
   waitForIssueImportComplete,
@@ -22,20 +23,16 @@ import {
 describe("Context-Aware GitHub Import", () => {
   const context = setupE2ETestHooks();
 
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-  });
-
   beforeEach(async () => {
     await toggleSidebar(context.page, "right", true);
-    await configureGitHubIntegration(context.page, {
-      enabled: true,
-      repository: "solnic/obsidian-task-sync",
-      token: "fake-token-for-testing",
-    });
   });
 
   test("should import GitHub issue to project with correct label mapping", async () => {
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
     const project = await createProject(context, {
       name: "Test Project",
       description: "This is a test project for context-aware importing.",
@@ -46,9 +43,12 @@ describe("Context-Aware GitHub Import", () => {
     await stubGitHubWithFixtures(context.page, {
       repositories: "repositories-basic",
       issues: "context-aware-bug",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
     });
 
-    await openGitHubIssuesView(context.page);
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "github");
 
     await clickIssueImportButton(context.page, 123);
     await waitForIssueImportComplete(context.page, 123);
@@ -80,6 +80,11 @@ describe("Context-Aware GitHub Import", () => {
   });
 
   test("should import GitHub issue to area with enhancement label mapping", async () => {
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
     const area = await createArea(context, {
       name: "Development",
       description: "This is a test area for context-aware importing.",
@@ -90,9 +95,12 @@ describe("Context-Aware GitHub Import", () => {
     await stubGitHubWithFixtures(context.page, {
       repositories: "repositories-basic",
       issues: "context-aware-enhancement",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
     });
 
-    await openGitHubIssuesView(context.page);
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "github");
 
     await clickIssueImportButton(context.page, 456);
     await waitForIssueImportComplete(context.page, 456);
@@ -152,12 +160,20 @@ describe("Context-Aware GitHub Import", () => {
 
     await openFile(context, "Notes/Regular Note.md");
 
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
     await stubGitHubWithFixtures(context.page, {
       repositories: "repositories-basic",
       issues: "context-aware-documentation",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
     });
 
-    await openGitHubIssuesView(context.page);
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "github");
 
     await clickIssueImportButton(context.page, 789);
     await waitForIssueImportComplete(context.page, 789);

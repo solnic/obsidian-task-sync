@@ -1,13 +1,9 @@
 import { test, expect, describe, beforeAll } from "vitest";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
-import { waitForTaskSyncPlugin } from "../helpers/task-sync-setup";
+import { setupE2ETestHooks } from "../helpers/shared-context";
+import { executeCommand } from "../helpers/global";
 
 describe("Task Planning UI Improvements", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await waitForTaskSyncPlugin(context.page);
-  });
 
   test("should show correct calendar filter text", async () => {
     // Open Task Planning view

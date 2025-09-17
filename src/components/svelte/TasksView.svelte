@@ -12,6 +12,7 @@
   import { getContextStore } from "./context";
   import { getPluginContext } from "./context";
   import type { FileContext } from "../../main";
+  import { settingsStore } from "../../stores/settingsStore";
 
   interface Props {
     githubService: any;
@@ -38,12 +39,47 @@
   const contextStore = getContextStore();
   let currentContext = $state<FileContext>({ type: "none" });
 
+  // Get reactive settings from store
+  let reactiveSettings = $state({
+    githubIntegration: settings.githubIntegration,
+    appleRemindersIntegration: settings.appleRemindersIntegration,
+  });
+
   // Subscribe to context changes
   $effect(() => {
     const unsubscribe = contextStore.subscribe((value) => {
       currentContext = value;
     });
     return unsubscribe;
+  });
+
+  // Subscribe to settings changes
+  $effect(() => {
+    const unsubscribe = settingsStore.subscribe((storeState) => {
+      if (storeState.settings) {
+        reactiveSettings = {
+          githubIntegration: storeState.settings.githubIntegration,
+          appleRemindersIntegration:
+            storeState.settings.appleRemindersIntegration,
+        };
+      }
+    });
+    return unsubscribe;
+  });
+
+  // Auto-switch to available service if current service becomes unavailable
+  $effect(() => {
+    const currentService = services.find((s) => s.id === activeService);
+    if (currentService && !currentService.enabled) {
+      // Find first available service
+      const availableService = services.find((s) => s.enabled);
+      if (availableService) {
+        console.log(
+          `🔄 TasksView: Switching from disabled ${activeService} to ${availableService.id}`
+        );
+        setActiveService(availableService.id);
+      }
+    }
   });
 
   // Load active service on component mount
@@ -61,8 +97,8 @@
     currentContext.dailyPlanningMode || false
   );
 
-  // Available services with native Obsidian icons
-  const services = [
+  // Available services with native Obsidian icons - reactive to settings changes
+  let services = $derived([
     {
       id: "local",
       name: "Local Tasks",
@@ -73,17 +109,18 @@
       id: "github",
       name: "GitHub",
       icon: "github", // Native Obsidian GitHub icon
-      enabled: true,
+      enabled: reactiveSettings.githubIntegration.enabled && !!githubService,
     },
     {
       id: "apple-reminders",
       name: "Apple Reminders",
       icon: "calendar-check", // Native Obsidian icon for reminders
       enabled:
-        appleRemindersService?.isPlatformSupported() &&
-        settings.appleRemindersIntegration.enabled,
+        reactiveSettings.appleRemindersIntegration.enabled &&
+        !!appleRemindersService &&
+        appleRemindersService?.isPlatformSupported(),
     },
-  ];
+  ]);
 
   async function loadActiveService(): Promise<void> {
     try {
@@ -115,7 +152,10 @@
     githubIntegration: GitHubIntegrationSettings;
     appleRemindersIntegration: AppleRemindersIntegrationSettings;
   }): void {
-    settings = newSettings;
+    // Settings are now managed by the reactive store, so this function
+    // is mainly for backward compatibility. The reactive settings will
+    // automatically update when the store changes.
+    reactiveSettings = newSettings;
   }
 
   async function refresh(): Promise<void> {
@@ -183,24 +223,41 @@
               ? "Local Tasks"
               : ""}
       >
-        <!-- Service Content -->
+        <!-- Service Content - Only render active service -->
         <div class="service-content" data-testid="service-content">
-          {#if activeService === "github"}
+          {#if activeService === "github" && reactiveSettings.githubIntegration.enabled && githubService}
             <GitHubService
               {githubService}
-              {settings}
+              settings={reactiveSettings}
               {dependencies}
               {dayPlanningMode}
             />
           {:else if activeService === "local"}
             <LocalTasksService {dayPlanningMode} {dailyPlanningWizardMode} />
-          {:else if activeService === "apple-reminders"}
+          {:else if activeService === "apple-reminders" && reactiveSettings.appleRemindersIntegration.enabled && appleRemindersService}
             <AppleRemindersService
               {appleRemindersService}
-              {settings}
+              settings={reactiveSettings}
               {dependencies}
               {dayPlanningMode}
             />
+          {:else}
+            <!-- Show message when selected service is not available -->
+            <div class="service-unavailable">
+              <div class="service-unavailable-icon">⚠️</div>
+              <h3>Service Not Available</h3>
+              <p>
+                The {activeService === "github" ? "GitHub" : "Apple Reminders"} integration
+                is not enabled or not properly configured.
+              </p>
+              <p>Please check your settings to enable this integration.</p>
+              <button
+                class="task-sync-button"
+                onclick={() => setActiveService("local")}
+              >
+                Switch to Local Tasks
+              </button>
+            </div>
           {/if}
         </div>
       </TabView>

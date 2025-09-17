@@ -6,15 +6,15 @@
 
 import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../main";
-import { FileManager, FileCreationData } from "./FileManager";
+import { FileManager } from "./FileManager";
 import { generateAreaFrontMatter } from "./base-definitions/BaseConfigurations";
 import { Area } from "../types/entities";
 
 /**
  * Interface for area creation data
  */
-export interface AreaCreationData extends FileCreationData {
-  title: string;
+export interface AreaCreationData {
+  name: string;
   description?: string;
 }
 
@@ -41,21 +41,34 @@ export class AreaFileManager extends FileManager {
 
     // Get content from template if not provided
     let fileContent = content;
+    let rawTemplateContent: string | undefined;
     if (!fileContent) {
+      // Read raw template content for front-matter extraction
+      try {
+        rawTemplateContent = await this.readAreaTemplate();
+      } catch (error) {
+        // Template doesn't exist, use default content
+      }
       fileContent = await this.getAreaTemplateContent(data);
     }
 
     // Process {{tasks}} variable in content
-    const processedContent = this.processTasksVariable(fileContent, data.title);
+    const processedContent = this.processTasksVariable(fileContent, data.name);
 
     const filePath = await this.createFile(
       areaFolder,
-      data.title,
+      data.name,
       processedContent
     );
-    const frontMatterData = this.generateAreaFrontMatterObject(data);
-
+    const frontMatterData = this.generateAreaFrontMatterObject(
+      data,
+      rawTemplateContent
+    );
     await this.updateFrontMatter(filePath, frontMatterData);
+
+    // Wait for the metadata cache to be updated after front-matter changes
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+    await this.waitForMetadataCache(file);
 
     return filePath;
   }
@@ -71,8 +84,10 @@ export class AreaFileManager extends FileManager {
     // Try to read template content
     try {
       const templateContent = await this.readAreaTemplate();
+      // Extract only the body content (after front-matter) from template
+      const bodyContent = this.extractBodyContent(templateContent);
       // Process {{description}} variable in template content
-      return this.processDescriptionVariable(templateContent, data.description);
+      return this.processDescriptionVariable(bodyContent, data.description);
     } catch (error) {
       // Template doesn't exist - use default content
       return [
@@ -87,6 +102,24 @@ export class AreaFileManager extends FileManager {
         "",
       ].join("\n");
     }
+  }
+
+  /**
+   * Extract body content from template (content after front-matter)
+   * @param content - Full template content including front-matter
+   * @returns Body content without front-matter
+   */
+  private extractBodyContent(content: string): string {
+    // Check if content starts with front-matter
+    const frontMatterMatch = content.match(
+      /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/
+    );
+    if (frontMatterMatch) {
+      // Return content after front-matter
+      return frontMatterMatch[2] || "";
+    }
+    // No front-matter found, return entire content
+    return content;
   }
 
   /**
@@ -144,7 +177,7 @@ export class AreaFileManager extends FileManager {
   /**
    * Implementation of abstract method from FileManager
    */
-  async createEntityFile(data: FileCreationData): Promise<string> {
+  async createEntityFile(data: AreaCreationData): Promise<string> {
     return this.createAreaFile(data as AreaCreationData);
   }
 
@@ -272,14 +305,42 @@ export class AreaFileManager extends FileManager {
   /**
    * Generate front-matter object for area files
    * @param data - Area creation data
+   * @param templateContent - Template content to extract front-matter from
    * @returns Front-matter object
    */
   private generateAreaFrontMatterObject(
-    data: AreaCreationData
+    data: AreaCreationData,
+    templateContent?: string
   ): Record<string, any> {
-    return {
-      Name: data.title,
+    // Start with basic properties
+    const frontMatterData: Record<string, any> = {
+      Name: data.name,
       Type: "Area",
     };
+
+    // If template content is provided, extract and merge front-matter from it
+    if (templateContent) {
+      const templateFrontMatter =
+        this.extractTemplateFrontMatter(templateContent);
+      if (templateFrontMatter) {
+        // Merge template front-matter with basic properties
+        // Basic properties take precedence over template properties
+        Object.assign(templateFrontMatter, frontMatterData);
+        return templateFrontMatter;
+      }
+    }
+
+    return frontMatterData;
+  }
+
+  /**
+   * Extract front-matter from template content using existing parsing utilities
+   * @param content - Template content
+   * @returns Parsed front-matter object or null if not found
+   */
+  private extractTemplateFrontMatter(
+    content: string
+  ): Record<string, any> | null {
+    return this.extractFrontMatterData(content);
   }
 }

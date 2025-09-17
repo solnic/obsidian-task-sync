@@ -5,21 +5,19 @@
 
 import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
-  createTestFolders,
   getFileContent,
   fileExists,
   waitForBasesRegeneration,
   configureBasesSettings,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+  executeCommand,
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createArea, createProject } from "../helpers/entity-helpers";
 
 describe("Individual Base Generation", () => {
   const context = setupE2ETestHooks();
 
   test("should generate individual area base with correct structure", async () => {
-    await createTestFolders(context.page);
-
     // Create an area file using entity helper
     await createArea(context, {
       name: "Health",
@@ -74,8 +72,6 @@ describe("Individual Base Generation", () => {
   });
 
   test("should generate individual project base with correct structure", async () => {
-    await createTestFolders(context.page);
-
     // Create a project file using entity helper
     await createProject(context, {
       name: "Website Redesign",
@@ -135,8 +131,6 @@ describe("Individual Base Generation", () => {
   });
 
   test("should respect area bases enabled setting", async () => {
-    await createTestFolders(context.page);
-
     // Disable area bases and enable project bases via UI
     await configureBasesSettings(context, false, true);
 
@@ -157,8 +151,6 @@ describe("Individual Base Generation", () => {
   });
 
   test("should respect project bases enabled setting", async () => {
-    await createTestFolders(context.page);
-
     // Create a project file using entity helper
     await createProject(context, {
       name: "Mobile App",
@@ -183,8 +175,6 @@ describe("Individual Base Generation", () => {
   });
 
   test("should update base embedding in area/project files", async () => {
-    await createTestFolders(context.page);
-
     // Create an area file without specific base embedding
     await context.page.evaluate(async () => {
       const app = (window as any).app;

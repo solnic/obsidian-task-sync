@@ -5,19 +5,17 @@
 
 import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
-  createTestFolders,
   getFileContent,
   fileExists,
   verifyProjectProperties,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+  executeCommand,
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Project Creation", () => {
   const context = setupE2ETestHooks();
 
   test("should have project creation command available", async () => {
-    await createTestFolders(context.page);
-
     // Check if the project creation command exists
     const hasCreateProjectCommand = await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -29,8 +27,6 @@ describe("Project Creation", () => {
   });
 
   test("should open project creation modal when command is executed", async () => {
-    await createTestFolders(context.page);
-
     // Execute the create project command
     await executeCommand(context, "Task Sync: Create Project");
     await context.page.waitForSelector(".task-sync-create-project", {
@@ -53,8 +49,6 @@ describe("Project Creation", () => {
   });
 
   test("should create project with basic information", async () => {
-    await createTestFolders(context.page);
-
     // Execute the create project command
     await executeCommand(context, "Task Sync: Create Project");
     await context.page.waitForSelector(".task-sync-create-project", {
@@ -107,8 +101,6 @@ describe("Project Creation", () => {
   });
 
   test("should create individual project base when enabled", async () => {
-    await createTestFolders(context.page);
-
     // Ensure project bases are enabled
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -168,8 +160,6 @@ describe("Project Creation", () => {
   });
 
   test("should validate required fields", async () => {
-    await createTestFolders(context.page);
-
     // Execute the create project command
     await executeCommand(context, "Task Sync: Create Project");
     await context.page.waitForSelector(".task-sync-create-project", {
@@ -197,8 +187,6 @@ describe("Project Creation", () => {
   });
 
   test("should handle special characters in project name", async () => {
-    await createTestFolders(context.page);
-
     // Execute the create project command
     await executeCommand(context, "Task Sync: Create Project");
     await context.page.waitForSelector(".task-sync-create-project", {
@@ -235,8 +223,6 @@ describe("Project Creation", () => {
   });
 
   test("should use template when configured", async () => {
-    await createTestFolders(context.page);
-
     // Create a custom project template
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -268,24 +254,13 @@ Build a modern e-commerce platform with React and Node.js
 ![[{{name}}.base]]
 `;
 
-      try {
-        await app.vault.create(
-          "Templates/project-template.md",
-          templateContent
-        );
-      } catch (error) {
-        console.log("Template creation error:", error);
-        // If file already exists, modify it instead
-        if (error.message.includes("already exists")) {
-          const existingFile = app.vault.getAbstractFileByPath(
-            "Templates/project-template.md"
-          );
-          if (existingFile) {
-            await app.vault.modify(existingFile, templateContent);
-            console.log("Template file updated successfully");
-          }
-        }
+      // Delete existing template if it exists
+      const templatePath = "Templates/project-template.md";
+      if (await app.vault.adapter.exists(templatePath)) {
+        await app.vault.delete(app.vault.getAbstractFileByPath(templatePath));
       }
+
+      await app.vault.create(templatePath, templateContent);
     });
 
     // Configure plugin to use the template
@@ -358,8 +333,6 @@ Build a modern e-commerce platform with React and Node.js
   });
 
   test("should create project without areas", async () => {
-    await createTestFolders(context.page);
-
     // Execute the create project command
     await executeCommand(context, "Task Sync: Create Project");
     await context.page.waitForSelector(".task-sync-create-project", {

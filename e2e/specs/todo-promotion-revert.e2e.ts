@@ -8,12 +8,10 @@ import {
   getFileContent,
   fileExists,
   createTestFolders,
-} from "../helpers/task-sync-setup";
-import {
-  setupE2ETestHooks,
   executeCommand,
   openFile,
-} from "../helpers/shared-context";
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Todo Promotion Reverting", () => {
   const context = setupE2ETestHooks();

@@ -14,7 +14,22 @@ e2e/fixtures/
 │   ├── pull-requests-detailed.json
 │   ├── pull-requests-multiple.json
 │   ├── repositories-basic.json
-│   └── repositories-multiple.json
+│   ├── repositories-multiple.json
+│   └── task-source-issue.json
+├── apple-calendar/   # Apple Calendar API response fixtures
+│   ├── calendars-basic.json
+│   ├── events-basic.json
+│   ├── events-empty.json
+│   ├── today-events-basic.json
+│   ├── permissions-granted.json
+│   ├── permissions-denied.json
+│   └── import-event-basic.json
+├── apple-reminders/  # Apple Reminders API response fixtures
+│   ├── lists-basic.json
+│   ├── reminders-basic.json
+│   ├── reminders-empty.json
+│   ├── permissions-authorized.json
+│   └── permissions-denied.json
 └── README.md
 ```
 
@@ -29,6 +44,12 @@ import { stubAPI } from "../helpers/api-stubbing";
 
 // Stub GitHub issues API with basic fixture
 await stubAPI(page, "github", "fetchIssues", "issues-basic");
+
+// Stub Apple Calendar events API with basic fixture
+await stubAPI(page, "apple-calendar", "getEvents", "events-basic");
+
+// Stub Apple Reminders API with basic fixture
+await stubAPI(page, "apple-reminders", "fetchReminders", "reminders-basic");
 ```
 
 ### Multiple API Stubbing
@@ -44,6 +65,14 @@ await stubMultipleAPIs(page, {
     fetchPullRequests: "pull-requests-basic",
     fetchRepositories: "repositories-basic",
   },
+  "apple-calendar": {
+    getEvents: "events-basic",
+    getTodayEvents: "today-events-basic"
+  },
+  "apple-reminders": {
+    fetchReminders: "reminders-basic",
+    fetchLists: "lists-basic"
+  }
 });
 ```
 

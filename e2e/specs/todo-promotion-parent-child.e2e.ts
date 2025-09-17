@@ -7,14 +7,10 @@ import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   getFileContent,
   fileExists,
-  createTestFolders,
-  createFullyQualifiedLink,
-} from "../helpers/task-sync-setup";
-import {
-  setupE2ETestHooks,
   executeCommand,
   openFile,
-} from "../helpers/shared-context";
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Todo Promotion Parent-Child Relationships", () => {
   const context = setupE2ETestHooks();

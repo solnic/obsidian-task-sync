@@ -3,9 +3,7 @@ import {
   createTestFolders,
   getFileContent,
   fileExists,
-  waitForTaskSyncPlugin,
-  verifyAreaProperties,
-} from "../helpers/task-sync-setup";
+} from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Area Template Management", () => {
@@ -13,7 +11,6 @@ describe("Area Template Management", () => {
 
   test("should create area template with proper front-matter structure", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create area template using TemplateManager
     await context.page.evaluate(async () => {
@@ -54,7 +51,6 @@ describe("Area Template Management", () => {
 
   test("should handle existing template file conflict", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create existing template file
     await context.page.evaluate(async () => {
@@ -73,11 +69,14 @@ describe("Area Template Management", () => {
       if (plugin && plugin.templateManager) {
         try {
           await plugin.templateManager.createAreaTemplate("ExistingArea.md");
-          return { success: true, error: null };
         } catch (error) {
-          return { success: false, error: error.message };
+          return {
+            success: false,
+            error: (error as Error).message,
+          };
         }
       }
+
       return {
         success: false,
         error: "Plugin or templateManager not available",
@@ -91,7 +90,6 @@ describe("Area Template Management", () => {
 
   test("should create template with custom filename when specified", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create template with custom filename
     await context.page.evaluate(async () => {
@@ -124,7 +122,6 @@ describe("Area Template Management", () => {
 
   test("should use default template filename from settings when none specified", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Configure default area template in settings
     await context.page.evaluate(async () => {
@@ -158,7 +155,6 @@ describe("Area Template Management", () => {
 
   test("should generate clean template without pre-filled values", async () => {
     await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
 
     // Create area template
     await context.page.evaluate(async () => {

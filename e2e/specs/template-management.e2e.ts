@@ -3,22 +3,12 @@
  * Tests template creation and management in a real Obsidian environment
  */
 
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
-import {
-  createTestFolders,
-  getFileContent,
-  fileExists,
-  waitForTaskSyncPlugin,
-} from "../helpers/task-sync-setup";
+import { test, expect, describe, beforeEach } from "vitest";
+import { getFileContent, fileExists } from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Template Management", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-  });
 
   test("should create Task.md template automatically during plugin initialization", async () => {
     // The plugin SHOULD automatically create default templates when they're missing

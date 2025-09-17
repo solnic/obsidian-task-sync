@@ -1,17 +1,11 @@
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
-import {
-  createTestFolders,
-  waitForTaskSyncPlugin,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+import { test, expect, describe, beforeEach } from "vitest";
+import { executeCommand } from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Base Sorting by Done Status", () => {
   const context = setupE2ETestHooks();
 
   test("should sort tasks with uncompleted tasks first and completed tasks at bottom", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // Create tasks with different Done states
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -154,9 +148,6 @@ This task is also not completed.`
   });
 
   test("should sort area-specific bases with Done first", async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-
     // Create an area file
     await context.page.evaluate(async () => {
       const app = (window as any).app;

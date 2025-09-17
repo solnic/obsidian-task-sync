@@ -2,23 +2,19 @@
  * E2E tests for context-aware modal functionality
  */
 
-import { test, expect, describe, beforeAll } from "vitest";
+import { test, expect, describe } from "vitest";
 import {
-  createTestFolders,
   waitForElementVisible,
   verifyTaskProperties,
   createFullyQualifiedLink,
   getFileContent,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, openFile } from "../helpers/shared-context";
+  openFile,
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createProject } from "../helpers/entity-helpers";
 
 describe("Context-Aware Task Modal", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-  });
 
   test("should create a task when form is submitted", async () => {
     await context.page.keyboard.press("Control+p");
@@ -88,8 +84,6 @@ describe("Context-Aware Task Modal", () => {
   });
 
   test("should create task with project context when opened from project file", async () => {
-    await createTestFolders(context.page);
-
     // Create a project using entity helper
     await createProject(context, {
       name: "Context Project",
@@ -154,8 +148,6 @@ describe("Context-Aware Task Modal", () => {
   });
 
   test("should handle task creation cancellation properly", async () => {
-    await createTestFolders(context.page);
-
     // Open modal
     await context.page.keyboard.press("Control+p");
     await context.page.fill(".prompt-input", "Add Task");

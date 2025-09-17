@@ -6,24 +6,39 @@ import { test, expect, describe, beforeAll, beforeEach } from "vitest";
 import {
   createTestFolders,
   waitForElementVisible,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, openFile } from "../helpers/shared-context";
+  openFile,
+  enableIntegration,
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 import { createProject, createArea } from "../helpers/entity-helpers";
-import { openGitHubIssuesView } from "../helpers/github-integration-helpers";
-import { toggleSidebar } from "../helpers/plugin-setup";
+import {
+  openGitHubIssuesView,
+  stubGitHubWithFixtures,
+} from "../helpers/github-integration-helpers";
+import { toggleSidebar } from "../helpers/global";
 
 describe("ContextWidget", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-  });
 
   beforeEach(async () => {
     await toggleSidebar(context.page, "right", true);
   });
 
   test("should display 'No context' when no file is open", async () => {
+    // Enable GitHub integration first
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
+    // Stub GitHub APIs
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "issues-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
     // Open GitHub Issues view
     await openGitHubIssuesView(context.page);
 
@@ -47,6 +62,20 @@ describe("ContextWidget", () => {
   });
 
   test("should display project context when project file is open", async () => {
+    // Enable GitHub integration first
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
+    // Stub GitHub APIs
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "issues-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
     // Create a test project
     const projectName = "Test Project Context";
     await createProject(context, {
@@ -92,6 +121,20 @@ describe("ContextWidget", () => {
   });
 
   test("should display area context when area file is open", async () => {
+    // Enable GitHub integration first
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
+    // Stub GitHub APIs
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "issues-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
     // Create a test area
     const areaName = "Test Area Context";
     await createArea(context, {
@@ -131,6 +174,20 @@ describe("ContextWidget", () => {
   });
 
   test("should update context when switching between files", async () => {
+    // Enable GitHub integration first
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
+    // Stub GitHub APIs
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "issues-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
     // Create test entities
     const projectName = "Switch Test Project";
     const areaName = "Switch Test Area";
@@ -186,6 +243,20 @@ describe("ContextWidget", () => {
   });
 
   test("should show no context when switching to non-project/area file", async () => {
+    // Enable GitHub integration first
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
+    // Stub GitHub APIs
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "issues-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
     // Create a project first to have some context
     const projectName = "Context Reset Project";
     await createProject(context, {

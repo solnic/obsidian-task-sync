@@ -2,42 +2,39 @@
  * E2E tests for GitHub Pull Requests Integration
  */
 
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
+import { test, expect, describe, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
-import { createTestFolders } from "../helpers/task-sync-setup";
-import { toggleSidebar } from "../helpers/plugin-setup";
 import {
-  waitForGitHubViewContent,
-  configureGitHubIntegration,
-  openGitHubIssuesView,
-  stubGitHubWithFixtures,
-} from "../helpers/github-integration-helpers";
+  enableIntegration,
+  openView,
+  switchToTaskService,
+  toggleSidebar,
+} from "../helpers/global";
+import { stubGitHubWithFixtures } from "../helpers/github-integration-helpers";
 
 describe("GitHub Pull Requests Integration", () => {
   const context = setupE2ETestHooks();
 
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-  });
-
   beforeEach(async () => {
-    await configureGitHubIntegration(context.page, {
-      enabled: true,
-      repository: "solnic/obsidian-task-sync",
-      token: "fake-token-for-testing",
-    });
-
     await toggleSidebar(context.page, "right", true);
   });
 
   test("should display pull requests tab and switch between tabs", async () => {
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
     await stubGitHubWithFixtures(context.page, {
       issues: "issues-basic",
       pullRequests: "pull-requests-multiple",
       repositories: "repositories-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
     });
 
-    await openGitHubIssuesView(context.page);
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "github");
 
     const pullRequestsTab = context.page.locator(
       '[data-testid="pull-requests-tab"]'
@@ -53,19 +50,21 @@ describe("GitHub Pull Requests Integration", () => {
   });
 
   test("should display pull request details correctly", async () => {
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
     await stubGitHubWithFixtures(context.page, {
       issues: "issues-basic",
       pullRequests: "pull-requests-detailed",
       repositories: "repositories-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
     });
 
-    await configureGitHubIntegration(context.page, {
-      enabled: true,
-      repository: "solnic/obsidian-task-sync",
-      token: "fake-token-for-testing",
-    });
-
-    await openGitHubIssuesView(context.page);
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "github");
 
     const pullRequestsTab = context.page.locator(
       '[data-testid="pull-requests-tab"]'

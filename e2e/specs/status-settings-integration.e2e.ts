@@ -3,27 +3,19 @@
  * Tests that changes to status configurations properly affect the synchronization behavior
  */
 
-import { test, expect, describe, beforeAll } from "vitest";
+import { test, expect, describe } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import {
-  createTestFolders,
-  waitForTaskSyncPlugin,
   waitForTaskPropertySync,
   waitForStatusChangeComplete,
   openTaskStatusSettings,
   addTaskStatus,
-  toggleTaskStatusDone,
   verifyTaskProperties,
-} from "../helpers/task-sync-setup";
+} from "../helpers/global";
 import { createTask } from "../helpers/entity-helpers";
 
 describe("Status Settings Integration with Event System", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await createTestFolders(context.page);
-    await waitForTaskSyncPlugin(context.page);
-  });
 
   test("should respect isDone configuration for status synchronization", async () => {
     // Open Task Status settings and add custom statuses through UI

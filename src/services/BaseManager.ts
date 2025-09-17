@@ -53,7 +53,7 @@ export class BaseManager {
   constructor(
     private app: App,
     private vault: Vault,
-    private settings: TaskSyncSettings,
+    private settings: TaskSyncSettings
   ) {}
 
   /**
@@ -67,7 +67,7 @@ export class BaseManager {
    * Generate the main Tasks.base file with all task properties and default views
    */
   async generateTasksBase(
-    projectsAndAreas: ProjectAreaInfo[],
+    projectsAndAreas: ProjectAreaInfo[]
   ): Promise<string> {
     return generateTasksBaseConfig(this.settings, projectsAndAreas);
   }
@@ -88,7 +88,7 @@ export class BaseManager {
    * Create or update the Tasks.base file
    */
   async createOrUpdateTasksBase(
-    projectsAndAreas: ProjectAreaInfo[],
+    projectsAndAreas: ProjectAreaInfo[]
   ): Promise<void> {
     const baseFilePath = `${this.settings.basesFolder}/${this.settings.tasksBaseFile}`;
     const content = await this.generateTasksBase(projectsAndAreas);
@@ -102,7 +102,7 @@ export class BaseManager {
   private async createOrUpdateBaseFile(
     baseFilePath: string,
     content: string,
-    type: string,
+    type: string
   ): Promise<void> {
     try {
       // Use more reliable file existence check
@@ -125,7 +125,7 @@ export class BaseManager {
             if (retryFile instanceof TFile) {
               await this.vault.modify(retryFile, content);
               console.log(
-                `Updated ${type} base file after retry: ${baseFilePath}`,
+                `Updated ${type} base file after retry: ${baseFilePath}`
               );
             } else {
               throw createError;
@@ -144,7 +144,7 @@ export class BaseManager {
             if (existingFile instanceof TFile) {
               await this.vault.modify(existingFile, content);
               console.log(
-                `Updated ${type} base file after creation conflict: ${baseFilePath}`,
+                `Updated ${type} base file after creation conflict: ${baseFilePath}`
               );
             } else {
               throw createError;
@@ -196,13 +196,13 @@ export class BaseManager {
     // Scan projects folder for files with Type: Project
     try {
       const projectsFolder = this.vault.getAbstractFileByPath(
-        this.settings.projectsFolder,
+        this.settings.projectsFolder
       );
       if (projectsFolder) {
         const projectFiles = this.vault
           .getMarkdownFiles()
           .filter((file) =>
-            file.path.startsWith(this.settings.projectsFolder + "/"),
+            file.path.startsWith(this.settings.projectsFolder + "/")
           );
 
         for (const file of projectFiles) {
@@ -210,7 +210,7 @@ export class BaseManager {
           const frontmatter = cache?.frontmatter;
 
           console.log(
-            `BaseManager: Checking project file ${file.path}, Type: ${frontmatter?.Type}`,
+            `BaseManager: Checking project file ${file.path}, Type: ${frontmatter?.Type}`
           );
 
           // Only include files with Type: Project
@@ -223,7 +223,7 @@ export class BaseManager {
             });
           } else {
             console.log(
-              `BaseManager: Skipping project file ${file.path} (Type: ${frontmatter?.Type})`,
+              `BaseManager: Skipping project file ${file.path} (Type: ${frontmatter?.Type})`
             );
           }
         }
@@ -235,13 +235,13 @@ export class BaseManager {
     // Scan areas folder for files with Type: Area
     try {
       const areasFolder = this.vault.getAbstractFileByPath(
-        this.settings.areasFolder,
+        this.settings.areasFolder
       );
       if (areasFolder) {
         const areaFiles = this.vault
           .getMarkdownFiles()
           .filter((file) =>
-            file.path.startsWith(this.settings.areasFolder + "/"),
+            file.path.startsWith(this.settings.areasFolder + "/")
           );
 
         for (const file of areaFiles) {
@@ -249,7 +249,7 @@ export class BaseManager {
           const frontmatter = cache?.frontmatter;
 
           console.log(
-            `BaseManager: Checking area file ${file.path}, Type: ${frontmatter?.Type}`,
+            `BaseManager: Checking area file ${file.path}, Type: ${frontmatter?.Type}`
           );
 
           // Only include files with Type: Area
@@ -262,7 +262,7 @@ export class BaseManager {
             });
           } else {
             console.log(
-              `BaseManager: Skipping area file ${file.path} (Type: ${frontmatter?.Type})`,
+              `BaseManager: Skipping area file ${file.path} (Type: ${frontmatter?.Type})`
             );
           }
         }
@@ -281,19 +281,19 @@ export class BaseManager {
     const projectsAndAreas = await this.getProjectsAndAreas();
     console.log(
       `BaseManager: Found ${projectsAndAreas.length} projects and areas:`,
-      projectsAndAreas.map((item) => `${item.name} (${item.type})`),
+      projectsAndAreas.map((item) => `${item.name} (${item.type})`)
     );
 
     // Handle area bases
     console.log(
-      `BaseManager: areaBasesEnabled = ${this.settings.areaBasesEnabled}`,
+      `BaseManager: areaBasesEnabled = ${this.settings.areaBasesEnabled}`
     );
     if (this.settings.areaBasesEnabled) {
       // Create individual bases for areas
       const areas = projectsAndAreas.filter((item) => item.type === "area");
       console.log(
         `BaseManager: Found ${areas.length} areas to create bases for:`,
-        areas.map((a) => a.name),
+        areas.map((a) => a.name)
       );
       for (const area of areas) {
         console.log(`BaseManager: Creating area base for: ${area.name}`);
@@ -302,23 +302,23 @@ export class BaseManager {
     } else {
       // Clean up existing area bases when disabled
       console.log(
-        "BaseManager: Area bases disabled, cleaning up existing bases",
+        "BaseManager: Area bases disabled, cleaning up existing bases"
       );
       await this.cleanupAreaBases(projectsAndAreas);
     }
 
     // Handle project bases
     console.log(
-      `BaseManager: projectBasesEnabled = ${this.settings.projectBasesEnabled}`,
+      `BaseManager: projectBasesEnabled = ${this.settings.projectBasesEnabled}`
     );
     if (this.settings.projectBasesEnabled) {
       // Create individual bases for projects
       const projects = projectsAndAreas.filter(
-        (item) => item.type === "project",
+        (item) => item.type === "project"
       );
       console.log(
         `BaseManager: Found ${projects.length} projects to create bases for:`,
-        projects.map((p) => p.name),
+        projects.map((p) => p.name)
       );
       for (const project of projects) {
         console.log(`BaseManager: Creating project base for: ${project.name}`);
@@ -327,7 +327,7 @@ export class BaseManager {
     } else {
       // Clean up existing project bases when disabled
       console.log(
-        "BaseManager: Project bases disabled, cleaning up existing bases",
+        "BaseManager: Project bases disabled, cleaning up existing bases"
       );
       await this.cleanupProjectBases(projectsAndAreas);
     }
@@ -416,7 +416,7 @@ export class BaseManager {
    */
   async ensureSpecificBaseEmbedding(
     filePath: string,
-    baseFileName: string,
+    baseFileName: string
   ): Promise<void> {
     try {
       const file = this.vault.getAbstractFileByPath(filePath);
@@ -425,7 +425,10 @@ export class BaseManager {
       const content = await this.vault.read(file);
       const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
       const specificBasePattern = new RegExp(
-        `!\\[\\[${baseFilePath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\|.*?)?\\]\\]`,
+        `!\\[\\[${baseFilePath.replace(
+          /[.*+?^${}()|[\]\\]/g,
+          "\\$&"
+        )}(\\|.*?)?\\]\\]`
       );
 
       // If the specific base embed already exists, we're done
@@ -467,7 +470,7 @@ export class BaseManager {
    * Clean up area base files when area bases are disabled
    */
   private async cleanupAreaBases(
-    projectsAndAreas: ProjectAreaInfo[],
+    projectsAndAreas: ProjectAreaInfo[]
   ): Promise<void> {
     const areas = projectsAndAreas.filter((item) => item.type === "area");
 
@@ -495,7 +498,7 @@ export class BaseManager {
    * Clean up project base files when project bases are disabled
    */
   private async cleanupProjectBases(
-    projectsAndAreas: ProjectAreaInfo[],
+    projectsAndAreas: ProjectAreaInfo[]
   ): Promise<void> {
     const projects = projectsAndAreas.filter((item) => item.type === "project");
 

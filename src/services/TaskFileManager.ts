@@ -6,18 +6,20 @@
 
 import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../main";
-import { FileManager, FileCreationData } from "./FileManager";
+import { FileManager } from "./FileManager";
 import { PROPERTY_REGISTRY } from "../types/properties";
 import { PROPERTY_SETS } from "./base-definitions/BaseConfigurations";
 import { Task, TaskUtils } from "../types/entities";
-import { createWikiLink, createLinkFormat } from "../utils/linkUtils";
+import { createWikiLink } from "../utils/linkUtils";
 import moment from "moment";
 
 /**
  * Interface for task creation data
  */
-export interface TaskCreationData extends FileCreationData {
+export interface TaskCreationData {
   title: string;
+  description?: string;
+  category?: string;
   priority?: string;
   areas?: string | string[];
   project?: string;
@@ -188,22 +190,27 @@ export class TaskFileManager extends FileManager {
   }
 
   /**
-   * Generate front-matter object for a task with missing keys and values filled from property definitions
+   * Generate front-matter object for a task using property sets from base configurations
    * @param data - Task creation data
-   * @returns Front-matter object with all required properties
+   * @returns Front-matter object with all required properties in correct order
    */
   private generateTaskFrontMatterObject(
     data: TaskCreationData
   ): Record<string, any> {
     const frontMatterData: Record<string, any> = {};
 
-    for (const propertyKey of PROPERTY_SETS.TASK_FRONTMATTER) {
+    // Get property order from settings or use default from TASK_FRONTMATTER property set
+    // Always use PROPERTY_SETS.TASK_FRONTMATTER to ensure we have property keys, not names
+    const propertyOrder = PROPERTY_SETS.TASK_FRONTMATTER;
+
+    // Process each property in the defined order
+    for (const propertyKey of propertyOrder) {
       const prop =
         PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
 
-      if (!prop) continue;
+      if (!prop || !prop.frontmatter) continue;
 
-      let value = data[prop.key];
+      let value = data[prop.key as keyof TaskCreationData];
 
       if (value !== undefined && value !== null) {
         // Convert Date objects to ISO date strings for front-matter
@@ -243,9 +250,13 @@ export class TaskFileManager extends FileManager {
         frontMatterData[prop.name] = value;
       } else if (prop.default !== undefined) {
         frontMatterData[prop.name] = prop.default;
+      } else {
+        // Set empty value for required properties without defaults
+        frontMatterData[prop.name] = prop.type === "array" ? [] : "";
       }
     }
 
+    // Ensure Type is always set to "Task"
     frontMatterData.Type = "Task";
 
     return frontMatterData;
@@ -341,25 +352,6 @@ export class TaskFileManager extends FileManager {
     taskWithFrontmatter.dueDate = parseDate(frontMatter["Due Date"]);
 
     return taskWithFrontmatter;
-  }
-
-  /**
-   * Implementation of abstract createEntityFile method
-   * @param data - File creation data
-   * @returns Path of the created file
-   */
-  async createEntityFile(data: FileCreationData): Promise<string> {
-    if (this.isTaskCreationData(data)) {
-      return await this.createTaskFile(data);
-    }
-    throw new Error("Invalid data type for TaskFileManager");
-  }
-
-  /**
-   * Type guard to check if data is TaskCreationData
-   */
-  private isTaskCreationData(data: FileCreationData): data is TaskCreationData {
-    return "title" in data;
   }
 
   /**
@@ -595,6 +587,7 @@ export class TaskFileManager extends FileManager {
 
   /**
    * Update a task file's properties to match current schema and property order
+   * Uses property sets from base configurations and Obsidian's processFrontmatter API
    * @param filePath - Path to the task file
    * @returns Object with hasChanges and propertiesChanged count
    */
@@ -602,10 +595,13 @@ export class TaskFileManager extends FileManager {
     filePath: string
   ): Promise<{ hasChanges: boolean; propertiesChanged: number }> {
     const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
-    const fullContent = await this.vault.read(file);
 
-    // Extract existing front-matter
-    const existingFrontMatter = this.extractFrontMatterData(fullContent);
+    if (!file) {
+      return { hasChanges: false, propertiesChanged: 0 };
+    }
+
+    // Get existing front-matter using Obsidian's metadata cache
+    const existingFrontMatter = await this.loadFrontMatter(filePath);
 
     // Check if file should be processed as a task file
     // Skip files that have a Type property that clearly indicates they're not tasks
@@ -617,118 +613,117 @@ export class TaskFileManager extends FileManager {
       return { hasChanges: false, propertiesChanged: 0 };
     }
 
-    const properties = this.getTaskPropertiesInOrder();
-    const currentSchema: Record<string, any> = {};
-    const propertyOrder: string[] = [];
+    // Get property order from settings or use default from TASK_FRONTMATTER property set
+    const propertyOrder =
+      this.settings.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
 
-    properties.forEach((prop: any) => {
-      currentSchema[prop.name] = {
-        type: prop.type,
-        ...(prop.default !== undefined && { default: prop.default }),
-        ...(prop.link && { link: prop.link }),
-      };
-      propertyOrder.push(prop.name);
-    });
+    // Build the target front-matter structure using property registry
+    const targetFrontMatter: Record<string, any> = {};
+    const validPropertyNames = new Set<string>();
 
+    // Process each property in the defined order
+    for (const propertyKey of propertyOrder) {
+      const prop =
+        PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+      if (!prop || !prop.frontmatter) continue;
+
+      validPropertyNames.add(prop.name);
+
+      // Set value from existing front-matter or use default
+      if (existingFrontMatter[prop.name] !== undefined) {
+        targetFrontMatter[prop.name] = existingFrontMatter[prop.name];
+      } else if (prop.default !== undefined) {
+        targetFrontMatter[prop.name] = prop.default;
+      } else {
+        // Set empty value for required properties without defaults
+        targetFrontMatter[prop.name] = prop.type === "array" ? [] : "";
+      }
+    }
+
+    // Preserve existing Type if it's a valid task type, otherwise set to "Task"
+    if (
+      existingFrontMatter.Type &&
+      this.isValidTaskType(existingFrontMatter.Type)
+    ) {
+      targetFrontMatter.Type = existingFrontMatter.Type;
+    } else {
+      targetFrontMatter.Type = "Task";
+    }
+
+    // Check if changes are needed
     let hasChanges = false;
     let propertiesChanged = 0;
 
-    // Create updated front-matter object
-    const updatedFrontMatter = { ...existingFrontMatter };
-
-    // Add all missing fields from schema
-    for (const [fieldName, fieldConfig] of Object.entries(currentSchema)) {
-      const config = fieldConfig as { default?: any };
-      if (config && !(fieldName in updatedFrontMatter)) {
-        // Add any field that's defined in the schema
-        updatedFrontMatter[fieldName] = config.default || "";
-        console.log(
-          `Task Sync: Added missing field '${fieldName}' to ${filePath}`
-        );
+    // Check for missing properties
+    for (const [key, value] of Object.entries(targetFrontMatter)) {
+      if (!(key in existingFrontMatter)) {
+        hasChanges = true;
+        propertiesChanged++;
+      } else if (existingFrontMatter[key] !== value) {
+        // Count as change if values are different, regardless of whether the new value is empty
         hasChanges = true;
         propertiesChanged++;
       }
     }
 
-    // Remove obsolete fields - only remove fields that are clearly from Task Sync plugin
-    // and no longer defined in the current schema. Be very conservative to preserve
-    // user-defined fields and fields from other plugins.
-    const validFields = new Set(Object.keys(currentSchema));
+    // Check property order by comparing current order with target order
+    if (!hasChanges) {
+      const currentOrder = Object.keys(existingFrontMatter);
+      const targetOrder = Object.keys(targetFrontMatter);
 
-    // Define fields that are known to be from Task Sync plugin and can be safely removed
-    // if they're no longer in the schema. This is a whitelist approach - only remove
-    // fields we're certain about.
-    const knownTaskSyncFields = new Set([
-      // Legacy fields that might have been used in older versions
-      "Sub-tasks",
-      "Subtasks",
-      "Parent Task",
-      "ParentTask",
-      // Any other legacy Task Sync fields can be added here
-    ]);
-
-    for (const fieldName of Object.keys(updatedFrontMatter)) {
-      // Only remove fields that are:
-      // 1. Not in the current schema AND
-      // 2. Are known to be legacy Task Sync fields
-      if (!validFields.has(fieldName) && knownTaskSyncFields.has(fieldName)) {
-        console.log(
-          `Task Sync: Removing obsolete Task Sync field '${fieldName}' from ${filePath}`
-        );
-        delete updatedFrontMatter[fieldName];
+      // Simple order check - if the first few properties don't match expected order
+      if (
+        currentOrder.length !== targetOrder.length ||
+        currentOrder.slice(0, Math.min(3, targetOrder.length)).join(",") !==
+          targetOrder.slice(0, Math.min(3, targetOrder.length)).join(",")
+      ) {
         hasChanges = true;
         propertiesChanged++;
       }
     }
 
-    // Check if property order matches schema
-    if (
-      !hasChanges &&
-      !this.isPropertyOrderCorrect(fullContent, currentSchema, propertyOrder)
-    ) {
-      hasChanges = true;
-      propertiesChanged++; // Count order change as one property change
-    }
-
-    // Only update the file if there are changes
+    // Apply changes using Obsidian's processFrontmatter API
     if (hasChanges) {
-      // Manually reorder properties to ensure correct order
-      const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (file) {
-        // Regenerate the front-matter section in correct order
-        const frontMatterLines = ["---"];
+      await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+        // Preserve custom properties and common Obsidian properties
+        const commonObsidianProperties = new Set([
+          "tags",
+          "aliases",
+          "cssclass",
+          "publish",
+          "created",
+          "modified",
+        ]);
 
-        // Include ALL fields from the schema in the correct order
-        for (const fieldName of propertyOrder) {
-          const value = updatedFrontMatter[fieldName];
-          if (value !== undefined) {
-            frontMatterLines.push(
-              `${fieldName}: ${this.formatPropertyValue(value)}`
-            );
+        const preservedProperties: Record<string, any> = {};
+
+        // Save properties that should be preserved (non-plugin properties)
+        for (const [key, value] of Object.entries(frontmatter)) {
+          if (
+            commonObsidianProperties.has(key) ||
+            !validPropertyNames.has(key)
+          ) {
+            preservedProperties[key] = value;
           }
         }
 
-        // Add any additional fields that aren't in the schema but exist in the file
-        for (const [key, value] of Object.entries(updatedFrontMatter)) {
-          if (!propertyOrder.includes(key)) {
-            frontMatterLines.push(`${key}: ${this.formatPropertyValue(value)}`);
+        // Clear only plugin-managed properties
+        Object.keys(frontmatter).forEach((key) => {
+          if (validPropertyNames.has(key)) {
+            delete frontmatter[key];
           }
+        });
+
+        // Add plugin properties in the correct order
+        for (const [key, value] of Object.entries(targetFrontMatter)) {
+          frontmatter[key] = value;
         }
 
-        frontMatterLines.push("---");
-
-        // Extract body content (everything after front-matter)
-        const frontMatterMatch = fullContent.match(
-          /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/
-        );
-        const bodyContent = frontMatterMatch ? frontMatterMatch[2] : "";
-
-        // Combine updated front-matter with existing body
-        const updatedContent = frontMatterLines.join("\n") + "\n" + bodyContent;
-
-        // Write back to file
-        await this.vault.modify(file as any, updatedContent);
-      }
+        // Re-add preserved properties at the end
+        for (const [key, value] of Object.entries(preservedProperties)) {
+          frontmatter[key] = value;
+        }
+      });
     }
 
     return { hasChanges, propertiesChanged };

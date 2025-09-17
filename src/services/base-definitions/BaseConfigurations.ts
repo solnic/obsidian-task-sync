@@ -4,7 +4,7 @@
  */
 
 import * as yaml from "js-yaml";
-import pluralize from "pluralize";
+import { pluralize } from "inflection";
 
 import { TaskSyncSettings } from "../../main";
 import { PROPERTY_REGISTRY, PropertyDefinition } from "../../types/properties";

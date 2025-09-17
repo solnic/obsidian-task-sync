@@ -1,321 +1,8 @@
-import type { Page, ElectronApplication } from "playwright";
-import { executeCommand, type SharedTestContext } from "./shared-context";
-import * as path from "path";
-import * as fs from "fs";
+import type { Page } from "playwright";
+import { TFile } from "obsidian";
 
-/**
- * Setup Obsidian with Task Sync plugin for e2e testing
- * Uses the shared context system for proper test isolation
- */
-export async function setupObsidianWithTaskSync(
-  vaultPath: string,
-  dataDir: string
-): Promise<{ electronApp: ElectronApplication; page: Page }> {
-  // Import shared context system
-  const { getSharedTestContext } = await import("./shared-context");
-
-  // Use shared context instead of creating new instances
-  const context = await getSharedTestContext();
-
-  return {
-    electronApp: context.electronApp,
-    page: context.page,
-  };
-}
-
-/**
- * Setup Obsidian with Playwright/Electron
- * Launches Obsidian, waits for initialization, and enables the task-sync plugin
- * @param vaultPath Required vault path for testing
- * @param dataDir Required data directory for testing
- */
-export async function setupObsidianElectron(
-  vaultPath: string,
-  dataDir: string
-): Promise<{ electronApp: ElectronApplication; page: Page }> {
-  const { _electron: electron } = await import("playwright");
-
-  // Check for different possible Obsidian structures
-  const mainJsPath = path.resolve("./.obsidian-unpacked/main.js");
-  const appExtractedMainJs = path.resolve(
-    "./.obsidian-unpacked/app-extracted/main.js"
-  );
-  const obsidianBinaryPath = path.resolve("./.obsidian-unpacked/obsidian");
-  const appAsarPath = path.resolve("./.obsidian-unpacked/resources/app.asar");
-
-  let appPath: string;
-  if (fs.existsSync(appExtractedMainJs)) {
-    appPath = appExtractedMainJs;
-  } else if (fs.existsSync(mainJsPath)) {
-    appPath = mainJsPath;
-  } else if (fs.existsSync(appAsarPath)) {
-    appPath = obsidianBinaryPath;
-  } else if (fs.existsSync(obsidianBinaryPath)) {
-    // Fallback to binary
-    appPath = obsidianBinaryPath;
-  } else {
-    throw new Error(
-      `Unpacked Obsidian not found. Checked: ${appExtractedMainJs}, ${mainJsPath}, ${appAsarPath}, ${obsidianBinaryPath}. ` +
-        "Please run: npm run setup:obsidian-playwright"
-    );
-  }
-
-  const resolvedVaultPath = path.resolve(vaultPath);
-  const userDataDir = path.resolve(dataDir);
-
-  // Determine if we should run in headless mode
-  const isHeadless =
-    process.env.E2E_HEADLESS === "false"
-      ? false
-      : process.env.CI === "true" ||
-        process.env.E2E_HEADLESS === "true" ||
-        process.env.DISPLAY === undefined ||
-        process.env.DISPLAY === "";
-
-  // Prepare launch arguments for Electron
-  const launchArgs = [
-    appPath,
-    "--user-data-dir=" + userDataDir,
-    "open",
-    `obsidian://open?path=${encodeURIComponent(resolvedVaultPath)}`,
-    // Add window size arguments
-    "--window-size=1920,1080",
-    "--force-device-scale-factor=1",
-  ];
-
-  // Add sandbox and headless arguments
-  const needsSandboxDisabled =
-    isHeadless ||
-    process.env.CI === "true" ||
-    process.env.DISPLAY?.startsWith(":") ||
-    !process.env.DISPLAY;
-
-  if (needsSandboxDisabled) {
-    launchArgs.push(
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage"
-    );
-  }
-
-  if (isHeadless) {
-    launchArgs.push(
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-      "--disable-software-rasterizer",
-      "--disable-extensions",
-      "--disable-background-timer-throttling",
-      "--disable-backgrounding-occluded-windows",
-      "--disable-renderer-backgrounding",
-      "--disable-features=TranslateUI",
-      "--disable-ipc-flooding-protection",
-      "--disable-web-security",
-      "--allow-running-insecure-content",
-      "--disable-features=VizDisplayCompositor",
-      "--disable-dbus",
-      "--disable-default-apps",
-      "--disable-component-update"
-    );
-  }
-
-  // Launch Electron
-  const electronApp = await electron.launch({
-    args: launchArgs,
-    timeout: 30000,
-    env: {
-      ...process.env,
-      NODE_ENV: "test",
-      ...(isHeadless && !process.env.DISPLAY && { DISPLAY: ":99" }),
-    },
-  });
-
-  let page;
-  try {
-    // Wait a bit for the app to initialize
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    // Check if any windows exist
-    const windows = electronApp.windows();
-    if (windows.length > 0) {
-      page = windows[0];
-    } else {
-      page = await electronApp.firstWindow({ timeout: 30000 });
-    }
-  } catch (windowError) {
-    console.error("❌ Failed to get window:", windowError.message);
-
-    // Try to get any available windows as fallback
-    const windows = electronApp.windows();
-    console.log(`🔍 Fallback: Found ${windows.length} windows`);
-
-    if (windows.length > 0) {
-      page = windows[0];
-    } else {
-      throw new Error(
-        `No windows available. Original error: ${windowError.message}`
-      );
-    }
-  }
-
-  // Set viewport size to Full HD for consistent testing
-  try {
-    await page.setViewportSize({ width: 1920, height: 1080 });
-    console.log("✅ Set viewport to 1920x1080");
-  } catch (viewportError) {
-    console.log("⚠️ Could not set viewport size:", viewportError.message);
-  }
-
-  try {
-    await page.waitForFunction(
-      () => {
-        const app = (window as any).app;
-        const hasApp = typeof app !== "undefined";
-        const hasWorkspace = hasApp && app.workspace !== undefined;
-        const isLayoutReady =
-          hasWorkspace && app.workspace.layoutReady === true;
-
-        // Log progress for debugging
-        if (!hasApp) {
-          console.log("🔍 Waiting for app object...");
-        } else if (!hasWorkspace) {
-          console.log("🔍 App found, waiting for workspace...");
-        } else if (!isLayoutReady) {
-          console.log("🔍 Workspace found, waiting for layout to be ready...");
-        }
-
-        return isLayoutReady;
-      },
-      { timeout: 90000 }
-    );
-  } catch (error) {
-    console.error(
-      "❌ Timeout waiting for Obsidian to be ready:",
-      error.message
-    );
-
-    // Get current state for debugging
-    const currentState = await page.evaluate(() => {
-      const app = (window as any).app;
-      return {
-        hasApp: typeof app !== "undefined",
-        hasWorkspace: app && app.workspace !== undefined,
-        layoutReady: app && app.workspace && app.workspace.layoutReady,
-        appKeys: app ? Object.keys(app) : [],
-        workspaceKeys: app && app.workspace ? Object.keys(app.workspace) : [],
-      };
-    });
-    console.log(
-      "🔍 Current Obsidian state:",
-      JSON.stringify(currentState, null, 2)
-    );
-    throw error;
-  }
-
-  // Enable plugins
-  await page.evaluate(() => {
-    (window as any).app.plugins.setEnable(true);
-  });
-
-  await page.waitForTimeout(500);
-
-  // Configure plugin settings
-  await page.evaluate(async () => {
-    const testSettings = {
-      tasksFolder: "Tasks",
-      projectsFolder: "Projects",
-      areasFolder: "Areas",
-      templateFolder: "Templates",
-      enableAutoSync: false, // Disable for testing
-      syncInterval: 300000,
-      useTemplater: false,
-      defaultTaskTemplate: "Task.md",
-      defaultProjectTemplate: "project-template.md",
-      defaultAreaTemplate: "area-template.md",
-      defaultParentTaskTemplate: "parent-task-template.md",
-    };
-
-    const app = (window as any).app;
-    if (app.vault && app.vault.adapter) {
-      try {
-        await app.vault.adapter.write(
-          ".obsidian/plugins/obsidian-task-sync/data.json",
-          JSON.stringify(testSettings)
-        );
-        console.log("✅ Task Sync plugin settings configured");
-      } catch (error) {
-        console.log("⚠️ Could not write plugin data file:", error.message);
-      }
-    }
-  });
-
-  // Enable the task-sync plugin
-  await page.evaluate(async () => {
-    try {
-      await (window as any).app.plugins.enablePlugin("obsidian-task-sync");
-    } catch (error) {
-      console.log("⚠️ Plugin enable error:", error.message);
-    }
-  });
-
-  await page.waitForTimeout(1000);
-
-  // Verify plugin is loaded
-  try {
-    await page.waitForFunction(
-      () => {
-        return (
-          typeof (window as any).app !== "undefined" &&
-          (window as any).app.plugins !== undefined &&
-          (window as any).app.plugins.plugins["obsidian-task-sync"] !==
-            undefined
-        );
-      },
-      { timeout: 30000 }
-    );
-  } catch (error) {
-    const availablePlugins = await page.evaluate(() => {
-      if (
-        typeof (window as any).app !== "undefined" &&
-        (window as any).app.plugins
-      ) {
-        return Object.keys((window as any).app.plugins.plugins || {});
-      }
-      return [];
-    });
-    console.error(
-      "❌ Task Sync plugin not found. Available plugins:",
-      availablePlugins
-    );
-    throw new Error(
-      `Task Sync plugin not loaded. Available plugins: ${availablePlugins.join(
-        ", "
-      )}`
-    );
-  }
-
-  return { electronApp, page };
-}
-
-/**
- * Wait for the Task Sync plugin to be fully loaded and ready
- */
-export async function waitForTaskSyncPlugin(
-  page: Page,
-  timeout: number = 10000
-): Promise<void> {
-  await page.waitForFunction(
-    () => {
-      const app = (window as any).app;
-      const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
-      return (
-        plugin &&
-        plugin.settings &&
-        typeof plugin.regenerateBases === "function"
-      );
-    },
-    { timeout }
-  );
-}
+import { type SharedTestContext } from "./shared-context";
+import { captureScreenshotOnFailure } from "./shared-context";
 
 /**
  * Wait for a base file to be created or updated
@@ -430,11 +117,7 @@ export async function waitForFileContentToContain(
       const file = app.vault.getAbstractFileByPath(path);
       if (!file) return "FILE_NOT_FOUND";
 
-      try {
-        return await app.vault.read(file);
-      } catch (error) {
-        return `ERROR_READING_FILE: ${error.message}`;
-      }
+      return await app.vault.read(file);
     },
     { path: filePath }
   );
@@ -634,39 +317,7 @@ export async function waitForTaskPropertySync(
 ): Promise<void> {
   const expectedText = `${property}: ${expectedValue}`;
 
-  try {
-    await waitForFileContentToContain(page, filePath, expectedText, timeout);
-  } catch (error) {
-    // Enhanced error message for task property sync
-    const currentContent = await page.evaluate(
-      async ({ path }) => {
-        const app = (window as any).app;
-        const file = app.vault.getAbstractFileByPath(path);
-        if (!file) return "FILE_NOT_FOUND";
-
-        try {
-          return await app.vault.read(file);
-        } catch (error) {
-          return `ERROR_READING_FILE: ${error.message}`;
-        }
-      },
-      { path: filePath }
-    );
-
-    // Extract current property value for better debugging
-    const propertyMatch = currentContent.match(
-      new RegExp(`${property}:\\s*(.+)`)
-    );
-    const currentValue = propertyMatch ? propertyMatch[1].trim() : "NOT_FOUND";
-
-    throw new Error(
-      `Task property synchronization failed for "${filePath}".\n` +
-        `Expected: ${property}: ${expectedValue}\n` +
-        `Current: ${property}: ${currentValue}\n` +
-        `Timeout: ${timeout}ms\n\n` +
-        `Full file content:\n${currentContent}`
-    );
-  }
+  await waitForFileContentToContain(page, filePath, expectedText, timeout);
 }
 
 /**
@@ -696,27 +347,7 @@ export async function getTaskSyncPlugin(page: Page): Promise<any> {
  * Create a test folder structure
  */
 export async function createTestFolders(page: Page): Promise<void> {
-  try {
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const folders = ["Tasks", "Projects", "Areas", "Templates", "Notes"];
-
-      for (const folder of folders) {
-        try {
-          const exists = await app.vault.adapter.exists(folder);
-          if (!exists) {
-            await app.vault.createFolder(folder);
-          } else {
-          }
-        } catch (error) {
-          console.log(`❌ Error creating folder ${folder}:`, error.message);
-        }
-      }
-    });
-  } catch (error) {
-    console.error("❌ createTestFolders failed:", error.message);
-    throw error;
-  }
+  console.warn("Creating test folders is no longer needed - remove call");
 }
 
 /**
@@ -755,14 +386,7 @@ export async function createTestTaskFile(
         tags: frontmatter.tags || [],
       };
 
-      try {
-        // Use the plugin's createTask method to ensure consistency
-        await plugin.createTask(taskData);
-        console.log(`Created test task file using plugin: ${taskName}`);
-      } catch (error) {
-        console.log(`Error creating task file ${taskName}:`, error.message);
-        throw error;
-      }
+      await plugin.createTask(taskData);
     },
     { filename, frontmatter, content }
   );
@@ -922,6 +546,343 @@ async function waitForSettingsModal(page: Page): Promise<void> {
   await page.waitForLoadState("networkidle");
 }
 
+export async function toggleSidebar(
+  page: Page,
+  sidebar: "left" | "right",
+  open: boolean
+): Promise<void> {
+  await page.evaluate(
+    async ({ sidebar, open }) => {
+      const app = (window as any).app;
+
+      if (app?.workspace) {
+        if (sidebar === "left") {
+          if (open) {
+            app.workspace.leftSplit.expand();
+          } else {
+            app.workspace.leftSplit.collapse();
+          }
+        } else if (sidebar === "right") {
+          if (open) {
+            app.workspace.rightSplit.expand();
+          } else {
+            app.workspace.rightSplit.collapse();
+          }
+        }
+      }
+    },
+    { sidebar, open }
+  );
+}
+
+/**
+ * Wait for a success notice to appear
+ */
+export async function waitForSuccessNotice(
+  page: Page,
+  timeout: number = 5000
+): Promise<boolean> {
+  try {
+    await page.waitForFunction(
+      () => {
+        const notices = document.querySelectorAll(".notice");
+        const noticeTexts = Array.from(notices).map(
+          (n) => n.textContent?.toLowerCase() || ""
+        );
+        return noticeTexts.some(
+          (text) =>
+            text.includes("sync") ||
+            text.includes("success") ||
+            text.includes("updated") ||
+            text.includes("published") ||
+            text.includes("saved")
+        );
+      },
+      {},
+      { timeout }
+    );
+    return true;
+  } catch (error) {
+    console.log(`No success notice appeared within ${timeout}ms`);
+    return false;
+  }
+}
+
+/**
+ * Wait for any modal to appear
+ */
+export async function waitForModal(
+  page: Page,
+  timeout: number = 5000
+): Promise<{ found: boolean; type: string }> {
+  try {
+    await page.waitForSelector(
+      ".modal-container, .suggester-container, .modal-backdrop",
+      { timeout }
+    );
+
+    const modalType = await page.evaluate(() => {
+      if (document.querySelector(".modal-container")) return "modal-container";
+      if (document.querySelector(".suggester-container")) return "suggester";
+      if (document.querySelector(".modal-backdrop")) return "custom-modal";
+      return "unknown";
+    });
+
+    return { found: true, type: modalType };
+  } catch (error) {
+    return { found: false, type: "none" };
+  }
+}
+
+/**
+ * Get modal content for interaction
+ */
+export async function getModalContent(page: Page): Promise<any> {
+  return await page.evaluate(() => {
+    const modalContainer = document.querySelector(".modal-container");
+    if (modalContainer) {
+      return { type: "modal-container", element: modalContainer };
+    }
+
+    const suggester = document.querySelector(".suggester-container");
+    if (suggester) {
+      return { type: "suggester", element: suggester };
+    }
+
+    const modalBackdrop = document.querySelector(".modal-backdrop");
+    if (modalBackdrop) {
+      return { type: "custom-modal", element: modalBackdrop };
+    }
+
+    return null;
+  });
+}
+
+/**
+ * Verify that the Task Sync plugin is properly loaded and available
+ */
+export async function verifyPluginAvailable(page: Page): Promise<void> {
+  const pluginCheck = await page.evaluate(() => {
+    const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+    const isEnabled = (window as any).app.plugins.isEnabled(
+      "obsidian-task-sync"
+    );
+    return {
+      pluginExists: !!plugin,
+      isEnabled: isEnabled,
+      hasSettings: !!plugin?.settings,
+    };
+  });
+
+  if (!pluginCheck.pluginExists) {
+    console.log("⚠️ Task Sync plugin is not loaded");
+    return;
+  }
+
+  console.log(
+    `✅ Plugin verification passed: enabled=${pluginCheck.isEnabled}, hasSettings=${pluginCheck.hasSettings}`
+  );
+}
+
+/**
+ * Get plugin instance (assumes plugin availability has been verified)
+ * This is a simplified version that doesn't include defensive checks
+ */
+export async function getPlugin(page: Page): Promise<any> {
+  return await page.evaluate(() => {
+    return (window as any).app.plugins.plugins["obsidian-task-sync"];
+  });
+}
+
+/**
+ * Get file from vault (assumes plugin availability has been verified)
+ * This is a simplified version that doesn't include defensive checks
+ */
+export async function getFile(page: Page, filePath: string): Promise<any> {
+  return await page.evaluate(
+    ({ path }) => {
+      return (window as any).app.vault.getAbstractFileByPath(path);
+    },
+    { path: filePath }
+  );
+}
+
+export async function executeCommand(
+  context: SharedTestContext,
+  command: string,
+  options?: { notice?: string }
+): Promise<void> {
+  await context.page.keyboard.press("Control+P");
+  await context.page.waitForSelector(".prompt-input");
+  await context.page.fill(".prompt-input", command);
+  await context.page.keyboard.press("Enter");
+
+  if (options?.notice) {
+    await expectNotice(context, options.notice);
+  }
+}
+
+/**
+ * Wait for and check if a notice with specific text appears
+ */
+export async function waitForNotice(
+  context: SharedTestContext,
+  expectedText: string,
+  timeout: number = 5000
+): Promise<boolean> {
+  try {
+    await context.page.waitForFunction(
+      ({ text }) => {
+        const noticeElements = document.querySelectorAll(".notice");
+        const notices = Array.from(noticeElements).map(
+          (el) => el.textContent || ""
+        );
+        return notices.some((notice) => notice.includes(text));
+      },
+      { text: expectedText },
+      { timeout }
+    );
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
+ * Wait for and verify that a notice with specific text appears using expect
+ * Enhanced to wait for notices to appear and provide better debugging
+ */
+export async function expectNotice(
+  context: SharedTestContext,
+  expectedText: string,
+  timeout: number = 10000
+): Promise<void> {
+  // First wait for any notice to appear
+  try {
+    await context.page.waitForSelector(".notice", {
+      timeout: Math.min(timeout, 5000),
+    });
+  } catch (error) {
+    // If no notice appears at all, take a screenshot for debugging
+    await captureScreenshotOnFailure(
+      context,
+      `no-notice-appeared-${expectedText.replace(/[^a-zA-Z0-9]/g, "-")}`
+    );
+    throw new Error(
+      `No notice appeared within ${Math.min(
+        timeout,
+        5000
+      )}ms. Expected notice containing: "${expectedText}"`
+    );
+  }
+
+  // Then wait for the specific notice text
+  const noticeAppeared = await waitForNotice(context, expectedText, timeout);
+
+  if (!noticeAppeared) {
+    // Get current notices for debugging
+    const currentNotices = await context.page.evaluate(() => {
+      const noticeElements = document.querySelectorAll(".notice");
+      return Array.from(noticeElements).map((el) => el.textContent || "");
+    });
+
+    await captureScreenshotOnFailure(
+      context,
+      `wrong-notice-${expectedText.replace(/[^a-zA-Z0-9]/g, "-")}`
+    );
+
+    throw new Error(
+      `Expected notice containing "${expectedText}" did not appear within ${timeout}ms. ` +
+        `Current notices: ${JSON.stringify(currentNotices)}`
+    );
+  }
+}
+
+/**
+ * Helper to open a file and wait for it to load properly
+ */
+export async function openFile(context: SharedTestContext, filePath: string) {
+  await context.page.evaluate(async (path) => {
+    const app = (window as any).app;
+    const file = app.vault.getAbstractFileByPath(path);
+
+    if (!file) {
+      throw new Error(`File not found: ${path}`);
+    }
+
+    const leaf = app.workspace.getLeaf();
+    await leaf.openFile(file);
+
+    await new Promise((resolve) => {
+      const checkActive = () => {
+        if (app.workspace.getActiveFile()?.path === path) {
+          resolve(true);
+        } else {
+          setTimeout(checkActive, 50);
+        }
+      };
+      checkActive();
+    });
+  }, filePath);
+
+  await context.page.waitForSelector(
+    ".markdown-source-view, .markdown-preview-view",
+    { timeout: 5000 }
+  );
+}
+
+/**
+ * Helper to wait for base view to load properly
+ */
+export async function waitForBaseView(
+  context: SharedTestContext,
+  timeout = 5000
+) {
+  await context.page.waitForSelector(".bases-view", { timeout });
+  await context.page.waitForSelector(".bases-table-container", {
+    timeout: 5000,
+  });
+}
+
+export async function createFile(
+  context: SharedTestContext,
+  filePath: string,
+  frontmatter: Record<string, any> = {},
+  content: string = ""
+): Promise<TFile> {
+  return await context.page.evaluate(
+    async ({ filePath, frontmatter, content }) => {
+      const app = (window as any).app;
+      await app.vault.create(filePath, content);
+
+      if (frontmatter && Object.keys(frontmatter).length > 0) {
+        const file = app.vault.getAbstractFileByPath(filePath);
+        await app.fileManager.processFrontMatter(file, (fm: any) => {
+          Object.assign(fm, frontmatter);
+        });
+      }
+
+      return app.vault.getAbstractFileByPath(filePath) as TFile;
+    },
+    { filePath, frontmatter, content }
+  );
+}
+
+export async function getFrontMatter(
+  context: SharedTestContext,
+  filePath: string
+): Promise<Record<string, any>> {
+  return await context.page.evaluate(
+    async ({ filePath }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(filePath);
+      const cache = app.metadataCache.getFileCache(file);
+      return cache.frontmatter;
+    },
+    { filePath }
+  );
+}
+
 /**
  * Open Task Sync plugin settings
  */
@@ -971,33 +932,23 @@ export async function closeSettings(page: Page): Promise<void> {
   console.log("🔧 Attempting to close settings modal...");
 
   try {
-    // First, check if modal is actually open
     const modalExists = (await page.locator(".modal-container").count()) > 0;
+
     if (!modalExists) {
-      console.log("✅ Settings modal is not open, nothing to close");
       return;
     }
 
-    // Use Escape key - most reliable method for closing Obsidian modals
-    console.log("🔧 Pressing Escape to close settings...");
     await page.keyboard.press("Escape");
 
-    // Wait briefly for modal to close
     await page.waitForTimeout(300);
 
-    // Verify modal is closed
     const stillOpen = (await page.locator(".modal-container").count()) > 0;
+
     if (stillOpen) {
-      console.log("🔧 Modal still open, trying second Escape...");
       await page.keyboard.press("Escape");
       await page.waitForTimeout(300);
     }
-
-    console.log("✅ Settings modal close attempt completed");
-  } catch (error) {
-    console.warn(`⚠️ Error while closing settings: ${error.message}`);
-    // Don't throw error to prevent test hangs
-  }
+  } catch (error) {}
 }
 
 /**
@@ -1654,4 +1605,86 @@ export async function assertTaskProperty(
       )}, Actual: ${JSON.stringify(actualValue)}`
     );
   }
+}
+
+export async function enableIntegration(
+  page: Page,
+  name: string,
+  config: any = {}
+) {
+  await page.evaluate(
+    async ({ name, config }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      plugin.settings[name].enabled = true;
+      Object.assign(plugin.settings[name], config);
+
+      console.debug("Enabling integration", name, plugin.settings[name]);
+      await plugin.saveSettings();
+    },
+    { name, config }
+  );
+
+  await page.waitForFunction(async () => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+    console.debug(
+      "Waiting for GitHub service to be enabled",
+      plugin.integrationManager.getGitHubService()
+    );
+
+    return plugin.integrationManager.getGitHubService()?.isEnabled();
+  });
+}
+
+export async function openView(page: Page, viewName: string) {
+  await page.evaluate(async (viewName) => {
+    const app = (window as any).app;
+    const existingLeaves = app.workspace.getLeavesOfType(viewName);
+
+    if (existingLeaves.length === 0) {
+      const rightLeaf = app.workspace.getRightLeaf(false);
+
+      await rightLeaf.setViewState({
+        type: viewName,
+        active: true,
+      });
+    } else {
+      app.workspace.revealLeaf(existingLeaves[0]);
+    }
+  }, viewName);
+}
+
+export async function switchToTaskService(page: Page, service: string) {
+  // Wait for the service button to be enabled and visible
+  const serviceButton = page.locator(`[data-testid="service-${service}"]`);
+
+  // Wait for the button to be enabled (not disabled)
+  await page.waitForFunction(
+    (serviceName) => {
+      const button = document.querySelector(
+        `[data-testid="service-${serviceName}"]`
+      );
+      return button && !button.hasAttribute("disabled");
+    },
+    service,
+    { timeout: 10000 }
+  );
+
+  // Click the service button
+  await serviceButton.click();
+
+  // Wait for the service to be active
+  await page.waitForFunction(
+    (serviceName) => {
+      const button = document.querySelector(
+        `[data-testid="service-${serviceName}"]`
+      );
+      return button && button.classList.contains("active");
+    },
+    service,
+    { timeout: 5000 }
+  );
 }

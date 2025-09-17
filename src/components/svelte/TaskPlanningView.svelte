@@ -264,13 +264,7 @@
 
   // Reactive filtering
   $effect(() => {
-    console.log(
-      `🔍 TaskPlanningView: Filtering ${calendarEvents.length} events with query: "${searchQuery}"`
-    );
     filteredEvents = searchEvents(searchQuery, calendarEvents);
-    console.log(
-      `🔍 TaskPlanningView: Filtered to ${filteredEvents.length} events`
-    );
   });
 
   // Reactive effect to reload events when selectedDate changes
@@ -335,8 +329,6 @@
 
   // Load test events for debugging
   function loadTestEvents() {
-    console.log("🗓️ TaskPlanningView: Loading test events");
-
     const today = new Date();
     const testEvents = [
       {

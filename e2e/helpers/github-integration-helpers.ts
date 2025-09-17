@@ -1,6 +1,6 @@
 import type { Page } from "playwright";
 import { type SharedTestContext } from "./shared-context";
-import { openTaskSyncSettings } from "./task-sync-setup";
+import { openTaskSyncSettings } from "./global";
 
 /**
  * GitHub Integration helpers for e2e tests
@@ -431,6 +431,8 @@ export async function stubGitHubWithFixtures(
     pullRequests?: string;
     repositories?: string;
     organizations?: string;
+    currentUser?: string;
+    labels?: string;
   }
 ): Promise<void> {
   // Use the simplified stubbing system that handles plugin reloads
@@ -480,8 +482,15 @@ export async function configureGitHubIntegration(
     { ...config, token: tokenToUse }
   );
 
-  // Wait a bit for settings to propagate
-  await page.waitForTimeout(1000);
+  // Wait for IntegrationManager to create the GitHub service
+  await page.waitForFunction(
+    () => {
+      const app = (window as any).app;
+      const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+      return plugin?.integrationManager?.getGitHubService() !== null;
+    },
+    { timeout: 5000 }
+  );
 
   // Ensure the GitHub view is created/updated after settings change
   await ensureGitHubViewExists(page);
@@ -620,9 +629,10 @@ export async function debugGitHubViewState(page: Page): Promise<void> {
     const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
 
     // Check plugin state
+    const githubService = plugin?.integrationManager?.getGitHubService();
     const pluginInfo = {
       pluginExists: !!plugin,
-      githubServiceEnabled: plugin?.githubService?.isEnabled?.() || false,
+      githubServiceEnabled: githubService?.isEnabled?.() || false,
       githubSettings: plugin?.settings?.githubIntegration || null,
     };
 

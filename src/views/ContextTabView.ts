@@ -16,6 +16,7 @@ export const CONTEXT_TAB_VIEW_TYPE = "context-tab";
 export class ContextTabView extends ItemView {
   private svelteComponent: SvelteComponent | null = null;
   private currentContext: FileContext = { type: "none" };
+  private isComponentCreated: boolean = false;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -38,9 +39,24 @@ export class ContextTabView extends ItemView {
     this.containerEl.addClass("context-tab-view-container");
     this.containerEl.setAttribute("data-type", CONTEXT_TAB_VIEW_TYPE);
 
+    // Check if this is a deferred view (not yet active)
+    if (this.leaf.isDeferred) {
+      // Don't create the component yet, wait until the view becomes active
+      return;
+    }
+
+    this.createComponent();
+  }
+
+  private createComponent(): void {
+    if (this.isComponentCreated) {
+      return;
+    }
+
     // Get the plugin instance
     const plugin = (this.app as any).plugins?.plugins?.["obsidian-task-sync"];
     if (!plugin) {
+      console.error("Task Sync plugin not found");
       this.containerEl.createEl("div", {
         text: "Task Sync plugin not found",
         cls: "context-tab-error",
@@ -67,18 +83,42 @@ export class ContextTabView extends ItemView {
       ]),
     });
 
+    this.isComponentCreated = true;
+
     // Listen for context changes
     this.registerEvent(
       this.app.workspace.on("active-leaf-change", () => {
         this.updateContext();
-      }),
+      })
     );
 
     this.registerEvent(
       this.app.workspace.on("file-open", () => {
         this.updateContext();
-      }),
+      })
     );
+  }
+
+  /**
+   * Override setState to handle when view becomes active (no longer deferred)
+   */
+  async setState(state: any, result: any): Promise<void> {
+    await super.setState(state, result);
+
+    // If the view was deferred and is now becoming active, create the component
+    if (!this.isComponentCreated && !this.leaf.isDeferred) {
+      this.createComponent();
+    }
+  }
+
+  /**
+   * Override onResize to handle when view becomes active (no longer deferred)
+   */
+  async onResize(): Promise<void> {
+    // If the view was deferred and is now becoming active, create the component
+    if (!this.isComponentCreated && !this.leaf.isDeferred) {
+      this.createComponent();
+    }
   }
 
   async onClose(): Promise<void> {
@@ -86,6 +126,7 @@ export class ContextTabView extends ItemView {
       this.svelteComponent.$destroy();
       this.svelteComponent = null;
     }
+    this.isComponentCreated = false;
   }
 
   /**

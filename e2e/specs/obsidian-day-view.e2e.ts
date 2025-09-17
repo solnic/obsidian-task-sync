@@ -1,13 +1,9 @@
 import { test, expect, describe, beforeAll } from "vitest";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
-import { waitForTaskSyncPlugin } from "../helpers/task-sync-setup";
+import { executeCommand } from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Obsidian Day View", () => {
   const context = setupE2ETestHooks();
-
-  beforeAll(async () => {
-    await waitForTaskSyncPlugin(context.page);
-  });
 
   test("should render custom day view with zoom controls", async () => {
     // Open Task Planning view

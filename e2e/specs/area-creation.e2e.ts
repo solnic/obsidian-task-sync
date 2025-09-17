@@ -3,35 +3,19 @@
  * Tests the area creation command, modal, and base generation
  */
 
-import { test, expect, describe, beforeAll, beforeEach } from "vitest";
+import { test, expect, describe, beforeEach } from "vitest";
 import {
-  createTestFolders,
   getFileContent,
   fileExists,
   verifyAreaProperties,
-} from "../helpers/task-sync-setup";
-import { setupE2ETestHooks, executeCommand } from "../helpers/shared-context";
+  executeCommand,
+} from "../helpers/global";
+import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Area Creation", () => {
   const context = setupE2ETestHooks();
 
-  test("should have area creation command available", async () => {
-    await createTestFolders(context.page);
-
-    // Check if the area creation command exists
-    const hasCreateAreaCommand = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const commands = app.commands.commands;
-      return "obsidian-task-sync:create-area" in commands;
-    });
-
-    expect(hasCreateAreaCommand).toBe(true);
-  });
-
   test("should open area creation modal when command is executed", async () => {
-    await createTestFolders(context.page);
-
-    // Execute the create area command
     await executeCommand(context, "Task Sync: Create Area");
     await context.page.waitForSelector(".task-sync-create-area", {
       timeout: 5000,
@@ -53,8 +37,6 @@ describe("Area Creation", () => {
   });
 
   test("should create area with basic information", async () => {
-    await createTestFolders(context.page);
-
     // Execute the create area command
     await executeCommand(context, "Task Sync: Create Area");
     await context.page.waitForSelector(".task-sync-create-area", {
@@ -97,8 +79,6 @@ describe("Area Creation", () => {
   });
 
   test("should create individual area base when enabled", async () => {
-    await createTestFolders(context.page);
-
     // Ensure area bases are enabled
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -152,8 +132,6 @@ describe("Area Creation", () => {
   });
 
   test("should validate required fields", async () => {
-    await createTestFolders(context.page);
-
     // Execute the create area command
     await executeCommand(context, "Task Sync: Create Area");
     await context.page.waitForSelector(".task-sync-create-area", {
@@ -181,8 +159,6 @@ describe("Area Creation", () => {
   });
 
   test("should handle special characters in area name", async () => {
-    await createTestFolders(context.page);
-
     // Execute the create area command
     await executeCommand(context, "Task Sync: Create Area");
     await context.page.waitForSelector(".task-sync-create-area", {
@@ -219,8 +195,6 @@ describe("Area Creation", () => {
   });
 
   test("should use template when configured", async () => {
-    await createTestFolders(context.page);
-
     // Create a custom area template
     await context.page.evaluate(async () => {
       const app = (window as any).app;
@@ -243,6 +217,12 @@ Continuous learning and skill development
 
 ![[{{name}}.base]]
 `;
+
+      // Delete existing template if it exists
+      const templatePath = "Templates/area-template.md";
+      if (await app.vault.adapter.exists(templatePath)) {
+        await app.vault.delete(app.vault.getAbstractFileByPath(templatePath));
+      }
 
       try {
         await app.vault.create("Templates/area-template.md", templateContent);

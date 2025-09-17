@@ -8,6 +8,8 @@ import { ExternalTaskData, TaskImportConfig } from "../types/integrations";
 import { TaskSyncSettings } from "../components/ui/settings/types";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
 import { AreaFileManager } from "./AreaFileManager";
+import { PROPERTY_REGISTRY } from "../types/properties";
+import { PROPERTY_SETS } from "./base-definitions/BaseConfigurations";
 
 export class TaskImportManager {
   constructor(
@@ -116,6 +118,7 @@ export class TaskImportManager {
 
   /**
    * Generate front-matter for the task based on external data and configuration
+   * Ensures all task properties from base configuration are included with defaults
    */
   generateTaskFrontMatter(
     taskData: ExternalTaskData,
@@ -123,53 +126,48 @@ export class TaskImportManager {
   ): Record<string, any> {
     const frontMatter: Record<string, any> = {};
 
-    // Title (required)
+    // First, set all front-matter properties with their default values from the registry
+    PROPERTY_SETS.TASK_FRONTMATTER.forEach((propertyKey) => {
+      const propertyDef = PROPERTY_REGISTRY[propertyKey];
+      if (!propertyDef) return;
+
+      const frontMatterKey = propertyDef.name;
+
+      // Set default value if defined
+      if (propertyDef.default !== undefined) {
+        frontMatter[frontMatterKey] = propertyDef.default;
+      }
+    });
+
+    // Then override with specific values from task data and config
     frontMatter.Title = taskData.title;
-
-    // Type is always 'Task' for task entities
     frontMatter.Type = "Task";
-
-    // Category from config or default
     frontMatter.Category = config.taskType || "Task";
-
-    // Priority - extract from external data or labels
-    frontMatter.Priority = this.extractPriority(taskData) || "Low";
-
-    // Areas - from config (using Obsidian note linking syntax)
+    frontMatter.Priority = this.extractPriority(taskData) || null; // Use null as default from registry
     frontMatter.Areas = config.targetArea ? [`[[${config.targetArea}]]`] : [];
 
-    // Project - from config (using Obsidian note linking syntax)
     if (config.targetProject) {
       frontMatter.Project = `[[${config.targetProject}]]`;
     }
 
-    // Done status - always false for new imports
     frontMatter.Done = false;
-
-    // Status - map external status to internal status
     frontMatter.Status = this.mapExternalStatus(taskData.status);
-
-    // Parent task - empty for imports
     frontMatter["Parent task"] = "";
 
-    // Tags - from labels if configured
     if (config.importLabelsAsTags && taskData.labels) {
       frontMatter.tags = taskData.labels;
     } else {
       frontMatter.tags = [];
     }
 
-    // Do Date - from config if provided
     if (config.doDate) {
       frontMatter["Do Date"] = config.doDate.toISOString().split("T")[0];
     }
 
-    // Due Date - from external task data if provided
     if (taskData.dueDate) {
       frontMatter["Due Date"] = taskData.dueDate.toISOString().split("T")[0];
     }
 
-    // Reminders - from external task data if provided
     if (taskData.reminders && taskData.reminders.length > 0) {
       frontMatter.Reminders = taskData.reminders.map((reminder) =>
         reminder.toISOString()
@@ -255,7 +253,7 @@ export class TaskImportManager {
     // Create the area
     try {
       await this.areaFileManager.createAreaFile({
-        title: areaName,
+        name: areaName,
         description: `Auto-created area for ${areaName}`,
       });
     } catch (error) {

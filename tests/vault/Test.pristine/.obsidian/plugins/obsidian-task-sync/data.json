@@ -85,7 +85,10 @@
     "DONE",
     "STATUS",
     "PARENT_TASK",
-    "TAGS"
+    "DO_DATE",
+    "DUE_DATE",
+    "TAGS",
+    "REMINDERS"
   ],
   "githubIntegration": {
     "enabled": false,

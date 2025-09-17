@@ -141,27 +141,6 @@ export class TemplateManager {
   }
 
   /**
-   * Update templates when settings change and trigger refresh if needed
-   * This should be called when settings are saved
-   */
-  async updateTemplatesOnSettingsChange(): Promise<void> {
-    try {
-      console.log("Task Sync: Updating templates after settings change...");
-
-      // For now, we don't automatically regenerate existing templates
-      // Users can manually refresh if they want templates updated
-      // This method is here for future enhancements
-
-      console.log("Task Sync: Template update completed");
-    } catch (error) {
-      console.error(
-        "Task Sync: Failed to update templates on settings change:",
-        error
-      );
-    }
-  }
-
-  /**
    * Read template content from file
    */
   async readTemplate(
@@ -262,8 +241,7 @@ export class TemplateManager {
         if (prop.name === "Type") {
           frontMatterData[prop.name] = "Task"; // Always 'Task' for task entities
         } else if (prop.name === "Category") {
-          frontMatterData[prop.name] =
-            this.settings.taskTypes[0]?.name || "Task";
+          frontMatterData[prop.name] = this.settings.taskTypes[0].name;
         } else if (prop.name === "Title") {
           frontMatterData[prop.name] = ""; // Title will be set by property handler
         } else {
