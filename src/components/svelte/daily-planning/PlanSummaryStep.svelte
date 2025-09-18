@@ -15,8 +15,55 @@
 
   let { finalPlan, tasksToMoveToToday }: Props = $props();
 
-  // Get scheduled tasks from the daily planning store
+  // Get scheduled and unscheduled tasks from the daily planning store
   let scheduledTasks = $derived($dailyPlanningStore.scheduledTasks);
+  let unscheduledTasks = $derived($dailyPlanningStore.unscheduledTasks);
+
+  /**
+   * Calculate the appropriate text color based on background color brightness
+   * @param backgroundColor - The background color (hex, rgb, or named color)
+   * @returns 'white' for dark backgrounds, 'black' for light backgrounds
+   */
+  function getContrastTextColor(backgroundColor: string): string {
+    // Default to white for fallback
+    if (!backgroundColor) return "white";
+
+    // Convert color to RGB values
+    let r: number, g: number, b: number;
+
+    if (backgroundColor.startsWith("#")) {
+      // Hex color
+      const hex = backgroundColor.slice(1);
+      if (hex.length === 3) {
+        r = parseInt(hex[0] + hex[0], 16);
+        g = parseInt(hex[1] + hex[1], 16);
+        b = parseInt(hex[2] + hex[2], 16);
+      } else {
+        r = parseInt(hex.slice(0, 2), 16);
+        g = parseInt(hex.slice(2, 4), 16);
+        b = parseInt(hex.slice(4, 6), 16);
+      }
+    } else if (backgroundColor.startsWith("rgb")) {
+      // RGB color
+      const matches = backgroundColor.match(/\d+/g);
+      if (matches && matches.length >= 3) {
+        r = parseInt(matches[0]);
+        g = parseInt(matches[1]);
+        b = parseInt(matches[2]);
+      } else {
+        return "white";
+      }
+    } else {
+      // Named color or other format - default to white
+      return "white";
+    }
+
+    // Calculate relative luminance using WCAG formula
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+    // Return black for light backgrounds (luminance > 0.5), white for dark
+    return luminance > 0.5 ? "black" : "white";
+  }
 </script>
 
 <div class="plan-summary">
@@ -30,7 +77,13 @@
         <h5>📅 Calendar Events ({finalPlan.events.length})</h5>
         <div class="preview-list">
           {#each finalPlan.events as event}
-            <div class="preview-item event">
+            {@const bgColor = event.calendar?.color || "#3b82f6"}
+            <div
+              class="preview-item event"
+              style="background-color: {bgColor}; color: {getContrastTextColor(
+                bgColor
+              )};"
+            >
               <span class="preview-time">
                 {new Date(event.startDate).toLocaleTimeString("en-US", {
                   hour: "numeric",
@@ -67,6 +120,21 @@
     {:else}
       <div class="no-tasks">
         <p>No tasks planned for today.</p>
+      </div>
+    {/if}
+
+    <!-- Unscheduled Tasks -->
+    {#if unscheduledTasks.length > 0}
+      <div class="plan-section">
+        <h5>📋 Unscheduled ({unscheduledTasks.length})</h5>
+        <div class="preview-list">
+          {#each unscheduledTasks as task}
+            <div class="preview-item task unscheduled">
+              <span class="preview-title">{task.title}</span>
+              <span class="preview-badge unscheduled">Unscheduled</span>
+            </div>
+          {/each}
+        </div>
       </div>
     {/if}
   </div>
@@ -130,6 +198,11 @@
     border-color: var(--color-green);
   }
 
+  .preview-item.task.unscheduled {
+    background: var(--background-modifier-form-field);
+    border: 1px dashed var(--background-modifier-border);
+  }
+
   .preview-time {
     font-size: 12px;
     color: var(--text-muted);
@@ -157,6 +230,11 @@
 
   .preview-badge.scheduled {
     background: var(--color-blue);
+    color: white;
+  }
+
+  .preview-badge.unscheduled {
+    background: var(--color-orange);
     color: white;
   }
 

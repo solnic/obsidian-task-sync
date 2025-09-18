@@ -61,7 +61,6 @@ export class DailyPlanningView extends ItemView {
       props: {
         appleCalendarService: this.appleCalendarService,
         dailyNoteService: this.dailyNoteService,
-        settings: this.settings,
       },
       context: new Map([
         [

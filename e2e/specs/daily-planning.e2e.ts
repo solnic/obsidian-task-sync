@@ -137,6 +137,222 @@ describe("Daily Planning", () => {
     expect(await todayTask.isVisible()).toBe(true);
   });
 
+  test("should handle individual task controls in step 1", async () => {
+    // Create multiple test tasks with Do Date set to yesterday
+    const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+
+    const taskPaths = await context.page.evaluate(async (yesterdayString) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const paths = [];
+      for (let i = 1; i <= 3; i++) {
+        const path = await plugin.taskFileManager.createTaskFile({
+          title: `Yesterday Task ${i}`,
+          description: `Test task ${i} for individual controls`,
+          done: false,
+          doDate: yesterdayString,
+        });
+        paths.push(path);
+      }
+      return paths;
+    }, yesterdayString);
+
+    expect(taskPaths).toHaveLength(3);
+
+    // Start daily planning
+    await executeCommand(context, "Task Sync: Start daily planning");
+
+    // Wait for daily planning view to open
+    await context.page.waitForSelector('[data-testid="daily-planning-view"]', {
+      timeout: 10000,
+    });
+
+    // STEP 1: Review Yesterday's Tasks
+    await context.page.waitForSelector('[data-testid="step-1-content"]', {
+      timeout: 5000,
+    });
+
+    // Wait for all tasks to appear
+    await context.page.waitForSelector('[data-testid="not-completed-task"]', {
+      timeout: 5000,
+    });
+
+    const yesterdayTasks = context.page.locator(
+      '[data-testid="not-completed-task"]'
+    );
+    expect(await yesterdayTasks.count()).toBe(3);
+
+    // Test individual "Move to today" button
+    const firstTask = yesterdayTasks.first();
+    const firstTaskTitle = await firstTask.locator(".task-title").textContent();
+    const moveButton = firstTask.locator(
+      '[data-testid="move-task-to-today-button"]'
+    );
+    expect(await moveButton.isVisible()).toBe(true);
+
+    await moveButton.click();
+
+    // Wait a moment for the task to be processed
+    await context.page.waitForTimeout(1000);
+
+    // Test individual "Unschedule" button
+    const secondTask = yesterdayTasks.nth(1);
+    const secondTaskTitle = await secondTask
+      .locator(".task-title")
+      .textContent();
+    const unscheduleButton = secondTask.locator(
+      '[data-testid="unschedule-task-button"]'
+    );
+    expect(await unscheduleButton.isVisible()).toBe(true);
+
+    await unscheduleButton.click();
+
+    // Wait a moment for the task to be processed
+    await context.page.waitForTimeout(1000);
+
+    // Test "Move unfinished to today" button (should proceed to step 2)
+    const moveAllButton = context.page.locator(
+      '[data-testid="move-to-today-button"]'
+    );
+    await moveAllButton.click();
+
+    // Should automatically proceed to step 2
+    await context.page.waitForSelector('[data-testid="step-2-content"]', {
+      timeout: 5000,
+    });
+
+    // Verify we're on step 2
+    const step2Content = context.page.locator('[data-testid="step-2-content"]');
+    expect(await step2Content.isVisible()).toBe(true);
+
+    // VERIFY INDIVIDUAL TASK ACTIONS WORKED:
+
+    // 1. The first task (moved individually) should appear in scheduled tasks
+    const scheduledTasks = context.page.locator(
+      '[data-testid="scheduled-task"]'
+    );
+    const scheduledTaskTitles = await scheduledTasks.allTextContents();
+    expect(
+      scheduledTaskTitles.some((title) => title.includes(firstTaskTitle || ""))
+    ).toBe(true);
+
+    // 2. The second task (unscheduled individually) should appear in unscheduled tasks
+    const unscheduledTasks = context.page.locator(
+      '[data-testid="unscheduled-task"]'
+    );
+    const unscheduledTaskTitles = await unscheduledTasks.allTextContents();
+    expect(
+      unscheduledTaskTitles.some((title) =>
+        title.includes(secondTaskTitle || "")
+      )
+    ).toBe(true);
+
+    // 3. The third task (moved via bulk action) should also appear in scheduled tasks
+    const thirdTaskTitle = "Yesterday Task 3";
+    expect(
+      scheduledTaskTitles.some((title) => title.includes(thirdTaskTitle))
+    ).toBe(true);
+  });
+
+  test("should handle unscheduled tasks in step 2", async () => {
+    // Create a test task for yesterday that will be moved to today during planning
+    const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
+      .toISOString()
+      .split("T")[0];
+
+    const taskPath = await context.page.evaluate(async (yesterdayString) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      return await plugin.taskFileManager.createTaskFile({
+        title: "Yesterday Task for Unschedule Test",
+        description: "Test task for unscheduling functionality",
+        done: false,
+        doDate: yesterdayString,
+      });
+    }, yesterdayString);
+
+    expect(taskPath).toBeTruthy();
+
+    // Start daily planning
+    await executeCommand(context, "Task Sync: Start daily planning");
+
+    // Wait for daily planning view to open
+    await context.page.waitForSelector('[data-testid="daily-planning-view"]', {
+      timeout: 10000,
+    });
+
+    // STEP 1: Move task from yesterday to today
+    await context.page.waitForSelector('[data-testid="step-1-content"]', {
+      timeout: 5000,
+    });
+
+    // Click "Move to Today" button to move yesterday's tasks
+    const moveToTodayButton = context.page.locator(
+      '[data-testid="move-to-today-button"]'
+    );
+    if (await moveToTodayButton.isVisible()) {
+      await moveToTodayButton.click();
+      // Wait for automatic navigation to step 2
+      await context.page.waitForTimeout(1000);
+    } else {
+      // Navigate to step 2 manually if no move button
+      await context.page.click('[data-testid="next-button"]');
+    }
+
+    // STEP 2: Today's Agenda
+    await context.page.waitForSelector('[data-testid="step-2-content"]', {
+      timeout: 5000,
+    });
+
+    // Wait for today task to appear in the scheduled tasks section
+    await context.page.waitForSelector('[data-testid="scheduled-task"]', {
+      timeout: 5000,
+    });
+
+    const scheduledTask = context.page
+      .locator('[data-testid="scheduled-task"]')
+      .first();
+    expect(await scheduledTask.isVisible()).toBe(true);
+
+    // Click unschedule button to move task to unscheduled section
+    // Note: Only tasks added during planning have unschedule buttons
+    const unscheduleButton = scheduledTask.locator(
+      '[data-testid="unschedule-planning-button"]'
+    );
+    await unscheduleButton.click();
+
+    // Wait for unscheduled task to appear
+    await context.page.waitForSelector('[data-testid="unscheduled-task"]', {
+      timeout: 5000,
+    });
+
+    const unscheduledTask = context.page
+      .locator('[data-testid="unscheduled-task"]')
+      .first();
+    expect(await unscheduledTask.isVisible()).toBe(true);
+
+    // Test reschedule button
+    const scheduleButton = unscheduledTask.locator(
+      '[data-testid="schedule-task-button"]'
+    );
+    expect(await scheduleButton.isVisible()).toBe(true);
+
+    await scheduleButton.click();
+
+    // Wait for task to move back to scheduled section
+    await context.page.waitForTimeout(1000);
+
+    // Verify task is back in scheduled section
+    const rescheduledTask = context.page.locator(
+      '[data-testid="scheduled-task"]'
+    );
+    expect(await rescheduledTask.count()).toBeGreaterThan(0);
+  });
+
   test("should complete daily planning workflow with all 3 steps and reactivity", async () => {
     // Create a test task with a Do Date set to yesterday
     const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
@@ -321,22 +537,33 @@ describe("Daily Planning", () => {
     if (await moveToTodayButton.isVisible()) {
       await moveToTodayButton.click();
 
-      // Wait for the move operation to complete
+      // Wait for the move operation to complete and automatic navigation to step 2
       await context.page.waitForTimeout(2000);
+    } else {
+      // If no move button, navigate to step 2 manually
+      await context.page.click('[data-testid="next-button"]');
     }
-
-    // Navigate to step 2
-    await context.page.click('[data-testid="next-button"]');
 
     // STEP 2: Today's Agenda
     await context.page.waitForSelector('[data-testid="step-2-content"]', {
       timeout: 5000,
     });
 
-    // Wait for tasks to appear in today's agenda
-    await context.page.waitForSelector('[data-testid="scheduled-task"]', {
-      timeout: 10000,
-    });
+    // Wait for tasks to appear in today's agenda (either scheduled or staged to be moved)
+    const hasScheduledTasks = await context.page
+      .waitForSelector('[data-testid="scheduled-task"]', {
+        timeout: 2000,
+      })
+      .catch(() => null);
+
+    const hasStagedTasks = await context.page
+      .waitForSelector('[data-testid="staged-task"]', {
+        timeout: 2000,
+      })
+      .catch(() => null);
+
+    // At least one type of task should be present
+    expect(hasScheduledTasks || hasStagedTasks).toBeTruthy();
 
     // Navigate to step 3 to see the final plan
     await context.page.click('[data-testid="next-button"]');

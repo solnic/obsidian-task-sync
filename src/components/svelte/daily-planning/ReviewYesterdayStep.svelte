@@ -10,16 +10,32 @@
     yesterdayTasks: { done: Task[]; notDone: Task[] };
     isLoading?: boolean;
     onMoveUnfinishedToToday: () => Promise<void>;
+    onMoveTaskToToday?: (task: Task) => Promise<void>;
+    onUnscheduleTask?: (task: Task) => Promise<void>;
   }
 
   let {
     yesterdayTasks,
     isLoading = false,
     onMoveUnfinishedToToday,
+    onMoveTaskToToday,
+    onUnscheduleTask,
   }: Props = $props();
 
   async function handleMoveToToday() {
     await onMoveUnfinishedToToday();
+  }
+
+  async function handleMoveTaskToToday(task: Task) {
+    if (onMoveTaskToToday) {
+      await onMoveTaskToToday(task);
+    }
+  }
+
+  async function handleUnscheduleTask(task: Task) {
+    if (onUnscheduleTask) {
+      await onUnscheduleTask(task);
+    }
   }
 </script>
 
@@ -46,6 +62,24 @@
         {#each yesterdayTasks.notDone as task}
           <div class="task-item not-completed" data-testid="not-completed-task">
             <span class="task-title">{task.title}</span>
+            <div class="task-actions">
+              <button
+                class="action-btn move-to-today"
+                onclick={() => handleMoveTaskToToday(task)}
+                disabled={isLoading}
+                data-testid="move-task-to-today-button"
+              >
+                Move to today
+              </button>
+              <button
+                class="action-btn unschedule"
+                onclick={() => handleUnscheduleTask(task)}
+                disabled={isLoading}
+                data-testid="unschedule-task-button"
+              >
+                Unschedule
+              </button>
+            </div>
           </div>
         {/each}
       </div>
@@ -97,6 +131,9 @@
     border-radius: 6px;
     background: var(--background-secondary);
     border: 1px solid var(--background-modifier-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .task-item.completed {
@@ -106,6 +143,38 @@
   .task-title {
     font-size: 14px;
     color: var(--text-normal);
+    flex: 1;
+  }
+
+  .task-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: 12px;
+  }
+
+  .action-btn {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 500;
+    transition: opacity 0.2s ease;
+  }
+
+  .action-btn:hover:not(:disabled) {
+    opacity: 0.8;
+  }
+
+  .action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .action-btn.unschedule {
+    background: var(--color-orange);
   }
 
   .move-to-today-btn {

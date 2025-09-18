@@ -10,17 +10,17 @@
   import { scheduleStore } from "../../stores/scheduleStore";
   import { AppleCalendarService } from "../../services/AppleCalendarService";
   import {
-    dailyPlanningStore,
     setDailyPlanningActive,
     getScheduledTasks,
     clearScheduledTasks,
+    scheduleTaskForToday,
+    unscheduleTask,
   } from "../../stores/dailyPlanningStore";
   import { DailyNoteService } from "../../services/DailyNoteService";
-  import type { TaskSyncSettings } from "../../main";
+
   import type { Task } from "../../types/entities";
   import type { CalendarEvent } from "../../types/calendar";
   import { DailySchedule } from "../../types/schedule";
-  import { getTodayString, getTomorrowString } from "../../utils/dateFiltering";
 
   // Step components
   import Step from "./daily-planning/Step.svelte";
@@ -31,12 +31,9 @@
   interface Props {
     appleCalendarService: AppleCalendarService;
     dailyNoteService: DailyNoteService;
-    settings: {
-      appleCalendarIntegration: TaskSyncSettings["appleCalendarIntegration"];
-    };
   }
 
-  let { appleCalendarService, dailyNoteService, settings }: Props = $props();
+  let { appleCalendarService, dailyNoteService }: Props = $props();
 
   const { plugin } = getPluginContext();
 
@@ -54,7 +51,7 @@
   let todayEvents = $state<CalendarEvent[]>([]);
   let todaySchedule = $state<DailySchedule | null>(null);
 
-  // Planning state
+  // Planning state - staging changes without modifying actual tasks
   let tasksToMoveToToday = $state<Task[]>([]);
   let finalPlan = $state<{ tasks: Task[]; events: CalendarEvent[] }>({
     tasks: [],
@@ -139,61 +136,51 @@
       isLoading = true;
       const unfinishedTasks = yesterdayTasks.notDone;
 
-      // Update Do Date for unfinished tasks
-      for (const task of unfinishedTasks) {
-        if (task.filePath) {
-          await plugin.taskFileManager.updateProperty(
-            task.filePath,
-            "Do Date",
-            getTodayString()
-          );
-        }
-      }
-
-      // Add to tasks to move list
+      // Stage tasks to be moved (don't modify them yet)
       tasksToMoveToToday = [...unfinishedTasks];
 
-      // Task store will be updated automatically via file change listeners
-      // The reactive effect will update todayTasks automatically
+      // Add tasks to daily planning store so they appear in step 2 with unschedule buttons
+      unfinishedTasks.forEach((task) => {
+        scheduleTaskForToday(task);
+      });
+
+      // Proceed to step 2 - tasks will be modified only on confirmation
+      nextStep();
     } catch (err: any) {
-      console.error("Error moving tasks to today:", err);
-      error = err.message || "Failed to move tasks";
+      console.error("Error staging tasks to move:", err);
+      error = err.message || "Failed to stage tasks";
     } finally {
       isLoading = false;
     }
   }
 
-  async function unscheduleTask(task: Task) {
+  async function moveTaskToToday(task: Task) {
     try {
-      if (task.filePath) {
-        await plugin.taskFileManager.updateProperty(
-          task.filePath,
-          "Do Date",
-          ""
-        );
-        // Task store will be updated automatically via file change listeners
-        // The reactive effect will update todayTasks automatically
+      // Add task to the staging list if not already there
+      if (!tasksToMoveToToday.some((t) => t.filePath === task.filePath)) {
+        tasksToMoveToToday = [...tasksToMoveToToday, task];
       }
+
+      // Add task to daily planning store so it appears in step 2 with unschedule button
+      scheduleTaskForToday(task);
     } catch (err: any) {
-      console.error("Error unscheduling task:", err);
-      error = err.message || "Failed to unschedule task";
+      console.error("Error moving task to today:", err);
+      error = err.message || "Failed to move task";
     }
   }
 
-  async function rescheduleTask(task: Task, newDate: string) {
+  async function unscheduleTaskFromYesterday(task: Task) {
     try {
-      if (task.filePath) {
-        await plugin.taskFileManager.updateProperty(
-          task.filePath,
-          "Do Date",
-          newDate
-        );
-        // Task store will be updated automatically via file change listeners
-        // The reactive effect will update todayTasks automatically
-      }
+      // Remove task from staging list
+      tasksToMoveToToday = tasksToMoveToToday.filter(
+        (t) => t.filePath !== task.filePath
+      );
+
+      // Remove task from daily planning store (this will move it to unscheduled)
+      unscheduleTask(task);
     } catch (err: any) {
-      console.error("Error rescheduling task:", err);
-      error = err.message || "Failed to reschedule task";
+      console.error("Error unscheduling task:", err);
+      error = err.message || "Failed to unschedule task";
     }
   }
 
@@ -243,6 +230,15 @@
 
       // Clear scheduled tasks since they've been added to the plan
       clearScheduledTasks();
+
+      // Open and focus on today's daily note
+      if (dailyNoteResult.file) {
+        await plugin.app.workspace.openLinkText(
+          dailyNoteResult.file.path,
+          "",
+          true // Open in new leaf and focus
+        );
+      }
 
       // Close the daily planning view
       plugin.app.workspace.detachLeavesOfType("daily-planning");
@@ -310,6 +306,8 @@
           {yesterdayTasks}
           {isLoading}
           onMoveUnfinishedToToday={moveUnfinishedToToday}
+          onMoveTaskToToday={moveTaskToToday}
+          onUnscheduleTask={unscheduleTaskFromYesterday}
         />
       </Step>
     {:else if currentStep === 2}
@@ -323,13 +321,7 @@
         onNext={nextStep}
         onPrevious={previousStep}
       >
-        <TodayAgendaStep
-          {todayTasks}
-          {todayEvents}
-          onUnscheduleTask={unscheduleTask}
-          onRescheduleTask={rescheduleTask}
-          {getTomorrowString}
-        />
+        <TodayAgendaStep {todayTasks} {todayEvents} />
       </Step>
     {:else if currentStep === 3}
       <Step

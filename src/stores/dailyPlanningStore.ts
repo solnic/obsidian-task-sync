@@ -6,11 +6,13 @@ import type { Task } from "../types/entities";
  */
 export interface DailyPlanningState {
   scheduledTasks: Task[];
+  unscheduledTasks: Task[];
   isActive: boolean;
 }
 
 const initialState: DailyPlanningState = {
   scheduledTasks: [],
+  unscheduledTasks: [],
   isActive: false,
 };
 
@@ -30,15 +32,49 @@ export function scheduleTaskForToday(task: Task): void {
 }
 
 /**
- * Remove a task from the scheduled tasks list
+ * Remove a task from the scheduled tasks list and add to unscheduled
  */
 export function unscheduleTask(task: Task): void {
-  dailyPlanningStore.update((state) => ({
-    ...state,
-    scheduledTasks: state.scheduledTasks.filter(
+  dailyPlanningStore.update((state) => {
+    const newScheduledTasks = state.scheduledTasks.filter(
       (t) => t.filePath !== task.filePath
-    ),
-  }));
+    );
+    const newUnscheduledTasks = [...state.unscheduledTasks];
+
+    // Add to unscheduled if not already there
+    if (!newUnscheduledTasks.some((t) => t.filePath === task.filePath)) {
+      newUnscheduledTasks.push(task);
+    }
+
+    return {
+      ...state,
+      scheduledTasks: newScheduledTasks,
+      unscheduledTasks: newUnscheduledTasks,
+    };
+  });
+}
+
+/**
+ * Move a task from unscheduled back to scheduled
+ */
+export function rescheduleTask(task: Task): void {
+  dailyPlanningStore.update((state) => {
+    const newUnscheduledTasks = state.unscheduledTasks.filter(
+      (t) => t.filePath !== task.filePath
+    );
+    const newScheduledTasks = [...state.scheduledTasks];
+
+    // Add to scheduled if not already there
+    if (!newScheduledTasks.some((t) => t.filePath === task.filePath)) {
+      newScheduledTasks.push(task);
+    }
+
+    return {
+      ...state,
+      scheduledTasks: newScheduledTasks,
+      unscheduledTasks: newUnscheduledTasks,
+    };
+  });
 }
 
 /**
@@ -55,8 +91,9 @@ export function setDailyPlanningActive(isActive: boolean): void {
   dailyPlanningStore.update((state) => ({
     ...state,
     isActive,
-    // Clear scheduled tasks when deactivating
+    // Clear scheduled and unscheduled tasks when deactivating
     scheduledTasks: isActive ? state.scheduledTasks : [],
+    unscheduledTasks: isActive ? state.unscheduledTasks : [],
   }));
 }
 

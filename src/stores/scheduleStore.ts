@@ -15,10 +15,12 @@ import { generatePrefixedId } from "../utils/idGenerator";
 import {
   DailySchedule,
   SchedulePersistenceData,
+  SchedulePersistenceItem,
   ScheduleCreateData,
 } from "../types/schedule";
 import { Task } from "../types/entities";
 import { CalendarEvent } from "../types/calendar";
+import { taskStore } from "./taskStore";
 
 export interface ScheduleStoreState {
   schedules: DailySchedule[];
@@ -263,7 +265,7 @@ export class ScheduleStore {
         if (persistedData.schedules && persistedData.schedules.length > 0) {
           // Restore schedules from persisted data
           const restoredSchedules = persistedData.schedules.map(
-            (scheduleData: any) => {
+            (scheduleData: SchedulePersistenceItem) => {
               const schedule = new DailySchedule(
                 scheduleData.id,
                 new Date(scheduleData.date),
@@ -279,8 +281,23 @@ export class ScheduleStore {
                 ? new Date(scheduleData.planningCompletedAt)
                 : undefined;
 
-              // Restore tasks and events
-              schedule.tasks = scheduleData.tasks || [];
+              // Restore tasks from task IDs, filtering out missing tasks
+              if (scheduleData.taskIds) {
+                const allTasks = taskStore.getEntities();
+                schedule.tasks = scheduleData.taskIds
+                  .map((taskId) => allTasks.find((task) => task.id === taskId))
+                  .filter((task): task is Task => task !== undefined);
+              }
+
+              // Restore unscheduled tasks from task IDs, filtering out missing tasks
+              if (scheduleData.unscheduledTaskIds) {
+                const allTasks = taskStore.getEntities();
+                schedule.unscheduledTasks = scheduleData.unscheduledTaskIds
+                  .map((taskId) => allTasks.find((task) => task.id === taskId))
+                  .filter((task): task is Task => task !== undefined);
+              }
+
+              // Restore events (stored as full objects)
               schedule.events = scheduleData.events || [];
 
               return schedule;
@@ -316,8 +333,24 @@ export class ScheduleStore {
       const state = get(this._store);
       const existingData = (await this.plugin.loadData()) || {};
 
+      // Convert schedules to persistence format with task IDs
+      const persistenceSchedules: SchedulePersistenceItem[] =
+        state.schedules.map((schedule) => ({
+          id: schedule.id,
+          date: schedule.date.toISOString(),
+          dailyNotePath: schedule.dailyNotePath,
+          dailyNoteExists: schedule.dailyNoteExists,
+          isPlanned: schedule.isPlanned,
+          planningCompletedAt: schedule.planningCompletedAt?.toISOString(),
+          createdAt: schedule.createdAt.toISOString(),
+          updatedAt: schedule.updatedAt.toISOString(),
+          taskIds: schedule.tasks.map((task) => task.id),
+          unscheduledTaskIds: schedule.unscheduledTasks.map((task) => task.id),
+          events: schedule.events,
+        }));
+
       const persistenceData: SchedulePersistenceData = {
-        schedules: state.schedules,
+        schedules: persistenceSchedules,
         lastSync: new Date(),
       };
 

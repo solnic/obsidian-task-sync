@@ -22,6 +22,9 @@ export abstract class Schedule implements BaseEntity {
   // Tasks included in this schedule
   tasks: Task[];
 
+  // Unscheduled tasks (for daily planning)
+  unscheduledTasks: Task[];
+
   // Calendar events for this schedule
   events: CalendarEvent[];
 
@@ -31,6 +34,7 @@ export abstract class Schedule implements BaseEntity {
     this.createdAt = new Date();
     this.updatedAt = new Date();
     this.tasks = [];
+    this.unscheduledTasks = [];
     this.events = [];
   }
 
@@ -38,7 +42,7 @@ export abstract class Schedule implements BaseEntity {
    * Add a task to this schedule
    */
   addTask(task: Task): void {
-    if (!this.tasks.find(t => t.id === task.id)) {
+    if (!this.tasks.find((t) => t.id === task.id)) {
       this.tasks.push(task);
       this.updatedAt = new Date();
     }
@@ -48,10 +52,53 @@ export abstract class Schedule implements BaseEntity {
    * Remove a task from this schedule
    */
   removeTask(taskId: string): void {
-    const index = this.tasks.findIndex(t => t.id === taskId);
+    const index = this.tasks.findIndex((t) => t.id === taskId);
     if (index !== -1) {
       this.tasks.splice(index, 1);
       this.updatedAt = new Date();
+    }
+  }
+
+  /**
+   * Add an unscheduled task to this schedule
+   */
+  addUnscheduledTask(task: Task): void {
+    if (!this.unscheduledTasks.find((t) => t.id === task.id)) {
+      this.unscheduledTasks.push(task);
+      this.updatedAt = new Date();
+    }
+  }
+
+  /**
+   * Remove an unscheduled task from this schedule
+   */
+  removeUnscheduledTask(taskId: string): void {
+    const index = this.unscheduledTasks.findIndex((t) => t.id === taskId);
+    if (index !== -1) {
+      this.unscheduledTasks.splice(index, 1);
+      this.updatedAt = new Date();
+    }
+  }
+
+  /**
+   * Move a task from unscheduled to scheduled
+   */
+  scheduleTask(taskId: string): void {
+    const task = this.unscheduledTasks.find((t) => t.id === taskId);
+    if (task) {
+      this.removeUnscheduledTask(taskId);
+      this.addTask(task);
+    }
+  }
+
+  /**
+   * Move a task from scheduled to unscheduled
+   */
+  unscheduleTask(taskId: string): void {
+    const task = this.tasks.find((t) => t.id === taskId);
+    if (task) {
+      this.removeTask(taskId);
+      this.addUnscheduledTask(task);
     }
   }
 
@@ -68,8 +115,8 @@ export abstract class Schedule implements BaseEntity {
    */
   getTasksByStatus(): { done: Task[]; notDone: Task[] } {
     return {
-      done: this.tasks.filter(task => task.done === true),
-      notDone: this.tasks.filter(task => task.done !== true)
+      done: this.tasks.filter((task) => task.done === true),
+      notDone: this.tasks.filter((task) => task.done !== true),
     };
   }
 
@@ -164,18 +211,18 @@ export class DailySchedule extends Schedule {
    * Get a formatted date string for this schedule
    */
   getDateString(): string {
-    return this.date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    return this.date.toISOString().split("T")[0]; // YYYY-MM-DD format
   }
 
   /**
    * Get a human-readable date string
    */
   getDisplayDate(): string {
-    return this.date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return this.date.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
   }
 
@@ -200,17 +247,34 @@ export class DailySchedule extends Schedule {
       totalTasks: this.tasks.length,
       doneTasks: done.length,
       pendingTasks: notDone.length,
-      totalEvents: this.events.length
+      totalEvents: this.events.length,
     };
   }
 }
 
 /**
- * Interface for schedule persistence data
+ * Interface for schedule persistence data with task IDs
  */
 export interface SchedulePersistenceData {
-  schedules: DailySchedule[];
+  schedules: SchedulePersistenceItem[];
   lastSync: Date;
+}
+
+/**
+ * Individual schedule persistence item with task IDs instead of full task objects
+ */
+export interface SchedulePersistenceItem {
+  id: string;
+  date: string; // ISO date string
+  dailyNotePath?: string;
+  dailyNoteExists: boolean;
+  isPlanned: boolean;
+  planningCompletedAt?: string; // ISO date string
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  taskIds: string[]; // Array of task IDs instead of full task objects
+  unscheduledTaskIds: string[]; // Array of unscheduled task IDs
+  events: CalendarEvent[]; // Events are still stored as full objects
 }
 
 /**
