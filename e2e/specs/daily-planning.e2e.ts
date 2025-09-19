@@ -3,7 +3,7 @@
  * Tests the complete daily planning workflow
  */
 
-import { test, expect, describe } from "vitest";
+import { test, expect, describe, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import { waitForTaskPropertySync, executeCommand } from "../helpers/global";
 import { stubAppleCalendarAPIs } from "../helpers/api-stubbing";
