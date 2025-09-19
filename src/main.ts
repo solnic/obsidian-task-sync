@@ -145,8 +145,6 @@ export default class TaskSyncPlugin
   taskStatusSettingsHandler: TaskStatusSettingsHandler;
   cacheManager: CacheManager;
   integrationManager: IntegrationManager;
-  githubService: GitHubService;
-  appleRemindersService: AppleRemindersService;
   appleCalendarService: AppleCalendarService;
   taskSchedulingService: TaskSchedulingService;
   taskImportManager: TaskImportManager;
@@ -213,6 +211,18 @@ export default class TaskSyncPlugin
     config: { manager: any; propertyHandler?: any }
   ): void {
     this.noteManagers.registerNoteType(noteType, config);
+  }
+
+  /**
+   * Backward compatibility getters for e2e tests
+   * These delegate to IntegrationManager to maintain test compatibility
+   */
+  get githubService() {
+    return this.integrationManager?.getGitHubService();
+  }
+
+  get appleRemindersService() {
+    return this.integrationManager?.getAppleRemindersService();
   }
 
   /**
@@ -349,11 +359,6 @@ export default class TaskSyncPlugin
       this.settings
     );
 
-    // Get services from integration manager for backward compatibility
-    this.githubService = this.integrationManager.getGitHubService();
-    this.appleRemindersService =
-      this.integrationManager.getAppleRemindersService();
-
     // Wire up Apple Calendar service with import dependencies
     this.appleCalendarService.setImportDependencies(this.taskImportManager);
     this.appleCalendarService.setDailyNoteService(this.dailyNoteService);
@@ -405,9 +410,11 @@ export default class TaskSyncPlugin
     );
 
     // Initialize settings change handlers
-    this.githubSettingsHandler = new GitHubSettingsHandler(this.githubService);
+    this.githubSettingsHandler = new GitHubSettingsHandler(
+      this.integrationManager.getGitHubService()
+    );
     this.appleRemindersSettingsHandler = new AppleRemindersSettingsHandler(
-      this.appleRemindersService
+      this.integrationManager.getAppleRemindersService()
     );
     this.taskStatusSettingsHandler = new TaskStatusSettingsHandler(
       this.statusDoneHandler
@@ -1721,7 +1728,8 @@ export default class TaskSyncPlugin
    * Import a single GitHub issue as a task
    */
   private async importGitHubIssue(): Promise<void> {
-    if (!this.githubService.isEnabled()) {
+    const githubService = this.integrationManager.getGitHubService();
+    if (!githubService?.isEnabled()) {
       new Notice("GitHub integration is not enabled or configured");
       return;
     }
@@ -1743,7 +1751,7 @@ export default class TaskSyncPlugin
       // Use default import configuration
       const config = this.getDefaultImportConfig();
 
-      const result = await this.githubService.importIssueAsTask(
+      const result = await githubService.importIssueAsTask(
         issueData.issue,
         config,
         issueData.repository
@@ -1768,7 +1776,8 @@ export default class TaskSyncPlugin
    * Import all GitHub issues from the default repository
    */
   private async importAllGitHubIssues(): Promise<void> {
-    if (!this.githubService.isEnabled()) {
+    const githubService = this.integrationManager.getGitHubService();
+    if (!githubService?.isEnabled()) {
       new Notice("GitHub integration is not enabled or configured");
       return;
     }
@@ -1782,7 +1791,7 @@ export default class TaskSyncPlugin
 
       new Notice("Fetching GitHub issues...");
 
-      const issues = await this.githubService.fetchIssues(repository);
+      const issues = await githubService.fetchIssues(repository);
       if (issues.length === 0) {
         new Notice("No issues found in repository");
         return;
@@ -1797,7 +1806,7 @@ export default class TaskSyncPlugin
 
       for (const issue of issues) {
         try {
-          const result = await this.githubService.importIssueAsTask(
+          const result = await githubService.importIssueAsTask(
             issue,
             config,
             repository
@@ -1899,6 +1908,12 @@ export default class TaskSyncPlugin
     url: string
   ): Promise<{ issue: any; repository: string } | null> {
     try {
+      const githubService = this.integrationManager.getGitHubService();
+      if (!githubService) {
+        new Notice("GitHub integration is not available");
+        return null;
+      }
+
       // Parse GitHub issue URL
       const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/issues\/(\d+)/);
       if (!match) {
@@ -1911,8 +1926,8 @@ export default class TaskSyncPlugin
 
       // Fetch all issues and find the specific one
       // In a full implementation, you'd want to fetch the specific issue directly
-      const issues = await this.githubService.fetchIssues(repository);
-      const issue = issues.find((i) => i.number === parseInt(issueNumber));
+      const issues = await githubService.fetchIssues(repository);
+      const issue = issues.find((i: any) => i.number === parseInt(issueNumber));
 
       if (!issue) {
         new Notice(`Issue #${issueNumber} not found in ${repository}`);
@@ -1930,7 +1945,9 @@ export default class TaskSyncPlugin
    * Import Apple Reminders as tasks
    */
   private async importAppleReminders(): Promise<void> {
-    if (!this.appleRemindersService.isEnabled()) {
+    const appleRemindersService =
+      this.integrationManager.getAppleRemindersService();
+    if (!appleRemindersService?.isEnabled()) {
       new Notice(
         "Apple Reminders integration is not enabled or not available on this platform"
       );
@@ -1939,8 +1956,7 @@ export default class TaskSyncPlugin
 
     try {
       // Check permissions first
-      const permissionResult =
-        await this.appleRemindersService.checkPermissions();
+      const permissionResult = await appleRemindersService.checkPermissions();
       if (!permissionResult.success) {
         new Notice(`Permission error: ${permissionResult.error?.message}`);
         return;
@@ -1949,7 +1965,7 @@ export default class TaskSyncPlugin
       new Notice("Fetching Apple Reminders...");
 
       // Fetch reminders
-      const remindersResult = await this.appleRemindersService.fetchReminders();
+      const remindersResult = await appleRemindersService.fetchReminders();
 
       if (!remindersResult.success) {
         new Notice(
@@ -1976,7 +1992,7 @@ export default class TaskSyncPlugin
         try {
           const config = this.getDefaultImportConfig();
 
-          const result = await this.appleRemindersService.importReminderAsTask(
+          const result = await appleRemindersService.importReminderAsTask(
             reminder,
             config
           );
@@ -2023,13 +2039,15 @@ export default class TaskSyncPlugin
    * Check Apple Reminders permissions
    */
   private async checkAppleRemindersPermissions(): Promise<void> {
-    if (!this.appleRemindersService.isPlatformSupported()) {
+    const appleRemindersService =
+      this.integrationManager.getAppleRemindersService();
+    if (!appleRemindersService?.isPlatformSupported()) {
       new Notice("Apple Reminders is only available on macOS");
       return;
     }
 
     try {
-      const result = await this.appleRemindersService.checkPermissions();
+      const result = await appleRemindersService.checkPermissions();
 
       if (result.success) {
         const permission = result.data;
