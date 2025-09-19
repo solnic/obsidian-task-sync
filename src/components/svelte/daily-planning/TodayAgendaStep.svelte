@@ -14,6 +14,9 @@
   import { getPluginContext } from "../context";
   import { getOptimalTextColor } from "../../../utils/colorUtils";
 
+  // Get plugin context during component initialization
+  const { plugin } = getPluginContext();
+
   interface Props {
     todayTasks: Task[];
     todayEvents: CalendarEvent[];
@@ -52,14 +55,33 @@
 
   // Since we're using staging approach, these functions just manage the daily planning store
   async function handleUnscheduleFromPlanning(task: Task) {
-    const { plugin } = getPluginContext();
-    unscheduleTask(task);
-    // Clear the Do Date property when unscheduling
-    await plugin.taskFileManager.updateProperty(task.filePath, "Do Date", null);
+    console.log(
+      "🔄 handleUnscheduleFromPlanning called with task:",
+      task.title,
+      "filePath:",
+      task.filePath
+    );
+    console.log(
+      "🔍 About to call unscheduleTask function:",
+      typeof unscheduleTask
+    );
+    try {
+      console.log("🔍 Calling unscheduleTask now...");
+      unscheduleTask(task);
+      console.log("🔍 unscheduleTask call completed, updating property...");
+      // Clear the Do Date property when unscheduling
+      await plugin.taskFileManager.updateProperty(
+        task.filePath,
+        "Do Date",
+        null
+      );
+      console.log("✅ handleUnscheduleFromPlanning completed");
+    } catch (error) {
+      console.error("❌ Error in handleUnscheduleFromPlanning:", error);
+    }
   }
 
   async function handleRescheduleFromUnscheduled(task: Task) {
-    const { plugin } = getPluginContext();
     const todayString = new Date().toISOString().split("T")[0];
     rescheduleTask(task);
     // Set the Do Date property when rescheduling

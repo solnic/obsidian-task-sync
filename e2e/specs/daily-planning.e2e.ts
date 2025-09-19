@@ -7,6 +7,7 @@ import { test, expect, describe, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 import {
   waitForTaskPropertySync,
+  waitForFileContentToContain,
   executeCommand,
   enableIntegration,
   openView,
@@ -301,14 +302,9 @@ describe("Daily Planning", () => {
     const moveToTodayButton = context.page.locator(
       '[data-testid="move-to-today-button"]'
     );
-    if (await moveToTodayButton.isVisible()) {
-      await moveToTodayButton.click();
-      // Wait for automatic navigation to step 2
-      await context.page.waitForTimeout(1000);
-    } else {
-      // Navigate to step 2 manually if no move button
-      await context.page.click('[data-testid="next-button"]');
-    }
+
+    await moveToTodayButton.click();
+    await context.page.waitForTimeout(1000);
 
     // STEP 2: Today's Agenda
     await context.page.waitForSelector('[data-testid="step-2-content"]', {
@@ -772,7 +768,12 @@ describe("Daily Planning", () => {
     expect(await unscheduledTask.isVisible()).toBe(true);
 
     // Verify the task's Do Date was cleared
-    await waitForTaskPropertySync(context.page, taskPath, "Do Date", "", 10000);
+    await waitForFileContentToContain(
+      context.page,
+      taskPath,
+      "Do Date:",
+      10000
+    );
   });
 
   test("should not show duplicated tasks when moving tasks from yesterday to today", async () => {
