@@ -100,7 +100,10 @@
   });
 
   // Determine if button should be disabled
-  let isDisabled = $derived(disabled || isImported || isImporting);
+  // In daily planning wizard mode, allow clicking even when imported (for scheduling/unscheduling)
+  let isDisabled = $derived(
+    disabled || isImporting || (isImported && !dailyPlanningWizardMode)
+  );
 
   // Determine CSS classes
   let cssClasses = $derived.by(() => {
