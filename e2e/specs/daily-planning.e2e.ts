@@ -602,6 +602,106 @@ describe("Daily Planning", () => {
     expect(taskCount).toBeGreaterThan(0);
   });
 
+  test("should handle schedule for today button with problematic filename characters", async () => {
+    // Create a task with special characters that could cause metadata cache issues
+    const problematicTitle =
+      "crontabs with -@reboot- oban option instead of valid crontab cause sentry logger to fail and detach";
+
+    const taskPath = await context.page.evaluate(async (title) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      return await plugin.taskFileManager.createTaskFile({
+        title,
+        description:
+          "A task with problematic filename to test metadata cache timeout handling",
+        done: false,
+        // No doDate initially - this task should be unscheduled
+      });
+    }, problematicTitle);
+
+    expect(taskPath).toBeTruthy();
+
+    // Open Tasks view first to access services task list
+    await executeCommand(context, "Task Sync: Open Tasks view");
+
+    // Wait for tasks view to open
+    await context.page.waitForSelector('[data-testid="tasks-view"]', {
+      timeout: 10000,
+    });
+
+    // Start daily planning to activate wizard mode
+    await executeCommand(context, "Task Sync: Start daily planning");
+
+    // Wait for daily planning view to open
+    await context.page.waitForSelector('[data-testid="daily-planning-view"]', {
+      timeout: 10000,
+    });
+
+    // Go back to Tasks view to test the schedule button
+    await executeCommand(context, "Task Sync: Open Tasks view");
+
+    // Wait for tasks view to open again
+    await context.page.waitForSelector('[data-testid="tasks-view"]', {
+      timeout: 10000,
+    });
+
+    // Switch to local service to see our test task
+    await context.page.click('[data-testid="service-local"]');
+
+    // Wait for the task to appear
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
+      timeout: 5000,
+    });
+
+    // Find our specific task (use a shorter substring to match)
+    const taskItem = context.page
+      .locator('[data-testid^="local-task-item-"]')
+      .filter({
+        hasText: "crontabs with -@reboot- oban option",
+      });
+
+    // Verify the task is visible first
+    expect(await taskItem.isVisible()).toBe(true);
+
+    // Hover over the task to reveal the schedule button
+    await taskItem.hover();
+
+    // Wait for the schedule button to appear on hover
+    const scheduleButton = taskItem.locator(
+      '[data-testid="schedule-for-today-button"]'
+    );
+
+    // Wait for the button to be visible after hover
+    await scheduleButton.waitFor({ state: "visible", timeout: 5000 });
+
+    expect(await scheduleButton.isVisible()).toBe(true);
+    expect(await scheduleButton.textContent()).toContain("Schedule for today");
+
+    // This should NOT crash with metadata cache timeout after our fix
+    await scheduleButton.click();
+
+    // Wait for the action to complete
+    await context.page.waitForTimeout(2000);
+
+    // Check if the button text changed to indicate it's scheduled
+    const buttonText = await scheduleButton.textContent();
+    console.log("Button text after click:", buttonText);
+
+    // Verify the button text changed to indicate it's scheduled
+    expect(buttonText).toContain("✓ Scheduled");
+
+    // Verify the task now has today's date as Do Date
+    const todayString = new Date().toISOString().split("T")[0];
+    await waitForTaskPropertySync(
+      context.page,
+      taskPath,
+      "Do Date",
+      todayString,
+      10000
+    );
+  });
+
   test("should handle already scheduled tasks in daily planning", async () => {
     // Create a task that's already scheduled for today
     const todayString = new Date().toISOString().split("T")[0];
