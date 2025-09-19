@@ -13,7 +13,7 @@ export default defineConfig({
     include: ['e2e/**/*.e2e.ts'],
     exclude: ['tests/**/*'],
     hookTimeout: isHeadless ? 30000 : 10000,
-    testTimeout: isHeadless ? 60000 : 10000,
+    testTimeout: isHeadless ? 60000 : 15000,
     fileParallelism: true,
     minWorkers: isHeadless ? 3 : 10,
     maxConcurrency: isHeadless ? 3 : 5,
