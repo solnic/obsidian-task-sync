@@ -208,7 +208,6 @@ export function createNoteManagers(
     projectFileManager: ProjectFileManager;
   },
   propertyHandlers?: {
-    taskPropertyHandler?: EventHandler;
     areaPropertyHandler?: EventHandler;
     projectPropertyHandler?: EventHandler;
   }
@@ -218,7 +217,6 @@ export function createNoteManagers(
   // Register default note types with optional property handlers
   noteManagers.registerNoteType("Task", {
     manager: managers.taskFileManager,
-    propertyHandler: propertyHandlers?.taskPropertyHandler,
   });
 
   noteManagers.registerNoteType("Area", {
