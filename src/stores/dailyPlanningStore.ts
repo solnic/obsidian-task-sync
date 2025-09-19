@@ -53,25 +53,9 @@ export function scheduleTaskForToday(task: Task): void {
  */
 export function unscheduleTask(task: Task): void {
   dailyPlanningStore.update((state) => {
-    console.log(
-      "🔄 unscheduleTask called with task:",
-      task.title,
-      "filePath:",
-      task.filePath
-    );
-    console.log(
-      "📋 Current scheduled tasks:",
-      state.scheduledTasks.map((t) => ({
-        title: t.title,
-        filePath: t.filePath,
-      }))
-    );
-    console.log(
-      "📋 Current unscheduled tasks:",
-      state.unscheduledTasks.map((t) => ({
-        title: t.title,
-        filePath: t.filePath,
-      }))
+    // Check if task is already unscheduled
+    const alreadyUnscheduled = state.unscheduledTasks.some(
+      (t) => t.filePath === task.filePath
     );
 
     // Remove from scheduled tasks
@@ -79,37 +63,16 @@ export function unscheduleTask(task: Task): void {
       (t) => t.filePath !== task.filePath
     );
 
-    console.log(
-      "📋 New scheduled tasks after filter:",
-      newScheduledTasks.map((t) => ({ title: t.title, filePath: t.filePath }))
-    );
-
-    // Add to unscheduled if not already there
-    const alreadyUnscheduled = state.unscheduledTasks.some(
-      (t) => t.filePath === task.filePath
-    );
-
+    // Add to unscheduled tasks if not already there
     const newUnscheduledTasks = alreadyUnscheduled
       ? state.unscheduledTasks
       : [...state.unscheduledTasks, task];
 
-    console.log(
-      "📋 New unscheduled tasks:",
-      newUnscheduledTasks.map((t) => ({ title: t.title, filePath: t.filePath }))
-    );
-
-    const newState = {
+    return {
       ...state,
       scheduledTasks: newScheduledTasks,
       unscheduledTasks: newUnscheduledTasks,
     };
-
-    console.log("✅ unscheduleTask completed, new state:", {
-      scheduledCount: newState.scheduledTasks.length,
-      unscheduledCount: newState.unscheduledTasks.length,
-    });
-
-    return newState;
   });
 }
 

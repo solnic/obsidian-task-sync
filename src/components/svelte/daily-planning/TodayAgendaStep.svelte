@@ -55,30 +55,9 @@
 
   // Since we're using staging approach, these functions just manage the daily planning store
   async function handleUnscheduleFromPlanning(task: Task) {
-    console.log(
-      "🔄 handleUnscheduleFromPlanning called with task:",
-      task.title,
-      "filePath:",
-      task.filePath
-    );
-    console.log(
-      "🔍 About to call unscheduleTask function:",
-      typeof unscheduleTask
-    );
-    try {
-      console.log("🔍 Calling unscheduleTask now...");
-      unscheduleTask(task);
-      console.log("🔍 unscheduleTask call completed, updating property...");
-      // Clear the Do Date property when unscheduling
-      await plugin.taskFileManager.updateProperty(
-        task.filePath,
-        "Do Date",
-        null
-      );
-      console.log("✅ handleUnscheduleFromPlanning completed");
-    } catch (error) {
-      console.error("❌ Error in handleUnscheduleFromPlanning:", error);
-    }
+    unscheduleTask(task);
+    // Clear the Do Date property when unscheduling
+    await plugin.taskFileManager.updateProperty(task.filePath, "Do Date", null);
   }
 
   async function handleRescheduleFromUnscheduled(task: Task) {
