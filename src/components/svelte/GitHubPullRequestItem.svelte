@@ -142,11 +142,6 @@
         Open
       </button>
     {/if}
-    <SeeOnServiceButton
-      serviceName="GitHub"
-      url={pullRequest.html_url}
-      testId="see-on-github-button"
-    />
     <ImportButton
       {isImported}
       {isImporting}
@@ -166,6 +161,14 @@
   </div>
 {/snippet}
 
+{#snippet secondaryActionSnippet()}
+  <SeeOnServiceButton
+    serviceName="GitHub"
+    url={pullRequest.html_url}
+    testId="see-on-github-button"
+  />
+{/snippet}
+
 <TaskItem
   title={pullRequest.title}
   {subtitle}
@@ -181,6 +184,7 @@
   {testId}
   actionContent={true}
   actions={actionSnippet}
+  secondaryActions={secondaryActionSnippet}
 />
 
 <style>

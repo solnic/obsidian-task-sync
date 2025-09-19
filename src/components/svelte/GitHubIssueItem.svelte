@@ -125,11 +125,6 @@
         Open
       </button>
     {/if}
-    <SeeOnServiceButton
-      serviceName="GitHub"
-      url={issue.html_url}
-      testId="see-on-github-button"
-    />
     <ImportButton
       {isImported}
       {isImporting}
@@ -149,6 +144,14 @@
   </div>
 {/snippet}
 
+{#snippet secondaryActionSnippet()}
+  <SeeOnServiceButton
+    serviceName="GitHub"
+    url={issue.html_url}
+    testId="see-on-github-button"
+  />
+{/snippet}
+
 <TaskItem
   title={issue.title}
   {subtitle}
@@ -164,6 +167,7 @@
   {testId}
   actionContent={true}
   actions={actionSnippet}
+  secondaryActions={secondaryActionSnippet}
 />
 
 <style>

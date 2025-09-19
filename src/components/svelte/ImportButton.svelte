@@ -132,10 +132,8 @@
   }
 </script>
 
-{#if (isImported || isImporting) && !dailyPlanningWizardMode}
-  <span class={cssClasses} data-testid={buttonTestId} title={buttonTitle}>
-    {buttonText}
-  </span>
+{#if isImported && !dailyPlanningWizardMode}
+  <!-- Don't render anything for imported items - we show the imported badge instead -->
 {:else}
   <button
     class={cssClasses}

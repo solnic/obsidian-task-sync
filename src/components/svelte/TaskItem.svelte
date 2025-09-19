@@ -32,6 +32,7 @@
     isHovered?: boolean;
     isImported?: boolean;
     isSelected?: boolean;
+    isScheduled?: boolean; // Whether the task is scheduled
 
     // Behavior
     onHover?: (hovered: boolean) => void;
@@ -44,6 +45,7 @@
     actionContent?: boolean; // Allow custom action overlay
     children?: Snippet;
     actions?: Snippet<[]>;
+    secondaryActions?: Snippet<[]>; // Secondary actions that appear at bottom on hover
   }
 
   let {
@@ -58,12 +60,14 @@
     isHovered = false,
     isImported = false,
     isSelected = false,
+    isScheduled = false,
     onHover,
     testId,
     customContent = false,
     actionContent = false,
     children,
     actions,
+    secondaryActions,
   }: Props = $props();
 
   const { plugin } = getPluginContext();
@@ -101,6 +105,7 @@
   onmouseleave={handleMouseLeave}
   data-testid={testId}
   data-imported={isImported ? "true" : "false"}
+  data-state={isScheduled ? "scheduled" : ""}
   role="listitem"
 >
   <div class="task-sync-task-list-item-content">
@@ -213,9 +218,18 @@
   {/if}
 
   <!-- Action overlay snippet -->
-  {#if actionContent && isHovered && actions}
+  {#if actionContent && isHovered && (actions || secondaryActions)}
     <div class="task-sync-action-overlay">
-      {@render actions()}
+      {#if actions}
+        <div class="task-sync-primary-actions">
+          {@render actions()}
+        </div>
+      {/if}
+      {#if secondaryActions}
+        <div class="task-sync-secondary-actions">
+          {@render secondaryActions()}
+        </div>
+      {/if}
     </div>
   {/if}
 </div>
@@ -244,6 +258,10 @@
 
   .task-sync-task-list-item.imported {
     border-left: 3px solid var(--interactive-accent);
+  }
+
+  .task-sync-task-list-item[data-state="scheduled"] {
+    border-left: 3px solid var(--color-blue);
   }
 
   .task-sync-task-list-item.selected {
@@ -321,11 +339,28 @@
     left: 0;
     background: rgba(var(--background-primary-rgb), 0.9);
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    justify-content: space-between;
     border-radius: 6px;
     opacity: 1;
     transition: opacity 0.2s ease;
     z-index: 10;
+    padding: 8px;
+  }
+
+  .task-sync-primary-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .task-sync-secondary-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: auto;
   }
 </style>

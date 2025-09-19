@@ -19,30 +19,42 @@
 
 <button
   class="see-on-service-button"
-  title="See on {serviceName}"
+  title="See on {serviceName} (opens in new window)"
   onclick={handleClick}
   data-testid={testId}
 >
-  See on {serviceName}
+  <span class="see-on-service-text">See on {serviceName}</span>
+  <span class="see-on-service-icon">↗</span>
 </button>
 
 <style>
   .see-on-service-button {
-    padding: 6px 12px;
-    border: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border: 1px solid var(--background-modifier-border);
     border-radius: 4px;
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    font-size: 12px;
-    font-weight: 500;
+    background: var(--background-secondary);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 400;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .see-on-service-button:hover {
-    background: var(--interactive-accent-hover);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    background: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border-hover);
+    color: var(--text-normal);
+  }
+
+  .see-on-service-text {
+    font-size: 11px;
+  }
+
+  .see-on-service-icon {
+    font-size: 10px;
+    opacity: 0.7;
   }
 </style>

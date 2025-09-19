@@ -140,6 +140,16 @@
 
 {#snippet actionSnippet()}
   <div class="task-actions">
+    <!-- Always show Open button -->
+    <button
+      class="open-task-button"
+      title="Open task"
+      onclick={handleOpenTask}
+      data-testid="open-task-button"
+    >
+      Open
+    </button>
+
     {#if dailyPlanningWizardMode}
       <ImportButton
         dayPlanningMode={false}
@@ -156,24 +166,18 @@
         onImport={handleAddToToday}
         isImported={isInToday}
       />
-    {:else}
-      <button
-        class="open-task-button"
-        title="Open task"
-        onclick={handleOpenTask}
-        data-testid="open-task-button"
-      >
-        Open
-      </button>
-    {/if}
-    {#if task.source?.url}
-      <SeeOnServiceButton
-        serviceName={task.source.name}
-        url={task.source.url}
-        testId="see-on-service-button"
-      />
     {/if}
   </div>
+{/snippet}
+
+{#snippet secondaryActionSnippet()}
+  {#if task.source?.url}
+    <SeeOnServiceButton
+      serviceName={task.source.name}
+      url={task.source.url}
+      testId="see-on-service-button"
+    />
+  {/if}
 {/snippet}
 
 <TaskItem
@@ -184,8 +188,10 @@
   updatedAt={task.updatedAt}
   {isHovered}
   {isImported}
+  {isScheduled}
   {onHover}
   actionContent={true}
   actions={actionSnippet}
+  secondaryActions={secondaryActionSnippet}
   {testId}
 />
