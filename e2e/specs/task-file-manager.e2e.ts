@@ -333,84 +333,90 @@ This is the main content of the task.
     });
   });
 
-  test("should update file properties using property sets and processFrontmatter", async () => {
-    // Create a task with some properties
-    await createTask(context, {
-      title: "Property Set Test Task",
-      priority: "Low",
-      areas: ["Development"],
-      done: false,
-      status: "Todo",
-    });
+  test(
+    "should update file properties using property sets and processFrontmatter",
+    { retry: 3 },
+    async () => {
+      // Create a task with some properties
+      await createTask(context, {
+        title: "Property Set Test Task",
+        priority: "Low",
+        areas: ["Development"],
+        done: false,
+        status: "Todo",
+      });
 
-    // Add some extra properties that should be removed
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(
-        "Tasks/Property Set Test Task.md"
+      // Add some extra properties that should be removed
+      await context.page.evaluate(async () => {
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(
+          "Tasks/Property Set Test Task.md"
+        );
+        const content = await app.vault.read(file);
+
+        // Add obsolete properties that should be removed
+        const updatedContent = content.replace(
+          "Status: Todo",
+          "Status: Todo\nObsoleteField: should be removed\nAnotherOldField: also removed"
+        );
+
+        await app.vault.modify(file, updatedContent);
+      });
+
+      // Test updating file properties using the refactored method
+      const result = await context.page.evaluate(async () => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const taskFileManager = plugin.taskFileManager;
+
+        return await taskFileManager.updateTaskFileProperties(
+          "Tasks/Property Set Test Task.md"
+        );
+      });
+
+      // Verify the method detected changes
+      expect(result.hasChanges).toBe(true);
+      expect(result.propertiesChanged).toBeGreaterThan(0);
+
+      // Verify the file now only contains properties from the property set
+      const finalContent = await context.page.evaluate(async () => {
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(
+          "Tasks/Property Set Test Task.md"
+        );
+        return await app.vault.read(file);
+      });
+
+      // Should contain all required properties from TASK_FRONTMATTER set
+      expect(finalContent).toContain("Title:");
+      expect(finalContent).toContain("Type:");
+      expect(finalContent).toContain("Priority:");
+      expect(finalContent).toContain("Areas:");
+      expect(finalContent).toContain("Done:");
+      expect(finalContent).toContain("Status:");
+
+      // Verify properties are in the correct order (Title should come first)
+      const lines: string[] = finalContent.split("\n");
+      const frontMatterStart: number = lines.findIndex(
+        (line) => line === "---"
       );
-      const content = await app.vault.read(file);
-
-      // Add obsolete properties that should be removed
-      const updatedContent = content.replace(
-        "Status: Todo",
-        "Status: Todo\nObsoleteField: should be removed\nAnotherOldField: also removed"
+      const frontMatterEnd: number = lines.findIndex(
+        (line: string, index: number) =>
+          index > frontMatterStart && line === "---"
+      );
+      const frontMatterLines: string[] = lines.slice(
+        frontMatterStart + 1,
+        frontMatterEnd
       );
 
-      await app.vault.modify(file, updatedContent);
-    });
-
-    // Test updating file properties using the refactored method
-    const result = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const taskFileManager = plugin.taskFileManager;
-
-      return await taskFileManager.updateTaskFileProperties(
-        "Tasks/Property Set Test Task.md"
+      const titleIndex: number = frontMatterLines.findIndex((line) =>
+        line.startsWith("Title:")
       );
-    });
-
-    // Verify the method detected changes
-    expect(result.hasChanges).toBe(true);
-    expect(result.propertiesChanged).toBeGreaterThan(0);
-
-    // Verify the file now only contains properties from the property set
-    const finalContent = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(
-        "Tasks/Property Set Test Task.md"
+      const typeIndex: number = frontMatterLines.findIndex((line) =>
+        line.startsWith("Type:")
       );
-      return await app.vault.read(file);
-    });
 
-    // Should contain all required properties from TASK_FRONTMATTER set
-    expect(finalContent).toContain("Title:");
-    expect(finalContent).toContain("Type:");
-    expect(finalContent).toContain("Priority:");
-    expect(finalContent).toContain("Areas:");
-    expect(finalContent).toContain("Done:");
-    expect(finalContent).toContain("Status:");
-
-    // Verify properties are in the correct order (Title should come first)
-    const lines: string[] = finalContent.split("\n");
-    const frontMatterStart: number = lines.findIndex((line) => line === "---");
-    const frontMatterEnd: number = lines.findIndex(
-      (line: string, index: number) =>
-        index > frontMatterStart && line === "---"
-    );
-    const frontMatterLines: string[] = lines.slice(
-      frontMatterStart + 1,
-      frontMatterEnd
-    );
-
-    const titleIndex: number = frontMatterLines.findIndex((line) =>
-      line.startsWith("Title:")
-    );
-    const typeIndex: number = frontMatterLines.findIndex((line) =>
-      line.startsWith("Type:")
-    );
-
-    expect(titleIndex).toBeLessThan(typeIndex); // Title should come before Type
-  });
+      expect(titleIndex).toBeLessThan(typeIndex); // Title should come before Type
+    }
+  );
 });

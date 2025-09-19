@@ -4,6 +4,8 @@ import { TFile } from "obsidian";
 import { type SharedTestContext } from "./shared-context";
 import { captureScreenshotOnFailure } from "./shared-context";
 
+import type { Task } from "../../src/types/entities";
+
 /**
  * Wait for a base file to be created or updated
  */
@@ -1689,4 +1691,13 @@ export async function switchToTaskService(page: Page, service: string) {
     service,
     { timeout: 5000 }
   );
+}
+
+export async function getTaskByTitle(page: Page, title: string): Promise<Task> {
+  return await page.evaluate(async (title) => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+    return plugin.stores.taskStore.getTaskByTitle(title);
+  }, title);
 }

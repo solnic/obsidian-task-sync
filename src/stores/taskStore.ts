@@ -167,6 +167,11 @@ class TaskStore extends EntityStore<Task> {
   getTasksWithoutDoDate(): Task[] {
     return getTasksWithoutDoDate(this.getEntities());
   }
+
+  getTaskByTitle(title: string): Task | null {
+    const entities = this.getEntities();
+    return entities.find((task) => task.title === title);
+  }
 }
 
 // Export singleton instance

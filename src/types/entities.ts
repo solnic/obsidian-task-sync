@@ -76,6 +76,9 @@ export interface Task extends BaseEntity, HasDataView {
 
   // Internal attributes (not front-matter)
   source?: TaskSource; // External source tracking
+
+  file: TFile; // Obsidian file reference
+  filePath: string; // Path to the file in vault
 }
 
 /**
