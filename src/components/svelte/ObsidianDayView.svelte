@@ -6,6 +6,7 @@
   import { getPluginContext } from "./context";
   import { EventDetailsModal } from "../modals/EventDetailsModal";
   import ImportButton from "./ImportButton.svelte";
+  import { getOptimalTextColor } from "../../utils/colorUtils";
 
   interface Props {
     events?: CalendarEvent[];
@@ -289,7 +290,10 @@
                   ? 'obsidian-day-view__event--compact'
                   : ''}"
                 data-testid="obsidian-day-view-event"
-                style="background-color: {event.calendar?.color || '#3b82f6'}"
+                style="background-color: {event.calendar?.color ||
+                  '#3b82f6'}; color: {getOptimalTextColor(
+                  event.calendar?.color || '#3b82f6'
+                )}"
                 role="button"
                 tabindex="0"
                 data-event-id={event.id}
