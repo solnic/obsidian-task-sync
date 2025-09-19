@@ -24,10 +24,30 @@
 
   let { todayTasks, todayEvents }: Props = $props();
 
-  // Get scheduled and unscheduled tasks from the daily planning store
-  let scheduledTasks = $derived.by(() => {
-    const tasks = $dailyPlanningStore.scheduledTasks;
-    return tasks;
+  // Get tasks from the daily planning store
+  let alreadyScheduledTasks = $derived.by(() => {
+    const store = $dailyPlanningStore;
+    // Filter out tasks that are in unscheduled or tasksToUnschedule lists
+    return store.alreadyScheduledTasks.filter(
+      (task) =>
+        !store.unscheduledTasks.some(
+          (unscheduled) => unscheduled.filePath === task.filePath
+        ) &&
+        !store.tasksToUnschedule.some(
+          (toUnschedule) => toUnschedule.filePath === task.filePath
+        )
+    );
+  });
+
+  let tasksToBeScheduled = $derived.by(() => {
+    const store = $dailyPlanningStore;
+    // Filter out tasks that are in unscheduled list
+    return store.tasksToBeScheduled.filter(
+      (task) =>
+        !store.unscheduledTasks.some(
+          (unscheduled) => unscheduled.filePath === task.filePath
+        )
+    );
   });
 
   let unscheduledTasks = $derived.by(() => {
@@ -35,29 +55,26 @@
     return tasks;
   });
 
-  // Combine existing today tasks with newly scheduled tasks, excluding unscheduled ones and duplicates
-  let allTodayTasks = $derived.by(() => {
-    // Filter out any tasks that are in the unscheduled list or already in scheduled tasks
-    const filteredTodayTasks = todayTasks.filter(
-      (task) =>
-        !unscheduledTasks.some(
-          (unscheduled) => unscheduled.filePath === task.filePath
-        ) &&
-        !scheduledTasks.some(
-          (scheduled) => scheduled.filePath === task.filePath
-        )
+  // Handle unscheduling tasks based on their origin
+  async function handleUnscheduleFromPlanning(task: Task) {
+    const store = $dailyPlanningStore;
+    const wasAlreadyScheduled = store.alreadyScheduledTasks.some(
+      (t) => t.filePath === task.filePath
     );
 
-    const combined = [...filteredTodayTasks, ...scheduledTasks];
-
-    return combined;
-  });
-
-  // Since we're using staging approach, these functions just manage the daily planning store
-  async function handleUnscheduleFromPlanning(task: Task) {
+    // Update the store state
     unscheduleTask(task);
-    // Clear the Do Date property when unscheduling
-    await plugin.taskFileManager.updateProperty(task.filePath, "Do Date", null);
+
+    // For already scheduled tasks, we don't immediately clear Do Date
+    // It will be cleared during plan confirmation if the task remains unscheduled
+    // For tasks added during planning, we can clear Do Date immediately
+    if (!wasAlreadyScheduled) {
+      await plugin.taskFileManager.updateProperty(
+        task.filePath,
+        "Do Date",
+        null
+      );
+    }
   }
 
   async function handleRescheduleFromUnscheduled(task: Task) {
@@ -108,36 +125,64 @@
     </div>
   {/if}
 
-  <!-- Scheduled Tasks -->
-  {#if allTodayTasks.length > 0}
+  <!-- Already Scheduled Tasks -->
+  {#if alreadyScheduledTasks.length > 0}
     <div class="agenda-section">
-      <h5>✅ Scheduled Tasks ({allTodayTasks.length})</h5>
+      <h5>✅ Already scheduled for today ({alreadyScheduledTasks.length})</h5>
       <div class="task-list">
-        {#each allTodayTasks as task}
-          {@const isFromPlanning = scheduledTasks.includes(task)}
-          <div class="task-item scheduled" data-testid="scheduled-task">
+        {#each alreadyScheduledTasks as task}
+          <div
+            class="task-item scheduled already-scheduled"
+            data-testid="scheduled-task"
+          >
             <div class="task-content">
               <span class="task-title">{task.title}</span>
-              {#if isFromPlanning}
-                <span class="task-badge planning">Added during planning</span>
-              {/if}
             </div>
             <div class="task-actions">
-              {#if isFromPlanning}
-                <button
-                  class="action-btn unschedule"
-                  onclick={() => handleUnscheduleFromPlanning(task)}
-                  data-testid="unschedule-planning-button"
-                >
-                  Remove
-                </button>
-              {/if}
+              <button
+                class="action-btn unschedule"
+                onclick={() => handleUnscheduleFromPlanning(task)}
+                data-testid="unschedule-planning-button"
+              >
+                Unschedule
+              </button>
             </div>
           </div>
         {/each}
       </div>
     </div>
-  {:else}
+  {/if}
+
+  <!-- To Be Scheduled Tasks -->
+  {#if tasksToBeScheduled.length > 0}
+    <div class="agenda-section">
+      <h5>📋 To be scheduled for today ({tasksToBeScheduled.length})</h5>
+      <div class="task-list">
+        {#each tasksToBeScheduled as task}
+          <div
+            class="task-item scheduled to-be-scheduled"
+            data-testid="scheduled-task"
+          >
+            <div class="task-content">
+              <span class="task-title">{task.title}</span>
+            </div>
+            <div class="task-actions">
+              <button
+                class="action-btn unschedule"
+                onclick={() => handleUnscheduleFromPlanning(task)}
+                data-testid="unschedule-planning-button"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
+  <!-- Show message if no tasks are scheduled -->
+  {#if alreadyScheduledTasks.length === 0 && tasksToBeScheduled.length === 0}
     <div class="no-tasks">
       <p>No tasks scheduled for today yet.</p>
     </div>
@@ -257,18 +302,6 @@
   .task-title {
     font-size: 14px;
     color: var(--text-normal);
-  }
-
-  .task-badge {
-    padding: 2px 6px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-weight: 500;
-  }
-
-  .task-badge.planning {
-    background: var(--color-blue);
-    color: white;
   }
 
   .task-actions {

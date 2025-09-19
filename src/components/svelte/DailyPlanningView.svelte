@@ -70,13 +70,8 @@
   });
 
   // Subscribe to task store changes using proper Svelte store subscription
-  let taskStoreState = $state();
-
-  // Subscribe to the task store
   $effect(() => {
     const unsubscribe = taskStore.subscribe((state) => {
-      taskStoreState = state;
-
       // Only update if we're not currently loading to avoid conflicts
       if (!isLoading && !state.loading) {
         // Update today's tasks when task store changes
@@ -86,6 +81,12 @@
         // Update yesterday's tasks as well in case they changed
         const yesterdayTasksGrouped = taskStore.getYesterdayTasksGrouped();
         yesterdayTasks = yesterdayTasksGrouped;
+
+        // Sync daily planning store with new today tasks if planning is active
+        const planningState = get(dailyPlanningStore);
+        if (planningState.isActive) {
+          syncDailyPlanningWithTodayTasks(newTodayTasks);
+        }
       }
     });
 
@@ -96,6 +97,41 @@
     // Set daily planning as inactive and clear scheduled tasks
     setDailyPlanningActive(false);
   });
+
+  /**
+   * Sync the daily planning store with current today tasks
+   * This handles cases where tasks get their Do Date changed to today while planning is active
+   */
+  function syncDailyPlanningWithTodayTasks(newTodayTasks: Task[]) {
+    const planningState = get(dailyPlanningStore);
+
+    // Find tasks that are now scheduled for today but weren't in our planning store
+    const newlyScheduledTasks = newTodayTasks.filter((task) => {
+      const isInAlreadyScheduled = planningState.alreadyScheduledTasks.some(
+        (t) => t.filePath === task.filePath
+      );
+      const isInToBeScheduled = planningState.tasksToBeScheduled.some(
+        (t) => t.filePath === task.filePath
+      );
+      const isInScheduled = planningState.scheduledTasks.some(
+        (t) => t.filePath === task.filePath
+      );
+
+      return !isInAlreadyScheduled && !isInToBeScheduled && !isInScheduled;
+    });
+
+    // Add newly detected tasks to alreadyScheduledTasks
+    if (newlyScheduledTasks.length > 0) {
+      dailyPlanningStore.update((state) => ({
+        ...state,
+        alreadyScheduledTasks: [
+          ...state.alreadyScheduledTasks,
+          ...newlyScheduledTasks,
+        ],
+        scheduledTasks: [...state.scheduledTasks, ...newlyScheduledTasks],
+      }));
+    }
+  }
 
   async function loadInitialData() {
     try {
@@ -221,6 +257,21 @@
   async function confirmPlan() {
     try {
       isLoading = true;
+
+      // Get tasks that need to be unscheduled (Do Date cleared)
+      const currentState = get(dailyPlanningStore);
+      const tasksToUnschedule = currentState.tasksToUnschedule;
+
+      // Clear Do Date for tasks that need to be unscheduled
+      for (const task of tasksToUnschedule) {
+        if (task.filePath) {
+          await plugin.taskFileManager.updateProperty(
+            task.filePath,
+            "Do Date",
+            null
+          );
+        }
+      }
 
       // Ensure today's daily note exists
       const dailyNoteResult = await dailyNoteService.ensureTodayDailyNote();

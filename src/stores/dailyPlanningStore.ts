@@ -8,24 +8,35 @@ import { taskStore } from "./taskStore";
 export interface DailyPlanningState {
   scheduledTasks: Task[];
   unscheduledTasks: Task[];
+  alreadyScheduledTasks: Task[]; // Tasks that were already scheduled for today before planning started
+  tasksToBeScheduled: Task[]; // Tasks added during planning that need to be scheduled
+  tasksToUnschedule: Task[]; // Already scheduled tasks that need Do Date cleared
   isActive: boolean;
 }
 
 const initialState: DailyPlanningState = {
   scheduledTasks: [],
   unscheduledTasks: [],
+  alreadyScheduledTasks: [],
+  tasksToBeScheduled: [],
+  tasksToUnschedule: [],
   isActive: false,
 };
 
 export const dailyPlanningStore = writable<DailyPlanningState>(initialState);
 
 /**
- * Add a task to the scheduled tasks list
+ * Add a task to the scheduled tasks list (for tasks added during planning)
  */
 export function scheduleTaskForToday(task: Task): void {
   dailyPlanningStore.update((state) => {
     // Remove from unscheduled if it exists there
     const newUnscheduledTasks = state.unscheduledTasks.filter(
+      (t) => t.filePath !== task.filePath
+    );
+
+    // Remove from tasksToUnschedule if it exists there
+    const newTasksToUnschedule = state.tasksToUnschedule.filter(
       (t) => t.filePath !== task.filePath
     );
 
@@ -38,18 +49,31 @@ export function scheduleTaskForToday(task: Task): void {
       ? state.scheduledTasks
       : [...state.scheduledTasks, task];
 
-    const newState = {
+    // Add to tasksToBeScheduled if not already there and not in alreadyScheduledTasks
+    const isAlreadyScheduledForToday = state.alreadyScheduledTasks.some(
+      (t) => t.filePath === task.filePath
+    );
+    const isAlreadyInToBeScheduled = state.tasksToBeScheduled.some(
+      (t) => t.filePath === task.filePath
+    );
+
+    const newTasksToBeScheduled =
+      isAlreadyScheduledForToday || isAlreadyInToBeScheduled
+        ? state.tasksToBeScheduled
+        : [...state.tasksToBeScheduled, task];
+
+    return {
       ...state,
       scheduledTasks: newScheduledTasks,
       unscheduledTasks: newUnscheduledTasks,
+      tasksToBeScheduled: newTasksToBeScheduled,
+      tasksToUnschedule: newTasksToUnschedule,
     };
-
-    return newState;
   });
 }
 
 /**
- * Remove a task from the scheduled tasks list and add to unscheduled
+ * Remove a task from the scheduled tasks list and handle based on its origin
  */
 export function unscheduleTask(task: Task): void {
   dailyPlanningStore.update((state) => {
@@ -63,15 +87,40 @@ export function unscheduleTask(task: Task): void {
       (t) => t.filePath !== task.filePath
     );
 
+    // Check if this task was already scheduled for today before planning started
+    const wasAlreadyScheduled = state.alreadyScheduledTasks.some(
+      (t) => t.filePath === task.filePath
+    );
+
+    // Remove from tasksToBeScheduled if it exists there
+    const newTasksToBeScheduled = state.tasksToBeScheduled.filter(
+      (t) => t.filePath !== task.filePath
+    );
+
+    let newUnscheduledTasks = state.unscheduledTasks;
+    let newTasksToUnschedule = state.tasksToUnschedule;
+
+    if (wasAlreadyScheduled) {
+      // For already scheduled tasks, add to tasksToUnschedule (needs Do Date cleared)
+      const alreadyInToUnschedule = state.tasksToUnschedule.some(
+        (t) => t.filePath === task.filePath
+      );
+      if (!alreadyInToUnschedule) {
+        newTasksToUnschedule = [...state.tasksToUnschedule, task];
+      }
+    }
+
     // Add to unscheduled tasks if not already there
-    const newUnscheduledTasks = alreadyUnscheduled
-      ? state.unscheduledTasks
-      : [...state.unscheduledTasks, task];
+    if (!alreadyUnscheduled) {
+      newUnscheduledTasks = [...state.unscheduledTasks, task];
+    }
 
     return {
       ...state,
       scheduledTasks: newScheduledTasks,
       unscheduledTasks: newUnscheduledTasks,
+      tasksToBeScheduled: newTasksToBeScheduled,
+      tasksToUnschedule: newTasksToUnschedule,
     };
   });
 }
@@ -86,6 +135,11 @@ export function rescheduleTask(task: Task): void {
       (t) => t.filePath !== task.filePath
     );
 
+    // Remove from tasksToUnschedule if it exists there
+    const newTasksToUnschedule = state.tasksToUnschedule.filter(
+      (t) => t.filePath !== task.filePath
+    );
+
     // Add to scheduled if not already there
     const newScheduledTasks = state.scheduledTasks.some(
       (t) => t.filePath === task.filePath
@@ -93,10 +147,24 @@ export function rescheduleTask(task: Task): void {
       ? state.scheduledTasks
       : [...state.scheduledTasks, task];
 
+    // Check if this task was already scheduled for today before planning started
+    const wasAlreadyScheduled = state.alreadyScheduledTasks.some(
+      (t) => t.filePath === task.filePath
+    );
+
+    // If it wasn't already scheduled, add to tasksToBeScheduled
+    const newTasksToBeScheduled =
+      wasAlreadyScheduled ||
+      state.tasksToBeScheduled.some((t) => t.filePath === task.filePath)
+        ? state.tasksToBeScheduled
+        : [...state.tasksToBeScheduled, task];
+
     return {
       ...state,
       scheduledTasks: newScheduledTasks,
       unscheduledTasks: newUnscheduledTasks,
+      tasksToBeScheduled: newTasksToBeScheduled,
+      tasksToUnschedule: newTasksToUnschedule,
     };
   });
 }
@@ -109,12 +177,39 @@ export function isTaskScheduled(task: Task, scheduledTasks: Task[]): boolean {
 }
 
 /**
+ * Check if a task was already scheduled for today before planning started
+ */
+export function isTaskAlreadyScheduled(task: Task): boolean {
+  const state = get(dailyPlanningStore);
+  return state.alreadyScheduledTasks.some((t) => t.filePath === task.filePath);
+}
+
+/**
+ * Check if a task was added during planning
+ */
+export function isTaskAddedDuringPlanning(task: Task): boolean {
+  const state = get(dailyPlanningStore);
+  return state.tasksToBeScheduled.some((t) => t.filePath === task.filePath);
+}
+
+/**
+ * Check if a task is staged to be unscheduled
+ */
+export function isTaskToBeUnscheduled(task: Task): boolean {
+  const state = get(dailyPlanningStore);
+  return state.tasksToUnschedule.some((t) => t.filePath === task.filePath);
+}
+
+/**
  * Set the Daily Planning wizard active state
  */
 export function setDailyPlanningActive(isActive: boolean): void {
   dailyPlanningStore.update((state) => {
     let newScheduledTasks = state.scheduledTasks;
     let newUnscheduledTasks = state.unscheduledTasks;
+    let newAlreadyScheduledTasks = state.alreadyScheduledTasks;
+    let newTasksToBeScheduled = state.tasksToBeScheduled;
+    let newTasksToUnschedule = state.tasksToUnschedule;
 
     if (isActive) {
       // When activating, load any existing tasks scheduled for today
@@ -122,27 +217,36 @@ export function setDailyPlanningActive(isActive: boolean): void {
       if (state.scheduledTasks.length === 0) {
         const todayTasks = taskStore.getTasksForToday();
 
+        // All existing today tasks are considered "already scheduled"
+        newAlreadyScheduledTasks = [...todayTasks];
         // Add all today tasks to scheduled tasks
-        newScheduledTasks = [...state.scheduledTasks, ...todayTasks];
+        newScheduledTasks = [...todayTasks];
       } else {
         // Keep existing tasks
         newScheduledTasks = state.scheduledTasks;
+        newAlreadyScheduledTasks = state.alreadyScheduledTasks;
       }
       newUnscheduledTasks = state.unscheduledTasks;
+      newTasksToBeScheduled = state.tasksToBeScheduled;
+      newTasksToUnschedule = state.tasksToUnschedule;
     } else {
-      // When deactivating, clear tasks
+      // When deactivating, clear all tasks
       newScheduledTasks = [];
       newUnscheduledTasks = [];
+      newAlreadyScheduledTasks = [];
+      newTasksToBeScheduled = [];
+      newTasksToUnschedule = [];
     }
 
-    const newState = {
+    return {
       ...state,
       isActive,
       scheduledTasks: newScheduledTasks,
       unscheduledTasks: newUnscheduledTasks,
+      alreadyScheduledTasks: newAlreadyScheduledTasks,
+      tasksToBeScheduled: newTasksToBeScheduled,
+      tasksToUnschedule: newTasksToUnschedule,
     };
-
-    return newState;
   });
 }
 

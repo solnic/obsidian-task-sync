@@ -6,7 +6,11 @@
 
   import type { Task } from "../../../types/entities";
   import type { CalendarEvent } from "../../../types/calendar";
-  import { dailyPlanningStore } from "../../../stores/dailyPlanningStore";
+  import {
+    dailyPlanningStore,
+    isTaskAlreadyScheduled,
+    isTaskAddedDuringPlanning,
+  } from "../../../stores/dailyPlanningStore";
   import { getOptimalTextColor } from "../../../utils/colorUtils";
 
   interface Props {
@@ -16,8 +20,7 @@
 
   let { finalPlan, tasksToMoveToToday }: Props = $props();
 
-  // Get scheduled and unscheduled tasks from the daily planning store
-  let scheduledTasks = $derived($dailyPlanningStore.scheduledTasks);
+  // Get unscheduled tasks from the daily planning store
   let unscheduledTasks = $derived($dailyPlanningStore.unscheduledTasks);
 </script>
 
@@ -58,14 +61,19 @@
         <h5>✅ Tasks ({finalPlan.tasks.length})</h5>
         <div class="preview-list">
           {#each finalPlan.tasks as task}
-            {@const isFromPlanning = scheduledTasks.includes(task)}
+            {@const wasAlreadyScheduled = isTaskAlreadyScheduled(task)}
+            {@const wasAddedDuringPlanning = isTaskAddedDuringPlanning(task)}
             <div class="preview-item task">
               <span class="preview-title">{task.title}</span>
               {#if tasksToMoveToToday.includes(task)}
                 <span class="preview-badge moved">Moved from yesterday</span>
-              {:else if isFromPlanning}
-                <span class="preview-badge scheduled"
-                  >Scheduled during planning</span
+              {:else if wasAlreadyScheduled}
+                <span class="preview-badge already-scheduled"
+                  >Already scheduled for today</span
+                >
+              {:else if wasAddedDuringPlanning}
+                <span class="preview-badge to-be-scheduled"
+                  >To be scheduled for today</span
                 >
               {/if}
             </div>
@@ -183,7 +191,12 @@
     color: white;
   }
 
-  .preview-badge.scheduled {
+  .preview-badge.already-scheduled {
+    background: var(--color-green);
+    color: white;
+  }
+
+  .preview-badge.to-be-scheduled {
     background: var(--color-blue);
     color: white;
   }
