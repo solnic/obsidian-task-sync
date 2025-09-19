@@ -10,6 +10,7 @@ import { sanitizeFileName } from "../utils/fileNameSanitizer";
 import { AreaFileManager } from "./AreaFileManager";
 import { PROPERTY_REGISTRY } from "../types/properties";
 import { PROPERTY_SETS } from "./base-definitions/BaseConfigurations";
+import * as yaml from "js-yaml";
 
 export class TaskImportManager {
   constructor(
@@ -89,31 +90,19 @@ export class TaskImportManager {
   }
 
   /**
-   * Generate front-matter string from data object
+   * Generate front-matter string from data object using proper YAML serialization
    */
   private generateFrontMatterString(
     frontMatterData: Record<string, any>
   ): string {
-    const frontMatterLines = ["---"];
-    for (const [key, value] of Object.entries(frontMatterData)) {
-      if (Array.isArray(value)) {
-        frontMatterLines.push(
-          `${key}: [${value.map((v) => `"${v}"`).join(", ")}]`
-        );
-      } else if (typeof value === "string") {
-        frontMatterLines.push(`${key}: "${value}"`);
-      } else if (typeof value === "object" && value !== null) {
-        // Handle nested objects like source
-        frontMatterLines.push(`${key}:`);
-        for (const [subKey, subValue] of Object.entries(value)) {
-          frontMatterLines.push(`  ${subKey}: "${subValue}"`);
-        }
-      } else {
-        frontMatterLines.push(`${key}: ${value}`);
-      }
-    }
-    frontMatterLines.push("---");
-    return frontMatterLines.join("\n");
+    // Use js-yaml to properly serialize the data with correct escaping
+    const yamlContent = yaml.dump(frontMatterData, {
+      quotingType: '"',
+      forceQuotes: false,
+      lineWidth: -1, // Disable line wrapping
+    });
+
+    return `---\n${yamlContent}---`;
   }
 
   /**

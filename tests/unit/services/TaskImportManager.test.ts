@@ -90,26 +90,14 @@ function mapExternalStatus(status: string): string {
 function generateFrontMatterString(
   frontMatterData: Record<string, any>
 ): string {
-  const frontMatterLines = ["---"];
-  for (const [key, value] of Object.entries(frontMatterData)) {
-    if (Array.isArray(value)) {
-      frontMatterLines.push(
-        `${key}: [${value.map((v) => `"${v}"`).join(", ")}]`
-      );
-    } else if (typeof value === "string") {
-      frontMatterLines.push(`${key}: "${value}"`);
-    } else if (typeof value === "object" && value !== null) {
-      // Handle nested objects like source
-      frontMatterLines.push(`${key}:`);
-      for (const [subKey, subValue] of Object.entries(value)) {
-        frontMatterLines.push(`  ${subKey}: "${subValue}"`);
-      }
-    } else {
-      frontMatterLines.push(`${key}: ${value}`);
-    }
-  }
-  frontMatterLines.push("---");
-  return frontMatterLines.join("\n");
+  // Use js-yaml to properly serialize the data with correct escaping
+  const yamlContent = yaml.dump(frontMatterData, {
+    quotingType: '"',
+    forceQuotes: false,
+    lineWidth: -1, // Disable line wrapping
+  });
+
+  return `---\n${yamlContent}---`;
 }
 
 describe("TaskImportManager Front-matter Generation", () => {
@@ -249,12 +237,15 @@ describe("TaskImportManager Front-matter Generation", () => {
       const frontMatterString = generateFrontMatterString(frontMatterData);
 
       // The generated YAML should be parseable
+      // Extract YAML content between --- delimiters
+      const yamlContent = frontMatterString.split("\n").slice(1, -1).join("\n");
+
       expect(() => {
-        yaml.load(frontMatterString);
+        yaml.load(yamlContent);
       }).not.toThrow();
 
       // Parse the YAML and verify the title is preserved correctly
-      const parsed = yaml.load(frontMatterString) as Record<string, any>;
+      const parsed = yaml.load(yamlContent) as Record<string, any>;
       expect(parsed.Title).toBe(
         'crontabs with "oreboot" oban option instead of valid crontab'
       );
@@ -286,12 +277,18 @@ describe("TaskImportManager Front-matter Generation", () => {
         const frontMatterString = generateFrontMatterString(frontMatterData);
 
         // The generated YAML should be parseable
+        // Extract YAML content between --- delimiters
+        const yamlContent = frontMatterString
+          .split("\n")
+          .slice(1, -1)
+          .join("\n");
+
         expect(() => {
-          yaml.load(frontMatterString);
+          yaml.load(yamlContent);
         }).not.toThrow();
 
         // Parse the YAML and verify the title is preserved correctly
-        const parsed = yaml.load(frontMatterString) as Record<string, any>;
+        const parsed = yaml.load(yamlContent) as Record<string, any>;
         expect(parsed.Title).toBe(title);
       });
     });
