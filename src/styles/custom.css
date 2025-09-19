@@ -2404,7 +2404,11 @@ Provides consistent styling for all UI components
 }
 
 .task-sync-task-list-item.imported {
-  border-left: 3px solid var(--interactive-accent);
+  border-left: 3px solid var(--interactive-accent) !important;
+}
+
+.task-sync-task-list-item.scheduled {
+  border-left: 3px solid var(--color-blue) !important;
 }
 
 .task-sync-task-list-item.hovered .task-sync-task-list-item-content {
@@ -2414,6 +2418,8 @@ Provides consistent styling for all UI components
 
 .task-sync-task-list-item-content {
   transition: all 0.2s ease;
+  border-radius: 6px;
+  overflow: hidden;
 }
 
 /* Task List Container Scrollbar styling */
@@ -2551,49 +2557,83 @@ Provides consistent styling for all UI components
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
 }
 
-/* Imported Badge Styles */
+/* Scheduled Badge Styles - Full width at top, show on hover */
+.scheduled-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--color-blue);
+  color: var(--text-on-accent);
+  font-size: 10px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 6px 6px 0 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+  text-transform: lowercase;
+  letter-spacing: 0.5px;
+  text-align: center;
+  z-index: 5;
+}
+
+.task-sync-task-list-item:hover .scheduled-badge {
+  opacity: 1;
+}
+
+/* Imported Badge Styles - Full width at bottom, show on hover */
 .imported-badge {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  bottom: 0;
+  left: 0;
+  right: 0;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   font-size: 10px;
   font-weight: 500;
-  padding: 2px 6px;
-  border-radius: 3px;
+  padding: 4px 12px;
+  border-radius: 0 0 6px 6px;
   opacity: 0;
   transition: opacity 0.2s ease;
-  z-index: 5;
   pointer-events: none;
   text-transform: lowercase;
   letter-spacing: 0.5px;
+  text-align: center;
+  z-index: 5;
 }
 
 .task-sync-task-list-item:hover .imported-badge {
   opacity: 1;
 }
 
-/* Scheduled Badge Styles */
-.scheduled-badge {
-  position: absolute;
-  top: 8px;
-  right: 120px; /* Position to the left of imported badge */
-  background: var(--color-blue);
-  color: var(--text-on-accent);
-  font-size: 10px;
-  font-weight: 500;
-  padding: 2px 6px;
-  border-radius: 3px;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-  text-transform: lowercase;
-  letter-spacing: 0.5px;
+/* Combined scheduled and imported - gradient border with radius */
+.task-sync-task-list-item.scheduled-and-imported {
+  border: 1px solid transparent !important;
+  background:
+    linear-gradient(var(--background-primary), var(--background-primary)) padding-box,
+    linear-gradient(to top, var(--interactive-accent) 0%, var(--color-blue) 100%) border-box !important;
+  border-radius: 6px !important;
 }
 
-.task-sync-task-list-item:hover .scheduled-badge {
-  opacity: 1;
+/* Ensure hover state also uses proper background for gradient border */
+.task-sync-task-list-item.scheduled-and-imported:hover {
+  background:
+    linear-gradient(var(--background-primary-alt), var(--background-primary-alt)) padding-box,
+    linear-gradient(to top, var(--interactive-accent) 0%, var(--color-blue) 100%) border-box !important;
+}
+
+/* Add left border emphasis for gradient case */
+.task-sync-task-list-item.scheduled-and-imported::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(to top, var(--interactive-accent) 0%, var(--color-blue) 100%);
+  border-radius: 6px 0 0 6px;
+  z-index: 1;
 }
 
 .tasks-view-layout {

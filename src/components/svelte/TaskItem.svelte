@@ -102,7 +102,9 @@
 <div
   class="task-sync-task-list-item {isHovered ? 'hovered' : ''} {isImported
     ? 'imported'
-    : ''} {isSelected ? 'selected' : ''}"
+    : ''} {isSelected ? 'selected' : ''} {isScheduled
+    ? 'scheduled'
+    : ''} {isScheduled && isImported ? 'scheduled-and-imported' : ''}"
   onmouseenter={handleMouseEnter}
   onmouseleave={handleMouseLeave}
   data-testid={testId}
@@ -209,17 +211,7 @@
     {/if}
   </div>
 
-  <!-- Imported badge - shows in top-right corner -->
-  {#if isImported}
-    <div
-      class="imported-badge"
-      title="This item was imported from an external source"
-    >
-      ✓ imported
-    </div>
-  {/if}
-
-  <!-- Scheduled badge - shows next to imported badge -->
+  <!-- Scheduled badge - shows at top with full width -->
   {#if isScheduled && scheduledDate}
     {@const friendlyDate = moment(scheduledDate).calendar(null, {
       sameDay: "[Today at] LT",
@@ -237,19 +229,31 @@
     </div>
   {/if}
 
+  <!-- Imported badge - shows at bottom with full width -->
+  {#if isImported}
+    <div
+      class="imported-badge"
+      title="This item was imported from an external source"
+    >
+      ✓ imported
+    </div>
+  {/if}
+
   <!-- Action overlay snippet -->
   {#if actionContent && isHovered && (actions || secondaryActions)}
     <div class="task-sync-action-overlay">
-      {#if actions}
-        <div class="task-sync-primary-actions">
-          {@render actions()}
-        </div>
-      {/if}
-      {#if secondaryActions}
-        <div class="task-sync-secondary-actions">
-          {@render secondaryActions()}
-        </div>
-      {/if}
+      <div class="task-sync-actions-container">
+        {#if actions}
+          <div class="task-sync-primary-actions">
+            {@render actions()}
+          </div>
+        {/if}
+        {#if secondaryActions}
+          <div class="task-sync-secondary-actions">
+            {@render secondaryActions()}
+          </div>
+        {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -264,6 +268,7 @@
     margin-bottom: 8px;
     transition: all 0.2s ease;
     cursor: pointer;
+    overflow: hidden;
   }
 
   .task-sync-task-list-item:hover {
@@ -276,13 +281,7 @@
     background: var(--background-primary-alt);
   }
 
-  .task-sync-task-list-item.imported {
-    border-left: 3px solid var(--interactive-accent);
-  }
-
-  .task-sync-task-list-item[data-state="scheduled"] {
-    border-left: 3px solid var(--color-blue);
-  }
+  /* Border styling now handled by CSS classes in custom.css */
 
   .task-sync-task-list-item.selected {
     border-color: var(--interactive-accent);
@@ -359,8 +358,8 @@
     left: 0;
     background: rgba(var(--background-primary-rgb), 0.9);
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    align-items: center;
+    justify-content: center;
     border-radius: 6px;
     opacity: 1;
     transition: opacity 0.2s ease;
@@ -368,19 +367,21 @@
     padding: 8px;
   }
 
+  .task-sync-actions-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
   .task-sync-primary-actions {
     display: flex;
     align-items: center;
-    justify-content: center;
     gap: 8px;
-    flex: 1;
   }
 
   .task-sync-secondary-actions {
     display: flex;
     align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
-    margin-top: auto;
+    gap: 8px;
   }
 </style>
