@@ -29,13 +29,16 @@
     return $dailyPlanningStore.unscheduledTasks;
   });
 
-  // Combine existing today tasks with newly scheduled tasks, excluding unscheduled ones
+  // Combine existing today tasks with newly scheduled tasks, excluding unscheduled ones and duplicates
   let allTodayTasks = $derived.by(() => {
-    // Filter out any tasks that are in the unscheduled list
+    // Filter out any tasks that are in the unscheduled list or already in scheduled tasks
     const filteredTodayTasks = todayTasks.filter(
       (task) =>
         !unscheduledTasks.some(
           (unscheduled) => unscheduled.filePath === task.filePath
+        ) &&
+        !scheduledTasks.some(
+          (scheduled) => scheduled.filePath === task.filePath
         )
     );
     return [...filteredTodayTasks, ...scheduledTasks];
