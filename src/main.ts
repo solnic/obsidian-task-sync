@@ -91,6 +91,11 @@ import {
   CommandManager,
   type CommandCallbacks,
 } from "./services/CommandManager";
+import {
+  NoteManagers,
+  createNoteManagers,
+  type NoteTypeRegistration,
+} from "./services/NoteManagers";
 
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
@@ -118,7 +123,10 @@ export interface TodoItemWithParent extends TodoItem {
   parentTodo?: TodoItem;
 }
 
-export default class TaskSyncPlugin extends Plugin {
+export default class TaskSyncPlugin
+  extends Plugin
+  implements NoteTypeRegistration
+{
   settings: TaskSyncSettings;
   private previousSettings: TaskSyncSettings | null = null;
   vaultScanner: VaultScanner;
@@ -152,6 +160,7 @@ export default class TaskSyncPlugin extends Plugin {
   taskMentionSyncHandler: TaskMentionSyncHandler;
   private markdownProcessor: MarkdownPostProcessor;
   commandManager: CommandManager;
+  noteManagers: NoteManagers;
 
   public get stores(): {
     taskStore: typeof taskStore;
@@ -193,6 +202,17 @@ export default class TaskSyncPlugin extends Plugin {
       projectStore.waitForRefresh(),
       areaStore.waitForRefresh(),
     ]);
+  }
+
+  /**
+   * Register a note type with corresponding file manager
+   * Implements NoteTypeRegistration interface
+   */
+  public registerNoteType<T>(
+    noteType: string,
+    config: { manager: any; propertyHandler?: any }
+  ): void {
+    this.noteManagers.registerNoteType(noteType, config);
   }
 
   /**
@@ -269,6 +289,19 @@ export default class TaskSyncPlugin extends Plugin {
       this.app.vault,
       this.settings
     );
+
+    // Initialize NoteManagers with file managers
+    this.noteManagers = createNoteManagers(
+      this.app,
+      this.app.vault,
+      this.settings,
+      {
+        taskFileManager: this.taskFileManager,
+        areaFileManager: this.areaFileManager,
+        projectFileManager: this.projectFileManager,
+      }
+    );
+    await this.noteManagers.initialize();
 
     // Initialize import services with dependencies
     this.taskImportManager = new TaskImportManager(
@@ -469,6 +502,10 @@ export default class TaskSyncPlugin extends Plugin {
 
     if (this.commandManager) {
       this.commandManager.cleanup();
+    }
+
+    if (this.noteManagers) {
+      this.noteManagers.cleanup();
     }
 
     if (this.fileChangeListener) {
@@ -685,16 +722,8 @@ export default class TaskSyncPlugin extends Plugin {
       this.baseManager.updateSettings(this.settings);
     }
 
-    if (this.taskFileManager) {
-      this.taskFileManager.updateSettings(this.settings);
-    }
-
-    if (this.areaFileManager) {
-      this.areaFileManager.updateSettings(this.settings);
-    }
-
-    if (this.projectFileManager) {
-      this.projectFileManager.updateSettings(this.settings);
+    if (this.noteManagers) {
+      this.noteManagers.updateSettings(this.settings);
     }
   }
 
