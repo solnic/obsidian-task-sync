@@ -33,6 +33,7 @@
     isImported?: boolean;
     isSelected?: boolean;
     isScheduled?: boolean; // Whether the task is scheduled
+    scheduledDate?: Date; // The date when the task is scheduled (Do Date)
 
     // Behavior
     onHover?: (hovered: boolean) => void;
@@ -61,6 +62,7 @@
     isImported = false,
     isSelected = false,
     isScheduled = false,
+    scheduledDate,
     onHover,
     testId,
     customContent = false,
@@ -214,6 +216,24 @@
       title="This item was imported from an external source"
     >
       ✓ imported
+    </div>
+  {/if}
+
+  <!-- Scheduled badge - shows next to imported badge -->
+  {#if isScheduled && scheduledDate}
+    {@const friendlyDate = moment(scheduledDate).calendar(null, {
+      sameDay: "[Today at] LT",
+      nextDay: "[Tomorrow at] LT",
+      nextWeek: "dddd [at] LT",
+      lastDay: "[Yesterday at] LT",
+      lastWeek: "[Last] dddd [at] LT",
+      sameElse: "MMM D [at] LT",
+    })}
+    <div
+      class="scheduled-badge"
+      title="This item is scheduled for {moment(scheduledDate).format('LLLL')}"
+    >
+      ✓ scheduled {friendlyDate}
     </div>
   {/if}
 

@@ -17,6 +17,8 @@
     isHovered?: boolean;
     isImported?: boolean;
     isImporting?: boolean;
+    isScheduled?: boolean;
+    scheduledDate?: Date;
     onHover?: (hovered: boolean) => void;
     onImport?: (pr: GitHubPullRequest) => void;
     dayPlanningMode?: boolean;
@@ -30,6 +32,8 @@
     isHovered = false,
     isImported = false,
     isImporting = false,
+    isScheduled = false,
+    scheduledDate,
     onHover,
     onImport,
     dayPlanningMode = false,
@@ -180,6 +184,8 @@
   updatedAt={new Date(pullRequest.updated_at)}
   {isHovered}
   {isImported}
+  {isScheduled}
+  {scheduledDate}
   {onHover}
   {testId}
   actionContent={true}

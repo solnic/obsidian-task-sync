@@ -189,6 +189,7 @@
   {isHovered}
   {isImported}
   {isScheduled}
+  scheduledDate={task.doDate}
   {onHover}
   actionContent={true}
   actions={actionSnippet}

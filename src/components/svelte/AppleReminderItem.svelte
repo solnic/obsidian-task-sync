@@ -12,6 +12,8 @@
     isHovered?: boolean;
     isImported?: boolean;
     isImporting?: boolean;
+    isScheduled?: boolean;
+    scheduledDate?: Date;
     dayPlanningMode?: boolean;
     dailyPlanningWizardMode?: boolean;
     testId?: string;
@@ -24,6 +26,8 @@
     isHovered = false,
     isImported = false,
     isImporting = false,
+    isScheduled = false,
+    scheduledDate,
     onHover,
     onImport,
     dayPlanningMode = false,
@@ -132,6 +136,8 @@
   updatedAt={reminder.modificationDate}
   {isHovered}
   {isImported}
+  {isScheduled}
+  {scheduledDate}
   {onHover}
   {testId}
   actionContent={true}

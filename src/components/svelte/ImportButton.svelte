@@ -132,8 +132,8 @@
   }
 </script>
 
-{#if isImported && !dailyPlanningWizardMode}
-  <!-- Don't render anything for imported items - we show the imported badge instead -->
+{#if isImported}
+  <!-- Don't render anything for imported items - we show the imported/scheduled badge instead -->
 {:else}
   <button
     class={cssClasses}

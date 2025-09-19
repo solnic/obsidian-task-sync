@@ -556,11 +556,26 @@
           </div>
         {:else}
           {#each filteredReminders as reminder (reminder.id)}
+            {@const isImported = importedReminders.has(reminder.id)}
+            {@const importedTask = isImported
+              ? taskStore
+                  .getEntities()
+                  .find(
+                    (task) =>
+                      task.source?.url === reminder.id ||
+                      (task.source?.name === "Apple Reminders" &&
+                        task.title === reminder.title)
+                  )
+              : null}
+            {@const isScheduled = importedTask?.doDate != null}
+            {@const scheduledDate = importedTask?.doDate}
             <AppleReminderItem
               {reminder}
               isHovered={hoveredReminder === reminder.id}
-              isImported={importedReminders.has(reminder.id)}
+              {isImported}
               isImporting={importingReminders.has(reminder.id)}
+              {isScheduled}
+              {scheduledDate}
               onHover={(hovered) =>
                 (hoveredReminder = hovered ? reminder.id : null)}
               onImport={importReminder}

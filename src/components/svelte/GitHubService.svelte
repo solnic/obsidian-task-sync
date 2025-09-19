@@ -1247,12 +1247,26 @@
           {#each filteredIssues as issue}
             {@const isImporting = importingIssues.has(issue.number)}
             {@const isImported = importedIssues.has(issue.number)}
+            {@const importedTask = isImported
+              ? taskStore
+                  .getEntities()
+                  .find(
+                    (task) =>
+                      task.source?.url === issue.html_url ||
+                      (task.source?.name === "GitHub" &&
+                        task.title === issue.title)
+                  )
+              : null}
+            {@const isScheduled = importedTask?.doDate != null}
+            {@const scheduledDate = importedTask?.doDate}
             <GitHubIssueItem
               {issue}
               repository={currentRepository}
               isHovered={hoveredIssue === issue.number}
               {isImported}
               {isImporting}
+              {isScheduled}
+              {scheduledDate}
               onHover={(hovered) =>
                 (hoveredIssue = hovered ? issue.number : null)}
               onImport={importIssue}
@@ -1271,12 +1285,26 @@
           {#each filteredPullRequests as pr}
             {@const isImporting = importingPullRequests.has(pr.number)}
             {@const isImported = importedPullRequests.has(pr.number)}
+            {@const importedTask = isImported
+              ? taskStore
+                  .getEntities()
+                  .find(
+                    (task) =>
+                      task.source?.url === pr.html_url ||
+                      (task.source?.name === "GitHub" &&
+                        task.title === pr.title)
+                  )
+              : null}
+            {@const isScheduled = importedTask?.doDate != null}
+            {@const scheduledDate = importedTask?.doDate}
             <GitHubPullRequestItem
               pullRequest={pr}
               repository={currentRepository}
               isHovered={hoveredPullRequest === pr.number}
               {isImported}
               {isImporting}
+              {isScheduled}
+              {scheduledDate}
               onHover={(hovered) =>
                 (hoveredPullRequest = hovered ? pr.number : null)}
               onImport={importPullRequest}
