@@ -14,6 +14,7 @@
     unscheduleTask,
     isTaskScheduled,
   } from "../../stores/dailyPlanningStore";
+  import { getPluginContext } from "./context";
 
   interface Props {
     task: Task;
@@ -38,6 +39,8 @@
     isInToday = false,
     testId,
   }: Props = $props();
+
+  const { plugin } = getPluginContext();
 
   // Track daily planning state
   let isScheduled = $derived(
@@ -106,14 +109,26 @@
     onAddToToday?.(task);
   }
 
-  function handleScheduleForToday() {
+  async function handleScheduleForToday() {
+    const todayString = new Date().toISOString().split("T")[0];
+
     if (isScheduled) {
-      // Unschedule the task
+      // Unschedule the task - clear the Do Date
       unscheduleTask(task);
+      await plugin.taskFileManager.updateProperty(
+        task.filePath,
+        "Do Date",
+        null
+      );
       console.log("Unscheduled task:", task.title);
     } else {
-      // Schedule the task for today
+      // Schedule the task for today - set Do Date to today
       scheduleTaskForToday(task);
+      await plugin.taskFileManager.updateProperty(
+        task.filePath,
+        "Do Date",
+        todayString
+      );
       console.log("Scheduling task for today:", task.title);
     }
   }

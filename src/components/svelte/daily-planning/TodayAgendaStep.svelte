@@ -11,6 +11,7 @@
     unscheduleTask,
     rescheduleTask,
   } from "../../../stores/dailyPlanningStore";
+  import { getPluginContext } from "../context";
 
   interface Props {
     todayTasks: Task[];
@@ -41,12 +42,23 @@
   });
 
   // Since we're using staging approach, these functions just manage the daily planning store
-  function handleUnscheduleFromPlanning(task: Task) {
+  async function handleUnscheduleFromPlanning(task: Task) {
+    const { plugin } = getPluginContext();
     unscheduleTask(task);
+    // Clear the Do Date property when unscheduling
+    await plugin.taskFileManager.updateProperty(task.filePath, "Do Date", null);
   }
 
-  function handleRescheduleFromUnscheduled(task: Task) {
+  async function handleRescheduleFromUnscheduled(task: Task) {
+    const { plugin } = getPluginContext();
+    const todayString = new Date().toISOString().split("T")[0];
     rescheduleTask(task);
+    // Set the Do Date property when rescheduling
+    await plugin.taskFileManager.updateProperty(
+      task.filePath,
+      "Do Date",
+      todayString
+    );
   }
 
   /**
