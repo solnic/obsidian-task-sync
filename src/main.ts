@@ -214,6 +214,14 @@ export default class TaskSyncPlugin
   }
 
   /**
+   * Register a property handler for an existing note type
+   * Implements NoteTypeRegistration interface
+   */
+  public registerPropertyHandler(noteType: string, propertyHandler: any): void {
+    this.noteManagers.registerPropertyHandler(noteType, propertyHandler);
+  }
+
+  /**
    * Backward compatibility getters for e2e tests
    * These delegate to IntegrationManager to maintain test compatibility
    */
@@ -300,7 +308,7 @@ export default class TaskSyncPlugin
       this.settings
     );
 
-    // Initialize NoteManagers with file managers
+    // Initialize NoteManagers with file managers (property handlers will be added later)
     this.noteManagers = createNoteManagers(
       this.app,
       this.app.vault,
@@ -384,6 +392,14 @@ export default class TaskSyncPlugin
       this.settings
     );
     this.entityCacheHandler = new EntityCacheHandler(this.app, this.settings);
+
+    // Register property handlers with NoteManagers
+    this.noteManagers.registerPropertyHandler("Task", this.taskPropertyHandler);
+    this.noteManagers.registerPropertyHandler("Area", this.areaPropertyHandler);
+    this.noteManagers.registerPropertyHandler(
+      "Project",
+      this.projectPropertyHandler
+    );
 
     // Initialize task mention services
     this.taskMentionDetectionService = new TaskMentionDetectionService(

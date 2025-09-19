@@ -10,10 +10,11 @@ import type { FileManager } from "./FileManager";
 import type { TaskFileManager } from "./TaskFileManager";
 import type { AreaFileManager } from "./AreaFileManager";
 import type { ProjectFileManager } from "./ProjectFileManager";
+import type { EventHandler } from "../events/EventTypes";
 
 export interface NoteTypeConfig<T = any> {
   manager: FileManager;
-  propertyHandler?: any; // Will be extended later for property handlers
+  propertyHandler?: EventHandler;
 }
 
 export interface NoteManagersConfig {
@@ -48,15 +49,46 @@ export class NoteManagers {
    */
   public getManager<T extends FileManager>(noteType: string): T | null {
     const config = this.noteTypes.get(noteType);
-    return config?.manager as T || null;
+    return (config?.manager as T) || null;
   }
 
   /**
    * Get the property handler for a specific note type
    */
-  public getPropertyHandler(noteType: string): any | null {
+  public getPropertyHandler(noteType: string): EventHandler | null {
     const config = this.noteTypes.get(noteType);
     return config?.propertyHandler || null;
+  }
+
+  /**
+   * Register a property handler for an existing note type
+   */
+  public registerPropertyHandler(
+    noteType: string,
+    propertyHandler: EventHandler
+  ): void {
+    const config = this.noteTypes.get(noteType);
+    if (!config) {
+      throw new Error(`Note type '${noteType}' is not registered`);
+    }
+
+    config.propertyHandler = propertyHandler;
+    console.log(
+      `🔧 NoteManagers: Registered property handler for note type: ${noteType}`
+    );
+  }
+
+  /**
+   * Get all property handlers
+   */
+  public getAllPropertyHandlers(): EventHandler[] {
+    const handlers: EventHandler[] = [];
+    for (const config of this.noteTypes.values()) {
+      if (config.propertyHandler) {
+        handlers.push(config.propertyHandler);
+      }
+    }
+    return handlers;
   }
 
   /**
@@ -99,14 +131,17 @@ export class NoteManagers {
    */
   public async initialize(): Promise<void> {
     console.log("🔧 NoteManagers: Initializing all registered managers");
-    
+
     for (const [noteType, config] of this.noteTypes) {
       try {
         // File managers don't have an explicit initialize method currently
         // but this provides a hook for future initialization needs
         console.log(`✅ NoteManagers: Initialized ${noteType} manager`);
       } catch (error) {
-        console.error(`❌ NoteManagers: Failed to initialize ${noteType} manager:`, error);
+        console.error(
+          `❌ NoteManagers: Failed to initialize ${noteType} manager:`,
+          error
+        );
       }
     }
   }
@@ -116,15 +151,23 @@ export class NoteManagers {
    */
   public updateSettings(newSettings: TaskSyncSettings): void {
     this.settings = newSettings;
-    
+
     for (const [noteType, config] of this.noteTypes) {
       try {
-        if (config.manager && typeof config.manager.updateSettings === 'function') {
+        if (
+          config.manager &&
+          typeof config.manager.updateSettings === "function"
+        ) {
           config.manager.updateSettings(newSettings);
-          console.log(`✅ NoteManagers: Updated settings for ${noteType} manager`);
+          console.log(
+            `✅ NoteManagers: Updated settings for ${noteType} manager`
+          );
         }
       } catch (error) {
-        console.error(`❌ NoteManagers: Failed to update settings for ${noteType} manager:`, error);
+        console.error(
+          `❌ NoteManagers: Failed to update settings for ${noteType} manager:`,
+          error
+        );
       }
     }
   }
@@ -134,17 +177,20 @@ export class NoteManagers {
    */
   public cleanup(): void {
     console.log("🔧 NoteManagers: Cleaning up all registered managers");
-    
+
     for (const [noteType, config] of this.noteTypes) {
       try {
         // File managers don't have explicit cleanup methods currently
         // but this provides a hook for future cleanup needs
         console.log(`✅ NoteManagers: Cleaned up ${noteType} manager`);
       } catch (error) {
-        console.error(`❌ NoteManagers: Failed to cleanup ${noteType} manager:`, error);
+        console.error(
+          `❌ NoteManagers: Failed to cleanup ${noteType} manager:`,
+          error
+        );
       }
     }
-    
+
     this.noteTypes.clear();
   }
 }
@@ -160,21 +206,29 @@ export function createNoteManagers(
     taskFileManager: TaskFileManager;
     areaFileManager: AreaFileManager;
     projectFileManager: ProjectFileManager;
+  },
+  propertyHandlers?: {
+    taskPropertyHandler?: EventHandler;
+    areaPropertyHandler?: EventHandler;
+    projectPropertyHandler?: EventHandler;
   }
 ): NoteManagers {
   const noteManagers = new NoteManagers(app, vault, settings);
 
-  // Register default note types
+  // Register default note types with optional property handlers
   noteManagers.registerNoteType("Task", {
     manager: managers.taskFileManager,
+    propertyHandler: propertyHandlers?.taskPropertyHandler,
   });
 
   noteManagers.registerNoteType("Area", {
     manager: managers.areaFileManager,
+    propertyHandler: propertyHandlers?.areaPropertyHandler,
   });
 
   noteManagers.registerNoteType("Project", {
     manager: managers.projectFileManager,
+    propertyHandler: propertyHandlers?.projectPropertyHandler,
   });
 
   return noteManagers;
@@ -185,8 +239,10 @@ export function createNoteManagers(
  * This will be exposed on the main plugin class
  */
 export interface NoteTypeRegistration {
-  registerNoteType<T>(
+  registerNoteType<T>(noteType: string, config: NoteTypeConfig<T>): void;
+
+  registerPropertyHandler(
     noteType: string,
-    config: NoteTypeConfig<T>
+    propertyHandler: EventHandler
   ): void;
 }
