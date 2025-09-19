@@ -17,6 +17,7 @@
   import type { GitHubIntegrationSettings } from "../ui/settings/types";
   import type { TaskImportConfig } from "../../types/integrations";
   import { taskStore } from "../../stores/taskStore";
+  import { scheduleTaskForToday } from "../../stores/dailyPlanningStore";
 
   interface SortField {
     key: string;
@@ -32,6 +33,7 @@
       getDefaultImportConfig: () => TaskImportConfig;
     };
     dayPlanningMode?: boolean;
+    dailyPlanningWizardMode?: boolean;
   }
 
   let {
@@ -39,6 +41,7 @@
     settings,
     dependencies,
     dayPlanningMode = false,
+    dailyPlanningWizardMode = false,
   }: Props = $props();
 
   const { plugin } = getPluginContext();
@@ -859,24 +862,46 @@
         );
       }
 
-      // If in day planning mode, add to today's daily note (for both new and existing tasks)
-      if (dayPlanningMode && result.taskFilePath) {
-        try {
-          const dailyResult = await plugin.dailyNoteService.addTaskToToday(
-            result.taskFilePath
-          );
-          if (dailyResult.success) {
-            new Notice(`Added "${issue.title}" to today's daily note`);
-          } else {
+      // Handle day planning modes
+      if (result.taskFilePath) {
+        if (dailyPlanningWizardMode) {
+          // In wizard mode, add to daily planning store for staging
+          try {
+            const tasks = taskStore.getEntities();
+            const importedTask = tasks.find(
+              (task) => task.filePath === result.taskFilePath
+            );
+            if (importedTask) {
+              scheduleTaskForToday(importedTask);
+              new Notice(
+                `Scheduled "${issue.title}" for today (pending confirmation)`
+              );
+            }
+          } catch (err: any) {
+            console.error("Error scheduling for today:", err);
             new Notice(
-              `Failed to add to today: ${dailyResult.error || "Unknown error"}`
+              `Error scheduling for today: ${err.message || "Unknown error"}`
             );
           }
-        } catch (dailyErr: any) {
-          console.error("Error adding to today:", dailyErr);
-          new Notice(
-            `Error adding to today: ${dailyErr.message || "Unknown error"}`
-          );
+        } else if (dayPlanningMode) {
+          // In regular day planning mode, add to today's daily note immediately
+          try {
+            const dailyResult = await plugin.dailyNoteService.addTaskToToday(
+              result.taskFilePath
+            );
+            if (dailyResult.success) {
+              new Notice(`Added "${issue.title}" to today's daily note`);
+            } else {
+              new Notice(
+                `Failed to add to today: ${dailyResult.error || "Unknown error"}`
+              );
+            }
+          } catch (dailyErr: any) {
+            console.error("Error adding to today:", dailyErr);
+            new Notice(
+              `Error adding to today: ${dailyErr.message || "Unknown error"}`
+            );
+          }
         }
       }
     } catch (err: any) {
@@ -925,32 +950,46 @@
         importedPullRequests.add(pr.number);
         importedPullRequests = new Set(importedPullRequests); // Trigger reactivity
 
-        // If in day planning mode, also add to today's daily note
-        console.log(
-          "🔄 GitHub PR import - dayPlanningMode:",
-          dayPlanningMode,
-          "taskFilePath:",
-          result.taskFilePath
-        );
-        if (dayPlanningMode && result.taskFilePath) {
-          try {
-            console.log("🔄 Adding GitHub PR to today's daily note:", pr.title);
-            const dailyResult = await plugin.dailyNoteService.addTaskToToday(
-              result.taskFilePath
-            );
-            console.log("🔄 GitHub PR daily note result:", dailyResult);
-            if (dailyResult.success) {
-              new Notice(`Added "${pr.title}" to today's daily note`);
-            } else {
+        // Handle day planning modes
+        if (result.taskFilePath) {
+          if (dailyPlanningWizardMode) {
+            // In wizard mode, add to daily planning store for staging
+            try {
+              const tasks = taskStore.getEntities();
+              const importedTask = tasks.find(
+                (task) => task.filePath === result.taskFilePath
+              );
+              if (importedTask) {
+                scheduleTaskForToday(importedTask);
+                new Notice(
+                  `Scheduled "${pr.title}" for today (pending confirmation)`
+                );
+              }
+            } catch (err: any) {
+              console.error("Error scheduling for today:", err);
               new Notice(
-                `Failed to add to today: ${dailyResult.error || "Unknown error"}`
+                `Error scheduling for today: ${err.message || "Unknown error"}`
               );
             }
-          } catch (dailyErr: any) {
-            console.error("Error adding to today:", dailyErr);
-            new Notice(
-              `Error adding to today: ${dailyErr.message || "Unknown error"}`
-            );
+          } else if (dayPlanningMode) {
+            // In regular day planning mode, add to today's daily note immediately
+            try {
+              const dailyResult = await plugin.dailyNoteService.addTaskToToday(
+                result.taskFilePath
+              );
+              if (dailyResult.success) {
+                new Notice(`Added "${pr.title}" to today's daily note`);
+              } else {
+                new Notice(
+                  `Failed to add to today: ${dailyResult.error || "Unknown error"}`
+                );
+              }
+            } catch (dailyErr: any) {
+              console.error("Error adding to today:", dailyErr);
+              new Notice(
+                `Error adding to today: ${dailyErr.message || "Unknown error"}`
+              );
+            }
           }
         }
       } else {
@@ -1214,6 +1253,7 @@
                 (hoveredIssue = hovered ? issue.number : null)}
               onImport={importIssue}
               {dayPlanningMode}
+              {dailyPlanningWizardMode}
               testId="issue-item"
             />
           {/each}
@@ -1237,6 +1277,7 @@
                 (hoveredPullRequest = hovered ? pr.number : null)}
               onImport={importPullRequest}
               {dayPlanningMode}
+              {dailyPlanningWizardMode}
               testId="pr-item"
             />
           {/each}

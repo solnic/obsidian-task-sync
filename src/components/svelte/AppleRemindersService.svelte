@@ -13,6 +13,7 @@
   import type { AppleRemindersIntegrationSettings } from "../ui/settings/types";
   import type { TaskImportConfig } from "../../types/integrations";
   import { taskStore } from "../../stores/taskStore";
+  import { scheduleTaskForToday } from "../../stores/dailyPlanningStore";
 
   interface SortField {
     key: string;
@@ -28,6 +29,7 @@
       getDefaultImportConfig: () => TaskImportConfig;
     };
     dayPlanningMode?: boolean;
+    dailyPlanningWizardMode?: boolean;
   }
 
   let {
@@ -35,6 +37,7 @@
     settings,
     dependencies,
     dayPlanningMode = false,
+    dailyPlanningWizardMode = false,
   }: Props = $props();
 
   const { plugin } = getPluginContext();
@@ -365,8 +368,42 @@
     try {
       const config = dependencies.getDefaultImportConfig();
 
-      if (dayPlanningMode) {
-        // In day planning mode, add to today instead of regular import
+      if (dailyPlanningWizardMode) {
+        // In wizard mode, import and add to daily planning store for staging
+        const result = await appleRemindersService.importReminderAsTask(
+          reminder,
+          config
+        );
+
+        if (result.success) {
+          if (result.taskFilePath) {
+            try {
+              const tasks = taskStore.getEntities();
+              const importedTask = tasks.find(
+                (task) => task.filePath === result.taskFilePath
+              );
+              if (importedTask) {
+                scheduleTaskForToday(importedTask);
+                new Notice(
+                  `Scheduled "${reminder.title}" for today (pending confirmation)`
+                );
+              }
+            } catch (err: any) {
+              console.error("Error scheduling for today:", err);
+              new Notice(
+                `Error scheduling for today: ${err.message || "Unknown error"}`
+              );
+            }
+          }
+          // Create new Set to trigger reactivity
+          importedReminders = new Set([...importedReminders, reminder.id]);
+        } else {
+          new Notice(
+            `Failed to import reminder: ${result.error || "Unknown error"}`
+          );
+        }
+      } else if (dayPlanningMode) {
+        // In regular day planning mode, add to today's daily note immediately
         const result = await appleRemindersService.importReminderAsTask(
           reminder,
           {
@@ -528,6 +565,7 @@
                 (hoveredReminder = hovered ? reminder.id : null)}
               onImport={importReminder}
               {dayPlanningMode}
+              {dailyPlanningWizardMode}
               testId="apple-reminder-item-{reminder.title
                 .replace(/\s+/g, '-')
                 .toLowerCase()}"

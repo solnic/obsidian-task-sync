@@ -23,10 +23,22 @@ export const dailyPlanningStore = writable<DailyPlanningState>(initialState);
  */
 export function scheduleTaskForToday(task: Task): void {
   dailyPlanningStore.update((state) => {
-    const newScheduledTasks = [...state.scheduledTasks, task];
+    // Remove from unscheduled if it exists there
+    const newUnscheduledTasks = state.unscheduledTasks.filter(
+      (t) => t.filePath !== task.filePath
+    );
+
+    // Add to scheduled if not already there
+    const newScheduledTasks = state.scheduledTasks.some(
+      (t) => t.filePath === task.filePath
+    )
+      ? state.scheduledTasks
+      : [...state.scheduledTasks, task];
+
     return {
       ...state,
       scheduledTasks: newScheduledTasks,
+      unscheduledTasks: newUnscheduledTasks,
     };
   });
 }
@@ -36,15 +48,17 @@ export function scheduleTaskForToday(task: Task): void {
  */
 export function unscheduleTask(task: Task): void {
   dailyPlanningStore.update((state) => {
+    // Remove from scheduled tasks
     const newScheduledTasks = state.scheduledTasks.filter(
       (t) => t.filePath !== task.filePath
     );
-    const newUnscheduledTasks = [...state.unscheduledTasks];
 
     // Add to unscheduled if not already there
-    if (!newUnscheduledTasks.some((t) => t.filePath === task.filePath)) {
-      newUnscheduledTasks.push(task);
-    }
+    const newUnscheduledTasks = state.unscheduledTasks.some(
+      (t) => t.filePath === task.filePath
+    )
+      ? state.unscheduledTasks
+      : [...state.unscheduledTasks, task];
 
     return {
       ...state,
@@ -59,15 +73,17 @@ export function unscheduleTask(task: Task): void {
  */
 export function rescheduleTask(task: Task): void {
   dailyPlanningStore.update((state) => {
+    // Remove from unscheduled tasks
     const newUnscheduledTasks = state.unscheduledTasks.filter(
       (t) => t.filePath !== task.filePath
     );
-    const newScheduledTasks = [...state.scheduledTasks];
 
     // Add to scheduled if not already there
-    if (!newScheduledTasks.some((t) => t.filePath === task.filePath)) {
-      newScheduledTasks.push(task);
-    }
+    const newScheduledTasks = state.scheduledTasks.some(
+      (t) => t.filePath === task.filePath
+    )
+      ? state.scheduledTasks
+      : [...state.scheduledTasks, task];
 
     return {
       ...state,

@@ -5,6 +5,10 @@
    */
 
   import type { Task } from "../../../types/entities";
+  import {
+    dailyPlanningStore,
+    isTaskScheduled,
+  } from "../../../stores/dailyPlanningStore";
 
   interface Props {
     yesterdayTasks: { done: Task[]; notDone: Task[] };
@@ -21,6 +25,19 @@
     onMoveTaskToToday,
     onUnscheduleTask,
   }: Props = $props();
+
+  // Subscribe to daily planning store to track task states - use $derived for reactivity
+  let scheduledTasks = $derived($dailyPlanningStore.scheduledTasks);
+  let unscheduledTasks = $derived($dailyPlanningStore.unscheduledTasks);
+
+  // Helper functions to check task status
+  function isTaskScheduledForToday(task: Task): boolean {
+    return isTaskScheduled(task, scheduledTasks);
+  }
+
+  function isTaskUnscheduled(task: Task): boolean {
+    return unscheduledTasks.some((t) => t.filePath === task.filePath);
+  }
 
   async function handleMoveToToday() {
     await onMoveUnfinishedToToday();
@@ -60,13 +77,27 @@
       <h5>⏳ Not Completed ({yesterdayTasks.notDone.length})</h5>
       <div class="task-list">
         {#each yesterdayTasks.notDone as task}
-          <div class="task-item not-completed" data-testid="not-completed-task">
-            <span class="task-title">{task.title}</span>
+          {@const isScheduled = isTaskScheduledForToday(task)}
+          {@const isUnscheduled = isTaskUnscheduled(task)}
+          <div
+            class="task-item not-completed {isScheduled
+              ? 'pending-scheduled'
+              : ''} {isUnscheduled ? 'pending-unscheduled' : ''}"
+            data-testid="not-completed-task"
+          >
+            <div class="task-content">
+              <span class="task-title">{task.title}</span>
+              {#if isScheduled}
+                <span class="task-badge scheduled">Scheduled for today</span>
+              {:else if isUnscheduled}
+                <span class="task-badge unscheduled">Unscheduled</span>
+              {/if}
+            </div>
             <div class="task-actions">
               <button
                 class="action-btn move-to-today"
                 onclick={() => handleMoveTaskToToday(task)}
-                disabled={isLoading}
+                disabled={isLoading || isScheduled}
                 data-testid="move-task-to-today-button"
               >
                 Move to today
@@ -74,7 +105,7 @@
               <button
                 class="action-btn unschedule"
                 onclick={() => handleUnscheduleTask(task)}
-                disabled={isLoading}
+                disabled={isLoading || isUnscheduled}
                 data-testid="unschedule-task-button"
               >
                 Unschedule
@@ -140,10 +171,45 @@
     opacity: 0.7;
   }
 
+  .task-item.pending-scheduled {
+    background: var(--color-green-rgb);
+    background: rgba(var(--color-green-rgb), 0.1);
+    border-color: var(--color-green);
+  }
+
+  .task-item.pending-unscheduled {
+    background: var(--color-orange-rgb);
+    background: rgba(var(--color-orange-rgb), 0.1);
+    border-color: var(--color-orange);
+  }
+
+  .task-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+
   .task-title {
     font-size: 14px;
     color: var(--text-normal);
-    flex: 1;
+  }
+
+  .task-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .task-badge.scheduled {
+    background: var(--color-green);
+    color: white;
+  }
+
+  .task-badge.unscheduled {
+    background: var(--color-orange);
+    color: white;
   }
 
   .task-actions {

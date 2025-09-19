@@ -20,6 +20,7 @@
     onHover?: (hovered: boolean) => void;
     onImport?: (pr: GitHubPullRequest) => void;
     dayPlanningMode?: boolean;
+    dailyPlanningWizardMode?: boolean;
     testId?: string;
   }
 
@@ -32,6 +33,7 @@
     onHover,
     onImport,
     dayPlanningMode = false,
+    dailyPlanningWizardMode = false,
     testId,
   }: Props = $props();
 
@@ -149,16 +151,16 @@
       {isImported}
       {isImporting}
       {dayPlanningMode}
-      title={dayPlanningMode
-        ? "Add to today"
-        : "Import this pull request as a task"}
-      testId={dayPlanningMode
-        ? "add-to-today-button"
-        : isImported
-          ? "imported-indicator"
-          : isImporting
-            ? "importing-indicator"
-            : "pr-import-button"}
+      {dailyPlanningWizardMode}
+      testId={dailyPlanningWizardMode
+        ? "schedule-for-today-button"
+        : dayPlanningMode
+          ? "add-to-today-button"
+          : isImported
+            ? "imported-indicator"
+            : isImporting
+              ? "importing-indicator"
+              : "pr-import-button"}
       onImport={handleImport}
     />
   </div>

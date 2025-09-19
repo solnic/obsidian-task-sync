@@ -231,6 +231,7 @@
               settings={reactiveSettings}
               {dependencies}
               {dayPlanningMode}
+              {dailyPlanningWizardMode}
             />
           {:else if activeService === "local"}
             <LocalTasksService {dayPlanningMode} {dailyPlanningWizardMode} />
@@ -240,6 +241,7 @@
               settings={reactiveSettings}
               {dependencies}
               {dayPlanningMode}
+              {dailyPlanningWizardMode}
             />
           {:else}
             <!-- Show message when selected service is not available -->

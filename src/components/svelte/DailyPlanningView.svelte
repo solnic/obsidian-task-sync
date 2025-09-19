@@ -15,7 +15,9 @@
     clearScheduledTasks,
     scheduleTaskForToday,
     unscheduleTask,
+    dailyPlanningStore,
   } from "../../stores/dailyPlanningStore";
+  import { get } from "svelte/store";
   import { DailyNoteService } from "../../services/DailyNoteService";
 
   import type { Task } from "../../types/entities";
@@ -57,6 +59,9 @@
     tasks: [],
     events: [],
   });
+
+  // Track original task states for cancellation
+  let originalTaskStates = $state<Map<string, { doDate?: Date }>>(new Map());
 
   onMount(async () => {
     // Set daily planning as active
@@ -140,8 +145,16 @@
       tasksToMoveToToday = [...unfinishedTasks];
 
       // Add tasks to daily planning store so they appear in step 2 with unschedule buttons
+      // But skip tasks that have already been individually unscheduled
+      const currentState = get(dailyPlanningStore);
       unfinishedTasks.forEach((task) => {
-        scheduleTaskForToday(task);
+        // Only schedule if not already unscheduled
+        const isAlreadyUnscheduled = currentState.unscheduledTasks.some(
+          (t) => t.filePath === task.filePath
+        );
+        if (!isAlreadyUnscheduled) {
+          scheduleTaskForToday(task);
+        }
       });
 
       // Proceed to step 2 - tasks will be modified only on confirmation
@@ -156,6 +169,9 @@
 
   async function moveTaskToToday(task: Task) {
     try {
+      // Track original state for cancellation
+      trackOriginalTaskState(task);
+
       // Add task to the staging list if not already there
       if (!tasksToMoveToToday.some((t) => t.filePath === task.filePath)) {
         tasksToMoveToToday = [...tasksToMoveToToday, task];
@@ -252,6 +268,53 @@
     }
   }
 
+  // Track original task state when scheduling
+  function trackOriginalTaskState(task: Task) {
+    if (!originalTaskStates.has(task.filePath)) {
+      originalTaskStates.set(task.filePath, {
+        doDate: task.doDate,
+      });
+    }
+  }
+
+  // Cancel daily planning and revert all changes
+  async function cancelDailyPlanning() {
+    try {
+      isLoading = true;
+
+      // Revert any task changes that were made during planning
+      for (const [filePath, originalState] of originalTaskStates.entries()) {
+        const task = taskStore
+          .getEntities()
+          .find((t: Task) => t.filePath === filePath);
+        if (task && task.doDate !== originalState.doDate) {
+          // Revert the Do Date property
+          await plugin.taskFileManager.updateProperty(
+            task.filePath,
+            "Do Date",
+            originalState.doDate || null
+          );
+        }
+      }
+
+      // Clear daily planning store
+      clearScheduledTasks();
+
+      // Set daily planning as inactive
+      setDailyPlanningActive(false);
+
+      // Close the daily planning view
+      plugin.app.workspace.detachLeavesOfType("daily-planning");
+
+      console.log("Daily planning cancelled, changes reverted");
+    } catch (err: any) {
+      console.error("Error cancelling daily planning:", err);
+      error = err.message || "Failed to cancel daily planning";
+    } finally {
+      isLoading = false;
+    }
+  }
+
   function getStepTitle(step: number): string {
     switch (step) {
       case 1:
@@ -301,6 +364,7 @@
         {error}
         onNext={nextStep}
         onPrevious={previousStep}
+        onCancel={cancelDailyPlanning}
       >
         <ReviewYesterdayStep
           {yesterdayTasks}
@@ -320,6 +384,7 @@
         {error}
         onNext={nextStep}
         onPrevious={previousStep}
+        onCancel={cancelDailyPlanning}
       >
         <TodayAgendaStep {todayTasks} {todayEvents} />
       </Step>
@@ -334,6 +399,7 @@
         nextButtonText="Confirm Plan"
         onNext={confirmPlan}
         onPrevious={previousStep}
+        onCancel={cancelDailyPlanning}
       >
         <PlanSummaryStep {finalPlan} {tasksToMoveToToday} />
       </Step>

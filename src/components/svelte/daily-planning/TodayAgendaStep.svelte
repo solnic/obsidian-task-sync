@@ -140,10 +140,12 @@
         {#each allTodayTasks as task}
           {@const isFromPlanning = scheduledTasks.includes(task)}
           <div class="task-item scheduled" data-testid="scheduled-task">
-            <span class="task-title">{task.title}</span>
-            {#if isFromPlanning}
-              <span class="task-badge planning">Added during planning</span>
-            {/if}
+            <div class="task-content">
+              <span class="task-title">{task.title}</span>
+              {#if isFromPlanning}
+                <span class="task-badge planning">Added during planning</span>
+              {/if}
+            </div>
             <div class="task-actions">
               {#if isFromPlanning}
                 <button
@@ -172,15 +174,19 @@
       <div class="task-list">
         {#each unscheduledTasks as task}
           <div class="task-item unscheduled" data-testid="unscheduled-task">
-            <span class="task-title">{task.title}</span>
-            <div class="task-actions">
-              <button
-                class="action-btn schedule"
-                onclick={() => handleRescheduleFromUnscheduled(task)}
-                data-testid="schedule-task-button"
-              >
-                Schedule for today
-              </button>
+            <div class="task-content">
+              <span class="task-title">{task.title}</span>
+            </div>
+            <div class="task-meta">
+              <div class="task-actions">
+                <button
+                  class="action-btn schedule"
+                  onclick={() => handleRescheduleFromUnscheduled(task)}
+                  data-testid="schedule-task-button"
+                >
+                  Schedule for today
+                </button>
+              </div>
             </div>
           </div>
         {/each}
@@ -260,6 +266,16 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+  }
+
+  .task-content {
+    flex: 1;
+  }
+
+  .task-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .task-title {

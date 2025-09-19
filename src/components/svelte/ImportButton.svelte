@@ -12,6 +12,8 @@
     isImporting?: boolean;
     /** Whether to show "Add to today" instead of "Import" */
     dayPlanningMode?: boolean;
+    /** Whether the daily planning wizard is active (shows "Schedule for today") */
+    dailyPlanningWizardMode?: boolean;
     /** Custom title for the button */
     title?: string;
     /** Test ID for the button */
@@ -30,6 +32,7 @@
     isImported = false,
     isImporting = false,
     dayPlanningMode = false,
+    dailyPlanningWizardMode = false,
     title,
     testId,
     onImport,
@@ -46,11 +49,29 @@
     }
 
     if (isImported) {
-      return dayPlanningMode ? "✓ Added to today" : "✓ Imported";
+      if (dailyPlanningWizardMode) {
+        return "✓ Scheduled for today";
+      } else if (dayPlanningMode) {
+        return "✓ Added to today";
+      } else {
+        return "✓ Imported";
+      }
     } else if (isImporting) {
-      return dayPlanningMode ? "⏳ Adding..." : "⏳ Importing...";
+      if (dailyPlanningWizardMode) {
+        return "⏳ Scheduling...";
+      } else if (dayPlanningMode) {
+        return "⏳ Adding...";
+      } else {
+        return "⏳ Importing...";
+      }
     } else {
-      return dayPlanningMode ? "Add to today" : "Import";
+      if (dailyPlanningWizardMode) {
+        return "Schedule for today";
+      } else if (dayPlanningMode) {
+        return "Add to today";
+      } else {
+        return "Import";
+      }
     }
   });
 

@@ -18,6 +18,7 @@
     isImported?: boolean;
     isImporting?: boolean;
     dayPlanningMode?: boolean;
+    dailyPlanningWizardMode?: boolean;
     testId?: string;
     onHover?: (hovered: boolean) => void;
     onImport?: (issue: GitHubIssue) => void;
@@ -32,6 +33,7 @@
     onHover,
     onImport,
     dayPlanningMode = false,
+    dailyPlanningWizardMode = false,
     testId,
   }: Props = $props();
 
@@ -132,14 +134,16 @@
       {isImported}
       {isImporting}
       {dayPlanningMode}
-      title={dayPlanningMode ? "Add to today" : undefined}
-      testId={dayPlanningMode
-        ? "add-to-today-button"
-        : isImported
-          ? "imported-indicator"
-          : isImporting
-            ? "importing-indicator"
-            : "issue-import-button"}
+      {dailyPlanningWizardMode}
+      testId={dailyPlanningWizardMode
+        ? "schedule-for-today-button"
+        : dayPlanningMode
+          ? "add-to-today-button"
+          : isImported
+            ? "imported-indicator"
+            : isImporting
+              ? "importing-indicator"
+              : "issue-import-button"}
       onImport={handleImport}
     />
   </div>

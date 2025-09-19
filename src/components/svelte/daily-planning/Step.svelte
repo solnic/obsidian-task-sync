@@ -18,6 +18,7 @@
     nextButtonText?: string;
     onNext?: () => void;
     onPrevious?: () => void;
+    onCancel?: () => void;
     children: Snippet;
   }
 
@@ -33,6 +34,7 @@
     nextButtonText = "Next",
     onNext,
     onPrevious,
+    onCancel,
     children,
   }: Props = $props();
 
@@ -47,6 +49,12 @@
       onPrevious();
     }
   }
+
+  function handleCancel() {
+    if (!isLoading && onCancel) {
+      onCancel();
+    }
+  }
 </script>
 
 <div class="step-container" data-testid="step-{stepNumber}-content">
@@ -55,8 +63,10 @@
     <div class="step-progress">
       <div class="step-indicator">
         {#each Array(totalSteps) as _, index}
-          <div 
-            class="step-dot {stepNumber === index + 1 ? 'active' : ''} {stepNumber > index + 1 ? 'completed' : ''}"
+          <div
+            class="step-dot {stepNumber === index + 1
+              ? 'active'
+              : ''} {stepNumber > index + 1 ? 'completed' : ''}"
             data-testid="step-{index + 1}"
           >
             {index + 1}
@@ -91,36 +101,53 @@
 
   <!-- Navigation -->
   <div class="step-navigation">
-    {#if stepNumber > 1}
-      <button 
-        class="nav-button prev"
-        onclick={handlePrevious}
-        disabled={isLoading || !canGoPrevious}
-        data-testid="previous-button"
-      >
-        Previous
-      </button>
-    {/if}
-    
-    {#if stepNumber < totalSteps}
-      <button 
-        class="nav-button next"
-        onclick={handleNext}
-        disabled={isLoading || !canGoNext}
-        data-testid="next-button"
-      >
-        {nextButtonText}
-      </button>
-    {:else}
-      <button 
-        class="nav-button confirm"
-        onclick={handleNext}
-        disabled={isLoading || !canGoNext}
-        data-testid="confirm-button"
-      >
-        {nextButtonText}
-      </button>
-    {/if}
+    <div class="nav-left">
+      {#if stepNumber > 1}
+        <button
+          class="nav-button prev"
+          onclick={handlePrevious}
+          disabled={isLoading || !canGoPrevious}
+          data-testid="previous-button"
+        >
+          Previous
+        </button>
+      {/if}
+    </div>
+
+    <div class="nav-center">
+      {#if onCancel}
+        <button
+          class="nav-button cancel"
+          onclick={handleCancel}
+          disabled={isLoading}
+          data-testid="cancel-button"
+        >
+          Cancel
+        </button>
+      {/if}
+    </div>
+
+    <div class="nav-right">
+      {#if stepNumber < totalSteps}
+        <button
+          class="nav-button next"
+          onclick={handleNext}
+          disabled={isLoading || !canGoNext}
+          data-testid="next-button"
+        >
+          {nextButtonText}
+        </button>
+      {:else}
+        <button
+          class="nav-button confirm"
+          onclick={handleNext}
+          disabled={isLoading || !canGoNext}
+          data-testid="confirm-button"
+        >
+          {nextButtonText}
+        </button>
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -212,16 +239,33 @@
   }
 
   @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
   }
 
   .step-navigation {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     padding-top: 20px;
     border-top: 1px solid var(--background-modifier-border);
     margin-top: auto;
+  }
+
+  .nav-left,
+  .nav-center,
+  .nav-right {
+    display: flex;
+    align-items: center;
+  }
+
+  .nav-center {
+    flex: 1;
+    justify-content: center;
   }
 
   .nav-button {
@@ -244,6 +288,17 @@
     background: var(--interactive-accent);
     color: var(--text-on-accent);
     border-color: var(--interactive-accent);
+  }
+
+  .nav-button.cancel {
+    background: var(--background-modifier-error);
+    color: var(--text-error);
+    border-color: var(--color-red);
+  }
+
+  .nav-button.cancel:hover:not(:disabled) {
+    background: var(--color-red);
+    color: white;
   }
 
   .nav-button:disabled {
