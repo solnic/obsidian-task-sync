@@ -15,8 +15,8 @@ export default defineConfig({
     hookTimeout: isHeadless ? 30000 : 10000,
     testTimeout: isHeadless ? 60000 : 15000,
     fileParallelism: true,
-    minWorkers: isHeadless ? 3 : 10,
-    maxConcurrency: isHeadless ? 3 : 5,
+    minWorkers: isHeadless ? 3 : 6,
+    maxConcurrency: isHeadless ? 3 : 6,
     pool: 'threads',
     poolOptions: {
       threads: {
