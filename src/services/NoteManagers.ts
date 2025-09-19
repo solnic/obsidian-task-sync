@@ -206,9 +206,6 @@ export function createNoteManagers(
     taskFileManager: TaskFileManager;
     areaFileManager: AreaFileManager;
     projectFileManager: ProjectFileManager;
-  },
-  propertyHandlers?: {
-    projectPropertyHandler?: EventHandler;
   }
 ): NoteManagers {
   const noteManagers = new NoteManagers(app, vault, settings);
@@ -224,7 +221,6 @@ export function createNoteManagers(
 
   noteManagers.registerNoteType("Project", {
     manager: managers.projectFileManager,
-    propertyHandler: propertyHandlers?.projectPropertyHandler,
   });
 
   return noteManagers;

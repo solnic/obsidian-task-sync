@@ -38,7 +38,6 @@ import type {
 import { EventManager } from "./events";
 import { EventType, SettingsChangedEventData } from "./events/EventTypes";
 import { StatusDoneHandler } from "./events/handlers";
-import { ProjectPropertyHandler } from "./events/handlers/ProjectPropertyHandler";
 import { EntityCacheHandler } from "./events/handlers/EntityCacheHandler";
 import {
   GitHubSettingsHandler,
@@ -132,7 +131,6 @@ export default class TaskSyncPlugin
   eventManager: EventManager;
   fileChangeListener: FileChangeListener;
   statusDoneHandler: StatusDoneHandler;
-  projectPropertyHandler: ProjectPropertyHandler;
   entityCacheHandler: EntityCacheHandler;
   githubSettingsHandler: GitHubSettingsHandler;
   appleRemindersSettingsHandler: AppleRemindersSettingsHandler;
@@ -379,17 +377,7 @@ export default class TaskSyncPlugin
     // Initialize event system
     this.eventManager = new EventManager();
     this.statusDoneHandler = new StatusDoneHandler(this.app, this.settings);
-    this.projectPropertyHandler = new ProjectPropertyHandler(
-      this.app,
-      this.settings
-    );
     this.entityCacheHandler = new EntityCacheHandler(this.app, this.settings);
-
-    // Register property handlers with NoteManagers
-    this.noteManagers.registerPropertyHandler(
-      "Project",
-      this.projectPropertyHandler
-    );
 
     // Initialize task mention services
     this.taskMentionDetectionService = new TaskMentionDetectionService(
@@ -428,7 +416,6 @@ export default class TaskSyncPlugin
 
     // Register event handlers
     this.eventManager.registerHandler(this.statusDoneHandler);
-    this.eventManager.registerHandler(this.projectPropertyHandler);
     this.eventManager.registerHandler(this.entityCacheHandler);
     this.eventManager.registerHandler(this.githubSettingsHandler);
     this.eventManager.registerHandler(this.appleRemindersSettingsHandler);
@@ -690,10 +677,6 @@ export default class TaskSyncPlugin
     // Update handlers that don't use the event system yet
     if (this.statusDoneHandler) {
       this.statusDoneHandler.updateSettings(this.settings);
-    }
-
-    if (this.projectPropertyHandler) {
-      this.projectPropertyHandler.updateSettings(this.settings);
     }
 
     if (this.taskImportManager) {
