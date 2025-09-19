@@ -256,7 +256,7 @@ export abstract class EntityStore<T extends BaseEntity> {
     const existingEntity = this.findEntityByPath(file.path);
 
     if (!existingEntity) {
-      const newEntity = await this.fileManager.loadEntity(file);
+      const newEntity = await this.fileManager.loadEntity(file, cache);
 
       if (newEntity) {
         await this.upsertEntity(newEntity);
