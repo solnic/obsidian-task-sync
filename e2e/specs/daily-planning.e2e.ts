@@ -1079,7 +1079,7 @@ describe("Daily Planning", () => {
     expect(count).toBe(1);
   });
 
-  test("should allow scheduling already imported GitHub issues", async () => {
+  test("should allow scheduling GitHub issues via 'Schedule for today' button", async () => {
     await enableIntegration(context.page, "githubIntegration", {
       personalAccessToken: "fake-token-for-testing",
       defaultRepository: "solnic/obsidian-task-sync",
