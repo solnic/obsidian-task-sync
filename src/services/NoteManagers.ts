@@ -208,7 +208,6 @@ export function createNoteManagers(
     projectFileManager: ProjectFileManager;
   },
   propertyHandlers?: {
-    areaPropertyHandler?: EventHandler;
     projectPropertyHandler?: EventHandler;
   }
 ): NoteManagers {
@@ -221,7 +220,6 @@ export function createNoteManagers(
 
   noteManagers.registerNoteType("Area", {
     manager: managers.areaFileManager,
-    propertyHandler: propertyHandlers?.areaPropertyHandler,
   });
 
   noteManagers.registerNoteType("Project", {

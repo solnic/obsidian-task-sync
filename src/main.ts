@@ -38,7 +38,6 @@ import type {
 import { EventManager } from "./events";
 import { EventType, SettingsChangedEventData } from "./events/EventTypes";
 import { StatusDoneHandler } from "./events/handlers";
-import { AreaPropertyHandler } from "./events/handlers/AreaPropertyHandler";
 import { ProjectPropertyHandler } from "./events/handlers/ProjectPropertyHandler";
 import { EntityCacheHandler } from "./events/handlers/EntityCacheHandler";
 import {
@@ -133,7 +132,6 @@ export default class TaskSyncPlugin
   eventManager: EventManager;
   fileChangeListener: FileChangeListener;
   statusDoneHandler: StatusDoneHandler;
-  areaPropertyHandler: AreaPropertyHandler;
   projectPropertyHandler: ProjectPropertyHandler;
   entityCacheHandler: EntityCacheHandler;
   githubSettingsHandler: GitHubSettingsHandler;
@@ -381,7 +379,6 @@ export default class TaskSyncPlugin
     // Initialize event system
     this.eventManager = new EventManager();
     this.statusDoneHandler = new StatusDoneHandler(this.app, this.settings);
-    this.areaPropertyHandler = new AreaPropertyHandler(this.app, this.settings);
     this.projectPropertyHandler = new ProjectPropertyHandler(
       this.app,
       this.settings
@@ -389,7 +386,6 @@ export default class TaskSyncPlugin
     this.entityCacheHandler = new EntityCacheHandler(this.app, this.settings);
 
     // Register property handlers with NoteManagers
-    this.noteManagers.registerPropertyHandler("Area", this.areaPropertyHandler);
     this.noteManagers.registerPropertyHandler(
       "Project",
       this.projectPropertyHandler
@@ -432,7 +428,6 @@ export default class TaskSyncPlugin
 
     // Register event handlers
     this.eventManager.registerHandler(this.statusDoneHandler);
-    this.eventManager.registerHandler(this.areaPropertyHandler);
     this.eventManager.registerHandler(this.projectPropertyHandler);
     this.eventManager.registerHandler(this.entityCacheHandler);
     this.eventManager.registerHandler(this.githubSettingsHandler);
@@ -695,10 +690,6 @@ export default class TaskSyncPlugin
     // Update handlers that don't use the event system yet
     if (this.statusDoneHandler) {
       this.statusDoneHandler.updateSettings(this.settings);
-    }
-
-    if (this.areaPropertyHandler) {
-      this.areaPropertyHandler.updateSettings(this.settings);
     }
 
     if (this.projectPropertyHandler) {
