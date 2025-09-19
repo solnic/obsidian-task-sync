@@ -87,6 +87,10 @@ import { taskMentionStore } from "./stores/taskMentionStore";
 import { scheduleStore } from "./stores/scheduleStore";
 import { dailyPlanningStore } from "./stores/dailyPlanningStore";
 import { settingsStore } from "./stores/settingsStore";
+import {
+  CommandManager,
+  type CommandCallbacks,
+} from "./services/CommandManager";
 
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
@@ -147,6 +151,7 @@ export default class TaskSyncPlugin extends Plugin {
   taskMentionDetectionService: TaskMentionDetectionService;
   taskMentionSyncHandler: TaskMentionSyncHandler;
   private markdownProcessor: MarkdownPostProcessor;
+  commandManager: CommandManager;
 
   public get stores(): {
     taskStore: typeof taskStore;
@@ -188,6 +193,38 @@ export default class TaskSyncPlugin extends Plugin {
       projectStore.waitForRefresh(),
       areaStore.waitForRefresh(),
     ]);
+  }
+
+  /**
+   * Create command callbacks for CommandManager
+   */
+  private createCommandCallbacks(): CommandCallbacks {
+    return {
+      openTaskCreateModal: () => this.openTaskCreateModal(),
+      openAreaCreateModal: () => this.openAreaCreateModal(),
+      openProjectCreateModal: () => this.openProjectCreateModal(),
+      refresh: () => this.refresh(),
+      refreshBaseViews: () => this.refreshBaseViews(),
+      promoteTodoToTask: () => this.todoPromotionService.promoteTodoToTask(),
+      revertPromotedTodo: () => this.todoPromotionService.revertPromotedTodo(),
+      addCurrentTaskToToday: () => this.addCurrentTaskToToday(),
+      activateTasksView: () => this.activateTasksView(),
+      activateContextTabView: () => this.activateContextTabView(),
+      activateTaskPlanningView: () => this.activateTaskPlanningView(),
+      startDailyPlanning: () => this.startDailyPlanning(),
+      importGitHubIssue: () => this.importGitHubIssue(),
+      importAllGitHubIssues: () => this.importAllGitHubIssues(),
+      importAppleReminders: () => this.importAppleReminders(),
+      checkAppleRemindersPermissions: () =>
+        this.checkAppleRemindersPermissions(),
+      insertCalendarEvents: () => this.insertCalendarEvents(),
+      checkAppleCalendarPermissions: () => this.checkAppleCalendarPermissions(),
+      scheduleCurrentTask: () => this.scheduleCurrentTask(),
+      clearAllCaches: () => this.cacheManager.clearAllCaches(),
+      getStats: () => this.cacheManager.getStats(),
+      isAppleCalendarPlatformSupported: () =>
+        this.appleCalendarService.isPlatformSupported(),
+    };
   }
 
   async onload() {
@@ -287,6 +324,14 @@ export default class TaskSyncPlugin extends Plugin {
     // Wire up Apple Calendar service with import dependencies
     this.appleCalendarService.setImportDependencies(this.taskImportManager);
     this.appleCalendarService.setDailyNoteService(this.dailyNoteService);
+
+    // Initialize CommandManager with callbacks
+    this.commandManager = new CommandManager(
+      this,
+      this.integrationManager,
+      this.createCommandCallbacks(),
+      this.settings
+    );
 
     // Ensure templates exist
     await this.templateManager.ensureTemplatesExist();
@@ -409,191 +454,8 @@ export default class TaskSyncPlugin extends Plugin {
       // Register markdown processor after layout is ready
       this.registerTaskTodoMarkdownProcessor();
 
-      this.addCommand({
-        id: "add-task",
-        name: "Add Task",
-        callback: () => {
-          this.openTaskCreateModal();
-        },
-      });
-
-      this.addCommand({
-        id: "refresh",
-        name: "Refresh",
-        callback: async () => {
-          await this.refresh();
-        },
-      });
-
-      this.addCommand({
-        id: "refresh-base-views",
-        name: "Refresh Base Views",
-        callback: async () => {
-          await this.refreshBaseViews();
-        },
-      });
-
-      this.addCommand({
-        id: "create-area",
-        name: "Create Area",
-        callback: () => {
-          this.openAreaCreateModal();
-        },
-      });
-
-      this.addCommand({
-        id: "create-project",
-        name: "Create Project",
-        callback: () => {
-          this.openProjectCreateModal();
-        },
-      });
-
-      this.addCommand({
-        id: "promote-todo-to-task",
-        name: "Promote Todo to Task",
-        callback: async () => {
-          const result = await this.todoPromotionService.promoteTodoToTask();
-          new Notice(result.message);
-        },
-      });
-
-      // Add cache management commands
-      this.addCommand({
-        id: "clear-all-caches",
-        name: "Clear all caches",
-        callback: async () => {
-          await this.cacheManager.clearAllCaches();
-          new Notice("All caches cleared");
-        },
-      });
-
-      this.addCommand({
-        id: "show-cache-stats",
-        name: "Show cache statistics",
-        callback: async () => {
-          const stats = await this.cacheManager.getStats();
-          const message = stats
-            .map((s) => `${s.cacheKey}: ${s.keyCount} entries`)
-            .join("\n");
-          new Notice(`Cache statistics:\n${message}`);
-        },
-      });
-
-      this.addCommand({
-        id: "revert-promoted-todo",
-        name: "Revert Promoted Todo",
-        callback: async () => {
-          const result = await this.todoPromotionService.revertPromotedTodo();
-          new Notice(result.message);
-        },
-      });
-
-      this.addCommand({
-        id: "add-to-today",
-        name: "Add to Today",
-        callback: async () => {
-          await this.addCurrentTaskToToday();
-        },
-      });
-
-      // GitHub Import Commands
-      this.addCommand({
-        id: "import-github-issue",
-        name: "Import GitHub Issue",
-        callback: async () => {
-          await this.importGitHubIssue();
-        },
-      });
-
-      this.addCommand({
-        id: "import-all-github-issues",
-        name: "Import All GitHub Issues",
-        callback: async () => {
-          await this.importAllGitHubIssues();
-        },
-      });
-
-      this.addCommand({
-        id: "open-tasks-view",
-        name: "Open Tasks view",
-        callback: async () => {
-          await this.activateTasksView();
-        },
-      });
-
-      this.addCommand({
-        id: "open-context-tab",
-        name: "Open Context Tab",
-        callback: async () => {
-          await this.activateContextTabView();
-        },
-      });
-
-      this.addCommand({
-        id: "open-task-planning",
-        name: "Open Task Planning",
-        callback: async () => {
-          await this.activateTaskPlanningView();
-        },
-      });
-
-      this.addCommand({
-        id: "start-daily-planning",
-        name: "Start daily planning",
-        callback: async () => {
-          await this.startDailyPlanning();
-        },
-      });
-
-      // Apple Reminders Import Commands (only on macOS)
-      if (this.appleRemindersService?.isPlatformSupported()) {
-        this.addCommand({
-          id: "import-apple-reminders",
-          name: "Import Apple Reminders",
-          callback: async () => {
-            await this.importAppleReminders();
-          },
-        });
-
-        this.addCommand({
-          id: "check-apple-reminders-permissions",
-          name: "Check Apple Reminders Permissions",
-          callback: async () => {
-            await this.checkAppleRemindersPermissions();
-          },
-        });
-      }
-
-      // Apple Calendar Commands
-      if (this.appleCalendarService.isPlatformSupported()) {
-        this.addCommand({
-          id: "insert-calendar-events",
-          name: "Insert Calendar Events",
-          callback: async () => {
-            await this.insertCalendarEvents();
-          },
-        });
-
-        this.addCommand({
-          id: "check-apple-calendar-permissions",
-          name: "Check Apple Calendar Permissions",
-          callback: async () => {
-            await this.checkAppleCalendarPermissions();
-          },
-        });
-
-        // Task Scheduling Commands (only if scheduling is enabled)
-        if (this.settings.appleCalendarIntegration.schedulingEnabled) {
-          this.addCommand({
-            id: "schedule-task",
-            name: "Schedule Task",
-            callback: async () => {
-              await this.scheduleCurrentTask();
-            },
-          });
-        }
-      }
+      // Initialize CommandManager to handle all command registration
+      this.commandManager.initialize();
     });
   }
 
@@ -604,6 +466,10 @@ export default class TaskSyncPlugin extends Plugin {
     await taskMentionStore.saveData();
 
     // Cache manager doesn't need explicit unload - data is saved automatically
+
+    if (this.commandManager) {
+      this.commandManager.cleanup();
+    }
 
     if (this.fileChangeListener) {
       this.fileChangeListener.cleanup();

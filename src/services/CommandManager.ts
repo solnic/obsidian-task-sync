@@ -44,6 +44,7 @@ export interface CommandCallbacks {
   scheduleCurrentTask: () => Promise<void>;
   clearAllCaches: () => Promise<void>;
   getStats: () => Promise<Array<{ cacheKey: string; keyCount: number }>>;
+  isAppleCalendarPlatformSupported: () => boolean;
 }
 
 export class CommandManager {
@@ -249,10 +250,7 @@ export class CommandManager {
     this.commandGroups.set("apple-calendar", {
       id: "apple-calendar",
       name: "Apple Calendar Integration",
-      condition: () => {
-        // Platform support will be checked when setting up callbacks
-        return true;
-      },
+      condition: () => this.callbacks.isAppleCalendarPlatformSupported(),
       commands: [
         {
           id: "insert-calendar-events",
@@ -280,18 +278,22 @@ export class CommandManager {
    * Setup settings subscription to react to changes
    */
   private setupSettingsSubscription(): void {
-    this.settingsUnsubscribe = settingsStore.subscribe((newSettings) => {
+    this.settingsUnsubscribe = settingsStore.subscribe((storeState) => {
+      if (!storeState.settings) {
+        return; // Settings not loaded yet
+      }
+
       const oldSettings = this.settings;
-      this.settings = { ...newSettings };
+      this.settings = { ...storeState.settings };
 
       // Check if any integration settings changed
       const integrationChanged =
         oldSettings.githubIntegration.enabled !==
-          newSettings.githubIntegration.enabled ||
+          storeState.settings.githubIntegration.enabled ||
         oldSettings.appleRemindersIntegration.enabled !==
-          newSettings.appleRemindersIntegration.enabled ||
+          storeState.settings.appleRemindersIntegration.enabled ||
         oldSettings.appleCalendarIntegration.schedulingEnabled !==
-          newSettings.appleCalendarIntegration.schedulingEnabled;
+          storeState.settings.appleCalendarIntegration.schedulingEnabled;
 
       if (integrationChanged) {
         console.log(
