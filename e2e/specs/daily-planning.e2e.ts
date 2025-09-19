@@ -5,8 +5,13 @@
 
 import { test, expect, describe, beforeEach } from "vitest";
 import { setupE2ETestHooks } from "../helpers/shared-context";
-import { waitForTaskPropertySync, executeCommand } from "../helpers/global";
+import {
+  waitForTaskPropertySync,
+  executeCommand,
+  enableIntegration,
+} from "../helpers/global";
 import { stubAppleCalendarAPIs } from "../helpers/api-stubbing";
+import { stubGitHubWithFixtures } from "../helpers/github-integration-helpers";
 
 describe("Daily Planning", () => {
   const context = setupE2ETestHooks();
@@ -1017,4 +1022,58 @@ describe("Daily Planning", () => {
     // This should be 1, but the bug causes it to be 2
     expect(taskCount).toBe(1);
   }, 30000); // Increase timeout to 30 seconds
+
+  test("should reproduce services not adding to staged tasks bug", async () => {
+    // Enable GitHub integration for this test
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
+
+    // Stub GitHub APIs with test data
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "issues-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Activate daily planning wizard mode
+    await context.page.getByRole("button", { name: "Daily Planning" }).click();
+
+    // Wait for the wizard to load
+    await context.page.waitForSelector('[data-testid="daily-planning-wizard"]');
+
+    // Switch to GitHub service tab
+    await context.page.getByRole("tab", { name: "GitHub" }).click();
+
+    // Wait for GitHub issues to load
+    await context.page.waitForSelector('[data-testid="github-issue-item"]');
+
+    // Click on "Schedule for today" button for the first GitHub issue
+    const githubIssueItem = context.page
+      .locator('[data-testid="github-issue-item"]')
+      .first();
+
+    await githubIssueItem
+      .getByRole("button", { name: "Schedule for today" })
+      .click();
+
+    // Wait for the task to be imported and scheduled
+    await context.page.waitForTimeout(2000);
+
+    // Navigate to step 2 to see scheduled tasks
+    await context.page.getByRole("button", { name: "Next" }).click();
+
+    // Check if any imported task appears in the scheduled list
+    const scheduledTasks = context.page.locator(
+      '[data-testid="scheduled-task-item"]'
+    );
+
+    const count = await scheduledTasks.count();
+    console.log(`Found ${count} scheduled tasks from GitHub service`);
+
+    // Should have 1 task in the scheduled list (the bug was that it wasn't being added)
+    expect(count).toBe(1);
+  }, 30000);
 });
