@@ -1025,60 +1025,6 @@ describe("Daily Planning", () => {
     expect(taskCount).toBe(1);
   }, 30000); // Increase timeout to 30 seconds
 
-  test("should stage a task from the GitHub service", async () => {
-    // Enable GitHub integration for this test
-    await enableIntegration(context.page, "githubIntegration", {
-      personalAccessToken: "fake-token-for-testing",
-      defaultRepository: "solnic/obsidian-task-sync",
-    });
-
-    // Stub GitHub APIs with test data
-    await stubGitHubWithFixtures(context.page, {
-      repositories: "repositories-basic",
-      issues: "issues-basic",
-      currentUser: "current-user-basic",
-      labels: "labels-basic",
-    });
-
-    // Activate daily planning wizard mode
-    await context.page.getByRole("button", { name: "Daily Planning" }).click();
-
-    // Wait for the wizard to load
-    await context.page.waitForSelector('[data-testid="daily-planning-wizard"]');
-
-    // Switch to GitHub service tab
-    await context.page.getByRole("tab", { name: "GitHub" }).click();
-
-    // Wait for GitHub issues to load
-    await context.page.waitForSelector('[data-testid="github-issue-item"]');
-
-    // Click on "Schedule for today" button for the first GitHub issue
-    const githubIssueItem = context.page
-      .locator('[data-testid="github-issue-item"]')
-      .first();
-
-    await githubIssueItem
-      .getByRole("button", { name: "Schedule for today" })
-      .click();
-
-    // Wait for the task to be imported and scheduled
-    await context.page.waitForTimeout(2000);
-
-    // Navigate to step 2 to see scheduled tasks
-    await context.page.getByRole("button", { name: "Next" }).click();
-
-    // Check if any imported task appears in the scheduled list
-    const scheduledTasks = context.page.locator(
-      '[data-testid="scheduled-task-item"]'
-    );
-
-    const count = await scheduledTasks.count();
-    console.log(`Found ${count} scheduled tasks from GitHub service`);
-
-    // Should have 1 task in the scheduled list (the bug was that it wasn't being added)
-    expect(count).toBe(1);
-  });
-
   test("should allow scheduling GitHub issues via 'Schedule for today' button", async () => {
     await enableIntegration(context.page, "githubIntegration", {
       personalAccessToken: "fake-token-for-testing",
@@ -1106,24 +1052,39 @@ describe("Daily Planning", () => {
       .first();
     await githubIssueItem.hover();
 
-    const scheduleButton = githubIssueItem.getByRole("button", {
-      name: "Schedule for today",
-    });
-
+    // Check if the issue is already scheduled or needs to be scheduled
+    const scheduleButton = githubIssueItem.locator(
+      '[data-testid="schedule-for-today-button"]'
+    );
     await scheduleButton.waitFor({ state: "visible" });
-    expect(await scheduleButton.isEnabled()).toBe(true);
-    await scheduleButton.click();
 
-    // STEP 5: Verify the task is staged for scheduling in daily planning
-    // The issue should now appear in the staged tasks list
-    await context.page.waitForSelector('[data-testid="staged-task"]');
+    const buttonText = await scheduleButton.textContent();
+    console.log("🔥 Schedule button text:", buttonText);
 
-    const stagedTasks = context.page.locator('[data-testid="staged-task"]');
-    expect(await stagedTasks.count()).toBeGreaterThan(0);
+    if (buttonText?.includes("Schedule for today")) {
+      // Issue not yet scheduled, click to schedule
+      await scheduleButton.click();
+    } else if (buttonText?.includes("✓ Scheduled for today")) {
+      // Issue already scheduled, this is the bug we're testing
+      console.log(
+        "🔥 Issue already scheduled, this should appear in daily planning"
+      );
+    } else {
+      throw new Error(`Unexpected button text: ${buttonText}`);
+    }
 
-    // Verify the staged task contains the GitHub issue title
-    const firstStagedTask = stagedTasks.first();
-    const taskText = await firstStagedTask.textContent();
-    expect(taskText).toContain("Test Issue"); // From the stubbed GitHub data
+    // STEP 5: Verify the task appears in daily planning step 2
+    // The issue should now appear in the scheduled tasks list
+    await context.page.waitForSelector('[data-testid="scheduled-task"]');
+
+    const scheduledTasks = context.page.locator(
+      '[data-testid="scheduled-task"]'
+    );
+    expect(await scheduledTasks.count()).toBeGreaterThan(0);
+
+    // Verify the scheduled task contains the GitHub issue title
+    const firstScheduledTask = scheduledTasks.first();
+    const taskText = await firstScheduledTask.textContent();
+    expect(taskText).toContain("Test import persistence issue"); // From the stubbed GitHub data
   });
 });

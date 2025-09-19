@@ -160,14 +160,14 @@
 
   .preview-time {
     font-size: 12px;
-    color: var(--text-muted);
+    color: inherit;
     min-width: 70px;
     font-weight: 500;
   }
 
   .preview-title {
     font-size: 14px;
-    color: var(--text-normal);
+    color: inherit;
     flex: 1;
   }
 

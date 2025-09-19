@@ -132,7 +132,7 @@
   }
 </script>
 
-{#if isImported || isImporting}
+{#if (isImported || isImporting) && !dailyPlanningWizardMode}
   <span class={cssClasses} data-testid={buttonTestId} title={buttonTitle}>
     {buttonText}
   </span>

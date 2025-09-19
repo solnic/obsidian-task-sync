@@ -1,5 +1,6 @@
 import { writable, get } from "svelte/store";
 import type { Task } from "../types/entities";
+import { taskStore } from "./taskStore";
 
 /**
  * Store for managing tasks scheduled during Daily Planning wizard
@@ -29,17 +30,21 @@ export function scheduleTaskForToday(task: Task): void {
     );
 
     // Add to scheduled if not already there
-    const newScheduledTasks = state.scheduledTasks.some(
+    const alreadyScheduled = state.scheduledTasks.some(
       (t) => t.filePath === task.filePath
-    )
+    );
+
+    const newScheduledTasks = alreadyScheduled
       ? state.scheduledTasks
       : [...state.scheduledTasks, task];
 
-    return {
+    const newState = {
       ...state,
       scheduledTasks: newScheduledTasks,
       unscheduledTasks: newUnscheduledTasks,
     };
+
+    return newState;
   });
 }
 
@@ -104,13 +109,38 @@ export function isTaskScheduled(task: Task, scheduledTasks: Task[]): boolean {
  * Set the Daily Planning wizard active state
  */
 export function setDailyPlanningActive(isActive: boolean): void {
-  dailyPlanningStore.update((state) => ({
-    ...state,
-    isActive,
-    // Clear scheduled and unscheduled tasks when deactivating
-    scheduledTasks: isActive ? state.scheduledTasks : [],
-    unscheduledTasks: isActive ? state.unscheduledTasks : [],
-  }));
+  dailyPlanningStore.update((state) => {
+    let newScheduledTasks = state.scheduledTasks;
+    let newUnscheduledTasks = state.unscheduledTasks;
+
+    if (isActive) {
+      // When activating, load any existing tasks scheduled for today
+      // This handles the case where tasks were imported while the wizard was not active
+      if (state.scheduledTasks.length === 0) {
+        const todayTasks = taskStore.getTasksForToday();
+
+        // Add all today tasks to scheduled tasks
+        newScheduledTasks = [...state.scheduledTasks, ...todayTasks];
+      } else {
+        // Keep existing tasks
+        newScheduledTasks = state.scheduledTasks;
+      }
+      newUnscheduledTasks = state.unscheduledTasks;
+    } else {
+      // When deactivating, clear tasks
+      newScheduledTasks = [];
+      newUnscheduledTasks = [];
+    }
+
+    const newState = {
+      ...state,
+      isActive,
+      scheduledTasks: newScheduledTasks,
+      unscheduledTasks: newUnscheduledTasks,
+    };
+
+    return newState;
+  });
 }
 
 /**

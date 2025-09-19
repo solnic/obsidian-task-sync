@@ -23,11 +23,13 @@
 
   // Get scheduled and unscheduled tasks from the daily planning store
   let scheduledTasks = $derived.by(() => {
-    return $dailyPlanningStore.scheduledTasks;
+    const tasks = $dailyPlanningStore.scheduledTasks;
+    return tasks;
   });
 
   let unscheduledTasks = $derived.by(() => {
-    return $dailyPlanningStore.unscheduledTasks;
+    const tasks = $dailyPlanningStore.unscheduledTasks;
+    return tasks;
   });
 
   // Combine existing today tasks with newly scheduled tasks, excluding unscheduled ones and duplicates
@@ -42,7 +44,10 @@
           (scheduled) => scheduled.filePath === task.filePath
         )
     );
-    return [...filteredTodayTasks, ...scheduledTasks];
+
+    const combined = [...filteredTodayTasks, ...scheduledTasks];
+
+    return combined;
   });
 
   // Since we're using staging approach, these functions just manage the daily planning store
@@ -198,7 +203,7 @@
 
   .event-time {
     font-size: 12px;
-    color: var(--text-muted);
+    color: inherit;
     min-width: 70px;
     font-weight: 500;
   }
@@ -209,13 +214,13 @@
 
   .event-title {
     font-size: 14px;
-    color: var(--text-normal);
+    color: inherit;
     display: block;
   }
 
   .event-location {
     font-size: 12px;
-    color: var(--text-muted);
+    color: inherit;
     margin-top: 2px;
     display: block;
   }
