@@ -1099,12 +1099,13 @@ describe("Daily Planning", () => {
     });
 
     // First import an issue in regular Tasks view
+    await toggleSidebar(context.page, "right", true);
     await openView(context.page, "tasks");
     await switchToTaskService(context.page, "github");
 
     // Import the first issue without scheduling (regular import)
     const githubIssueItem = context.page
-      .locator('[data-testid="github-issue-item"]')
+      .locator('[data-testid="issue-item"]')
       .first();
 
     // Hover to reveal the import button
@@ -1131,7 +1132,7 @@ describe("Daily Planning", () => {
 
     // The imported issue should now show "Schedule for today" button in wizard mode
     const importedIssueItem = context.page
-      .locator('[data-testid="github-issue-item"]')
+      .locator('[data-testid="issue-item"]')
       .first();
 
     // Hover to reveal the schedule button

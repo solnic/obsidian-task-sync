@@ -1655,6 +1655,8 @@ export async function openView(page: Page, viewName: string) {
       app.workspace.revealLeaf(existingLeaves[0]);
     }
   }, viewName);
+
+  await toggleSidebar(page, "right", true);
 }
 
 export async function switchToTaskService(page: Page, service: string) {
