@@ -922,4 +922,99 @@ describe("Daily Planning", () => {
       .count();
     expect(tasksWithMovedBadge).toBe(4);
   });
+
+  test("should reproduce local task scheduling duplicate bug", async () => {
+    // Create a local task
+    const taskPath = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      return await plugin.taskFileManager.createTaskFile({
+        title: "Local Task for Duplicate Bug",
+        description: "A task to test duplicate scheduling bug",
+        done: false,
+      });
+    });
+
+    expect(taskPath).toBeTruthy();
+
+    // Start daily planning to activate wizard mode
+    await executeCommand(context, "Task Sync: Start daily planning");
+
+    // Wait for daily planning view to open
+    await context.page.waitForSelector('[data-testid="daily-planning-view"]', {
+      timeout: 10000,
+    });
+
+    // Open Tasks view in sidebar to see local tasks
+    // First check if the sidebar is collapsed and open it
+    const rightSidebarToggle = context.page
+      .locator(".sidebar-toggle-button.mod-right")
+      .first();
+    if (await rightSidebarToggle.isVisible()) {
+      await rightSidebarToggle.click();
+      await context.page.waitForTimeout(500);
+    }
+
+    // Click on the Tasks tab
+    await context.page.click('[data-type="tasks"].workspace-tab-header');
+
+    // Wait for tasks view to load
+    await context.page.waitForSelector('[data-testid="tasks-view"]', {
+      timeout: 5000,
+    });
+
+    // Find the local task item
+    const taskItem = context.page
+      .locator('[data-testid^="local-task-item-"]')
+      .filter({ hasText: "Local Task for Duplicate Bug" });
+
+    expect(await taskItem.isVisible()).toBe(true);
+
+    // Hover over the task to reveal the schedule button
+    await taskItem.hover();
+
+    // Wait for the schedule button to appear on hover
+    const scheduleButton = taskItem.locator(
+      '[data-testid="schedule-for-today-button"]'
+    );
+
+    // Wait for the button to be visible after hover
+    await scheduleButton.waitFor({ state: "visible", timeout: 5000 });
+
+    expect(await scheduleButton.isVisible()).toBe(true);
+    expect(await scheduleButton.textContent()).toContain("Schedule for today");
+
+    // Click the schedule button
+    await scheduleButton.click();
+
+    // Wait for the action to complete
+    await context.page.waitForTimeout(2000);
+
+    // Go back to daily planning step 2 to check for duplicates
+    await context.page.click('[data-testid="daily-planning-view"]');
+
+    // Navigate to step 2
+    await context.page.click('[data-testid="next-button"]');
+
+    // Wait for step 2 content
+    await context.page.waitForSelector('[data-testid="step-2-content"]', {
+      timeout: 5000,
+    });
+
+    // Check for duplicate tasks in the scheduled section
+    const scheduledTasks = context.page
+      .locator('[data-testid="scheduled-task"]')
+      .filter({
+        hasText: "Local Task for Duplicate Bug",
+      });
+
+    const taskCount = await scheduledTasks.count();
+    console.log(
+      `Found ${taskCount} scheduled tasks with the name "Local Task for Duplicate Bug"`
+    );
+
+    // This should be 1, but the bug causes it to be 2
+    expect(taskCount).toBe(1);
+  }, 30000); // Increase timeout to 30 seconds
 });
