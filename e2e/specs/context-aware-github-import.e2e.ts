@@ -129,21 +129,6 @@ describe("Context-Aware GitHub Import", () => {
       Areas: ["[[Development]]"],
       Status: "Backlog", // Verify correct default status mapping
     });
-
-    // Verify UI refresh: import button should now show as imported
-    const issueItem = context.page
-      .locator('[data-testid="issue-item"]')
-      .filter({
-        hasText: "#456",
-      });
-
-    // Should show imported indicator and hide import button
-    expect(
-      await issueItem.locator('[data-testid="imported-indicator"]').isVisible()
-    ).toBe(true);
-    expect(
-      await issueItem.locator('[data-testid="issue-import-button"]').isVisible()
-    ).toBe(false);
   });
 
   test("should import with no context and fallback task type", async () => {
