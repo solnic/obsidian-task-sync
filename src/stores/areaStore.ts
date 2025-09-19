@@ -49,7 +49,7 @@ class AreaStore extends EntityStore<Area> {
   /**
    * Find an area by name
    */
-  findAreaByName(name: string): Area | null {
+  getAreaByName(name: string): Area | null {
     const entities = this.getEntities();
     return (
       entities.find(

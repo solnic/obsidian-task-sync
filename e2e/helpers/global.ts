@@ -4,7 +4,7 @@ import { TFile } from "obsidian";
 import { type SharedTestContext } from "./shared-context";
 import { captureScreenshotOnFailure } from "./shared-context";
 
-import type { Task } from "../../src/types/entities";
+import type { Area, Project, Task } from "../../src/types/entities";
 
 /**
  * Wait for a base file to be created or updated
@@ -1700,4 +1700,25 @@ export async function getTaskByTitle(page: Page, title: string): Promise<Task> {
 
     return plugin.stores.taskStore.getTaskByTitle(title);
   }, title);
+}
+
+export async function getProjectByName(
+  page: Page,
+  name: string
+): Promise<Project> {
+  return await page.evaluate(async (name) => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+    return plugin.stores.projectStore.getProjectByName(name);
+  }, name);
+}
+
+export async function getAreaByName(page: Page, name: string): Promise<Area> {
+  return await page.evaluate(async (name) => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+    return plugin.stores.areaStore.getAreaByName(name);
+  }, name);
 }

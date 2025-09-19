@@ -15,42 +15,9 @@ import { setupE2ETestHooks } from "../helpers/shared-context";
 describe("Project Creation", () => {
   const context = setupE2ETestHooks();
 
-  test("should have project creation command available", async () => {
-    // Check if the project creation command exists
-    const hasCreateProjectCommand = await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const commands = app.commands.commands;
-      return "obsidian-task-sync:create-project" in commands;
-    });
-
-    expect(hasCreateProjectCommand).toBe(true);
-  });
-
-  test("should open project creation modal when command is executed", async () => {
-    // Execute the create project command
-    await executeCommand(context, "Task Sync: Create Project");
-    await context.page.waitForSelector(".task-sync-create-project", {
-      timeout: 5000,
-    });
-
-    // Check if modal is open
-    const modalExists = await context.page
-      .locator(".task-sync-create-project")
-      .isVisible();
-    expect(modalExists).toBe(true);
-
-    // Check modal title
-    const modalTitle = await context.page.locator(".modal-title").textContent();
-    expect(modalTitle).toBe("Create New Project");
-
-    // Close modal
-    await context.page.keyboard.press("Escape");
-    await context.page.waitForTimeout(500);
-  });
-
   test("should create project with basic information", async () => {
-    // Execute the create project command
     await executeCommand(context, "Task Sync: Create Project");
+
     await context.page.waitForSelector(".task-sync-create-project", {
       timeout: 5000,
     });

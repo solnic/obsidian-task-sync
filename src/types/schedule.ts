@@ -11,8 +11,6 @@ import { CalendarEvent } from "./calendar";
  */
 export abstract class Schedule implements BaseEntity {
   id: string;
-  file?: any; // TFile reference if persisted
-  filePath?: string;
 
   // Schedule metadata
   date: Date; // The date this schedule is for

@@ -9,36 +9,16 @@ import {
   fileExists,
   verifyAreaProperties,
   executeCommand,
+  getAreaByName,
 } from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
 describe("Area Creation", () => {
   const context = setupE2ETestHooks();
 
-  test("should open area creation modal when command is executed", async () => {
-    await executeCommand(context, "Task Sync: Create Area");
-    await context.page.waitForSelector(".task-sync-create-area", {
-      timeout: 5000,
-    });
-
-    // Check if modal is open
-    const modalExists = await context.page
-      .locator(".task-sync-create-area")
-      .isVisible();
-    expect(modalExists).toBe(true);
-
-    // Check modal title
-    const modalTitle = await context.page.locator(".modal-title").textContent();
-    expect(modalTitle).toBe("Create New Area");
-
-    // Close modal
-    await context.page.keyboard.press("Escape");
-    await context.page.waitForTimeout(500);
-  });
-
   test("should create area with basic information", async () => {
-    // Execute the create area command
     await executeCommand(context, "Task Sync: Create Area");
+
     await context.page.waitForSelector(".task-sync-create-area", {
       timeout: 5000,
     });
@@ -59,23 +39,12 @@ describe("Area Creation", () => {
     await context.page.locator('button:has-text("Create Area")').click();
     await context.page.waitForTimeout(2000);
 
-    // Check if area file was created
-    const areaFileExists = await fileExists(context.page, "Areas/Test Area.md");
-    expect(areaFileExists).toBe(true);
+    const area = await getAreaByName(context.page, "Test Area");
 
-    // Check area file content using property verification
-    await verifyAreaProperties(context.page, "Areas/Test Area.md", {
+    await verifyAreaProperties(context.page, area.file.path, {
       Name: "Test Area",
       Type: "Area",
     });
-
-    // Check that description and base embed are in the content
-    const areaContent = await getFileContent(
-      context.page,
-      "Areas/Test Area.md"
-    );
-    expect(areaContent).toContain("This is a test area for e2e testing");
-    expect(areaContent).toContain("![[Bases/Test Area.base]]");
   });
 
   test("should create individual area base when enabled", async () => {

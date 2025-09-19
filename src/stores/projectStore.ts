@@ -65,19 +65,9 @@ class ProjectStore extends EntityStore<Project> {
   }
 
   /**
-   * Get projects by status - disabled since Project entity doesn't have status property
-   */
-  // getProjectsByStatus(
-  //   status: "active" | "on-hold" | "completed" | "cancelled"
-  // ): Project[] {
-  //   const entities = this.getEntities();
-  //   return entities.filter((project) => project.status === status);
-  // }
-
-  /**
    * Find a project by name
    */
-  findProjectByName(name: string): Project | null {
+  getProjectByName(name: string): Project | null {
     const entities = this.getEntities();
     return (
       entities.find(

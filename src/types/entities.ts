@@ -28,7 +28,6 @@ export interface EntityDataView {
   parentTask?: string; // Display name only
   tags?: string[];
   source?: TaskSource;
-  // Add other common display properties as needed
 }
 
 // Interface for entities that can provide data view objects
@@ -172,6 +171,8 @@ export interface Project extends BaseEntity {
   type?: string; // TYPE
   areas?: string[]; // AREAS
   tags?: string[]; // TAGS
+  file: TFile; // Obsidian file reference
+  filePath: string; // Path to the file in vault
 }
 
 // Area entity - core system properties
@@ -180,6 +181,8 @@ export interface Area extends BaseEntity {
   name: string; // NAME (from Name front-matter property)
   type?: string; // TYPE
   tags?: string[]; // TAGS
+  file: TFile; // Obsidian file reference
+  filePath: string; // Path to the file in vault
 }
 
 // Template entity for creating new tasks/projects/areas
@@ -192,7 +195,6 @@ export interface Template extends BaseEntity {
   variables: TemplateVariable[];
 
   // File system integration
-  filePath?: string;
   fileExists: boolean;
 
   // Usage tracking
