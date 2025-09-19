@@ -76,8 +76,14 @@ export class DailyPlanningView extends ItemView {
   }
 
   async onClose(): Promise<void> {
-    // Set daily planning mode to false in the context store
-    setDailyPlanningMode(false);
+    // Only set daily planning mode to false if no other Daily Planning views are open
+    const dailyPlanningLeaves = this.app.workspace.getLeavesOfType(
+      DAILY_PLANNING_VIEW_TYPE
+    );
+    if (dailyPlanningLeaves.length <= 1) {
+      // This is the last (or only) Daily Planning view being closed
+      setDailyPlanningMode(false);
+    }
 
     if (this.svelteComponent) {
       this.svelteComponent.$destroy();
