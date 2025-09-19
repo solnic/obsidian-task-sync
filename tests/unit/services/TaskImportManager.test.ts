@@ -9,6 +9,7 @@ import {
 } from "../../../src/types/integrations";
 import { PROPERTY_REGISTRY } from "../../../src/types/properties";
 import { PROPERTY_SETS } from "../../../src/services/base-definitions/BaseConfigurations";
+import * as yaml from "js-yaml";
 
 // Helper function to generate task front-matter (extracted from TaskImportManager)
 function generateTaskFrontMatter(
@@ -83,6 +84,32 @@ function mapExternalStatus(status: string): string {
     merged: "Done",
   };
   return statusMap[status] || "Backlog";
+}
+
+// Helper function to generate front-matter string (extracted from TaskImportManager)
+function generateFrontMatterString(
+  frontMatterData: Record<string, any>
+): string {
+  const frontMatterLines = ["---"];
+  for (const [key, value] of Object.entries(frontMatterData)) {
+    if (Array.isArray(value)) {
+      frontMatterLines.push(
+        `${key}: [${value.map((v) => `"${v}"`).join(", ")}]`
+      );
+    } else if (typeof value === "string") {
+      frontMatterLines.push(`${key}: "${value}"`);
+    } else if (typeof value === "object" && value !== null) {
+      // Handle nested objects like source
+      frontMatterLines.push(`${key}:`);
+      for (const [subKey, subValue] of Object.entries(value)) {
+        frontMatterLines.push(`  ${subKey}: "${subValue}"`);
+      }
+    } else {
+      frontMatterLines.push(`${key}: ${value}`);
+    }
+  }
+  frontMatterLines.push("---");
+  return frontMatterLines.join("\n");
 }
 
 describe("TaskImportManager Front-matter Generation", () => {
@@ -202,6 +229,71 @@ describe("TaskImportManager Front-matter Generation", () => {
         reminder1.toISOString(),
         reminder2.toISOString(),
       ]);
+    });
+  });
+
+  describe("generateFrontMatterString", () => {
+    test("should generate valid YAML for titles with quotes", () => {
+      const frontMatterData = {
+        Title: 'crontabs with "oreboot" oban option instead of valid crontab',
+        Type: "Task",
+        Category: "Bug",
+        Priority: null,
+        Areas: ["[[Sentry]]"],
+        Done: false,
+        Status: "Backlog",
+        "Parent task": "",
+        tags: ["Bug", "Waiting for: Product Owner", "Elixir"],
+      };
+
+      const frontMatterString = generateFrontMatterString(frontMatterData);
+
+      // The generated YAML should be parseable
+      expect(() => {
+        yaml.load(frontMatterString);
+      }).not.toThrow();
+
+      // Parse the YAML and verify the title is preserved correctly
+      const parsed = yaml.load(frontMatterString) as Record<string, any>;
+      expect(parsed.Title).toBe(
+        'crontabs with "oreboot" oban option instead of valid crontab'
+      );
+    });
+
+    test("should generate valid YAML for titles with various quote scenarios", () => {
+      const testCases = [
+        'Simple title with "double quotes"',
+        "Title with 'single quotes'",
+        "Mixed \"double\" and 'single' quotes",
+        'Title with "nested "quotes" inside"',
+        'Title with backslash\\and quotes"',
+        'Title with: colons, "quotes", and other special chars!',
+      ];
+
+      testCases.forEach((title) => {
+        const frontMatterData = {
+          Title: title,
+          Type: "Task",
+          Category: "Bug",
+          Priority: null,
+          Areas: [],
+          Done: false,
+          Status: "Backlog",
+          "Parent task": "",
+          tags: [],
+        };
+
+        const frontMatterString = generateFrontMatterString(frontMatterData);
+
+        // The generated YAML should be parseable
+        expect(() => {
+          yaml.load(frontMatterString);
+        }).not.toThrow();
+
+        // Parse the YAML and verify the title is preserved correctly
+        const parsed = yaml.load(frontMatterString) as Record<string, any>;
+        expect(parsed.Title).toBe(title);
+      });
     });
   });
 });
