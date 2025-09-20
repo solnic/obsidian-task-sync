@@ -213,15 +213,6 @@ export default class TaskSyncPlugin
     return areaStore.getEntities();
   }
 
-  // Wait for store refresh operations to complete
-  private async waitForStoreRefresh() {
-    await Promise.all([
-      taskStore.waitForRefresh(),
-      projectStore.waitForRefresh(),
-      areaStore.waitForRefresh(),
-    ]);
-  }
-
   /**
    * Register a note type with corresponding file manager
    * Implements NoteTypeRegistration interface
@@ -652,7 +643,7 @@ export default class TaskSyncPlugin
     }
   }
 
-  async saveSettings(skipTemplateUpdate = false) {
+  async saveSettings() {
     this.validateSettings();
 
     // Store previous settings for comparison
@@ -1980,17 +1971,6 @@ export default class TaskSyncPlugin
       const dailyNote = dailyNoteResult.file;
 
       // Get calendar events for today
-      const today = new Date();
-      const startOfDay = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
-      );
-      const endOfDay = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() + 1
-      );
 
       const events = await this.appleCalendarService.getTodayEvents();
 
