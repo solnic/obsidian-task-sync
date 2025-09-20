@@ -5,7 +5,7 @@
 
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import DailyPlanningViewSvelte from "../components/svelte/DailyPlanningView.svelte";
-import type { SvelteComponent } from "svelte";
+import { mount, unmount } from "svelte";
 import { AppleCalendarService } from "../services/AppleCalendarService";
 import { DailyNoteService } from "../services/DailyNoteService";
 import { TaskSyncSettings } from "../main";
@@ -14,7 +14,7 @@ import { setDailyPlanningMode } from "../components/svelte/context";
 export const DAILY_PLANNING_VIEW_TYPE = "daily-planning";
 
 export class DailyPlanningView extends ItemView {
-  private svelteComponent: SvelteComponent | null = null;
+  private svelteComponent: any = null;
   private appleCalendarService: AppleCalendarService;
   private dailyNoteService: DailyNoteService;
   private settings: {
@@ -55,8 +55,8 @@ export class DailyPlanningView extends ItemView {
     // Set daily planning mode to true in the context store
     setDailyPlanningMode(true);
 
-    // Create the Svelte component
-    this.svelteComponent = new DailyPlanningViewSvelte({
+    // Mount Svelte 5 component
+    this.svelteComponent = mount(DailyPlanningViewSvelte, {
       target: this.containerEl,
       props: {
         appleCalendarService: this.appleCalendarService,
@@ -85,8 +85,9 @@ export class DailyPlanningView extends ItemView {
       setDailyPlanningMode(false);
     }
 
+    // Unmount Svelte 5 component
     if (this.svelteComponent) {
-      this.svelteComponent.$destroy();
+      unmount(this.svelteComponent);
       this.svelteComponent = null;
     }
   }

@@ -1,9 +1,9 @@
 import { Modal } from "obsidian";
-import type { SvelteComponent } from "svelte";
+import { mount, unmount } from "svelte";
 import type TaskSyncPlugin from "../../main";
 
 export abstract class SvelteModal extends Modal {
-  protected component: SvelteComponent | null = null;
+  protected component: any = null;
   protected plugin: TaskSyncPlugin;
 
   constructor(plugin: TaskSyncPlugin) {
@@ -21,21 +21,21 @@ export abstract class SvelteModal extends Modal {
   }
 
   onClose() {
-    // Cleanup Svelte component
+    // Unmount Svelte 5 component
     if (this.component) {
-      this.component.$destroy();
+      unmount(this.component);
       this.component = null;
     }
   }
 
-  protected abstract createComponent(container: HTMLElement): SvelteComponent;
+  protected abstract createComponent(container: HTMLElement): any;
 
-  protected createSvelteComponent<T extends SvelteComponent>(
-    ComponentClass: new (options: any) => T,
+  protected createSvelteComponent(
+    ComponentClass: any,
     container: HTMLElement,
-    props: Record<string, any> = {},
-  ): T {
-    return new ComponentClass({
+    props: Record<string, any> = {}
+  ): any {
+    return mount(ComponentClass, {
       target: container,
       props: {
         ...props,

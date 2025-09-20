@@ -7,7 +7,7 @@ import { ItemView, WorkspaceLeaf } from "obsidian";
 import { AppleCalendarService } from "../services/AppleCalendarService";
 import { AppleCalendarIntegrationSettings } from "../components/ui/settings/types";
 import TaskPlanningViewSvelte from "../components/svelte/TaskPlanningView.svelte";
-import type { SvelteComponent } from "svelte";
+import { mount, unmount } from "svelte";
 
 export const TASK_PLANNING_VIEW_TYPE = "task-planning";
 
@@ -16,7 +16,7 @@ export interface TaskPlanningViewSettings {
 }
 
 export class TaskPlanningView extends ItemView {
-  private svelteComponent: SvelteComponent | null = null;
+  private svelteComponent: any = null;
   private appleCalendarService: AppleCalendarService;
   private settings: TaskPlanningViewSettings;
 
@@ -47,8 +47,8 @@ export class TaskPlanningView extends ItemView {
     this.containerEl.addClass("task-planning-view");
     this.containerEl.setAttribute("data-type", TASK_PLANNING_VIEW_TYPE);
 
-    // Create the Svelte component
-    this.svelteComponent = new TaskPlanningViewSvelte({
+    // Mount Svelte 5 component
+    this.svelteComponent = mount(TaskPlanningViewSvelte, {
       target: this.containerEl,
       props: {
         appleCalendarService: this.appleCalendarService,
@@ -68,8 +68,9 @@ export class TaskPlanningView extends ItemView {
   }
 
   async onClose(): Promise<void> {
+    // Unmount Svelte 5 component
     if (this.svelteComponent) {
-      this.svelteComponent.$destroy();
+      unmount(this.svelteComponent);
       this.svelteComponent = null;
     }
   }
