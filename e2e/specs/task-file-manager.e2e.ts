@@ -298,17 +298,21 @@ This is the main content of the task.
       "Task content here."
     );
 
-    // Test updating a specific property
+    // Test updating a specific property using NoteManagers interface
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const taskFileManager = plugin.taskFileManager;
-      await taskFileManager.updateProperty(
-        "Tasks/Property Update Test.md",
-        "Priority",
-        "Critical"
-      );
+      // Create entity object for NoteManagers interface
+      const entity = {
+        type: "Task",
+        filePath: "Tasks/Property Update Test.md",
+      };
+
+      // Use property key instead of frontmatter name
+      await plugin.noteManagers.update(entity, {
+        priority: "Critical",
+      });
     });
 
     await verifyTaskProperties(context.page, "Tasks/Property Update Test.md", {
