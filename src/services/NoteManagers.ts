@@ -53,45 +53,6 @@ export class NoteManagers {
   }
 
   /**
-   * Get the property handler for a specific note type
-   */
-  public getPropertyHandler(noteType: string): EventHandler | null {
-    const config = this.noteTypes.get(noteType);
-    return config?.propertyHandler || null;
-  }
-
-  /**
-   * Register a property handler for an existing note type
-   */
-  public registerPropertyHandler(
-    noteType: string,
-    propertyHandler: EventHandler
-  ): void {
-    const config = this.noteTypes.get(noteType);
-    if (!config) {
-      throw new Error(`Note type '${noteType}' is not registered`);
-    }
-
-    config.propertyHandler = propertyHandler;
-    console.log(
-      `🔧 NoteManagers: Registered property handler for note type: ${noteType}`
-    );
-  }
-
-  /**
-   * Get all property handlers
-   */
-  public getAllPropertyHandlers(): EventHandler[] {
-    const handlers: EventHandler[] = [];
-    for (const config of this.noteTypes.values()) {
-      if (config.propertyHandler) {
-        handlers.push(config.propertyHandler);
-      }
-    }
-    return handlers;
-  }
-
-  /**
    * Get all registered note types
    */
   public getRegisteredNoteTypes(): string[] {
@@ -232,9 +193,4 @@ export function createNoteManagers(
  */
 export interface NoteTypeRegistration {
   registerNoteType<T>(noteType: string, config: NoteTypeConfig<T>): void;
-
-  registerPropertyHandler(
-    noteType: string,
-    propertyHandler: EventHandler
-  ): void;
 }

@@ -415,13 +415,6 @@ This is a test task created directly in the vault.`;
       await pluginManager.enablePlugin("obsidian-task-sync");
     });
 
-    // Wait for all store refreshes to complete after plugin restart
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      await plugin.waitForStoreRefresh();
-    });
-
     // Get task count after plugin restart
     const finalTaskCount = await context.page.evaluate(() => {
       const app = (window as any).app;

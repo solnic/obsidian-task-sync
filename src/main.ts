@@ -185,8 +185,8 @@ export default class TaskSyncPlugin
     return areaStore.getEntities();
   }
 
-  // Wait for store refresh operations to complete (for e2e testing)
-  public async waitForStoreRefresh() {
+  // Wait for store refresh operations to complete
+  private async waitForStoreRefresh() {
     await Promise.all([
       taskStore.waitForRefresh(),
       projectStore.waitForRefresh(),
@@ -203,14 +203,6 @@ export default class TaskSyncPlugin
     config: { manager: any; propertyHandler?: any }
   ): void {
     this.noteManagers.registerNoteType(noteType, config);
-  }
-
-  /**
-   * Register a property handler for an existing note type
-   * Implements NoteTypeRegistration interface
-   */
-  public registerPropertyHandler(noteType: string, propertyHandler: any): void {
-    this.noteManagers.registerPropertyHandler(noteType, propertyHandler);
   }
 
   /**
