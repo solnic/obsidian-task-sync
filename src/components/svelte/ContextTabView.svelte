@@ -155,18 +155,14 @@
       isLoading = true;
       error = null;
 
-      // Load front-matter based on entity type
+      // Load front-matter using NoteManagers abstraction
       let frontMatter: Record<string, any>;
 
-      if (currentPath.startsWith(plugin.settings.tasksFolder)) {
-        frontMatter = await plugin.taskFileManager.loadFrontMatter(currentPath);
-      } else if (currentPath.startsWith(plugin.settings.projectsFolder)) {
-        frontMatter =
-          await plugin.projectFileManager.loadFrontMatter(currentPath);
-      } else if (currentPath.startsWith(plugin.settings.areasFolder)) {
-        frontMatter = await plugin.areaFileManager.loadFrontMatter(currentPath);
-      } else {
-        // Try to determine type from file content using Obsidian's metadata cache
+      try {
+        // Use the new NoteManagers interface to load front-matter
+        frontMatter = await plugin.noteManagers.loadFrontMatter(currentPath);
+      } catch (noteManagerError) {
+        // Fallback to metadata cache for files outside managed folders
         const file = plugin.app.vault.getAbstractFileByPath(currentPath);
         if (file && file instanceof TFile) {
           const cache = plugin.app.metadataCache.getFileCache(file);
