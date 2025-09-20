@@ -13,6 +13,7 @@ import {
   getYesterdayString,
   getOverdueTasks,
   getUpcomingTasks,
+  parseDoDate,
 } from "../src/utils/dateFiltering";
 
 describe("dateFiltering", () => {
@@ -311,6 +312,34 @@ describe("dateFiltering", () => {
           expect(task.doDate).toBeInstanceOf(Date);
         });
       }).not.toThrow();
+    });
+  });
+
+  describe("parseDoDate safety", () => {
+    test("should safely parse YYYY-MM-DD format dates", () => {
+      const result = parseDoDate("2024-01-15");
+      expect(result).toBeInstanceOf(Date);
+      expect(result?.toISOString().split("T")[0]).toBe("2024-01-15");
+    });
+
+    test("should safely handle dates that already contain time information", () => {
+      // This was the problematic case mentioned in PR review
+      const dateWithTime = "2024-01-15T10:30:00.000Z";
+      const result = parseDoDate(dateWithTime);
+      expect(result).toBeInstanceOf(Date);
+      expect(result?.toISOString()).toBe("2024-01-15T10:30:00.000Z");
+    });
+
+    test("should handle invalid date strings gracefully", () => {
+      expect(parseDoDate("invalid-date")).toBeNull();
+      expect(parseDoDate("not-a-date-at-all")).toBeNull();
+      expect(parseDoDate("")).toBeNull();
+    });
+
+    test("should handle edge cases safely", () => {
+      expect(parseDoDate("2024-01-15T25:00:00")).toBeNull(); // Invalid time
+      expect(parseDoDate("2024-01-15T00:00:00.000")).toBeInstanceOf(Date); // Valid time
+      expect(parseDoDate("2024-01-15 10:30:00")).toBeInstanceOf(Date); // Space separator
     });
   });
 });
