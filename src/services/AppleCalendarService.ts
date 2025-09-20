@@ -38,6 +38,7 @@ import {
   ImportResult,
 } from "../types/integrations";
 import { generateId, generatePrefixedId } from "../utils/idGenerator";
+import { getDateString } from "../utils/dateFiltering";
 
 // Simple CalDAV calendar interface
 interface SimpleCalDAVCalendar {
@@ -1004,7 +1005,7 @@ export class AppleCalendarService
     const formatDate = (date: Date): string => {
       if (eventData.allDay) {
         // For all-day events, use DATE format (YYYYMMDD)
-        return date.toISOString().split("T")[0].replace(/-/g, "");
+        return getDateString(date).replace(/-/g, "");
       } else {
         // For timed events, use DATETIME format (YYYYMMDDTHHMMSSZ)
         return date.toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";

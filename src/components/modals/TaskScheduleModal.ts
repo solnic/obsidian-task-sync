@@ -15,6 +15,7 @@ import {
 import { Task } from "../../types/entities";
 import { TaskSchedulingConfig } from "../../types/scheduling";
 import { Calendar } from "../../types/calendar";
+import { getDateString } from "../../utils/dateFiltering";
 import TaskSyncPlugin from "../../main";
 
 export interface TaskScheduleData {
@@ -305,7 +306,7 @@ export class TaskScheduleModal extends Modal {
   }
 
   private formatDate(date: Date): string {
-    return date.toISOString().split("T")[0];
+    return getDateString(date);
   }
 
   private formatTime(date: Date): string {

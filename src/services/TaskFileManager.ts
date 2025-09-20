@@ -11,6 +11,7 @@ import { PROPERTY_REGISTRY } from "../types/properties";
 import { PROPERTY_SETS } from "./base-definitions/BaseConfigurations";
 import { Task, TaskUtils } from "../types/entities";
 import { createWikiLink } from "../utils/linkUtils";
+import { getDateString } from "../utils/dateFiltering";
 import moment from "moment";
 
 /**
@@ -215,7 +216,7 @@ export class TaskFileManager extends FileManager {
       if (value !== undefined && value !== null) {
         // Convert Date objects to ISO date strings for front-matter
         if (prop.type === "date" && value instanceof Date) {
-          value = value.toISOString().split("T")[0]; // YYYY-MM-DD format
+          value = getDateString(value); // YYYY-MM-DD format
         }
 
         // Format as links if the property has link: true

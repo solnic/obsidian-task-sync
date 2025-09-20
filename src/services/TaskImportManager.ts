@@ -7,6 +7,7 @@ import { App, Vault, TFile } from "obsidian";
 import { ExternalTaskData, TaskImportConfig } from "../types/integrations";
 import { TaskSyncSettings } from "../components/ui/settings/types";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
+import { getDateString } from "../utils/dateFiltering";
 import { NoteManagers } from "./NoteManagers";
 import { AreaFileManager } from "./AreaFileManager";
 import { PROPERTY_REGISTRY } from "../types/properties";
@@ -151,11 +152,11 @@ export class TaskImportManager {
     }
 
     if (config.doDate) {
-      frontMatter["Do Date"] = config.doDate.toISOString().split("T")[0];
+      frontMatter["Do Date"] = getDateString(config.doDate);
     }
 
     if (taskData.dueDate) {
-      frontMatter["Due Date"] = taskData.dueDate.toISOString().split("T")[0];
+      frontMatter["Due Date"] = getDateString(taskData.dueDate);
     }
 
     if (taskData.reminders && taskData.reminders.length > 0) {
