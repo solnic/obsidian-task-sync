@@ -223,20 +223,20 @@ tags: {{tags}}
 
     // Area template should have area-specific properties only
     expect(areaContent).toContain("Name:");
-    expect(areaContent).toContain('Type: "Area"');
+    expect(areaContent).toContain("Type: Area");
     expect(areaContent).not.toContain("Title:");
     expect(areaContent).not.toContain("Category:");
 
     // Project template should have project-specific properties only
     expect(projectContent).toContain("Name:");
-    expect(projectContent).toContain('Type: "Project"');
+    expect(projectContent).toContain("Type: Project");
     expect(projectContent).toContain("Areas:");
     expect(projectContent).not.toContain("Title:");
     expect(projectContent).not.toContain("Category:");
 
     // Task template should have task-specific properties
     expect(taskContent).toContain("Title:");
-    expect(taskContent).toContain('Type: "Task"');
+    expect(taskContent).toContain("Type: Task");
     expect(taskContent).toContain("Category:");
     expect(taskContent).toContain("Priority:");
   });

@@ -32,8 +32,8 @@ describe("Template Management", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createTaskTemplate("Custom Task.md");
+      if (plugin && plugin.noteManagers) {
+        await plugin.noteManagers.createTemplate("Task", "Custom Task.md");
       }
     });
 

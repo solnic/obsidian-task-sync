@@ -12,13 +12,13 @@ describe("Clean Template Generation", () => {
   const context = setupE2ETestHooks();
 
   test("should generate task template with configured default values", async () => {
-    // Create a task template using the TemplateManager
+    // Create a task template using the NoteManagers
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createTaskTemplate("Clean Task.md");
+      if (plugin && plugin.noteManagers) {
+        await plugin.noteManagers.createTemplate("Task", "Clean Task.md");
       }
     });
 
@@ -50,7 +50,7 @@ describe("Clean Template Generation", () => {
 
     // Should have configured default values (values are quoted in YAML)
     expect(templateContent).toContain("Done: false");
-    expect(templateContent).toContain('Status: "Backlog"');
+    expect(templateContent).toContain("Status: Backlog");
 
     // Arrays should be empty
     expect(templateContent).toContain("Areas: []");
@@ -66,8 +66,9 @@ describe("Clean Template Generation", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createTaskTemplate(
+      if (plugin && plugin.noteManagers) {
+        await plugin.noteManagers.createTemplate(
+          "Task",
           "Clean Task Template.md"
         );
       }

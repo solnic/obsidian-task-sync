@@ -225,6 +225,31 @@ export abstract class FileManager {
    */
   abstract loadEntity(file: TFile, cache?: any): Promise<any>;
 
+  // ============================================================================
+  // TEMPLATE MANAGEMENT INTERFACE
+  // ============================================================================
+
+  /**
+   * Abstract method for creating template files
+   * Must be implemented by concrete classes to handle their specific template types
+   * @param filename - Optional filename override
+   */
+  abstract createTemplate(filename?: string): Promise<void>;
+
+  /**
+   * Abstract method for ensuring template exists
+   * Must be implemented by concrete classes to check and create missing templates
+   */
+  abstract ensureTemplateExists(): Promise<void>;
+
+  /**
+   * Abstract method for updating template properties
+   * Must be implemented by concrete classes to handle template property reordering
+   * @param content - Template content to update
+   * @returns Updated template content
+   */
+  abstract updateTemplateProperties(content: string): Promise<string>;
+
   /**
    * Wait for metadata cache to have front-matter for the given file
    * Uses event-driven approach with fallback polling for better performance

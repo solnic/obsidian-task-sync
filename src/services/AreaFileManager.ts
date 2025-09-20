@@ -9,6 +9,7 @@ import { TaskSyncSettings } from "../main";
 import { FileManager } from "./FileManager";
 import { generateAreaFrontMatter } from "./base-definitions/BaseConfigurations";
 import { Area } from "../types/entities";
+import { generateAreaFrontMatter as getAreaPropertyDefinitions } from "./base-definitions/BaseConfigurations";
 
 /**
  * Interface for area creation data
@@ -342,5 +343,128 @@ export class AreaFileManager extends FileManager {
     content: string
   ): Record<string, any> | null {
     return this.extractFrontMatterData(content);
+  }
+
+  // ============================================================================
+  // TEMPLATE MANAGEMENT IMPLEMENTATION
+  // ============================================================================
+
+  /**
+   * Implementation of abstract method from FileManager
+   * Creates area template files
+   */
+  async createTemplate(filename?: string): Promise<void> {
+    await this.createAreaTemplate(filename);
+  }
+
+  /**
+   * Implementation of abstract method from FileManager
+   * Ensures area template exists
+   */
+  async ensureTemplateExists(): Promise<void> {
+    await this.ensureAreaTemplateExists();
+  }
+
+  /**
+   * Implementation of abstract method from FileManager
+   * Areas don't need template property reordering, so return content as-is
+   */
+  async updateTemplateProperties(content: string): Promise<string> {
+    // Areas don't modify existing templates to preserve their structure
+    return content;
+  }
+
+  /**
+   * Create an Area template file with proper front-matter and content
+   */
+  async createAreaTemplate(filename?: string): Promise<void> {
+    const templateFileName = filename || this.settings.defaultAreaTemplate;
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    // Check if file already exists
+    const fileExists = await this.vault.adapter.exists(templatePath);
+    if (fileExists) {
+      throw new Error(
+        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`
+      );
+    }
+
+    // Generate template content
+    const templateContent = this.generateAreaTemplateWithDefaults();
+
+    // Create the template file (Obsidian will create the folder automatically if needed)
+    await this.vault.create(templatePath, templateContent);
+    console.log(`Created area template: ${templatePath}`);
+  }
+
+  /**
+   * Ensure area template exists, creating it if missing
+   */
+  async ensureAreaTemplateExists(): Promise<void> {
+    const areaTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultAreaTemplate}`;
+    const areaTemplateExists = await this.app.vault.adapter.exists(
+      areaTemplatePath
+    );
+
+    if (!areaTemplateExists) {
+      console.log(
+        `Task Sync: Area template '${this.settings.defaultAreaTemplate}' not found, creating it...`
+      );
+      try {
+        await this.createAreaTemplate(this.settings.defaultAreaTemplate);
+        console.log(`Task Sync: Created area template: ${areaTemplatePath}`);
+      } catch (error) {
+        console.error(`Task Sync: Failed to create area template:`, error);
+      }
+    }
+  }
+
+  /**
+   * Generate an area template with default values
+   */
+  private generateAreaTemplateWithDefaults(): string {
+    // Create front-matter structure using property definitions with defaults
+    const frontMatterData: Record<string, any> = {};
+
+    // Get area property definitions in the correct order
+    const areaProperties = getAreaPropertyDefinitions();
+
+    for (const prop of areaProperties) {
+      // Use default values from property definitions
+      if (prop.default !== undefined) {
+        frontMatterData[prop.name] = prop.default;
+      } else if (prop.type === "array") {
+        frontMatterData[prop.name] = [];
+      } else {
+        // Use empty string for properties without defaults
+        frontMatterData[prop.name] = "";
+      }
+    }
+
+    // Always set Type to 'Area' for area templates
+    frontMatterData.Type = "Area";
+
+    const baseContent = this.generateFrontMatter(frontMatterData);
+
+    // Add content section with description and tasks variables
+    return baseContent + "\n\n{{description}}\n\n## Tasks\n\n{{tasks}}";
+  }
+
+  /**
+   * Generate front-matter string from data object
+   */
+  private generateFrontMatter(frontMatterData: Record<string, any>): string {
+    const frontMatterLines = ["---"];
+    for (const [key, value] of Object.entries(frontMatterData)) {
+      if (Array.isArray(value)) {
+        frontMatterLines.push(
+          `${key}: [${value.map((v) => `"${v}"`).join(", ")}]`
+        );
+      } else {
+        frontMatterLines.push(`${key}: ${value}`);
+      }
+    }
+    frontMatterLines.push("---");
+    return frontMatterLines.join("\n");
   }
 }

@@ -12,7 +12,6 @@ import { VaultScanner } from "./services/VaultScannerService";
 import { BaseManager } from "./services/BaseManager";
 
 import { FileChangeListener } from "./services/FileChangeListener";
-import { TemplateManager } from "./services/TemplateManager";
 import { TaskFileManager } from "./services/TaskFileManager";
 import { TaskTodoMarkdownProcessor } from "./services/TaskTodoMarkdownProcessor";
 import { AreaFileManager } from "./services/AreaFileManager";
@@ -157,7 +156,6 @@ export default class TaskSyncPlugin
   private previousSettings: TaskSyncSettings | null = null;
   vaultScanner: VaultScanner;
   baseManager: BaseManager;
-  templateManager: TemplateManager;
 
   eventManager: EventManager;
   fileChangeListener: FileChangeListener;
@@ -276,11 +274,6 @@ export default class TaskSyncPlugin
 
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
-    this.templateManager = new TemplateManager(
-      this.app,
-      this.app.vault,
-      this.settings
-    );
 
     // Initialize cache manager
     this.cacheManager = new CacheManager(this);
@@ -317,7 +310,6 @@ export default class TaskSyncPlugin
       this.settings,
       this.noteManagers,
       this.baseManager,
-      this.templateManager,
       (taskData: any) => this.createTask(taskData),
       () => this.detectCurrentFileContext(),
       () => this.refreshBaseViews()
@@ -362,7 +354,7 @@ export default class TaskSyncPlugin
     );
 
     // Ensure templates exist
-    await this.templateManager.ensureTemplatesExist();
+    await this.noteManagers.ensureAllTemplatesExist();
 
     // Initialize event system
     this.eventManager = new EventManager();
@@ -690,9 +682,7 @@ export default class TaskSyncPlugin
     });
 
     // Update other managers
-    if (this.templateManager) {
-      this.templateManager.updateSettings(this.settings);
-    }
+    // Template management is now handled by individual file managers through NoteManagers
 
     if (this.baseManager) {
       this.baseManager.updateSettings(this.settings);
@@ -1401,8 +1391,8 @@ export default class TaskSyncPlugin
     try {
       console.log("Task Sync: Starting template file updates...");
 
-      // Update each template type using explicit paths from settings
-      await this.updateSpecificTemplateFiles(results);
+      // Delegate template updates to NoteManagers
+      await this.noteManagers.updateAllTemplateFiles(results);
 
       console.log(
         `Task Sync: Updated ${results.templatesUpdated} template files`
@@ -1410,121 +1400,6 @@ export default class TaskSyncPlugin
     } catch (error) {
       console.error("Task Sync: Failed to update template files:", error);
       results.errors.push(`Failed to update template files: ${error.message}`);
-    }
-  }
-
-  /**
-   * Update specific template files using explicit paths from settings
-   */
-  private async updateSpecificTemplateFiles(results: any): Promise<void> {
-    try {
-      // Update Task template
-      await this.updateOrCreateTaskTemplate(results);
-
-      // Update Area template (create only, don't modify existing)
-      await this.updateOrCreateAreaTemplate(results);
-
-      // Update Project template (create only, don't modify existing)
-      await this.updateOrCreateProjectTemplate(results);
-
-      // Update Parent Task template
-      await this.updateOrCreateParentTaskTemplate(results);
-    } catch (error) {
-      console.error(
-        "Task Sync: Failed to update specific template files:",
-        error
-      );
-      results.errors.push(
-        `Failed to update specific template files: ${error.message}`
-      );
-    }
-  }
-
-  /**
-   * Update or create Task template
-   */
-  private async updateOrCreateTaskTemplate(results: any): Promise<void> {
-    const templatePath = `${this.settings.templateFolder}/${this.settings.defaultTaskTemplate}`;
-    const file = this.app.vault.getAbstractFileByPath(templatePath);
-
-    if (file && file instanceof TFile) {
-      // Update existing task template with property reordering
-      const content = await this.app.vault.read(file);
-      const taskFileManager = this.noteManagers.getTaskManager()!;
-      const updatedContent =
-        await taskFileManager.reorderTaskTemplateProperties(content);
-      if (updatedContent !== content) {
-        await this.app.vault.modify(file, updatedContent);
-        results.templatesUpdated++;
-        console.log(`Task Sync: Updated task template ${templatePath}`);
-      }
-    } else {
-      // Create missing task template
-      await this.templateManager.createTaskTemplate();
-      results.templatesUpdated++;
-      console.log(`Task Sync: Created missing task template ${templatePath}`);
-    }
-  }
-
-  /**
-   * Update or create Area template (create only, don't modify existing)
-   */
-  private async updateOrCreateAreaTemplate(results: any): Promise<void> {
-    const templatePath = `${this.settings.templateFolder}/${this.settings.defaultAreaTemplate}`;
-    const file = this.app.vault.getAbstractFileByPath(templatePath);
-
-    if (!file) {
-      // Create missing area template
-      await this.templateManager.createAreaTemplate();
-      results.templatesUpdated++;
-      console.log(`Task Sync: Created missing area template ${templatePath}`);
-    }
-    // Don't modify existing area templates to preserve their structure
-  }
-
-  /**
-   * Update or create Project template (create only, don't modify existing)
-   */
-  private async updateOrCreateProjectTemplate(results: any): Promise<void> {
-    const templatePath = `${this.settings.templateFolder}/${this.settings.defaultProjectTemplate}`;
-    const file = this.app.vault.getAbstractFileByPath(templatePath);
-
-    if (!file) {
-      // Create missing project template
-      await this.templateManager.createProjectTemplate();
-      results.templatesUpdated++;
-      console.log(
-        `Task Sync: Created missing project template ${templatePath}`
-      );
-    }
-    // Don't modify existing project templates to preserve their structure
-  }
-
-  /**
-   * Update or create Parent Task template
-   */
-  private async updateOrCreateParentTaskTemplate(results: any): Promise<void> {
-    const templatePath = `${this.settings.templateFolder}/${this.settings.defaultParentTaskTemplate}`;
-    const file = this.app.vault.getAbstractFileByPath(templatePath);
-
-    if (file && file instanceof TFile) {
-      // Update existing parent task template with property reordering
-      const content = await this.app.vault.read(file);
-      const taskFileManager = this.noteManagers.getTaskManager()!;
-      const updatedContent =
-        await taskFileManager.reorderTaskTemplateProperties(content);
-      if (updatedContent !== content) {
-        await this.app.vault.modify(file, updatedContent);
-        results.templatesUpdated++;
-        console.log(`Task Sync: Updated parent task template ${templatePath}`);
-      }
-    } else {
-      // Create missing parent task template
-      await this.templateManager.createParentTaskTemplate();
-      results.templatesUpdated++;
-      console.log(
-        `Task Sync: Created missing parent task template ${templatePath}`
-      );
     }
   }
 

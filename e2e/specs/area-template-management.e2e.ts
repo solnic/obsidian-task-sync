@@ -12,13 +12,13 @@ describe("Area Template Management", () => {
   test("should create area template with proper front-matter structure", async () => {
     await createTestFolders(context.page);
 
-    // Create area template using TemplateManager
+    // Create area template using NoteManagers
     await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createAreaTemplate("TestArea.md");
+      if (plugin && plugin.noteManagers) {
+        await plugin.noteManagers.createTemplate("Area", "TestArea.md");
       }
     });
 
@@ -66,9 +66,9 @@ describe("Area Template Management", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (plugin && plugin.templateManager) {
+      if (plugin && plugin.noteManagers) {
         try {
-          await plugin.templateManager.createAreaTemplate("ExistingArea.md");
+          await plugin.noteManagers.createTemplate("Area", "ExistingArea.md");
         } catch (error) {
           return {
             success: false,
@@ -79,7 +79,7 @@ describe("Area Template Management", () => {
 
       return {
         success: false,
-        error: "Plugin or templateManager not available",
+        error: "Plugin or noteManagers not available",
       };
     });
 
@@ -96,8 +96,8 @@ describe("Area Template Management", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createAreaTemplate("CustomArea.md");
+      if (plugin && plugin.noteManagers) {
+        await plugin.noteManagers.createTemplate("Area", "CustomArea.md");
       }
     });
 
@@ -138,8 +138,8 @@ describe("Area Template Management", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createAreaTemplate();
+      if (plugin && plugin.noteManagers) {
+        await plugin.noteManagers.createTemplate("Area");
       }
     });
 
@@ -161,8 +161,8 @@ describe("Area Template Management", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (plugin && plugin.templateManager) {
-        await plugin.templateManager.createAreaTemplate("CleanArea.md");
+      if (plugin && plugin.noteManagers) {
+        await plugin.noteManagers.createTemplate("Area", "CleanArea.md");
       }
     });
 

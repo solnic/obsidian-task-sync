@@ -9,7 +9,6 @@ import { TaskSyncSettings } from "../main";
 import { NoteManagers } from "./NoteManagers";
 import { TaskFileManager } from "./TaskFileManager";
 import { BaseManager } from "./BaseManager";
-import { TemplateManager } from "./TemplateManager";
 import { Task } from "../types/entities";
 import { taskStore } from "../stores/taskStore";
 import { taskMentionStore } from "../stores/taskMentionStore";
@@ -49,7 +48,6 @@ export class TodoPromotionService {
     private settings: TaskSyncSettings,
     private noteManagers: NoteManagers,
     private baseManager: BaseManager,
-    private templateManager: TemplateManager,
     private createTaskCallback: (taskData: any) => Promise<Task>,
     private detectCurrentFileContextCallback: () => FileContext,
     private refreshBaseViewsCallback: () => Promise<void>

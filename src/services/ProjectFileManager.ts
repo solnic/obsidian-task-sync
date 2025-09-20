@@ -9,6 +9,7 @@ import { TaskSyncSettings } from "../main";
 import { FileManager } from "./FileManager";
 import { generateProjectFrontMatter } from "./base-definitions/BaseConfigurations";
 import { Project } from "../types/entities";
+import { generateProjectFrontMatter as getProjectPropertyDefinitions } from "./base-definitions/BaseConfigurations";
 
 /**
  * Interface for project creation data
@@ -344,5 +345,130 @@ export class ProjectFileManager extends FileManager {
     content: string
   ): Record<string, any> | null {
     return this.extractFrontMatterData(content);
+  }
+
+  // ============================================================================
+  // TEMPLATE MANAGEMENT IMPLEMENTATION
+  // ============================================================================
+
+  /**
+   * Implementation of abstract method from FileManager
+   * Creates project template files
+   */
+  async createTemplate(filename?: string): Promise<void> {
+    await this.createProjectTemplate(filename);
+  }
+
+  /**
+   * Implementation of abstract method from FileManager
+   * Ensures project template exists
+   */
+  async ensureTemplateExists(): Promise<void> {
+    await this.ensureProjectTemplateExists();
+  }
+
+  /**
+   * Implementation of abstract method from FileManager
+   * Projects don't need template property reordering, so return content as-is
+   */
+  async updateTemplateProperties(content: string): Promise<string> {
+    // Projects don't modify existing templates to preserve their structure
+    return content;
+  }
+
+  /**
+   * Create a Project template file with proper front-matter and content
+   */
+  async createProjectTemplate(filename?: string): Promise<void> {
+    const templateFileName = filename || this.settings.defaultProjectTemplate;
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    // Check if file already exists
+    const fileExists = await this.vault.adapter.exists(templatePath);
+    if (fileExists) {
+      throw new Error(
+        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`
+      );
+    }
+
+    // Generate template content
+    const templateContent = this.generateProjectTemplateWithDefaults();
+
+    // Create the template file (Obsidian will create the folder automatically if needed)
+    await this.vault.create(templatePath, templateContent);
+    console.log(`Created project template: ${templatePath}`);
+  }
+
+  /**
+   * Ensure project template exists, creating it if missing
+   */
+  async ensureProjectTemplateExists(): Promise<void> {
+    const projectTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultProjectTemplate}`;
+    const projectTemplateExists = await this.app.vault.adapter.exists(
+      projectTemplatePath
+    );
+
+    if (!projectTemplateExists) {
+      console.log(
+        `Task Sync: Project template '${this.settings.defaultProjectTemplate}' not found, creating it...`
+      );
+      try {
+        await this.createProjectTemplate(this.settings.defaultProjectTemplate);
+        console.log(
+          `Task Sync: Created project template: ${projectTemplatePath}`
+        );
+      } catch (error) {
+        console.error(`Task Sync: Failed to create project template:`, error);
+      }
+    }
+  }
+
+  /**
+   * Generate a project template with default values
+   */
+  private generateProjectTemplateWithDefaults(): string {
+    // Create front-matter structure using property definitions with defaults
+    const frontMatterData: Record<string, any> = {};
+
+    // Get project property definitions in the correct order
+    const projectProperties = getProjectPropertyDefinitions();
+
+    for (const prop of projectProperties) {
+      // Use default values from property definitions
+      if (prop.default !== undefined) {
+        frontMatterData[prop.name] = prop.default;
+      } else if (prop.type === "array") {
+        frontMatterData[prop.name] = [];
+      } else {
+        // Use empty string for properties without defaults
+        frontMatterData[prop.name] = "";
+      }
+    }
+
+    // Always set Type to 'Project' for project templates
+    frontMatterData.Type = "Project";
+
+    const baseContent = this.generateFrontMatter(frontMatterData);
+
+    // Add content section with description and tasks variables
+    return baseContent + "\n\n{{description}}\n\n## Tasks\n\n{{tasks}}";
+  }
+
+  /**
+   * Generate front-matter string from data object
+   */
+  private generateFrontMatter(frontMatterData: Record<string, any>): string {
+    const frontMatterLines = ["---"];
+    for (const [key, value] of Object.entries(frontMatterData)) {
+      if (Array.isArray(value)) {
+        frontMatterLines.push(
+          `${key}: [${value.map((v) => `"${v}"`).join(", ")}]`
+        );
+      } else {
+        frontMatterLines.push(`${key}: ${value}`);
+      }
+    }
+    frontMatterLines.push("---");
+    return frontMatterLines.join("\n");
   }
 }

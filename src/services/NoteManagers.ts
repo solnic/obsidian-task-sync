@@ -4,13 +4,12 @@
  * with their corresponding file managers and property handlers
  */
 
-import { App, Vault } from "obsidian";
+import { App, Vault, TFile } from "obsidian";
 import type { TaskSyncSettings } from "../components/ui/settings/types";
 import type { FileManager } from "./FileManager";
 import type { TaskFileManager } from "./TaskFileManager";
 import type { AreaFileManager } from "./AreaFileManager";
 import type { ProjectFileManager } from "./ProjectFileManager";
-import type { EventHandler } from "../events/EventTypes";
 import type { BaseEntity } from "../types/entities";
 import { PROPERTY_REGISTRY } from "../types/properties";
 import type { VaultScannerService } from "../types/services";
@@ -318,6 +317,208 @@ export class NoteManagers {
     }
 
     this.noteTypes.clear();
+  }
+
+  // ============================================================================
+  // TEMPLATE MANAGEMENT DELEGATION
+  // ============================================================================
+
+  /**
+   * Ensure all templates exist for all registered note types
+   */
+  public async ensureAllTemplatesExist(): Promise<void> {
+    console.log("🔧 NoteManagers: Ensuring all templates exist...");
+
+    for (const [noteType, config] of this.noteTypes) {
+      try {
+        if (config.manager) {
+          await config.manager.ensureTemplateExists();
+          console.log(`✅ NoteManagers: ${noteType} templates ensured`);
+        } else {
+          console.warn(
+            `⚠️ NoteManagers: No manager available for ${noteType} templates`
+          );
+        }
+      } catch (error) {
+        console.error(
+          `❌ NoteManagers: Failed to ensure ${noteType} templates:`,
+          error
+        );
+      }
+    }
+  }
+
+  /**
+   * Create template for a specific note type
+   * @param noteType - The type of note template to create
+   * @param filename - Optional filename override
+   */
+  public async createTemplate(
+    noteType: string,
+    filename?: string
+  ): Promise<void> {
+    const manager = this.getManager(noteType);
+    if (!manager) {
+      throw new Error(`No manager registered for note type: ${noteType}`);
+    }
+
+    await manager.createTemplate(filename);
+    console.log(`✅ NoteManagers: Created ${noteType} template`);
+  }
+
+  /**
+   * Update template properties for a specific note type
+   * @param noteType - The type of note template to update
+   * @param content - Template content to update
+   * @returns Updated template content
+   */
+  public async updateTemplateProperties(
+    noteType: string,
+    content: string
+  ): Promise<string> {
+    const manager = this.getManager(noteType);
+    if (!manager) {
+      throw new Error(`No manager registered for note type: ${noteType}`);
+    }
+
+    return await manager.updateTemplateProperties(content);
+  }
+
+  /**
+   * Update template files for all note types to match current property order
+   * @param results - Results object to track changes and errors
+   */
+  public async updateAllTemplateFiles(results: any): Promise<void> {
+    console.log("🔧 NoteManagers: Starting template file updates...");
+
+    try {
+      // Update Task templates (both regular and parent task)
+      await this.updateTaskTemplateFiles(results);
+
+      // Update Area template (create only, don't modify existing)
+      await this.updateAreaTemplateFiles(results);
+
+      // Update Project template (create only, don't modify existing)
+      await this.updateProjectTemplateFiles(results);
+
+      console.log(
+        `🔧 NoteManagers: Updated ${results.templatesUpdated} template files`
+      );
+    } catch (error) {
+      console.error("🔧 NoteManagers: Failed to update template files:", error);
+      results.errors.push(`Failed to update template files: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update or create Task template files
+   */
+  private async updateTaskTemplateFiles(results: any): Promise<void> {
+    const taskManager = this.getTaskManager();
+    if (!taskManager) {
+      throw new Error("Task manager not available");
+    }
+
+    // Update regular task template
+    const taskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultTaskTemplate}`;
+    const taskFile = this.app.vault.getAbstractFileByPath(taskTemplatePath);
+
+    if (taskFile && taskFile instanceof TFile) {
+      // Update existing task template with property reordering
+      const content = await this.vault.read(taskFile);
+      const updatedContent = await taskManager.updateTemplateProperties(
+        content
+      );
+      if (updatedContent !== content) {
+        await this.vault.modify(taskFile, updatedContent);
+        results.templatesUpdated++;
+        console.log(
+          `🔧 NoteManagers: Updated task template ${taskTemplatePath}`
+        );
+      }
+    } else {
+      // Create missing task template
+      await taskManager.createTemplate();
+      results.templatesUpdated++;
+      console.log(
+        `🔧 NoteManagers: Created missing task template ${taskTemplatePath}`
+      );
+    }
+
+    // Update parent task template
+    const parentTaskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultParentTaskTemplate}`;
+    const parentTaskFile = this.app.vault.getAbstractFileByPath(
+      parentTaskTemplatePath
+    );
+
+    if (parentTaskFile && parentTaskFile instanceof TFile) {
+      // Update existing parent task template with property reordering
+      const content = await this.vault.read(parentTaskFile);
+      const updatedContent = await taskManager.updateTemplateProperties(
+        content
+      );
+      if (updatedContent !== content) {
+        await this.vault.modify(parentTaskFile, updatedContent);
+        results.templatesUpdated++;
+        console.log(
+          `🔧 NoteManagers: Updated parent task template ${parentTaskTemplatePath}`
+        );
+      }
+    } else {
+      // Create missing parent task template
+      await (taskManager as any).createParentTaskTemplate();
+      results.templatesUpdated++;
+      console.log(
+        `🔧 NoteManagers: Created missing parent task template ${parentTaskTemplatePath}`
+      );
+    }
+  }
+
+  /**
+   * Update or create Area template files (create only, don't modify existing)
+   */
+  private async updateAreaTemplateFiles(results: any): Promise<void> {
+    const areaManager = this.getAreaManager();
+    if (!areaManager) {
+      throw new Error("Area manager not available");
+    }
+
+    const areaTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultAreaTemplate}`;
+    const areaFile = this.app.vault.getAbstractFileByPath(areaTemplatePath);
+
+    if (!areaFile) {
+      // Create missing area template
+      await areaManager.createTemplate();
+      results.templatesUpdated++;
+      console.log(
+        `🔧 NoteManagers: Created missing area template ${areaTemplatePath}`
+      );
+    }
+    // Don't modify existing area templates to preserve their structure
+  }
+
+  /**
+   * Update or create Project template files (create only, don't modify existing)
+   */
+  private async updateProjectTemplateFiles(results: any): Promise<void> {
+    const projectManager = this.getProjectManager();
+    if (!projectManager) {
+      throw new Error("Project manager not available");
+    }
+
+    const projectTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultProjectTemplate}`;
+    const projectFile =
+      this.app.vault.getAbstractFileByPath(projectTemplatePath);
+
+    if (!projectFile) {
+      // Create missing project template
+      await projectManager.createTemplate();
+      results.templatesUpdated++;
+      console.log(
+        `🔧 NoteManagers: Created missing project template ${projectTemplatePath}`
+      );
+    }
+    // Don't modify existing project templates to preserve their structure
   }
 }
 

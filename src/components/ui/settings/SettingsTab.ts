@@ -1296,7 +1296,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             button.setDisabled(true);
             button.setButtonText("Creating...");
             try {
-              await this.plugin.templateManager.createTaskTemplate();
+              await this.plugin.noteManagers.createTemplate("Task");
               button.setButtonText("✓ Created");
               setTimeout(() => {
                 button.setDisabled(false);
@@ -1325,7 +1325,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             button.setDisabled(true);
             button.setButtonText("Creating...");
             try {
-              await this.plugin.templateManager.createProjectTemplate();
+              await this.plugin.noteManagers.createTemplate("Project");
               button.setButtonText("✓ Created");
               setTimeout(() => {
                 button.setDisabled(false);
@@ -1354,7 +1354,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             button.setDisabled(true);
             button.setButtonText("Creating...");
             try {
-              await this.plugin.templateManager.createAreaTemplate();
+              await this.plugin.noteManagers.createTemplate("Area");
               button.setButtonText("✓ Created");
               setTimeout(() => {
                 button.setDisabled(false);

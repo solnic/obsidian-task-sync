@@ -8,8 +8,12 @@ import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../main";
 import { FileManager } from "./FileManager";
 import { PROPERTY_REGISTRY } from "../types/properties";
-import { PROPERTY_SETS } from "./base-definitions/BaseConfigurations";
 import { Task, TaskUtils } from "../types/entities";
+import {
+  PROPERTY_SETS,
+  generateTaskFrontMatter,
+  generateTaskFrontMatter as getTaskPropertyDefinitions,
+} from "./base-definitions/BaseConfigurations";
 import { createWikiLink } from "../utils/linkUtils";
 import { getDateString } from "../utils/dateFiltering";
 import moment from "moment";
@@ -833,5 +837,231 @@ export class TaskFileManager extends FileManager {
     }
 
     return matchingTasks;
+  }
+
+  // ============================================================================
+  // TEMPLATE MANAGEMENT IMPLEMENTATION
+  // ============================================================================
+
+  /**
+   * Implementation of abstract method from FileManager
+   * Creates task template files (both regular and parent task templates)
+   */
+  async createTemplate(filename?: string): Promise<void> {
+    // Default to creating regular task template
+    await this.createTaskTemplate(filename);
+  }
+
+  /**
+   * Implementation of abstract method from FileManager
+   * Ensures both task and parent task templates exist
+   */
+  async ensureTemplateExists(): Promise<void> {
+    await this.ensureTaskTemplateExists();
+    await this.ensureParentTaskTemplateExists();
+  }
+
+  /**
+   * Implementation of abstract method from FileManager
+   * Updates task template properties to match current property order
+   */
+  async updateTemplateProperties(content: string): Promise<string> {
+    return await this.reorderTaskTemplateProperties(content);
+  }
+
+  /**
+   * Create a Task template file with proper front-matter and content
+   */
+  async createTaskTemplate(filename?: string): Promise<void> {
+    const templateFileName = filename || this.settings.defaultTaskTemplate;
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    // Check if file already exists
+    const fileExists = await this.vault.adapter.exists(templatePath);
+    if (fileExists) {
+      throw new Error(
+        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`
+      );
+    }
+
+    // Generate template content with configured default values
+    const templateContent = this.generateTaskTemplateWithDefaults();
+
+    // Create the template file (Obsidian will create the folder automatically if needed)
+    await this.vault.create(templatePath, templateContent);
+    console.log(`Created task template: ${templatePath}`);
+  }
+
+  /**
+   * Create a Parent Task template file with proper front-matter and content
+   */
+  async createParentTaskTemplate(filename?: string): Promise<void> {
+    const templateFileName =
+      filename || this.settings.defaultParentTaskTemplate;
+    const templatePath = `${this.settings.templateFolder}/${templateFileName}`;
+
+    // Check if file already exists
+    const fileExists = await this.vault.adapter.exists(templatePath);
+    if (fileExists) {
+      throw new Error(
+        `Template file ${templateFileName} already exists. Please configure a different file or overwrite the current one.`
+      );
+    }
+
+    // Generate template content
+    const templateContent = this.generateParentTaskTemplateWithDefaults();
+
+    // Create the template file (Obsidian will create the folder automatically if needed)
+    await this.vault.create(templatePath, templateContent);
+    console.log(`Created parent task template: ${templatePath}`);
+  }
+
+  /**
+   * Ensure task template exists, creating it if missing
+   */
+  async ensureTaskTemplateExists(): Promise<void> {
+    const taskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultTaskTemplate}`;
+    const taskTemplateExists = await this.app.vault.adapter.exists(
+      taskTemplatePath
+    );
+
+    if (!taskTemplateExists) {
+      console.log(
+        `Task Sync: Task template '${this.settings.defaultTaskTemplate}' not found, creating it...`
+      );
+      try {
+        await this.createTaskTemplate(this.settings.defaultTaskTemplate);
+        console.log(`Task Sync: Created task template: ${taskTemplatePath}`);
+      } catch (error) {
+        console.error(`Task Sync: Failed to create task template:`, error);
+      }
+    }
+  }
+
+  /**
+   * Ensure parent task template exists, creating it if missing
+   */
+  async ensureParentTaskTemplateExists(): Promise<void> {
+    const parentTaskTemplatePath = `${this.settings.templateFolder}/${this.settings.defaultParentTaskTemplate}`;
+    const parentTaskTemplateExists = await this.app.vault.adapter.exists(
+      parentTaskTemplatePath
+    );
+
+    if (!parentTaskTemplateExists) {
+      console.log(
+        `Task Sync: Parent task template '${this.settings.defaultParentTaskTemplate}' not found, creating it...`
+      );
+      try {
+        await this.createParentTaskTemplate(
+          this.settings.defaultParentTaskTemplate
+        );
+        console.log(
+          `Task Sync: Created parent task template: ${parentTaskTemplatePath}`
+        );
+      } catch (error) {
+        console.error(
+          `Task Sync: Failed to create parent task template:`,
+          error
+        );
+      }
+    }
+  }
+
+  /**
+   * Generate a task template with default values for auto-creation
+   */
+  private generateTaskTemplateWithDefaults(): string {
+    // Create front-matter structure using property definitions with defaults
+    const frontMatterData: Record<string, any> = {};
+
+    // Get property order from settings or use default
+    const propertyOrder =
+      this.settings.taskPropertyOrder || PROPERTY_SETS.TASK_FRONTMATTER;
+
+    // Validate property order - ensure all required properties are present
+    const requiredProperties = PROPERTY_SETS.TASK_FRONTMATTER;
+    const isValidOrder =
+      requiredProperties.every((prop) => propertyOrder.includes(prop)) &&
+      propertyOrder.every((prop) =>
+        requiredProperties.includes(prop as (typeof requiredProperties)[number])
+      );
+
+    // Use validated order or fall back to default
+    const finalPropertyOrder = isValidOrder
+      ? propertyOrder
+      : requiredProperties;
+
+    for (const propertyKey of finalPropertyOrder) {
+      const prop =
+        PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+      if (!prop) continue;
+
+      // Use default values from property definitions
+      if (prop.default !== undefined) {
+        frontMatterData[prop.name] = prop.default;
+      } else if (prop.type === "array") {
+        frontMatterData[prop.name] = [];
+      } else {
+        // Set specific defaults for key properties
+        if (prop.name === "Type") {
+          frontMatterData[prop.name] = "Task"; // Always 'Task' for task entities
+        } else if (prop.name === "Category") {
+          frontMatterData[prop.name] = this.settings.taskTypes?.[0]?.name || "";
+        } else if (prop.name === "Title") {
+          frontMatterData[prop.name] = ""; // Title will be set by property handler
+        } else {
+          // Use empty string for other properties without defaults
+          frontMatterData[prop.name] = "";
+        }
+      }
+    }
+
+    return this.generateFrontMatter(frontMatterData);
+  }
+
+  /**
+   * Generate a parent task template with default values
+   */
+  private generateParentTaskTemplateWithDefaults(): string {
+    // Create front-matter structure using property definitions with defaults
+    const frontMatterData: Record<string, any> = {};
+
+    // Get task property definitions in the correct order
+    const taskProperties = getTaskPropertyDefinitions();
+
+    for (const prop of taskProperties) {
+      // Use default values from property definitions
+      if (prop.default !== undefined) {
+        frontMatterData[prop.name] = prop.default;
+      } else if (prop.type === "array") {
+        frontMatterData[prop.name] = [];
+      } else {
+        // Use empty string for properties without defaults
+        frontMatterData[prop.name] = "";
+      }
+    }
+
+    const baseContent = this.generateFrontMatter(frontMatterData);
+
+    // Add embedded base for related tasks using {{tasks}} variable
+    return baseContent + "\n\n## Related Tasks\n\n{{tasks}}";
+  }
+
+  /**
+   * Generate front-matter string from data object
+   */
+  private generateFrontMatter(frontMatterData: Record<string, any>): string {
+    const frontMatterLines = ["---"];
+    for (const [key, value] of Object.entries(frontMatterData)) {
+      if (Array.isArray(value)) {
+        frontMatterLines.push(
+          `${key}: [${value.map((v) => `"${v}"`).join(", ")}]`
+        );
+      } else {
+        frontMatterLines.push(`${key}: ${value}`);
+      }
+    }
+    frontMatterLines.push("---");
+    return frontMatterLines.join("\n");
   }
 }
