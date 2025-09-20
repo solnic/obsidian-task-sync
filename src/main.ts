@@ -7,6 +7,7 @@ import {
   Vault,
   MarkdownPostProcessor,
 } from "obsidian";
+import { get } from "svelte/store";
 import { VaultScanner } from "./services/VaultScannerService";
 import { BaseManager } from "./services/BaseManager";
 
@@ -1244,10 +1245,7 @@ export default class TaskSyncPlugin
     const newContext = this.detectCurrentFileContext();
 
     // Get current context from store to compare
-    let currentStoreContext: FileContext = { type: "none" };
-    currentFileContext.subscribe((context) => {
-      currentStoreContext = context;
-    })();
+    const currentStoreContext = get(currentFileContext);
 
     // Only update if context actually changed (preserve dailyPlanningMode)
     if (
@@ -1269,12 +1267,7 @@ export default class TaskSyncPlugin
    */
   getCurrentContext(): FileContext {
     // Get the current context from the store to include daily planning mode
-    let storeContext: FileContext = { type: "none" };
-    currentFileContext.subscribe((context) => {
-      storeContext = context;
-    })();
-
-    return storeContext;
+    return get(currentFileContext);
   }
 
   // Create a new task

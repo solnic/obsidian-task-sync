@@ -1,5 +1,5 @@
 import { getContext, setContext } from "svelte";
-import { writable, type Writable } from "svelte/store";
+import { writable, get, type Writable } from "svelte/store";
 import type TaskSyncPlugin from "../../main";
 import type { FileContext } from "../../main";
 
@@ -67,9 +67,6 @@ export function setDailyPlanningMode(isActive: boolean): void {
  * Get the current daily planning mode
  */
 export function getDailyPlanningMode(): boolean {
-  let currentMode = false;
-  currentFileContext.subscribe((context) => {
-    currentMode = context.dailyPlanningMode || false;
-  })();
-  return currentMode;
+  const context = get(currentFileContext);
+  return context.dailyPlanningMode || false;
 }

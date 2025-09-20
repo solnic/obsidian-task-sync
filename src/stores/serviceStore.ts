@@ -3,7 +3,7 @@
  * Provides a centralized, reactive API for service availability and status
  */
 
-import { writable, derived } from "svelte/store";
+import { writable, derived, get } from "svelte/store";
 import type { GitHubService } from "../services/GitHubService";
 import type { AppleRemindersService } from "../services/AppleRemindersService";
 
@@ -120,33 +120,24 @@ export class ServiceStore {
    * Get current GitHub service (non-reactive)
    */
   getCurrentGitHubService(): GitHubService | null {
-    let currentService: GitHubService | null = null;
-    this._store.subscribe((state) => {
-      currentService = state.githubService;
-    })();
-    return currentService;
+    const state = get(this._store);
+    return state.githubService;
   }
 
   /**
    * Get current Apple Reminders service (non-reactive)
    */
   getCurrentAppleRemindersService(): AppleRemindersService | null {
-    let currentService: AppleRemindersService | null = null;
-    this._store.subscribe((state) => {
-      currentService = state.appleRemindersService;
-    })();
-    return currentService;
+    const state = get(this._store);
+    return state.appleRemindersService;
   }
 
   /**
    * Check if store is initialized
    */
   isStoreInitialized(): boolean {
-    let isInitialized = false;
-    this._store.subscribe((state) => {
-      isInitialized = state.isInitialized;
-    })();
-    return isInitialized;
+    const state = get(this._store);
+    return state.isInitialized;
   }
 }
 
