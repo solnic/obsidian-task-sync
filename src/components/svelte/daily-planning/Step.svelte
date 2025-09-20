@@ -38,6 +38,9 @@
     children,
   }: Props = $props();
 
+  // Create step indicator array once instead of on each render
+  let stepIndicators = $derived(Array.from({ length: totalSteps }));
+
   function handleNext() {
     if (canGoNext && !isLoading && onNext) {
       onNext();
@@ -62,7 +65,7 @@
   <div class="step-header">
     <div class="step-progress">
       <div class="step-indicator">
-        {#each Array.from({ length: totalSteps }) as _, index}
+        {#each stepIndicators as _, index}
           <div
             class="step-dot {stepNumber === index + 1
               ? 'active'
