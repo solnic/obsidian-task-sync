@@ -1286,7 +1286,14 @@ export default class TaskSyncPlugin
       await this.stores.taskStore.setTaskSource(filePath, source);
     }
 
-    return this.stores.taskStore.findEntityByPath(filePath);
+    const task = this.stores.taskStore.findEntityByPath(filePath);
+    if (!task) {
+      throw new Error(
+        `Failed to create task: Task not found in store after creation at path ${filePath}`
+      );
+    }
+
+    return task;
   }
 
   /**
