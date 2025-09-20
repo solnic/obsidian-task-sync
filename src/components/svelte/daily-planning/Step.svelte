@@ -62,7 +62,7 @@
   <div class="step-header">
     <div class="step-progress">
       <div class="step-indicator">
-        {#each Array(totalSteps) as _, index}
+        {#each Array.from({ length: totalSteps }) as _, index}
           <div
             class="step-dot {stepNumber === index + 1
               ? 'active'
