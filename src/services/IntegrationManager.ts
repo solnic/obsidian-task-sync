@@ -10,6 +10,7 @@ import { DailyNoteService } from "./DailyNoteService";
 import { CacheManager } from "../cache/CacheManager";
 import { settingsStore } from "../stores/settingsStore";
 import type { TaskSyncSettings } from "../components/ui/settings/types";
+import { debugLog } from "../utils/debug";
 
 export interface IntegrationService {
   id: string;
@@ -39,7 +40,7 @@ export class IntegrationManager {
     this.dailyNoteService = dailyNoteService;
     this.settings = { ...settings };
 
-    console.debug("🔧 IntegrationManager: Initializing with settings", {
+    debugLog("🔧 IntegrationManager: Initializing with settings", {
       githubEnabled: this.settings.githubIntegration.enabled,
     });
 
@@ -66,7 +67,7 @@ export class IntegrationManager {
         oldSettings.githubIntegration.personalAccessToken !==
           this.settings.githubIntegration.personalAccessToken;
 
-      console.debug("Github changed:", githubChanged);
+      debugLog("GitHub changed:", githubChanged);
 
       const appleRemindersChanged =
         !oldSettings ||
@@ -81,7 +82,7 @@ export class IntegrationManager {
         !this.githubService
       ) {
         // Force update if GitHub is enabled but service doesn't exist
-        console.debug(
+        debugLog(
           "🔧 IntegrationManager: Force updating integrations - GitHub enabled but no service"
         );
         await this.updateIntegrations();
