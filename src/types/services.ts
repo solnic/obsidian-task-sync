@@ -6,7 +6,10 @@ import { Task, Project, Area, Template, BaseFile } from "./entities";
 
 // Vault scanning service interface
 export interface VaultScannerService {
-  // Folder scanning
+  // Generic folder scanning
+  scan(noteType: string): Promise<string[]>;
+
+  // Legacy folder scanning methods (deprecated - use scan(type) instead)
   scanTasksFolder(): Promise<string[]>;
   scanProjectsFolder(): Promise<string[]>;
   scanAreasFolder(): Promise<string[]>;
@@ -95,13 +98,13 @@ export interface DataGeneratorService {
   // Base file generation
   generateBaseFile(
     baseFile: BaseFile,
-    entities: (Task | Project | Area)[],
+    entities: (Task | Project | Area)[]
   ): Promise<string>;
 
   // Template processing
   processTemplate(
     template: Template,
-    variables: Record<string, any>,
+    variables: Record<string, any>
   ): Promise<string>;
 
   // File creation
@@ -118,25 +121,25 @@ export interface TemplateService {
 
   // Template management
   getAvailableTemplates(
-    type: "task" | "project" | "area" | "parent-task",
+    type: "task" | "project" | "area" | "parent-task"
   ): Promise<Template[]>;
   loadTemplate(templateId: string): Promise<Template>;
 
   // Template processing
   processNativeTemplate(
     templatePath: string,
-    variables: Record<string, any>,
+    variables: Record<string, any>
   ): Promise<string>;
   processTemplaterTemplate(
     templatePath: string,
-    variables: Record<string, any>,
+    variables: Record<string, any>
   ): Promise<string>;
 
   // Variable extraction
   extractTemplateVariables(content: string): TemplateVariable[];
   validateTemplateVariables(
     variables: Record<string, any>,
-    template: Template,
+    template: Template
   ): ValidationResult;
 }
 
@@ -200,7 +203,7 @@ export interface DataStoreService {
   deleteTask(id: string): Promise<boolean>;
 
   createProject(
-    project: Omit<Project, "id" | "createdAt" | "updatedAt">,
+    project: Omit<Project, "id" | "createdAt" | "updatedAt">
   ): Promise<Project>;
   getProject(id: string): Promise<Project | null>;
   updateProject(id: string, updates: Partial<Project>): Promise<Project>;

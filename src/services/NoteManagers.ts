@@ -257,23 +257,8 @@ export class NoteManagers {
         );
       }
 
-      // Get the appropriate scanner method based on note type
-      let files: string[] = [];
-      switch (noteType) {
-        case "Task":
-          files = await this.vaultScanner.scanTasksFolder();
-          break;
-        case "Project":
-          files = await this.vaultScanner.scanProjectsFolder();
-          break;
-        case "Area":
-          files = await this.vaultScanner.scanAreasFolder();
-          break;
-        default:
-          throw new Error(
-            `Unsupported note type for file updates: ${noteType}`
-          );
-      }
+      // Get files for this note type using the generic scanner
+      const files = await this.vaultScanner.scan(noteType);
 
       // Update each file
       for (const filePath of files) {

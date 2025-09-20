@@ -16,28 +16,60 @@ import {
 import { TaskSyncSettings } from "../main";
 
 export class VaultScanner implements VaultScannerService {
-  constructor(
-    private vault: Vault,
-    private settings: TaskSyncSettings,
-  ) {}
+  constructor(private vault: Vault, private settings: TaskSyncSettings) {}
+
+  /**
+   * Generic scan method that maps note types to their configured folder paths
+   * @param noteType - The type of note to scan for (e.g., "Task", "Project", "Area", "Template")
+   * @returns Array of file paths in the corresponding folder
+   */
+  async scan(noteType: string): Promise<string[]> {
+    const folderPath = this.getFolderPathForNoteType(noteType);
+    if (!folderPath) {
+      console.warn(`No folder configured for note type: ${noteType}`);
+      return [];
+    }
+    return this.scanFolder(folderPath);
+  }
+
+  /**
+   * Maps note types to their corresponding folder paths from settings
+   * @param noteType - The note type to get folder path for
+   * @returns The folder path or null if not found
+   */
+  private getFolderPathForNoteType(noteType: string): string | null {
+    const typeToFolderMap: Record<string, keyof TaskSyncSettings> = {
+      Task: "tasksFolder",
+      Project: "projectsFolder",
+      Area: "areasFolder",
+      Template: "templateFolder",
+    };
+
+    const folderKey = typeToFolderMap[noteType];
+    if (!folderKey) {
+      return null;
+    }
+
+    return this.settings[folderKey] as string;
+  }
 
   async scanTasksFolder(): Promise<string[]> {
-    return this.scanFolder(this.settings.tasksFolder);
+    return this.scan("Task");
   }
 
   async scanProjectsFolder(): Promise<string[]> {
-    return this.scanFolder(this.settings.projectsFolder);
+    return this.scan("Project");
   }
 
   async scanAreasFolder(): Promise<string[]> {
-    return this.scanFolder(this.settings.areasFolder);
+    return this.scan("Area");
   }
 
   async scanTemplatesFolder(): Promise<string[]> {
-    return this.scanFolder(this.settings.templateFolder);
+    return this.scan("Template");
   }
 
-  private async scanFolder(folderPath: string): Promise<string[]> {
+  async scanFolder(folderPath: string): Promise<string[]> {
     if (!folderPath) return [];
 
     try {
@@ -225,7 +257,7 @@ export class VaultScanner implements VaultScannerService {
       if (!exists) {
         result.missingFolders.push(folder.path);
         result.errors.push(
-          `${folder.name} folder does not exist: ${folder.path}`,
+          `${folder.name} folder does not exist: ${folder.path}`
         );
         result.isValid = false;
       }
@@ -234,11 +266,11 @@ export class VaultScanner implements VaultScannerService {
     // Check for conflicting folder paths
     const paths = foldersToCheck.map((f) => f.path).filter(Boolean);
     const duplicates = paths.filter(
-      (path, index) => paths.indexOf(path) !== index,
+      (path, index) => paths.indexOf(path) !== index
     );
     if (duplicates.length > 0) {
       result.errors.push(
-        `Duplicate folder paths detected: ${duplicates.join(", ")}`,
+        `Duplicate folder paths detected: ${duplicates.join(", ")}`
       );
       result.isValid = false;
     }
@@ -246,7 +278,7 @@ export class VaultScanner implements VaultScannerService {
     // Add suggestions
     if (result.missingFolders.length > 0) {
       result.suggestions.push(
-        "Create missing folders manually in Obsidian - the plugin will work once folders exist",
+        "Create missing folders manually in Obsidian - the plugin will work once folders exist"
       );
     }
 
@@ -256,7 +288,7 @@ export class VaultScanner implements VaultScannerService {
   async createMissingFolders(): Promise<void> {
     // Note: Folder creation removed - Obsidian handles this automatically when files are created
     console.log(
-      "Folder creation is handled automatically by Obsidian when files are created",
+      "Folder creation is handled automatically by Obsidian when files are created"
     );
   }
 
@@ -298,7 +330,7 @@ export class VaultScanner implements VaultScannerService {
 
   private detectTemplateType(
     path: string,
-    content: string,
+    content: string
   ): "task" | "project" | "area" | "parent-task" {
     const pathLower = path.toLowerCase();
     if (pathLower.includes("parent-task") || pathLower.includes("parent_task"))
@@ -338,7 +370,7 @@ export class VaultScanner implements VaultScannerService {
   }
 
   private detectBaseViewType(
-    content: string,
+    content: string
   ): "kanban" | "list" | "calendar" | "timeline" {
     // Analyze content to detect view type
     // For now, default to kanban
