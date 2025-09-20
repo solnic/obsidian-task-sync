@@ -20,7 +20,7 @@
   import type { ImportResult } from "../../types/integrations";
   import { taskStore } from "../../stores/taskStore";
   import { scheduleTaskForToday } from "../../stores/dailyPlanningStore";
-  import { TaskImportManager } from "src/services/TaskImportManager";
+  import { TaskImportManager } from "../../services/TaskImportManager";
 
   interface SortField {
     key: string;
@@ -849,7 +849,7 @@
         );
 
         // Set the taskFilePath so we can still add to daily note
-        result.taskPath = existingTaskPath;
+        result.taskFilePath = existingTaskPath;
         result.success = true; // Treat as success for daily note purposes
 
         plugin.app.workspace.trigger(
@@ -866,26 +866,25 @@
       }
 
       // Handle day planning modes
-      const taskFilePath = result.taskPath;
+      const taskFilePath = result.taskFilePath;
 
       if (taskFilePath) {
         if (dailyPlanningWizardMode) {
           // In wizard mode, add to daily planning store for staging
           try {
-            // Wait a bit for the task to be available in the store
-            setTimeout(() => {
-              const tasks = taskStore.getEntities();
-              const importedTask = tasks.find(
-                (task) => task.filePath === taskFilePath
-              );
+            // Wait for the task store to be refreshed and find the imported task
+            await taskStore.refreshTasks();
+            const tasks = taskStore.getEntities();
+            const importedTask = tasks.find(
+              (task) => task.filePath === taskFilePath
+            );
 
-              if (importedTask) {
-                scheduleTaskForToday(importedTask);
-                new Notice(
-                  `Scheduled "${issue.title}" for today (pending confirmation)`
-                );
-              }
-            }, 100);
+            if (importedTask) {
+              scheduleTaskForToday(importedTask);
+              new Notice(
+                `Scheduled "${issue.title}" for today (pending confirmation)`
+              );
+            }
           } catch (err: any) {
             new Notice(
               `Error scheduling for today: ${err.message || "Unknown error"}`
@@ -962,7 +961,7 @@
           try {
             const tasks = taskStore.getEntities();
             const importedTask = tasks.find(
-              (task) => task.filePath === result.taskPath
+              (task) => task.filePath === result.taskFilePath
             );
             if (importedTask) {
               scheduleTaskForToday(importedTask);
@@ -980,7 +979,7 @@
           // In regular day planning mode, add to today's daily note immediately
           try {
             const dailyResult = await plugin.dailyNoteService.addTaskToToday(
-              result.taskPath
+              result.taskFilePath
             );
             if (dailyResult.success) {
               new Notice(`Added "${pr.title}" to today's daily note`);

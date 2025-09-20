@@ -157,14 +157,14 @@ describe("Task Source Storage", () => {
       await plugin.stores.taskStore.refreshTasks();
 
       const task = plugin.stores.taskStore.findEntityByPath(
-        importResult.taskPath
+        importResult.taskFilePath
       );
       const allTasks = plugin.stores.taskStore.getEntities();
       const tasksWithSource = allTasks.filter((t: any) => t.source);
 
       return {
         success: true,
-        taskPath: importResult.taskPath,
+        taskPath: importResult.taskFilePath,
         source: task.source,
         taskTitle: task.title,
         debug: {
@@ -214,11 +214,11 @@ describe("Task Source Storage", () => {
       await plugin.stores.taskStore.refreshTasks();
 
       const task = plugin.stores.taskStore.findEntityByPath(
-        importResult.taskPath
+        importResult.taskFilePath
       );
 
       return {
-        taskPath: importResult.taskPath,
+        taskPath: importResult.taskFilePath,
         source: task.source,
         taskTitle: task.title,
       };

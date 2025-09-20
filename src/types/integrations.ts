@@ -87,7 +87,7 @@ export interface ImportResult {
   success: boolean;
 
   /** Path to the created task file (if successful) */
-  taskPath?: string;
+  taskFilePath?: string;
 
   /** Error message (if failed) */
   error?: string;
@@ -111,7 +111,7 @@ export interface ImportedTaskMetadata {
   externalSource: "github" | "linear" | "apple-reminders" | "apple-calendar";
 
   /** Path to the created Obsidian task */
-  taskPath: string;
+  taskFilePath: string;
 
   /** When the task was imported */
   importedAt: Date;

@@ -178,8 +178,10 @@ export abstract class AbstractService {
         success: true,
         skipped: true,
         reason: "Task already imported",
-        taskPath: taskStore.findTaskBySource(taskData.sourceType, taskData.id)
-          ?.filePath,
+        taskFilePath: taskStore.findTaskBySource(
+          taskData.sourceType,
+          taskData.id
+        )?.filePath,
       };
     }
 
@@ -214,7 +216,7 @@ export abstract class AbstractService {
 
     return {
       success: true,
-      taskPath,
+      taskFilePath: taskPath,
     };
   }
 }

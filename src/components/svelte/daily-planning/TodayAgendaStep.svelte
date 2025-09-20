@@ -76,11 +76,11 @@
   }
 
   async function handleRescheduleFromUnscheduled(task: Task) {
-    const todayString = new Date().toISOString().split("T")[0];
+    const today = new Date();
     rescheduleTask(task);
     // Set the Do Date property when rescheduling
     await plugin.noteManagers.update(task, {
-      doDate: todayString,
+      doDate: today,
     });
   }
 </script>

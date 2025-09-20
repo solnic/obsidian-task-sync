@@ -56,7 +56,7 @@ describe("Calendar Event Import", () => {
 
         return {
           success: true,
-          hasTaskPath: !!result.taskPath,
+          hasTaskPath: !!result.taskFilePath,
           resultSuccess: result.success,
         };
       } catch (error) {
@@ -108,7 +108,7 @@ describe("Calendar Event Import", () => {
         return {
           success: true,
           resultSuccess: result.success,
-          hasTaskPath: !!result.taskPath,
+          hasTaskPath: !!result.taskFilePath,
         };
       } catch (error) {
         return {
@@ -168,7 +168,7 @@ describe("Calendar Event Import", () => {
           firstImport: {
             success: result1.success,
             skipped: result1.skipped,
-            hasTaskPath: !!result1.taskPath,
+            hasTaskPath: !!result1.taskFilePath,
           },
           secondImport: {
             success: result2.success,

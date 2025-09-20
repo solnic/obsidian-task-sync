@@ -2146,14 +2146,15 @@ export default class TaskSyncPlugin
     // Initialize task mention store
     taskMentionStore.initialize(this.app, this, "");
 
-    // Initialize schedule store
-    await scheduleStore.initialize(this.app, this);
-
     // Refresh all stores to load existing files
     await taskStore.refreshEntities();
     await projectStore.refreshEntities();
     await areaStore.refreshEntities();
     await taskMentionStore.refreshEntities();
+
+    // Initialize schedule store after entity stores are refreshed
+    // This prevents empty schedule.tasks during rehydration
+    await scheduleStore.initialize(this.app, this);
 
     console.log("Stores populated from vault");
   }
