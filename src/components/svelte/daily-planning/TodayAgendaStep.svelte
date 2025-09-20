@@ -69,11 +69,9 @@
     // It will be cleared during plan confirmation if the task remains unscheduled
     // For tasks added during planning, we can clear Do Date immediately
     if (!wasAlreadyScheduled) {
-      await plugin.taskFileManager.updateProperty(
-        task.filePath,
-        "Do Date",
-        null
-      );
+      await plugin.noteManagers.update(task, {
+        doDate: null,
+      });
     }
   }
 
@@ -81,11 +79,9 @@
     const todayString = new Date().toISOString().split("T")[0];
     rescheduleTask(task);
     // Set the Do Date property when rescheduling
-    await plugin.taskFileManager.updateProperty(
-      task.filePath,
-      "Do Date",
-      todayString
-    );
+    await plugin.noteManagers.update(task, {
+      doDate: todayString,
+    });
   }
 </script>
 

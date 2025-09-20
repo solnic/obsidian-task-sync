@@ -265,11 +265,9 @@
       // Clear Do Date for tasks that need to be unscheduled
       for (const task of tasksToUnschedule) {
         if (task.filePath) {
-          await plugin.taskFileManager.updateProperty(
-            task.filePath,
-            "Do Date",
-            null
-          );
+          await plugin.noteManagers.update(task, {
+            doDate: null,
+          });
         }
       }
 
@@ -340,11 +338,9 @@
           .find((t: Task) => t.filePath === filePath);
         if (task && task.doDate !== originalState.doDate) {
           // Revert the Do Date property
-          await plugin.taskFileManager.updateProperty(
-            task.filePath,
-            "Do Date",
-            originalState.doDate || null
-          );
+          await plugin.noteManagers.update(task, {
+            doDate: originalState.doDate || null,
+          });
         }
       }
 

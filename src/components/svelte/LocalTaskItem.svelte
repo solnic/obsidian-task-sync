@@ -115,20 +115,16 @@
     if (isScheduled) {
       // Unschedule the task - clear the Do Date
       unscheduleTask(task);
-      await plugin.taskFileManager.updateProperty(
-        task.filePath,
-        "Do Date",
-        null
-      );
+      await plugin.noteManagers.update(task, {
+        doDate: null,
+      });
       console.log("Unscheduled task:", task.title);
     } else {
       // Schedule the task for today - set Do Date to today
       scheduleTaskForToday(task);
-      await plugin.taskFileManager.updateProperty(
-        task.filePath,
-        "Do Date",
-        todayString
-      );
+      await plugin.noteManagers.update(task, {
+        doDate: todayString,
+      });
       console.log("Scheduling task for today:", task.title);
     }
   }

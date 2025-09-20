@@ -67,8 +67,8 @@ describe("TaskFileManager Service", () => {
 
         // Update using property keys (not frontmatter names)
         await noteManagers.update(entity, {
-          PRIORITY: "Critical", // Property key, should map to "Priority" frontmatter
-          DO_DATE: "2024-01-15", // Property key, should map to "Do Date" frontmatter
+          priority: "Critical", // Property key, should map to "Priority" frontmatter
+          doDate: "2024-01-15", // Property key, should map to "Do Date" frontmatter
         });
       });
 

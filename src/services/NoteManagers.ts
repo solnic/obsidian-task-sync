@@ -99,7 +99,7 @@ export class NoteManagers {
   /**
    * Update entity properties using the appropriate file manager
    * @param entity - Entity object with type property
-   * @param properties - Object with property keys mapped to values
+   * @param properties - Object with property keys mapped to values (e.g., { doDate: "2024-01-15", priority: "High" })
    */
   public async update(
     entity: BaseEntity & { type?: string },
@@ -123,10 +123,13 @@ export class NoteManagers {
       );
     }
 
-    // Update each property using the property registry to map keys to frontmatter names
+    // Update each property by finding the matching property definition by key
     for (const [propertyKey, value] of Object.entries(properties)) {
-      const propertyDef =
-        PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+      // Find the property definition that matches this key
+      const propertyDef = Object.values(PROPERTY_REGISTRY).find(
+        (prop) => prop.key === propertyKey
+      );
+
       if (!propertyDef) {
         throw new Error(`Unknown property key: ${propertyKey}`);
       }
