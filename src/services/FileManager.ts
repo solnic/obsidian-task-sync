@@ -7,7 +7,7 @@
 import { App, Vault, TFile, normalizePath } from "obsidian";
 import { TaskSyncSettings } from "../main";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
-import { generateId } from "../utils/idGenerator";
+import { generateId as generateUlid } from "../utils/idGenerator";
 
 /**
  * Abstract base class for file management operations
@@ -252,7 +252,7 @@ export abstract class FileManager {
    * Common method used by all file managers for entity ID generation
    */
   protected generateId(): string {
-    return generateId();
+    return generateUlid();
   }
 
   // ============================================================================
