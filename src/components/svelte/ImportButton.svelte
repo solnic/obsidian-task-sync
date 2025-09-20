@@ -132,20 +132,15 @@
   }
 </script>
 
-{#if isImported && !dailyPlanningWizardMode}
-  <!-- Don't render anything for imported items - we show the imported/scheduled badge instead -->
-  <!-- Exception: In daily planning wizard mode, always show the button for scheduling/unscheduling -->
-{:else}
-  <button
-    class={cssClasses}
-    title={buttonTitle}
-    onclick={handleClick}
-    data-testid={buttonTestId}
-    disabled={isDisabled}
-  >
-    {buttonText}
-  </button>
-{/if}
+<button
+  class={cssClasses}
+  title={buttonTitle}
+  onclick={handleClick}
+  data-testid={buttonTestId}
+  disabled={isDisabled}
+>
+  {buttonText}
+</button>
 
 <style>
   .import-button {
