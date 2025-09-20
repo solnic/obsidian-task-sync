@@ -15,6 +15,75 @@ import { createTask } from "../helpers/entity-helpers";
 describe("TaskFileManager Service", () => {
   const context = setupE2ETestHooks();
 
+  describe("NoteManagers Interface", () => {
+    test("should load front-matter using appropriate file manager", async () => {
+      // Create a test task first
+      await createTask(context, {
+        title: "Test Task for NoteManagers",
+        priority: "High",
+        areas: ["Development"],
+      });
+
+      const result = await context.page.evaluate(async () => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const noteManagers = plugin.noteManagers;
+
+        // Test loading front-matter through NoteManagers
+        const frontMatter = await noteManagers.loadFrontMatter(
+          "Tasks/Test Task for NoteManagers.md"
+        );
+
+        return {
+          title: frontMatter.Title,
+          type: frontMatter.Type,
+          priority: frontMatter.Priority,
+        };
+      });
+
+      expect(result.title).toBe("Test Task for NoteManagers");
+      expect(result.type).toBe("Task");
+      expect(result.priority).toBe("High");
+    });
+
+    test("should update entity properties using property key mapping", async () => {
+      // Create a test task first
+      await createTask(context, {
+        title: "Test Task for Update",
+        priority: "Low",
+      });
+
+      // Test updating through NoteManagers interface
+      await context.page.evaluate(async () => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const noteManagers = plugin.noteManagers;
+
+        // Create a mock entity object with type and filePath
+        const entity = {
+          type: "Task",
+          filePath: "Tasks/Test Task for Update.md",
+        };
+
+        // Update using property keys (not frontmatter names)
+        await noteManagers.update(entity, {
+          PRIORITY: "Critical", // Property key, should map to "Priority" frontmatter
+          DO_DATE: "2024-01-15", // Property key, should map to "Do Date" frontmatter
+        });
+      });
+
+      // Verify the properties were updated correctly
+      await verifyTaskProperties(
+        context.page,
+        "Tasks/Test Task for Update.md",
+        {
+          Priority: "Critical",
+          "Do Date": "2024-01-15T00:00:00.000Z", // Date gets converted to ISO string
+        }
+      );
+    });
+  });
+
   test("should create task file with sanitized name and proper front-matter", async () => {
     const taskData = {
       title: "Fix: Bug/Issue #123",

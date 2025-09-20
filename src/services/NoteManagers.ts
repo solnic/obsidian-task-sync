@@ -11,6 +11,8 @@ import type { TaskFileManager } from "./TaskFileManager";
 import type { AreaFileManager } from "./AreaFileManager";
 import type { ProjectFileManager } from "./ProjectFileManager";
 import type { EventHandler } from "../events/EventTypes";
+import type { BaseEntity } from "../types/entities";
+import { PROPERTY_REGISTRY } from "../types/properties";
 
 // Constructor type for file managers
 export type FileManagerConstructor<T extends FileManager = FileManager> = new (
@@ -92,6 +94,80 @@ export class NoteManagers {
    */
   public getProjectManager(): ProjectFileManager | null {
     return this.getManager<ProjectFileManager>("Project");
+  }
+
+  /**
+   * Update entity properties using the appropriate file manager
+   * @param entity - Entity object with type property
+   * @param properties - Object with property keys mapped to values
+   */
+  public async update(
+    entity: BaseEntity & { type?: string },
+    properties: Record<string, any>
+  ): Promise<void> {
+    if (!entity.type) {
+      throw new Error(
+        "Entity must have a type property to determine file manager"
+      );
+    }
+
+    if (!entity.filePath) {
+      throw new Error("Entity must have a filePath property");
+    }
+
+    // Get the appropriate file manager for this entity type
+    const manager = this.getManager(entity.type);
+    if (!manager) {
+      throw new Error(
+        `No file manager registered for entity type: ${entity.type}`
+      );
+    }
+
+    // Update each property using the property registry to map keys to frontmatter names
+    for (const [propertyKey, value] of Object.entries(properties)) {
+      const propertyDef =
+        PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+      if (!propertyDef) {
+        throw new Error(`Unknown property key: ${propertyKey}`);
+      }
+
+      // Use the frontmatter name from the property registry
+      const frontmatterKey = propertyDef.name;
+      await manager.updateProperty(entity.filePath, frontmatterKey, value);
+    }
+  }
+
+  /**
+   * Load front-matter from a file using the appropriate file manager
+   * @param filePath - Path to the file
+   * @returns Front-matter object
+   */
+  public async loadFrontMatter(filePath: string): Promise<Record<string, any>> {
+    // Try to determine the entity type from the file path
+    let entityType: string | null = null;
+
+    if (filePath.startsWith(this.settings.tasksFolder + "/")) {
+      entityType = "Task";
+    } else if (filePath.startsWith(this.settings.projectsFolder + "/")) {
+      entityType = "Project";
+    } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
+      entityType = "Area";
+    }
+
+    if (!entityType) {
+      throw new Error(
+        `Cannot determine entity type for file path: ${filePath}`
+      );
+    }
+
+    const manager = this.getManager(entityType);
+    if (!manager) {
+      throw new Error(
+        `No file manager registered for entity type: ${entityType}`
+      );
+    }
+
+    return await manager.loadFrontMatter(filePath);
   }
 
   /**
