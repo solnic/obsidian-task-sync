@@ -58,6 +58,16 @@ describe("dateFiltering", () => {
 
       expect(hasDoDate(task)).toBe(false);
     });
+
+    test("should return false for invalid Date objects", () => {
+      const task: Task = {
+        id: "test",
+        title: "Test Task",
+        doDate: new Date("invalid-date"), // Creates invalid Date object
+      } as Task;
+
+      expect(hasDoDate(task)).toBe(false);
+    });
   });
 
   describe("filterTasksByDoDate", () => {

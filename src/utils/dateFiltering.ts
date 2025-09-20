@@ -138,7 +138,7 @@ export function getTodayTasksGrouped(tasks: Task[]): {
  * Check if a task has a Do Date set
  */
 export function hasDoDate(task: Task): boolean {
-  return !!(task.doDate instanceof Date);
+  return !!(task.doDate instanceof Date && !isNaN(task.doDate.getTime()));
 }
 
 /**
