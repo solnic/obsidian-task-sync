@@ -4,6 +4,7 @@ import {
   Notice,
   Modal,
   App,
+  Vault,
   MarkdownPostProcessor,
 } from "obsidian";
 import { VaultScanner } from "./services/VaultScannerService";
@@ -88,9 +89,10 @@ import {
 } from "./services/CommandManager";
 import {
   NoteManagers,
-  createNoteManagers,
   type NoteTypeRegistration,
+  type NoteTypeConfig,
 } from "./services/NoteManagers";
+import { FileManager } from "./services/FileManager";
 
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
@@ -116,6 +118,33 @@ export interface TodoItem {
 // Extended todo item with parent information
 export interface TodoItemWithParent extends TodoItem {
   parentTodo?: TodoItem;
+}
+
+/**
+ * Setup NoteManagers with default note types
+ * Registers note types with their manager classes without instantiating them
+ */
+function setupNoteManagers(
+  app: App,
+  vault: Vault,
+  settings: TaskSyncSettings
+): NoteManagers {
+  const noteManagers = new NoteManagers(app, vault, settings);
+
+  // Register default note types with their manager classes
+  noteManagers.registerNoteType("Task", {
+    managerClass: TaskFileManager,
+  });
+
+  noteManagers.registerNoteType("Area", {
+    managerClass: AreaFileManager,
+  });
+
+  noteManagers.registerNoteType("Project", {
+    managerClass: ProjectFileManager,
+  });
+
+  return noteManagers;
 }
 
 export default class TaskSyncPlugin
@@ -198,9 +227,9 @@ export default class TaskSyncPlugin
    * Register a note type with corresponding file manager
    * Implements NoteTypeRegistration interface
    */
-  public registerNoteType<T>(
+  public registerNoteType<T extends FileManager>(
     noteType: string,
-    config: { manager: any; propertyHandler?: any }
+    config: NoteTypeConfig<T>
   ): void {
     this.noteManagers.registerNoteType(noteType, config);
   }
@@ -275,35 +304,18 @@ export default class TaskSyncPlugin
     await this.taskSchedulingService.initialize(this.cacheManager);
     this.taskSchedulingService.setCalendarService(this.appleCalendarService);
 
-    // Initialize file managers first
-    this.taskFileManager = new TaskFileManager(
+    // Initialize NoteManagers and register note types
+    this.noteManagers = setupNoteManagers(
       this.app,
       this.app.vault,
       this.settings
-    );
-    this.areaFileManager = new AreaFileManager(
-      this.app,
-      this.app.vault,
-      this.settings
-    );
-    this.projectFileManager = new ProjectFileManager(
-      this.app,
-      this.app.vault,
-      this.settings
-    );
-
-    // Initialize NoteManagers with file managers (property handlers will be added later)
-    this.noteManagers = createNoteManagers(
-      this.app,
-      this.app.vault,
-      this.settings,
-      {
-        taskFileManager: this.taskFileManager,
-        areaFileManager: this.areaFileManager,
-        projectFileManager: this.projectFileManager,
-      }
     );
     await this.noteManagers.initialize();
+
+    // Get file managers from NoteManagers for backward compatibility
+    this.taskFileManager = this.noteManagers.getTaskManager()!;
+    this.areaFileManager = this.noteManagers.getAreaManager()!;
+    this.projectFileManager = this.noteManagers.getProjectManager()!;
 
     // Initialize import services with dependencies
     this.taskImportManager = new TaskImportManager(

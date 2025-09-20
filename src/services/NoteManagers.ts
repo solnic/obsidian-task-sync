@@ -12,9 +12,16 @@ import type { AreaFileManager } from "./AreaFileManager";
 import type { ProjectFileManager } from "./ProjectFileManager";
 import type { EventHandler } from "../events/EventTypes";
 
-export interface NoteTypeConfig<T = any> {
-  manager: FileManager;
-  propertyHandler?: EventHandler;
+// Constructor type for file managers
+export type FileManagerConstructor<T extends FileManager = FileManager> = new (
+  app: App,
+  vault: Vault,
+  settings: TaskSyncSettings
+) => T;
+
+export interface NoteTypeConfig<T extends FileManager = FileManager> {
+  managerClass: FileManagerConstructor<T>;
+  manager?: T; // Instance will be created during initialization
 }
 
 export interface NoteManagersConfig {
@@ -34,13 +41,13 @@ export class NoteManagers {
   }
 
   /**
-   * Register a note type with its corresponding file manager
+   * Register a note type with its corresponding file manager class
    */
-  public registerNoteType<T>(
+  public registerNoteType<T extends FileManager>(
     noteType: string,
     config: NoteTypeConfig<T>
   ): void {
-    this.noteTypes.set(noteType, config);
+    this.noteTypes.set(noteType, config as NoteTypeConfig);
     console.log(`🔧 NoteManagers: Registered note type: ${noteType}`);
   }
 
@@ -88,16 +95,30 @@ export class NoteManagers {
   }
 
   /**
-   * Initialize all registered file managers
+   * Initialize all registered file managers by instantiating them
    */
   public async initialize(): Promise<void> {
     console.log("🔧 NoteManagers: Initializing all registered managers");
 
     for (const [noteType, config] of this.noteTypes) {
       try {
-        // File managers don't have an explicit initialize method currently
-        // but this provides a hook for future initialization needs
-        console.log(`✅ NoteManagers: Initialized ${noteType} manager`);
+        // Instantiate the file manager if not already done
+        if (!config.manager && config.managerClass) {
+          config.manager = new config.managerClass(
+            this.app,
+            this.vault,
+            this.settings
+          );
+          console.log(`✅ NoteManagers: Instantiated ${noteType} manager`);
+        } else if (config.manager) {
+          console.log(
+            `✅ NoteManagers: ${noteType} manager already instantiated`
+          );
+        } else {
+          console.warn(
+            `⚠️ NoteManagers: No manager class provided for ${noteType}`
+          );
+        }
       } catch (error) {
         console.error(
           `❌ NoteManagers: Failed to initialize ${noteType} manager:`,
@@ -139,7 +160,7 @@ export class NoteManagers {
   public cleanup(): void {
     console.log("🔧 NoteManagers: Cleaning up all registered managers");
 
-    for (const [noteType, config] of this.noteTypes) {
+    for (const [noteType] of this.noteTypes) {
       try {
         // File managers don't have explicit cleanup methods currently
         // but this provides a hook for future cleanup needs
@@ -157,40 +178,12 @@ export class NoteManagers {
 }
 
 /**
- * Factory function to create a NoteManagers instance with default note types
- */
-export function createNoteManagers(
-  app: App,
-  vault: Vault,
-  settings: TaskSyncSettings,
-  managers: {
-    taskFileManager: TaskFileManager;
-    areaFileManager: AreaFileManager;
-    projectFileManager: ProjectFileManager;
-  }
-): NoteManagers {
-  const noteManagers = new NoteManagers(app, vault, settings);
-
-  // Register default note types with optional property handlers
-  noteManagers.registerNoteType("Task", {
-    manager: managers.taskFileManager,
-  });
-
-  noteManagers.registerNoteType("Area", {
-    manager: managers.areaFileManager,
-  });
-
-  noteManagers.registerNoteType("Project", {
-    manager: managers.projectFileManager,
-  });
-
-  return noteManagers;
-}
-
-/**
  * Plugin interface for registering note types
  * This will be exposed on the main plugin class
  */
 export interface NoteTypeRegistration {
-  registerNoteType<T>(noteType: string, config: NoteTypeConfig<T>): void;
+  registerNoteType<T extends FileManager>(
+    noteType: string,
+    config: NoteTypeConfig<T>
+  ): void;
 }
