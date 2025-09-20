@@ -227,24 +227,54 @@ export abstract class FileManager {
 
   /**
    * Wait for metadata cache to have front-matter for the given file
-   * Uses polling approach to be more reliable with rapid file creation
+   * Uses event-driven approach with fallback polling for better performance
    */
   public async waitForMetadataCache(file: TFile): Promise<any> {
-    const maxAttempts = 100;
-    let attempts = 0;
-
-    while (attempts < maxAttempts) {
-      const cache = this.app.metadataCache.getFileCache(file);
-      if (cache?.frontmatter && Object.keys(cache.frontmatter).length > 0) {
-        return cache.frontmatter;
-      }
-
-      // Wait 100ms before next attempt
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      attempts++;
+    // First check if metadata is already available
+    const existingCache = this.app.metadataCache.getFileCache(file);
+    if (
+      existingCache?.frontmatter &&
+      Object.keys(existingCache.frontmatter).length > 0
+    ) {
+      return existingCache.frontmatter;
     }
 
-    throw new Error(`Metadata cache timeout for file: ${file.path}`);
+    // Use event-driven approach with timeout
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.app.metadataCache.off("changed", onMetadataChanged);
+        reject(new Error(`Metadata cache timeout for file: ${file.path}`));
+      }, 5000); // 5 second timeout instead of 10 seconds
+
+      const onMetadataChanged = (
+        changedFile: TFile,
+        _data: string,
+        cache: any
+      ) => {
+        if (
+          changedFile.path === file.path &&
+          cache?.frontmatter &&
+          Object.keys(cache.frontmatter).length > 0
+        ) {
+          clearTimeout(timeout);
+          this.app.metadataCache.off("changed", onMetadataChanged);
+          resolve(cache.frontmatter);
+        }
+      };
+
+      // Listen for metadata changes
+      this.app.metadataCache.on("changed", onMetadataChanged);
+
+      // Fallback: check again after a short delay in case the event was missed
+      setTimeout(() => {
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (cache?.frontmatter && Object.keys(cache.frontmatter).length > 0) {
+          clearTimeout(timeout);
+          this.app.metadataCache.off("changed", onMetadataChanged);
+          resolve(cache.frontmatter);
+        }
+      }, 100);
+    });
   }
 
   /**
