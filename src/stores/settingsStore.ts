@@ -3,7 +3,7 @@
  * Provides a centralized, reactive API for settings management
  */
 
-import { writable, derived } from "svelte/store";
+import { writable, derived, get } from "svelte/store";
 import type {
   TaskSyncSettings,
   GitHubIntegrationSettings,
@@ -141,22 +141,16 @@ export class SettingsStore {
    * Get current settings (non-reactive)
    */
   getCurrentSettings(): TaskSyncSettings | null {
-    let currentSettings: TaskSyncSettings | null = null;
-    this._store.subscribe((state) => {
-      currentSettings = state.settings;
-    })();
-    return currentSettings;
+    const state = get(this._store);
+    return state.settings;
   }
 
   /**
    * Check if settings are loaded
    */
   isSettingsLoaded(): boolean {
-    let isLoaded = false;
-    this._store.subscribe((state) => {
-      isLoaded = state.isLoaded;
-    })();
-    return isLoaded;
+    const state = get(this._store);
+    return state.isLoaded;
   }
 }
 
