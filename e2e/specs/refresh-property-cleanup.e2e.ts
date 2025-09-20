@@ -36,7 +36,7 @@ This is a test task with obsolete properties.`;
     const beforeRefresh = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
+      return await plugin.noteManagers.loadFrontMatter(
         "Tasks/Test Task with Obsolete Properties.md"
       );
     });
@@ -60,7 +60,7 @@ This is a test task with obsolete properties.`;
     const afterRefresh = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
+      return await plugin.noteManagers.loadFrontMatter(
         "Tasks/Test Task with Obsolete Properties.md"
       );
     });
@@ -115,7 +115,7 @@ This task has common Obsidian properties that should be preserved.`;
     const afterRefresh = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
+      return await plugin.noteManagers.loadFrontMatter(
         "Tasks/Task with Common Properties.md"
       );
     });

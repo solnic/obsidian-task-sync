@@ -81,7 +81,7 @@ describe("Daily Planning", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      return await plugin.taskFileManager.createTaskFile({
+      return await plugin.noteManagers.getTaskManager().createTaskFile({
         title: "Today Task",
         description: "A task scheduled for today",
         done: false,
@@ -98,7 +98,7 @@ describe("Daily Planning", () => {
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-        return await plugin.taskFileManager.createTaskFile({
+        return await plugin.noteManagers.getTaskManager().createTaskFile({
           title: "Yesterday Task",
           description: "A task scheduled for yesterday",
           done: false,
@@ -157,7 +157,7 @@ describe("Daily Planning", () => {
 
       const paths = [];
       for (let i = 1; i <= 3; i++) {
-        const path = await plugin.taskFileManager.createTaskFile({
+        const path = await plugin.noteManagers.getTaskManager().createTaskFile({
           title: `Yesterday Task ${i}`,
           description: `Test task ${i} for individual controls`,
           done: false,
@@ -275,7 +275,7 @@ describe("Daily Planning", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      return await plugin.taskFileManager.createTaskFile({
+      return await plugin.noteManagers.getTaskManager().createTaskFile({
         title: "Yesterday Task for Unschedule Test",
         description: "Test task for unscheduling functionality",
         done: false,
@@ -366,7 +366,7 @@ describe("Daily Planning", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      return await plugin.taskFileManager.createTaskFile({
+      return await plugin.noteManagers.getTaskManager().createTaskFile({
         title: "Test Task for Daily Planning",
         description: "A task to test the complete daily planning workflow",
         done: false,
@@ -490,7 +490,7 @@ describe("Daily Planning", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      return await plugin.taskFileManager.createTaskFile({
+      return await plugin.noteManagers.getTaskManager().createTaskFile({
         title: "Service Task for Scheduling",
         description: "A task to test schedule for today functionality",
         done: false,
@@ -610,7 +610,7 @@ describe("Daily Planning", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      return await plugin.taskFileManager.createTaskFile({
+      return await plugin.noteManagers.getTaskManager().createTaskFile({
         title,
         description:
           "A task with problematic filename to test metadata cache timeout handling",
@@ -704,7 +704,7 @@ describe("Daily Planning", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      return await plugin.taskFileManager.createTaskFile({
+      return await plugin.noteManagers.getTaskManager().createTaskFile({
         title: "Already Scheduled Task",
         description: "A task already scheduled for today",
         done: false,
@@ -780,7 +780,7 @@ describe("Daily Planning", () => {
 
       const paths = [];
       for (let i = 1; i <= 4; i++) {
-        const path = await plugin.taskFileManager.createTaskFile({
+        const path = await plugin.noteManagers.getTaskManager().createTaskFile({
           title: `Yesterday Task ${i}`,
           description: `Task ${i} from yesterday that should be moved to today`,
           done: false,
@@ -929,7 +929,7 @@ describe("Daily Planning", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      return await plugin.taskFileManager.createTaskFile({
+      return await plugin.noteManagers.getTaskManager().createTaskFile({
         title: "Local Task for Duplicate Bug",
         description: "A task to test duplicate scheduling bug",
         done: false,

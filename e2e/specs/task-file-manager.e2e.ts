@@ -98,8 +98,8 @@ describe("TaskFileManager Service", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Access the taskFileManager instance
-      const taskFileManager = plugin.taskFileManager;
+      // Access the taskFileManager instance through noteManagers
+      const taskFileManager = plugin.noteManagers.getTaskManager();
 
       return await taskFileManager.createTaskFile(data);
     }, taskData);
@@ -168,7 +168,7 @@ This is the main content of the task.
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const taskFileManager = plugin.taskFileManager;
+      const taskFileManager = plugin.noteManagers.getTaskManager();
       return await taskFileManager.getFileContent("Tasks/Content Test Task.md");
     });
 
@@ -192,7 +192,7 @@ This is the main content of the task.
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const taskFileManager = plugin.taskFileManager;
+      const taskFileManager = plugin.noteManagers.getTaskManager();
       await taskFileManager.changeTaskStatus("Tasks/Status Test Task.md", true);
     });
 
@@ -213,7 +213,7 @@ This is the main content of the task.
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const taskFileManager = plugin.taskFileManager;
+      const taskFileManager = plugin.noteManagers.getTaskManager();
       await taskFileManager.changeTaskStatus(
         "Tasks/Status String Test Task.md",
         "Completed"
@@ -244,7 +244,7 @@ This is the main content of the task.
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const taskFileManager = plugin.taskFileManager;
+      const taskFileManager = plugin.noteManagers.getTaskManager();
       await taskFileManager.assignToProject(
         "Tasks/Project Assignment Test.md",
         "New Project"
@@ -275,7 +275,7 @@ This is the main content of the task.
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const taskFileManager = plugin.taskFileManager;
+      const taskFileManager = plugin.noteManagers.getTaskManager();
       await taskFileManager.assignToAreas("Tasks/Areas Assignment Test.md", [
         "Testing",
         "Documentation",
@@ -335,7 +335,7 @@ This is the main content of the task.
         const plugin = app.plugins.plugins["obsidian-task-sync"];
 
         // Access the taskFileManager instance and call it with content parameter
-        const taskFileManager = plugin.taskFileManager;
+        const taskFileManager = plugin.noteManagers.getTaskManager();
 
         return await taskFileManager.createTaskFile(data, content);
       },
@@ -387,7 +387,7 @@ This is the main content of the task.
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       // Access the taskFileManager instance
-      const taskFileManager = plugin.taskFileManager;
+      const taskFileManager = plugin.noteManagers.getTaskManager();
 
       return await taskFileManager.createTaskFile(data);
     }, taskData);
@@ -440,7 +440,7 @@ This is the main content of the task.
       const result = await context.page.evaluate(async () => {
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
-        const taskFileManager = plugin.taskFileManager;
+        const taskFileManager = plugin.noteManagers.getTaskManager();
 
         return await taskFileManager.updateTaskFileProperties(
           "Tasks/Property Set Test Task.md"

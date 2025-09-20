@@ -6,6 +6,7 @@
 
 import { App, MarkdownView, TFile, Notice } from "obsidian";
 import { TaskSyncSettings } from "../main";
+import { NoteManagers } from "./NoteManagers";
 import { TaskFileManager } from "./TaskFileManager";
 import { BaseManager } from "./BaseManager";
 import { TemplateManager } from "./TemplateManager";
@@ -46,7 +47,7 @@ export class TodoPromotionService {
   constructor(
     private app: App,
     private settings: TaskSyncSettings,
-    private taskFileManager: TaskFileManager,
+    private noteManagers: NoteManagers,
     private baseManager: BaseManager,
     private templateManager: TemplateManager,
     private createTaskCallback: (taskData: any) => Promise<Task>,

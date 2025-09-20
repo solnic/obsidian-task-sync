@@ -11,23 +11,24 @@ import {
   MarkdownPostProcessorContext,
 } from "obsidian";
 import { TaskSyncSettings } from "../main";
+import { NoteManagers } from "./NoteManagers";
 import { TaskFileManager } from "./TaskFileManager";
 import { getOptimalTextColor } from "../utils/colorUtils";
 
 export class TaskTodoMarkdownProcessor {
   private app: App;
   private settings: TaskSyncSettings;
-  private taskFileManager: TaskFileManager;
+  private noteManagers: NoteManagers;
   private processor: MarkdownPostProcessor;
 
   constructor(
     app: App,
     settings: TaskSyncSettings,
-    taskFileManager: TaskFileManager
+    noteManagers: NoteManagers
   ) {
     this.app = app;
     this.settings = settings;
-    this.taskFileManager = taskFileManager;
+    this.noteManagers = noteManagers;
 
     // Create the processor function
     this.processor = this.createProcessor();

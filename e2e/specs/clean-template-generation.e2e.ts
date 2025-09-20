@@ -92,9 +92,7 @@ describe("Clean Template Generation", () => {
     const frontMatter = await context.page.evaluate(async (taskName) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
-        `Tasks/${taskName}.md`
-      );
+      return await plugin.noteManagers.loadFrontMatter(`Tasks/${taskName}.md`);
     }, taskName);
 
     expect(frontMatter.Type).toBe("Task"); // Should be set by handler

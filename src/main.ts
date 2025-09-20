@@ -169,9 +169,6 @@ export default class TaskSyncPlugin
   appleCalendarService: AppleCalendarService;
   taskSchedulingService: TaskSchedulingService;
   taskImportManager: TaskImportManager;
-  taskFileManager: TaskFileManager;
-  areaFileManager: AreaFileManager;
-  projectFileManager: ProjectFileManager;
   todoPromotionService: TodoPromotionService;
   dailyNoteService: DailyNoteService;
   taskTodoMarkdownProcessor: TaskTodoMarkdownProcessor;
@@ -312,24 +309,19 @@ export default class TaskSyncPlugin
     );
     await this.noteManagers.initialize();
 
-    // Get file managers from NoteManagers for backward compatibility
-    this.taskFileManager = this.noteManagers.getTaskManager()!;
-    this.areaFileManager = this.noteManagers.getAreaManager()!;
-    this.projectFileManager = this.noteManagers.getProjectManager()!;
-
     // Initialize import services with dependencies
     this.taskImportManager = new TaskImportManager(
       this.app,
       this.app.vault,
       this.settings,
-      this.areaFileManager
+      this.noteManagers
     );
 
     // Initialize TodoPromotionService
     this.todoPromotionService = new TodoPromotionService(
       this.app,
       this.settings,
-      this.taskFileManager,
+      this.noteManagers,
       this.baseManager,
       this.templateManager,
       (taskData: any) => this.createTask(taskData),
@@ -348,7 +340,7 @@ export default class TaskSyncPlugin
     this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
       this.app,
       this.settings,
-      this.taskFileManager
+      this.noteManagers
     );
 
     // Initialize stores - this will set up the basic structure
@@ -392,7 +384,7 @@ export default class TaskSyncPlugin
     this.taskMentionSyncHandler = new TaskMentionSyncHandler(
       this.app,
       this.settings,
-      this.taskFileManager
+      this.noteManagers
     );
 
     this.fileChangeListener = new FileChangeListener(
@@ -1288,13 +1280,11 @@ export default class TaskSyncPlugin
     const content = taskData.content || taskData.description;
     const source = taskData.source; // Extract source before creating file
 
-    const filePath = await this.taskFileManager.createTaskFile(
-      taskData,
-      content
-    );
+    const taskFileManager = this.noteManagers.getTaskManager()!;
+    const filePath = await taskFileManager.createTaskFile(taskData, content);
     const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
 
-    await this.taskFileManager.waitForMetadataCache(file);
+    await taskFileManager.waitForMetadataCache(file);
 
     // Set source if provided (for todo promotion and other internal sources)
     if (source) {
@@ -1313,16 +1303,15 @@ export default class TaskSyncPlugin
       description: areaData.description,
     };
 
-    const filePath = await this.areaFileManager.createAreaFile(
-      areaCreationData
-    );
+    const areaFileManager = this.noteManagers.getAreaManager()!;
+    const filePath = await areaFileManager.createAreaFile(areaCreationData);
     const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
 
     // Wait for metadata cache to be updated
-    await this.areaFileManager.waitForMetadataCache(file);
+    await areaFileManager.waitForMetadataCache(file);
 
     // Load the entity directly from the file manager
-    const area = await this.areaFileManager.loadEntity(file);
+    const area = await areaFileManager.loadEntity(file);
 
     // Add the entity to the store
     await this.stores.areaStore.upsertEntity(area);
@@ -1351,16 +1340,17 @@ export default class TaskSyncPlugin
       areas: projectData.areas,
     };
 
-    const filePath = await this.projectFileManager.createProjectFile(
+    const projectFileManager = this.noteManagers.getProjectManager()!;
+    const filePath = await projectFileManager.createProjectFile(
       projectCreationData
     );
     const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
 
     // Wait for metadata cache to be updated
-    await this.projectFileManager.waitForMetadataCache(file);
+    await projectFileManager.waitForMetadataCache(file);
 
     // Load the entity directly from the file manager
-    const project = await this.projectFileManager.loadEntity(file);
+    const project = await projectFileManager.loadEntity(file);
 
     // Add the entity to the store
     await this.stores.projectStore.upsertEntity(project);
@@ -1417,11 +1407,13 @@ export default class TaskSyncPlugin
   private async updateTaskFiles(results: any): Promise<void> {
     try {
       const taskFiles = await this.vaultScanner.scanTasksFolder();
+      const taskFileManager = this.noteManagers.getTaskManager()!;
 
       for (const filePath of taskFiles) {
         try {
-          const updateResult =
-            await this.taskFileManager.updateTaskFileProperties(filePath);
+          const updateResult = await taskFileManager.updateTaskFileProperties(
+            filePath
+          );
 
           if (updateResult.hasChanges) {
             results.filesUpdated++;
@@ -1447,10 +1439,12 @@ export default class TaskSyncPlugin
   private async updateProjectFiles(results: any): Promise<void> {
     try {
       const projectFiles = await this.vaultScanner.scanProjectsFolder();
+      const projectFileManager = this.noteManagers.getProjectManager()!;
       for (const filePath of projectFiles) {
         try {
-          const updateResult =
-            await this.projectFileManager.updateFileProperties(filePath);
+          const updateResult = await projectFileManager.updateFileProperties(
+            filePath
+          );
           if (updateResult.hasChanges) {
             results.filesUpdated++;
             results.propertiesUpdated += updateResult.propertiesChanged;
@@ -1480,9 +1474,10 @@ export default class TaskSyncPlugin
   private async updateAreaFiles(results: any): Promise<void> {
     try {
       const areaFiles = await this.vaultScanner.scanAreasFolder();
+      const areaFileManager = this.noteManagers.getAreaManager()!;
       for (const filePath of areaFiles) {
         try {
-          const updateResult = await this.areaFileManager.updateFileProperties(
+          const updateResult = await areaFileManager.updateFileProperties(
             filePath
           );
           if (updateResult.hasChanges) {
@@ -1564,8 +1559,9 @@ export default class TaskSyncPlugin
     if (file && file instanceof TFile) {
       // Update existing task template with property reordering
       const content = await this.app.vault.read(file);
+      const taskFileManager = this.noteManagers.getTaskManager()!;
       const updatedContent =
-        await this.taskFileManager.reorderTaskTemplateProperties(content);
+        await taskFileManager.reorderTaskTemplateProperties(content);
       if (updatedContent !== content) {
         await this.app.vault.modify(file, updatedContent);
         results.templatesUpdated++;
@@ -1623,8 +1619,9 @@ export default class TaskSyncPlugin
     if (file && file instanceof TFile) {
       // Update existing parent task template with property reordering
       const content = await this.app.vault.read(file);
+      const taskFileManager = this.noteManagers.getTaskManager()!;
       const updatedContent =
-        await this.taskFileManager.reorderTaskTemplateProperties(content);
+        await taskFileManager.reorderTaskTemplateProperties(content);
       if (updatedContent !== content) {
         await this.app.vault.modify(file, updatedContent);
         results.templatesUpdated++;
@@ -2244,19 +2241,19 @@ export default class TaskSyncPlugin
       this.app,
       this,
       this.settings.tasksFolder,
-      this.taskFileManager
+      this.noteManagers.getTaskManager()!
     );
     await projectStore.initialize(
       this.app,
       this,
       this.settings.projectsFolder,
-      this.projectFileManager
+      this.noteManagers.getProjectManager()!
     );
     await areaStore.initialize(
       this.app,
       this,
       this.settings.areasFolder,
-      this.areaFileManager
+      this.noteManagers.getAreaManager()!
     );
   }
 

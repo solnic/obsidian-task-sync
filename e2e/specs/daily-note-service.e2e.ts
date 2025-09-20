@@ -61,7 +61,9 @@ describe("DailyNoteService", () => {
         status: "Backlog",
       };
 
-      return await plugin.taskFileManager.createTaskFile(taskData);
+      return await plugin.noteManagers
+        .getTaskManager()
+        .createTaskFile(taskData);
     });
 
     // Now add it to today's daily note
@@ -116,7 +118,9 @@ describe("DailyNoteService", () => {
         status: "Backlog",
       };
 
-      return await plugin.taskFileManager.createTaskFile(taskData);
+      return await plugin.noteManagers
+        .getTaskManager()
+        .createTaskFile(taskData);
     });
 
     // Initially, the task should not be in today's daily note

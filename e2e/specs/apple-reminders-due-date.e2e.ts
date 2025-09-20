@@ -21,7 +21,7 @@ describe("Apple Reminders Due Date Support", () => {
       // Check if Due Date is in the property registry by accessing the BaseConfigurations
       try {
         // Access the PROPERTY_REGISTRY from the plugin's services
-        const taskFileManager = plugin.taskFileManager;
+        const taskFileManager = plugin.noteManagers.getTaskManager();
         if (!taskFileManager) return false;
 
         // Check if the task file manager has access to Due Date property
@@ -47,7 +47,7 @@ describe("Apple Reminders Due Date Support", () => {
 
       // Check if Due Date is in the task property sets by checking the task properties
       try {
-        const taskFileManager = plugin.taskFileManager;
+        const taskFileManager = plugin.noteManagers.getTaskManager();
         if (!taskFileManager) return false;
 
         const properties = taskFileManager.getTaskPropertiesInOrder();
@@ -116,7 +116,7 @@ describe("Apple Reminders Due Date Support", () => {
 
       // Get the Due Date property definition from the task properties
       try {
-        const taskFileManager = plugin.taskFileManager;
+        const taskFileManager = plugin.noteManagers.getTaskManager();
         if (!taskFileManager) return null;
 
         const properties = taskFileManager.getTaskPropertiesInOrder();

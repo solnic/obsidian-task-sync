@@ -12,13 +12,13 @@ import {
 } from "../EventTypes";
 import { TaskSyncSettings } from "../../main";
 import { taskStore } from "../../stores/taskStore";
-import { TaskFileManager } from "../../services/TaskFileManager";
+import { NoteManagers } from "../../services/NoteManagers";
 
 export class TaskMentionSyncHandler implements EventHandler {
   constructor(
     private app: App,
     private settings: TaskSyncSettings,
-    private taskFileManager: TaskFileManager
+    private noteManagers: NoteManagers
   ) {}
 
   /**

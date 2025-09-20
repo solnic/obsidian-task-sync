@@ -155,7 +155,7 @@ describe("Area Creation", () => {
     const frontMatter = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
+      return await plugin.noteManagers.loadFrontMatter(
         "Areas/Health & Fitness (2024).md"
       );
     });

@@ -159,7 +159,7 @@ Task with wrong Type property.`
 
       for (const filePath of files) {
         try {
-          const frontMatter = await plugin.taskFileManager.loadFrontMatter(
+          const frontMatter = await plugin.noteManagers.loadFrontMatter(
             filePath
           );
           const hasTypeProperty = frontMatter.Type !== undefined;

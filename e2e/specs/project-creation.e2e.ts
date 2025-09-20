@@ -181,7 +181,7 @@ describe("Project Creation", () => {
     const frontMatter = await context.page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(
+      return await plugin.noteManagers.loadFrontMatter(
         "Projects/Mobile App (iOS & Android).md"
       );
     });

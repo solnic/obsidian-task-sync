@@ -109,7 +109,7 @@ describe("File Name Sanitization and Base Formulas", () => {
     const frontMatter = await context.page.evaluate(async (path) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return await plugin.taskFileManager.loadFrontMatter(path);
+      return await plugin.noteManagers.loadFrontMatter(path);
     }, `Tasks/${testCase.expected}.md`);
 
     expect(frontMatter.Title).toBe(testCase.input); // Original title should be preserved

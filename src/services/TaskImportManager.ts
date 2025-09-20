@@ -7,6 +7,7 @@ import { App, Vault, TFile } from "obsidian";
 import { ExternalTaskData, TaskImportConfig } from "../types/integrations";
 import { TaskSyncSettings } from "../components/ui/settings/types";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
+import { NoteManagers } from "./NoteManagers";
 import { AreaFileManager } from "./AreaFileManager";
 import { PROPERTY_REGISTRY } from "../types/properties";
 import { PROPERTY_SETS } from "./base-definitions/BaseConfigurations";
@@ -17,7 +18,7 @@ export class TaskImportManager {
     private app: App,
     private vault: Vault,
     private settings: TaskSyncSettings,
-    private areaFileManager?: AreaFileManager
+    private noteManagers: NoteManagers
   ) {}
 
   /**
@@ -226,7 +227,8 @@ export class TaskImportManager {
    * Ensure an area exists, creating it if necessary
    */
   async ensureAreaExists(areaName: string): Promise<void> {
-    if (!this.areaFileManager) {
+    const areaFileManager = this.noteManagers.getAreaManager();
+    if (!areaFileManager) {
       return; // Skip if area file manager not available
     }
 
@@ -241,7 +243,7 @@ export class TaskImportManager {
 
     // Create the area
     try {
-      await this.areaFileManager.createAreaFile({
+      await areaFileManager.createAreaFile({
         name: areaName,
         description: `Auto-created area for ${areaName}`,
       });
