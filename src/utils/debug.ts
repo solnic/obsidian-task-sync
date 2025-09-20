@@ -11,11 +11,13 @@ function isDevelopment(): boolean {
   // Check for common development indicators
   return (
     // @ts-ignore - process may not be available in all environments
-    (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development') ||
+    (typeof process !== "undefined" &&
+      process.env?.NODE_ENV === "development") ||
     // Check if we're running in a development context (e.g., with hot reload)
-    (typeof window !== 'undefined' && window.location?.hostname === 'localhost') ||
+    (typeof window !== "undefined" &&
+      window.location?.hostname === "localhost") ||
     // Check for development build indicators
-    (typeof globalThis !== 'undefined' && globalThis.__DEV__ === true)
+    (typeof globalThis !== "undefined" && (globalThis as any).__DEV__ === true)
   );
 }
 
