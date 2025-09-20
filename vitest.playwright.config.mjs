@@ -1,7 +1,10 @@
 import { defineConfig } from 'vitest/config';
 import { config } from 'dotenv';
+import os from 'os';
 
 config();
+
+const isCI = process.env.CI === 'true';
 
 export default defineConfig({
   test: {
@@ -9,10 +12,10 @@ export default defineConfig({
     globals: true,
     include: ['e2e/**/*.e2e.ts'],
     exclude: ['tests/**/*'],
-    hookTimeout: 10000,
-    testTimeout: 10000,
+    testTimeout: isCI ? 30000 : 10000,
+    hookTimeout: isCI ? 30000 : 10000,
     fileParallelism: true,
-    minWorkers: 6,
+    minWorkers: isCI ? 6 : Math.max(2, Math.floor(os.cpus().length / 2)),
     maxConcurrency: 1,
     pool: 'threads',
     poolOptions: {
