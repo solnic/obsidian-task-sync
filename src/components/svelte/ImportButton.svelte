@@ -101,8 +101,14 @@
 
   // Determine if button should be disabled
   // In daily planning wizard mode, allow clicking even when imported (for scheduling/unscheduling)
+  // For regular import mode, hide the button completely when imported
   let isDisabled = $derived(
     disabled || isImporting || (isImported && !dailyPlanningWizardMode)
+  );
+
+  // Hide the button completely when imported (except in daily planning wizard mode)
+  let shouldHideButton = $derived(
+    isImported && !dailyPlanningWizardMode && !dayPlanningMode
   );
 
   // Determine CSS classes
@@ -132,15 +138,17 @@
   }
 </script>
 
-<button
-  class={cssClasses}
-  title={buttonTitle}
-  onclick={handleClick}
-  data-testid={buttonTestId}
-  disabled={isDisabled}
->
-  {buttonText}
-</button>
+{#if !shouldHideButton}
+  <button
+    class={cssClasses}
+    title={buttonTitle}
+    onclick={handleClick}
+    data-testid={buttonTestId}
+    disabled={isDisabled}
+  >
+    {buttonText}
+  </button>
+{/if}
 
 <style>
   .import-button {
