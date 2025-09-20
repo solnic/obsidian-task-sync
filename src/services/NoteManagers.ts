@@ -13,6 +13,7 @@ import type { ProjectFileManager } from "./ProjectFileManager";
 import type { EventHandler } from "../events/EventTypes";
 import type { BaseEntity } from "../types/entities";
 import { PROPERTY_REGISTRY } from "../types/properties";
+import type { VaultScannerService } from "../types/services";
 
 // Constructor type for file managers
 export type FileManagerConstructor<T extends FileManager = FileManager> = new (
@@ -35,11 +36,18 @@ export class NoteManagers {
   private vault: Vault;
   private settings: TaskSyncSettings;
   private noteTypes: Map<string, NoteTypeConfig> = new Map();
+  private vaultScanner: VaultScannerService;
 
-  constructor(app: App, vault: Vault, settings: TaskSyncSettings) {
+  constructor(
+    app: App,
+    vault: Vault,
+    settings: TaskSyncSettings,
+    vaultScanner: VaultScannerService
+  ) {
     this.app = app;
     this.vault = vault;
     this.settings = settings;
+    this.vaultScanner = vaultScanner;
   }
 
   /**
@@ -230,6 +238,78 @@ export class NoteManagers {
           error
         );
       }
+    }
+  }
+
+  /**
+   * Update files of a specific type to match current schema
+   * Unified method that replaces separate updateTaskFiles, updateProjectFiles, updateAreaFiles
+   * @param noteType - The type of note to update (e.g., "Task", "Project", "Area")
+   * @param results - Results object to track changes and errors
+   */
+  public async updateFiles(noteType: string, results: any): Promise<void> {
+    try {
+      // Get the file manager for this note type
+      const manager = this.getManager(noteType);
+      if (!manager) {
+        throw new Error(
+          `No file manager registered for note type: ${noteType}`
+        );
+      }
+
+      // Get the appropriate scanner method based on note type
+      let files: string[] = [];
+      switch (noteType) {
+        case "Task":
+          files = await this.vaultScanner.scanTasksFolder();
+          break;
+        case "Project":
+          files = await this.vaultScanner.scanProjectsFolder();
+          break;
+        case "Area":
+          files = await this.vaultScanner.scanAreasFolder();
+          break;
+        default:
+          throw new Error(
+            `Unsupported note type for file updates: ${noteType}`
+          );
+      }
+
+      // Update each file
+      for (const filePath of files) {
+        try {
+          const updateResult = await manager.updateFileProperties(filePath);
+
+          if (updateResult.hasChanges) {
+            results.filesUpdated++;
+            results.propertiesUpdated += updateResult.propertiesChanged;
+
+            // Log for non-task types (tasks don't log individual updates)
+            if (noteType !== "Task") {
+              console.log(
+                `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`
+              );
+            }
+          } else if (noteType !== "Task") {
+            // Log for non-task types
+            console.log(`Task Sync: No changes needed for ${filePath}`);
+          }
+        } catch (error) {
+          console.error(
+            `Task Sync: Failed to update ${noteType.toLowerCase()} file ${filePath}:`,
+            error
+          );
+          results.errors.push(`Failed to update ${filePath}: ${error.message}`);
+        }
+      }
+    } catch (error) {
+      console.error(
+        `Task Sync: Failed to update ${noteType.toLowerCase()} files:`,
+        error
+      );
+      results.errors.push(
+        `Failed to update ${noteType.toLowerCase()} files: ${error.message}`
+      );
     }
   }
 

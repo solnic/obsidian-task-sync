@@ -127,9 +127,10 @@ export interface TodoItemWithParent extends TodoItem {
 function setupNoteManagers(
   app: App,
   vault: Vault,
-  settings: TaskSyncSettings
+  settings: TaskSyncSettings,
+  vaultScanner: VaultScanner
 ): NoteManagers {
-  const noteManagers = new NoteManagers(app, vault, settings);
+  const noteManagers = new NoteManagers(app, vault, settings, vaultScanner);
 
   // Register default note types with their manager classes
   noteManagers.registerNoteType("Task", {
@@ -305,7 +306,8 @@ export default class TaskSyncPlugin
     this.noteManagers = setupNoteManagers(
       this.app,
       this.app.vault,
-      this.settings
+      this.settings,
+      this.vaultScanner
     );
     await this.noteManagers.initialize();
 
@@ -1396,111 +1398,9 @@ export default class TaskSyncPlugin
    * Update properties in all task, project, and area files to match current schema
    */
   private async updateFileProperties(results: any): Promise<void> {
-    await this.updateTaskFiles(results);
-    await this.updateProjectFiles(results);
-    await this.updateAreaFiles(results);
-  }
-
-  /**
-   * Update task files to match current schema
-   */
-  private async updateTaskFiles(results: any): Promise<void> {
-    try {
-      const taskFiles = await this.vaultScanner.scanTasksFolder();
-      const taskFileManager = this.noteManagers.getTaskManager()!;
-
-      for (const filePath of taskFiles) {
-        try {
-          const updateResult = await taskFileManager.updateTaskFileProperties(
-            filePath
-          );
-
-          if (updateResult.hasChanges) {
-            results.filesUpdated++;
-            results.propertiesUpdated += updateResult.propertiesChanged;
-          }
-        } catch (error) {
-          console.error(
-            `Task Sync: Failed to update task file ${filePath}:`,
-            error
-          );
-          results.errors.push(`Failed to update ${filePath}: ${error.message}`);
-        }
-      }
-    } catch (error) {
-      console.error("Task Sync: Failed to update task files:", error);
-      results.errors.push(`Failed to update task files: ${error.message}`);
-    }
-  }
-
-  /**
-   * Update project files to match current schema
-   */
-  private async updateProjectFiles(results: any): Promise<void> {
-    try {
-      const projectFiles = await this.vaultScanner.scanProjectsFolder();
-      const projectFileManager = this.noteManagers.getProjectManager()!;
-      for (const filePath of projectFiles) {
-        try {
-          const updateResult = await projectFileManager.updateFileProperties(
-            filePath
-          );
-          if (updateResult.hasChanges) {
-            results.filesUpdated++;
-            results.propertiesUpdated += updateResult.propertiesChanged;
-            console.log(
-              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`
-            );
-          } else {
-            console.log(`Task Sync: No changes needed for ${filePath}`);
-          }
-        } catch (error) {
-          console.error(
-            `Task Sync: Failed to update project file ${filePath}:`,
-            error
-          );
-          results.errors.push(`Failed to update ${filePath}: ${error.message}`);
-        }
-      }
-    } catch (error) {
-      console.error("Task Sync: Failed to update project files:", error);
-      results.errors.push(`Failed to update project files: ${error.message}`);
-    }
-  }
-
-  /**
-   * Update area files to match current schema
-   */
-  private async updateAreaFiles(results: any): Promise<void> {
-    try {
-      const areaFiles = await this.vaultScanner.scanAreasFolder();
-      const areaFileManager = this.noteManagers.getAreaManager()!;
-      for (const filePath of areaFiles) {
-        try {
-          const updateResult = await areaFileManager.updateFileProperties(
-            filePath
-          );
-          if (updateResult.hasChanges) {
-            results.filesUpdated++;
-            results.propertiesUpdated += updateResult.propertiesChanged;
-            console.log(
-              `Task Sync: Updated ${updateResult.propertiesChanged} properties in ${filePath}`
-            );
-          } else {
-            console.log(`Task Sync: No changes needed for ${filePath}`);
-          }
-        } catch (error) {
-          console.error(
-            `Task Sync: Failed to update area file ${filePath}:`,
-            error
-          );
-          results.errors.push(`Failed to update ${filePath}: ${error.message}`);
-        }
-      }
-    } catch (error) {
-      console.error("Task Sync: Failed to update area files:", error);
-      results.errors.push(`Failed to update area files: ${error.message}`);
-    }
+    await this.noteManagers.updateFiles("Task", results);
+    await this.noteManagers.updateFiles("Project", results);
+    await this.noteManagers.updateFiles("Area", results);
   }
 
   /**
