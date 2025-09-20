@@ -19,6 +19,7 @@
   } from "../../stores/dailyPlanningStore";
   import { get } from "svelte/store";
   import { DailyNoteService } from "../../services/DailyNoteService";
+  import { DAILY_PLANNING_VIEW_TYPE } from "../../views/DailyPlanningView";
 
   import type { Task } from "../../types/entities";
   import type { CalendarEvent } from "../../types/calendar";
@@ -306,7 +307,7 @@
       }
 
       // Close the daily planning view
-      plugin.app.workspace.detachLeavesOfType("daily-planning");
+      plugin.app.workspace.detachLeavesOfType(DAILY_PLANNING_VIEW_TYPE);
 
       console.log("Daily planning completed successfully");
     } catch (err: any) {
@@ -351,7 +352,7 @@
       setDailyPlanningActive(false);
 
       // Close the daily planning view
-      plugin.app.workspace.detachLeavesOfType("daily-planning");
+      plugin.app.workspace.detachLeavesOfType(DAILY_PLANNING_VIEW_TYPE);
 
       console.log("Daily planning cancelled, changes reverted");
     } catch (err: any) {
