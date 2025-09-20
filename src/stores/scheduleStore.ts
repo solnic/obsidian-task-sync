@@ -12,6 +12,7 @@ import {
 } from "svelte/store";
 import { App, Plugin } from "obsidian";
 import { generatePrefixedId } from "../utils/idGenerator";
+import { getDateString } from "../utils/dateFiltering";
 import {
   DailySchedule,
   SchedulePersistenceData,
@@ -146,7 +147,7 @@ export class ScheduleStore {
    */
   findScheduleByDate(date: Date): DailySchedule | null {
     const state = get(this._store);
-    const dateString = date.toISOString().split("T")[0];
+    const dateString = getDateString(date);
     return (
       state.schedules.find((s) => s.getDateString() === dateString) || null
     );
@@ -371,14 +372,14 @@ export const scheduleStore = new ScheduleStore();
 
 // Derived stores for common queries
 export const todaySchedule = derived(scheduleStore, ($store) => {
-  const today = new Date().toISOString().split("T")[0];
+  const today = getDateString(new Date());
   return $store.schedules.find((s) => s.getDateString() === today) || null;
 });
 
 export const yesterdaySchedule = derived(scheduleStore, ($store) => {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayString = yesterday.toISOString().split("T")[0];
+  const yesterdayString = getDateString(yesterday);
   return (
     $store.schedules.find((s) => s.getDateString() === yesterdayString) || null
   );

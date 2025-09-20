@@ -5,6 +5,7 @@
 
 import { BaseEntity, Task } from "./entities";
 import { CalendarEvent } from "./calendar";
+import { getDateString as formatDateString } from "../utils/dateFiltering";
 
 /**
  * Abstract Schedule entity - base class for all schedule types
@@ -209,7 +210,7 @@ export class DailySchedule extends Schedule {
    * Get a formatted date string for this schedule
    */
   getDateString(): string {
-    return this.date.toISOString().split("T")[0]; // YYYY-MM-DD format
+    return formatDateString(this.date);
   }
 
   /**
