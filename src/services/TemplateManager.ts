@@ -241,7 +241,7 @@ export class TemplateManager {
         if (prop.name === "Type") {
           frontMatterData[prop.name] = "Task"; // Always 'Task' for task entities
         } else if (prop.name === "Category") {
-          frontMatterData[prop.name] = this.settings.taskTypes[0].name;
+          frontMatterData[prop.name] = this.settings.taskTypes?.[0]?.name || "";
         } else if (prop.name === "Title") {
           frontMatterData[prop.name] = ""; // Title will be set by property handler
         } else {
