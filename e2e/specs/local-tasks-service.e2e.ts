@@ -486,4 +486,31 @@ This is a test task created directly in the vault.`;
     const badgeCount = await importedBadge.count();
     expect(badgeCount).toBe(0);
   });
+
+  test("should handle missing Tasks folder gracefully", async () => {
+    // Delete the Tasks folder to simulate the error condition
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
+      if (tasksFolder) {
+        await app.vault.delete(tasksFolder, true);
+      }
+    });
+
+    // Open Tasks view and switch to local service
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "local");
+
+    // Should show empty state instead of crashing
+    const emptyMessage = context.page.locator(".task-sync-empty-message");
+    await emptyMessage.waitFor({ state: "visible", timeout: 5000 });
+
+    const messageText = await emptyMessage.textContent();
+    expect(messageText).toContain("No tasks found");
+
+    // Verify no task items are shown
+    const taskItems = context.page.locator('[data-testid^="local-task-item-"]');
+    const taskCount = await taskItems.count();
+    expect(taskCount).toBe(0);
+  });
 });

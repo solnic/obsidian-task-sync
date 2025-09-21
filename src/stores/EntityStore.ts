@@ -101,10 +101,16 @@ export abstract class EntityStore<T extends BaseEntity> {
    * Internal method to perform the actual refresh
    */
   private async performRefresh() {
+    console.log(
+      `${this.storageKey}: Starting performRefresh, folder: ${this.folder}`
+    );
     this._store.update((state) => ({ ...state, loading: true, error: null }));
 
     try {
       const entities = await this.loadAllEntities();
+      console.log(
+        `${this.storageKey}: Loaded ${entities.length} entities from folder: ${this.folder}`
+      );
 
       this._store.update((state) => ({
         ...state,
@@ -116,6 +122,7 @@ export abstract class EntityStore<T extends BaseEntity> {
       // Persist the updated entities
       await this.persistData();
     } catch (error) {
+      console.error(`${this.storageKey}: Error during performRefresh:`, error);
       this._store.update((state) => ({
         ...state,
         loading: false,
@@ -278,6 +285,14 @@ export abstract class EntityStore<T extends BaseEntity> {
    */
   private async loadAllEntities(): Promise<T[]> {
     const folder = this.app.vault.getFolderByPath(this.folder);
+
+    // Handle case where folder doesn't exist
+    if (!folder) {
+      console.warn(
+        `${this.storageKey}: Folder '${this.folder}' does not exist, returning empty array`
+      );
+      return [];
+    }
 
     const entityFiles = folder.children
       .filter((child) => child instanceof TFile && child.extension === "md")
