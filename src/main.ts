@@ -2,7 +2,6 @@ import {
   Plugin,
   TFile,
   Notice,
-  Modal,
   App,
   Vault,
   MarkdownPostProcessor,
@@ -25,10 +24,6 @@ import {
   ProjectCreateModal,
   ProjectCreateData,
 } from "./components/modals/ProjectCreateModal";
-import {
-  TaskScheduleModal,
-  TaskScheduleData,
-} from "./components/modals/TaskScheduleModal";
 
 import { TaskSyncSettingTab } from "./components/ui/settings";
 import type {
@@ -83,10 +78,7 @@ import { taskMentionStore } from "./stores/taskMentionStore";
 import { scheduleStore } from "./stores/scheduleStore";
 import { dailyPlanningStore } from "./stores/dailyPlanningStore";
 import { settingsStore } from "./stores/settingsStore";
-import {
-  CommandManager,
-  type CommandCallbacks,
-} from "./services/CommandManager";
+import { CommandManager } from "./services/CommandManager";
 import {
   NoteManagers,
   type NoteTypeRegistration,
@@ -234,38 +226,6 @@ export default class TaskSyncPlugin
     return this.integrationManager?.getAppleRemindersService();
   }
 
-  /**
-   * Create command callbacks for CommandManager
-   */
-  private createCommandCallbacks(): CommandCallbacks {
-    return {
-      openTaskCreateModal: () => this.openTaskCreateModal(),
-      openAreaCreateModal: () => this.openAreaCreateModal(),
-      openProjectCreateModal: () => this.openProjectCreateModal(),
-      refresh: () => this.refresh(),
-      refreshBaseViews: () => this.refreshBaseViews(),
-      promoteTodoToTask: () => this.todoPromotionService.promoteTodoToTask(),
-      revertPromotedTodo: () => this.todoPromotionService.revertPromotedTodo(),
-      addCurrentTaskToToday: () => this.addCurrentTaskToToday(),
-      activateTasksView: () => this.activateTasksView(),
-      activateContextTabView: () => this.activateContextTabView(),
-      activateTaskPlanningView: () => this.activateTaskPlanningView(),
-      startDailyPlanning: () => this.startDailyPlanning(),
-      importGitHubIssue: () => this.importGitHubIssue(),
-      importAllGitHubIssues: () => this.importAllGitHubIssues(),
-      importAppleReminders: () => this.importAppleReminders(),
-      checkAppleRemindersPermissions: () =>
-        this.checkAppleRemindersPermissions(),
-      insertCalendarEvents: () => this.insertCalendarEvents(),
-      checkAppleCalendarPermissions: () => this.checkAppleCalendarPermissions(),
-      scheduleCurrentTask: () => this.scheduleCurrentTask(),
-      clearAllCaches: () => this.cacheManager.clearAllCaches(),
-      getStats: () => this.cacheManager.getStats(),
-      isAppleCalendarPlatformSupported: () =>
-        this.appleCalendarService.isPlatformSupported(),
-    };
-  }
-
   async onload() {
     console.log("Loading Task Sync Plugin");
 
@@ -345,11 +305,11 @@ export default class TaskSyncPlugin
     this.appleCalendarService.setImportDependencies(this.taskImportManager);
     this.appleCalendarService.setDailyNoteService(this.dailyNoteService);
 
-    // Initialize CommandManager with callbacks
+    // Initialize CommandManager with new command system
     this.commandManager = new CommandManager(
       this,
       this.integrationManager,
-      this.createCommandCallbacks(),
+      {} as any, // Legacy parameter - ignored
       this.settings
     );
 
@@ -824,8 +784,8 @@ export default class TaskSyncPlugin
     }
   }
 
-  // UI Methods
-  private async openTaskCreateModal(): Promise<void> {
+  // UI Methods - made public for command classes
+  public async openTaskCreateModal(): Promise<void> {
     const context = this.detectCurrentFileContext();
 
     const modal = new TaskCreateModalWrapper(
@@ -847,7 +807,7 @@ export default class TaskSyncPlugin
   /**
    * Open area creation modal
    */
-  private openAreaCreateModal(): void {
+  public openAreaCreateModal(): void {
     const modal = new AreaCreateModal(this.app, this);
 
     modal.onSubmit(async (areaData) => {
@@ -864,7 +824,7 @@ export default class TaskSyncPlugin
   /**
    * Open project creation modal
    */
-  private openProjectCreateModal(): void {
+  public openProjectCreateModal(): void {
     const modal = new ProjectCreateModal(this.app, this);
 
     modal.onSubmit(async (projectData) => {
@@ -876,94 +836,6 @@ export default class TaskSyncPlugin
     });
 
     modal.open();
-  }
-
-  /**
-   * Schedule the current task as a calendar event
-   */
-  private async scheduleCurrentTask(): Promise<void> {
-    if (!this.taskSchedulingService.isEnabled()) {
-      new Notice(
-        "Task scheduling is not enabled. Please configure it in settings."
-      );
-      return;
-    }
-
-    // Get the current file and check if it's a task
-    const activeFile = this.app.workspace.getActiveFile();
-    if (!activeFile) {
-      new Notice("No active file. Please open a task file to schedule.");
-      return;
-    }
-
-    // Check if the current file is a task
-    const task = taskStore.findEntityByPath(activeFile.path);
-    if (!task) {
-      new Notice(
-        "Current file is not a task. Please open a task file to schedule."
-      );
-      return;
-    }
-
-    // Check if task is already scheduled
-    const isScheduled = await this.taskSchedulingService.isTaskScheduled(
-      task.filePath || ""
-    );
-    if (isScheduled) {
-      new Notice("This task is already scheduled.");
-      return;
-    }
-
-    // Open the scheduling modal
-    const modal = new TaskScheduleModal(this.app, this, task);
-
-    modal.onSubmit(async (scheduleData) => {
-      await this.scheduleTask(task, scheduleData);
-    });
-
-    modal.open();
-  }
-
-  /**
-   * Schedule a task with the given configuration
-   */
-  private async scheduleTask(
-    task: Task,
-    scheduleData: TaskScheduleData
-  ): Promise<void> {
-    try {
-      new Notice("Scheduling task...");
-
-      const config = {
-        targetCalendar: scheduleData.targetCalendar,
-        startDate: scheduleData.startDate,
-        endDate: scheduleData.endDate,
-        allDay: scheduleData.allDay,
-        location: scheduleData.location,
-        notes: scheduleData.notes,
-        includeTaskDetails: scheduleData.includeTaskDetails,
-        reminders: scheduleData.reminders,
-      };
-
-      const result = await this.taskSchedulingService.scheduleTask(
-        task,
-        config
-      );
-
-      if (result.success) {
-        new Notice(
-          `✅ Task scheduled successfully in ${scheduleData.targetCalendar}`
-        );
-
-        // Optionally refresh any open calendar views
-        // This could be extended to refresh calendar views if needed
-      } else {
-        new Notice(`❌ Failed to schedule task: ${result.error}`);
-      }
-    } catch (error: any) {
-      console.error("Failed to schedule task:", error);
-      new Notice(`❌ Failed to schedule task: ${error.message}`);
-    }
   }
 
   /**
@@ -1027,127 +899,7 @@ export default class TaskSyncPlugin
     });
   }
 
-  /**
-   * Activate the Tasks view (bring it to focus)
-   */
-  private async activateTasksView(): Promise<void> {
-    const existingLeaves = this.app.workspace.getLeavesOfType(TASKS_VIEW_TYPE);
-
-    if (existingLeaves.length > 0) {
-      // Ensure right sidebar is expanded
-      this.app.workspace.rightSplit.expand();
-      // Activate existing view
-      this.app.workspace.revealLeaf(existingLeaves[0]);
-    } else {
-      // Ensure right sidebar is expanded
-      this.app.workspace.rightSplit.expand();
-      // Create new view in right sidebar
-      const rightLeaf = this.app.workspace.getRightLeaf(false);
-      await rightLeaf.setViewState({
-        type: TASKS_VIEW_TYPE,
-        active: true,
-      });
-    }
-  }
-
-  /**
-   * Activate the Context Tab view (bring it to focus)
-   */
-  private async activateContextTabView(): Promise<void> {
-    const existingLeaves = this.app.workspace.getLeavesOfType(
-      CONTEXT_TAB_VIEW_TYPE
-    );
-
-    if (existingLeaves.length > 0) {
-      // Ensure right sidebar is expanded
-      this.app.workspace.rightSplit.expand();
-      // Activate existing view
-      this.app.workspace.revealLeaf(existingLeaves[0]);
-    } else {
-      // Ensure right sidebar is expanded
-      this.app.workspace.rightSplit.expand();
-      // Create new view in right sidebar
-      const rightLeaf = this.app.workspace.getRightLeaf(false);
-      await rightLeaf.setViewState({
-        type: CONTEXT_TAB_VIEW_TYPE,
-        active: true,
-      });
-    }
-  }
-
-  /**
-   * Activate the Task Planning view (bring it to focus)
-   */
-  private async activateTaskPlanningView(): Promise<void> {
-    const existingLeaves = this.app.workspace.getLeavesOfType(
-      TASK_PLANNING_VIEW_TYPE
-    );
-
-    if (existingLeaves.length > 0) {
-      // Ensure right sidebar is expanded
-      this.app.workspace.rightSplit.expand();
-      // Activate existing view
-      this.app.workspace.revealLeaf(existingLeaves[0]);
-    } else {
-      // Ensure right sidebar is expanded
-      this.app.workspace.rightSplit.expand();
-      // Create new view in right sidebar
-      const rightLeaf = this.app.workspace.getRightLeaf(false);
-      await rightLeaf.setViewState({
-        type: TASK_PLANNING_VIEW_TYPE,
-        active: true,
-      });
-    }
-  }
-
-  /**
-   * Start daily planning - opens daily note and creates Daily Planning view above it
-   */
-  private async startDailyPlanning(): Promise<void> {
-    try {
-      // Ensure today's daily note exists
-      const dailyNoteResult =
-        await this.dailyNoteService.ensureTodayDailyNote();
-
-      // Open the daily note if it's not already open
-      if (dailyNoteResult.file) {
-        await this.app.workspace.openLinkText(
-          dailyNoteResult.file.path,
-          "",
-          false
-        );
-      }
-
-      // Create or activate Daily Planning view above the daily note
-      await this.activateDailyPlanningView();
-    } catch (error: any) {
-      console.error("Error starting daily planning:", error);
-      new Notice(`Failed to start daily planning: ${error.message}`);
-    }
-  }
-
-  /**
-   * Activate the Daily Planning view (bring it to focus)
-   */
-  private async activateDailyPlanningView(): Promise<void> {
-    const existingLeaves = this.app.workspace.getLeavesOfType(
-      DAILY_PLANNING_VIEW_TYPE
-    );
-
-    if (existingLeaves.length > 0) {
-      // Activate existing view
-      this.app.workspace.revealLeaf(existingLeaves[0]);
-    } else {
-      // Create new view in main area (above daily note)
-      const mainLeaf = this.app.workspace.getLeaf("tab");
-      await mainLeaf.setViewState({
-        type: DAILY_PLANNING_VIEW_TYPE,
-        active: true,
-      });
-    }
-  }
-
-  private detectCurrentFileContext(): FileContext {
+  public detectCurrentFileContext(): FileContext {
     const activeFile = this.app.workspace.getActiveFile();
 
     if (!activeFile) {
@@ -1357,7 +1109,7 @@ export default class TaskSyncPlugin
   /**
    * Comprehensive refresh operation - updates file properties and regenerates bases
    */
-  async refresh(): Promise<void> {
+  public async refresh(): Promise<void> {
     const results = {
       filesUpdated: 0,
       propertiesUpdated: 0,
@@ -1466,452 +1218,14 @@ export default class TaskSyncPlugin
   /**
    * Refresh base views (same as regenerate for now)
    */
-  private async refreshBaseViews(): Promise<void> {
+  public async refreshBaseViews(): Promise<void> {
     await this.regenerateBases();
-  }
-
-  /**
-   * Import a single GitHub issue as a task
-   */
-  private async importGitHubIssue(): Promise<void> {
-    const githubService = this.integrationManager.getGitHubService();
-    if (!githubService?.isEnabled()) {
-      new Notice("GitHub integration is not enabled or configured");
-      return;
-    }
-
-    try {
-      // For now, show a simple prompt for issue URL
-      // In a full implementation, this could be a modal with repository selection
-      const issueUrl = await this.promptForIssueUrl();
-      if (!issueUrl) {
-        return;
-      }
-
-      const issueData = await this.fetchIssueFromUrl(issueUrl);
-      if (!issueData) {
-        new Notice("Failed to fetch GitHub issue");
-        return;
-      }
-
-      // Use default import configuration
-      const config = this.getDefaultImportConfig();
-
-      const result = await githubService.importIssueAsTask(
-        issueData.issue,
-        config,
-        issueData.repository
-      );
-
-      if (result.success) {
-        if (result.skipped) {
-          new Notice(`Issue already imported: ${result.reason}`);
-        } else {
-          new Notice(`Successfully imported issue: ${issueData.issue.title}`);
-        }
-      } else {
-        new Notice(`Failed to import issue: ${result.error}`);
-      }
-    } catch (error: any) {
-      console.error("Failed to import GitHub issue:", error);
-      new Notice(`Error importing issue: ${error.message}`);
-    }
-  }
-
-  /**
-   * Import all GitHub issues from the default repository
-   */
-  private async importAllGitHubIssues(): Promise<void> {
-    const githubService = this.integrationManager.getGitHubService();
-    if (!githubService?.isEnabled()) {
-      new Notice("GitHub integration is not enabled or configured");
-      return;
-    }
-
-    try {
-      const repository = this.settings.githubIntegration.defaultRepository;
-      if (!repository) {
-        new Notice("No default repository configured");
-        return;
-      }
-
-      new Notice("Fetching GitHub issues...");
-
-      const issues = await githubService.fetchIssues(repository);
-      if (issues.length === 0) {
-        new Notice("No issues found in repository");
-        return;
-      }
-
-      new Notice(`Found ${issues.length} issues. Starting import...`);
-
-      const config = this.getDefaultImportConfig();
-      let imported = 0;
-      let skipped = 0;
-      let failed = 0;
-
-      for (const issue of issues) {
-        try {
-          const result = await githubService.importIssueAsTask(
-            issue,
-            config,
-            repository
-          );
-
-          if (result.success) {
-            if (result.skipped) {
-              skipped++;
-            } else {
-              imported++;
-            }
-          } else {
-            failed++;
-            console.error(
-              `Failed to import issue ${issue.number}:`,
-              result.error
-            );
-          }
-        } catch (error: any) {
-          failed++;
-          console.error(`Error importing issue ${issue.number}:`, error);
-        }
-      }
-
-      new Notice(
-        `Import complete: ${imported} imported, ${skipped} skipped, ${failed} failed`
-      );
-    } catch (error: any) {
-      console.error("Failed to import GitHub issues:", error);
-      new Notice(`Error importing issues: ${error.message}`);
-    }
-  }
-
-  /**
-   * Prompt user for GitHub issue URL
-   */
-  private async promptForIssueUrl(): Promise<string | null> {
-    return new Promise((resolve) => {
-      const modal = new (class extends Modal {
-        result: string | null = null;
-
-        constructor(app: App) {
-          super(app);
-        }
-
-        onOpen() {
-          const { contentEl } = this;
-          contentEl.createEl("h2", { text: "Import GitHub Issue" });
-
-          const inputEl = contentEl.createEl("input", {
-            type: "text",
-            placeholder: "https://github.com/owner/repo/issues/123",
-          });
-          inputEl.style.width = "100%";
-          inputEl.style.marginBottom = "10px";
-
-          const buttonContainer = contentEl.createDiv();
-          buttonContainer.style.textAlign = "right";
-
-          const cancelBtn = buttonContainer.createEl("button", {
-            text: "Cancel",
-          });
-          cancelBtn.style.marginRight = "10px";
-          cancelBtn.onclick = () => {
-            this.result = null;
-            this.close();
-          };
-
-          const importBtn = buttonContainer.createEl("button", {
-            text: "Import",
-          });
-          importBtn.onclick = () => {
-            this.result = inputEl.value.trim();
-            this.close();
-          };
-
-          inputEl.focus();
-          inputEl.addEventListener("keydown", (e) => {
-            if (e.key === "Enter") {
-              this.result = inputEl.value.trim();
-              this.close();
-            }
-          });
-        }
-
-        onClose() {
-          resolve(this.result);
-        }
-      })(this.app);
-
-      modal.open();
-    });
-  }
-
-  /**
-   * Fetch GitHub issue from URL
-   */
-  private async fetchIssueFromUrl(
-    url: string
-  ): Promise<{ issue: any; repository: string } | null> {
-    try {
-      const githubService = this.integrationManager.getGitHubService();
-      if (!githubService) {
-        new Notice("GitHub integration is not available");
-        return null;
-      }
-
-      // Parse GitHub issue URL
-      const match = url.match(/github\.com\/([^\/]+)\/([^\/]+)\/issues\/(\d+)/);
-      if (!match) {
-        new Notice("Invalid GitHub issue URL format");
-        return null;
-      }
-
-      const [, owner, repo, issueNumber] = match;
-      const repository = `${owner}/${repo}`;
-
-      // Fetch all issues and find the specific one
-      // In a full implementation, you'd want to fetch the specific issue directly
-      const issues = await githubService.fetchIssues(repository);
-      const issue = issues.find((i: any) => i.number === parseInt(issueNumber));
-
-      if (!issue) {
-        new Notice(`Issue #${issueNumber} not found in ${repository}`);
-        return null;
-      }
-
-      return { issue, repository };
-    } catch (error: any) {
-      console.error("Error fetching issue from URL:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Import Apple Reminders as tasks
-   */
-  private async importAppleReminders(): Promise<void> {
-    const appleRemindersService =
-      this.integrationManager.getAppleRemindersService();
-    if (!appleRemindersService?.isEnabled()) {
-      new Notice(
-        "Apple Reminders integration is not enabled or not available on this platform"
-      );
-      return;
-    }
-
-    try {
-      // Check permissions first
-      const permissionResult = await appleRemindersService.checkPermissions();
-      if (!permissionResult.success) {
-        new Notice(`Permission error: ${permissionResult.error?.message}`);
-        return;
-      }
-
-      new Notice("Fetching Apple Reminders...");
-
-      // Fetch reminders
-      const remindersResult = await appleRemindersService.fetchReminders();
-
-      if (!remindersResult.success) {
-        new Notice(
-          `Failed to fetch reminders: ${remindersResult.error?.message}`
-        );
-        return;
-      }
-
-      const reminders = remindersResult.data || [];
-
-      if (reminders.length === 0) {
-        new Notice("No reminders found");
-        return;
-      }
-
-      console.log("🍎 Starting import of", reminders.length, "reminders");
-
-      // Import each reminder
-      let imported = 0;
-      let skipped = 0;
-      let failed = 0;
-
-      for (const reminder of reminders) {
-        try {
-          const config = this.getDefaultImportConfig();
-
-          const result = await appleRemindersService.importReminderAsTask(
-            reminder,
-            config
-          );
-
-          if (result.success) {
-            if (result.skipped) {
-              skipped++;
-            } else {
-              imported++;
-            }
-          } else {
-            failed++;
-          }
-        } catch (error: any) {
-          failed++;
-        }
-      }
-
-      // Wait for file system events to be processed
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Refresh task store to ensure UI is updated
-      await taskStore.refreshEntities();
-
-      // Additional delay to ensure UI can process the changes
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Refresh Apple Reminders view if it's open
-      const appleRemindersViewMethods = (window as any)
-        .__appleRemindersServiceMethods;
-      if (appleRemindersViewMethods && appleRemindersViewMethods.refresh) {
-        await appleRemindersViewMethods.refresh();
-      }
-
-      new Notice(
-        `Import complete: ${imported} imported, ${skipped} skipped, ${failed} failed`
-      );
-    } catch (error: any) {
-      new Notice(`Error importing reminders: ${error.message}`);
-    }
-  }
-
-  /**
-   * Check Apple Reminders permissions
-   */
-  private async checkAppleRemindersPermissions(): Promise<void> {
-    const appleRemindersService =
-      this.integrationManager.getAppleRemindersService();
-    if (!appleRemindersService?.isPlatformSupported()) {
-      new Notice("Apple Reminders is only available on macOS");
-      return;
-    }
-
-    try {
-      const result = await appleRemindersService.checkPermissions();
-
-      if (result.success) {
-        const permission = result.data;
-        switch (permission) {
-          case "authorized":
-            new Notice("✅ Apple Reminders access is authorized");
-            break;
-          case "denied":
-            new Notice(
-              "❌ Apple Reminders access is denied. Please grant permission in System Preferences > Security & Privacy > Privacy > Reminders"
-            );
-            break;
-          case "notDetermined":
-            new Notice(
-              "⚠️ Apple Reminders permission not determined. Please try importing reminders to trigger permission request."
-            );
-            break;
-          case "restricted":
-            new Notice("🔒 Apple Reminders access is restricted");
-            break;
-        }
-      } else {
-        new Notice(`Permission check failed: ${result.error?.message}`);
-      }
-    } catch (error: any) {
-      console.error("Error checking Apple Reminders permissions:", error);
-      new Notice(`Error checking permissions: ${error.message}`);
-    }
-  }
-
-  /**
-   * Insert calendar events into current daily note
-   */
-  private async insertCalendarEvents(): Promise<void> {
-    if (!this.appleCalendarService.isEnabled()) {
-      new Notice(
-        "Apple Calendar integration is not enabled. Please configure it in settings."
-      );
-      return;
-    }
-
-    try {
-      // Get current daily note or create one
-      const dailyNoteResult =
-        await this.dailyNoteService.ensureTodayDailyNote();
-      if (!dailyNoteResult.file) {
-        new Notice("Could not find or create daily note");
-        return;
-      }
-      const dailyNote = dailyNoteResult.file;
-
-      // Get calendar events for today
-
-      const events = await this.appleCalendarService.getTodayEvents();
-
-      if (events.length === 0) {
-        new Notice("No calendar events found for today");
-        return;
-      }
-
-      // Format events
-      const { DefaultCalendarEventFormatter } = await import(
-        "./services/CalendarEventFormatter"
-      );
-      const formatter = new DefaultCalendarEventFormatter();
-
-      const config = this.settings.appleCalendarIntegration;
-      const formattedEvents = formatter.formatEvents(events, {
-        includeTime: true,
-        includeLocation: config.includeLocation,
-        includeDescription: config.includeNotes,
-        timeFormat: config.timeFormat,
-        groupByCalendar: true,
-        showCalendarName: false,
-        markdown: {
-          useBullets: true,
-          useCheckboxes: false,
-          calendarHeaderLevel: 3,
-        },
-      });
-
-      // Insert into daily note
-      const content = await this.app.vault.read(dailyNote);
-      const newContent =
-        content + "\n\n## Calendar Events\n\n" + formattedEvents + "\n";
-      await this.app.vault.modify(dailyNote, newContent);
-
-      new Notice(`Inserted ${events.length} calendar events into daily note`);
-    } catch (error: any) {
-      console.error("Error inserting calendar events:", error);
-      new Notice(`Error inserting calendar events: ${error.message}`);
-    }
-  }
-
-  /**
-   * Check Apple Calendar permissions
-   */
-  private async checkAppleCalendarPermissions(): Promise<void> {
-    try {
-      const hasPermissions = await this.appleCalendarService.checkPermissions();
-
-      if (hasPermissions) {
-        new Notice("✅ Apple Calendar access is working");
-      } else {
-        new Notice(
-          "❌ Apple Calendar access failed. Please check your credentials in settings."
-        );
-      }
-    } catch (error: any) {
-      console.error("Error checking Apple Calendar permissions:", error);
-      new Notice(`Error checking permissions: ${error.message}`);
-    }
   }
 
   /**
    * Get default import configuration with context awareness
    */
-  getDefaultImportConfig(): TaskImportConfig {
+  public getDefaultImportConfig(): TaskImportConfig {
     // Use the global context instead of detecting again
     const context = this.getCurrentContext();
 
@@ -1929,49 +1243,6 @@ export default class TaskSyncPlugin
     }
 
     return config;
-  }
-
-  /**
-   * Add current task to today's daily note
-   */
-  private async addCurrentTaskToToday(): Promise<void> {
-    try {
-      // Get the currently active file
-      const activeFile = this.app.workspace.getActiveFile();
-
-      if (!activeFile) {
-        new Notice("No file is currently open");
-        return;
-      }
-
-      // Check if the current file is a task
-      const frontMatter =
-        this.app.metadataCache.getFileCache(activeFile)?.frontmatter;
-      if (!frontMatter || frontMatter.Type !== "Task") {
-        new Notice("Current file is not a task");
-        return;
-      }
-
-      // Add the task to today's daily note
-      const result = await this.dailyNoteService.addTaskToToday(
-        activeFile.path
-      );
-
-      if (result.success) {
-        new Notice(
-          `Added "${
-            frontMatter.Title || activeFile.name
-          }" to today's daily note`
-        );
-      } else {
-        new Notice(
-          `Failed to add to today: ${result.error || "Unknown error"}`
-        );
-      }
-    } catch (error: any) {
-      console.error("Error adding current task to today:", error);
-      new Notice(`Error adding to today: ${error.message || "Unknown error"}`);
-    }
   }
 
   /**
