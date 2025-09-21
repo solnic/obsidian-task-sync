@@ -8,8 +8,14 @@ import type { FileContext } from "../main";
 import type { TaskSyncSettings } from "../components/ui/settings/types";
 import type { TaskSyncPluginInterface } from "../interfaces/TaskSyncPluginInterface";
 import { TaskCreateModalWrapper } from "../components/svelte/TaskCreateModalWrapper";
-import { AreaCreateModal, type AreaCreateData } from "../components/modals/AreaCreateModal";
-import { ProjectCreateModal, type ProjectCreateData } from "../components/modals/ProjectCreateModal";
+import {
+  AreaCreateModal,
+  type AreaCreateData,
+} from "../components/modals/AreaCreateModal";
+import {
+  ProjectCreateModal,
+  type ProjectCreateData,
+} from "../components/modals/ProjectCreateModal";
 import { TaskScheduleModal } from "../components/modals/TaskScheduleModal";
 import type { Task } from "../types/entities";
 
@@ -18,7 +24,11 @@ export class ModalService {
   private taskSyncPlugin: TaskSyncPluginInterface;
   private settings: TaskSyncSettings;
 
-  constructor(app: App, taskSyncPlugin: TaskSyncPluginInterface, settings: TaskSyncSettings) {
+  constructor(
+    app: App,
+    taskSyncPlugin: TaskSyncPluginInterface,
+    settings: TaskSyncSettings
+  ) {
     this.app = app;
     this.taskSyncPlugin = taskSyncPlugin;
     this.settings = settings;
@@ -35,10 +45,11 @@ export class ModalService {
    * Open task creation modal
    */
   async openTaskCreateModal(context?: FileContext): Promise<void> {
-    const fileContext = context || this.taskSyncPlugin.contextService.detectCurrentFileContext();
+    const fileContext =
+      context || this.taskSyncPlugin.contextService.detectCurrentFileContext();
 
     const modal = new TaskCreateModalWrapper(
-      this.taskSyncPlugin as any, // Cast for compatibility
+      this.taskSyncPlugin,
       fileContext,
       {},
       async (taskData) => {
@@ -57,7 +68,7 @@ export class ModalService {
    * Open area creation modal
    */
   openAreaCreateModal(): void {
-    const modal = new AreaCreateModal(this.app, this.taskSyncPlugin as any);
+    const modal = new AreaCreateModal(this.app, this.taskSyncPlugin);
 
     modal.onSubmit(async (areaData: AreaCreateData) => {
       await this.taskSyncPlugin.createArea(areaData);
@@ -74,7 +85,7 @@ export class ModalService {
    * Open project creation modal
    */
   openProjectCreateModal(): void {
-    const modal = new ProjectCreateModal(this.app, this.taskSyncPlugin as any);
+    const modal = new ProjectCreateModal(this.app, this.taskSyncPlugin);
 
     modal.onSubmit(async (projectData: ProjectCreateData) => {
       await this.taskSyncPlugin.createProject(projectData);
@@ -90,8 +101,11 @@ export class ModalService {
   /**
    * Open task scheduling modal
    */
-  openTaskScheduleModal(task: Task, onSubmit: (scheduleData: any) => Promise<void>): void {
-    const modal = new TaskScheduleModal(this.app, this.taskSyncPlugin as any, task);
+  openTaskScheduleModal(
+    task: Task,
+    onSubmit: (scheduleData: any) => Promise<void>
+  ): void {
+    const modal = new TaskScheduleModal(this.app, this.taskSyncPlugin, task);
 
     modal.onSubmit(onSubmit);
     modal.open();

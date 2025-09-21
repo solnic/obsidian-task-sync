@@ -13,10 +13,14 @@ import type {
   DailyNoteResult,
   AddTaskResult,
 } from "../services/DailyNoteService";
+import type { TaskSyncSettings } from "../components/ui/settings/types";
 
 export interface TaskSyncPluginInterface {
   // Obsidian app instance
   readonly app: App;
+
+  // Settings access
+  readonly settings: TaskSyncSettings;
 
   // Entity creation methods
   createTask(taskData: any): Promise<Task>;
@@ -81,6 +85,7 @@ export interface TaskSyncPluginInterface {
       config: any
     ): Promise<{ success: boolean; error?: string }>;
     isTaskScheduled(taskPath: string): Promise<boolean>;
+    getAvailableCalendars(): Promise<any[]>;
   };
 
   readonly appleRemindersService: {

@@ -38,6 +38,7 @@ import {
   TASK_TYPE_COLORS,
   validateFolderPath,
 } from "./components/ui/settings";
+import type { TaskSyncPluginInterface } from "./interfaces/TaskSyncPluginInterface";
 import { PROPERTY_SETS } from "./services/base-definitions/BaseConfigurations";
 import { AppleCalendarService } from "./services/AppleCalendarService";
 import { IntegrationManager } from "./services/IntegrationManager";
@@ -137,7 +138,7 @@ function setupNoteManagers(
 
 export default class TaskSyncPlugin
   extends Plugin
-  implements NoteTypeRegistration
+  implements NoteTypeRegistration, TaskSyncPluginInterface
 {
   settings: TaskSyncSettings;
   private previousSettings: TaskSyncSettings | null = null;

@@ -2,7 +2,7 @@ import { SvelteModal } from "./SvelteModal";
 import TaskCreateModalComponent from "./TaskCreateModal.svelte";
 import type { TaskCreateData } from "../modals/TaskCreateModal";
 import type { FileContext } from "../../main";
-import type TaskSyncPlugin from "../../main";
+import type { TaskSyncPluginInterface } from "../../interfaces/TaskSyncPluginInterface";
 
 export class TaskCreateModalWrapper extends SvelteModal {
   private context: FileContext;
@@ -10,12 +10,12 @@ export class TaskCreateModalWrapper extends SvelteModal {
   private onSubmit: (data: TaskCreateData) => void;
 
   constructor(
-    plugin: TaskSyncPlugin,
+    plugin: TaskSyncPluginInterface,
     context: FileContext,
     initialData: Partial<TaskCreateData> = {},
-    onSubmit: (data: TaskCreateData) => void,
+    onSubmit: (data: TaskCreateData) => void
   ) {
-    super(plugin);
+    super(plugin as any); // Cast needed for SvelteModal which expects Plugin
     this.context = context;
     this.initialData = initialData;
     this.onSubmit = onSubmit;
@@ -64,7 +64,7 @@ export class TaskCreateModalWrapper extends SvelteModal {
         oncancel: () => {
           this.close();
         },
-      },
+      }
     );
 
     return component;

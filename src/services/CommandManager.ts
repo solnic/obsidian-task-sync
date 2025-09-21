@@ -25,7 +25,7 @@ export class CommandManager {
     integrationManager: IntegrationManager,
     settings: TaskSyncSettings
   ) {
-    this.plugin = taskSyncPlugin as any; // Cast for Obsidian API access
+    this.plugin = taskSyncPlugin as unknown as Plugin; // Type assertion for Obsidian API access
     this.taskSyncPlugin = taskSyncPlugin;
     this.integrationManager = integrationManager;
     this.settings = { ...settings };
