@@ -101,16 +101,10 @@ export abstract class EntityStore<T extends BaseEntity> {
    * Internal method to perform the actual refresh
    */
   private async performRefresh() {
-    console.log(
-      `${this.storageKey}: Starting performRefresh, folder: ${this.folder}`
-    );
     this._store.update((state) => ({ ...state, loading: true, error: null }));
 
     try {
       const entities = await this.loadAllEntities();
-      console.log(
-        `${this.storageKey}: Loaded ${entities.length} entities from folder: ${this.folder}`
-      );
 
       this._store.update((state) => ({
         ...state,
@@ -122,7 +116,6 @@ export abstract class EntityStore<T extends BaseEntity> {
       // Persist the updated entities
       await this.persistData();
     } catch (error) {
-      console.error(`${this.storageKey}: Error during performRefresh:`, error);
       this._store.update((state) => ({
         ...state,
         loading: false,
@@ -339,10 +332,7 @@ export abstract class EntityStore<T extends BaseEntity> {
    */
   private async parseFileToEntity(file: TFile): Promise<T> {
     const result = await this.fileManager.loadEntity(file);
-    console.log(
-      `${this.storageKey}: parseFileToEntity for ${file.path} returned:`,
-      result
-    );
+
     return result;
   }
 

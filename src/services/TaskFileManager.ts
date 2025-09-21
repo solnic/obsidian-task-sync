@@ -278,23 +278,12 @@ export class TaskFileManager extends FileManager {
     const frontMatter =
       cache?.frontmatter || (await this.waitForMetadataCache(file));
 
-    console.log(
-      `TaskFileManager: loadEntity for ${file.path}, frontMatter:`,
-      frontMatter
-    );
-
     if (frontMatter.Type !== "Task") {
-      console.log(
-        `TaskFileManager: Skipping ${file.path} - Type is ${frontMatter.Type}, not Task`
-      );
       return;
     }
 
     // Skip if essential properties are null (metadata cache not ready)
     if (frontMatter.Title === null || frontMatter.Title === undefined) {
-      console.log(
-        `TaskFileManager: Skipping ${file.path} - Title is null, metadata cache not ready`
-      );
       return;
     }
 

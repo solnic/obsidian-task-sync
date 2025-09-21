@@ -153,12 +153,6 @@
 
   // Computed filtered tasks with manual filters only
   let filteredTasks = $derived.by(() => {
-    // Force reactivity by accessing tasks array and its contents
-    const taskTitles = tasks.map((t) => t?.title || "null");
-    console.log(
-      `LocalTasksService: Computing filteredTasks from ${tasks.length} tasks, tasks array:`,
-      taskTitles
-    );
     // Start with all tasks, apply only manual filters
     let filtered = tasks.filter((task) => {
       // Project filter
@@ -222,7 +216,6 @@
       filtered = sortTasks(filtered, sortFields);
     }
 
-    console.log(`LocalTasksService: Filtered result: ${filtered.length} tasks`);
     return filtered;
   });
 
@@ -248,13 +241,6 @@
 
     // Subscribe to task store updates immediately
     const unsubscribe = taskStore.subscribe((state) => {
-      console.log(
-        `LocalTasksService: Store update - ${state.entities.length} tasks, loading: ${state.loading}, error: ${state.error}`
-      );
-      console.log(
-        `LocalTasksService: Tasks array:`,
-        state.entities.map((t) => (t ? t.title : "null"))
-      );
       tasks = state.entities;
       isLoading = state.loading;
       error = state.error;
