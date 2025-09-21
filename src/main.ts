@@ -15,15 +15,8 @@ import { TaskFileManager } from "./services/TaskFileManager";
 import { TaskTodoMarkdownProcessor } from "./services/TaskTodoMarkdownProcessor";
 import { AreaFileManager } from "./services/AreaFileManager";
 import { ProjectFileManager } from "./services/ProjectFileManager";
-import { TaskCreateModalWrapper } from "./components/svelte/TaskCreateModalWrapper";
-import {
-  AreaCreateModal,
-  AreaCreateData,
-} from "./components/modals/AreaCreateModal";
-import {
-  ProjectCreateModal,
-  ProjectCreateData,
-} from "./components/modals/ProjectCreateModal";
+import { AreaCreateData } from "./components/modals/AreaCreateModal";
+import { ProjectCreateData } from "./components/modals/ProjectCreateModal";
 
 import { TaskSyncSettingTab } from "./components/ui/settings";
 import type {
@@ -85,6 +78,8 @@ import {
   type NoteTypeConfig,
 } from "./services/NoteManagers";
 import { FileManager } from "./services/FileManager";
+import { ContextService } from "./services/ContextService";
+import { ModalService } from "./services/ModalService";
 
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
@@ -169,6 +164,8 @@ export default class TaskSyncPlugin
   private markdownProcessor: MarkdownPostProcessor;
   commandManager: CommandManager;
   noteManagers: NoteManagers;
+  contextService: ContextService;
+  modalService: ModalService;
 
   public get stores(): {
     taskStore: typeof taskStore;
@@ -234,6 +231,12 @@ export default class TaskSyncPlugin
 
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);
+
+    // Initialize context service
+    this.contextService = new ContextService(this.app, this.settings);
+
+    // Initialize modal service
+    this.modalService = new ModalService(this.app, this, this.settings);
 
     // Initialize cache manager
     this.cacheManager = new CacheManager(this);
@@ -309,7 +312,6 @@ export default class TaskSyncPlugin
     this.commandManager = new CommandManager(
       this,
       this.integrationManager,
-      {} as any, // Legacy parameter - ignored
       this.settings
     );
 
@@ -625,6 +627,14 @@ export default class TaskSyncPlugin
       this.taskImportManager.updateSettings(this.settings);
     }
 
+    if (this.contextService) {
+      this.contextService.updateSettings(this.settings);
+    }
+
+    if (this.modalService) {
+      this.modalService.updateSettings(this.settings);
+    }
+
     // TasksView settings are now reactive through the settings store
     // No manual update needed
 
@@ -784,60 +794,6 @@ export default class TaskSyncPlugin
     }
   }
 
-  // UI Methods - made public for command classes
-  public async openTaskCreateModal(): Promise<void> {
-    const context = this.detectCurrentFileContext();
-
-    const modal = new TaskCreateModalWrapper(
-      this,
-      context,
-      {},
-      async (taskData) => {
-        await this.createTask(taskData);
-
-        if (this.settings.autoUpdateBaseViews) {
-          await this.refreshBaseViews();
-        }
-      }
-    );
-
-    modal.open();
-  }
-
-  /**
-   * Open area creation modal
-   */
-  public openAreaCreateModal(): void {
-    const modal = new AreaCreateModal(this.app, this);
-
-    modal.onSubmit(async (areaData) => {
-      await this.createArea(areaData);
-
-      if (this.settings.autoUpdateBaseViews) {
-        await this.refreshBaseViews();
-      }
-    });
-
-    modal.open();
-  }
-
-  /**
-   * Open project creation modal
-   */
-  public openProjectCreateModal(): void {
-    const modal = new ProjectCreateModal(this.app, this);
-
-    modal.onSubmit(async (projectData) => {
-      await this.createProject(projectData);
-
-      if (this.settings.autoUpdateBaseViews) {
-        await this.refreshBaseViews();
-      }
-    });
-
-    modal.open();
-  }
-
   /**
    * Initialize Tasks view in the right sidebar if it doesn't already exist
    */
@@ -900,53 +856,7 @@ export default class TaskSyncPlugin
   }
 
   public detectCurrentFileContext(): FileContext {
-    const activeFile = this.app.workspace.getActiveFile();
-
-    if (!activeFile) {
-      return { type: "none" };
-    }
-
-    const filePath = activeFile.path;
-    const fileName = activeFile.name;
-
-    // Check if file is a daily note (format: YYYY-MM-DD anywhere in path or name)
-    const dailyNotePattern = /\b\d{4}-\d{2}-\d{2}\b/;
-    if (dailyNotePattern.test(filePath) || dailyNotePattern.test(fileName)) {
-      return {
-        type: "daily",
-        name: fileName.replace(".md", ""),
-        path: filePath,
-      };
-    }
-
-    // Check if file is in projects folder
-    if (filePath.startsWith(this.settings.projectsFolder + "/")) {
-      return {
-        type: "project",
-        name: fileName.replace(".md", ""),
-        path: filePath,
-      };
-    }
-
-    // Check if file is in areas folder
-    if (filePath.startsWith(this.settings.areasFolder + "/")) {
-      return {
-        type: "area",
-        name: fileName.replace(".md", ""),
-        path: filePath,
-      };
-    }
-
-    // Check if file is in tasks folder
-    if (filePath.startsWith(this.settings.tasksFolder + "/")) {
-      return {
-        type: "task",
-        name: fileName.replace(".md", ""),
-        path: filePath,
-      };
-    }
-
-    return { type: "none" };
+    return this.contextService.detectCurrentFileContext();
   }
 
   /**

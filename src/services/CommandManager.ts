@@ -9,35 +9,11 @@ import type { TaskSyncSettings } from "../components/ui/settings/types";
 import type { IntegrationManager } from "./IntegrationManager";
 import { CommandRegistry } from "../commands/CommandRegistry";
 import type { Command } from "../commands/Command";
-
-// Legacy interface for backward compatibility - will be removed
-export interface CommandCallbacks {
-  openTaskCreateModal: () => void;
-  openAreaCreateModal: () => void;
-  openProjectCreateModal: () => void;
-  refresh: () => Promise<void>;
-  refreshBaseViews: () => Promise<void>;
-  promoteTodoToTask: () => Promise<{ message: string }>;
-  revertPromotedTodo: () => Promise<{ message: string }>;
-  addCurrentTaskToToday: () => Promise<void>;
-  activateTasksView: () => Promise<void>;
-  activateContextTabView: () => Promise<void>;
-  activateTaskPlanningView: () => Promise<void>;
-  startDailyPlanning: () => Promise<void>;
-  importGitHubIssue: () => Promise<void>;
-  importAllGitHubIssues: () => Promise<void>;
-  importAppleReminders: () => Promise<void>;
-  checkAppleRemindersPermissions: () => Promise<void>;
-  insertCalendarEvents: () => Promise<void>;
-  checkAppleCalendarPermissions: () => Promise<void>;
-  scheduleCurrentTask: () => Promise<void>;
-  clearAllCaches: () => Promise<void>;
-  getStats: () => Promise<Array<{ cacheKey: string; keyCount: number }>>;
-  isAppleCalendarPlatformSupported: () => boolean;
-}
+import type { TaskSyncPluginInterface } from "../interfaces/TaskSyncPluginInterface";
 
 export class CommandManager {
   private plugin: Plugin;
+  private taskSyncPlugin: TaskSyncPluginInterface;
   private integrationManager: IntegrationManager;
   private settings: TaskSyncSettings;
   private commandRegistry: CommandRegistry;
@@ -45,18 +21,19 @@ export class CommandManager {
   private settingsUnsubscribe?: () => void;
 
   constructor(
-    plugin: Plugin,
+    taskSyncPlugin: TaskSyncPluginInterface,
     integrationManager: IntegrationManager,
-    callbacks: CommandCallbacks, // Legacy parameter - ignored
     settings: TaskSyncSettings
   ) {
-    this.plugin = plugin;
+    this.plugin = taskSyncPlugin as any; // Cast for Obsidian API access
+    this.taskSyncPlugin = taskSyncPlugin;
     this.integrationManager = integrationManager;
     this.settings = { ...settings };
 
     // Initialize command registry with context
     this.commandRegistry = new CommandRegistry({
       plugin: this.plugin,
+      taskSyncPlugin: this.taskSyncPlugin,
       integrationManager: this.integrationManager,
       settings: this.settings,
     });

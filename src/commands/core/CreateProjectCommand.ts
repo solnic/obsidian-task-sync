@@ -4,7 +4,6 @@
  */
 
 import { Command, type CommandContext } from "../Command";
-import { ProjectCreateModal } from "../../components/modals/ProjectCreateModal";
 
 export class CreateProjectCommand extends Command {
   constructor(context: CommandContext) {
@@ -20,16 +19,6 @@ export class CreateProjectCommand extends Command {
   }
 
   execute(): void {
-    const modal = new ProjectCreateModal(this.plugin.app, this.plugin as any);
-
-    modal.onSubmit(async (projectData) => {
-      await (this.plugin as any).createProject(projectData);
-
-      if (this.settings.autoUpdateBaseViews) {
-        await (this.plugin as any).refreshBaseViews();
-      }
-    });
-
-    modal.open();
+    this.taskSyncPlugin.modalService.openProjectCreateModal();
   }
 }
