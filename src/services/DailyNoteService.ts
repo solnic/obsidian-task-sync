@@ -6,6 +6,7 @@
 
 import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../main";
+import { getDateString } from "../utils/dateFiltering";
 
 export interface DailyNoteResult {
   path: string;
@@ -34,7 +35,7 @@ export class DailyNoteService {
    */
   async getTodayDailyNotePath(): Promise<string> {
     const today = new Date();
-    const dateString = today.toISOString().split("T")[0]; // YYYY-MM-DD format
+    const dateString = getDateString(today); // YYYY-MM-DD format
 
     // First, check if the currently active file is today's daily note
     const activeFile = this.app.workspace.getActiveFile();
@@ -167,7 +168,7 @@ export class DailyNoteService {
       }
 
       // Set the Do Date property in the task's front-matter to today's date
-      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+      const today = getDateString(new Date()); // YYYY-MM-DD format
 
       await this.app.fileManager.processFrontMatter(taskFile, (frontmatter) => {
         // Only set Do Date if it's not already set or if it's different from today

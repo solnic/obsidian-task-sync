@@ -1329,4 +1329,32 @@ export default class TaskSyncPlugin
       console.log("Task todo markdown processor unregistered");
     }
   }
+
+  /**
+   * Wait for all stores to finish any ongoing refresh operations
+   * This provides deterministic waiting instead of using setTimeout
+   */
+  private async waitForStoreHydration(timeout: number = 5000): Promise<void> {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < timeout) {
+      // Check if all stores are not currently loading
+      const taskStoreState = get(taskStore);
+      const projectStoreState = get(projectStore);
+      const areaStoreState = get(areaStore);
+
+      if (
+        !taskStoreState.loading &&
+        !projectStoreState.loading &&
+        !areaStoreState.loading
+      ) {
+        return; // All stores are ready
+      }
+
+      // Wait a short time before checking again
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    console.warn(`Store hydration did not complete within ${timeout}ms`);
+  }
 }

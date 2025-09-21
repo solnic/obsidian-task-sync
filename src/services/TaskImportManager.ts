@@ -196,12 +196,8 @@ export class TaskImportManager {
     content += `**Source:** ${taskData.sourceType}\n`;
     content += `**External ID:** ${taskData.id}\n`;
     content += `**URL:** [View in ${taskData.sourceType}](${taskData.externalUrl})\n`;
-    content += `**Created:** ${
-      taskData.createdAt.toISOString().split("T")[0]
-    }\n`;
-    content += `**Updated:** ${
-      taskData.updatedAt.toISOString().split("T")[0]
-    }\n`;
+    content += `**Created:** ${getDateString(taskData.createdAt)}\n`;
+    content += `**Updated:** ${getDateString(taskData.updatedAt)}\n`;
 
     // Add assignee if available
     if (taskData.assignee) {

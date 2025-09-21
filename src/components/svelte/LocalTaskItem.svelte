@@ -110,7 +110,7 @@
   }
 
   async function handleScheduleForToday() {
-    const todayString = new Date().toISOString().split("T")[0];
+    const today = new Date();
 
     if (isScheduled) {
       // Unschedule the task - clear the Do Date
@@ -123,7 +123,7 @@
       // Schedule the task for today - set Do Date to today
       scheduleTaskForToday(task);
       await plugin.noteManagers.update(task, {
-        doDate: todayString,
+        doDate: today,
       });
       console.log("Scheduling task for today:", task.title);
     }

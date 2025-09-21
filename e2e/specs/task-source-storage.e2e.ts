@@ -159,12 +159,13 @@ describe("Task Source Storage", () => {
       const task = plugin.stores.taskStore.findEntityByPath(
         importResult.taskFilePath
       );
+
       const allTasks = plugin.stores.taskStore.getEntities();
       const tasksWithSource = allTasks.filter((t: any) => t.source);
 
       return {
         success: true,
-        taskPath: importResult.taskFilePath,
+        taskFilePath: importResult.taskFilePath,
         source: task.source,
         taskTitle: task.title,
         debug: {
@@ -178,7 +179,7 @@ describe("Task Source Storage", () => {
 
     // Verify the import was successful
     expect(result.success).toBe(true);
-    expect(result.taskPath).toBeTruthy();
+    expect(result.taskFilePath).toBeTruthy();
     expect(result.taskTitle).toBe("Test import persistence issue");
 
     expect(result.source.name).toBe("github");
@@ -218,13 +219,13 @@ describe("Task Source Storage", () => {
       );
 
       return {
-        taskPath: importResult.taskFilePath,
+        taskFilePath: importResult.taskFilePath,
         source: task.source,
         taskTitle: task.title,
       };
     });
 
-    expect(result.taskPath).toBeTruthy();
+    expect(result.taskFilePath).toBeTruthy();
     expect(result.taskTitle).toBe("Team Meeting");
 
     expect(result.source).toBeDefined();
