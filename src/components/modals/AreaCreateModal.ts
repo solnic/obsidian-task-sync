@@ -4,7 +4,7 @@
  */
 
 import { App, Modal, Setting } from "obsidian";
-import TaskSyncPlugin from "../../main";
+import type { TaskSyncPluginInterface } from "../../interfaces/TaskSyncPluginInterface";
 
 export interface AreaCreateData {
   name: string;
@@ -12,11 +12,11 @@ export interface AreaCreateData {
 }
 
 export class AreaCreateModal extends Modal {
-  private plugin: TaskSyncPlugin;
+  private plugin: TaskSyncPluginInterface;
   private onSubmitCallback?: (areaData: AreaCreateData) => Promise<void>;
   private formData: Partial<AreaCreateData> = {};
 
-  constructor(app: App, plugin: TaskSyncPlugin) {
+  constructor(app: App, plugin: TaskSyncPluginInterface) {
     super(app);
     this.plugin = plugin;
     this.modalEl.addClass("task-sync-create-area");

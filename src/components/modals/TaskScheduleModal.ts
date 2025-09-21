@@ -16,7 +16,7 @@ import { Task } from "../../types/entities";
 import { TaskSchedulingConfig } from "../../types/scheduling";
 import { Calendar } from "../../types/calendar";
 import { getDateString } from "../../utils/dateFiltering";
-import TaskSyncPlugin from "../../main";
+import type { TaskSyncPluginInterface } from "../../interfaces/TaskSyncPluginInterface";
 
 export interface TaskScheduleData {
   targetCalendar: string;
@@ -30,7 +30,7 @@ export interface TaskScheduleData {
 }
 
 export class TaskScheduleModal extends Modal {
-  private plugin: TaskSyncPlugin;
+  private plugin: TaskSyncPluginInterface;
   private task: Task;
   private onSubmitCallback?: (scheduleData: TaskScheduleData) => Promise<void>;
   private formData: Partial<TaskScheduleData> = {};
@@ -48,7 +48,7 @@ export class TaskScheduleModal extends Modal {
   private includeTaskDetailsToggle: ToggleComponent;
   private remindersInput: TextComponent;
 
-  constructor(app: App, plugin: TaskSyncPlugin, task: Task) {
+  constructor(app: App, plugin: TaskSyncPluginInterface, task: Task) {
     super(app);
     this.plugin = plugin;
     this.task = task;

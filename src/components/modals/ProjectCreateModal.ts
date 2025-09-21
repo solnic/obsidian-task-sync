@@ -4,7 +4,7 @@
  */
 
 import { App, Modal, Setting } from "obsidian";
-import TaskSyncPlugin from "../../main";
+import type { TaskSyncPluginInterface } from "../../interfaces/TaskSyncPluginInterface";
 
 export interface ProjectCreateData {
   name: string;
@@ -13,11 +13,11 @@ export interface ProjectCreateData {
 }
 
 export class ProjectCreateModal extends Modal {
-  private plugin: TaskSyncPlugin;
+  private plugin: TaskSyncPluginInterface;
   private onSubmitCallback?: (projectData: ProjectCreateData) => Promise<void>;
   private formData: Partial<ProjectCreateData> = {};
 
-  constructor(app: App, plugin: TaskSyncPlugin) {
+  constructor(app: App, plugin: TaskSyncPluginInterface) {
     super(app);
     this.plugin = plugin;
     this.modalEl.addClass("task-sync-create-project");

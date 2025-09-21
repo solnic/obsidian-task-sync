@@ -5,7 +5,6 @@
 
 import { Command, type CommandContext } from "../Command";
 import { Notice } from "obsidian";
-import { TaskScheduleModal } from "../../components/modals/TaskScheduleModal";
 import { taskStore } from "../../stores/taskStore";
 
 export class ScheduleTaskCommand extends Command {
@@ -60,13 +59,12 @@ export class ScheduleTaskCommand extends Command {
     }
 
     // Open the scheduling modal
-    const modal = new TaskScheduleModal(this.plugin.app, this.plugin as any, task);
-
-    modal.onSubmit(async (scheduleData) => {
-      await this.scheduleTask(task, scheduleData);
-    });
-
-    modal.open();
+    this.taskSyncPlugin.modalService.openTaskScheduleModal(
+      task,
+      async (scheduleData) => {
+        await this.scheduleTask(task, scheduleData);
+      }
+    );
   }
 
   /**

@@ -6,20 +6,24 @@
 import { Plugin } from "obsidian";
 import type { TaskSyncSettings } from "../components/ui/settings/types";
 import type { IntegrationManager } from "../services/IntegrationManager";
+import type { TaskSyncPluginInterface } from "../interfaces/TaskSyncPluginInterface";
 
 export interface CommandContext {
-  plugin: Plugin;
+  plugin: Plugin; // Still needed for addCommand registration
+  taskSyncPlugin: TaskSyncPluginInterface; // Clean interface for command logic
   integrationManager: IntegrationManager;
   settings: TaskSyncSettings;
 }
 
 export abstract class Command {
-  protected plugin: Plugin;
+  protected plugin: Plugin; // For Obsidian API registration only
+  protected taskSyncPlugin: TaskSyncPluginInterface; // For command logic
   protected integrationManager: IntegrationManager;
   protected settings: TaskSyncSettings;
 
   constructor(context: CommandContext) {
     this.plugin = context.plugin;
+    this.taskSyncPlugin = context.taskSyncPlugin;
     this.integrationManager = context.integrationManager;
     this.settings = context.settings;
   }
