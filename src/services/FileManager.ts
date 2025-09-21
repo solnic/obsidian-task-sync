@@ -255,11 +255,27 @@ export abstract class FileManager {
    * Uses event-driven approach with fallback polling for better performance
    */
   public async waitForMetadataCache(file: TFile): Promise<any> {
-    // First check if metadata is already available
+    // Helper function to check if frontmatter is complete (has non-null values)
+    const isCompleteFrontmatter = (frontmatter: any): boolean => {
+      if (!frontmatter || Object.keys(frontmatter).length === 0) {
+        return false;
+      }
+      // Check if essential properties have non-null values
+      // For tasks, we expect at least Title and Type to have values
+      if (frontmatter.Type === "Task") {
+        return frontmatter.Title !== null && frontmatter.Title !== undefined;
+      }
+      // For other entity types, just check that we have some non-null values
+      return Object.values(frontmatter).some(
+        (value) => value !== null && value !== undefined
+      );
+    };
+
+    // First check if metadata is already available and complete
     const existingCache = this.app.metadataCache.getFileCache(file);
     if (
       existingCache?.frontmatter &&
-      Object.keys(existingCache.frontmatter).length > 0
+      isCompleteFrontmatter(existingCache.frontmatter)
     ) {
       return existingCache.frontmatter;
     }
@@ -279,7 +295,7 @@ export abstract class FileManager {
         if (
           changedFile.path === file.path &&
           cache?.frontmatter &&
-          Object.keys(cache.frontmatter).length > 0
+          isCompleteFrontmatter(cache.frontmatter)
         ) {
           clearTimeout(timeout);
           this.app.metadataCache.off("changed", onMetadataChanged);
@@ -293,7 +309,7 @@ export abstract class FileManager {
       // Fallback: check again after a short delay in case the event was missed
       setTimeout(() => {
         const cache = this.app.metadataCache.getFileCache(file);
-        if (cache?.frontmatter && Object.keys(cache.frontmatter).length > 0) {
+        if (cache?.frontmatter && isCompleteFrontmatter(cache.frontmatter)) {
           clearTimeout(timeout);
           this.app.metadataCache.off("changed", onMetadataChanged);
           resolve(cache.frontmatter);

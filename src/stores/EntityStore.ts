@@ -338,7 +338,12 @@ export abstract class EntityStore<T extends BaseEntity> {
    * Parse a file and extract entity data using file manager
    */
   private async parseFileToEntity(file: TFile): Promise<T> {
-    return await this.fileManager.loadEntity(file);
+    const result = await this.fileManager.loadEntity(file);
+    console.log(
+      `${this.storageKey}: parseFileToEntity for ${file.path} returned:`,
+      result
+    );
+    return result;
   }
 
   /**
