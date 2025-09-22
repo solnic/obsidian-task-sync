@@ -1,136 +1,127 @@
 /**
- * Test for the event-based settings change system
- * Verifies that settings changes emit proper events
+ * Test for the reactive settings store integration
+ * Verifies that services react to settings changes via the settings store
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { EventManager } from "../src/events/EventManager";
-import { EventType, SettingsChangedEventData } from "../src/events/EventTypes";
-import {
-  GitHubSettingsHandler,
-  AppleRemindersSettingsHandler,
-} from "../src/events/handlers/SettingsChangeHandler";
+import { GitHubService } from "../src/services/GitHubService";
+import { AppleRemindersService } from "../src/services/AppleRemindersService";
+import { CacheManager } from "../src/cache/CacheManager";
+import { settingsStore } from "../src/stores/settingsStore";
+import { TaskSyncSettings } from "../src/main";
 
 // Mock console.log to capture log messages
 const mockConsoleLog = vi.fn();
 vi.stubGlobal("console", { ...console, log: mockConsoleLog });
 
-describe("Settings Event System", () => {
-  let eventManager: EventManager;
-  let mockGitHubService: any;
-  let mockAppleRemindersService: any;
-  let githubHandler: GitHubSettingsHandler;
-  let appleHandler: AppleRemindersSettingsHandler;
+describe("Settings Store Integration", () => {
+  let mockCacheManager: CacheManager;
+  let githubService: GitHubService;
+  let appleRemindersService: AppleRemindersService;
+  let mockSettings: TaskSyncSettings;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockConsoleLog.mockClear();
 
-    eventManager = new EventManager();
+    // Create mock cache manager
+    mockCacheManager = {
+      createCache: vi.fn().mockReturnValue({
+        get: vi.fn(),
+        set: vi.fn(),
+        clear: vi.fn(),
+        preloadFromStorage: vi.fn(),
+      }),
+    } as any;
 
-    // Mock services with fresh mocks
-    mockGitHubService = {
-      updateSettingsInternal: vi.fn(),
-      clearCache: vi.fn(),
-    };
+    // Create mock settings
+    mockSettings = {
+      githubIntegration: {
+        enabled: true,
+        personalAccessToken: "test-token",
+        labelTypeMapping: {},
+        orgRepoMappings: [],
+      },
+      appleRemindersIntegration: {
+        enabled: true,
+        reminderLists: [],
+        includeCompletedReminders: false,
+        excludeAllDayReminders: false,
+      },
+    } as any;
 
-    mockAppleRemindersService = {
-      updateSettingsInternal: vi.fn(),
-      clearCache: vi.fn(),
-    };
+    // Initialize settings store
+    settingsStore.initialize(mockSettings);
 
-    // Create fresh handlers
-    githubHandler = new GitHubSettingsHandler(mockGitHubService);
-    appleHandler = new AppleRemindersSettingsHandler(mockAppleRemindersService);
+    // Create real services
+    githubService = new GitHubService(mockSettings);
+    await githubService.initialize(mockCacheManager);
+    githubService.setupSettingsSubscription();
 
-    // Register handlers
-    eventManager.registerHandler(githubHandler);
-    eventManager.registerHandler(appleHandler);
+    appleRemindersService = new AppleRemindersService(mockSettings);
+    await appleRemindersService.initialize(mockCacheManager);
+    appleRemindersService.setupSettingsSubscription();
+
+    // Spy on service methods
+    vi.spyOn(githubService, "updateSettingsInternal");
+    vi.spyOn(githubService, "clearCache");
+    vi.spyOn(appleRemindersService, "updateSettingsInternal");
+    vi.spyOn(appleRemindersService, "clearCache");
   });
 
-  it("should handle GitHub settings changes", async () => {
-    const eventData: SettingsChangedEventData = {
-      section: "githubIntegration",
-      oldSettings: { enabled: false, personalAccessToken: "" },
-      newSettings: { enabled: true, personalAccessToken: "new-token" },
-      hasChanges: true,
+  it("should handle GitHub settings changes via store", async () => {
+    const newGitHubSettings = {
+      enabled: true,
+      personalAccessToken: "new-token",
+      repositories: [],
+      defaultRepository: "test/repo",
+      issueFilters: {
+        state: "open" as const,
+        assignee: "",
+        labels: [],
+      },
+      labelTypeMapping: {},
+      orgRepoMappings: [],
     };
 
-    await eventManager.emit(EventType.SETTINGS_CHANGED, eventData);
+    // Update GitHub settings in the store
+    settingsStore.updateGitHubIntegration(newGitHubSettings);
+
+    // Wait for reactive update
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(mockConsoleLog).toHaveBeenCalledWith(
-      "🐙 GitHub settings changed via event system, clearing cache"
+      "🐙 GitHub settings changed via store, updating service"
     );
-    expect(mockGitHubService.updateSettingsInternal).toHaveBeenCalledWith(
-      eventData.newSettings
+    expect(githubService.updateSettingsInternal).toHaveBeenCalledWith(
+      newGitHubSettings
     );
-    expect(mockGitHubService.clearCache).toHaveBeenCalled();
+    expect(githubService.clearCache).toHaveBeenCalled();
   });
 
-  it("should handle Apple Reminders settings changes", async () => {
-    const eventData: SettingsChangedEventData = {
-      section: "appleRemindersIntegration",
-      oldSettings: { enabled: false, reminderLists: [] },
-      newSettings: { enabled: true, reminderLists: ["Work"] },
-      hasChanges: true,
+  it("should handle Apple Reminders settings changes via store", async () => {
+    const newAppleSettings = {
+      enabled: true,
+      reminderLists: ["Work"],
+      includeCompletedReminders: false,
+      excludeAllDayReminders: false,
+      syncInterval: 300,
+      defaultTaskType: "Task",
+      importNotesAsDescription: true,
+      preservePriority: true,
     };
 
-    await eventManager.emit(EventType.SETTINGS_CHANGED, eventData);
+    // Update Apple Reminders settings in the store
+    settingsStore.updateAppleRemindersIntegration(newAppleSettings);
+
+    // Wait for reactive update
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(mockConsoleLog).toHaveBeenCalledWith(
-      "🍎 Apple Reminders settings changed via event system, clearing cache"
+      "🍎 Apple Reminders settings changed via store, updating service"
     );
-    expect(
-      mockAppleRemindersService.updateSettingsInternal
-    ).toHaveBeenCalledWith(eventData.newSettings);
-    expect(mockAppleRemindersService.clearCache).toHaveBeenCalled();
-  });
-
-  it("should ignore settings changes when hasChanges is false", async () => {
-    const eventData: SettingsChangedEventData = {
-      section: "githubIntegration",
-      oldSettings: { enabled: true, personalAccessToken: "token" },
-      newSettings: { enabled: true, personalAccessToken: "token" },
-      hasChanges: false,
-    };
-
-    await eventManager.emit(EventType.SETTINGS_CHANGED, eventData);
-
-    expect(mockGitHubService.updateSettingsInternal).not.toHaveBeenCalled();
-    expect(mockGitHubService.clearCache).not.toHaveBeenCalled();
-  });
-
-  it("should ignore settings changes for unrelated sections", async () => {
-    const eventData: SettingsChangedEventData = {
-      section: "taskTypes",
-      oldSettings: [],
-      newSettings: [{ name: "Bug", color: "red" }],
-      hasChanges: true,
-    };
-
-    await eventManager.emit(EventType.SETTINGS_CHANGED, eventData);
-
-    expect(mockGitHubService.updateSettingsInternal).not.toHaveBeenCalled();
-    expect(mockGitHubService.clearCache).not.toHaveBeenCalled();
-    expect(
-      mockAppleRemindersService.updateSettingsInternal
-    ).not.toHaveBeenCalled();
-    expect(mockAppleRemindersService.clearCache).not.toHaveBeenCalled();
-  });
-
-  it("should handle multiple settings changes independently", async () => {
-    // Apple Reminders settings change
-    const appleEventData: SettingsChangedEventData = {
-      section: "appleRemindersIntegration",
-      oldSettings: { enabled: false },
-      newSettings: { enabled: true },
-      hasChanges: true,
-    };
-
-    await eventManager.emit(EventType.SETTINGS_CHANGED, appleEventData);
-
-    expect(
-      mockAppleRemindersService.updateSettingsInternal
-    ).toHaveBeenCalledWith(appleEventData.newSettings);
-    expect(mockAppleRemindersService.clearCache).toHaveBeenCalled();
+    expect(appleRemindersService.updateSettingsInternal).toHaveBeenCalledWith(
+      newAppleSettings
+    );
+    expect(appleRemindersService.clearCache).toHaveBeenCalled();
   });
 });

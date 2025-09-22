@@ -31,10 +31,12 @@ import {
   AppleReminders,
 } from "../cache/schemas/apple-reminders";
 import * as osascript from "node-osascript";
+import { settingsStore } from "../stores/settingsStore";
 
 export class AppleRemindersService extends AbstractService {
   private listsCache?: SchemaCache<AppleRemindersLists>;
   private remindersCache?: SchemaCache<AppleReminders>;
+  private settingsUnsubscribe?: () => void;
 
   constructor(settings: TaskSyncSettings) {
     super(settings);
@@ -142,6 +144,32 @@ export class AppleRemindersService extends AbstractService {
    */
   isPlatformSupported(): boolean {
     return process.platform === "darwin";
+  }
+
+  /**
+   * Setup reactive settings subscription
+   */
+  setupSettingsSubscription(): void {
+    this.settingsUnsubscribe =
+      settingsStore.appleRemindersIntegration.subscribe((appleSettings) => {
+        if (appleSettings) {
+          console.log(
+            "🍎 Apple Reminders settings changed via store, updating service"
+          );
+          this.updateSettingsInternal(appleSettings);
+          this.clearCache();
+        }
+      });
+  }
+
+  /**
+   * Clean up settings subscription
+   */
+  private cleanupSettingsSubscription(): void {
+    if (this.settingsUnsubscribe) {
+      this.settingsUnsubscribe();
+      this.settingsUnsubscribe = undefined;
+    }
   }
 
   /**

@@ -28,11 +28,7 @@ import { EventManager } from "./events";
 import { EventType, SettingsChangedEventData } from "./events/EventTypes";
 import { StatusDoneHandler } from "./events/handlers";
 import { EntityCacheHandler } from "./events/handlers/EntityCacheHandler";
-import {
-  GitHubSettingsHandler,
-  AppleRemindersSettingsHandler,
-  TaskStatusSettingsHandler,
-} from "./events/handlers/SettingsChangeHandler";
+import { TaskStatusSettingsHandler } from "./events/handlers/SettingsChangeHandler";
 import {
   DEFAULT_SETTINGS,
   TASK_TYPE_COLORS,
@@ -148,8 +144,6 @@ export default class TaskSyncPlugin
   fileChangeListener: FileChangeListener;
   statusDoneHandler: StatusDoneHandler;
   entityCacheHandler: EntityCacheHandler;
-  githubSettingsHandler: GitHubSettingsHandler;
-  appleRemindersSettingsHandler: AppleRemindersSettingsHandler;
   taskStatusSettingsHandler: TaskStatusSettingsHandler;
   cacheManager: CacheManager;
   integrationManager: IntegrationManager;
@@ -161,10 +155,10 @@ export default class TaskSyncPlugin
   taskTodoMarkdownProcessor: TaskTodoMarkdownProcessor;
   taskMentionDetectionService: TaskMentionDetectionService;
   taskMentionSyncHandler: TaskMentionSyncHandler;
-  private markdownProcessor: MarkdownPostProcessor;
   commandManager: CommandManager;
   noteManagers: NoteManagers;
   contextService: ContextService;
+  private markdownProcessor: MarkdownPostProcessor;
 
   public get stores(): {
     taskStore: typeof taskStore;
@@ -343,22 +337,14 @@ export default class TaskSyncPlugin
       this.taskMentionDetectionService
     );
 
-    // Initialize settings change handlers
-    this.githubSettingsHandler = new GitHubSettingsHandler(
-      this.integrationManager.getGitHubService()
-    );
-    this.appleRemindersSettingsHandler = new AppleRemindersSettingsHandler(
-      this.integrationManager.getAppleRemindersService()
-    );
+    // Initialize task status settings handler (GitHub and Apple Reminders handlers are now managed by their services)
     this.taskStatusSettingsHandler = new TaskStatusSettingsHandler(
       this.statusDoneHandler
     );
 
-    // Register event handlers
+    // Register event handlers (GitHub and Apple Reminders handlers are now registered by their services)
     this.eventManager.registerHandler(this.statusDoneHandler);
     this.eventManager.registerHandler(this.entityCacheHandler);
-    this.eventManager.registerHandler(this.githubSettingsHandler);
-    this.eventManager.registerHandler(this.appleRemindersSettingsHandler);
     this.eventManager.registerHandler(this.taskStatusSettingsHandler);
     this.eventManager.registerHandler(this.taskMentionSyncHandler);
 

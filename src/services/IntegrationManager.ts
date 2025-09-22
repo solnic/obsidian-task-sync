@@ -103,6 +103,7 @@ export class IntegrationManager {
         await this.githubService.initialize(this.cacheManager);
         this.githubService.setImportDependencies(this.taskImportManager);
         this.githubService.setDailyNoteService(this.dailyNoteService);
+        this.githubService.setupSettingsSubscription();
       } else {
         // Update existing service with new settings
         this.githubService.updateSettings(this.settings);
@@ -127,6 +128,7 @@ export class IntegrationManager {
           this.taskImportManager
         );
         this.appleRemindersService.setDailyNoteService(this.dailyNoteService);
+        this.appleRemindersService.setupSettingsSubscription();
       } else {
         // Update existing service with new settings
         this.appleRemindersService.updateSettings(this.settings);

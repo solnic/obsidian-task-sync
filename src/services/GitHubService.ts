@@ -35,6 +35,7 @@ import {
   GitHubOrganization as GitHubOrganizationType,
 } from "../cache/schemas/github";
 import { GitHubOrgRepoMapper } from "./GitHubOrgRepoMapper";
+import { settingsStore } from "../stores/settingsStore";
 
 // Use schema types directly
 export type GitHubIssue = GitHubIssueType;
@@ -84,6 +85,7 @@ export class GitHubService extends AbstractService {
   private octokit: Octokit | null = null;
   private labelTypeMapper: LabelTypeMapper;
   private orgRepoMapper: GitHubOrgRepoMapper;
+  private settingsUnsubscribe?: () => void;
 
   // Cache instances
   private issuesCache?: SchemaCache<GitHubIssueList>;
@@ -173,6 +175,31 @@ export class GitHubService extends AbstractService {
    */
   getOrgRepoMappings(): GitHubOrgRepoMapping[] {
     return this.orgRepoMapper.getMappings();
+  }
+
+  /**
+   * Setup reactive settings subscription
+   */
+  setupSettingsSubscription(): void {
+    this.settingsUnsubscribe = settingsStore.githubIntegration.subscribe(
+      (githubSettings) => {
+        if (githubSettings) {
+          console.log("🐙 GitHub settings changed via store, updating service");
+          this.updateSettingsInternal(githubSettings);
+          this.clearCache();
+        }
+      }
+    );
+  }
+
+  /**
+   * Clean up settings subscription
+   */
+  private cleanupSettingsSubscription(): void {
+    if (this.settingsUnsubscribe) {
+      this.settingsUnsubscribe();
+      this.settingsUnsubscribe = undefined;
+    }
   }
 
   /**

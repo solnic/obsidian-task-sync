@@ -1628,17 +1628,35 @@ export async function enableIntegration(
     { name, config }
   );
 
-  await page.waitForFunction(async () => {
-    const app = (window as any).app;
-    const plugin = app.plugins.plugins["obsidian-task-sync"];
+  // Wait for the integration to be properly initialized
+  await page.waitForFunction(
+    async ({ integrationName }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-    console.debug(
-      "Waiting for GitHub service to be enabled",
-      plugin.integrationManager.getGitHubService()
-    );
+      if (integrationName === "githubIntegration") {
+        const service = plugin.integrationManager.getGitHubService();
+        const isEnabled = service?.isEnabled();
+        console.debug("Waiting for GitHub service to be enabled", {
+          service: !!service,
+          isEnabled,
+        });
+        return isEnabled;
+      } else if (integrationName === "appleRemindersIntegration") {
+        const service = plugin.integrationManager.getAppleRemindersService();
+        const isEnabled = service?.isEnabled();
+        console.debug("Waiting for Apple Reminders service to be enabled", {
+          service: !!service,
+          isEnabled,
+        });
+        return isEnabled;
+      }
 
-    return plugin.integrationManager.getGitHubService()?.isEnabled();
-  });
+      return false;
+    },
+    { integrationName: name },
+    { timeout: 10000 }
+  );
 }
 
 export async function openView(page: Page, viewName: string) {
