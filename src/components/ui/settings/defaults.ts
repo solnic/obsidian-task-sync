@@ -49,63 +49,65 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   // Task property ordering defaults
   taskPropertyOrder: [...PROPERTY_SETS.TASK_FRONTMATTER],
   // GitHub integration defaults
-  githubIntegration: {
-    enabled: false,
-    personalAccessToken: "",
-    repositories: [],
-    defaultRepository: "",
-    issueFilters: {
-      state: "open",
-      assignee: "",
-      labels: [],
+  integrations: {
+    github: {
+      enabled: false,
+      personalAccessToken: "",
+      repositories: [],
+      defaultRepository: "",
+      issueFilters: {
+        state: "open",
+        assignee: "",
+        labels: [],
+      },
+      labelTypeMapping: {
+        bug: "Bug",
+        enhancement: "Feature",
+        feature: "Feature",
+        improvement: "Improvement",
+        chore: "Chore",
+        documentation: "Chore",
+      },
+      orgRepoMappings: [],
     },
-    labelTypeMapping: {
-      bug: "Bug",
-      enhancement: "Feature",
-      feature: "Feature",
-      improvement: "Improvement",
-      chore: "Chore",
-      documentation: "Chore",
+    // Apple Reminders integration defaults
+    appleReminders: {
+      enabled: false,
+      includeCompletedReminders: false,
+      reminderLists: [], // Empty array means sync all lists
+      syncInterval: 60, // 60 minutes
+      excludeAllDayReminders: false,
+      defaultTaskType: "Task",
+      importNotesAsDescription: true,
+      preservePriority: true,
     },
-    orgRepoMappings: [],
-  },
-  // Apple Reminders integration defaults
-  appleRemindersIntegration: {
-    enabled: false,
-    includeCompletedReminders: false,
-    reminderLists: [], // Empty array means sync all lists
-    syncInterval: 60, // 60 minutes
-    excludeAllDayReminders: false,
-    defaultTaskType: "Task",
-    importNotesAsDescription: true,
-    preservePriority: true,
-  },
-  // Apple Calendar integration defaults
-  appleCalendarIntegration: {
-    enabled: false,
-    username: "", // Apple ID
-    appSpecificPassword: "", // App-specific password
-    selectedCalendars: [], // Empty array means include all calendars
-    includeAllDayEvents: true,
-    includeBusyEvents: true,
-    includeFreeEvents: false,
-    daysAhead: 1, // Look ahead 1 day
-    daysBehind: 0, // Don't look back
-    includeLocation: true,
-    includeNotes: false,
-    timeFormat: "24h" as const,
-    defaultArea: "", // Default area for imported calendar events
-    // Day view configuration defaults
-    startHour: 8, // Start at 8 AM
-    endHour: 18, // End at 6 PM
-    timeIncrement: 15, // 15-minute increments
-    zoomLevel: 1, // Default zoom level (second level)
-    // Task scheduling defaults
-    schedulingEnabled: false, // Disabled by default
-    defaultSchedulingCalendar: "", // No default calendar
-    defaultEventDuration: 60, // 1 hour default duration
-    defaultReminders: [15], // 15 minutes before event
-    includeTaskDetailsInEvent: true, // Include task details by default
+    // Apple Calendar integration defaults
+    appleCalendar: {
+      enabled: false,
+      username: "", // Apple ID
+      appSpecificPassword: "", // App-specific password
+      selectedCalendars: [], // Empty array means include all calendars
+      includeAllDayEvents: true,
+      includeBusyEvents: true,
+      includeFreeEvents: false,
+      daysAhead: 1, // Look ahead 1 day
+      daysBehind: 0, // Don't look back
+      includeLocation: true,
+      includeNotes: false,
+      timeFormat: "24h" as const,
+      defaultArea: "", // Default area for imported calendar events
+      // Day view configuration defaults
+      startHour: 8, // Start at 8 AM
+      endHour: 18, // End at 6 PM
+      timeIncrement: 15, // 15-minute increments
+      zoomLevel: 1, // Default zoom level (second level)
+      // Task scheduling defaults
+      schedulingEnabled: false, // Disabled by default
+      defaultSchedulingCalendar: "", // No default calendar
+      defaultEventDuration: 60, // 1 hour default duration
+      defaultReminders: [15], // 15 minutes before event
+      includeTaskDetailsInEvent: true, // Include task details by default
+    },
   },
 };
 

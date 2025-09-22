@@ -83,7 +83,7 @@ export class AppleRemindersService extends AbstractService {
    * This will be replaced by the event system
    */
   updateSettings(newSettings: TaskSyncSettings): void {
-    this.updateSettingsInternal(newSettings.appleRemindersIntegration);
+    this.updateSettingsInternal(newSettings.integrations.appleReminders);
   }
 
   /**
@@ -91,11 +91,13 @@ export class AppleRemindersService extends AbstractService {
    * Used by the event system
    */
   updateSettingsInternal(newAppleSettings: any): void {
-    // Update the full settings object
-    this.settings = {
-      ...this.settings,
-      appleRemindersIntegration: newAppleSettings,
-    };
+    // Update the integration settings
+    if (this.settings.integrations.appleReminders) {
+      Object.assign(
+        this.settings.integrations.appleReminders,
+        newAppleSettings
+      );
+    }
   }
 
   /**
@@ -134,7 +136,7 @@ export class AppleRemindersService extends AbstractService {
    */
   isEnabled(): boolean {
     return (
-      this.settings.appleRemindersIntegration.enabled &&
+      this.settings.integrations.appleReminders.enabled &&
       this.isPlatformSupported()
     );
   }
@@ -397,7 +399,7 @@ export class AppleRemindersService extends AbstractService {
 
     // Filter lists based on settings
     const configuredLists =
-      this.settings.appleRemindersIntegration.reminderLists;
+      this.settings.integrations.appleReminders.reminderLists;
     const listsToProcess =
       configuredLists.length > 0
         ? processedLists.filter((list: AppleScriptList) =>
@@ -413,7 +415,7 @@ export class AppleRemindersService extends AbstractService {
     // Determine if we should include completed reminders
     const includeCompleted =
       filter?.includeCompleted ??
-      this.settings.appleRemindersIntegration.includeCompletedReminders;
+      this.settings.integrations.appleReminders.includeCompletedReminders;
 
     onProgress?.(`Processing ${listsToProcess.length} lists...`, 30);
 
@@ -609,7 +611,7 @@ export class AppleRemindersService extends AbstractService {
 
     if (
       !filter?.includeCompleted &&
-      !this.settings.appleRemindersIntegration.includeCompletedReminders &&
+      !this.settings.integrations.appleReminders.includeCompletedReminders &&
       reminder.completed
     ) {
       return false;
@@ -621,7 +623,7 @@ export class AppleRemindersService extends AbstractService {
     }
 
     if (
-      this.settings.appleRemindersIntegration.excludeAllDayReminders &&
+      this.settings.integrations.appleReminders.excludeAllDayReminders &&
       reminder.allDay
     ) {
       return false;
@@ -687,7 +689,7 @@ export class AppleRemindersService extends AbstractService {
       ...config,
       taskType:
         config.taskType ||
-        this.settings.appleRemindersIntegration.defaultTaskType ||
+        this.settings.integrations.appleReminders.defaultTaskType ||
         "Task",
     };
   }

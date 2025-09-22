@@ -18,7 +18,7 @@ export class DailyPlanningView extends ItemView {
   private appleCalendarService: AppleCalendarService;
   private dailyNoteService: DailyNoteService;
   private settings: {
-    appleCalendarIntegration: TaskSyncSettings["appleCalendarIntegration"];
+    appleCalendarIntegration: TaskSyncSettings["integrations"]["appleCalendar"];
   };
 
   constructor(
@@ -26,7 +26,7 @@ export class DailyPlanningView extends ItemView {
     appleCalendarService: AppleCalendarService,
     dailyNoteService: DailyNoteService,
     settings: {
-      appleCalendarIntegration: TaskSyncSettings["appleCalendarIntegration"];
+      appleCalendarIntegration: TaskSyncSettings["integrations"]["appleCalendar"];
     }
   ) {
     super(leaf);

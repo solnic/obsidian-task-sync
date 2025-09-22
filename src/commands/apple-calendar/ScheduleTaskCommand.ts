@@ -69,7 +69,7 @@ class Modal extends CommandModal {
   }
 
   private initializeFormData(): void {
-    const settings = this.getSettings().appleCalendarIntegration;
+    const settings = this.getSettings().integrations.appleCalendar;
     const now = new Date();
     const defaultStart = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
 
@@ -393,7 +393,7 @@ export class ScheduleTaskCommand extends Command {
   }
 
   isAvailable(): boolean {
-    return this.settings.appleCalendarIntegration.schedulingEnabled;
+    return this.settings.integrations.appleCalendar.schedulingEnabled;
   }
 
   async execute(): Promise<void> {

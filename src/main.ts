@@ -381,7 +381,7 @@ export default class TaskSyncPlugin
       TASK_PLANNING_VIEW_TYPE,
       (leaf) =>
         new TaskPlanningView(leaf, this.appleCalendarService, {
-          appleCalendarIntegration: this.settings.appleCalendarIntegration,
+          appleCalendarIntegration: this.settings.integrations.appleCalendar,
         })
     );
 
@@ -394,7 +394,7 @@ export default class TaskSyncPlugin
           this.appleCalendarService,
           this.dailyNoteService,
           {
-            appleCalendarIntegration: this.settings.appleCalendarIntegration,
+            appleCalendarIntegration: this.settings.integrations.appleCalendar,
           }
         )
     );
@@ -481,9 +481,9 @@ export default class TaskSyncPlugin
     let needsSave = false;
 
     // Check if appleCalendarIntegration is missing or has missing properties
-    if (this.settings.appleCalendarIntegration) {
-      const defaults = DEFAULT_SETTINGS.appleCalendarIntegration;
-      const current = this.settings.appleCalendarIntegration;
+    if (this.settings.integrations.appleCalendar) {
+      const defaults = DEFAULT_SETTINGS.integrations.appleCalendar;
+      const current = this.settings.integrations.appleCalendar;
 
       if (typeof current.startHour === "undefined") {
         current.startHour = defaults.startHour;
@@ -519,24 +519,24 @@ export default class TaskSyncPlugin
       }
     } else {
       // Missing entire appleCalendarIntegration object
-      this.settings.appleCalendarIntegration = {
-        ...DEFAULT_SETTINGS.appleCalendarIntegration,
+      this.settings.integrations.appleCalendar = {
+        ...DEFAULT_SETTINGS.integrations.appleCalendar,
       };
       needsSave = true;
     }
 
     // Check if appleRemindersIntegration is missing
-    if (!this.settings.appleRemindersIntegration) {
-      this.settings.appleRemindersIntegration = {
-        ...DEFAULT_SETTINGS.appleRemindersIntegration,
+    if (!this.settings.integrations.appleReminders) {
+      this.settings.integrations.appleReminders = {
+        ...DEFAULT_SETTINGS.integrations.appleReminders,
       };
       needsSave = true;
     }
 
     // Check if githubIntegration is missing
-    if (!this.settings.githubIntegration) {
-      this.settings.githubIntegration = {
-        ...DEFAULT_SETTINGS.githubIntegration,
+    if (!this.settings.integrations.github) {
+      this.settings.integrations.github = {
+        ...DEFAULT_SETTINGS.integrations.github,
       };
       needsSave = true;
     }
@@ -624,7 +624,7 @@ export default class TaskSyncPlugin
       const view = leaf.view as TaskPlanningView;
       if (view && view.updateSettings) {
         view.updateSettings({
-          appleCalendarIntegration: this.settings.appleCalendarIntegration,
+          appleCalendarIntegration: this.settings.integrations.appleCalendar,
         });
       }
     });

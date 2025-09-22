@@ -97,7 +97,7 @@ export class GitHubService extends AbstractService {
     super(settings);
 
     // Only pass custom label mappings if they exist, otherwise use defaults
-    const customMappings = settings.githubIntegration.labelTypeMapping;
+    const customMappings = settings.integrations.github.labelTypeMapping;
     const hasCustomMappings =
       customMappings && Object.keys(customMappings).length > 0;
 
@@ -107,7 +107,7 @@ export class GitHubService extends AbstractService {
 
     // Initialize organization/repository mapper
     this.orgRepoMapper = new GitHubOrgRepoMapper(
-      settings.githubIntegration.orgRepoMappings || []
+      settings.integrations.github.orgRepoMappings || []
     );
 
     this.initializeOctokit();
@@ -249,7 +249,7 @@ export class GitHubService extends AbstractService {
    * This will be replaced by the event system
    */
   updateSettings(newSettings: TaskSyncSettings): void {
-    this.updateSettingsInternal(newSettings.githubIntegration);
+    this.updateSettingsInternal(newSettings.integrations.github);
   }
 
   /**
@@ -257,8 +257,10 @@ export class GitHubService extends AbstractService {
    * Used by the event system
    */
   updateSettingsInternal(newGitHubSettings: any): void {
-    // Update the full settings object
-    this.settings = { ...this.settings, githubIntegration: newGitHubSettings };
+    // Update the integration settings
+    if (this.settings.integrations.github) {
+      Object.assign(this.settings.integrations.github, newGitHubSettings);
+    }
 
     // Update label type mapper with new settings
     // Only override mappings if custom mappings are provided, otherwise keep defaults
@@ -331,11 +333,11 @@ export class GitHubService extends AbstractService {
    */
   private initializeOctokit(): void {
     if (
-      this.settings.githubIntegration?.enabled &&
-      this.settings.githubIntegration?.personalAccessToken
+      this.settings.integrations.github?.enabled &&
+      this.settings.integrations.github?.personalAccessToken
     ) {
       this.octokit = new Octokit({
-        auth: this.settings.githubIntegration?.personalAccessToken,
+        auth: this.settings.integrations.github?.personalAccessToken,
         userAgent: "obsidian-task-sync",
         request: {
           fetch: this.createObsidianFetch(),
@@ -345,10 +347,10 @@ export class GitHubService extends AbstractService {
   }
 
   /**
-   * Check if GitHub integration is enabled and properly configured
+   * Check if GitHub integration is enabled
    */
   isEnabled(): boolean {
-    return this.settings.githubIntegration?.enabled && !!this.octokit;
+    return this.settings.integrations.github?.enabled || false;
   }
 
   /**
@@ -363,7 +365,7 @@ export class GitHubService extends AbstractService {
       throw new Error("Invalid repository format. Expected: owner/repo");
     }
 
-    const filters = this.settings.githubIntegration.issueFilters;
+    const filters = this.settings.integrations.github.issueFilters;
     const cacheKey = this.generateCacheKey("issues", repository, {
       state: filters.state,
       assignee: filters.assignee,
@@ -417,7 +419,7 @@ export class GitHubService extends AbstractService {
     }
 
     const [owner, repo] = repository.split("/");
-    const filters = this.settings.githubIntegration.issueFilters;
+    const filters = this.settings.integrations.github.issueFilters;
 
     try {
       const response = await this.octokit.rest.pulls.list({

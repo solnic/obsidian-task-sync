@@ -56,13 +56,13 @@
     try {
       pluginContext = getPluginContext();
       const savedZoomLevel =
-        pluginContext.plugin.settings.appleCalendarIntegration.zoomLevel;
+        pluginContext.plugin.settings.integrations.appleCalendar.zoomLevel;
       if (savedZoomLevel !== undefined) {
         zoomLevel = savedZoomLevel;
       } else {
         // Calculate optimal zoom based on time increment
         zoomLevel = calculateOptimalZoomLevel(
-          pluginContext.plugin.settings.appleCalendarIntegration.timeIncrement
+          pluginContext.plugin.settings.integrations.appleCalendar.timeIncrement
         );
       }
     } catch (error) {
@@ -104,7 +104,7 @@
   // Save zoom level to settings
   async function saveZoomLevel() {
     if (pluginContext.plugin) {
-      pluginContext.plugin.settings.appleCalendarIntegration.zoomLevel =
+      pluginContext.plugin.settings.integrations.appleCalendar.zoomLevel =
         zoomLevel;
       await pluginContext.plugin.saveSettings();
     }

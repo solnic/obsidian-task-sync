@@ -169,12 +169,12 @@ export interface TaskSyncSettings {
   autoSyncAreaProjectBases: boolean;
   // Task property ordering
   taskPropertyOrder: string[];
-  // GitHub integration settings
-  githubIntegration: GitHubIntegrationSettings;
-  // Apple Reminders integration settings
-  appleRemindersIntegration: AppleRemindersIntegrationSettings;
-  // Apple Calendar integration settings
-  appleCalendarIntegration: AppleCalendarIntegrationSettings;
+  // Integrations
+  integrations: {
+    github: GitHubIntegrationSettings;
+    appleReminders: AppleRemindersIntegrationSettings;
+    appleCalendar: AppleCalendarIntegrationSettings;
+  };
 }
 
 export interface ValidationResult {

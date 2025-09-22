@@ -30,6 +30,7 @@ import {
   CalendarEventCreateResult,
 } from "../types/calendar";
 import { TaskSyncSettings } from "../components/ui/settings/types";
+import { settingsStore } from "../stores/settingsStore";
 import { requestUrl } from "obsidian";
 import ICAL from "ical.js";
 import {
@@ -66,6 +67,7 @@ export class AppleCalendarService
   private baseUrl: string = "https://caldav.icloud.com";
   private credentials?: { username: string; password: string };
   private calendarHomeUrl?: string;
+  private settingsUnsubscribe?: () => void;
 
   constructor(settings: TaskSyncSettings) {
     super(settings);
@@ -76,7 +78,7 @@ export class AppleCalendarService
    * Initialize CalDAV credentials
    */
   private initializeCredentials(): void {
-    const config = this.settings.appleCalendarIntegration;
+    const config = this.settings.integrations.appleCalendar;
     if (config?.enabled && config.username && config.appSpecificPassword) {
       this.credentials = {
         username: config.username,
@@ -125,15 +127,15 @@ export class AppleCalendarService
    * Update settings reference
    */
   updateSettings(newSettings: TaskSyncSettings): void {
-    this.updateSettingsInternal(newSettings.appleCalendarIntegration);
+    this.updateSettingsInternal(newSettings.integrations.appleCalendar);
   }
 
   /**
    * Update internal settings (for event system)
    */
   updateSettingsInternal(newSettings: AppleCalendarConfig): void {
-    if (this.settings.appleCalendarIntegration) {
-      Object.assign(this.settings.appleCalendarIntegration, newSettings);
+    if (this.settings.integrations.appleCalendar) {
+      Object.assign(this.settings.integrations.appleCalendar, newSettings);
     }
   }
 
@@ -141,7 +143,7 @@ export class AppleCalendarService
    * Check if Apple Calendar integration is enabled
    */
   isEnabled(): boolean {
-    return this.settings.appleCalendarIntegration?.enabled ?? false;
+    return this.settings.integrations.appleCalendar?.enabled ?? false;
   }
 
   /**
@@ -150,6 +152,36 @@ export class AppleCalendarService
    */
   isPlatformSupported(): boolean {
     return true; // CalDAV works on all platforms
+  }
+
+  /**
+   * Setup reactive settings subscription
+   */
+  setupSettingsSubscription(): void {
+    // Unsubscribe any existing subscription to prevent duplicates
+    this.dispose();
+
+    this.settingsUnsubscribe = settingsStore.appleCalendarIntegration.subscribe(
+      (appleCalendarSettings) => {
+        if (appleCalendarSettings) {
+          console.log(
+            "📅 Apple Calendar settings changed via store, updating service"
+          );
+          this.updateSettingsInternal(appleCalendarSettings);
+          this.clearCache();
+        }
+      }
+    );
+  }
+
+  /**
+   * Dispose of the service and clean up subscriptions
+   */
+  dispose(): void {
+    if (this.settingsUnsubscribe) {
+      this.settingsUnsubscribe();
+      this.settingsUnsubscribe = undefined;
+    }
   }
 
   /**
@@ -1155,7 +1187,7 @@ export class AppleCalendarService
     config: TaskImportConfig
   ): TaskImportConfig {
     // Get the default area from settings
-    const defaultArea = this.settings.appleCalendarIntegration.defaultArea;
+    const defaultArea = this.settings.integrations.appleCalendar.defaultArea;
 
     // Ensure startDate is a Date object (handle both Date objects and string dates from fixtures)
     const startDate =

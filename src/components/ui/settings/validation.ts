@@ -166,9 +166,12 @@ export function validateTemplateFileName(fileName: string): ValidationResult {
  * Validates GitHub Personal Access Token format
  */
 export function validateGitHubToken(token: string): ValidationResult {
-  // Allow empty tokens (integration can be disabled)
+  // Require non-empty tokens for integration to be enabled
   if (!token.trim()) {
-    return { isValid: true };
+    return {
+      isValid: false,
+      error: "GitHub Personal Access Token is required",
+    };
   }
 
   // GitHub Classic PAT format: ghp_ followed by 40 characters

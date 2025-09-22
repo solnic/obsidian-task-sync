@@ -35,8 +35,7 @@ export class InsertCalendarEventsCommand extends Command {
     try {
       // Get current daily note or create one
       const dailyNoteService = (this.plugin as any).dailyNoteService;
-      const dailyNoteResult =
-        await dailyNoteService.ensureTodayDailyNote();
+      const dailyNoteResult = await dailyNoteService.ensureTodayDailyNote();
       if (!dailyNoteResult.file) {
         new Notice("Could not find or create daily note");
         return;
@@ -57,7 +56,7 @@ export class InsertCalendarEventsCommand extends Command {
       );
       const formatter = new DefaultCalendarEventFormatter();
 
-      const config = this.settings.appleCalendarIntegration;
+      const config = this.settings.integrations.appleCalendar;
       const formattedEvents = formatter.formatEvents(events, {
         includeTime: true,
         includeLocation: config.includeLocation,

@@ -35,17 +35,19 @@ describe("Settings Store Integration", () => {
 
     // Create mock settings
     mockSettings = {
-      githubIntegration: {
-        enabled: true,
-        personalAccessToken: "test-token",
-        labelTypeMapping: {},
-        orgRepoMappings: [],
-      },
-      appleRemindersIntegration: {
-        enabled: true,
-        reminderLists: [],
-        includeCompletedReminders: false,
-        excludeAllDayReminders: false,
+      integrations: {
+        github: {
+          enabled: true,
+          personalAccessToken: "test-token",
+          labelTypeMapping: {},
+          orgRepoMappings: [],
+        },
+        appleReminders: {
+          enabled: true,
+          reminderLists: [],
+          includeCompletedReminders: false,
+          excludeAllDayReminders: false,
+        },
       },
     } as any;
 

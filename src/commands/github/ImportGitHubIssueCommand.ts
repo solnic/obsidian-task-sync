@@ -20,7 +20,7 @@ export class ImportGitHubIssueCommand extends Command {
   }
 
   isAvailable(): boolean {
-    return this.settings.githubIntegration.enabled;
+    return this.settings.integrations.github.enabled;
   }
 
   async execute(): Promise<void> {
@@ -155,7 +155,7 @@ export class ImportGitHubIssueCommand extends Command {
       // Fetch all issues from the repository and find the specific one
       const issues = await githubService.fetchIssues(repository);
       const issue = issues.find(
-        (issue) => issue.number === parseInt(issueNumber)
+        (issue: any) => issue.number === parseInt(issueNumber)
       );
 
       if (!issue) {

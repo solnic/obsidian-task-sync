@@ -20,7 +20,7 @@ export class ImportAllGitHubIssuesCommand extends Command {
   }
 
   isAvailable(): boolean {
-    return this.settings.githubIntegration.enabled;
+    return this.settings.integrations.github.enabled;
   }
 
   async execute(): Promise<void> {
@@ -31,7 +31,7 @@ export class ImportAllGitHubIssuesCommand extends Command {
     }
 
     try {
-      const repository = this.settings.githubIntegration.defaultRepository;
+      const repository = this.settings.integrations.github.defaultRepository;
       if (!repository) {
         new Notice("No default repository configured");
         return;

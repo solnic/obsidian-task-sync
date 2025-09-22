@@ -75,12 +75,12 @@ export class CommandManager {
 
       // Check if any integration settings changed that would affect command availability
       const integrationChanged =
-        oldSettings.githubIntegration.enabled !==
-          storeState.settings.githubIntegration.enabled ||
-        oldSettings.appleRemindersIntegration.enabled !==
-          storeState.settings.appleRemindersIntegration.enabled ||
-        oldSettings.appleCalendarIntegration.schedulingEnabled !==
-          storeState.settings.appleCalendarIntegration.schedulingEnabled;
+        oldSettings.integrations.github.enabled !==
+          storeState.settings.integrations.github.enabled ||
+        oldSettings.integrations.appleReminders.enabled !==
+          storeState.settings.integrations.appleReminders.enabled ||
+        oldSettings.integrations.appleCalendar.schedulingEnabled !==
+          storeState.settings.integrations.appleCalendar.schedulingEnabled;
 
       if (integrationChanged) {
         console.log(

@@ -114,6 +114,18 @@ export abstract class AbstractService {
   }
 
   /**
+   * Optional method to setup reactive settings subscription
+   * Services can override this to subscribe to specific settings changes
+   */
+  setupSettingsSubscription?(): void;
+
+  /**
+   * Optional method to dispose of the service and clean up subscriptions
+   * Services can override this to clean up resources
+   */
+  dispose?(): void;
+
+  /**
    * Protected fetch method that guarantees cache persistence
    * Services should implement fetchItems instead of handling caching manually
    */

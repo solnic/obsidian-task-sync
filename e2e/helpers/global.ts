@@ -1619,10 +1619,31 @@ export async function enableIntegration(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      plugin.settings[name].enabled = true;
-      Object.assign(plugin.settings[name], config);
+      // Map old integration names to new structure
+      const integrationKeyMap: Record<string, string> = {
+        githubIntegration: "github",
+        appleRemindersIntegration: "appleReminders",
+        appleCalendarIntegration: "appleCalendar",
+      };
 
-      console.debug("Enabling integration", name, plugin.settings[name]);
+      const integrationKey = integrationKeyMap[name] || name;
+
+      if (!plugin.settings.integrations) {
+        plugin.settings.integrations = {};
+      }
+
+      if (!plugin.settings.integrations[integrationKey]) {
+        plugin.settings.integrations[integrationKey] = {};
+      }
+
+      plugin.settings.integrations[integrationKey].enabled = true;
+      Object.assign(plugin.settings.integrations[integrationKey], config);
+
+      console.debug(
+        "Enabling integration",
+        integrationKey,
+        plugin.settings.integrations[integrationKey]
+      );
       await plugin.saveSettings();
     },
     { name, config }

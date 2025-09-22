@@ -60,8 +60,8 @@ export class TaskSchedulingService
    */
   isEnabled(): boolean {
     return (
-      this.settings.appleCalendarIntegration?.enabled &&
-      this.settings.appleCalendarIntegration?.schedulingEnabled &&
+      this.settings.integrations.appleCalendar?.enabled &&
+      this.settings.integrations.appleCalendar?.schedulingEnabled &&
       !!this.calendarService?.isEnabled()
     );
   }
@@ -119,7 +119,7 @@ export class TaskSchedulingService
       // Determine target calendar
       const targetCalendar =
         config.targetCalendar ||
-        this.settings.appleCalendarIntegration.defaultSchedulingCalendar;
+        this.settings.integrations.appleCalendar.defaultSchedulingCalendar;
 
       if (!targetCalendar) {
         return {
@@ -133,7 +133,7 @@ export class TaskSchedulingService
         config.endDate ||
         new Date(
           config.startDate.getTime() +
-            this.settings.appleCalendarIntegration.defaultEventDuration *
+            this.settings.integrations.appleCalendar.defaultEventDuration *
               60 *
               1000
         );
@@ -149,7 +149,7 @@ export class TaskSchedulingService
         calendarId: targetCalendar,
         reminders:
           config.reminders ||
-          this.settings.appleCalendarIntegration.defaultReminders,
+          this.settings.integrations.appleCalendar.defaultReminders,
       };
 
       // Create the calendar event
@@ -222,7 +222,7 @@ export class TaskSchedulingService
         config.endDate ||
         new Date(
           config.startDate.getTime() +
-            this.settings.appleCalendarIntegration.defaultEventDuration *
+            this.settings.integrations.appleCalendar.defaultEventDuration *
               60 *
               1000
         );
@@ -238,7 +238,7 @@ export class TaskSchedulingService
         calendarId: metadata.targetCalendar,
         reminders:
           config.reminders ||
-          this.settings.appleCalendarIntegration.defaultReminders,
+          this.settings.integrations.appleCalendar.defaultReminders,
       };
 
       // Update the calendar event
@@ -363,7 +363,7 @@ export class TaskSchedulingService
 
     if (
       config.includeTaskDetails ||
-      this.settings.appleCalendarIntegration.includeTaskDetailsInEvent
+      this.settings.integrations.appleCalendar.includeTaskDetailsInEvent
     ) {
       if (description) description += "\n\n";
       description += "Task Details:\n";

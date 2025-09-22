@@ -97,8 +97,8 @@ export class TasksView extends ItemView {
       githubService: this.integrationManager.getGitHubService(),
       appleRemindersService: this.integrationManager.getAppleRemindersService(),
       settings: {
-        githubIntegration: currentSettings.githubIntegration,
-        appleRemindersIntegration: currentSettings.appleRemindersIntegration,
+        githubIntegration: currentSettings.integrations.github,
+        appleRemindersIntegration: currentSettings.integrations.appleReminders,
       },
       dependencies: this.dependencies,
     };

@@ -23,7 +23,7 @@ export class CheckAppleRemindersPermissionsCommand extends Command {
     const service = this.integrationManager.getAppleRemindersService();
     return (
       service?.isPlatformSupported() &&
-      this.settings.appleRemindersIntegration.enabled
+      this.settings.integrations.appleReminders.enabled
     );
   }
 
