@@ -136,6 +136,7 @@ export class AppleCalendarService
   updateSettingsInternal(newSettings: AppleCalendarConfig): void {
     if (this.settings.integrations.appleCalendar) {
       Object.assign(this.settings.integrations.appleCalendar, newSettings);
+      this.initializeCredentials();
     }
   }
 

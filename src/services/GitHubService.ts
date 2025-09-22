@@ -347,10 +347,10 @@ export class GitHubService extends AbstractService {
   }
 
   /**
-   * Check if GitHub integration is enabled
+   * Check if GitHub integration is enabled and properly configured
    */
   isEnabled(): boolean {
-    return this.settings.integrations.github?.enabled || false;
+    return !!(this.settings.integrations.github?.enabled && this.octokit);
   }
 
   /**

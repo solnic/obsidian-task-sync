@@ -436,6 +436,11 @@ export default class TaskSyncPlugin
       this.fileChangeListener.cleanup();
     }
 
+    // Cleanup integration manager and all services
+    if (this.integrationManager) {
+      this.integrationManager.cleanup();
+    }
+
     // Cleanup Apple Calendar service
     if (this.appleCalendarService) {
       this.appleCalendarService.cleanup();
@@ -479,6 +484,41 @@ export default class TaskSyncPlugin
    */
   private async migrateSettings(): Promise<void> {
     let needsSave = false;
+
+    // Migrate from old flat settings structure to new integrations structure
+    if (!this.settings.integrations) {
+      console.log(
+        "Task Sync: Migrating from old flat settings structure to new integrations structure"
+      );
+      this.settings.integrations = {
+        github: { ...DEFAULT_SETTINGS.integrations.github },
+        appleReminders: { ...DEFAULT_SETTINGS.integrations.appleReminders },
+        appleCalendar: { ...DEFAULT_SETTINGS.integrations.appleCalendar },
+      };
+
+      // Migrate old flat integration settings if they exist
+      const oldSettings = this.settings as any;
+      if (oldSettings.githubIntegration) {
+        this.settings.integrations.github = {
+          ...oldSettings.githubIntegration,
+        };
+        delete oldSettings.githubIntegration;
+      }
+      if (oldSettings.appleRemindersIntegration) {
+        this.settings.integrations.appleReminders = {
+          ...oldSettings.appleRemindersIntegration,
+        };
+        delete oldSettings.appleRemindersIntegration;
+      }
+      if (oldSettings.appleCalendarIntegration) {
+        this.settings.integrations.appleCalendar = {
+          ...oldSettings.appleCalendarIntegration,
+        };
+        delete oldSettings.appleCalendarIntegration;
+      }
+
+      needsSave = true;
+    }
 
     // Check if appleCalendarIntegration is missing or has missing properties
     if (this.settings.integrations.appleCalendar) {

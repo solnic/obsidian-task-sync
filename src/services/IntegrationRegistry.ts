@@ -14,7 +14,7 @@ import { TaskImportManager } from "./TaskImportManager";
 import { DailyNoteService } from "./DailyNoteService";
 
 export interface IntegrationServiceConfig {
-  /** Unique key for the integration (matches settings.integrations key) */
+  /** Unique key for the integration (does not necessarily match settings.integrations key; mapping is handled via getSettingsPath) */
   key: string;
   /** Display name for the integration */
   name: string;
