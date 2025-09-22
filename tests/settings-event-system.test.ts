@@ -3,7 +3,7 @@
  * Verifies that services react to settings changes via the settings store
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { GitHubService } from "../src/services/GitHubService";
 import { AppleRemindersService } from "../src/services/AppleRemindersService";
 import { CacheManager } from "../src/cache/CacheManager";
@@ -66,6 +66,12 @@ describe("Settings Store Integration", () => {
     vi.spyOn(githubService, "clearCache");
     vi.spyOn(appleRemindersService, "updateSettingsInternal");
     vi.spyOn(appleRemindersService, "clearCache");
+  });
+
+  afterEach(() => {
+    // Dispose services to clean up subscriptions and prevent cross-test interference
+    githubService.dispose();
+    appleRemindersService.dispose();
   });
 
   it("should handle GitHub settings changes via store", async () => {

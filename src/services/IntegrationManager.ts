@@ -28,6 +28,7 @@ export class IntegrationManager {
   private dailyNoteService: DailyNoteService;
   private settings: TaskSyncSettings | null = null;
   private listeners: Array<(services: IntegrationService[]) => void> = [];
+  private settingsUnsubscribe?: () => void;
 
   constructor(
     cacheManager: CacheManager,
@@ -55,7 +56,7 @@ export class IntegrationManager {
    * Subscribe to settings changes and update integrations accordingly
    */
   private setupSettingsSubscription(): void {
-    settingsStore.subscribe(async (storeState) => {
+    this.settingsUnsubscribe = settingsStore.subscribe(async (storeState) => {
       const oldSettings = this.settings;
       this.settings = storeState.settings;
 
@@ -112,6 +113,7 @@ export class IntegrationManager {
       if (this.githubService) {
         console.log("🔧 IntegrationManager: Disabling GitHub service");
         // Clean up GitHub service
+        this.githubService.dispose();
         this.githubService = null;
       }
     }
@@ -137,6 +139,7 @@ export class IntegrationManager {
       if (this.appleRemindersService) {
         console.log("🔧 IntegrationManager: Disabling Apple Reminders service");
         // Clean up Apple Reminders service
+        this.appleRemindersService.dispose();
         this.appleRemindersService = null;
       }
     }
@@ -239,8 +242,24 @@ export class IntegrationManager {
    * Clean up resources
    */
   cleanup(): void {
+    // Dispose of services to clean up their subscriptions
+    if (this.githubService) {
+      this.githubService.dispose();
+      this.githubService = null;
+    }
+
+    if (this.appleRemindersService) {
+      this.appleRemindersService.dispose();
+      this.appleRemindersService = null;
+    }
+
+    // Clean up settings subscription
+    if (this.settingsUnsubscribe) {
+      this.settingsUnsubscribe();
+      this.settingsUnsubscribe = undefined;
+    }
+
+    // Clear listeners
     this.listeners = [];
-    this.githubService = null;
-    this.appleRemindersService = null;
   }
 }

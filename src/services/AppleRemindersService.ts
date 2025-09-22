@@ -150,6 +150,9 @@ export class AppleRemindersService extends AbstractService {
    * Setup reactive settings subscription
    */
   setupSettingsSubscription(): void {
+    // Unsubscribe any existing subscription to prevent duplicates
+    this.dispose();
+
     this.settingsUnsubscribe =
       settingsStore.appleRemindersIntegration.subscribe((appleSettings) => {
         if (appleSettings) {
@@ -163,9 +166,9 @@ export class AppleRemindersService extends AbstractService {
   }
 
   /**
-   * Clean up settings subscription
+   * Dispose of the service and clean up subscriptions
    */
-  private cleanupSettingsSubscription(): void {
+  dispose(): void {
     if (this.settingsUnsubscribe) {
       this.settingsUnsubscribe();
       this.settingsUnsubscribe = undefined;
