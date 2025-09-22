@@ -10,6 +10,7 @@ import {
   verifyAreaProperties,
   executeCommand,
   getAreaByName,
+  expectNotice,
 } from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
@@ -109,18 +110,9 @@ describe("Area Creation", () => {
 
     // Try to create without name
     await context.page.locator('button:has-text("Create Area")').click();
-    await context.page.waitForSelector(".task-sync-error", { timeout: 5000 });
 
-    // Check for error message
-    const errorExists = await context.page
-      .locator(".task-sync-error")
-      .isVisible();
-    expect(errorExists).toBe(true);
-
-    const errorText = await context.page
-      .locator(".task-sync-error")
-      .textContent();
-    expect(errorText).toContain("Area name is required");
+    // Check for error notice
+    await expectNotice(context, "Area name is required");
 
     // Close modal
     await context.page.keyboard.press("Escape");

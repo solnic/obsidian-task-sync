@@ -7,8 +7,8 @@ import { App } from "obsidian";
 import type { Task, Project, Area } from "../types/entities";
 import type { FileContext } from "../main";
 import type { TaskImportConfig } from "../types/integrations";
-import type { AreaCreateData } from "../components/modals/AreaCreateModal";
-import type { ProjectCreateData } from "../components/modals/ProjectCreateModal";
+import type { AreaCreateData } from "../commands/core/CreateAreaCommand";
+import type { ProjectCreateData } from "../commands/core/CreateProjectCommand";
 import type {
   DailyNoteResult,
   AddTaskResult,
@@ -39,17 +39,6 @@ export interface TaskSyncPluginInterface {
   readonly contextService: {
     detectCurrentFileContext(): FileContext;
     detectFileContext(filePath: string): FileContext;
-  };
-
-  // Modal service access
-  readonly modalService: {
-    openTaskCreateModal(context?: FileContext): Promise<void>;
-    openAreaCreateModal(): void;
-    openProjectCreateModal(): void;
-    openTaskScheduleModal(
-      task: any,
-      onSubmit: (scheduleData: any) => Promise<void>
-    ): void;
   };
 
   // Import configuration

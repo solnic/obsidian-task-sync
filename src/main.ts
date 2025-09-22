@@ -15,8 +15,8 @@ import { TaskFileManager } from "./services/TaskFileManager";
 import { TaskTodoMarkdownProcessor } from "./services/TaskTodoMarkdownProcessor";
 import { AreaFileManager } from "./services/AreaFileManager";
 import { ProjectFileManager } from "./services/ProjectFileManager";
-import { AreaCreateData } from "./components/modals/AreaCreateModal";
-import { ProjectCreateData } from "./components/modals/ProjectCreateModal";
+import { AreaCreateData } from "./commands/core/CreateAreaCommand";
+import { ProjectCreateData } from "./commands/core/CreateProjectCommand";
 
 import { TaskSyncSettingTab } from "./components/ui/settings";
 import type {
@@ -80,7 +80,6 @@ import {
 } from "./services/NoteManagers";
 import { FileManager } from "./services/FileManager";
 import { ContextService } from "./services/ContextService";
-import { ModalService } from "./services/ModalService";
 
 // Re-export types for backward compatibility
 export type { TaskSyncSettings, TaskType, TaskTypeColor };
@@ -166,7 +165,6 @@ export default class TaskSyncPlugin
   commandManager: CommandManager;
   noteManagers: NoteManagers;
   contextService: ContextService;
-  modalService: ModalService;
 
   public get stores(): {
     taskStore: typeof taskStore;
@@ -235,9 +233,6 @@ export default class TaskSyncPlugin
 
     // Initialize context service
     this.contextService = new ContextService(this.app, this.settings);
-
-    // Initialize modal service
-    this.modalService = new ModalService(this.app, this, this.settings);
 
     // Initialize cache manager
     this.cacheManager = new CacheManager(this);
@@ -630,10 +625,6 @@ export default class TaskSyncPlugin
 
     if (this.contextService) {
       this.contextService.updateSettings(this.settings);
-    }
-
-    if (this.modalService) {
-      this.modalService.updateSettings(this.settings);
     }
 
     // TasksView settings are now reactive through the settings store

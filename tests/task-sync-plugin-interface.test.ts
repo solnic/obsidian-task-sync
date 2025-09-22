@@ -25,12 +25,7 @@ describe("TaskSyncPluginInterface", () => {
         detectCurrentFileContext: () => ({ type: "none" }),
         detectFileContext: () => ({ type: "none" }),
       },
-      modalService: {
-        openTaskCreateModal: async () => {},
-        openAreaCreateModal: () => {},
-        openProjectCreateModal: () => {},
-        openTaskScheduleModal: () => {},
-      },
+
       todoPromotionService: {
         promoteTodoToTask: async () => ({ message: "" }),
         revertPromotedTodo: async () => ({ message: "" }),
