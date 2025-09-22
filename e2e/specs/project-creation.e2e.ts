@@ -9,6 +9,7 @@ import {
   fileExists,
   verifyProjectProperties,
   executeCommand,
+  expectNotice,
 } from "../helpers/global";
 import { setupE2ETestHooks } from "../helpers/shared-context";
 
@@ -135,18 +136,9 @@ describe("Project Creation", () => {
 
     // Try to create without name
     await context.page.locator('button:has-text("Create Project")').click();
-    await context.page.waitForSelector(".task-sync-error", { timeout: 5000 });
 
-    // Check for error message
-    const errorExists = await context.page
-      .locator(".task-sync-error")
-      .isVisible();
-    expect(errorExists).toBe(true);
-
-    const errorText = await context.page
-      .locator(".task-sync-error")
-      .textContent();
-    expect(errorText).toContain("Project name is required");
+    // Check for error notice
+    await expectNotice(context, "Project name is required");
 
     // Close modal
     await context.page.keyboard.press("Escape");

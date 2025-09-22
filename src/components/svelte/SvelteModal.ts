@@ -14,7 +14,7 @@ export abstract class SvelteModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass("svelte-modal-container");
+    contentEl.addClass("task-sync-modal-container");
 
     // Create the Svelte component
     this.component = this.createComponent(contentEl);

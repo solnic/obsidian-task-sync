@@ -74,4 +74,25 @@ export abstract class Command {
   updateSettings(settings: TaskSyncSettings): void {
     this.settings = settings;
   }
+
+  /**
+   * Get the Obsidian app instance
+   */
+  getApp() {
+    return this.plugin.app;
+  }
+
+  /**
+   * Get the TaskSync plugin interface
+   */
+  getTaskSyncPlugin() {
+    return this.taskSyncPlugin;
+  }
+
+  /**
+   * Get the current settings
+   */
+  getSettings() {
+    return this.settings;
+  }
 }
