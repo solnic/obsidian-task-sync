@@ -278,9 +278,9 @@
       // List filtering will be done in memory via filterReminders()
       const filter = {
         includeCompleted:
-          settings.appleRemindersIntegration.includeCompletedReminders,
+          settings.integrations.appleReminders.includeCompletedReminders,
         excludeAllDay:
-          settings.appleRemindersIntegration.excludeAllDayReminders,
+          settings.integrations.appleReminders.excludeAllDayReminders,
       };
 
       loadingMessage = "Loading reminders from Apple Reminders...";

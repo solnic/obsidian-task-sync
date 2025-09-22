@@ -131,7 +131,7 @@ describe("Apple Reminders Integration", () => {
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin) {
-        plugin.settings.appleRemindersIntegration.enabled = true;
+        plugin.settings.integrations.appleReminders.enabled = true;
         await plugin.saveSettings();
         // Force update integrations to create the service
         await plugin.integrationManager.updateIntegrations();
@@ -156,7 +156,7 @@ describe("Apple Reminders Integration", () => {
         isPlatformSupported: service.isPlatformSupported(),
         isEnabled: service.isEnabled(),
         platform: process.platform,
-        settingsEnabled: plugin.settings.appleRemindersIntegration.enabled,
+        settingsEnabled: plugin.settings.integrations.appleReminders.enabled,
       };
     });
 
@@ -192,7 +192,7 @@ describe("Apple Reminders Integration", () => {
         return { error: "Plugin not found" };
       }
 
-      return plugin.settings.appleRemindersIntegration;
+      return plugin.settings.integrations.appleReminders;
     });
 
     expect(defaultSettings.error).toBeUndefined();
@@ -219,7 +219,7 @@ describe("Apple Reminders Integration", () => {
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin) {
-        plugin.settings.appleRemindersIntegration.enabled = true;
+        plugin.settings.integrations.appleReminders.enabled = true;
         await plugin.saveSettings();
       }
     });
@@ -261,7 +261,7 @@ describe("Apple Reminders Integration", () => {
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin) {
-        plugin.settings.appleRemindersIntegration.enabled = false;
+        plugin.settings.integrations.appleReminders.enabled = false;
         await plugin.saveSettings();
       }
     });
@@ -285,7 +285,7 @@ describe("Apple Reminders Integration", () => {
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin) {
-        plugin.settings.appleRemindersIntegration.enabled = true;
+        plugin.settings.integrations.appleReminders.enabled = true;
         await plugin.saveSettings();
       }
     });
@@ -352,7 +352,7 @@ describe("Apple Reminders Integration", () => {
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin) {
-        plugin.settings.appleRemindersIntegration.enabled = false;
+        plugin.settings.integrations.appleReminders.enabled = false;
         await plugin.saveSettings();
       }
     });
@@ -365,7 +365,7 @@ describe("Apple Reminders Integration", () => {
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (plugin) {
-        plugin.settings.appleRemindersIntegration.enabled = false;
+        plugin.settings.integrations.appleReminders.enabled = false;
         await plugin.saveSettings();
       }
     });
@@ -378,7 +378,7 @@ describe("Apple Reminders Integration", () => {
       if (!plugin) return false;
 
       // Check that the setting is disabled
-      return plugin.settings.appleRemindersIntegration.enabled === false;
+      return plugin.settings.integrations.appleReminders.enabled === false;
     });
 
     expect(serviceDisabled).toBe(true);

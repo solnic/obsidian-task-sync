@@ -90,56 +90,58 @@
     "TAGS",
     "REMINDERS"
   ],
-  "githubIntegration": {
-    "enabled": false,
-    "personalAccessToken": "",
-    "repositories": [],
-    "defaultRepository": "",
-    "issueFilters": {
-      "state": "open",
-      "assignee": "",
-      "labels": []
+  "integrations": {
+    "github": {
+      "enabled": false,
+      "personalAccessToken": "",
+      "repositories": [],
+      "defaultRepository": "",
+      "issueFilters": {
+        "state": "open",
+        "assignee": "",
+        "labels": []
+      },
+      "labelTypeMapping": {
+        "bug": "Bug",
+        "enhancement": "Feature",
+        "feature": "Feature",
+        "improvement": "Improvement",
+        "chore": "Chore",
+        "documentation": "Chore"
+      },
+      "orgRepoMappings": []
     },
-    "labelTypeMapping": {
-      "bug": "Bug",
-      "enhancement": "Feature",
-      "feature": "Feature",
-      "improvement": "Improvement",
-      "chore": "Chore",
-      "documentation": "Chore"
+    "appleReminders": {
+      "enabled": false,
+      "includeCompletedReminders": false,
+      "reminderLists": [],
+      "syncInterval": 60,
+      "excludeAllDayReminders": false,
+      "defaultTaskType": "Task",
+      "importNotesAsDescription": true,
+      "preservePriority": true
     },
-    "orgRepoMappings": []
-  },
-  "appleRemindersIntegration": {
-    "enabled": false,
-    "includeCompletedReminders": false,
-    "reminderLists": [],
-    "syncInterval": 60,
-    "excludeAllDayReminders": false,
-    "defaultTaskType": "Task",
-    "importNotesAsDescription": true,
-    "preservePriority": true
-  },
-  "appleCalendarIntegration": {
-    "enabled": false,
-    "username": "",
-    "appSpecificPassword": "",
-    "selectedCalendars": [],
-    "includeAllDayEvents": true,
-    "includeBusyEvents": true,
-    "includeFreeEvents": false,
-    "daysAhead": 1,
-    "daysBehind": 0,
-    "includeLocation": true,
-    "includeNotes": false,
-    "timeFormat": "24h",
-    "defaultArea": "",
-    "startHour": 8,
-    "endHour": 18,
-    "schedulingEnabled": false,
-    "defaultSchedulingCalendar": "",
-    "defaultEventDuration": 60,
-    "defaultReminders": [15],
-    "includeTaskDetailsInEvent": true
+    "appleCalendar": {
+      "enabled": false,
+      "username": "",
+      "appSpecificPassword": "",
+      "selectedCalendars": [],
+      "includeAllDayEvents": true,
+      "includeBusyEvents": true,
+      "includeFreeEvents": false,
+      "daysAhead": 1,
+      "daysBehind": 0,
+      "includeLocation": true,
+      "includeNotes": false,
+      "timeFormat": "24h",
+      "defaultArea": "",
+      "startHour": 8,
+      "endHour": 18,
+      "schedulingEnabled": false,
+      "defaultSchedulingCalendar": "",
+      "defaultEventDuration": 60,
+      "defaultReminders": [15],
+      "includeTaskDetailsInEvent": true
+    }
   }
 }

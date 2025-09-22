@@ -27,17 +27,17 @@ export class SettingsStore {
   // Derived stores for specific settings sections
   public githubIntegration = derived(
     this._store,
-    ($store) => $store.settings?.githubIntegration || null
+    ($store) => $store.settings?.integrations.github || null
   );
 
   public appleRemindersIntegration = derived(
     this._store,
-    ($store) => $store.settings?.appleRemindersIntegration || null
+    ($store) => $store.settings?.integrations.appleReminders || null
   );
 
   public appleCalendarIntegration = derived(
     this._store,
-    ($store) => $store.settings?.appleCalendarIntegration || null
+    ($store) => $store.settings?.integrations.appleCalendar || null
   );
 
   public taskTypes = derived(
@@ -125,7 +125,20 @@ export class SettingsStore {
    * Update GitHub integration settings
    */
   updateGitHubIntegration(settings: GitHubIntegrationSettings): void {
-    this.updateSection("githubIntegration", settings);
+    this._store.update((state) => {
+      if (!state.settings) return state;
+
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          integrations: {
+            ...state.settings.integrations,
+            github: settings,
+          },
+        },
+      };
+    });
   }
 
   /**
@@ -134,7 +147,20 @@ export class SettingsStore {
   updateAppleRemindersIntegration(
     settings: AppleRemindersIntegrationSettings
   ): void {
-    this.updateSection("appleRemindersIntegration", settings);
+    this._store.update((state) => {
+      if (!state.settings) return state;
+
+      return {
+        ...state,
+        settings: {
+          ...state.settings,
+          integrations: {
+            ...state.settings.integrations,
+            appleReminders: settings,
+          },
+        },
+      };
+    });
   }
 
   /**

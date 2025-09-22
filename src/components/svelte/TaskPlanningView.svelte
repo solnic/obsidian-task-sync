@@ -75,10 +75,10 @@
       availableCalendars = calendars;
 
       // Pre-select calendars based on settings
-      if (settings.appleCalendarIntegration.selectedCalendars.length > 0) {
+      if (settings.integrations.appleCalendar.selectedCalendars.length > 0) {
         selectedCalendarIds = calendars
           .filter((cal) =>
-            settings.appleCalendarIntegration.selectedCalendars.includes(
+            settings.integrations.appleCalendar.selectedCalendars.includes(
               cal.name
             )
           )

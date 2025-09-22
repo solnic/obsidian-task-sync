@@ -464,10 +464,10 @@ export async function configureGitHubIntegration(
         throw new Error("Task Sync plugin not found");
       }
 
-      const oldSettings = { ...plugin.settings.githubIntegration };
+      const oldSettings = { ...plugin.settings.integrations.github };
 
-      plugin.settings.githubIntegration = {
-        ...plugin.settings.githubIntegration,
+      plugin.settings.integrations.github = {
+        ...plugin.settings.integrations.github,
         enabled: configuration.enabled,
         ...(configuration.token && {
           personalAccessToken: configuration.token,
@@ -633,7 +633,7 @@ export async function debugGitHubViewState(page: Page): Promise<void> {
     const pluginInfo = {
       pluginExists: !!plugin,
       githubServiceEnabled: githubService?.isEnabled?.() || false,
-      githubSettings: plugin?.settings?.githubIntegration || null,
+      githubSettings: plugin?.settings?.integrations.github || null,
     };
 
     // Check workspace leaves

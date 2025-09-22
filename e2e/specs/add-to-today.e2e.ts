@@ -374,7 +374,7 @@ describe("Add to Today Functionality", () => {
     const hasGitHubToken = await context.page.evaluate(() => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return plugin.settings.githubIntegration.personalAccessToken !== "";
+      return plugin.settings.integrations.github.personalAccessToken !== "";
     });
 
     if (!hasGitHubToken) {

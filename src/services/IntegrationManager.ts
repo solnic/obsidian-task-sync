@@ -3,31 +3,31 @@
  * Handles dynamic loading/unloading of integrations based on settings changes
  */
 
-import { GitHubService } from "./GitHubService";
-import { AppleRemindersService } from "./AppleRemindersService";
+import { AbstractService } from "./AbstractService";
+import { integrationRegistry } from "./IntegrationRegistry";
 import { TaskImportManager } from "./TaskImportManager";
 import { DailyNoteService } from "./DailyNoteService";
 import { CacheManager } from "../cache/CacheManager";
 import { settingsStore } from "../stores/settingsStore";
 import type { TaskSyncSettings } from "../components/ui/settings/types";
-import { debugLog } from "../utils/debug";
 
 export interface IntegrationService {
   id: string;
   name: string;
   icon: string;
-  service: GitHubService | AppleRemindersService | null;
+  service: AbstractService | null;
   enabled: boolean;
 }
 
 export class IntegrationManager {
-  private githubService: GitHubService | null = null;
-  private appleRemindersService: AppleRemindersService | null = null;
+  private services = new Map<string, AbstractService>();
   private cacheManager: CacheManager;
   private taskImportManager: TaskImportManager;
   private dailyNoteService: DailyNoteService;
   private settings: TaskSyncSettings | null = null;
   private listeners: Array<(services: IntegrationService[]) => void> = [];
+  private settingsUnsubscribe?: () => void;
+  private lastEnabledStates: Map<string, boolean> = new Map();
 
   constructor(
     cacheManager: CacheManager,
@@ -38,11 +38,13 @@ export class IntegrationManager {
     this.cacheManager = cacheManager;
     this.taskImportManager = taskImportManager;
     this.dailyNoteService = dailyNoteService;
-    this.settings = { ...settings };
+    this.settings = settings;
 
-    debugLog("🔧 IntegrationManager: Initializing with settings", {
-      githubEnabled: this.settings.githubIntegration.enabled,
-    });
+    // Initialize tracking states
+    for (const config of integrationRegistry.getAll()) {
+      const isEnabled = config.isEnabled(this.settings);
+      this.lastEnabledStates.set(config.key, isEnabled);
+    }
 
     // Initialize integrations based on current settings
     this.updateIntegrations();
@@ -55,36 +57,49 @@ export class IntegrationManager {
    * Subscribe to settings changes and update integrations accordingly
    */
   private setupSettingsSubscription(): void {
-    settingsStore.subscribe(async (storeState) => {
+    this.settingsUnsubscribe = settingsStore.subscribe(async (storeState) => {
       const oldSettings = this.settings;
       this.settings = storeState.settings;
 
-      // Check if integration settings have changed
-      const githubChanged =
-        !oldSettings ||
-        oldSettings.githubIntegration.enabled !==
-          this.settings.githubIntegration.enabled ||
-        oldSettings.githubIntegration.personalAccessToken !==
-          this.settings.githubIntegration.personalAccessToken;
+      if (!this.settings) {
+        return;
+      }
 
-      debugLog("GitHub changed:", githubChanged);
+      // Check if any integration settings have changed
+      let hasChanges = false;
 
-      const appleRemindersChanged =
-        !oldSettings ||
-        oldSettings.appleRemindersIntegration.enabled !==
-          this.settings.appleRemindersIntegration.enabled;
+      for (const config of integrationRegistry.getAll()) {
+        const lastEnabled = this.lastEnabledStates.get(config.key) ?? false;
+        const newEnabled = config.isEnabled(this.settings);
 
-      if (githubChanged || appleRemindersChanged) {
-        await this.updateIntegrations();
-        this.notifyListeners();
-      } else if (
-        this.settings.githubIntegration.enabled &&
-        !this.githubService
-      ) {
-        // Force update if GitHub is enabled but service doesn't exist
-        debugLog(
-          "🔧 IntegrationManager: Force updating integrations - GitHub enabled but no service"
-        );
+        if (lastEnabled !== newEnabled) {
+          hasChanges = true;
+          // Update the tracked state
+          this.lastEnabledStates.set(config.key, newEnabled);
+        }
+
+        // Check for other significant changes (like tokens, credentials, etc.)
+        if (oldSettings) {
+          const oldIntegrationSettings = this.getIntegrationSettings(
+            oldSettings,
+            config.key
+          );
+          const newIntegrationSettings = this.getIntegrationSettings(
+            this.settings,
+            config.key
+          );
+
+          if (
+            JSON.stringify(oldIntegrationSettings) !==
+            JSON.stringify(newIntegrationSettings)
+          ) {
+            hasChanges = true;
+            break;
+          }
+        }
+      }
+
+      if (hasChanges || !oldSettings) {
         await this.updateIntegrations();
         this.notifyListeners();
       }
@@ -92,50 +107,60 @@ export class IntegrationManager {
   }
 
   /**
+   * Helper to get integration settings by key
+   */
+  private getIntegrationSettings(settings: TaskSyncSettings, key: string): any {
+    return (settings.integrations as any)[key];
+  }
+
+  /**
    * Update integrations based on current settings
    */
   public async updateIntegrations(): Promise<void> {
-    // Handle GitHub integration
-    if (this.settings.githubIntegration.enabled) {
-      if (!this.githubService) {
-        console.log("🔧 IntegrationManager: Initializing GitHub service");
-        this.githubService = new GitHubService(this.settings);
-        await this.githubService.initialize(this.cacheManager);
-        this.githubService.setImportDependencies(this.taskImportManager);
-        this.githubService.setDailyNoteService(this.dailyNoteService);
-      } else {
-        // Update existing service with new settings
-        this.githubService.updateSettings(this.settings);
-      }
-    } else {
-      if (this.githubService) {
-        console.log("🔧 IntegrationManager: Disabling GitHub service");
-        // Clean up GitHub service
-        this.githubService = null;
-      }
-    }
+    for (const config of integrationRegistry.getAll()) {
+      try {
+        const isEnabled = config.isEnabled(this.settings);
+        const existingService = this.services.get(config.key);
 
-    // Handle Apple Reminders integration
-    if (this.settings.appleRemindersIntegration.enabled) {
-      if (!this.appleRemindersService) {
-        console.log(
-          "🔧 IntegrationManager: Initializing Apple Reminders service"
+        if (isEnabled) {
+          if (!existingService) {
+            // Create new service instance
+            const service = config.factory(this.settings);
+            await service.initialize(this.cacheManager);
+            service.setImportDependencies(this.taskImportManager);
+            service.setDailyNoteService(this.dailyNoteService);
+
+            // Setup settings subscription if the service supports it
+            if (
+              "setupSettingsSubscription" in service &&
+              typeof service.setupSettingsSubscription === "function"
+            ) {
+              (service as any).setupSettingsSubscription();
+            }
+
+            this.services.set(config.key, service);
+          } else {
+            // Update existing service with new settings
+            existingService.updateSettings(this.settings);
+          }
+        } else {
+          if (existingService) {
+            // Clean up service
+            if (
+              "dispose" in existingService &&
+              typeof existingService.dispose === "function"
+            ) {
+              (existingService as any).dispose();
+            }
+
+            this.services.delete(config.key);
+          }
+        }
+      } catch (error) {
+        console.error(
+          `🔧 IntegrationManager: Error processing ${config.name}:`,
+          error
         );
-        this.appleRemindersService = new AppleRemindersService(this.settings);
-        await this.appleRemindersService.initialize(this.cacheManager);
-        this.appleRemindersService.setImportDependencies(
-          this.taskImportManager
-        );
-        this.appleRemindersService.setDailyNoteService(this.dailyNoteService);
-      } else {
-        // Update existing service with new settings
-        this.appleRemindersService.updateSettings(this.settings);
-      }
-    } else {
-      if (this.appleRemindersService) {
-        console.log("🔧 IntegrationManager: Disabling Apple Reminders service");
-        // Clean up Apple Reminders service
-        this.appleRemindersService = null;
       }
     }
   }
@@ -155,26 +180,18 @@ export class IntegrationManager {
       },
     ];
 
-    // Add GitHub service if enabled
-    if (this.githubService?.isEnabled()) {
-      services.push({
-        id: "github",
-        name: "GitHub",
-        icon: "github",
-        service: this.githubService,
-        enabled: true,
-      });
-    }
-
-    // Add Apple Reminders service if enabled
-    if (this.appleRemindersService?.isEnabled()) {
-      services.push({
-        id: "apple-reminders",
-        name: "Apple Reminders",
-        icon: "calendar-check",
-        service: this.appleRemindersService,
-        enabled: true,
-      });
+    // Add all enabled integration services
+    for (const config of integrationRegistry.getAll()) {
+      const service = this.services.get(config.key);
+      if (service?.isEnabled()) {
+        services.push({
+          id: config.key,
+          name: config.name,
+          icon: config.icon,
+          service: service,
+          enabled: true,
+        });
+      }
     }
 
     return services;
@@ -183,15 +200,8 @@ export class IntegrationManager {
   /**
    * Get specific service by ID
    */
-  getService(serviceId: string): GitHubService | AppleRemindersService | null {
-    switch (serviceId) {
-      case "github":
-        return this.githubService;
-      case "apple-reminders":
-        return this.appleRemindersService;
-      default:
-        return null;
-    }
+  getService(serviceId: string): AbstractService | null {
+    return this.services.get(serviceId) || null;
   }
 
   /**
@@ -222,23 +232,36 @@ export class IntegrationManager {
   /**
    * Get GitHub service (for backward compatibility)
    */
-  getGitHubService(): GitHubService | null {
-    return this.githubService;
+  getGitHubService(): any {
+    return this.services.get("github") || null;
   }
 
   /**
    * Get Apple Reminders service (for backward compatibility)
    */
-  getAppleRemindersService(): AppleRemindersService | null {
-    return this.appleRemindersService;
+  getAppleRemindersService(): any {
+    return this.services.get("apple-reminders") || null;
   }
 
   /**
    * Clean up resources
    */
   cleanup(): void {
+    // Dispose of all services to clean up their subscriptions
+    for (const service of this.services.values()) {
+      if ("dispose" in service && typeof service.dispose === "function") {
+        (service as any).dispose();
+      }
+    }
+    this.services.clear();
+
+    // Clean up settings subscription
+    if (this.settingsUnsubscribe) {
+      this.settingsUnsubscribe();
+      this.settingsUnsubscribe = undefined;
+    }
+
+    // Clear listeners
     this.listeners = [];
-    this.githubService = null;
-    this.appleRemindersService = null;
   }
 }

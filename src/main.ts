@@ -28,11 +28,7 @@ import { EventManager } from "./events";
 import { EventType, SettingsChangedEventData } from "./events/EventTypes";
 import { StatusDoneHandler } from "./events/handlers";
 import { EntityCacheHandler } from "./events/handlers/EntityCacheHandler";
-import {
-  GitHubSettingsHandler,
-  AppleRemindersSettingsHandler,
-  TaskStatusSettingsHandler,
-} from "./events/handlers/SettingsChangeHandler";
+import { TaskStatusSettingsHandler } from "./events/handlers/SettingsChangeHandler";
 import {
   DEFAULT_SETTINGS,
   TASK_TYPE_COLORS,
@@ -148,8 +144,6 @@ export default class TaskSyncPlugin
   fileChangeListener: FileChangeListener;
   statusDoneHandler: StatusDoneHandler;
   entityCacheHandler: EntityCacheHandler;
-  githubSettingsHandler: GitHubSettingsHandler;
-  appleRemindersSettingsHandler: AppleRemindersSettingsHandler;
   taskStatusSettingsHandler: TaskStatusSettingsHandler;
   cacheManager: CacheManager;
   integrationManager: IntegrationManager;
@@ -161,10 +155,10 @@ export default class TaskSyncPlugin
   taskTodoMarkdownProcessor: TaskTodoMarkdownProcessor;
   taskMentionDetectionService: TaskMentionDetectionService;
   taskMentionSyncHandler: TaskMentionSyncHandler;
-  private markdownProcessor: MarkdownPostProcessor;
   commandManager: CommandManager;
   noteManagers: NoteManagers;
   contextService: ContextService;
+  private markdownProcessor: MarkdownPostProcessor;
 
   public get stores(): {
     taskStore: typeof taskStore;
@@ -343,22 +337,14 @@ export default class TaskSyncPlugin
       this.taskMentionDetectionService
     );
 
-    // Initialize settings change handlers
-    this.githubSettingsHandler = new GitHubSettingsHandler(
-      this.integrationManager.getGitHubService()
-    );
-    this.appleRemindersSettingsHandler = new AppleRemindersSettingsHandler(
-      this.integrationManager.getAppleRemindersService()
-    );
+    // Initialize task status settings handler (GitHub and Apple Reminders handlers are now managed by their services)
     this.taskStatusSettingsHandler = new TaskStatusSettingsHandler(
       this.statusDoneHandler
     );
 
-    // Register event handlers
+    // Register event handlers (GitHub and Apple Reminders handlers are now registered by their services)
     this.eventManager.registerHandler(this.statusDoneHandler);
     this.eventManager.registerHandler(this.entityCacheHandler);
-    this.eventManager.registerHandler(this.githubSettingsHandler);
-    this.eventManager.registerHandler(this.appleRemindersSettingsHandler);
     this.eventManager.registerHandler(this.taskStatusSettingsHandler);
     this.eventManager.registerHandler(this.taskMentionSyncHandler);
 
@@ -395,7 +381,7 @@ export default class TaskSyncPlugin
       TASK_PLANNING_VIEW_TYPE,
       (leaf) =>
         new TaskPlanningView(leaf, this.appleCalendarService, {
-          appleCalendarIntegration: this.settings.appleCalendarIntegration,
+          appleCalendarIntegration: this.settings.integrations.appleCalendar,
         })
     );
 
@@ -408,7 +394,7 @@ export default class TaskSyncPlugin
           this.appleCalendarService,
           this.dailyNoteService,
           {
-            appleCalendarIntegration: this.settings.appleCalendarIntegration,
+            appleCalendarIntegration: this.settings.integrations.appleCalendar,
           }
         )
     );
@@ -448,6 +434,11 @@ export default class TaskSyncPlugin
 
     if (this.fileChangeListener) {
       this.fileChangeListener.cleanup();
+    }
+
+    // Cleanup integration manager and all services
+    if (this.integrationManager) {
+      this.integrationManager.cleanup();
     }
 
     // Cleanup Apple Calendar service
@@ -494,10 +485,45 @@ export default class TaskSyncPlugin
   private async migrateSettings(): Promise<void> {
     let needsSave = false;
 
+    // Migrate from old flat settings structure to new integrations structure
+    if (!this.settings.integrations) {
+      console.log(
+        "Task Sync: Migrating from old flat settings structure to new integrations structure"
+      );
+      this.settings.integrations = {
+        github: { ...DEFAULT_SETTINGS.integrations.github },
+        appleReminders: { ...DEFAULT_SETTINGS.integrations.appleReminders },
+        appleCalendar: { ...DEFAULT_SETTINGS.integrations.appleCalendar },
+      };
+
+      // Migrate old flat integration settings if they exist
+      const oldSettings = this.settings as any;
+      if (oldSettings.githubIntegration) {
+        this.settings.integrations.github = {
+          ...oldSettings.githubIntegration,
+        };
+        delete oldSettings.githubIntegration;
+      }
+      if (oldSettings.appleRemindersIntegration) {
+        this.settings.integrations.appleReminders = {
+          ...oldSettings.appleRemindersIntegration,
+        };
+        delete oldSettings.appleRemindersIntegration;
+      }
+      if (oldSettings.appleCalendarIntegration) {
+        this.settings.integrations.appleCalendar = {
+          ...oldSettings.appleCalendarIntegration,
+        };
+        delete oldSettings.appleCalendarIntegration;
+      }
+
+      needsSave = true;
+    }
+
     // Check if appleCalendarIntegration is missing or has missing properties
-    if (this.settings.appleCalendarIntegration) {
-      const defaults = DEFAULT_SETTINGS.appleCalendarIntegration;
-      const current = this.settings.appleCalendarIntegration;
+    if (this.settings.integrations.appleCalendar) {
+      const defaults = DEFAULT_SETTINGS.integrations.appleCalendar;
+      const current = this.settings.integrations.appleCalendar;
 
       if (typeof current.startHour === "undefined") {
         current.startHour = defaults.startHour;
@@ -533,24 +559,24 @@ export default class TaskSyncPlugin
       }
     } else {
       // Missing entire appleCalendarIntegration object
-      this.settings.appleCalendarIntegration = {
-        ...DEFAULT_SETTINGS.appleCalendarIntegration,
+      this.settings.integrations.appleCalendar = {
+        ...DEFAULT_SETTINGS.integrations.appleCalendar,
       };
       needsSave = true;
     }
 
     // Check if appleRemindersIntegration is missing
-    if (!this.settings.appleRemindersIntegration) {
-      this.settings.appleRemindersIntegration = {
-        ...DEFAULT_SETTINGS.appleRemindersIntegration,
+    if (!this.settings.integrations.appleReminders) {
+      this.settings.integrations.appleReminders = {
+        ...DEFAULT_SETTINGS.integrations.appleReminders,
       };
       needsSave = true;
     }
 
     // Check if githubIntegration is missing
-    if (!this.settings.githubIntegration) {
-      this.settings.githubIntegration = {
-        ...DEFAULT_SETTINGS.githubIntegration,
+    if (!this.settings.integrations.github) {
+      this.settings.integrations.github = {
+        ...DEFAULT_SETTINGS.integrations.github,
       };
       needsSave = true;
     }
@@ -638,7 +664,7 @@ export default class TaskSyncPlugin
       const view = leaf.view as TaskPlanningView;
       if (view && view.updateSettings) {
         view.updateSettings({
-          appleCalendarIntegration: this.settings.appleCalendarIntegration,
+          appleCalendarIntegration: this.settings.integrations.appleCalendar,
         });
       }
     });

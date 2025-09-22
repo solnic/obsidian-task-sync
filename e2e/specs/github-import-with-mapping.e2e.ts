@@ -11,29 +11,17 @@ describe("GitHub Import with Organization/Repository Mapping", () => {
 
   test("should enhance import configuration with organization mapping", async () => {
     // Configure GitHub integration with organization mapping
-    await context.page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin) {
-        // Store current settings as previous settings before making changes
-        plugin.previousSettings = JSON.parse(JSON.stringify(plugin.settings));
-
-        plugin.settings.githubIntegration.enabled = true;
-        plugin.settings.githubIntegration.personalAccessToken =
-          "ghp_test_token_1234567890abcdef";
-
-        plugin.settings.githubIntegration.orgRepoMappings = [
-          {
-            organization: "microsoft",
-            repository: "",
-            targetArea: "Microsoft Projects",
-            targetProject: "",
-            priority: 1,
-          },
-        ];
-
-        await plugin.saveSettings();
-      }
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "ghp_1234567890abcdef1234567890abcdef12345678",
+      orgRepoMappings: [
+        {
+          organization: "microsoft",
+          repository: "",
+          targetArea: "Microsoft Projects",
+          targetProject: "",
+          priority: 1,
+        },
+      ],
     });
 
     // Test import configuration enhancement

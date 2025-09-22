@@ -1567,9 +1567,27 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       .setDesc("Connect to GitHub to browse and import issues as tasks")
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settings.githubIntegration.enabled)
+          .setValue(this.plugin.settings.integrations.github.enabled)
           .onChange(async (value) => {
-            this.plugin.settings.githubIntegration.enabled = value;
+            if (value) {
+              // Check if token is provided when enabling
+              const token =
+                this.plugin.settings.integrations.github.personalAccessToken;
+              const validation = validateGitHubToken(token);
+
+              if (!validation.isValid) {
+                // Show error and revert toggle
+                this.setValidationError(
+                  "github-integration",
+                  "GitHub Personal Access Token is required to enable integration"
+                );
+                toggle.setValue(false);
+                return;
+              }
+              this.clearValidationError("github-integration");
+            }
+
+            this.plugin.settings.integrations.github.enabled = value;
             await this.plugin.saveSettings();
 
             // Refresh the section to show/hide additional settings
@@ -1579,7 +1597,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
     // Only show additional settings if GitHub integration is enabled
-    if (this.plugin.settings.githubIntegration.enabled) {
+    if (this.plugin.settings.integrations.github.enabled) {
       // Personal Access Token
       new Setting(section)
         .setName("GitHub Personal Access Token")
@@ -1590,20 +1608,31 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           text
             .setPlaceholder("ghp_...")
             .setValue(
-              this.plugin.settings.githubIntegration.personalAccessToken
+              this.plugin.settings.integrations.github.personalAccessToken
             )
             .onChange(async (value) => {
               const validation = validateGitHubToken(value);
               if (validation.isValid) {
-                this.plugin.settings.githubIntegration.personalAccessToken =
+                this.plugin.settings.integrations.github.personalAccessToken =
                   value;
                 await this.plugin.saveSettings();
                 this.clearValidationError("github-token");
+                this.clearValidationError("github-integration");
               } else {
                 this.setValidationError(
                   "github-token",
                   validation.error || "Invalid token"
                 );
+
+                // Disable integration if token becomes invalid
+                if (this.plugin.settings.integrations.github.enabled) {
+                  this.plugin.settings.integrations.github.enabled = false;
+                  await this.plugin.saveSettings();
+
+                  // Refresh the section to update the toggle
+                  section.empty();
+                  this.createIntegrationsSection(container);
+                }
               }
             });
 
@@ -1619,9 +1648,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .addText((text) => {
           text
             .setPlaceholder("owner/repository")
-            .setValue(this.plugin.settings.githubIntegration.defaultRepository)
+            .setValue(
+              this.plugin.settings.integrations.github.defaultRepository
+            )
             .onChange(async (value) => {
-              this.plugin.settings.githubIntegration.defaultRepository = value;
+              this.plugin.settings.integrations.github.defaultRepository =
+                value;
               await this.plugin.saveSettings();
             });
         });
@@ -1635,9 +1667,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             .addOption("open", "Open")
             .addOption("closed", "Closed")
             .addOption("all", "All")
-            .setValue(this.plugin.settings.githubIntegration.issueFilters.state)
+            .setValue(
+              this.plugin.settings.integrations.github.issueFilters.state
+            )
             .onChange(async (value: "open" | "closed" | "all") => {
-              this.plugin.settings.githubIntegration.issueFilters.state = value;
+              this.plugin.settings.integrations.github.issueFilters.state =
+                value;
               await this.plugin.saveSettings();
             });
         });
@@ -1651,10 +1686,10 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           text
             .setPlaceholder("me, username, or empty")
             .setValue(
-              this.plugin.settings.githubIntegration.issueFilters.assignee
+              this.plugin.settings.integrations.github.issueFilters.assignee
             )
             .onChange(async (value) => {
-              this.plugin.settings.githubIntegration.issueFilters.assignee =
+              this.plugin.settings.integrations.github.issueFilters.assignee =
                 value;
               await this.plugin.saveSettings();
             });
@@ -1689,10 +1724,10 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       )
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settings.appleRemindersIntegration.enabled)
+          .setValue(this.plugin.settings.integrations.appleReminders.enabled)
           .setDisabled(!isPlatformSupported)
           .onChange(async (value) => {
-            this.plugin.settings.appleRemindersIntegration.enabled = value;
+            this.plugin.settings.integrations.appleReminders.enabled = value;
             await this.plugin.saveSettings();
 
             // Refresh the section to show/hide additional settings
@@ -1703,7 +1738,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
     // Only show additional settings if Apple Reminders integration is enabled and platform is supported
     if (
-      this.plugin.settings.appleRemindersIntegration.enabled &&
+      this.plugin.settings.integrations.appleReminders.enabled &&
       isPlatformSupported
     ) {
       // Include completed reminders
@@ -1713,11 +1748,11 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .addToggle((toggle) => {
           toggle
             .setValue(
-              this.plugin.settings.appleRemindersIntegration
+              this.plugin.settings.integrations.appleReminders
                 .includeCompletedReminders
             )
             .onChange(async (value) => {
-              this.plugin.settings.appleRemindersIntegration.includeCompletedReminders =
+              this.plugin.settings.integrations.appleReminders.includeCompletedReminders =
                 value;
               await this.plugin.saveSettings();
             });
@@ -1730,11 +1765,11 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .addToggle((toggle) => {
           toggle
             .setValue(
-              this.plugin.settings.appleRemindersIntegration
+              this.plugin.settings.integrations.appleReminders
                 .excludeAllDayReminders
             )
             .onChange(async (value) => {
-              this.plugin.settings.appleRemindersIntegration.excludeAllDayReminders =
+              this.plugin.settings.integrations.appleReminders.excludeAllDayReminders =
                 value;
               await this.plugin.saveSettings();
             });
@@ -1752,10 +1787,10 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
           dropdown
             .setValue(
-              this.plugin.settings.appleRemindersIntegration.defaultTaskType
+              this.plugin.settings.integrations.appleReminders.defaultTaskType
             )
             .onChange(async (value) => {
-              this.plugin.settings.appleRemindersIntegration.defaultTaskType =
+              this.plugin.settings.integrations.appleReminders.defaultTaskType =
                 value;
               await this.plugin.saveSettings();
             });
@@ -1768,11 +1803,11 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .addToggle((toggle) => {
           toggle
             .setValue(
-              this.plugin.settings.appleRemindersIntegration
+              this.plugin.settings.integrations.appleReminders
                 .importNotesAsDescription
             )
             .onChange(async (value) => {
-              this.plugin.settings.appleRemindersIntegration.importNotesAsDescription =
+              this.plugin.settings.integrations.appleReminders.importNotesAsDescription =
                 value;
               await this.plugin.saveSettings();
             });
@@ -1785,10 +1820,10 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .addToggle((toggle) => {
           toggle
             .setValue(
-              this.plugin.settings.appleRemindersIntegration.preservePriority
+              this.plugin.settings.integrations.appleReminders.preservePriority
             )
             .onChange(async (value) => {
-              this.plugin.settings.appleRemindersIntegration.preservePriority =
+              this.plugin.settings.integrations.appleReminders.preservePriority =
                 value;
               await this.plugin.saveSettings();
             });
@@ -1802,12 +1837,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           text
             .setPlaceholder("60")
             .setValue(
-              this.plugin.settings.appleRemindersIntegration.syncInterval.toString()
+              this.plugin.settings.integrations.appleReminders.syncInterval.toString()
             )
             .onChange(async (value) => {
               const interval = parseInt(value);
               if (!isNaN(interval) && interval > 0) {
-                this.plugin.settings.appleRemindersIntegration.syncInterval =
+                this.plugin.settings.integrations.appleReminders.syncInterval =
                   interval;
                 await this.plugin.saveSettings();
               }
@@ -1829,9 +1864,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       )
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settings.appleCalendarIntegration.enabled)
+          .setValue(this.plugin.settings.integrations.appleCalendar.enabled)
           .onChange(async (value) => {
-            this.plugin.settings.appleCalendarIntegration.enabled = value;
+            this.plugin.settings.integrations.appleCalendar.enabled = value;
             await this.plugin.saveSettings();
 
             // Refresh the section to show/hide additional settings
@@ -1841,7 +1876,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       });
 
     // Only show additional settings if Apple Calendar integration is enabled
-    if (this.plugin.settings.appleCalendarIntegration.enabled) {
+    if (this.plugin.settings.integrations.appleCalendar.enabled) {
       // Apple ID (username)
       new Setting(section)
         .setName("Apple ID")
@@ -1849,9 +1884,9 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .addText((text) => {
           text
             .setPlaceholder("your-email@icloud.com")
-            .setValue(this.plugin.settings.appleCalendarIntegration.username)
+            .setValue(this.plugin.settings.integrations.appleCalendar.username)
             .onChange(async (value) => {
-              this.plugin.settings.appleCalendarIntegration.username = value;
+              this.plugin.settings.integrations.appleCalendar.username = value;
               await this.plugin.saveSettings();
             });
         });
@@ -1866,10 +1901,11 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           text
             .setPlaceholder("xxxx-xxxx-xxxx-xxxx")
             .setValue(
-              this.plugin.settings.appleCalendarIntegration.appSpecificPassword
+              this.plugin.settings.integrations.appleCalendar
+                .appSpecificPassword
             )
             .onChange(async (value) => {
-              this.plugin.settings.appleCalendarIntegration.appSpecificPassword =
+              this.plugin.settings.integrations.appleCalendar.appSpecificPassword =
                 value;
               await this.plugin.saveSettings();
             });
@@ -1884,10 +1920,10 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .addToggle((toggle) => {
           toggle
             .setValue(
-              this.plugin.settings.appleCalendarIntegration.includeLocation
+              this.plugin.settings.integrations.appleCalendar.includeLocation
             )
             .onChange(async (value) => {
-              this.plugin.settings.appleCalendarIntegration.includeLocation =
+              this.plugin.settings.integrations.appleCalendar.includeLocation =
                 value;
               await this.plugin.saveSettings();
             });
@@ -1902,10 +1938,10 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .addToggle((toggle) => {
           toggle
             .setValue(
-              this.plugin.settings.appleCalendarIntegration.includeNotes
+              this.plugin.settings.integrations.appleCalendar.includeNotes
             )
             .onChange(async (value) => {
-              this.plugin.settings.appleCalendarIntegration.includeNotes =
+              this.plugin.settings.integrations.appleCalendar.includeNotes =
                 value;
               await this.plugin.saveSettings();
             });
@@ -1920,9 +1956,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .addText((text) => {
           text
             .setPlaceholder("Calendar Events")
-            .setValue(this.plugin.settings.appleCalendarIntegration.defaultArea)
+            .setValue(
+              this.plugin.settings.integrations.appleCalendar.defaultArea
+            )
             .onChange(async (value) => {
-              this.plugin.settings.appleCalendarIntegration.defaultArea = value;
+              this.plugin.settings.integrations.appleCalendar.defaultArea =
+                value;
               await this.plugin.saveSettings();
             });
         });
@@ -1935,9 +1974,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           dropdown
             .addOption("12h", "12-hour (AM/PM)")
             .addOption("24h", "24-hour")
-            .setValue(this.plugin.settings.appleCalendarIntegration.timeFormat)
+            .setValue(
+              this.plugin.settings.integrations.appleCalendar.timeFormat
+            )
             .onChange(async (value: "12h" | "24h") => {
-              this.plugin.settings.appleCalendarIntegration.timeFormat = value;
+              this.plugin.settings.integrations.appleCalendar.timeFormat =
+                value;
               await this.plugin.saveSettings();
             });
         });
@@ -1959,12 +2001,13 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           }
           dropdown
             .setValue(
-              this.plugin.settings.appleCalendarIntegration.startHour.toString()
+              this.plugin.settings.integrations.appleCalendar.startHour.toString()
             )
             .onChange(async (value) => {
               const hour = parseInt(value);
               if (!isNaN(hour) && hour >= 0 && hour < 24) {
-                this.plugin.settings.appleCalendarIntegration.startHour = hour;
+                this.plugin.settings.integrations.appleCalendar.startHour =
+                  hour;
                 await this.plugin.saveSettings();
               }
             });
@@ -1982,12 +2025,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           }
           dropdown
             .setValue(
-              this.plugin.settings.appleCalendarIntegration.endHour.toString()
+              this.plugin.settings.integrations.appleCalendar.endHour.toString()
             )
             .onChange(async (value) => {
               const hour = parseInt(value);
               if (!isNaN(hour) && hour >= 1 && hour <= 24) {
-                this.plugin.settings.appleCalendarIntegration.endHour = hour;
+                this.plugin.settings.integrations.appleCalendar.endHour = hour;
                 await this.plugin.saveSettings();
               }
             });
@@ -2003,12 +2046,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             .addOption("30", "30 minutes")
             .addOption("60", "60 minutes")
             .setValue(
-              this.plugin.settings.appleCalendarIntegration.timeIncrement.toString()
+              this.plugin.settings.integrations.appleCalendar.timeIncrement.toString()
             )
             .onChange(async (value) => {
               const increment = parseInt(value);
               if (!isNaN(increment) && [15, 30, 60].includes(increment)) {
-                this.plugin.settings.appleCalendarIntegration.timeIncrement =
+                this.plugin.settings.integrations.appleCalendar.timeIncrement =
                   increment;
                 await this.plugin.saveSettings();
               }
@@ -2028,10 +2071,10 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         .addToggle((toggle) => {
           toggle
             .setValue(
-              this.plugin.settings.appleCalendarIntegration.schedulingEnabled
+              this.plugin.settings.integrations.appleCalendar.schedulingEnabled
             )
             .onChange(async (value) => {
-              this.plugin.settings.appleCalendarIntegration.schedulingEnabled =
+              this.plugin.settings.integrations.appleCalendar.schedulingEnabled =
                 value;
               await this.plugin.saveSettings();
 
@@ -2042,7 +2085,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         });
 
       // Only show scheduling settings if enabled
-      if (this.plugin.settings.appleCalendarIntegration.schedulingEnabled) {
+      if (this.plugin.settings.integrations.appleCalendar.schedulingEnabled) {
         // Default scheduling calendar
         new Setting(section)
           .setName("Default Scheduling Calendar")
@@ -2051,11 +2094,11 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             text
               .setPlaceholder("Calendar name")
               .setValue(
-                this.plugin.settings.appleCalendarIntegration
+                this.plugin.settings.integrations.appleCalendar
                   .defaultSchedulingCalendar
               )
               .onChange(async (value) => {
-                this.plugin.settings.appleCalendarIntegration.defaultSchedulingCalendar =
+                this.plugin.settings.integrations.appleCalendar.defaultSchedulingCalendar =
                   value;
                 await this.plugin.saveSettings();
               });
@@ -2069,12 +2112,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             text
               .setPlaceholder("60")
               .setValue(
-                this.plugin.settings.appleCalendarIntegration.defaultEventDuration.toString()
+                this.plugin.settings.integrations.appleCalendar.defaultEventDuration.toString()
               )
               .onChange(async (value) => {
                 const duration = parseInt(value);
                 if (!isNaN(duration) && duration > 0) {
-                  this.plugin.settings.appleCalendarIntegration.defaultEventDuration =
+                  this.plugin.settings.integrations.appleCalendar.defaultEventDuration =
                     duration;
                   await this.plugin.saveSettings();
                 }
@@ -2088,11 +2131,11 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           .addToggle((toggle) => {
             toggle
               .setValue(
-                this.plugin.settings.appleCalendarIntegration
+                this.plugin.settings.integrations.appleCalendar
                   .includeTaskDetailsInEvent
               )
               .onChange(async (value) => {
-                this.plugin.settings.appleCalendarIntegration.includeTaskDetailsInEvent =
+                this.plugin.settings.integrations.appleCalendar.includeTaskDetailsInEvent =
                   value;
                 await this.plugin.saveSettings();
               });
@@ -2108,7 +2151,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
             text
               .setPlaceholder("15, 60")
               .setValue(
-                this.plugin.settings.appleCalendarIntegration.defaultReminders.join(
+                this.plugin.settings.integrations.appleCalendar.defaultReminders.join(
                   ", "
                 )
               )
@@ -2118,7 +2161,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
                     .split(",")
                     .map((s) => parseInt(s.trim()))
                     .filter((n) => !isNaN(n) && n > 0);
-                  this.plugin.settings.appleCalendarIntegration.defaultReminders =
+                  this.plugin.settings.integrations.appleCalendar.defaultReminders =
                     reminders;
                   await this.plugin.saveSettings();
                 } catch (error) {
@@ -2141,13 +2184,13 @@ export class TaskSyncSettingTab extends PluginSettingTab {
    */
   private createGitHubOrgRepoMappingsSection(container: HTMLElement): void {
     // Ensure orgRepoMappings array exists
-    if (!this.plugin.settings.githubIntegration.orgRepoMappings) {
-      this.plugin.settings.githubIntegration.orgRepoMappings = [];
+    if (!this.plugin.settings.integrations.github.orgRepoMappings) {
+      this.plugin.settings.integrations.github.orgRepoMappings = [];
     }
 
     // Sort mappings by priority (highest first) for display
     const sortedMappings = [
-      ...this.plugin.settings.githubIntegration.orgRepoMappings,
+      ...this.plugin.settings.integrations.github.orgRepoMappings,
     ].sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
     // Create sortable mapping list
@@ -2155,17 +2198,17 @@ export class TaskSyncSettingTab extends PluginSettingTab {
       container: container,
       mappings: sortedMappings,
       onReorder: async (newOrder: GitHubOrgRepoMapping[]) => {
-        this.plugin.settings.githubIntegration.orgRepoMappings = newOrder;
+        this.plugin.settings.integrations.github.orgRepoMappings = newOrder;
         await this.plugin.saveSettings();
       },
       onUpdate: async (index: number, mapping: GitHubOrgRepoMapping) => {
         // Find the mapping in the original array and update it
         const originalIndex =
-          this.plugin.settings.githubIntegration.orgRepoMappings.findIndex(
+          this.plugin.settings.integrations.github.orgRepoMappings.findIndex(
             (m) => m === sortedMappings[index]
           );
         if (originalIndex !== -1) {
-          this.plugin.settings.githubIntegration.orgRepoMappings[
+          this.plugin.settings.integrations.github.orgRepoMappings[
             originalIndex
           ] = mapping;
           await this.plugin.saveSettings();
@@ -2175,11 +2218,11 @@ export class TaskSyncSettingTab extends PluginSettingTab {
         // Find the mapping in the original array and remove it
         const mappingToDelete = sortedMappings[index];
         const originalIndex =
-          this.plugin.settings.githubIntegration.orgRepoMappings.findIndex(
+          this.plugin.settings.integrations.github.orgRepoMappings.findIndex(
             (m) => m === mappingToDelete
           );
         if (originalIndex !== -1) {
-          this.plugin.settings.githubIntegration.orgRepoMappings.splice(
+          this.plugin.settings.integrations.github.orgRepoMappings.splice(
             originalIndex,
             1
           );
@@ -2196,10 +2239,12 @@ export class TaskSyncSettingTab extends PluginSettingTab {
           targetArea: "",
           targetProject: "",
           priority:
-            (this.plugin.settings.githubIntegration.orgRepoMappings.length ||
+            (this.plugin.settings.integrations.github.orgRepoMappings.length ||
               0) + 1,
         };
-        this.plugin.settings.githubIntegration.orgRepoMappings.push(newMapping);
+        this.plugin.settings.integrations.github.orgRepoMappings.push(
+          newMapping
+        );
         await this.plugin.saveSettings();
         // Refresh the section
         container.empty();

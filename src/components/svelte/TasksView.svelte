@@ -58,9 +58,9 @@
     const unsubscribe = settingsStore.subscribe((storeState) => {
       if (storeState.settings) {
         reactiveSettings = {
-          githubIntegration: storeState.settings.githubIntegration,
+          githubIntegration: storeState.settings.integrations.github,
           appleRemindersIntegration:
-            storeState.settings.appleRemindersIntegration,
+            storeState.settings.integrations.appleReminders,
         };
       }
     });
