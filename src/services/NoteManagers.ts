@@ -13,7 +13,7 @@ import type { ProjectFileManager } from "./ProjectFileManager";
 import type { BaseEntity } from "../types/entities";
 import { PROPERTY_REGISTRY } from "../types/properties";
 import type { VaultScannerService } from "../types/services";
-import { settingsChanged } from "../utils/deepEqual";
+import { settingsChanged } from "../utils/equality";
 
 // Constructor type for file managers
 export type FileManagerConstructor<T extends FileManager = FileManager> = new (

@@ -32,7 +32,7 @@ import {
 import { TaskSyncSettings } from "../components/ui/settings/types";
 import { settingsStore } from "../stores/settingsStore";
 import { requestUrl } from "obsidian";
-import { settingsChanged } from "../utils/deepEqual";
+import { settingsChanged } from "../utils/equality";
 import ICAL from "ical.js";
 import {
   ExternalTaskData,

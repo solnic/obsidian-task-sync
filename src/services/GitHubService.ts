@@ -36,7 +36,7 @@ import {
 } from "../cache/schemas/github";
 import { GitHubOrgRepoMapper } from "./GitHubOrgRepoMapper";
 import { settingsStore } from "../stores/settingsStore";
-import { settingsChanged } from "../utils/deepEqual";
+import { settingsChanged } from "../utils/equality";
 
 // Use schema types directly
 export type GitHubIssue = GitHubIssueType;

@@ -2,7 +2,7 @@
  * Tests for deep equality utility
  */
 
-import { deepEqual, settingsChanged } from "../src/utils/deepEqual";
+import { deepEqual, settingsChanged } from "../src/utils/equality";
 
 describe("deepEqual", () => {
   describe("primitive values", () => {
@@ -50,8 +50,30 @@ describe("deepEqual", () => {
     });
 
     test("should handle nested arrays", () => {
-      expect(deepEqual([[1, 2], [3, 4]], [[1, 2], [3, 4]])).toBe(true);
-      expect(deepEqual([[1, 2], [3, 4]], [[1, 2], [3, 5]])).toBe(false);
+      expect(
+        deepEqual(
+          [
+            [1, 2],
+            [3, 4],
+          ],
+          [
+            [1, 2],
+            [3, 4],
+          ]
+        )
+      ).toBe(true);
+      expect(
+        deepEqual(
+          [
+            [1, 2],
+            [3, 4],
+          ],
+          [
+            [1, 2],
+            [3, 5],
+          ]
+        )
+      ).toBe(false);
     });
   });
 
@@ -72,7 +94,7 @@ describe("deepEqual", () => {
       const obj1 = { a: { b: { c: 1 } } };
       const obj2 = { a: { b: { c: 1 } } };
       const obj3 = { a: { b: { c: 2 } } };
-      
+
       expect(deepEqual(obj1, obj2)).toBe(true);
       expect(deepEqual(obj1, obj3)).toBe(false);
     });
@@ -94,17 +116,17 @@ describe("deepEqual", () => {
       const obj1 = {
         name: "test",
         items: [1, 2, { nested: true }],
-        meta: { created: new Date("2024-01-01") }
+        meta: { created: new Date("2024-01-01") },
       };
       const obj2 = {
         name: "test",
         items: [1, 2, { nested: true }],
-        meta: { created: new Date("2024-01-01") }
+        meta: { created: new Date("2024-01-01") },
       };
       const obj3 = {
         name: "test",
         items: [1, 2, { nested: false }],
-        meta: { created: new Date("2024-01-01") }
+        meta: { created: new Date("2024-01-01") },
       };
 
       expect(deepEqual(obj1, obj2)).toBe(true);
@@ -134,15 +156,15 @@ describe("settingsChanged", () => {
   test("should handle complex settings objects", () => {
     const settings1 = {
       github: { enabled: true, token: "abc" },
-      filters: ["bug", "feature"]
+      filters: ["bug", "feature"],
     };
     const settings2 = {
       github: { enabled: true, token: "abc" },
-      filters: ["bug", "feature"]
+      filters: ["bug", "feature"],
     };
     const settings3 = {
       github: { enabled: true, token: "xyz" },
-      filters: ["bug", "feature"]
+      filters: ["bug", "feature"],
     };
 
     expect(settingsChanged(settings1, settings2)).toBe(false);

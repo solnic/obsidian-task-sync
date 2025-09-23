@@ -32,7 +32,7 @@ import {
 } from "../cache/schemas/apple-reminders";
 import * as osascript from "node-osascript";
 import { settingsStore } from "../stores/settingsStore";
-import { settingsChanged } from "../utils/deepEqual";
+import { settingsChanged } from "../utils/equality";
 
 export class AppleRemindersService extends AbstractService {
   private listsCache?: SchemaCache<AppleRemindersLists>;
