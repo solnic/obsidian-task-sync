@@ -168,30 +168,17 @@
 
       const label = radioWrapper.createEl("label");
       label.textContent = state.label;
-      // Use addEventListener instead of onclick for better event handling
-      label.addEventListener("click", () => {
-        // Allow unselecting by clicking the same radio again
-        if (radio.checked) {
-          radio.checked = false;
-          // Reset both flags to false (no state)
-          if (isNewStatus) {
-            taskStatus.isDone = false;
-            taskStatus.isInProgress = false;
-          } else {
-            settings.taskStatuses[index].isDone = false;
-            settings.taskStatuses[index].isInProgress = false;
-            saveSettings(settings);
-            if (settings.autoSyncAreaProjectBases) {
-              plugin.syncAreaProjectBases();
-            }
-          }
-        } else {
-          radio.click();
-        }
-      });
+      label.setAttribute("for", radio.id || `radio-${index}-${state.value}`);
 
-      radio.onchange = async () => {
+      // Set radio ID for proper label association
+      if (!radio.id) {
+        radio.id = `radio-${index}-${state.value}`;
+      }
+
+      // Use standard change event for radio button behavior
+      radio.addEventListener("change", async () => {
         if (radio.checked) {
+          // Update the task status flags based on selected state
           if (isNewStatus) {
             taskStatus.isDone = state.isDone;
             taskStatus.isInProgress = state.isInProgress;
@@ -206,7 +193,29 @@
             }
           }
         }
-      };
+      });
+
+      // Add click handler to label for deselection behavior (optional enhancement)
+      label.addEventListener("click", (e) => {
+        // Allow deselecting by clicking the same radio again
+        if (radio.checked) {
+          e.preventDefault(); // Prevent default label behavior
+          radio.checked = false;
+
+          // Reset both flags to false (no state)
+          if (isNewStatus) {
+            taskStatus.isDone = false;
+            taskStatus.isInProgress = false;
+          } else {
+            settings.taskStatuses[index].isDone = false;
+            settings.taskStatuses[index].isInProgress = false;
+            saveSettings(settings);
+            if (settings.autoSyncAreaProjectBases) {
+              plugin.syncAreaProjectBases();
+            }
+          }
+        }
+      });
     });
   }
 
