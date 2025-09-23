@@ -32,6 +32,7 @@ import {
 import { TaskSyncSettings } from "../components/ui/settings/types";
 import { settingsStore } from "../stores/settingsStore";
 import { requestUrl } from "obsidian";
+import { settingsChanged } from "../utils/deepEqual";
 import ICAL from "ical.js";
 import {
   ExternalTaskData,
@@ -169,12 +170,12 @@ export class AppleCalendarService
       (appleCalendarSettings) => {
         if (appleCalendarSettings) {
           // Check if settings have actually changed
-          const settingsChanged =
-            previousSettings === null ||
-            JSON.stringify(previousSettings) !==
-              JSON.stringify(appleCalendarSettings);
+          const hasChanged = settingsChanged(
+            previousSettings,
+            appleCalendarSettings
+          );
 
-          if (settingsChanged) {
+          if (hasChanged) {
             console.log(
               "📅 Apple Calendar settings changed via store, updating service"
             );

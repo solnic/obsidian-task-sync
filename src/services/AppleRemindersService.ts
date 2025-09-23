@@ -32,6 +32,7 @@ import {
 } from "../cache/schemas/apple-reminders";
 import * as osascript from "node-osascript";
 import { settingsStore } from "../stores/settingsStore";
+import { settingsChanged } from "../utils/deepEqual";
 
 export class AppleRemindersService extends AbstractService {
   private listsCache?: SchemaCache<AppleRemindersLists>;
@@ -162,11 +163,9 @@ export class AppleRemindersService extends AbstractService {
       settingsStore.appleRemindersIntegration.subscribe((appleSettings) => {
         if (appleSettings) {
           // Check if settings have actually changed
-          const settingsChanged =
-            previousSettings === null ||
-            JSON.stringify(previousSettings) !== JSON.stringify(appleSettings);
+          const hasChanged = settingsChanged(previousSettings, appleSettings);
 
-          if (settingsChanged) {
+          if (hasChanged) {
             console.log(
               "🍎 Apple Reminders settings changed via store, updating service"
             );

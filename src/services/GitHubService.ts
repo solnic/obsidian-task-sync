@@ -36,6 +36,7 @@ import {
 } from "../cache/schemas/github";
 import { GitHubOrgRepoMapper } from "./GitHubOrgRepoMapper";
 import { settingsStore } from "../stores/settingsStore";
+import { settingsChanged } from "../utils/deepEqual";
 
 // Use schema types directly
 export type GitHubIssue = GitHubIssueType;
@@ -191,11 +192,9 @@ export class GitHubService extends AbstractService {
       (githubSettings) => {
         if (githubSettings) {
           // Check if settings have actually changed
-          const settingsChanged =
-            previousSettings === null ||
-            JSON.stringify(previousSettings) !== JSON.stringify(githubSettings);
+          const hasChanged = settingsChanged(previousSettings, githubSettings);
 
-          if (settingsChanged) {
+          if (hasChanged) {
             console.log(
               "🐙 GitHub settings changed via store, updating service"
             );
