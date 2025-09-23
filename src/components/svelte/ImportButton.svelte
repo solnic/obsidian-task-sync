@@ -100,16 +100,12 @@
   });
 
   // Determine if button should be disabled
-  // In daily planning wizard mode, allow clicking even when imported (for scheduling/unscheduling)
-  // For regular import mode, hide the button completely when imported
-  let isDisabled = $derived(
-    disabled || isImporting || (isImported && !dailyPlanningWizardMode)
-  );
+  // Since we hide the button when imported, we only need to check for disabled and isImporting
+  let isDisabled = $derived(disabled || isImporting);
 
-  // Hide the button completely when imported (except in daily planning wizard mode)
-  let shouldHideButton = $derived(
-    isImported && !dailyPlanningWizardMode && !dayPlanningMode
-  );
+  // Hide the button completely when imported - we don't want to show button states
+  // The button should only appear when it can perform an action
+  let shouldHideButton = $derived(isImported);
 
   // Determine CSS classes
   let cssClasses = $derived.by(() => {
