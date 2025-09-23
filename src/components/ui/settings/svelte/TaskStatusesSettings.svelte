@@ -168,7 +168,8 @@
 
       const label = radioWrapper.createEl("label");
       label.textContent = state.label;
-      label.onclick = () => {
+      // Use addEventListener instead of onclick for better event handling
+      label.addEventListener("click", () => {
         // Allow unselecting by clicking the same radio again
         if (radio.checked) {
           radio.checked = false;
@@ -187,7 +188,7 @@
         } else {
           radio.click();
         }
-      };
+      });
 
       radio.onchange = async () => {
         if (radio.checked) {
