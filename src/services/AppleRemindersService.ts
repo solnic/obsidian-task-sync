@@ -32,6 +32,7 @@ import {
 } from "../cache/schemas/apple-reminders";
 import * as osascript from "node-osascript";
 import { settingsStore } from "../stores/settingsStore";
+import { settingsChanged } from "../utils/equality";
 
 export class AppleRemindersService extends AbstractService {
   private listsCache?: SchemaCache<AppleRemindersLists>;
@@ -155,14 +156,23 @@ export class AppleRemindersService extends AbstractService {
     // Unsubscribe any existing subscription to prevent duplicates
     this.dispose();
 
+    // Track previous settings to detect actual changes
+    let previousSettings: any = null;
+
     this.settingsUnsubscribe =
       settingsStore.appleRemindersIntegration.subscribe((appleSettings) => {
         if (appleSettings) {
-          console.log(
-            "🍎 Apple Reminders settings changed via store, updating service"
-          );
-          this.updateSettingsInternal(appleSettings);
-          this.clearCache();
+          // Check if settings have actually changed
+          const hasChanged = settingsChanged(previousSettings, appleSettings);
+
+          if (hasChanged) {
+            console.log(
+              "🍎 Apple Reminders settings changed via store, updating service"
+            );
+            this.updateSettingsInternal(appleSettings);
+            this.clearCache();
+            previousSettings = { ...appleSettings };
+          }
         }
       });
   }

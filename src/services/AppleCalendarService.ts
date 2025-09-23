@@ -32,6 +32,7 @@ import {
 import { TaskSyncSettings } from "../components/ui/settings/types";
 import { settingsStore } from "../stores/settingsStore";
 import { requestUrl } from "obsidian";
+import { settingsChanged } from "../utils/equality";
 import ICAL from "ical.js";
 import {
   ExternalTaskData,
@@ -162,14 +163,26 @@ export class AppleCalendarService
     // Unsubscribe any existing subscription to prevent duplicates
     this.dispose();
 
+    // Track previous settings to detect actual changes
+    let previousSettings: any = null;
+
     this.settingsUnsubscribe = settingsStore.appleCalendarIntegration.subscribe(
       (appleCalendarSettings) => {
         if (appleCalendarSettings) {
-          console.log(
-            "📅 Apple Calendar settings changed via store, updating service"
+          // Check if settings have actually changed
+          const hasChanged = settingsChanged(
+            previousSettings,
+            appleCalendarSettings
           );
-          this.updateSettingsInternal(appleCalendarSettings);
-          this.clearCache();
+
+          if (hasChanged) {
+            console.log(
+              "📅 Apple Calendar settings changed via store, updating service"
+            );
+            this.updateSettingsInternal(appleCalendarSettings);
+            this.clearCache();
+            previousSettings = { ...appleCalendarSettings };
+          }
         }
       }
     );

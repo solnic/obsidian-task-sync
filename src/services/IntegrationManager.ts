@@ -99,9 +99,17 @@ export class IntegrationManager {
         }
       }
 
-      if (hasChanges || !oldSettings) {
+      // Only update integrations if there are actual changes
+      // Don't update on first subscription (when oldSettings is null) unless there are changes
+      if (hasChanges) {
         await this.updateIntegrations();
         this.notifyListeners();
+      } else if (!oldSettings) {
+        // First subscription - initialize enabled states without triggering updates
+        for (const config of integrationRegistry.getAll()) {
+          const enabled = config.isEnabled(this.settings);
+          this.lastEnabledStates.set(config.key, enabled);
+        }
       }
     });
   }

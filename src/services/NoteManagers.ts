@@ -13,6 +13,7 @@ import type { ProjectFileManager } from "./ProjectFileManager";
 import type { BaseEntity } from "../types/entities";
 import { PROPERTY_REGISTRY } from "../types/properties";
 import type { VaultScannerService } from "../types/services";
+import { settingsChanged } from "../utils/equality";
 
 // Constructor type for file managers
 export type FileManagerConstructor<T extends FileManager = FileManager> = new (
@@ -218,6 +219,14 @@ export class NoteManagers {
    * Update settings for all registered managers
    */
   public updateSettings(newSettings: TaskSyncSettings): void {
+    // Check if settings have actually changed
+    const hasChanged = settingsChanged(this.settings, newSettings);
+
+    if (!hasChanged) {
+      // Settings haven't changed, skip update
+      return;
+    }
+
     this.settings = newSettings;
 
     for (const [noteType, config] of this.noteTypes) {

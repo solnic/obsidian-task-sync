@@ -8,6 +8,7 @@ import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../main";
 import * as yaml from "js-yaml";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
+import { settingsChanged } from "../utils/equality";
 import {
   generateTasksBase as generateTasksBaseConfig,
   generateAreaBase as generateAreaBaseConfig,
@@ -60,6 +61,14 @@ export class BaseManager {
    * Update settings reference (for when settings are changed)
    */
   updateSettings(newSettings: TaskSyncSettings): void {
+    // Check if settings have actually changed
+    const hasChanged = settingsChanged(this.settings, newSettings);
+
+    if (!hasChanged) {
+      // Settings haven't changed, skip update
+      return;
+    }
+
     this.settings = newSettings;
   }
 
