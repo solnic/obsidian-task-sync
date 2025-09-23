@@ -327,4 +327,211 @@ describe("Task Source Storage", () => {
     expect(results.result2.skipped).toBe(true);
     expect(results.result2.reason).toBe("Task already imported");
   });
+
+  test("should preserve source property after refresh command", async () => {
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "test/repo",
+    });
+
+    await stubGitHubAPIs(context.page, {
+      issues: "issues-basic",
+      repositories: "repositories-basic",
+      currentUser: "current-user-basic",
+    });
+
+    // Import a GitHub issue as a task
+    const importResult = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const githubService = plugin.integrationManager.getGitHubService();
+      const issues = await githubService.fetchIssues();
+      const issue = issues[0]; // Use first issue from fixture
+      const config = plugin.getDefaultImportConfig();
+
+      const importResult = await githubService.importIssueAsTask(
+        issue,
+        config,
+        "test/repo"
+      );
+
+      await plugin.stores.taskStore.refreshTasks();
+
+      const task = plugin.stores.taskStore.findEntityByPath(
+        importResult.taskFilePath
+      );
+
+      return {
+        taskFilePath: importResult.taskFilePath,
+        sourceBeforeRefresh: task.source,
+        taskTitle: task.title,
+      };
+    });
+
+    // Verify task was imported with source
+    expect(importResult.sourceBeforeRefresh).toBeDefined();
+    expect(importResult.sourceBeforeRefresh.name).toBe("github");
+    expect(importResult.sourceBeforeRefresh.key).toBe("github-999888");
+
+    // Execute refresh command
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      await plugin.refresh();
+    });
+
+    // Wait for refresh to complete
+    await context.page.waitForTimeout(3000);
+
+    // Verify source property is still preserved after refresh
+    const afterRefresh = await context.page.evaluate(async (taskFilePath) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const task = plugin.stores.taskStore.findEntityByPath(taskFilePath);
+
+      return {
+        sourceAfterRefresh: task?.source,
+        taskExists: !!task,
+        taskTitle: task?.title,
+      };
+    }, importResult.taskFilePath);
+
+    expect(afterRefresh.taskExists).toBe(true);
+    expect(afterRefresh.taskTitle).toBe("Test import persistence issue");
+    expect(afterRefresh.sourceAfterRefresh).toBeDefined();
+    expect(afterRefresh.sourceAfterRefresh.name).toBe("github");
+    expect(afterRefresh.sourceAfterRefresh.key).toBe("github-999888");
+    expect(afterRefresh.sourceAfterRefresh.url).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/999"
+    );
+  });
+
+  test("should preserve source property after plugin reload", async () => {
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "test/repo",
+    });
+
+    await stubGitHubAPIs(context.page, {
+      issues: "issues-basic",
+      repositories: "repositories-basic",
+      currentUser: "current-user-basic",
+    });
+
+    // Import a GitHub issue as a task
+    const importResult = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const githubService = plugin.integrationManager.getGitHubService();
+      const issues = await githubService.fetchIssues();
+      const issue = issues[0]; // Use first issue from fixture
+      const config = plugin.getDefaultImportConfig();
+
+      const importResult = await githubService.importIssueAsTask(
+        issue,
+        config,
+        "test/repo"
+      );
+
+      await plugin.stores.taskStore.refreshTasks();
+
+      const task = plugin.stores.taskStore.findEntityByPath(
+        importResult.taskFilePath
+      );
+
+      return {
+        taskFilePath: importResult.taskFilePath,
+        sourceBeforeReload: task.source,
+        taskTitle: task.title,
+      };
+    });
+
+    // Verify task was imported with source
+    expect(importResult.sourceBeforeReload).toBeDefined();
+    expect(importResult.sourceBeforeReload.name).toBe("github");
+    expect(importResult.sourceBeforeReload.key).toBe("github-999888");
+
+    // Force persistence to ensure source is saved
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      await plugin.stores.taskStore.persistData();
+    });
+
+    // Wait for persistence to complete
+    await context.page.waitForTimeout(1000);
+
+    // Simulate plugin reload by disabling and re-enabling the plugin
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      console.log("🔄 Disabling plugin to simulate reload...");
+      await app.plugins.disablePlugin("obsidian-task-sync");
+    });
+
+    // Wait for plugin to be fully disabled
+    await context.page.waitForTimeout(2000);
+
+    // Re-enable the plugin
+    await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      console.log("🔄 Re-enabling plugin...");
+      await app.plugins.enablePlugin("obsidian-task-sync");
+    });
+
+    // Wait for plugin to be fully loaded
+    await context.page.waitForTimeout(3000);
+
+    // Re-enable GitHub integration after plugin reload
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "test/repo",
+    });
+
+    await stubGitHubAPIs(context.page, {
+      issues: "issues-basic",
+      repositories: "repositories-basic",
+      currentUser: "current-user-basic",
+    });
+
+    // Wait for stores to be fully initialized
+    await context.page.waitForTimeout(2000);
+
+    // Verify source property is still preserved after plugin reload
+    const afterReload = await context.page.evaluate(async (taskFilePath) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Wait for task store to be ready
+      if (!plugin || !plugin.stores || !plugin.stores.taskStore) {
+        return { error: "Plugin or stores not ready" };
+      }
+
+      const task = plugin.stores.taskStore.findEntityByPath(taskFilePath);
+
+      return {
+        sourceAfterReload: task?.source,
+        taskExists: !!task,
+        taskTitle: task?.title,
+        allTasks: plugin.stores.taskStore.getEntities().map((t) => ({
+          title: t.title,
+          source: t.source,
+          filePath: t.filePath,
+        })),
+      };
+    }, importResult.taskFilePath);
+
+    expect(afterReload.taskExists).toBe(true);
+    expect(afterReload.taskTitle).toBe("Test import persistence issue");
+
+    // This is the critical test - source should be preserved after plugin reload
+    expect(afterReload.sourceAfterReload).toBeDefined();
+    expect(afterReload.sourceAfterReload.name).toBe("github");
+    expect(afterReload.sourceAfterReload.key).toBe("github-999888");
+    expect(afterReload.sourceAfterReload.url).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/999"
+    );
+  });
 });
