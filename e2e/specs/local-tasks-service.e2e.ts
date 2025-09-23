@@ -513,4 +513,63 @@ This is a test task created directly in the vault.`;
     const taskCount = await taskItems.count();
     expect(taskCount).toBe(0);
   });
+
+  test("should not show 'Added to today' button state for scheduled tasks", async () => {
+    // Create a test task
+    await createTask(context, {
+      title: "Button State Test Task",
+      category: "Feature",
+      priority: "Medium",
+      status: "Backlog",
+    });
+
+    // Open Tasks view and switch to local service
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "local");
+
+    // Wait for tasks to load
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
+      timeout: 5000,
+    });
+
+    // Find the task item
+    const taskItem = context.page
+      .locator('[data-testid^="local-task-item-"]')
+      .filter({ hasText: "Button State Test Task" })
+      .first();
+    await taskItem.waitFor({ state: "visible", timeout: 5000 });
+
+    // Hover over the task to show action buttons
+    await taskItem.hover();
+
+    // Initially, there should be no button states showing - only action buttons
+    const addedToTodayButton = taskItem.locator(
+      'button:has-text("✓ Added to today")'
+    );
+    const addedToTodayButtonCount = await addedToTodayButton.count();
+    expect(addedToTodayButtonCount).toBe(0);
+
+    const scheduledForTodayButton = taskItem.locator(
+      'button:has-text("✓ Scheduled for today")'
+    );
+    const scheduledForTodayButtonCount = await scheduledForTodayButton.count();
+    expect(scheduledForTodayButtonCount).toBe(0);
+
+    const scheduledButton = taskItem.locator('button:has-text("✓ Scheduled")');
+    const scheduledButtonCount = await scheduledButton.count();
+    expect(scheduledButtonCount).toBe(0);
+
+    // There should be no disabled "Add to today" buttons
+    const disabledAddToTodayButton = taskItem.locator(
+      'button[disabled]:has-text("Add to today")'
+    );
+    const disabledAddToTodayButtonCount =
+      await disabledAddToTodayButton.count();
+    expect(disabledAddToTodayButtonCount).toBe(0);
+
+    // Verify that action buttons (like "Open") are still visible
+    const openButton = taskItem.locator('button:has-text("Open")');
+    const openButtonCount = await openButton.count();
+    expect(openButtonCount).toBe(1);
+  });
 });
