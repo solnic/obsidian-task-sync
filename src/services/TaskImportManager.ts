@@ -192,23 +192,8 @@ export class TaskImportManager {
       content += taskData.description + "\n\n";
     }
 
-    // Add external reference section
-    content += "## External Reference\n\n";
-    content += `**Source:** ${taskData.sourceType}\n`;
-    content += `**External ID:** ${taskData.id}\n`;
-    content += `**URL:** [View in ${taskData.sourceType}](${taskData.externalUrl})\n`;
-    content += `**Created:** ${getDateString(taskData.createdAt)}\n`;
-    content += `**Updated:** ${getDateString(taskData.updatedAt)}\n`;
-
-    // Add assignee if available
-    if (taskData.assignee) {
-      content += `**Assignee:** ${taskData.assignee}\n`;
-    }
-
-    // Add labels if available
-    if (taskData.labels && taskData.labels.length > 0) {
-      content += `**Labels:** ${taskData.labels.join(", ")}\n`;
-    }
+    // Add external reference section using the dedicated method
+    content += this.generateExternalReferenceSection(taskData);
 
     return content;
   }
@@ -237,8 +222,10 @@ export class TaskImportManager {
     // Update the front-matter while preserving the file body
     await this.updateFrontMatterOnly(file, frontMatterData);
 
-    // Optionally update the body content with latest external data
+    // Read the current content after front-matter update
     const currentContent = await this.vault.read(file);
+
+    // Update the body content with latest external data
     const updatedContent = this.updateTaskBodyContent(currentContent, taskData);
 
     if (updatedContent !== currentContent) {
@@ -251,7 +238,7 @@ export class TaskImportManager {
    */
   async updateFrontMatterOnly(
     file: TFile,
-    frontMatterData: any
+    frontMatterData: Record<string, any>
   ): Promise<void> {
     await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
       // Clear existing front-matter and replace with new data
@@ -262,6 +249,9 @@ export class TaskImportManager {
 
   /**
    * Update the body content of a task file with latest external data
+   * Note: This method is called after updateFrontMatterOnly has already updated the front-matter,
+   * so currentContent contains the already-updated front-matter plus the original body content.
+   * This method updates the body and returns the complete file content.
    */
   updateTaskBodyContent(
     currentContent: string,
@@ -272,18 +262,95 @@ export class TaskImportManager {
       /^---\n([\s\S]*?)\n---\n([\s\S]*)$/
     );
 
-    if (!frontMatterMatch) {
-      // No front-matter found, just replace entire content
-      return this.generateTaskContent(taskData);
+    if (frontMatterMatch) {
+      // Extract the already-updated front-matter and original body sections
+      const [, frontMatterSection, bodySection] = frontMatterMatch;
+
+      // Update the body content with external data while preserving user content
+      const updatedBody = this.updateExternalReferenceSection(
+        bodySection || "",
+        taskData
+      );
+
+      // Return the complete file content with updated front-matter and body
+      return `---\n${frontMatterSection}\n---\n${updatedBody}`;
+    } else {
+      // No front-matter found, treat entire content as body and update it
+      const updatedBody = this.updateExternalReferenceSection(
+        currentContent,
+        taskData
+      );
+      return updatedBody;
+    }
+  }
+
+  /**
+   * Update or add the External Reference section in the body content
+   * Preserves other user content while updating external data
+   */
+  private updateExternalReferenceSection(
+    bodyContent: string,
+    taskData: ExternalTaskData
+  ): string {
+    // Generate the new external reference section
+    const newExternalRef = this.generateExternalReferenceSection(taskData);
+
+    // Check if there's already an External Reference section
+    const externalRefRegex =
+      /## External Reference\n\n[\s\S]*?(?=\n## |\n# |$)/;
+
+    let updatedContent = bodyContent;
+
+    // Add or update the description from external data if it exists
+    if (taskData.description) {
+      // Check if the description is already in the content
+      if (!bodyContent.includes(taskData.description)) {
+        // Add the description at the beginning if it's not already there
+        const trimmedBody = bodyContent.trim();
+        if (trimmedBody) {
+          updatedContent = `${taskData.description}\n\n${trimmedBody}`;
+        } else {
+          updatedContent = `${taskData.description}\n\n`;
+        }
+      }
     }
 
-    const [, frontMatterSection, bodySection] = frontMatterMatch;
+    if (externalRefRegex.test(updatedContent)) {
+      // Replace existing External Reference section
+      return updatedContent.replace(externalRefRegex, newExternalRef.trim());
+    } else {
+      // Add External Reference section at the end
+      const trimmedContent = updatedContent.trim();
+      if (trimmedContent) {
+        return `${trimmedContent}\n\n${newExternalRef}`;
+      } else {
+        return newExternalRef;
+      }
+    }
+  }
 
-    // Generate new body content from external data
-    const newBodyContent = this.generateTaskContent(taskData);
+  /**
+   * Generate the External Reference section content
+   */
+  private generateExternalReferenceSection(taskData: ExternalTaskData): string {
+    let content = "## External Reference\n\n";
+    content += `**Source:** ${taskData.sourceType}\n`;
+    content += `**External ID:** ${taskData.id}\n`;
+    content += `**URL:** [View in ${taskData.sourceType}](${taskData.externalUrl})\n`;
+    content += `**Created:** ${getDateString(taskData.createdAt)}\n`;
+    content += `**Updated:** ${getDateString(taskData.updatedAt)}\n`;
 
-    // Reconstruct the file with existing front-matter and new body
-    return `---\n${frontMatterSection}\n---\n${newBodyContent}`;
+    // Add assignee if available
+    if (taskData.assignee) {
+      content += `**Assignee:** ${taskData.assignee}\n`;
+    }
+
+    // Add labels if available
+    if (taskData.labels && taskData.labels.length > 0) {
+      content += `**Labels:** ${taskData.labels.join(", ")}\n`;
+    }
+
+    return content;
   }
 
   /**
