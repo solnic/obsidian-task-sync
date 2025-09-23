@@ -163,11 +163,22 @@ export function validateTemplateFileName(fileName: string): ValidationResult {
 }
 
 /**
+ * Helper function to check if a token is non-empty after trimming
+ */
+function isNonEmptyToken(token: string): boolean {
+  return !!token.trim();
+}
+
+/**
  * Validates GitHub Personal Access Token format
+ *
+ * Only require non-empty tokens; previously, we used regex to check for GitHub token formats (e.g., "ghp_" prefix).
+ * This was removed because GitHub may change token formats, and only the API can definitively validate tokens.
+ * Deferring validation to the GitHub API ensures future compatibility and accurate feedback for users.
  */
 export function validateGitHubToken(token: string): ValidationResult {
   // Just require non-empty tokens - let GitHub API handle validation
-  if (!token.trim()) {
+  if (!isNonEmptyToken(token)) {
     return {
       isValid: false,
       error: "GitHub Personal Access Token is required",
