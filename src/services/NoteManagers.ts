@@ -218,6 +218,16 @@ export class NoteManagers {
    * Update settings for all registered managers
    */
   public updateSettings(newSettings: TaskSyncSettings): void {
+    // Check if settings have actually changed
+    const settingsChanged =
+      !this.settings ||
+      JSON.stringify(this.settings) !== JSON.stringify(newSettings);
+
+    if (!settingsChanged) {
+      // Settings haven't changed, skip update
+      return;
+    }
+
     this.settings = newSettings;
 
     for (const [noteType, config] of this.noteTypes) {

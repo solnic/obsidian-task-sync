@@ -60,6 +60,16 @@ export class BaseManager {
    * Update settings reference (for when settings are changed)
    */
   updateSettings(newSettings: TaskSyncSettings): void {
+    // Check if settings have actually changed
+    const settingsChanged =
+      !this.settings ||
+      JSON.stringify(this.settings) !== JSON.stringify(newSettings);
+
+    if (!settingsChanged) {
+      // Settings haven't changed, skip update
+      return;
+    }
+
     this.settings = newSettings;
   }
 
