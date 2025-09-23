@@ -534,4 +534,112 @@ describe("Task Source Storage", () => {
       "https://github.com/solnic/obsidian-task-sync/issues/999"
     );
   });
+
+  test("should update existing file when importing task with same filename", async () => {
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "test/repo",
+    });
+
+    await stubGitHubAPIs(context.page, {
+      issues: "issues-basic",
+      repositories: "repositories-basic",
+      currentUser: "current-user-basic",
+    });
+
+    // First, manually create a task file with the same name that would be generated
+    const result = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Create a task file manually with the same name that GitHub import would use
+      const taskName = "Test import persistence issue"; // This matches the fixture
+      const sanitizedName = taskName
+        .replace(/[<>:"/\\|?*]/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+      const taskPath = `${plugin.settings.tasksFolder}/${sanitizedName}.md`;
+
+      // Create the file with initial content
+      const initialContent = `---
+Title: Original Task Title
+Type: Task
+Category: Bug
+Priority: High
+Areas: []
+Project: ""
+Done: false
+Status: Open
+Parent task: ""
+Sub-tasks: []
+tags: []
+---
+
+This is the original task content.
+`;
+
+      await app.vault.create(taskPath, initialContent);
+
+      // Now try to import a GitHub issue that would create a file with the same name
+      const githubService = plugin.integrationManager.getGitHubService();
+      const issues = await githubService.fetchIssues();
+      const issue = issues[0]; // This should have title "Test import persistence issue"
+      const config = plugin.getDefaultImportConfig();
+
+      // This should update the existing file instead of throwing an error
+      const importResult = await githubService.importIssueAsTask(
+        issue,
+        config,
+        "test/repo"
+      );
+
+      // Read the file content after import
+      const file = app.vault.getAbstractFileByPath(taskPath);
+      const updatedContent = await app.vault.read(file);
+
+      return {
+        importResult,
+        taskPath,
+        updatedContent,
+        originalTitle: "Original Task Title",
+        expectedNewTitle: issue.title,
+      };
+    });
+
+    // The import should succeed
+    expect(result.importResult.success).toBe(true);
+    expect(result.importResult.skipped).toBeFalsy();
+    expect(result.importResult.taskFilePath).toBe(result.taskPath);
+
+    // The file should be updated with new front-matter from GitHub issue
+    expect(result.updatedContent).toContain(
+      "Title: Test import persistence issue"
+    );
+    expect(result.updatedContent).toContain("Category: Task"); // Updated category from import
+    expect(result.updatedContent).not.toContain("Title: Original Task Title");
+
+    // The file should contain the GitHub issue description
+    expect(result.updatedContent).toContain(
+      "This issue tests that import status is preserved across restarts"
+    );
+
+    // Verify the task has source information
+    const taskWithSource = await context.page.evaluate(async (taskPath) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      await plugin.stores.taskStore.refreshTasks();
+      const task = plugin.stores.taskStore.findEntityByPath(taskPath);
+
+      return {
+        hasSource: !!task?.source,
+        sourceType: task?.source?.name,
+        sourceKey: task?.source?.key,
+      };
+    }, result.taskPath);
+
+    expect(taskWithSource.hasSource).toBe(true);
+    expect(taskWithSource.sourceType).toBe("github");
+    expect(taskWithSource.sourceKey).toBe("github-999888");
+  });
 });

@@ -44,8 +44,9 @@ export class TaskImportManager {
     const taskExists = await this.taskExists(taskPath, taskData.id);
 
     if (taskExists) {
-      const error = `Task already exists: ${taskPath}`;
-      throw new Error(error);
+      // Update existing file with latest data instead of throwing error
+      await this.updateExistingTaskFile(taskPath, taskData, config);
+      return taskPath;
     }
 
     // Ensure target area exists if specified
@@ -210,6 +211,79 @@ export class TaskImportManager {
     }
 
     return content;
+  }
+
+  /**
+   * Update existing task file with latest data from external source
+   */
+  async updateExistingTaskFile(
+    taskPath: string,
+    taskData: ExternalTaskData,
+    config: TaskImportConfig
+  ): Promise<void> {
+    const file = this.vault.getAbstractFileByPath(taskPath) as TFile;
+    if (!file) {
+      throw new Error(`File not found: ${taskPath}`);
+    }
+
+    // Ensure target area exists if specified
+    if (config.targetArea) {
+      await this.ensureAreaExists(config.targetArea);
+    }
+
+    // Generate updated front-matter
+    const frontMatterData = this.generateTaskFrontMatter(taskData, config);
+
+    // Update the front-matter while preserving the file body
+    await this.updateFrontMatterOnly(file, frontMatterData);
+
+    // Optionally update the body content with latest external data
+    const currentContent = await this.vault.read(file);
+    const updatedContent = this.updateTaskBodyContent(currentContent, taskData);
+
+    if (updatedContent !== currentContent) {
+      await this.vault.modify(file, updatedContent);
+    }
+  }
+
+  /**
+   * Update only the front-matter of a file, preserving the body content
+   */
+  async updateFrontMatterOnly(
+    file: TFile,
+    frontMatterData: any
+  ): Promise<void> {
+    await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
+      // Clear existing front-matter and replace with new data
+      Object.keys(frontMatter).forEach((key) => delete frontMatter[key]);
+      Object.assign(frontMatter, frontMatterData);
+    });
+  }
+
+  /**
+   * Update the body content of a task file with latest external data
+   */
+  updateTaskBodyContent(
+    currentContent: string,
+    taskData: ExternalTaskData
+  ): string {
+    // Split content into front-matter and body
+    const frontMatterMatch = currentContent.match(
+      /^---\n([\s\S]*?)\n---\n([\s\S]*)$/
+    );
+
+    if (!frontMatterMatch) {
+      // No front-matter found, just replace entire content
+      return this.generateTaskContent(taskData);
+    }
+
+    const [, frontMatterSection, bodySection] = frontMatterMatch;
+
+    // Generate new body content from external data
+    const newBodyContent = this.generateTaskContent(taskData);
+
+    // Reconstruct the file with existing front-matter and new body
+    return `---\n${frontMatterSection}\n---\n${newBodyContent}`;
   }
 
   /**
