@@ -27,7 +27,7 @@
 
   function createGitHubSection(): void {
     // GitHub integration toggle
-    new Setting(githubContainer)
+    const toggleSetting = new Setting(githubContainer)
       .setName("Enable GitHub Integration")
       .setDesc("Connect to GitHub to browse and import issues as tasks")
       .addToggle((toggle) => {
@@ -36,6 +36,9 @@
           await onToggle(value);
         });
       });
+
+    // Mark the toggle setting with a data attribute for reliable identification
+    toggleSetting.settingEl.setAttribute("data-github-toggle", "true");
   }
 
   function createGitHubSettings(): void {
@@ -179,9 +182,14 @@
     if (enabled) {
       createGitHubSettings();
     } else {
-      // Clear GitHub settings when disabled
+      // Clear GitHub settings when disabled - remove all children except the toggle
       const children = Array.from(githubContainer.children);
-      children.slice(1).forEach((child) => child.remove()); // Keep the toggle, remove the rest
+      children.forEach((child) => {
+        // Keep the toggle setting, remove everything else
+        if (!child.hasAttribute("data-github-toggle")) {
+          child.remove();
+        }
+      });
       githubMappingsContainer.empty();
     }
   });
