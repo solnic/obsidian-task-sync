@@ -28,9 +28,9 @@ describe("Task Type Configuration", () => {
   test("should display task types settings section", async () => {
     await openTaskSyncSettingsWrapper();
 
-    const taskTypesSection = context.page
-      .locator("h2.task-sync-section-header")
-      .filter({ hasText: "Task Categories" });
+    const taskTypesSection = context.page.locator(
+      '[data-testid="settings-section-task-categories"]'
+    );
     expect(await taskTypesSection.isVisible()).toBe(true);
 
     await scrollToTaskTypesSection();

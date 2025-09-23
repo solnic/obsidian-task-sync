@@ -29,7 +29,12 @@
 </script>
 
 <div class="task-sync-settings-section">
-  <h2 class="task-sync-section-header">{section.title}</h2>
+  <h2
+    class="task-sync-section-header"
+    data-testid="settings-section-{section.id}"
+  >
+    {section.title}
+  </h2>
   {#if section.description}
     <p class="task-sync-settings-section-desc">{section.description}</p>
   {/if}
