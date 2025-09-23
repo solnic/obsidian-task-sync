@@ -184,12 +184,25 @@ export class GitHubService extends AbstractService {
     // Unsubscribe any existing subscription to prevent duplicates
     this.dispose();
 
+    // Track previous settings to detect actual changes
+    let previousSettings: any = null;
+
     this.settingsUnsubscribe = settingsStore.githubIntegration.subscribe(
       (githubSettings) => {
         if (githubSettings) {
-          console.log("🐙 GitHub settings changed via store, updating service");
-          this.updateSettingsInternal(githubSettings);
-          this.clearCache();
+          // Check if settings have actually changed
+          const settingsChanged =
+            previousSettings === null ||
+            JSON.stringify(previousSettings) !== JSON.stringify(githubSettings);
+
+          if (settingsChanged) {
+            console.log(
+              "🐙 GitHub settings changed via store, updating service"
+            );
+            this.updateSettingsInternal(githubSettings);
+            this.clearCache();
+            previousSettings = { ...githubSettings };
+          }
         }
       }
     );

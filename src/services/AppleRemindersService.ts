@@ -155,14 +155,25 @@ export class AppleRemindersService extends AbstractService {
     // Unsubscribe any existing subscription to prevent duplicates
     this.dispose();
 
+    // Track previous settings to detect actual changes
+    let previousSettings: any = null;
+
     this.settingsUnsubscribe =
       settingsStore.appleRemindersIntegration.subscribe((appleSettings) => {
         if (appleSettings) {
-          console.log(
-            "🍎 Apple Reminders settings changed via store, updating service"
-          );
-          this.updateSettingsInternal(appleSettings);
-          this.clearCache();
+          // Check if settings have actually changed
+          const settingsChanged =
+            previousSettings === null ||
+            JSON.stringify(previousSettings) !== JSON.stringify(appleSettings);
+
+          if (settingsChanged) {
+            console.log(
+              "🍎 Apple Reminders settings changed via store, updating service"
+            );
+            this.updateSettingsInternal(appleSettings);
+            this.clearCache();
+            previousSettings = { ...appleSettings };
+          }
         }
       });
   }

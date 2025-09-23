@@ -162,14 +162,26 @@ export class AppleCalendarService
     // Unsubscribe any existing subscription to prevent duplicates
     this.dispose();
 
+    // Track previous settings to detect actual changes
+    let previousSettings: any = null;
+
     this.settingsUnsubscribe = settingsStore.appleCalendarIntegration.subscribe(
       (appleCalendarSettings) => {
         if (appleCalendarSettings) {
-          console.log(
-            "📅 Apple Calendar settings changed via store, updating service"
-          );
-          this.updateSettingsInternal(appleCalendarSettings);
-          this.clearCache();
+          // Check if settings have actually changed
+          const settingsChanged =
+            previousSettings === null ||
+            JSON.stringify(previousSettings) !==
+              JSON.stringify(appleCalendarSettings);
+
+          if (settingsChanged) {
+            console.log(
+              "📅 Apple Calendar settings changed via store, updating service"
+            );
+            this.updateSettingsInternal(appleCalendarSettings);
+            this.clearCache();
+            previousSettings = { ...appleCalendarSettings };
+          }
         }
       }
     );
