@@ -163,30 +163,28 @@ export function validateTemplateFileName(fileName: string): ValidationResult {
 }
 
 /**
+ * Helper function to check if a token is non-empty after trimming
+ */
+function isNonEmptyToken(token: string): boolean {
+  return !!token.trim();
+}
+
+/**
  * Validates GitHub Personal Access Token format
+ *
+ * Only require non-empty tokens; previously, we used regex to check for GitHub token formats (e.g., "ghp_" prefix).
+ * This was removed because GitHub may change token formats, and only the API can definitively validate tokens.
+ * Deferring validation to the GitHub API ensures future compatibility and accurate feedback for users.
  */
 export function validateGitHubToken(token: string): ValidationResult {
-  // Require non-empty tokens for integration to be enabled
-  if (!token.trim()) {
+  // Just require non-empty tokens - let GitHub API handle validation
+  if (!isNonEmptyToken(token)) {
     return {
       isValid: false,
       error: "GitHub Personal Access Token is required",
     };
   }
 
-  // GitHub Classic PAT format: ghp_ followed by 40 characters
-  const classicPATPattern = /^ghp_[a-zA-Z0-9]{40}$/;
-
-  // GitHub Fine-grained PAT format: github_pat_ followed by version and token
-  const fineGrainedPATPattern = /^github_pat_[a-zA-Z0-9_]{82,}$/;
-
-  if (classicPATPattern.test(token) || fineGrainedPATPattern.test(token)) {
-    return { isValid: true };
-  }
-
-  return {
-    isValid: false,
-    error:
-      "Invalid GitHub Personal Access Token format. Expected format: ghp_... (classic) or github_pat_... (fine-grained)",
-  };
+  // Any non-empty token is considered valid - GitHub API will provide feedback if invalid
+  return { isValid: true };
 }

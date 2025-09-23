@@ -1,4 +1,5 @@
 /* Main CSS file that imports all styles for the Task Sync plugin */
 
 /* Import our custom styles */
-@import './custom.css';
+@import "./custom.css";
+@import "./settings.css";

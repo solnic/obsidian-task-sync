@@ -13,13 +13,22 @@ import { TaskType } from "../../main";
  */
 export function createTypeBadge(
   taskType: TaskType,
-  className?: string,
+  className?: string
 ): HTMLElement {
   const badge = document.createElement("span");
-  badge.className = `task-type-badge task-type-${taskType.color}`;
+  badge.className = "task-type-badge";
 
   if (className) {
     badge.className += ` ${className}`;
+  }
+
+  // Handle both hex colors and named colors
+  if (taskType.color.startsWith("#")) {
+    // Use custom hex color
+    badge.style.backgroundColor = taskType.color;
+  } else {
+    // Use predefined color class
+    badge.className += ` task-type-${taskType.color}`;
   }
 
   badge.textContent = taskType.name;
@@ -37,7 +46,7 @@ export function createTypeBadge(
 export function appendTypeBadge(
   container: HTMLElement,
   taskType: TaskType,
-  className?: string,
+  className?: string
 ): HTMLElement {
   const badge = createTypeBadge(taskType, className);
   container.appendChild(badge);
@@ -54,7 +63,7 @@ export function appendTypeBadge(
 export function createTypeBadgeWrapper(
   taskType: TaskType,
   wrapperClassName?: string,
-  badgeClassName?: string,
+  badgeClassName?: string
 ): HTMLElement {
   const wrapper = document.createElement("div");
   wrapper.className = wrapperClassName || "task-type-preview";
@@ -72,14 +81,26 @@ export function createTypeBadgeWrapper(
  */
 export function updateTypeBadge(
   badgeElement: HTMLElement,
-  taskType: TaskType,
+  taskType: TaskType
 ): void {
   // Remove old color classes
   badgeElement.className = badgeElement.className.replace(/task-type-\w+/g, "");
 
-  // Add new color class and ensure base class is present
-  badgeElement.className =
-    `task-type-badge task-type-${taskType.color} ${badgeElement.className}`.trim();
+  // Ensure base class is present
+  if (!badgeElement.className.includes("task-type-badge")) {
+    badgeElement.className = `task-type-badge ${badgeElement.className}`.trim();
+  }
+
+  // Handle both hex colors and named colors
+  if (taskType.color.startsWith("#")) {
+    // Use custom hex color
+    badgeElement.style.backgroundColor = taskType.color;
+  } else {
+    // Use predefined color class
+    badgeElement.className += ` task-type-${taskType.color}`;
+    // Clear any custom background color
+    badgeElement.style.backgroundColor = "";
+  }
 
   // Update text content
   badgeElement.textContent = taskType.name;
@@ -95,7 +116,7 @@ export function updateTypeBadge(
 export function createTypeBadgeList(
   taskTypes: TaskType[],
   containerClassName?: string,
-  badgeClassName?: string,
+  badgeClassName?: string
 ): HTMLElement {
   const container = document.createElement("div");
   container.className = containerClassName || "task-type-badge-list";

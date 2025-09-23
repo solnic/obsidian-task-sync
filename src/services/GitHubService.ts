@@ -329,20 +329,30 @@ export class GitHubService extends AbstractService {
   }
 
   /**
+   * Helper method to get trimmed GitHub token if available
+   */
+  private getTrimmedToken(): string | undefined {
+    const token = this.settings.integrations.github?.personalAccessToken;
+    return token?.trim() || undefined;
+  }
+
+  /**
    * Initialize Octokit client if integration is enabled and token is provided
    */
   private initializeOctokit(): void {
-    if (
-      this.settings.integrations.github?.enabled &&
-      this.settings.integrations.github?.personalAccessToken
-    ) {
+    const trimmedToken = this.getTrimmedToken();
+
+    if (this.settings.integrations.github?.enabled && trimmedToken) {
       this.octokit = new Octokit({
-        auth: this.settings.integrations.github?.personalAccessToken,
+        auth: trimmedToken,
         userAgent: "obsidian-task-sync",
         request: {
           fetch: this.createObsidianFetch(),
         },
       });
+    } else {
+      // Clear octokit if integration is disabled or no token
+      this.octokit = undefined;
     }
   }
 
