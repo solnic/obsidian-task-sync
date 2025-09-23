@@ -44,8 +44,9 @@ export class TaskImportManager {
     const taskExists = await this.taskExists(taskPath, taskData.id);
 
     if (taskExists) {
-      const error = `Task already exists: ${taskPath}`;
-      throw new Error(error);
+      // Update existing file with latest data instead of throwing error
+      await this.updateExistingTaskFile(taskPath, taskData, config);
+      return taskPath;
     }
 
     // Ensure target area exists if specified
@@ -191,8 +192,148 @@ export class TaskImportManager {
       content += taskData.description + "\n\n";
     }
 
-    // Add external reference section
-    content += "## External Reference\n\n";
+    // Add external reference section using the dedicated method
+    content += this.generateExternalReferenceSection(taskData);
+
+    return content;
+  }
+
+  /**
+   * Update existing task file with latest data from external source
+   */
+  async updateExistingTaskFile(
+    taskPath: string,
+    taskData: ExternalTaskData,
+    config: TaskImportConfig
+  ): Promise<void> {
+    const file = this.vault.getAbstractFileByPath(taskPath) as TFile;
+    if (!file) {
+      throw new Error(`File not found: ${taskPath}`);
+    }
+
+    // Ensure target area exists if specified
+    if (config.targetArea) {
+      await this.ensureAreaExists(config.targetArea);
+    }
+
+    // Generate updated front-matter
+    const frontMatterData = this.generateTaskFrontMatter(taskData, config);
+
+    // Update the front-matter while preserving the file body
+    await this.updateFrontMatterOnly(file, frontMatterData);
+
+    // Read the current content after front-matter update
+    const currentContent = await this.vault.read(file);
+
+    // Update the body content with latest external data
+    const updatedContent = this.updateTaskBodyContent(currentContent, taskData);
+
+    if (updatedContent !== currentContent) {
+      await this.vault.modify(file, updatedContent);
+    }
+  }
+
+  /**
+   * Update only the front-matter of a file, preserving the body content
+   */
+  async updateFrontMatterOnly(
+    file: TFile,
+    frontMatterData: Record<string, any>
+  ): Promise<void> {
+    await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
+      // Clear existing front-matter and replace with new data
+      Object.keys(frontMatter).forEach((key) => delete frontMatter[key]);
+      Object.assign(frontMatter, frontMatterData);
+    });
+  }
+
+  /**
+   * Update the body content of a task file with latest external data
+   * Note: This method is called after updateFrontMatterOnly has already updated the front-matter,
+   * so currentContent contains the already-updated front-matter plus the original body content.
+   * This method updates the body and returns the complete file content.
+   */
+  updateTaskBodyContent(
+    currentContent: string,
+    taskData: ExternalTaskData
+  ): string {
+    // Split content into front-matter and body
+    const frontMatterMatch = currentContent.match(
+      /^---\n([\s\S]*?)\n---\n([\s\S]*)$/
+    );
+
+    if (frontMatterMatch) {
+      // Extract the already-updated front-matter and original body sections
+      const [, frontMatterSection, bodySection] = frontMatterMatch;
+
+      // Update the body content with external data while preserving user content
+      const updatedBody = this.updateExternalReferenceSection(
+        bodySection || "",
+        taskData
+      );
+
+      // Return the complete file content with updated front-matter and body
+      return `---\n${frontMatterSection}\n---\n${updatedBody}`;
+    } else {
+      // No front-matter found, treat entire content as body and update it
+      const updatedBody = this.updateExternalReferenceSection(
+        currentContent,
+        taskData
+      );
+      return updatedBody;
+    }
+  }
+
+  /**
+   * Update or add the External Reference section in the body content
+   * Preserves other user content while updating external data
+   */
+  private updateExternalReferenceSection(
+    bodyContent: string,
+    taskData: ExternalTaskData
+  ): string {
+    // Generate the new external reference section
+    const newExternalRef = this.generateExternalReferenceSection(taskData);
+
+    // Check if there's already an External Reference section
+    const externalRefRegex =
+      /## External Reference\n\n[\s\S]*?(?=\n## |\n# |$)/;
+
+    let updatedContent = bodyContent;
+
+    // Add or update the description from external data if it exists
+    if (taskData.description) {
+      // Check if the description is already in the content
+      if (!bodyContent.includes(taskData.description)) {
+        // Add the description at the beginning if it's not already there
+        const trimmedBody = bodyContent.trim();
+        if (trimmedBody) {
+          updatedContent = `${taskData.description}\n\n${trimmedBody}`;
+        } else {
+          updatedContent = `${taskData.description}\n\n`;
+        }
+      }
+    }
+
+    if (externalRefRegex.test(updatedContent)) {
+      // Replace existing External Reference section
+      return updatedContent.replace(externalRefRegex, newExternalRef.trim());
+    } else {
+      // Add External Reference section at the end
+      const trimmedContent = updatedContent.trim();
+      if (trimmedContent) {
+        return `${trimmedContent}\n\n${newExternalRef}`;
+      } else {
+        return newExternalRef;
+      }
+    }
+  }
+
+  /**
+   * Generate the External Reference section content
+   */
+  private generateExternalReferenceSection(taskData: ExternalTaskData): string {
+    let content = "## External Reference\n\n";
     content += `**Source:** ${taskData.sourceType}\n`;
     content += `**External ID:** ${taskData.id}\n`;
     content += `**URL:** [View in ${taskData.sourceType}](${taskData.externalUrl})\n`;
