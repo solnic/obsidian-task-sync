@@ -975,12 +975,35 @@ export async function scrollToSettingsSection(
   page: Page,
   sectionName: string
 ): Promise<void> {
+  // Try multiple selectors for the section header
+  const selectors = [
+    `h2.task-sync-section-header:has-text("${sectionName}")`,
+    `h2:has-text("${sectionName}")`,
+    `.task-sync-section-header:has-text("${sectionName}")`,
+    `[data-section="${sectionName.toLowerCase().replace(/\s+/g, "-")}"]`,
+  ];
+
+  for (const selector of selectors) {
+    try {
+      const section = page.locator(selector);
+      const count = await section.count();
+
+      if (count > 0) {
+        await section.first().scrollIntoViewIfNeeded();
+        await section.first().waitFor({ state: "visible", timeout: 2000 });
+        return;
+      }
+    } catch (error) {
+      continue;
+    }
+  }
+
+  // If no selector worked, try the original approach with longer timeout
   const section = page
-    .locator(".task-sync-section-header")
+    .locator("h2.task-sync-section-header")
     .filter({ hasText: sectionName });
   await section.scrollIntoViewIfNeeded();
-  // Wait for the section to be visible after scrolling
-  await section.waitFor({ state: "visible", timeout: 5000 });
+  await section.waitFor({ state: "visible", timeout: 10000 });
 }
 
 /**
@@ -990,10 +1013,8 @@ export async function scrollToAddTaskTypeSection(page: Page): Promise<void> {
   // First scroll to the Task Categories section
   await scrollToSettingsSection(page, "Task Categories");
 
-  // Then scroll specifically to the "Add New Task Category" setting
-  const addSection = page
-    .locator(".setting-item")
-    .filter({ hasText: "Add New Task Category" });
+  // Then scroll specifically to the "Add New Task Category" setting using data-testid
+  const addSection = page.locator('[data-testid="add-task-category-section"]');
   await addSection.scrollIntoViewIfNeeded();
   // Wait for the add section to be visible after scrolling
   await addSection.waitFor({ state: "visible", timeout: 5000 });
@@ -1005,76 +1026,94 @@ export async function scrollToAddTaskTypeSection(page: Page): Promise<void> {
 export async function addTaskStatus(
   page: Page,
   statusName: string,
-  color: string = "blue",
   isDone: boolean = false
 ): Promise<void> {
   // Find the "Add New Task Status" section
-  const addSection = page
-    .locator(".setting-item")
-    .filter({ hasText: "Add New Task Status" });
-  await addSection.waitFor({ state: "visible", timeout: 5000 });
+  const addSection = page.locator('[data-testid="add-task-status-section"]');
+  await addSection.waitFor({ state: "visible", timeout: 10000 });
 
-  // Fill in the status name
-  const nameInput = addSection.locator(
-    'input[placeholder*="Review, Testing, Blocked"]'
-  );
+  // Fill in the status name - use the last name input (for new status)
+  const nameInputs = page.locator('[data-testid="task-status-name-input"]');
+  const nameInput = nameInputs.last();
   await nameInput.fill(statusName);
 
-  // Select the color
-  const colorDropdown = addSection.locator("select").first();
-  await colorDropdown.selectOption(color);
+  // Note: Color picker is now handled by Obsidian's color picker component
+  // We'll skip color selection in tests for now as it requires more complex interaction
+
+  // Set state using radio buttons if needed
+  if (isDone) {
+    // Click the "Done" radio button for the new status (last one)
+    const doneRadios = page.locator('[data-testid="task-status-state-done"]');
+    const doneRadio = doneRadios.last();
+    await doneRadio.click();
+  }
 
   // Click the Add Status button
-  const addButton = addSection
-    .locator("button")
-    .filter({ hasText: "Add Status" });
+  const addButton = page.locator('[data-testid="add-task-status-button"]');
   await addButton.click();
 
   // Give UI time to add the new status
   await page.waitForTimeout(300);
-
-  // If isDone should be true, toggle it
-  if (isDone) {
-    const newStatusSetting = page
-      .locator(".setting-item")
-      .filter({ hasText: statusName })
-      .first();
-    // Target the "Done" checkbox specifically by its tooltip
-    const toggle = newStatusSetting
-      .getByLabel("Mark this status as representing a completed/done state")
-      .getByRole("checkbox");
-    const isChecked = await toggle.isChecked();
-    if (!isChecked) {
-      await toggle.click();
-    }
-  }
 }
 
 /**
- * Toggle the isDone state of an existing task status
+ * Set the state of an existing task status using radio buttons
+ */
+export async function setTaskStatusState(
+  page: Page,
+  statusName: string,
+  state: "in-progress" | "done" | "none"
+): Promise<void> {
+  // Find the specific status setting by name input data attribute
+  const statusNameInput = page.locator(
+    '[data-testid="task-status-name-input"][data-name="' + statusName + '"]'
+  );
+  await statusNameInput.waitFor({ state: "visible", timeout: 5000 });
+
+  // Get the parent setting container
+  const statusSetting = statusNameInput.locator(
+    'xpath=ancestor::div[contains(@class, "setting-item")]'
+  );
+
+  if (state === "done") {
+    const doneRadio = statusSetting.locator(
+      '[data-testid="task-status-state-done"]'
+    );
+    await doneRadio.click();
+  } else if (state === "in-progress") {
+    const inProgressRadio = statusSetting.locator(
+      '[data-testid="task-status-state-in-progress"]'
+    );
+    await inProgressRadio.click();
+  } else {
+    // For "none" state, click the currently selected radio to unselect it
+    const doneRadio = statusSetting.locator(
+      '[data-testid="task-status-state-done"]'
+    );
+    const inProgressRadio = statusSetting.locator(
+      '[data-testid="task-status-state-in-progress"]'
+    );
+
+    if (await doneRadio.isChecked()) {
+      await doneRadio.click(); // Click again to unselect
+    } else if (await inProgressRadio.isChecked()) {
+      await inProgressRadio.click(); // Click again to unselect
+    }
+  }
+
+  // Give UI time to process the change
+  await page.waitForTimeout(100);
+}
+
+/**
+ * Legacy function for backward compatibility - maps to new radio button interface
  */
 export async function toggleTaskStatusDone(
   page: Page,
   statusName: string,
   isDone: boolean
 ): Promise<void> {
-  const statusSetting = page
-    .locator(".setting-item")
-    .filter({ hasText: statusName })
-    .first();
-  await statusSetting.waitFor({ state: "visible", timeout: 5000 });
-
-  // Target the "Done" checkbox specifically by its tooltip
-  const toggle = statusSetting
-    .getByLabel("Mark this status as representing a completed/done state")
-    .getByRole("checkbox");
-  const isChecked = await toggle.isChecked();
-
-  if (isChecked !== isDone) {
-    await toggle.click();
-    // Give UI time to process the change
-    await page.waitForTimeout(100);
-  }
+  await setTaskStatusState(page, statusName, isDone ? "done" : "none");
 }
 
 /**

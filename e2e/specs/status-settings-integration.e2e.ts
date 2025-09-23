@@ -22,10 +22,10 @@ describe("Status Settings Integration with Event System", () => {
     await openTaskStatusSettings(context);
 
     // Add a custom status marked as done
-    await addTaskStatus(context.page, "Shipped", "purple", true);
+    await addTaskStatus(context.page, "Shipped", true);
 
     // Add a custom status not marked as done
-    await addTaskStatus(context.page, "Blocked", "red", false);
+    await addTaskStatus(context.page, "Blocked", false);
 
     // Close settings by pressing Escape
     await context.page.keyboard.press("Escape");
@@ -108,9 +108,9 @@ describe("Status Settings Integration with Event System", () => {
   test("should handle multiple done statuses correctly", async () => {
     // Configure multiple statuses as done through UI
     await openTaskStatusSettings(context);
-    await addTaskStatus(context.page, "Completed", "green", true);
-    await addTaskStatus(context.page, "Delivered", "blue", true);
-    await addTaskStatus(context.page, "Archived", "gray", true);
+    await addTaskStatus(context.page, "Completed", true);
+    await addTaskStatus(context.page, "Delivered", true);
+    await addTaskStatus(context.page, "Archived", true);
     await context.page.keyboard.press("Escape");
 
     // Create a task using entity helper
@@ -172,11 +172,11 @@ describe("Status Settings Integration with Event System", () => {
     await openTaskStatusSettings(context);
 
     // Add additional done statuses
-    await addTaskStatus(context.page, "Completed", "green", true);
-    await addTaskStatus(context.page, "Finished", "purple", true);
+    await addTaskStatus(context.page, "Completed", true);
+    await addTaskStatus(context.page, "Finished", true);
 
     // Add additional non-done statuses
-    await addTaskStatus(context.page, "Todo", "blue", false);
+    await addTaskStatus(context.page, "Todo", false);
 
     await context.page.keyboard.press("Escape");
 
@@ -299,7 +299,7 @@ describe("Status Settings Integration with Event System", () => {
 
     // Change settings (add new status) through UI
     await openTaskStatusSettings(context);
-    await addTaskStatus(context.page, "Review", "orange", false);
+    await addTaskStatus(context.page, "Review", false);
     await context.page.keyboard.press("Escape");
 
     // Test synchronization still works after settings change

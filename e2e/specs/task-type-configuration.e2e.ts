@@ -29,7 +29,7 @@ describe("Task Type Configuration", () => {
     await openTaskSyncSettingsWrapper();
 
     const taskTypesSection = context.page
-      .locator(".task-sync-section-header")
+      .locator("h2.task-sync-section-header")
       .filter({ hasText: "Task Categories" });
     expect(await taskTypesSection.isVisible()).toBe(true);
 
@@ -90,19 +90,19 @@ describe("Task Type Configuration", () => {
     await openTaskSyncSettingsWrapper();
     await scrollToAddTaskTypeSection(context.page);
 
-    const addSection = context.page
-      .locator(".setting-item")
-      .filter({ hasText: "Add New Task Category" });
+    const addSection = context.page.locator(
+      '[data-testid="add-task-category-section"]'
+    );
     expect(await addSection.isVisible()).toBe(true);
 
-    const newTypeInput = addSection.locator(
-      'input[placeholder*="Epic, Story, Research"]'
+    const newTypeInput = context.page.locator(
+      '[data-testid="task-category-name-input"]'
     );
     await newTypeInput.fill("Epic");
 
-    const addButton = addSection
-      .locator("button")
-      .filter({ hasText: "Add Task Category" });
+    const addButton = context.page.locator(
+      '[data-testid="add-task-category-button"]'
+    );
     await addButton.click();
 
     const epicSetting = context.page
@@ -120,25 +120,27 @@ describe("Task Type Configuration", () => {
     await openTaskSyncSettingsWrapper();
     await scrollToAddTaskTypeSection(context.page);
 
-    const addSection = context.page
-      .locator(".setting-item")
-      .filter({ hasText: "Add New Task Category" });
+    const addSection = context.page.locator(
+      '[data-testid="add-task-category-section"]'
+    );
 
-    const newTypeInput = addSection.locator(
-      'input[placeholder*="Epic, Story, Research"]'
+    const newTypeInput = context.page.locator(
+      '[data-testid="task-category-name-input"]'
     );
     await newTypeInput.fill("Bug");
 
-    const addButton = addSection
-      .locator("button")
-      .filter({ hasText: "Add Task Category" });
+    const addButton = context.page.locator(
+      '[data-testid="add-task-category-button"]'
+    );
     await addButton.click();
 
     await context.page.waitForTimeout(500);
 
+    // Count only actual task type settings, not the add section
     const bugSettings = context.page
       .locator(".setting-item")
-      .filter({ hasText: "Bug" });
+      .filter({ hasText: "Bug" })
+      .filter({ hasNotText: "Add New Task Category" });
     const bugCount = await bugSettings.count();
     expect(bugCount).toBe(1);
   });
@@ -147,18 +149,18 @@ describe("Task Type Configuration", () => {
     await openTaskSyncSettingsWrapper();
     await scrollToAddTaskTypeSection(context.page);
 
-    const addSection = context.page
-      .locator(".setting-item")
-      .filter({ hasText: "Add New Task Category" });
+    const addSection = context.page.locator(
+      '[data-testid="add-task-category-section"]'
+    );
 
-    const newTypeInput = addSection.locator(
-      'input[placeholder*="Epic, Story, Research"]'
+    const newTypeInput = context.page.locator(
+      '[data-testid="task-category-name-input"]'
     );
     await newTypeInput.fill("   ");
 
-    const addButton = addSection
-      .locator("button")
-      .filter({ hasText: "Add Task Category" });
+    const addButton = context.page.locator(
+      '[data-testid="add-task-category-button"]'
+    );
     await addButton.click();
 
     await context.page.waitForTimeout(500);
@@ -174,17 +176,17 @@ describe("Task Type Configuration", () => {
     await openTaskSyncSettingsWrapper();
     await scrollToAddTaskTypeSection(context.page);
 
-    const addSection = context.page
-      .locator(".setting-item")
-      .filter({ hasText: "Add New Task Category" });
-    const newTypeInput = addSection.locator(
-      'input[placeholder*="Epic, Story, Research"]'
+    const addSection = context.page.locator(
+      '[data-testid="add-task-category-section"]'
+    );
+    const newTypeInput = context.page.locator(
+      '[data-testid="task-category-name-input"]'
     );
     await newTypeInput.fill("Story");
 
-    const addButton = addSection
-      .locator("button")
-      .filter({ hasText: "Add Task Category" });
+    const addButton = context.page.locator(
+      '[data-testid="add-task-category-button"]'
+    );
     await addButton.click();
 
     const storySetting = context.page
@@ -255,17 +257,17 @@ describe("Task Type Configuration", () => {
     await openTaskSyncSettingsWrapper();
     await scrollToAddTaskTypeSection(context.page);
 
-    const addSection = context.page
-      .locator(".setting-item")
-      .filter({ hasText: "Add New Task Category" });
-    const newTypeInput = addSection.locator(
-      'input[placeholder*="Epic, Story, Research"]'
+    const addSection = context.page.locator(
+      '[data-testid="add-task-category-section"]'
+    );
+    const newTypeInput = context.page.locator(
+      '[data-testid="task-category-name-input"]'
     );
     await newTypeInput.fill("Epic");
 
-    const addButton = addSection
-      .locator("button")
-      .filter({ hasText: "Add Task Category" });
+    const addButton = context.page.locator(
+      '[data-testid="add-task-category-button"]'
+    );
     await addButton.click();
 
     const epicSetting = context.page
@@ -330,17 +332,17 @@ describe("Task Type Configuration", () => {
     await openTaskSyncSettingsWrapper();
     await scrollToAddTaskTypeSection(context.page);
 
-    const addSection = context.page
-      .locator(".setting-item")
-      .filter({ hasText: "Add New Task Category" });
-    const newTypeInput = addSection.locator(
-      'input[placeholder*="Epic, Story, Research"]'
+    const addSection = context.page.locator(
+      '[data-testid="add-task-category-section"]'
+    );
+    const newTypeInput = context.page.locator(
+      '[data-testid="task-category-name-input"]'
     );
     await newTypeInput.fill("User Story (UI/UX)");
 
-    const addButton = addSection
-      .locator("button")
-      .filter({ hasText: "Add Task Category" });
+    const addButton = context.page.locator(
+      '[data-testid="add-task-category-button"]'
+    );
     await addButton.click();
 
     const userStorySetting = context.page

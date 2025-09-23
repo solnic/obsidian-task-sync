@@ -334,7 +334,7 @@ export class GitHubService extends AbstractService {
   private initializeOctokit(): void {
     if (
       this.settings.integrations.github?.enabled &&
-      this.settings.integrations.github?.personalAccessToken
+      this.settings.integrations.github?.personalAccessToken?.trim()
     ) {
       this.octokit = new Octokit({
         auth: this.settings.integrations.github?.personalAccessToken,
@@ -343,6 +343,9 @@ export class GitHubService extends AbstractService {
           fetch: this.createObsidianFetch(),
         },
       });
+    } else {
+      // Clear octokit if integration is disabled or no token
+      this.octokit = undefined;
     }
   }
 

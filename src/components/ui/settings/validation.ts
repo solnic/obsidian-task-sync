@@ -166,7 +166,7 @@ export function validateTemplateFileName(fileName: string): ValidationResult {
  * Validates GitHub Personal Access Token format
  */
 export function validateGitHubToken(token: string): ValidationResult {
-  // Require non-empty tokens for integration to be enabled
+  // Just require non-empty tokens - let GitHub API handle validation
   if (!token.trim()) {
     return {
       isValid: false,
@@ -174,19 +174,6 @@ export function validateGitHubToken(token: string): ValidationResult {
     };
   }
 
-  // GitHub Classic PAT format: ghp_ followed by 40 characters
-  const classicPATPattern = /^ghp_[a-zA-Z0-9]{40}$/;
-
-  // GitHub Fine-grained PAT format: github_pat_ followed by version and token
-  const fineGrainedPATPattern = /^github_pat_[a-zA-Z0-9_]{82,}$/;
-
-  if (classicPATPattern.test(token) || fineGrainedPATPattern.test(token)) {
-    return { isValid: true };
-  }
-
-  return {
-    isValid: false,
-    error:
-      "Invalid GitHub Personal Access Token format. Expected format: ghp_... (classic) or github_pat_... (fine-grained)",
-  };
+  // Any non-empty token is considered valid - GitHub API will provide feedback if invalid
+  return { isValid: true };
 }

@@ -26,3 +26,7 @@ export type {
   FolderSuggestOptions,
   FileSuggestOptions,
 } from "./types";
+
+// Svelte
+export { default as Section } from "./svelte/Section.svelte";
+export { default as GeneralSettings } from "./svelte/GeneralSettings.svelte";

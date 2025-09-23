@@ -186,7 +186,6 @@ export interface SettingsSection {
   id: string;
   title: string;
   description?: string;
-  render: (container: HTMLElement) => void;
 }
 
 export interface FolderSuggestOptions {
