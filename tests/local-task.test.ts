@@ -166,5 +166,55 @@ describe("LocalTask", () => {
       expect(localTask.sortable.project).toBe("");
       expect(localTask.sortable.areas).toBe("Valid Area");
     });
+
+    test("should extract GitHub timestamps from source data", () => {
+      const task: Task = {
+        id: "test-github",
+        title: "GitHub Task",
+        file: mockFile,
+        filePath: "Tasks/GitHub Task.md",
+        source: {
+          name: "github",
+          key: "github-123",
+          data: {
+            created_at: "2024-01-01T10:00:00Z",
+            updated_at: "2024-01-02T15:30:00Z",
+            number: 123,
+            title: "GitHub Issue",
+          },
+        },
+      };
+
+      const localTask = createLocalTask(task);
+
+      expect(localTask.sortable.createdAt).toEqual(
+        new Date("2024-01-01T10:00:00Z")
+      );
+      expect(localTask.sortable.updatedAt).toEqual(
+        new Date("2024-01-02T15:30:00Z")
+      );
+    });
+
+    test("should handle GitHub task without timestamps", () => {
+      const task: Task = {
+        id: "test-github-no-timestamps",
+        title: "GitHub Task No Timestamps",
+        file: mockFile,
+        filePath: "Tasks/GitHub Task.md",
+        source: {
+          name: "github",
+          key: "github-123",
+          data: {
+            number: 123,
+            title: "GitHub Issue",
+          },
+        },
+      };
+
+      const localTask = createLocalTask(task);
+
+      expect(localTask.sortable.createdAt).toBeNull();
+      expect(localTask.sortable.updatedAt).toBeNull();
+    });
   });
 });
