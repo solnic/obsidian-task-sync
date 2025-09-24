@@ -553,6 +553,100 @@ This is a test task created directly in the vault.`;
     expect(badgeText).toContain("Today");
   });
 
+  test("should update schedule badge when Do Date is changed in task file", async () => {
+    // Create a task without a Do Date initially
+    const taskPath = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      return await plugin.noteManagers.getTaskManager().createTaskFile({
+        title: "Reactivity Test Task",
+        description: "A task to test Do Date reactivity",
+        done: false,
+        // No doDate initially
+      });
+    });
+
+    // Open Tasks view and switch to local service
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "local");
+
+    // Wait for tasks to load
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
+      timeout: 5000,
+    });
+
+    // Find the task item
+    const taskItem = context.page
+      .locator('[data-testid^="local-task-item-"]')
+      .filter({ hasText: "Reactivity Test Task" })
+      .first();
+    await taskItem.waitFor({ state: "visible", timeout: 5000 });
+
+    // Initially, there should be no scheduled badge
+    const initialScheduledBadge = taskItem.locator(".scheduled-badge");
+    const initialBadgeCount = await initialScheduledBadge.count();
+    expect(initialBadgeCount).toBe(0);
+
+    // Now modify the task file to add a Do Date
+    const todayString = new Date().toISOString().split("T")[0];
+    await context.page.evaluate(
+      async (args) => {
+        const { taskPath, todayString } = args;
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(taskPath);
+
+        if (file) {
+          const currentContent = await app.vault.read(file);
+          // Add Do Date to the front-matter
+          const updatedContent = currentContent.replace(
+            /---\n([\s\S]*?)\n---/,
+            (match, frontmatter) => {
+              return `---\n${frontmatter}\nDo Date: ${todayString}\n---`;
+            }
+          );
+          await app.vault.modify(file, updatedContent);
+        }
+      },
+      { taskPath, todayString }
+    );
+
+    // Add some debugging to see what's happening
+    await context.page.evaluate(() => {
+      console.log("Waiting for task store to update...");
+    });
+
+    // Wait a bit for the MetadataCache to process the change
+    await context.page.waitForTimeout(2000);
+
+    // Check if the task in the store has been updated
+    const taskInStore = await context.page.evaluate(async (taskPath) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Access the task store from the plugin's stores getter
+      const taskStore = plugin.stores.taskStore;
+      if (!taskStore) {
+        console.log("Task store not found");
+        return null;
+      }
+
+      const tasks = taskStore.getEntities();
+      const task = tasks.find((t: any) => t.filePath === taskPath);
+      return task ? { doDate: task.doDate, title: task.title } : null;
+    }, taskPath);
+
+    console.log("Task in store after update:", taskInStore);
+
+    // Wait for the change to propagate and the scheduled badge to appear
+    const scheduledBadge = taskItem.locator(".scheduled-badge");
+    await scheduledBadge.waitFor({ state: "visible", timeout: 10000 });
+
+    const badgeText = await scheduledBadge.textContent();
+    expect(badgeText).toContain("✓ scheduled");
+    expect(badgeText).toContain("Today");
+  });
+
   test("should not show 'Added to today' button state for scheduled tasks", async () => {
     // Create a test task
     await createTask(context, {

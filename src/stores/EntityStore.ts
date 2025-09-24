@@ -265,9 +265,65 @@ export abstract class EntityStore<T extends BaseEntity> {
       return newEntity;
     }
 
+    // Handle case where cache.frontmatter is undefined due to timing issues
+    let frontmatter = cache.frontmatter;
+    if (!frontmatter) {
+      // Fall back to reading the file directly to get the latest front-matter
+      const fileCache = this.app.metadataCache.getFileCache(file);
+      frontmatter = fileCache?.frontmatter;
+
+      // If still undefined, read and parse the file content manually
+      if (!frontmatter) {
+        try {
+          const fileContent = await this.app.vault.read(file);
+          const frontmatterMatch = fileContent.match(/^---\n([\s\S]*?)\n---/);
+          if (frontmatterMatch) {
+            // Parse YAML front-matter manually
+            const yamlContent = frontmatterMatch[1];
+
+            // Simple YAML parser for our use case
+            const lines = yamlContent.split("\n");
+            frontmatter = {};
+            for (const line of lines) {
+              const match = line.match(/^([^:]+):\s*(.*)$/);
+              if (match) {
+                const key = match[1].trim();
+                let value: any = match[2].trim();
+
+                // Handle different value types
+                if (value === "null" || value === "") {
+                  value = null;
+                } else if (value === "true") {
+                  value = true;
+                } else if (value === "false") {
+                  value = false;
+                } else if (value.startsWith("[") && value.endsWith("]")) {
+                  // Simple array parsing
+                  value = value
+                    .slice(1, -1)
+                    .split(",")
+                    .map((v: string) => v.trim())
+                    .filter((v: string) => v);
+                } else if (!isNaN(Number(value))) {
+                  value = Number(value);
+                }
+
+                frontmatter[key] = value;
+              }
+            }
+          }
+        } catch (error) {
+          console.error(
+            `${this.storageKey}: Error reading file content:`,
+            error
+          );
+        }
+      }
+    }
+
     const updatedEntity = this.updateEntityFromFrontmatter(
       existingEntity,
-      cache.frontmatter
+      frontmatter
     );
 
     await this.upsertEntity(updatedEntity);

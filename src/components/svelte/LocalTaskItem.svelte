@@ -151,10 +151,10 @@
       <ImportButton
         dayPlanningMode={false}
         dailyPlanningWizardMode={true}
-        title={isScheduled ? "✓ Scheduled" : "Schedule for today"}
+        title="Schedule for today"
         testId="schedule-for-today-button"
         onImport={handleScheduleForToday}
-        isImported={isScheduled}
+        isImported={false}
       />
     {:else if dayPlanningMode}
       <ImportButton

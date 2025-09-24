@@ -482,6 +482,33 @@ export class TaskFileManager extends FileManager {
     await this.updateProperty(filePath, "Parent task", parentTaskLink);
   }
 
+  /**
+   * Override updateProperty to handle Date objects properly
+   * @param filePath - Path to the file
+   * @param propertyKey - The property key to update
+   * @param value - The new value
+   */
+  async updateProperty(
+    filePath: string,
+    propertyKey: string,
+    value: any
+  ): Promise<void> {
+    // Convert Date objects to date strings for date properties
+    if (value instanceof Date) {
+      // Check if this is a date property by looking up the property definition
+      const propertyDef = Object.values(PROPERTY_REGISTRY).find(
+        (prop) => prop.name === propertyKey && prop.type === "date"
+      );
+
+      if (propertyDef) {
+        value = getDateString(value); // Convert to YYYY-MM-DD format
+      }
+    }
+
+    // Call the parent implementation with the converted value
+    await super.updateProperty(filePath, propertyKey, value);
+  }
+
   // ============================================================================
   // PROPERTY ORDER MANAGEMENT
   // ============================================================================

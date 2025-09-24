@@ -555,22 +555,36 @@ describe("Daily Planning", () => {
       // Task not yet scheduled, click to schedule
       await scheduleButton.click();
 
-      // Wait for the action to complete
+      // Wait for the action to complete and the scheduled badge to appear
       await context.page.waitForTimeout(2000);
 
-      // Verify the button text changed to indicate it's scheduled
-      const updatedButtonText = await scheduleButton.textContent();
-      console.log("Button text after click:", updatedButtonText);
-      expect(updatedButtonText).toContain("✓ Scheduled");
-    } else if (initialButtonText?.includes("✓ Scheduled")) {
-      // Task already scheduled, this is expected behavior
-      console.log("Task already scheduled, this is expected behavior");
+      // Verify the scheduled badge appears instead of button text change
+      const scheduledBadge = taskItem.locator(".scheduled-badge");
+      await scheduledBadge.waitFor({ state: "visible", timeout: 5000 });
+
+      expect(await scheduledBadge.isVisible()).toBe(true);
+      const badgeText = await scheduledBadge.textContent();
+      console.log("Scheduled badge text:", badgeText);
+      expect(badgeText).toContain("✓ scheduled");
     } else {
       throw new Error(`Unexpected button text: ${initialButtonText}`);
     }
 
     // Verify the task now has today's date as Do Date
     const todayString = new Date().toISOString().split("T")[0];
+
+    // Debug: Check current file content before waiting
+    const currentContent = await context.page.evaluate(async (path) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (!file) return "FILE_NOT_FOUND";
+      return await app.vault.read(file);
+    }, taskPath);
+    console.log(
+      "Current file content before waitForTaskPropertySync:",
+      currentContent
+    );
+
     await waitForTaskPropertySync(
       context.page,
       taskPath,
@@ -677,16 +691,17 @@ describe("Daily Planning", () => {
       // This should NOT crash with metadata cache timeout after our fix
       await scheduleButton.click();
 
-      // Wait for the action to complete
+      // Wait for the action to complete and the scheduled badge to appear
       await context.page.waitForTimeout(2000);
 
-      // Verify the button text changed to indicate it's scheduled
-      const updatedButtonText = await scheduleButton.textContent();
-      console.log("Button text after click:", updatedButtonText);
-      expect(updatedButtonText).toContain("✓ Scheduled");
-    } else if (initialButtonText?.includes("✓ Scheduled")) {
-      // Task already scheduled, this is expected behavior
-      console.log("Task already scheduled, this is expected behavior");
+      // Verify the scheduled badge appears instead of button text change
+      const scheduledBadge = taskItem.locator(".scheduled-badge");
+      await scheduledBadge.waitFor({ state: "visible", timeout: 5000 });
+
+      expect(await scheduledBadge.isVisible()).toBe(true);
+      const badgeText = await scheduledBadge.textContent();
+      console.log("Scheduled badge text:", badgeText);
+      expect(badgeText).toContain("✓ scheduled");
     } else {
       throw new Error(`Unexpected button text: ${initialButtonText}`);
     }
