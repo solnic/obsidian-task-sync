@@ -307,12 +307,24 @@
             bValue = b.sortable.title;
             break;
           case "createdAt":
-            aValue = a.sortable.createdAt ? a.sortable.createdAt.getTime() : 0;
-            bValue = b.sortable.createdAt ? b.sortable.createdAt.getTime() : 0;
+            aValue =
+              a.sortable.createdAt && !isNaN(a.sortable.createdAt.getTime())
+                ? a.sortable.createdAt.getTime()
+                : 0;
+            bValue =
+              b.sortable.createdAt && !isNaN(b.sortable.createdAt.getTime())
+                ? b.sortable.createdAt.getTime()
+                : 0;
             break;
           case "updatedAt":
-            aValue = a.sortable.updatedAt ? a.sortable.updatedAt.getTime() : 0;
-            bValue = b.sortable.updatedAt ? b.sortable.updatedAt.getTime() : 0;
+            aValue =
+              a.sortable.updatedAt && !isNaN(a.sortable.updatedAt.getTime())
+                ? a.sortable.updatedAt.getTime()
+                : 0;
+            bValue =
+              b.sortable.updatedAt && !isNaN(b.sortable.updatedAt.getTime())
+                ? b.sortable.updatedAt.getTime()
+                : 0;
             break;
           case "priority":
             // Priority order: High > Medium > Low > null

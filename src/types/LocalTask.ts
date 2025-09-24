@@ -91,33 +91,48 @@ function extractTimestampFromFileContent(
 
     const sourceData = task.source.data;
 
+    // Helper function to safely create and validate Date objects
+    const createValidDate = (dateValue: any): Date | null => {
+      if (!dateValue) {
+        return null;
+      }
+
+      const date = new Date(dateValue);
+      // Check if the Date object is valid
+      if (isNaN(date.getTime())) {
+        return null;
+      }
+
+      return date;
+    };
+
     // For GitHub tasks, we can extract the original timestamps from the raw GitHub data
     // The GitHub issue data is stored in task.source.data and contains created_at/updated_at
     if (task.source.name === "github") {
       if (label === "Created" && sourceData.created_at) {
-        return new Date(sourceData.created_at);
+        return createValidDate(sourceData.created_at);
       }
 
       if (label === "Updated" && sourceData.updated_at) {
-        return new Date(sourceData.updated_at);
+        return createValidDate(sourceData.updated_at);
       }
     } else {
       // For other sources, check for various timestamp formats
       if (label === "Created") {
         if (sourceData.created_at) {
-          return new Date(sourceData.created_at);
+          return createValidDate(sourceData.created_at);
         }
         if (sourceData.createdAt) {
-          return new Date(sourceData.createdAt);
+          return createValidDate(sourceData.createdAt);
         }
       }
 
       if (label === "Updated") {
         if (sourceData.updated_at) {
-          return new Date(sourceData.updated_at);
+          return createValidDate(sourceData.updated_at);
         }
         if (sourceData.updatedAt) {
-          return new Date(sourceData.updatedAt);
+          return createValidDate(sourceData.updatedAt);
         }
       }
     }

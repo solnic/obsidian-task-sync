@@ -243,5 +243,61 @@ describe("LocalTask", () => {
         new Date("2024-03-02T18:45:00Z")
       );
     });
+
+    test("should handle invalid date strings in source data", () => {
+      const task: Task = {
+        id: "test-invalid-dates",
+        title: "Task with Invalid Dates",
+        file: mockFile,
+        filePath: "Tasks/Invalid Dates Task.md",
+        source: {
+          name: "github",
+          key: "github-456",
+          data: {
+            created_at: "invalid-date-string",
+            updated_at: "not-a-date",
+            number: 456,
+            title: "GitHub Issue with Bad Dates",
+          },
+        },
+      };
+
+      const localTask = createLocalTask(task);
+
+      // Invalid dates should be converted to null, not Invalid Date objects
+      expect(localTask.sortable.createdAt).toBeNull();
+      expect(localTask.sortable.updatedAt).toBeNull();
+    });
+
+    test("should handle tasks with file system timestamps when source data has invalid dates", () => {
+      const task: Task = {
+        id: "test-fallback-timestamps",
+        title: "Task with Fallback Timestamps",
+        file: mockFile,
+        filePath: "Tasks/Fallback Task.md",
+        createdAt: new Date("2024-01-01T10:00:00Z"),
+        updatedAt: new Date("2024-01-02T15:30:00Z"),
+        source: {
+          name: "github",
+          key: "github-789",
+          data: {
+            created_at: "invalid-date",
+            updated_at: "also-invalid",
+            number: 789,
+            title: "GitHub Issue",
+          },
+        },
+      };
+
+      const localTask = createLocalTask(task);
+
+      // Should fall back to file system timestamps when source data is invalid
+      expect(localTask.sortable.createdAt).toEqual(
+        new Date("2024-01-01T10:00:00Z")
+      );
+      expect(localTask.sortable.updatedAt).toEqual(
+        new Date("2024-01-02T15:30:00Z")
+      );
+    });
   });
 });
