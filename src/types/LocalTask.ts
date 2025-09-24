@@ -10,6 +10,7 @@ import {
   LocalTaskValidator,
   type ValidatedLocalTask,
 } from "./LocalTaskValidation";
+import { extractDisplayValue as utilsExtractDisplayValue } from "../utils/linkUtils";
 
 export interface LocalTask {
   /** Original task entity */
@@ -80,8 +81,8 @@ export function createLocalTask(task: Task): ValidatedLocalTask {
       priority: task.priority || "",
       status: task.status || "",
       category: task.category || "",
-      project: extractDisplayValue(task.project) || "",
-      areas: extractFirstAreaDisplayValue(task.areas) || "",
+      project: extractProjectDisplayValue(task.project),
+      areas: extractAreasDisplayValue(task.areas),
     },
   };
 
@@ -90,72 +91,80 @@ export function createLocalTask(task: Task): ValidatedLocalTask {
 }
 
 /**
- * Extract display value from a link string
- * Converts "[[Project Name]]" to "Project Name"
- * Throws validation error for invalid types
+ * Extract display value from a project property (required field)
+ * Handles: null, undefined, string, and objects with name property
+ * Returns empty string for null/undefined (valid states) and invalid objects
  */
-function extractDisplayValue(value: any): string {
+function extractProjectDisplayValue(value: any): string {
+  // Handle valid null/undefined states (project can be null)
   if (value === null || value === undefined) {
     return "";
   }
 
-  if (typeof value !== "string") {
-    throw new Error(
-      `Invalid LocalTask: project/area must be string, got ${typeof value}`
-    );
+  // Handle valid string values (including wiki links)
+  if (typeof value === "string") {
+    return utilsExtractDisplayValue(value) || "";
   }
 
-  // Handle Obsidian link format [[Link Text]]
-  const linkMatch = value.match(/^\[\[([^\]]+)\]\]$/);
-  if (linkMatch) {
-    return linkMatch[1];
+  // Handle objects that might have a name property (from malformed front-matter)
+  if (typeof value === "object" && value !== null) {
+    if (typeof value.name === "string") {
+      return value.name;
+    }
+    // For other object types, return empty string (graceful degradation)
+    return "";
   }
 
-  return value;
+  // For any other type (numbers, booleans, etc.), return empty string
+  return "";
 }
 
 /**
- * Extract display value from the first area in an areas array
- * Throws validation error for invalid types
+ * Extract display value from the first area in an areas array (required field)
+ * Handles: null, undefined, empty array, string array, and objects with name property
+ * Returns empty string for null/undefined/empty array (valid states) and invalid objects
  */
-function extractFirstAreaDisplayValue(areas: any): string {
+function extractAreasDisplayValue(areas: any): string {
+  // Handle valid null/undefined states (areas can be null/undefined)
   if (areas === null || areas === undefined) {
     return "";
   }
 
-  // Handle string case
+  // Handle string case (shouldn't happen per interface but be defensive)
   if (typeof areas === "string") {
-    return extractDisplayValue(areas);
+    return extractProjectDisplayValue(areas);
   }
 
-  // Handle array case
+  // Handle array case (expected type)
   if (Array.isArray(areas)) {
+    // Empty array is a valid state
     if (areas.length === 0) return "";
 
-    // Validate all elements are strings
-    for (let i = 0; i < areas.length; i++) {
-      if (
-        areas[i] !== null &&
-        areas[i] !== undefined &&
-        typeof areas[i] !== "string"
-      ) {
-        throw new Error(
-          `Invalid LocalTask: areas array must contain only strings, got ${typeof areas[
-            i
-          ]} at index ${i}`
-        );
+    // Find the first valid area, handling both strings and objects
+    for (const area of areas) {
+      if (area === null || area === undefined) {
+        continue; // Skip null/undefined elements
       }
+
+      if (typeof area === "string") {
+        const displayValue = utilsExtractDisplayValue(area);
+        if (displayValue) {
+          return displayValue;
+        }
+      } else if (
+        typeof area === "object" &&
+        area.name &&
+        typeof area.name === "string"
+      ) {
+        // Handle objects with name property (from malformed front-matter)
+        return area.name;
+      }
+      // Skip other types (numbers, booleans, etc.)
     }
 
-    // Find the first non-null string value
-    const firstStringArea = areas.find(
-      (area) => area !== null && area !== undefined && typeof area === "string"
-    );
-    return extractDisplayValue(firstStringArea);
+    return ""; // No valid areas found
   }
 
-  // Invalid type
-  throw new Error(
-    `Invalid LocalTask: areas must be string or string array, got ${typeof areas}`
-  );
+  // For any other type (objects, numbers, etc.), return empty string
+  return "";
 }

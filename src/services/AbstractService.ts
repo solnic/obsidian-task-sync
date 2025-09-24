@@ -217,7 +217,7 @@ export abstract class AbstractService {
       name: taskData.sourceType,
       key: taskData.id,
       url: taskData.externalUrl,
-      data: taskData.sourceData,
+      data: externalItem,
     };
     await taskStore.setTaskSource(taskPath, source);
 

@@ -38,7 +38,7 @@ describe("LocalTask", () => {
       expect(localTask.sortable.areas).toBe("Test Area");
     });
 
-    test("should throw validation error for non-string project property", () => {
+    test("should handle non-string project property gracefully", () => {
       const task: Task = {
         id: "test-2",
         title: "Test Task",
@@ -48,8 +48,10 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
-      // Should throw validation error for invalid data types
-      expect(() => createLocalTask(task)).toThrow("Invalid LocalTask");
+      // Should handle invalid data types gracefully by returning empty strings
+      const localTask = createLocalTask(task);
+      expect(localTask.sortable.project).toBe("");
+      expect(localTask.sortable.areas).toBe("");
     });
 
     test("should handle null/undefined project and areas gracefully", () => {
@@ -68,7 +70,7 @@ describe("LocalTask", () => {
       expect(localTask.sortable.areas).toBe("");
     });
 
-    test("should throw validation error for mixed types in areas array", () => {
+    test("should handle mixed types in areas array gracefully", () => {
       const task: Task = {
         id: "test-4",
         title: "Test Task",
@@ -78,8 +80,10 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
-      // Should throw validation error for mixed types in areas array
-      expect(() => createLocalTask(task)).toThrow("Invalid LocalTask");
+      // Should handle mixed types gracefully, extracting first valid string
+      const localTask = createLocalTask(task);
+      expect(localTask.sortable.project).toBe("Valid Project");
+      expect(localTask.sortable.areas).toBe("Valid Area"); // First valid string area
     });
 
     test("should handle task with empty areas array", () => {
@@ -116,7 +120,7 @@ describe("LocalTask", () => {
   });
 
   describe("edge cases with malformed front-matter data", () => {
-    test("should throw validation error for object values in project/areas", () => {
+    test("should handle object values in project/areas gracefully", () => {
       const task: Task = {
         id: "test-7",
         title: "Test Task",
@@ -126,11 +130,13 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
-      // Should throw validation error for object values
-      expect(() => createLocalTask(task)).toThrow("Invalid LocalTask");
+      // Should handle object values gracefully
+      const localTask = createLocalTask(task);
+      expect(localTask.sortable.project).toBe(""); // Invalid object returns empty string
+      expect(localTask.sortable.areas).toBe("Valid Area"); // First valid string area
     });
 
-    test("should throw validation error for boolean values", () => {
+    test("should handle boolean values gracefully", () => {
       const task: Task = {
         id: "test-8",
         title: "Test Task",
@@ -140,11 +146,13 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
-      // Should throw validation error for boolean values
-      expect(() => createLocalTask(task)).toThrow("Invalid LocalTask");
+      // Should handle boolean values gracefully
+      const localTask = createLocalTask(task);
+      expect(localTask.sortable.project).toBe(""); // Boolean returns empty string
+      expect(localTask.sortable.areas).toBe("Valid Area"); // First valid string area
     });
 
-    test("should throw validation error for array as project value", () => {
+    test("should handle array as project value gracefully", () => {
       const task: Task = {
         id: "test-9",
         title: "Test Task",
@@ -154,8 +162,10 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
-      // Should throw validation error for array as project value
-      expect(() => createLocalTask(task)).toThrow("Invalid LocalTask");
+      // Should handle array as project value gracefully
+      const localTask = createLocalTask(task);
+      expect(localTask.sortable.project).toBe(""); // Array returns empty string
+      expect(localTask.sortable.areas).toBe("Valid Area");
     });
 
     test("should extract GitHub timestamps from source data", () => {
@@ -306,14 +316,32 @@ describe("LocalTask", () => {
         title: "Task with Object Project",
         file: mockFile,
         filePath: "Tasks/Object Project Task.md",
-        project: { name: "Test Project" } as any, // Object instead of string
-        areas: [{ name: "Test Area" }] as any, // Array of objects instead of strings
+        project: { name: "Test Project" } as any, // Object with name property
+        areas: [{ name: "Test Area" }, { invalid: "object" }] as any, // Mixed array
       };
 
       // This should not throw a validation error
       const localTask = createLocalTask(task);
 
-      // Object values should be handled gracefully, converting to empty strings
+      // Objects with name property should be transformed to their name value
+      expect(localTask.sortable.project).toBe("Test Project");
+      expect(localTask.sortable.areas).toBe("Test Area"); // First valid area
+    });
+
+    test("should handle invalid object values gracefully", () => {
+      const task: Task = {
+        id: "test-invalid-objects",
+        title: "Task with Invalid Objects",
+        file: mockFile,
+        filePath: "Tasks/Invalid Objects Task.md",
+        project: { invalid: "object" } as any, // Object without name property
+        areas: [{ invalid: "object" }, 123, null] as any, // Array with invalid types
+      };
+
+      // This should not throw a validation error
+      const localTask = createLocalTask(task);
+
+      // Invalid objects should return empty strings
       expect(localTask.sortable.project).toBe("");
       expect(localTask.sortable.areas).toBe("");
     });
