@@ -15,7 +15,7 @@ export default defineConfig({
     testTimeout: isCI ? 30000 : 10000,
     hookTimeout: isCI ? 30000 : 10000,
     fileParallelism: true,
-    minWorkers: isCI ? 6 : Math.max(2, Math.floor(os.cpus().length / 2)),
+    minWorkers: isCI ? 6 : Math.max(2, Math.floor(os.cpus().length * 0.75)),
     maxConcurrency: 1,
     pool: 'threads',
     poolOptions: {

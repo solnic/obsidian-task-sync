@@ -11,9 +11,14 @@ import {
   openView,
   switchToTaskService,
   toggleSidebar,
+  getTaskByTitle,
 } from "../helpers/global";
-import { createTask } from "../helpers/entity-helpers";
-import { stubGitHubWithFixtures } from "../helpers/github-integration-helpers";
+import { createTask, updateEntity } from "../helpers/entity-helpers";
+import {
+  stubGitHubWithFixtures,
+  clickIssueImportButton,
+  waitForIssueImportComplete,
+} from "../helpers/github-integration-helpers";
 
 describe("LocalTasksService", () => {
   const context = setupE2ETestHooks();
@@ -563,7 +568,6 @@ This is a test task created directly in the vault.`;
         title: "Reactivity Test Task",
         description: "A task to test Do Date reactivity",
         done: false,
-        // No doDate initially
       });
     });
 
@@ -572,16 +576,15 @@ This is a test task created directly in the vault.`;
     await switchToTaskService(context.page, "local");
 
     // Wait for tasks to load
-    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
-      timeout: 5000,
-    });
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]');
 
     // Find the task item
     const taskItem = context.page
       .locator('[data-testid^="local-task-item-"]')
       .filter({ hasText: "Reactivity Test Task" })
       .first();
-    await taskItem.waitFor({ state: "visible", timeout: 5000 });
+
+    await taskItem.waitFor({ state: "visible" });
 
     // Initially, there should be no scheduled badge
     const initialScheduledBadge = taskItem.locator(".scheduled-badge");
@@ -590,57 +593,12 @@ This is a test task created directly in the vault.`;
 
     // Now modify the task file to add a Do Date
     const todayString = new Date().toISOString().split("T")[0];
-    await context.page.evaluate(
-      async (args) => {
-        const { taskPath, todayString } = args;
-        const app = (window as any).app;
-        const file = app.vault.getAbstractFileByPath(taskPath);
-
-        if (file) {
-          const currentContent = await app.vault.read(file);
-          // Add Do Date to the front-matter
-          const updatedContent = currentContent.replace(
-            /---\n([\s\S]*?)\n---/,
-            (match, frontmatter) => {
-              return `---\n${frontmatter}\nDo Date: ${todayString}\n---`;
-            }
-          );
-          await app.vault.modify(file, updatedContent);
-        }
-      },
-      { taskPath, todayString }
-    );
-
-    // Add some debugging to see what's happening
-    await context.page.evaluate(() => {
-      console.log("Waiting for task store to update...");
-    });
-
-    // Wait a bit for the MetadataCache to process the change
-    await context.page.waitForTimeout(2000);
-
-    // Check if the task in the store has been updated
-    const taskInStore = await context.page.evaluate(async (taskPath) => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-      // Access the task store from the plugin's stores getter
-      const taskStore = plugin.stores.taskStore;
-      if (!taskStore) {
-        console.log("Task store not found");
-        return null;
-      }
-
-      const tasks = taskStore.getEntities();
-      const task = tasks.find((t: any) => t.filePath === taskPath);
-      return task ? { doDate: task.doDate, title: task.title } : null;
-    }, taskPath);
-
-    console.log("Task in store after update:", taskInStore);
+    const task = await getTaskByTitle(context.page, "Reactivity Test Task");
+    await updateEntity(context, task, { doDate: todayString });
 
     // Wait for the change to propagate and the scheduled badge to appear
     const scheduledBadge = taskItem.locator(".scheduled-badge");
-    await scheduledBadge.waitFor({ state: "visible", timeout: 10000 });
+    await scheduledBadge.waitFor({ state: "visible" });
 
     const badgeText = await scheduledBadge.textContent();
     expect(badgeText).toContain("✓ scheduled");
@@ -661,16 +619,14 @@ This is a test task created directly in the vault.`;
     await switchToTaskService(context.page, "local");
 
     // Wait for tasks to load
-    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
-      timeout: 5000,
-    });
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]');
 
     // Find the task item
     const taskItem = context.page
       .locator('[data-testid^="local-task-item-"]')
       .filter({ hasText: "Button State Test Task" })
       .first();
-    await taskItem.waitFor({ state: "visible", timeout: 5000 });
+    await taskItem.waitFor({ state: "visible" });
 
     // Hover over the task to show action buttons
     await taskItem.hover();
@@ -707,57 +663,32 @@ This is a test task created directly in the vault.`;
   });
 
   test("should use source data for createdAt/updatedAt when available", async () => {
-    // Enable GitHub integration for this test
-    await enableIntegration(context.page, "github");
+    // Enable GitHub integration
+    await enableIntegration(context.page, "githubIntegration", {
+      personalAccessToken: "fake-token-for-testing",
+      defaultRepository: "solnic/obsidian-task-sync",
+    });
 
-    // Create a GitHub issue fixture with specific timestamps
-    const githubIssue = {
-      id: 12345,
-      number: 123,
-      title: "GitHub Issue with Source Timestamps",
-      body: "This issue has specific GitHub timestamps",
-      state: "open",
-      html_url: "https://github.com/test/repo/issues/123",
-      created_at: "2024-01-01T10:00:00Z", // Specific GitHub creation time
-      updated_at: "2024-01-02T15:30:00Z", // Specific GitHub update time
-      assignee: null,
-      labels: [{ name: "bug" }],
-      user: {
-        login: "testuser",
-        id: 1234,
-        avatar_url: "https://avatars.githubusercontent.com/u/1234?v=4",
-        html_url: "https://github.com/testuser",
-      },
-    };
+    // Stub GitHub APIs with fixture containing specific timestamps
+    await stubGitHubWithFixtures(context.page, {
+      repositories: "repositories-basic",
+      issues: "source-timestamps-issue",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
 
-    // Import the GitHub issue as a task
-    const importConfig = {
-      targetArea: "Test Area",
-      taskType: "Bug",
-      importLabelsAsTags: true,
-    };
-
-    const result = await context.page.evaluate(
-      async (args) => {
-        const { githubIssue, importConfig } = args;
-        const app = (window as any).app;
-        const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-        return await plugin.githubService.importIssueAsTask(
-          githubIssue,
-          importConfig
-        );
-      },
-      { githubIssue, importConfig }
-    );
-
-    expect(result.success).toBe(true);
-
-    // Open Tasks view and switch to local service
+    // Open Tasks view and switch to GitHub service
     await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "github");
+
+    // Import the GitHub issue via UI
+    await clickIssueImportButton(context.page, 555);
+    await waitForIssueImportComplete(context.page, 555);
+
+    // Switch to Local Tasks view to verify the imported task
     await switchToTaskService(context.page, "local");
 
-    // Wait for the task to appear
+    // Wait for the imported task to appear in Local Tasks view
     await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
       timeout: 5000,
     });
@@ -767,25 +698,20 @@ This is a test task created directly in the vault.`;
       .locator('[data-testid^="local-task-item-"]')
       .filter({ hasText: "GitHub Issue with Source Timestamps" });
 
-    expect(await taskItem.isVisible()).toBe(true);
+    await taskItem.waitFor({ state: "visible", timeout: 5000 });
 
-    // Check that the task shows source timestamps, not file timestamps
-    // The timestamps should be from GitHub (2024-01-01 and 2024-01-02)
+    // Check that the task shows source timestamps from GitHub (2024-01-01 and 2024-01-02)
     // instead of the current file creation/modification times
 
     // Check the title attributes which contain the absolute dates
-    const createdTimestamp = await taskItem
-      .locator(".task-sync-timestamp")
-      .nth(1);
-    const updatedTimestamp = await taskItem
-      .locator(".task-sync-timestamp")
-      .nth(0);
+    const createdTimestamp = taskItem.locator(".task-sync-timestamp").nth(1);
+    const updatedTimestamp = taskItem.locator(".task-sync-timestamp").nth(0);
 
     const createdTitle = await createdTimestamp.getAttribute("title");
     const updatedTitle = await updatedTimestamp.getAttribute("title");
 
-    // Verify the timestamps are from GitHub source data (2024) not file system (1970)
-    expect(createdTitle).toContain("2024");
-    expect(updatedTitle).toContain("2024");
+    // Verify the timestamps are from GitHub source data (2024) not file system
+    expect(createdTitle).toContain("January 1st 2024");
+    expect(updatedTitle).toContain("January 2nd 2024");
   });
 });

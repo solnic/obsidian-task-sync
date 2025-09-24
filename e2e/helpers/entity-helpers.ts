@@ -5,6 +5,22 @@
 
 import type { SharedTestContext } from "./shared-context";
 
+export async function updateEntity(
+  context: SharedTestContext,
+  entity: any,
+  props: any
+) {
+  return await context.page.evaluate(
+    async ({ entity, props }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      await plugin.noteManagers.update(entity, props);
+    },
+    { entity, props }
+  );
+}
+
 /**
  * Create a task using the plugin's createTask API
  * Returns the created entity directly from the plugin
@@ -13,6 +29,7 @@ export async function createTask(
   context: SharedTestContext,
   props: {
     title: string;
+    description?: string;
     category?: string;
     priority?: string;
     areas?: string[];

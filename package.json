@@ -52,7 +52,7 @@
     "builtin-modules": "^5.0.0",
     "chai": "^5.2.1",
     "dotenv": "^17.2.2",
-    "electron": "^37.5.1",
+    "electron": "^38.1.2",
     "esbuild": "^0.25.9",
     "esbuild-svelte": "^0.9.3",
     "jsdom": "^26.0.0",

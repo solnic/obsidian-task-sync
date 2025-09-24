@@ -127,7 +127,7 @@ export function setupE2ETestHooks(): SharedTestContext {
 export async function createTestFolders(page: Page): Promise<void> {
   await page.evaluate(async () => {
     const app = (window as any).app;
-    const folders = ["Tasks", "Projects", "Areas", "Templates", "Notes"];
+    const folders = ["Tasks", "Projects", "Areas", "Templates", "Notes", "Bases"];
 
     for (const folder of folders) {
       const exists = await app.vault.adapter.exists(folder);
