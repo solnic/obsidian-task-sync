@@ -204,10 +204,10 @@ export abstract class EntityStore<T extends BaseEntity> {
    * Updates the entity in-place using front-matter data
    */
   private async handleMetadataChange(file: TFile, cache: any): Promise<void> {
-    const entity = this.findEntityByPath(file.path);
+    let entity = this.findEntityByPath(file.path);
 
     if (!entity) {
-      const entity = await this.fileManager.loadEntity(file, cache);
+      entity = await this.fileManager.loadEntity(file, cache);
 
       await this.upsertEntity(entity);
     }
