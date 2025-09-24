@@ -5,6 +5,11 @@
  */
 
 import type { Task } from "./entities";
+import { ExternalTaskSourceFactory } from "./ExternalTaskSource";
+import {
+  LocalTaskValidator,
+  type ValidatedLocalTask,
+} from "./LocalTaskValidation";
 
 export interface LocalTask {
   /** Original task entity */
@@ -39,18 +44,23 @@ export interface LocalTask {
 }
 
 /**
- * Create a LocalTask view object from a Task entity
+ * Create a validated LocalTask view object from a Task entity
  * This function determines the correct timestamps to use based on source data
+ * and validates the result to ensure no Invalid Date objects are created
  */
-export function createLocalTask(task: Task): LocalTask {
+export function createLocalTask(task: Task): ValidatedLocalTask {
   // Determine the correct timestamps to use
   let createdAt: Date | null = null;
   let updatedAt: Date | null = null;
 
-  if (task.source?.data) {
-    // Try to extract timestamps from source data (including GitHub)
-    createdAt = extractTimestampFromFileContent(task, "Created");
-    updatedAt = extractTimestampFromFileContent(task, "Updated");
+  if (task.source?.data && task.source?.name) {
+    // Use the appropriate external task source to extract timestamps
+    const taskSource = ExternalTaskSourceFactory.get(task.source.name);
+    if (taskSource) {
+      const timestamps = taskSource.extractTimestamps(task.source.data);
+      createdAt = timestamps.createdAt;
+      updatedAt = timestamps.updatedAt;
+    }
   }
 
   // Fall back to file system timestamps if no source data
@@ -61,7 +71,7 @@ export function createLocalTask(task: Task): LocalTask {
     updatedAt = task.updatedAt;
   }
 
-  return {
+  const localTask = {
     task,
     sortable: {
       createdAt,
@@ -74,85 +84,26 @@ export function createLocalTask(task: Task): LocalTask {
       areas: extractFirstAreaDisplayValue(task.areas) || "",
     },
   };
-}
 
-/**
- * Extract timestamp from task source data
- * Handles various timestamp formats from different sources
- */
-function extractTimestampFromFileContent(
-  task: Task,
-  label: "Created" | "Updated"
-): Date | null {
-  try {
-    if (!task.source?.data) {
-      return null;
-    }
-
-    const sourceData = task.source.data;
-
-    // Helper function to safely create and validate Date objects
-    const createValidDate = (dateValue: any): Date | null => {
-      if (!dateValue) {
-        return null;
-      }
-
-      const date = new Date(dateValue);
-      // Check if the Date object is valid
-      if (isNaN(date.getTime())) {
-        return null;
-      }
-
-      return date;
-    };
-
-    // For GitHub tasks, we can extract the original timestamps from the raw GitHub data
-    // The GitHub issue data is stored in task.source.data and contains created_at/updated_at
-    if (task.source.name === "github") {
-      if (label === "Created" && sourceData.created_at) {
-        return createValidDate(sourceData.created_at);
-      }
-
-      if (label === "Updated" && sourceData.updated_at) {
-        return createValidDate(sourceData.updated_at);
-      }
-    } else {
-      // For other sources, check for various timestamp formats
-      if (label === "Created") {
-        if (sourceData.created_at) {
-          return createValidDate(sourceData.created_at);
-        }
-        if (sourceData.createdAt) {
-          return createValidDate(sourceData.createdAt);
-        }
-      }
-
-      if (label === "Updated") {
-        if (sourceData.updated_at) {
-          return createValidDate(sourceData.updated_at);
-        }
-        if (sourceData.updatedAt) {
-          return createValidDate(sourceData.updatedAt);
-        }
-      }
-    }
-
-    return null;
-  } catch (error) {
-    console.warn(
-      `Failed to extract ${label} timestamp from source data:`,
-      error
-    );
-    return null;
-  }
+  // Validate the LocalTask before returning to catch any Invalid Date objects
+  return LocalTaskValidator.validate(localTask);
 }
 
 /**
  * Extract display value from a link string
  * Converts "[[Project Name]]" to "Project Name"
+ * Throws validation error for invalid types
  */
-function extractDisplayValue(value: string | undefined): string {
-  if (!value || typeof value !== "string") return "";
+function extractDisplayValue(value: any): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (typeof value !== "string") {
+    throw new Error(
+      `Invalid LocalTask: project/area must be string, got ${typeof value}`
+    );
+  }
 
   // Handle Obsidian link format [[Link Text]]
   const linkMatch = value.match(/^\[\[([^\]]+)\]\]$/);
@@ -165,16 +116,46 @@ function extractDisplayValue(value: string | undefined): string {
 
 /**
  * Extract display value from the first area in an areas array
+ * Throws validation error for invalid types
  */
-function extractFirstAreaDisplayValue(
-  areas: string[] | string | undefined
-): string {
-  if (!areas) return "";
+function extractFirstAreaDisplayValue(areas: any): string {
+  if (areas === null || areas === undefined) {
+    return "";
+  }
 
-  const areaArray = Array.isArray(areas) ? areas : [areas];
-  if (areaArray.length === 0) return "";
+  // Handle string case
+  if (typeof areas === "string") {
+    return extractDisplayValue(areas);
+  }
 
-  // Find the first string value in the array
-  const firstStringArea = areaArray.find((area) => typeof area === "string");
-  return extractDisplayValue(firstStringArea);
+  // Handle array case
+  if (Array.isArray(areas)) {
+    if (areas.length === 0) return "";
+
+    // Validate all elements are strings
+    for (let i = 0; i < areas.length; i++) {
+      if (
+        areas[i] !== null &&
+        areas[i] !== undefined &&
+        typeof areas[i] !== "string"
+      ) {
+        throw new Error(
+          `Invalid LocalTask: areas array must contain only strings, got ${typeof areas[
+            i
+          ]} at index ${i}`
+        );
+      }
+    }
+
+    // Find the first non-null string value
+    const firstStringArea = areas.find(
+      (area) => area !== null && area !== undefined && typeof area === "string"
+    );
+    return extractDisplayValue(firstStringArea);
+  }
+
+  // Invalid type
+  throw new Error(
+    `Invalid LocalTask: areas must be string or string array, got ${typeof areas}`
+  );
 }

@@ -69,6 +69,7 @@ import { scheduleStore } from "./stores/scheduleStore";
 import { dailyPlanningStore } from "./stores/dailyPlanningStore";
 import { settingsStore } from "./stores/settingsStore";
 import { CommandManager } from "./services/CommandManager";
+import { initializeExternalTaskSources } from "./services/ExternalTaskSourceRegistry";
 import {
   NoteManagers,
   type NoteTypeRegistration,
@@ -221,6 +222,9 @@ export default class TaskSyncPlugin
 
     // Load settings
     await this.loadSettings();
+
+    // Initialize external task sources
+    initializeExternalTaskSources();
 
     this.vaultScanner = new VaultScanner(this.app.vault, this.settings);
     this.baseManager = new BaseManager(this.app, this.app.vault, this.settings);

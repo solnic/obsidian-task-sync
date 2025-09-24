@@ -25,6 +25,64 @@ export const GitHubIssueSchema = z.object({
 
 export const GitHubIssueListSchema = z.array(GitHubIssueSchema);
 
+export const GitHubPullRequestSchema = z.object({
+  id: z.number(),
+  number: z.number(),
+  title: z.string(),
+  body: z.string().nullable(),
+  state: z.enum(["open", "closed"]),
+  assignee: z
+    .object({
+      login: z.string(),
+    })
+    .nullable(),
+  assignees: z.array(
+    z.object({
+      login: z.string(),
+    })
+  ),
+  labels: z.array(
+    z.object({
+      name: z.string(),
+      color: z.string().optional(),
+    })
+  ),
+  created_at: z.string(),
+  updated_at: z.string(),
+  closed_at: z.string().nullable(),
+  merged_at: z.string().nullable(),
+  html_url: z.string().url(),
+  diff_url: z.string(),
+  patch_url: z.string(),
+  head: z.object({
+    label: z.string(),
+    ref: z.string(),
+    sha: z.string(),
+    user: z.object({
+      login: z.string(),
+    }),
+  }),
+  base: z.object({
+    label: z.string(),
+    ref: z.string(),
+    sha: z.string(),
+    user: z.object({
+      login: z.string(),
+    }),
+  }),
+  user: z.object({
+    login: z.string(),
+  }),
+  requested_reviewers: z.array(
+    z.object({
+      login: z.string(),
+    })
+  ),
+  draft: z.boolean(),
+});
+
+export const GitHubPullRequestListSchema = z.array(GitHubPullRequestSchema);
+
 export const GitHubLabelSchema = z.object({
   id: z.number(),
   name: z.string(),
@@ -68,6 +126,8 @@ export const GitHubOrganizationListSchema = z.array(GitHubOrganizationSchema);
 
 export type GitHubIssue = z.infer<typeof GitHubIssueSchema>;
 export type GitHubIssueList = z.infer<typeof GitHubIssueListSchema>;
+export type GitHubPullRequest = z.infer<typeof GitHubPullRequestSchema>;
+export type GitHubPullRequestList = z.infer<typeof GitHubPullRequestListSchema>;
 export type GitHubLabel = z.infer<typeof GitHubLabelSchema>;
 export type GitHubLabelList = z.infer<typeof GitHubLabelListSchema>;
 export type GitHubRepository = z.infer<typeof GitHubRepositorySchema>;

@@ -3,10 +3,11 @@
  * Tests createLocalTask function and extractDisplayValue edge cases
  */
 
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, beforeAll } from "vitest";
 import { createLocalTask } from "../src/types/LocalTask";
 import type { Task } from "../src/types/entities";
 import { TFile } from "obsidian";
+import { initializeExternalTaskSources } from "../src/services/ExternalTaskSourceRegistry";
 
 // Mock TFile for testing
 const mockFile = {
@@ -15,6 +16,11 @@ const mockFile = {
 } as TFile;
 
 describe("LocalTask", () => {
+  beforeAll(() => {
+    // Initialize external task sources for tests
+    initializeExternalTaskSources();
+  });
+
   describe("createLocalTask", () => {
     test("should handle task with string project property", () => {
       const task: Task = {
@@ -32,7 +38,7 @@ describe("LocalTask", () => {
       expect(localTask.sortable.areas).toBe("Test Area");
     });
 
-    test("should handle task with non-string project property", () => {
+    test("should throw validation error for non-string project property", () => {
       const task: Task = {
         id: "test-2",
         title: "Test Task",
@@ -42,17 +48,11 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
-      // This should not crash
-      expect(() => createLocalTask(task)).not.toThrow();
-
-      const localTask = createLocalTask(task);
-
-      // Non-string values should be handled gracefully
-      expect(localTask.sortable.project).toBe("");
-      expect(localTask.sortable.areas).toBe("");
+      // Should throw validation error for invalid data types
+      expect(() => createLocalTask(task)).toThrow("Invalid LocalTask");
     });
 
-    test("should handle task with null/undefined project and areas", () => {
+    test("should handle null/undefined project and areas gracefully", () => {
       const task: Task = {
         id: "test-3",
         title: "Test Task",
@@ -62,13 +62,13 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
+      // Null/undefined values should be converted to empty strings (not throw errors)
       const localTask = createLocalTask(task);
-
       expect(localTask.sortable.project).toBe("");
       expect(localTask.sortable.areas).toBe("");
     });
 
-    test("should handle task with mixed types in areas array", () => {
+    test("should throw validation error for mixed types in areas array", () => {
       const task: Task = {
         id: "test-4",
         title: "Test Task",
@@ -78,11 +78,8 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
-      const localTask = createLocalTask(task);
-
-      expect(localTask.sortable.project).toBe("Valid Project");
-      // Should extract the first valid string area
-      expect(localTask.sortable.areas).toBe("Valid Area");
+      // Should throw validation error for mixed types in areas array
+      expect(() => createLocalTask(task)).toThrow("Invalid LocalTask");
     });
 
     test("should handle task with empty areas array", () => {
@@ -119,7 +116,7 @@ describe("LocalTask", () => {
   });
 
   describe("edge cases with malformed front-matter data", () => {
-    test("should handle task with object values in project/areas", () => {
+    test("should throw validation error for object values in project/areas", () => {
       const task: Task = {
         id: "test-7",
         title: "Test Task",
@@ -129,13 +126,11 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
-      const localTask = createLocalTask(task);
-
-      expect(localTask.sortable.project).toBe("");
-      expect(localTask.sortable.areas).toBe("Valid Area"); // Should find first valid string
+      // Should throw validation error for object values
+      expect(() => createLocalTask(task)).toThrow("Invalid LocalTask");
     });
 
-    test("should handle task with boolean values", () => {
+    test("should throw validation error for boolean values", () => {
       const task: Task = {
         id: "test-8",
         title: "Test Task",
@@ -145,13 +140,11 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
-      const localTask = createLocalTask(task);
-
-      expect(localTask.sortable.project).toBe("");
-      expect(localTask.sortable.areas).toBe("Valid Area");
+      // Should throw validation error for boolean values
+      expect(() => createLocalTask(task)).toThrow("Invalid LocalTask");
     });
 
-    test("should handle task with array as project value", () => {
+    test("should throw validation error for array as project value", () => {
       const task: Task = {
         id: "test-9",
         title: "Test Task",
@@ -161,10 +154,8 @@ describe("LocalTask", () => {
         filePath: "Tasks/Test Task.md",
       };
 
-      const localTask = createLocalTask(task);
-
-      expect(localTask.sortable.project).toBe("");
-      expect(localTask.sortable.areas).toBe("Valid Area");
+      // Should throw validation error for array as project value
+      expect(() => createLocalTask(task)).toThrow("Invalid LocalTask");
     });
 
     test("should extract GitHub timestamps from source data", () => {
@@ -177,10 +168,16 @@ describe("LocalTask", () => {
           name: "github",
           key: "github-123",
           data: {
-            created_at: "2024-01-01T10:00:00Z",
-            updated_at: "2024-01-02T15:30:00Z",
+            id: 123,
             number: 123,
             title: "GitHub Issue",
+            body: "Test issue body",
+            state: "open",
+            assignee: null,
+            labels: [],
+            created_at: "2024-01-01T10:00:00Z",
+            updated_at: "2024-01-02T15:30:00Z",
+            html_url: "https://github.com/test/repo/issues/123",
           },
         },
       };
@@ -195,16 +192,17 @@ describe("LocalTask", () => {
       );
     });
 
-    test("should handle GitHub task without timestamps", () => {
+    test("should handle GitHub task with invalid source data", () => {
       const task: Task = {
-        id: "test-github-no-timestamps",
-        title: "GitHub Task No Timestamps",
+        id: "test-github-invalid",
+        title: "GitHub Task Invalid Data",
         file: mockFile,
         filePath: "Tasks/GitHub Task.md",
         source: {
           name: "github",
           key: "github-123",
           data: {
+            // Incomplete GitHub data that fails validation
             number: 123,
             title: "GitHub Issue",
           },
@@ -213,23 +211,26 @@ describe("LocalTask", () => {
 
       const localTask = createLocalTask(task);
 
+      // Should fall back to null timestamps when validation fails
       expect(localTask.sortable.createdAt).toBeNull();
       expect(localTask.sortable.updatedAt).toBeNull();
     });
 
-    test("should extract timestamps from other source types", () => {
+    test("should extract timestamps from Apple Reminders source", () => {
       const task: Task = {
-        id: "test-other-source",
-        title: "Other Source Task",
+        id: "test-apple-source",
+        title: "Apple Reminders Task",
         file: mockFile,
-        filePath: "Tasks/Other Source Task.md",
+        filePath: "Tasks/Apple Reminders Task.md",
         source: {
           name: "apple-reminders",
           key: "apple-123",
           data: {
-            createdAt: "2024-03-01T12:00:00Z",
-            updatedAt: "2024-03-02T18:45:00Z",
             id: "apple-reminder-123",
+            title: "Apple Reminder",
+            completed: false,
+            creationDate: "2024-03-01T12:00:00Z",
+            modificationDate: "2024-03-02T18:45:00Z",
           },
         },
       };
@@ -254,10 +255,16 @@ describe("LocalTask", () => {
           name: "github",
           key: "github-456",
           data: {
-            created_at: "invalid-date-string",
-            updated_at: "not-a-date",
+            id: 456,
             number: 456,
             title: "GitHub Issue with Bad Dates",
+            body: "Test issue body",
+            state: "open",
+            assignee: null,
+            labels: [],
+            created_at: "invalid-date-string",
+            updated_at: "not-a-date",
+            html_url: "https://github.com/test/repo/issues/456",
           },
         },
       };
@@ -281,10 +288,16 @@ describe("LocalTask", () => {
           name: "github",
           key: "github-789",
           data: {
-            created_at: "invalid-date",
-            updated_at: "also-invalid",
+            id: 789,
             number: 789,
             title: "GitHub Issue",
+            body: "Test issue body",
+            state: "open",
+            assignee: null,
+            labels: [],
+            created_at: "invalid-date",
+            updated_at: "also-invalid",
+            html_url: "https://github.com/test/repo/issues/789",
           },
         },
       };

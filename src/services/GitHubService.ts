@@ -10,11 +10,7 @@ import {
   GitHubOrgRepoMapping,
   TaskSyncSettings,
 } from "../components/ui/settings/types";
-import {
-  ExternalTaskData,
-  TaskImportConfig,
-  ImportResult,
-} from "../types/integrations";
+import { TaskImportConfig, ImportResult } from "../types/integrations";
 import { GitHubLabelTypeMapper } from "./GitHubLabelTypeMapper";
 import { LabelTypeMapper } from "../types/label-mapping";
 
@@ -37,6 +33,8 @@ import {
 import { GitHubOrgRepoMapper } from "./GitHubOrgRepoMapper";
 import { settingsStore } from "../stores/settingsStore";
 import { settingsChanged } from "../utils/equality";
+import { GitHubTaskSource } from "./sources/GitHubTaskSource";
+import type { ValidatedExternalTaskData } from "../types/ExternalTaskSource";
 
 // Use schema types directly
 export type GitHubIssue = GitHubIssueType;
@@ -94,6 +92,9 @@ export class GitHubService extends AbstractService {
   private repositoriesCache?: SchemaCache<GitHubRepositoryList>;
   private organizationsCache?: SchemaCache<GitHubOrganizationList>;
 
+  // Task source for validated transformations
+  private taskSource: GitHubTaskSource;
+
   constructor(settings: TaskSyncSettings) {
     super(settings);
 
@@ -110,6 +111,9 @@ export class GitHubService extends AbstractService {
     this.orgRepoMapper = new GitHubOrgRepoMapper(
       settings.integrations.github.orgRepoMappings || []
     );
+
+    // Initialize task source for validated transformations
+    this.taskSource = new GitHubTaskSource();
 
     this.initializeOctokit();
   }
@@ -781,27 +785,9 @@ export class GitHubService extends AbstractService {
   /**
    * Transform GitHub issue to standardized external task data
    */
-  transformIssueToTaskData(issue: GitHubIssue): ExternalTaskData {
-    return {
-      id: `github-${issue.id}`,
-      title: issue.title,
-      description: issue.body || undefined,
-      status: issue.state,
-      priority: this.extractPriorityFromLabels(issue.labels),
-      assignee: issue.assignee?.login,
-      labels: issue.labels.map((label) => label.name),
-      createdAt: new Date(issue.created_at),
-      updatedAt: new Date(issue.updated_at),
-      externalUrl: issue.html_url,
-      sourceType: "github",
-      sourceData: {
-        number: issue.number,
-        state: issue.state,
-        id: issue.id,
-        created_at: issue.created_at,
-        updated_at: issue.updated_at,
-      },
-    };
+  transformIssueToTaskData(issue: GitHubIssue): ValidatedExternalTaskData {
+    // Use the validated task source for transformation
+    return this.taskSource.transformToExternalTaskData(issue);
   }
 
   /**
@@ -809,41 +795,9 @@ export class GitHubService extends AbstractService {
    */
   transformPullRequestToTaskData(
     pullRequest: GitHubPullRequest
-  ): ExternalTaskData {
-    // Determine status based on PR state
-    let status: string = pullRequest.state;
-    if (pullRequest.merged_at) {
-      status = "merged";
-    } else if (pullRequest.draft) {
-      status = "draft";
-    }
-
-    return {
-      id: `github-pr-${pullRequest.id}`,
-      title: pullRequest.title,
-      description: pullRequest.body || undefined,
-      status: status,
-      priority: this.extractPriorityFromLabels(pullRequest.labels),
-      assignee: pullRequest.assignee?.login,
-      labels: pullRequest.labels.map((label) => label.name),
-      createdAt: new Date(pullRequest.created_at),
-      updatedAt: new Date(pullRequest.updated_at),
-      externalUrl: pullRequest.html_url,
-      sourceType: "github",
-      sourceData: {
-        number: pullRequest.number,
-        state: pullRequest.state,
-        id: pullRequest.id,
-        created_at: pullRequest.created_at,
-        updated_at: pullRequest.updated_at,
-        merged_at: pullRequest.merged_at,
-        draft: pullRequest.draft,
-        head: pullRequest.head,
-        base: pullRequest.base,
-        user: pullRequest.user,
-        requested_reviewers: pullRequest.requested_reviewers,
-      },
-    };
+  ): ValidatedExternalTaskData {
+    // Use the validated task source for transformation
+    return this.taskSource.transformToExternalTaskData(pullRequest);
   }
 
   /**
