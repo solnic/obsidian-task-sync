@@ -8,13 +8,40 @@ import type { LocalTask } from "./LocalTask";
 
 /**
  * Schema for validating LocalTask sortable attributes
+ * Uses coercion to automatically convert string dates to Date objects
  */
 export const LocalTaskSortableSchema = z.object({
-  /** Creation timestamp - must be valid Date or null */
-  createdAt: z.date().nullable(),
+  /** Creation timestamp - coerces strings to Date or null for invalid dates */
+  createdAt: z
+    .union([z.string(), z.date(), z.null()])
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      if (val instanceof Date) {
+        return isNaN(val.getTime()) ? null : val;
+      }
+      if (typeof val === "string") {
+        const date = new Date(val);
+        return isNaN(date.getTime()) ? null : date;
+      }
+      return null;
+    })
+    .pipe(z.date().nullable()),
 
-  /** Update timestamp - must be valid Date or null */
-  updatedAt: z.date().nullable(),
+  /** Update timestamp - coerces strings to Date or null for invalid dates */
+  updatedAt: z
+    .union([z.string(), z.date(), z.null()])
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      if (val instanceof Date) {
+        return isNaN(val.getTime()) ? null : val;
+      }
+      if (typeof val === "string") {
+        const date = new Date(val);
+        return isNaN(date.getTime()) ? null : date;
+      }
+      return null;
+    })
+    .pipe(z.date().nullable()),
 
   /** Title for sorting - must be string */
   title: z.string(),

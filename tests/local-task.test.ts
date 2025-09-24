@@ -276,6 +276,29 @@ describe("LocalTask", () => {
       expect(localTask.sortable.updatedAt).toBeNull();
     });
 
+    test("should handle string dates that need coercion", () => {
+      // This test reproduces the validation error where strings are passed to date validation
+      const task: Task = {
+        id: "test-string-dates",
+        title: "Task with String Dates",
+        file: mockFile,
+        filePath: "Tasks/String Dates Task.md",
+        createdAt: "2024-01-01T10:00:00Z" as any, // String instead of Date
+        updatedAt: "2024-01-02T15:30:00Z" as any, // String instead of Date
+      };
+
+      // This should not throw a validation error
+      const localTask = createLocalTask(task);
+
+      // String dates should be coerced to Date objects
+      expect(localTask.sortable.createdAt).toEqual(
+        new Date("2024-01-01T10:00:00Z")
+      );
+      expect(localTask.sortable.updatedAt).toEqual(
+        new Date("2024-01-02T15:30:00Z")
+      );
+    });
+
     test("should handle tasks with file system timestamps when source data has invalid dates", () => {
       const task: Task = {
         id: "test-fallback-timestamps",
