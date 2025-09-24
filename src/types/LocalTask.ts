@@ -47,28 +47,10 @@ export function createLocalTask(task: Task): LocalTask {
   let createdAt: Date | null = null;
   let updatedAt: Date | null = null;
 
-  if (task.source?.name === "github") {
-    // For GitHub tasks, we can extract the original timestamps from the raw GitHub data
-    // The GitHub issue data is stored in task.source.data and contains created_at/updated_at
+  if (task.source?.data) {
+    // Try to extract timestamps from source data (including GitHub)
     createdAt = extractTimestampFromFileContent(task, "Created");
     updatedAt = extractTimestampFromFileContent(task, "Updated");
-  } else if (task.source?.data) {
-    // For other sources, try to extract timestamps from source data
-    const sourceData = task.source.data;
-
-    // Check for various timestamp formats
-    if (sourceData.created_at) {
-      createdAt = new Date(sourceData.created_at);
-    }
-    if (sourceData.updated_at) {
-      updatedAt = new Date(sourceData.updated_at);
-    }
-    if (!createdAt && sourceData.createdAt) {
-      createdAt = new Date(sourceData.createdAt);
-    }
-    if (!updatedAt && sourceData.updatedAt) {
-      updatedAt = new Date(sourceData.updatedAt);
-    }
   }
 
   // Fall back to file system timestamps if no source data
@@ -95,25 +77,48 @@ export function createLocalTask(task: Task): LocalTask {
 }
 
 /**
- * Extract timestamp from task file content
- * Looks for timestamps in the "External Reference" section
+ * Extract timestamp from task source data
+ * Handles various timestamp formats from different sources
  */
 function extractTimestampFromFileContent(
   task: Task,
   label: "Created" | "Updated"
 ): Date | null {
   try {
+    if (!task.source?.data) {
+      return null;
+    }
+
+    const sourceData = task.source.data;
+
     // For GitHub tasks, we can extract the original timestamps from the raw GitHub data
     // The GitHub issue data is stored in task.source.data and contains created_at/updated_at
-    if (task.source?.name === "github" && task.source.data) {
-      const githubData = task.source.data;
-
-      if (label === "Created" && githubData.created_at) {
-        return new Date(githubData.created_at);
+    if (task.source.name === "github") {
+      if (label === "Created" && sourceData.created_at) {
+        return new Date(sourceData.created_at);
       }
 
-      if (label === "Updated" && githubData.updated_at) {
-        return new Date(githubData.updated_at);
+      if (label === "Updated" && sourceData.updated_at) {
+        return new Date(sourceData.updated_at);
+      }
+    } else {
+      // For other sources, check for various timestamp formats
+      if (label === "Created") {
+        if (sourceData.created_at) {
+          return new Date(sourceData.created_at);
+        }
+        if (sourceData.createdAt) {
+          return new Date(sourceData.createdAt);
+        }
+      }
+
+      if (label === "Updated") {
+        if (sourceData.updated_at) {
+          return new Date(sourceData.updated_at);
+        }
+        if (sourceData.updatedAt) {
+          return new Date(sourceData.updatedAt);
+        }
       }
     }
 

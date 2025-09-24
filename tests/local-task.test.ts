@@ -216,5 +216,32 @@ describe("LocalTask", () => {
       expect(localTask.sortable.createdAt).toBeNull();
       expect(localTask.sortable.updatedAt).toBeNull();
     });
+
+    test("should extract timestamps from other source types", () => {
+      const task: Task = {
+        id: "test-other-source",
+        title: "Other Source Task",
+        file: mockFile,
+        filePath: "Tasks/Other Source Task.md",
+        source: {
+          name: "apple-reminders",
+          key: "apple-123",
+          data: {
+            createdAt: "2024-03-01T12:00:00Z",
+            updatedAt: "2024-03-02T18:45:00Z",
+            id: "apple-reminder-123",
+          },
+        },
+      };
+
+      const localTask = createLocalTask(task);
+
+      expect(localTask.sortable.createdAt).toEqual(
+        new Date("2024-03-01T12:00:00Z")
+      );
+      expect(localTask.sortable.updatedAt).toEqual(
+        new Date("2024-03-02T18:45:00Z")
+      );
+    });
   });
 });
