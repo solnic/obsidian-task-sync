@@ -42,9 +42,10 @@
 
   const { plugin } = getPluginContext();
 
-  // Track daily planning state
+  // Track daily planning state - a task is scheduled if it has a doDate OR is in the daily planning store
   let isScheduled = $derived(
-    isTaskScheduled(task, $dailyPlanningStore.scheduledTasks)
+    task.doDate != null ||
+      isTaskScheduled(task, $dailyPlanningStore.scheduledTasks)
   );
 
   // Local tasks should not display imported styling - this is redundant

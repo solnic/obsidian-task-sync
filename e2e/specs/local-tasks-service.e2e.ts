@@ -514,6 +514,45 @@ This is a test task created directly in the vault.`;
     expect(taskCount).toBe(0);
   });
 
+  test("should display schedule badges for tasks with Do Date", async () => {
+    // Create a task with a Do Date (scheduled task)
+    const taskPath = await context.page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      return await plugin.noteManagers.getTaskManager().createTaskFile({
+        title: "Scheduled Local Task",
+        description: "A task with a Do Date",
+        done: false,
+        doDate: new Date(), // Schedule for today
+      });
+    });
+
+    // Open Tasks view and switch to local service
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "local");
+
+    // Wait for tasks to load
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
+      timeout: 5000,
+    });
+
+    // Find the scheduled task item
+    const taskItem = context.page
+      .locator('[data-testid^="local-task-item-"]')
+      .filter({ hasText: "Scheduled Local Task" })
+      .first();
+    await taskItem.waitFor({ state: "visible", timeout: 5000 });
+
+    // Check that the task has the scheduled badge
+    const scheduledBadge = taskItem.locator(".scheduled-badge");
+    await scheduledBadge.waitFor({ state: "visible", timeout: 5000 });
+
+    const badgeText = await scheduledBadge.textContent();
+    expect(badgeText).toContain("✓ scheduled");
+    expect(badgeText).toContain("Today");
+  });
+
   test("should not show 'Added to today' button state for scheduled tasks", async () => {
     // Create a test task
     await createTask(context, {
