@@ -69,6 +69,10 @@ if [ ! -f "main.js" ]; then
     exit 1
 fi
 
+# Set up Obsidian for e2e testing
+echo "🔧 Setting up Obsidian for e2e testing..."
+npm run setup:obsidian-playwright
+
 echo "✅ Development environment setup complete!"
 echo ""
 echo "🚀 Available commands:"
@@ -85,3 +89,4 @@ echo "💡 Tips:"
 echo "   - Use './update-plugin.sh' for quick updates during development"
 echo "   - Run this script again if you switch between platforms"
 echo "   - The scripts automatically handle platform-specific dependencies"
+echo "   - Obsidian has been set up for e2e testing"

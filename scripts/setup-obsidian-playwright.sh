@@ -181,6 +181,12 @@ EOF
                     echo "   Extracted main.js from app.asar"
                 fi
 
+                # Copy obsidian.asar to app-extracted directory for Playwright compatibility
+                if [ -f "resources/obsidian.asar" ] && [ -d "app-extracted" ]; then
+                    cp resources/obsidian.asar app-extracted/
+                    echo "   Copied obsidian.asar to app-extracted directory"
+                fi
+
                 # Create package.json if it doesn't exist
                 if [ ! -f "package.json" ] && [ -f "app-extracted/package.json" ]; then
                     cp app-extracted/package.json ./package.json
