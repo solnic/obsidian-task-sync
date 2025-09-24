@@ -18,6 +18,14 @@ import { createWikiLink } from "../utils/linkUtils";
 import { getDateString } from "../utils/dateFiltering";
 import moment from "moment";
 
+// Create lookup map for date properties to avoid repeated iteration
+const DATE_PROPERTY_LOOKUP = new Map<string, boolean>();
+Object.values(PROPERTY_REGISTRY).forEach((prop) => {
+  if (prop.type === "date") {
+    DATE_PROPERTY_LOOKUP.set(prop.name, true);
+  }
+});
+
 /**
  * Interface for task creation data
  */
@@ -495,12 +503,8 @@ export class TaskFileManager extends FileManager {
   ): Promise<void> {
     // Convert Date objects to date strings for date properties
     if (value instanceof Date) {
-      // Check if this is a date property by looking up the property definition
-      const propertyDef = Object.values(PROPERTY_REGISTRY).find(
-        (prop) => prop.name === propertyKey && prop.type === "date"
-      );
-
-      if (propertyDef) {
+      // Use lookup map for O(1) date property check instead of O(n) iteration
+      if (DATE_PROPERTY_LOOKUP.has(propertyKey)) {
         value = getDateString(value); // Convert to YYYY-MM-DD format
       }
     }

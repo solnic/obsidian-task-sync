@@ -17,12 +17,12 @@ Project: Obsidian Task Sync
 - You MUST ALWAYS see what test helpers are available and AVOID complex code in test scenarios
 - Do not mock Obsidian APIs - any feature that relies on Obsidian APIs must be tested in e2e tests
 - Do not use fixed timeouts in tests - instead use smart-waiting strategy. Implement helpers for smart-waiting if necessery.
-- After you are done with all code changes you MUST run all tests via `npm run` and `npm run test:e2e:headless`
+- After you are done with all code changes you MUST run all tests via `npm test`
 - `e2e` tests are the most important tests in this project as they test real interactions with the Obsidian API and the UI
 
 # Running tests
 
-- `npm test` to run unit and e2e tests (comprehensive testing)
+- `npm test` to run unit and e2e tests
 - `npm run test:e2e:headless` to run end-to-end tests only
 - `npm run test:e2e:failed:headless` to rerun only tests that failed in previous run
 - `npm run test:e2e:changed:headless` to run tests for changed files only
