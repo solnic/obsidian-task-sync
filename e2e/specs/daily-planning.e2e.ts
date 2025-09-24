@@ -15,6 +15,11 @@ import {
 } from "../helpers/global";
 import { stubAppleCalendarAPIs } from "../helpers/api-stubbing";
 import { stubGitHubWithFixtures } from "../helpers/github-integration-helpers";
+import {
+  getDateString,
+  getTodayString,
+  getYesterdayString,
+} from "../helpers/date-helpers";
 
 describe("Daily Planning", () => {
   const context = setupE2ETestHooks();
@@ -81,7 +86,7 @@ describe("Daily Planning", () => {
 
   test("should display existing tasks scheduled for today and yesterday", async () => {
     // Create a task scheduled for today
-    const todayString = new Date().toISOString().split("T")[0];
+    const todayString = getDateString(new Date());
     const todayTaskPath = await context.page.evaluate(async (todayString) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -95,9 +100,9 @@ describe("Daily Planning", () => {
     }, todayString);
 
     // Create a task scheduled for yesterday
-    const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    const yesterdayString = getDateString(
+      new Date(Date.now() - 24 * 60 * 60 * 1000)
+    );
     const yesterdayTaskPath = await context.page.evaluate(
       async (yesterdayString) => {
         const app = (window as any).app;
@@ -152,9 +157,9 @@ describe("Daily Planning", () => {
 
   test("should handle individual task controls in step 1", async () => {
     // Create multiple test tasks with Do Date set to yesterday
-    const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    const yesterdayString = getDateString(
+      new Date(Date.now() - 24 * 60 * 60 * 1000)
+    );
 
     const taskPaths = await context.page.evaluate(async (yesterdayString) => {
       const app = (window as any).app;
@@ -272,9 +277,9 @@ describe("Daily Planning", () => {
 
   test("should handle unscheduled tasks in step 2", async () => {
     // Create a test task for yesterday that will be moved to today during planning
-    const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    const yesterdayString = getDateString(
+      new Date(Date.now() - 24 * 60 * 60 * 1000)
+    );
 
     const taskPath = await context.page.evaluate(async (yesterdayString) => {
       const app = (window as any).app;
@@ -363,9 +368,9 @@ describe("Daily Planning", () => {
 
   test("should complete daily planning workflow with all 3 steps and reactivity", async () => {
     // Create a test task with a Do Date set to yesterday
-    const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    const yesterdayString = getDateString(
+      new Date(Date.now() - 24 * 60 * 60 * 1000)
+    );
 
     const taskPath = await context.page.evaluate(async (yesterdayString) => {
       const app = (window as any).app;
@@ -413,7 +418,7 @@ describe("Daily Planning", () => {
     const initialCount = await initialScheduledTasks.count();
 
     // Edit the task file to change Do Date to today (testing reactivity)
-    const todayString = new Date().toISOString().split("T")[0];
+    const todayString = getDateString(new Date());
 
     await context.page.evaluate(
       async (args) => {
@@ -571,7 +576,7 @@ describe("Daily Planning", () => {
     }
 
     // Verify the task now has today's date as Do Date
-    const todayString = new Date().toISOString().split("T")[0];
+    const todayString = getDateString(new Date());
 
     // Debug: Check current file content before waiting
     const currentContent = await context.page.evaluate(async (path) => {
@@ -707,7 +712,7 @@ describe("Daily Planning", () => {
     }
 
     // Verify the task now has today's date as Do Date
-    const todayString = new Date().toISOString().split("T")[0];
+    const todayString = getDateString(new Date());
     await waitForTaskPropertySync(
       context.page,
       taskPath,
@@ -719,7 +724,7 @@ describe("Daily Planning", () => {
 
   test("should handle already scheduled tasks in daily planning", async () => {
     // Create a task that's already scheduled for today
-    const todayString = new Date().toISOString().split("T")[0];
+    const todayString = getDateString(new Date());
     const taskPath = await context.page.evaluate(async (todayString) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -790,9 +795,9 @@ describe("Daily Planning", () => {
 
   test("should not show duplicated tasks when moving tasks from yesterday to today", async () => {
     // Create multiple tasks scheduled for yesterday
-    const yesterdayString = new Date(Date.now() - 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0];
+    const yesterdayString = getDateString(
+      new Date(Date.now() - 24 * 60 * 60 * 1000)
+    );
 
     const taskPaths = await context.page.evaluate(async (yesterdayString) => {
       const app = (window as any).app;
