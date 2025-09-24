@@ -4,6 +4,7 @@
  */
 
 import { TFile, TFolder, Vault } from "obsidian";
+import * as yaml from "js-yaml";
 import {
   VaultScannerService,
   TaskFileInfo,
@@ -405,21 +406,12 @@ export class VaultScanner implements VaultScannerService {
     if (!match) return {};
 
     try {
-      // Simple YAML parsing - in production, use a proper YAML parser
+      // Use js-yaml for proper YAML parsing
       const frontmatterText = match[1];
-      const lines = frontmatterText.split("\n");
-      const result: Record<string, any> = {};
+      const result = yaml.load(frontmatterText) as Record<string, any>;
 
-      for (const line of lines) {
-        const colonIndex = line.indexOf(":");
-        if (colonIndex > 0) {
-          const key = line.substring(0, colonIndex).trim();
-          const value = line.substring(colonIndex + 1).trim();
-          result[key] = value;
-        }
-      }
-
-      return result;
+      // Ensure we return an object (yaml.load can return null for empty content)
+      return result || {};
     } catch (error) {
       console.error("Failed to parse frontmatter:", error);
       return {};

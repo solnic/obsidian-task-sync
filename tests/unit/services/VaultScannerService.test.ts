@@ -46,7 +46,7 @@ This is the content.`;
       expect(result).toEqual({
         Title: "Test Task",
         Type: "Task",
-        Done: "false",
+        Done: false,
         Priority: "High",
       });
     });
@@ -64,8 +64,8 @@ Content here.`;
 
       expect(result).toEqual({
         Title: "Test Task",
-        Areas: '["Area 1", "Area 2"]',
-        tags: "[bug, feature]",
+        Areas: ["Area 1", "Area 2"],
+        tags: ["bug", "feature"],
       });
     });
 
@@ -85,7 +85,7 @@ Content.`;
       });
     });
 
-    test("should handle multiline values (current limitation)", () => {
+    test("should handle multiline values properly with js-yaml", () => {
       const content = `---
 Title: Test Task
 Description: |
@@ -98,14 +98,15 @@ Content.`;
 
       const result = (vaultScanner as any).extractFrontmatter(content);
 
-      // Current manual parser only gets the first line
+      // js-yaml properly handles multiline values
       expect(result).toEqual({
         Title: "Test Task",
-        Description: "|",
+        Description:
+          "This is a multiline\ndescription that spans\nmultiple lines\n",
       });
     });
 
-    test("should handle nested objects (current limitation)", () => {
+    test("should handle nested objects properly with js-yaml", () => {
       const content = `---
 Title: Test Task
 metadata:
@@ -117,12 +118,13 @@ Content.`;
 
       const result = (vaultScanner as any).extractFrontmatter(content);
 
-      // Current manual parser treats nested properties as top-level
+      // js-yaml properly handles nested objects
       expect(result).toEqual({
         Title: "Test Task",
-        metadata: "",
-        created: "2024-01-01",
-        author: "John Doe",
+        metadata: {
+          created: new Date("2024-01-01"),
+          author: "John Doe",
+        },
       });
     });
 
