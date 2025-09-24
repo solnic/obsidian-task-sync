@@ -117,4 +117,54 @@ describe("LocalTask", () => {
       expect(localTask.sortable.areas).toBe("Plain Area Name");
     });
   });
+
+  describe("edge cases with malformed front-matter data", () => {
+    test("should handle task with object values in project/areas", () => {
+      const task: Task = {
+        id: "test-7",
+        title: "Test Task",
+        project: { invalid: "object" } as any,
+        areas: [{ nested: "object" }, "Valid Area"] as any,
+        file: mockFile,
+        filePath: "Tasks/Test Task.md",
+      };
+
+      const localTask = createLocalTask(task);
+
+      expect(localTask.sortable.project).toBe("");
+      expect(localTask.sortable.areas).toBe("Valid Area"); // Should find first valid string
+    });
+
+    test("should handle task with boolean values", () => {
+      const task: Task = {
+        id: "test-8",
+        title: "Test Task",
+        project: true as any,
+        areas: [false, true, "Valid Area"] as any,
+        file: mockFile,
+        filePath: "Tasks/Test Task.md",
+      };
+
+      const localTask = createLocalTask(task);
+
+      expect(localTask.sortable.project).toBe("");
+      expect(localTask.sortable.areas).toBe("Valid Area");
+    });
+
+    test("should handle task with array as project value", () => {
+      const task: Task = {
+        id: "test-9",
+        title: "Test Task",
+        project: ["Not", "A", "String"] as any,
+        areas: ["Valid Area"],
+        file: mockFile,
+        filePath: "Tasks/Test Task.md",
+      };
+
+      const localTask = createLocalTask(task);
+
+      expect(localTask.sortable.project).toBe("");
+      expect(localTask.sortable.areas).toBe("Valid Area");
+    });
+  });
 });
