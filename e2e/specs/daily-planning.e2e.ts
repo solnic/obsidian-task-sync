@@ -78,8 +78,6 @@ describe("Daily Planning", () => {
       };
     });
 
-    console.log("Timezone test result:", result);
-
     // The bug would show up as backToString !== testDate or incorrect today comparison
     expect(result.backToString).toBe(result.testDate);
   });
@@ -554,41 +552,23 @@ describe("Daily Planning", () => {
 
     // Check if the task is already scheduled or needs to be scheduled
     const initialButtonText = await scheduleButton.textContent();
-    console.log("Initial button text:", initialButtonText);
 
-    if (initialButtonText?.includes("Schedule for today")) {
-      // Task not yet scheduled, click to schedule
-      await scheduleButton.click();
+    // Task not yet scheduled, click to schedule
+    await scheduleButton.click();
 
-      // Wait for the action to complete and the scheduled badge to appear
-      await context.page.waitForTimeout(2000);
+    // Wait for the action to complete and the scheduled badge to appear
+    await context.page.waitForTimeout(2000);
 
-      // Verify the scheduled badge appears instead of button text change
-      const scheduledBadge = taskItem.locator(".scheduled-badge");
-      await scheduledBadge.waitFor({ state: "visible", timeout: 5000 });
+    // Verify the scheduled badge appears instead of button text change
+    const scheduledBadge = taskItem.locator(".scheduled-badge");
+    await scheduledBadge.waitFor({ state: "visible", timeout: 5000 });
 
-      expect(await scheduledBadge.isVisible()).toBe(true);
-      const badgeText = await scheduledBadge.textContent();
-      console.log("Scheduled badge text:", badgeText);
-      expect(badgeText).toContain("✓ scheduled");
-    } else {
-      throw new Error(`Unexpected button text: ${initialButtonText}`);
-    }
+    expect(await scheduledBadge.isVisible()).toBe(true);
+    const badgeText = await scheduledBadge.textContent();
+    expect(badgeText).toContain("✓ scheduled");
 
     // Verify the task now has today's date as Do Date
     const todayString = getDateString(new Date());
-
-    // Debug: Check current file content before waiting
-    const currentContent = await context.page.evaluate(async (path) => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(path);
-      if (!file) return "FILE_NOT_FOUND";
-      return await app.vault.read(file);
-    }, taskPath);
-    console.log(
-      "Current file content before waitForTaskPropertySync:",
-      currentContent
-    );
 
     await waitForTaskPropertySync(
       context.page,
@@ -617,11 +597,7 @@ describe("Daily Planning", () => {
       });
 
     const taskCount = await scheduledTasks.count();
-    console.log(
-      `Found ${taskCount} scheduled tasks with the name "Service Task for Scheduling"`
-    );
 
-    // Verify at least one scheduled task exists (there might be duplicates due to store/file sync issues)
     expect(taskCount).toBeGreaterThan(0);
   });
 
@@ -689,27 +665,22 @@ describe("Daily Planning", () => {
 
     // Check if the task is already scheduled or needs to be scheduled
     const initialButtonText = await scheduleButton.textContent();
-    console.log("Initial button text:", initialButtonText);
 
-    if (initialButtonText?.includes("Schedule for today")) {
-      // Task not yet scheduled, click to schedule
-      // This should NOT crash with metadata cache timeout after our fix
-      await scheduleButton.click();
+    // Task not yet scheduled, click to schedule
+    // This should NOT crash with metadata cache timeout after our fix
+    await scheduleButton.click();
 
-      // Wait for the action to complete and the scheduled badge to appear
-      await context.page.waitForTimeout(2000);
+    // Wait for the action to complete and the scheduled badge to appear
+    await context.page.waitForTimeout(2000);
 
-      // Verify the scheduled badge appears instead of button text change
-      const scheduledBadge = taskItem.locator(".scheduled-badge");
-      await scheduledBadge.waitFor({ state: "visible", timeout: 5000 });
+    // Verify the scheduled badge appears instead of button text change
+    const scheduledBadge = taskItem.locator(".scheduled-badge");
+    await scheduledBadge.waitFor({ state: "visible", timeout: 5000 });
 
-      expect(await scheduledBadge.isVisible()).toBe(true);
-      const badgeText = await scheduledBadge.textContent();
-      console.log("Scheduled badge text:", badgeText);
-      expect(badgeText).toContain("✓ scheduled");
-    } else {
-      throw new Error(`Unexpected button text: ${initialButtonText}`);
-    }
+    expect(await scheduledBadge.isVisible()).toBe(true);
+
+    const badgeText = await scheduledBadge.textContent();
+    expect(badgeText).toContain("✓ scheduled");
 
     // Verify the task now has today's date as Do Date
     const todayString = getDateString(new Date());
@@ -902,37 +873,12 @@ describe("Daily Planning", () => {
       return counts;
     });
 
-    console.log("Task counts in final plan:", taskCounts);
-    console.log("Available task titles:", Object.keys(taskCounts));
-
     // Verify that each moved task appears exactly once (no duplicates)
     for (let i = 1; i <= 4; i++) {
       const taskTitle = `Yesterday Task ${i}`;
       const count = taskCounts[taskTitle];
-      if (count !== undefined) {
-        expect(count).toBe(1);
-        if (count !== 1) {
-          console.error(
-            `Task "${taskTitle}" should appear exactly once, but appears ${count} times`
-          );
-        }
-      } else {
-        console.warn(`Task "${taskTitle}" not found in final plan`);
-        // Check if task exists with different formatting
-        const similarTasks = Object.keys(taskCounts).filter(
-          (title) =>
-            title.includes(`Yesterday Task ${i}`) || title.includes(`Task ${i}`)
-        );
-        console.log(`Similar tasks found:`, similarTasks);
 
-        // If we find a similar task, use that for verification
-        if (similarTasks.length > 0) {
-          expect(taskCounts[similarTasks[0]]).toBe(1);
-        } else {
-          // Fail the test if we can't find the task at all
-          expect(count).toBe(1);
-        }
-      }
+      expect(count).toBe(1);
     }
 
     // Also verify by counting total task items with "Moved from yesterday" badge
@@ -1035,9 +981,6 @@ describe("Daily Planning", () => {
       });
 
     const taskCount = await scheduledTasks.count();
-    console.log(
-      `Found ${taskCount} scheduled tasks with the name "Local Task for Duplicate Bug"`
-    );
 
     // This should be 1, but the bug causes it to be 2
     expect(taskCount).toBe(1);
@@ -1076,23 +1019,8 @@ describe("Daily Planning", () => {
     );
     await scheduleButton.waitFor({ state: "visible" });
 
-    const buttonText = await scheduleButton.textContent();
-    console.log("🔥 Schedule button text:", buttonText);
+    await scheduleButton.click();
 
-    if (buttonText?.includes("Schedule for today")) {
-      // Issue not yet scheduled, click to schedule
-      await scheduleButton.click();
-    } else if (buttonText?.includes("✓ Scheduled for today")) {
-      // Issue already scheduled, this is the bug we're testing
-      console.log(
-        "🔥 Issue already scheduled, this should appear in daily planning"
-      );
-    } else {
-      throw new Error(`Unexpected button text: ${buttonText}`);
-    }
-
-    // STEP 5: Verify the task appears in daily planning step 2
-    // The issue should now appear in the scheduled tasks list
     await context.page.waitForSelector('[data-testid="scheduled-task"]');
 
     const scheduledTasks = context.page.locator(
