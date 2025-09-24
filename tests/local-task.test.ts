@@ -299,6 +299,25 @@ describe("LocalTask", () => {
       );
     });
 
+    test("should handle object values in project/areas fields", () => {
+      // This test reproduces the "project/area must be string, got object" error
+      const task: Task = {
+        id: "test-object-project",
+        title: "Task with Object Project",
+        file: mockFile,
+        filePath: "Tasks/Object Project Task.md",
+        project: { name: "Test Project" } as any, // Object instead of string
+        areas: [{ name: "Test Area" }] as any, // Array of objects instead of strings
+      };
+
+      // This should not throw a validation error
+      const localTask = createLocalTask(task);
+
+      // Object values should be handled gracefully, converting to empty strings
+      expect(localTask.sortable.project).toBe("");
+      expect(localTask.sortable.areas).toBe("");
+    });
+
     test("should handle tasks with file system timestamps when source data has invalid dates", () => {
       const task: Task = {
         id: "test-fallback-timestamps",
