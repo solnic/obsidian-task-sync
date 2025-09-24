@@ -11,6 +11,7 @@
   import { extractDisplayValue } from "../../utils/linkUtils";
   import type { Task } from "../../types/entities";
   import type { FileContext } from "../../main";
+  import { createLocalTask, type LocalTask } from "../../types/LocalTask";
 
   interface SortField {
     key: string;
@@ -151,10 +152,17 @@
     return options;
   });
 
+  // Create LocalTask view objects for proper sorting
+  let localTasks = $derived.by(() => {
+    return tasks.map(createLocalTask);
+  });
+
   // Computed filtered tasks with manual filters only
   let filteredTasks = $derived.by(() => {
-    // Start with all tasks, apply only manual filters
-    let filtered = tasks.filter((task) => {
+    // Start with all LocalTask objects, apply only manual filters
+    let filtered = localTasks.filter((localTask) => {
+      const task = localTask.task;
+
       // Project filter
       if (selectedProject) {
         const taskProject =
@@ -208,14 +216,15 @@
 
     // Apply search filter
     if (searchQuery) {
-      filtered = searchTasks(searchQuery, filtered);
+      filtered = searchLocalTasks(searchQuery, filtered);
     }
 
-    // Apply sorting
+    // Apply sorting using LocalTask sortable attributes
     if (sortFields.length > 0) {
-      filtered = sortTasks(filtered, sortFields);
+      filtered = sortLocalTasks(filtered, sortFields);
     }
 
+    // Return the LocalTask objects for rendering
     return filtered;
   });
 
@@ -254,11 +263,15 @@
     saveRecentlyUsedFilters();
   });
 
-  function searchTasks(query: string, taskList: Task[]): Task[] {
+  function searchLocalTasks(
+    query: string,
+    localTaskList: LocalTask[]
+  ): LocalTask[] {
     const lowerQuery = query.toLowerCase();
 
-    return taskList.filter(
-      (task) =>
+    return localTaskList.filter((localTask) => {
+      const task = localTask.task;
+      return (
         task.title.toLowerCase().includes(lowerQuery) ||
         (task.category && task.category.toLowerCase().includes(lowerQuery)) ||
         (task.status && task.status.toLowerCase().includes(lowerQuery)) ||
@@ -274,83 +287,64 @@
             )) ||
             (typeof (task.areas as any) === "string" &&
               (task.areas as any).toLowerCase().includes(lowerQuery))))
-    );
+      );
+    });
   }
 
-  function sortTasks(taskList: Task[], sortFields: SortField[]): Task[] {
-    return [...taskList].sort((a, b) => {
+  function sortLocalTasks(
+    localTaskList: LocalTask[],
+    sortFields: SortField[]
+  ): LocalTask[] {
+    return [...localTaskList].sort((a, b) => {
       for (const field of sortFields) {
         let aValue: any;
         let bValue: any;
 
-        // Get values based on field key
+        // Get values from sortable attributes
         switch (field.key) {
           case "title":
-            aValue = a.title || "";
-            bValue = b.title || "";
+            aValue = a.sortable.title;
+            bValue = b.sortable.title;
             break;
           case "createdAt":
-            aValue = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            bValue = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            aValue = a.sortable.createdAt ? a.sortable.createdAt.getTime() : 0;
+            bValue = b.sortable.createdAt ? b.sortable.createdAt.getTime() : 0;
             break;
           case "updatedAt":
-            aValue = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
-            bValue = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+            aValue = a.sortable.updatedAt ? a.sortable.updatedAt.getTime() : 0;
+            bValue = b.sortable.updatedAt ? b.sortable.updatedAt.getTime() : 0;
             break;
           case "priority":
             // Priority order: High > Medium > Low > null
             const priorityOrder = { High: 3, Medium: 2, Low: 1 };
             aValue =
-              (a.priority &&
-                priorityOrder[a.priority as keyof typeof priorityOrder]) ||
+              (a.sortable.priority &&
+                priorityOrder[
+                  a.sortable.priority as keyof typeof priorityOrder
+                ]) ||
               0;
             bValue =
-              (b.priority &&
-                priorityOrder[b.priority as keyof typeof priorityOrder]) ||
+              (b.sortable.priority &&
+                priorityOrder[
+                  b.sortable.priority as keyof typeof priorityOrder
+                ]) ||
               0;
             break;
           case "status":
-            aValue = a.status || "";
-            bValue = b.status || "";
+            aValue = a.sortable.status;
+            bValue = b.sortable.status;
             break;
           case "category":
-            aValue = a.category || "";
-            bValue = b.category || "";
+            aValue = a.sortable.category;
+            bValue = b.sortable.category;
             break;
           case "project":
-            aValue =
-              typeof a.project === "string"
-                ? extractDisplayValue(a.project) || a.project
-                : "";
-            bValue =
-              typeof b.project === "string"
-                ? extractDisplayValue(b.project) || b.project
-                : "";
+            aValue = a.sortable.project;
+            bValue = b.sortable.project;
             break;
           case "areas":
-            // For areas, use the first area for sorting
-            const aAreas = Array.isArray(a.areas)
-              ? a.areas
-              : a.areas
-                ? [a.areas]
-                : [];
-            const bAreas = Array.isArray(b.areas)
-              ? b.areas
-              : b.areas
-                ? [b.areas]
-                : [];
-            aValue =
-              aAreas.length > 0
-                ? typeof aAreas[0] === "string"
-                  ? extractDisplayValue(aAreas[0]) || aAreas[0]
-                  : aAreas[0]
-                : "";
-            bValue =
-              bAreas.length > 0
-                ? typeof bAreas[0] === "string"
-                  ? extractDisplayValue(bAreas[0]) || bAreas[0]
-                  : bAreas[0]
-                : "";
+            aValue = a.sortable.areas;
+            bValue = b.sortable.areas;
             break;
           default:
             aValue = "";
@@ -681,24 +675,25 @@
             {searchQuery ? "No tasks match your search." : "No tasks found."}
           </div>
         {:else}
-          {#each filteredTasks as task (task.id)}
+          {#each filteredTasks as localTask (localTask.task.id)}
             <LocalTaskItem
-              {task}
-              isHovered={hoveredTask === task.id}
+              task={localTask.task}
+              {localTask}
+              isHovered={hoveredTask === localTask.task.id}
               onHover={(hovered: boolean) =>
-                (hoveredTask = hovered ? task.id : null)}
+                (hoveredTask = hovered ? localTask.task.id : null)}
               onClick={() => {
-                if (task.file) {
-                  plugin.app.workspace.getLeaf().openFile(task.file);
+                if (localTask.task.file) {
+                  plugin.app.workspace.getLeaf().openFile(localTask.task.file);
                 }
               }}
               {dayPlanningMode}
               {dailyPlanningWizardMode}
               onAddToToday={addToToday}
-              isInToday={task.filePath
-                ? tasksInToday.has(task.filePath)
+              isInToday={localTask.task.filePath
+                ? tasksInToday.has(localTask.task.filePath)
                 : false}
-              testId="local-task-item-{task.title
+              testId="local-task-item-{localTask.task.title
                 .replace(/\s+/g, '-')
                 .toLowerCase()}"
             />

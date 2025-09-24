@@ -705,4 +705,87 @@ This is a test task created directly in the vault.`;
     const openButtonCount = await openButton.count();
     expect(openButtonCount).toBe(1);
   });
+
+  test("should use source data for createdAt/updatedAt when available", async () => {
+    // Enable GitHub integration for this test
+    await enableIntegration(context.page, "github");
+
+    // Create a GitHub issue fixture with specific timestamps
+    const githubIssue = {
+      id: 12345,
+      number: 123,
+      title: "GitHub Issue with Source Timestamps",
+      body: "This issue has specific GitHub timestamps",
+      state: "open",
+      html_url: "https://github.com/test/repo/issues/123",
+      created_at: "2024-01-01T10:00:00Z", // Specific GitHub creation time
+      updated_at: "2024-01-02T15:30:00Z", // Specific GitHub update time
+      assignee: null,
+      labels: [{ name: "bug" }],
+      user: {
+        login: "testuser",
+        id: 1234,
+        avatar_url: "https://avatars.githubusercontent.com/u/1234?v=4",
+        html_url: "https://github.com/testuser",
+      },
+    };
+
+    // Import the GitHub issue as a task
+    const importConfig = {
+      targetArea: "Test Area",
+      taskType: "Bug",
+      importLabelsAsTags: true,
+    };
+
+    const result = await context.page.evaluate(
+      async (args) => {
+        const { githubIssue, importConfig } = args;
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+        return await plugin.githubService.importIssueAsTask(
+          githubIssue,
+          importConfig
+        );
+      },
+      { githubIssue, importConfig }
+    );
+
+    expect(result.success).toBe(true);
+
+    // Open Tasks view and switch to local service
+    await openView(context.page, "tasks");
+    await switchToTaskService(context.page, "local");
+
+    // Wait for the task to appear
+    await context.page.waitForSelector('[data-testid^="local-task-item-"]', {
+      timeout: 5000,
+    });
+
+    // Find our imported task
+    const taskItem = context.page
+      .locator('[data-testid^="local-task-item-"]')
+      .filter({ hasText: "GitHub Issue with Source Timestamps" });
+
+    expect(await taskItem.isVisible()).toBe(true);
+
+    // Check that the task shows source timestamps, not file timestamps
+    // The timestamps should be from GitHub (2024-01-01 and 2024-01-02)
+    // instead of the current file creation/modification times
+
+    // Check the title attributes which contain the absolute dates
+    const createdTimestamp = await taskItem
+      .locator(".task-sync-timestamp")
+      .nth(1);
+    const updatedTimestamp = await taskItem
+      .locator(".task-sync-timestamp")
+      .nth(0);
+
+    const createdTitle = await createdTimestamp.getAttribute("title");
+    const updatedTitle = await updatedTimestamp.getAttribute("title");
+
+    // Verify the timestamps are from GitHub source data (2024) not file system (1970)
+    expect(createdTitle).toContain("2024");
+    expect(updatedTitle).toContain("2024");
+  });
 });

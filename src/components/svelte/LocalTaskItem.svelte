@@ -8,6 +8,7 @@
   import SeeOnServiceButton from "./SeeOnServiceButton.svelte";
   import { extractDisplayValue } from "../../utils/linkUtils";
   import type { Task } from "../../types/entities";
+  import type { LocalTask } from "../../types/LocalTask";
   import {
     dailyPlanningStore,
     scheduleTaskForToday,
@@ -18,6 +19,7 @@
 
   interface Props {
     task: Task;
+    localTask: LocalTask;
     isHovered?: boolean;
     onHover?: (hovered: boolean) => void;
     onClick?: () => void;
@@ -30,6 +32,7 @@
 
   let {
     task,
+    localTask,
     isHovered = false,
     onHover,
     onClick,
@@ -182,8 +185,8 @@
   title={task.title}
   badges={primaryBadges}
   {footerBadges}
-  createdAt={task.createdAt}
-  updatedAt={task.updatedAt}
+  createdAt={localTask.sortable.createdAt}
+  updatedAt={localTask.sortable.updatedAt}
   {isHovered}
   {isImported}
   {isScheduled}

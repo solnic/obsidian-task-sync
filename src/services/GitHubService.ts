@@ -798,6 +798,8 @@ export class GitHubService extends AbstractService {
         number: issue.number,
         state: issue.state,
         id: issue.id,
+        created_at: issue.created_at,
+        updated_at: issue.updated_at,
       },
     };
   }
@@ -832,6 +834,8 @@ export class GitHubService extends AbstractService {
         number: pullRequest.number,
         state: pullRequest.state,
         id: pullRequest.id,
+        created_at: pullRequest.created_at,
+        updated_at: pullRequest.updated_at,
         merged_at: pullRequest.merged_at,
         draft: pullRequest.draft,
         head: pullRequest.head,
