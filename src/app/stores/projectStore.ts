@@ -3,9 +3,9 @@
  * Maintains reactive state for projects from multiple extensions
  */
 
-import { writable, derived, type Readable } from 'svelte/store';
-import { Project } from '../core/entities';
-import { EventBus, type DomainEvent } from '../core/events';
+import { writable, derived, type Readable } from "svelte/store";
+import { Project } from "../core/entities";
+import { EventBus, type DomainEvent } from "../core/events";
 
 interface ProjectStoreState {
   projects: readonly Project[];
@@ -18,7 +18,7 @@ interface ProjectStore extends Readable<ProjectStoreState> {
   // Derived stores for common queries
   projectsByExtension: Readable<Map<string, Project[]>>;
   importedProjects: Readable<Project[]>;
-  
+
   // Actions
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
@@ -30,7 +30,7 @@ export function createProjectStore(eventBus: EventBus): ProjectStore {
     projects: [],
     loading: false,
     error: null,
-    lastSync: null
+    lastSync: null,
   };
 
   const { subscribe, update } = writable(initialState);
@@ -39,38 +39,40 @@ export function createProjectStore(eventBus: EventBus): ProjectStore {
   const unsubscribeFunctions: (() => void)[] = [];
 
   // Subscribe to extension events
-  const unsubscribeCreated = eventBus.on('projects.created', (event) => {
-    update(state => ({
+  const unsubscribeCreated = eventBus.on("projects.created", (event) => {
+    update((state) => ({
       ...state,
       projects: [...state.projects, event.project],
-      lastSync: new Date()
+      lastSync: new Date(),
     }));
   });
   unsubscribeFunctions.push(unsubscribeCreated);
 
-  const unsubscribeUpdated = eventBus.on('projects.updated', (event) => {
-    update(state => ({
+  const unsubscribeUpdated = eventBus.on("projects.updated", (event) => {
+    update((state) => ({
       ...state,
-      projects: state.projects.map(p => p.id === event.project.id ? event.project : p),
-      lastSync: new Date()
+      projects: state.projects.map((p) =>
+        p.id === event.project.id ? event.project : p
+      ),
+      lastSync: new Date(),
     }));
   });
   unsubscribeFunctions.push(unsubscribeUpdated);
 
-  const unsubscribeDeleted = eventBus.on('projects.deleted', (event) => {
-    update(state => ({
+  const unsubscribeDeleted = eventBus.on("projects.deleted", (event) => {
+    update((state) => ({
       ...state,
-      projects: state.projects.filter(p => p.id !== event.projectId),
-      lastSync: new Date()
+      projects: state.projects.filter((p) => p.id !== event.projectId),
+      lastSync: new Date(),
     }));
   });
   unsubscribeFunctions.push(unsubscribeDeleted);
 
-  const unsubscribeLoaded = eventBus.on('projects.loaded', (event) => {
-    update(state => ({
+  const unsubscribeLoaded = eventBus.on("projects.loaded", (event) => {
+    update((state) => ({
       ...state,
       projects: [...event.projects],
-      lastSync: new Date()
+      lastSync: new Date(),
     }));
   });
   unsubscribeFunctions.push(unsubscribeLoaded);
@@ -79,30 +81,30 @@ export function createProjectStore(eventBus: EventBus): ProjectStore {
   const projectsByExtension = derived({ subscribe }, ($store) => {
     const grouped = new Map<string, Project[]>();
     for (const project of $store.projects) {
-      const extension = project.source?.extension || 'unknown';
+      const extension = project.source?.extension || "unknown";
       if (!grouped.has(extension)) {
         grouped.set(extension, []);
       }
-      grouped.get(extension)!.push(project);
+      grouped.get(extension)?.push(project);
     }
     return grouped;
   });
 
   const importedProjects = derived({ subscribe }, ($store) =>
-    $store.projects.filter(project => project.source)
+    $store.projects.filter((project) => project.source)
   );
 
   // Actions
   const setLoading = (loading: boolean) => {
-    update(state => ({ ...state, loading }));
+    update((state) => ({ ...state, loading }));
   };
 
   const setError = (error: string | null) => {
-    update(state => ({ ...state, error }));
+    update((state) => ({ ...state, error }));
   };
 
   const cleanup = () => {
-    unsubscribeFunctions.forEach(unsubscribe => unsubscribe());
+    unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
   };
 
   return {
@@ -111,6 +113,6 @@ export function createProjectStore(eventBus: EventBus): ProjectStore {
     importedProjects,
     setLoading,
     setError,
-    cleanup
+    cleanup,
   };
 }

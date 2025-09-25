@@ -21,12 +21,12 @@ const mockTask1: Task = {
   updatedAt: new Date("2024-01-01"),
   source: {
     extension: "obsidian",
-    source: "Tasks/test-task-1.md"
-  }
+    source: "Tasks/test-task-1.md",
+  },
 };
 
 const mockTask2: Task = {
-  id: "task-2", 
+  id: "task-2",
   title: "Test Task 2",
   status: "In Progress",
   done: false,
@@ -36,8 +36,8 @@ const mockTask2: Task = {
   updatedAt: new Date("2024-01-02"),
   source: {
     extension: "github",
-    source: "issue-123"
-  }
+    source: "issue-123",
+  },
 };
 
 describe("Extension-Aware Task Store", () => {
@@ -52,7 +52,7 @@ describe("Extension-Aware Task Store", () => {
   describe("Initial State", () => {
     test("should start with empty state", () => {
       const state = get(taskStore);
-      
+
       expect(state.tasks).toEqual([]);
       expect(state.loading).toBe(false);
       expect(state.error).toBe(null);
@@ -65,7 +65,7 @@ describe("Extension-Aware Task Store", () => {
       eventBus.trigger({
         type: "tasks.created",
         task: mockTask1,
-        extension: "obsidian"
+        extension: "obsidian",
       });
 
       const state = get(taskStore);
@@ -79,16 +79,20 @@ describe("Extension-Aware Task Store", () => {
       eventBus.trigger({
         type: "tasks.created",
         task: mockTask1,
-        extension: "obsidian"
+        extension: "obsidian",
       });
 
       // Then update it
-      const updatedTask = { ...mockTask1, title: "Updated Task", status: "Done" as const };
+      const updatedTask = {
+        ...mockTask1,
+        title: "Updated Task",
+        status: "Done" as const,
+      };
       eventBus.trigger({
         type: "tasks.updated",
         task: updatedTask,
         changes: { title: "Updated Task", status: "Done" },
-        extension: "obsidian"
+        extension: "obsidian",
       });
 
       const state = get(taskStore);
@@ -102,14 +106,14 @@ describe("Extension-Aware Task Store", () => {
       eventBus.trigger({
         type: "tasks.created",
         task: mockTask1,
-        extension: "obsidian"
+        extension: "obsidian",
       });
 
       // Then delete it
       eventBus.trigger({
         type: "tasks.deleted",
         taskId: "task-1",
-        extension: "obsidian"
+        extension: "obsidian",
       });
 
       const state = get(taskStore);
@@ -120,7 +124,7 @@ describe("Extension-Aware Task Store", () => {
       eventBus.trigger({
         type: "tasks.loaded",
         tasks: [mockTask1, mockTask2],
-        extension: "obsidian"
+        extension: "obsidian",
       });
 
       const state = get(taskStore);
@@ -130,20 +134,68 @@ describe("Extension-Aware Task Store", () => {
     });
   });
 
+  describe("Derived Stores", () => {
+    test("should group tasks by extension safely", () => {
+      // Add tasks from different extensions
+      eventBus.trigger({
+        type: "tasks.loaded",
+        tasks: [mockTask1, mockTask2],
+        extension: "mixed",
+      });
+
+      const tasksByExtension = get(taskStore.tasksByExtension);
+
+      expect(tasksByExtension.has("obsidian")).toBe(true);
+      expect(tasksByExtension.has("github")).toBe(true);
+      expect(tasksByExtension.get("obsidian")).toHaveLength(1);
+      expect(tasksByExtension.get("github")).toHaveLength(1);
+      expect(tasksByExtension.get("obsidian")?.[0]).toEqual(mockTask1);
+      expect(tasksByExtension.get("github")?.[0]).toEqual(mockTask2);
+    });
+
+    test("should handle tasks with unknown extensions safely", () => {
+      const taskWithoutSource: Task = {
+        id: "task-3",
+        title: "Task without source",
+        status: "Backlog",
+        done: false,
+        areas: [],
+        tags: [],
+        createdAt: new Date("2024-01-03"),
+        updatedAt: new Date("2024-01-03"),
+        // No source property
+      };
+
+      eventBus.trigger({
+        type: "tasks.created",
+        task: taskWithoutSource,
+        extension: "test",
+      });
+
+      const tasksByExtension = get(taskStore.tasksByExtension);
+
+      expect(tasksByExtension.has("unknown")).toBe(true);
+      expect(tasksByExtension.get("unknown")).toHaveLength(1);
+      expect(tasksByExtension.get("unknown")?.[0]).toEqual(taskWithoutSource);
+    });
+  });
+
   describe("Error Handling", () => {
     test("should handle errors gracefully and continue processing events", () => {
       // This test verifies that the store continues to work even if event handlers throw errors
-      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
       // Add a task successfully
       eventBus.trigger({
         type: "tasks.created",
         task: mockTask1,
-        extension: "obsidian"
+        extension: "obsidian",
       });
 
       expect(get(taskStore).tasks).toHaveLength(1);
-      
+
       consoleSpy.mockRestore();
     });
   });
