@@ -43,21 +43,19 @@ describe("Core Domain Entities", () => {
   describe("TaskSourceSchema", () => {
     test("should validate valid task source", () => {
       const validSource = {
-        extensionId: "obsidian",
-        sourceId: "Tasks/test-task.md",
+        extension: "obsidian",
+        source: "Tasks/test-task.md",
       };
 
       const result = TaskSourceSchema.parse(validSource);
-      expect(result.extensionId).toBe("obsidian");
-      expect(result.sourceId).toBe("Tasks/test-task.md");
+      expect(result.extension).toBe("obsidian");
+      expect(result.source).toBe("Tasks/test-task.md");
     });
 
-    test("should require extensionId and sourceId", () => {
+    test("should require extension and source", () => {
       expect(() => TaskSourceSchema.parse({})).toThrow();
-      expect(() =>
-        TaskSourceSchema.parse({ extensionId: "obsidian" })
-      ).toThrow();
-      expect(() => TaskSourceSchema.parse({ sourceId: "test" })).toThrow();
+      expect(() => TaskSourceSchema.parse({ extension: "obsidian" })).toThrow();
+      expect(() => TaskSourceSchema.parse({ source: "test" })).toThrow();
     });
   });
 
@@ -97,8 +95,8 @@ describe("Core Domain Entities", () => {
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-02"),
         source: {
-          extensionId: "github",
-          sourceId: "issue-123",
+          extension: "github",
+          source: "issue-123",
         },
       };
 
@@ -115,8 +113,8 @@ describe("Core Domain Entities", () => {
       expect(result.tags).toEqual(["urgent", "feature"]);
       expect(result.doDate).toEqual(new Date("2024-02-01"));
       expect(result.dueDate).toEqual(new Date("2024-02-15"));
-      expect(result.source?.extensionId).toBe("github");
-      expect(result.source?.sourceId).toBe("issue-123");
+      expect(result.source?.extension).toBe("github");
+      expect(result.source?.source).toBe("issue-123");
     });
 
     test("should require id, title, createdAt, and updatedAt", () => {
@@ -172,8 +170,8 @@ describe("Core Domain Entities", () => {
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-02"),
         source: {
-          extensionId: "obsidian",
-          sourceId: "Projects/complete-project.md",
+          extension: "obsidian",
+          source: "Projects/complete-project.md",
         },
       };
 
@@ -182,7 +180,7 @@ describe("Core Domain Entities", () => {
       expect(result.description).toBe("A project with all properties");
       expect(result.areas).toEqual(["area-1"]);
       expect(result.tags).toEqual(["important"]);
-      expect(result.source?.extensionId).toBe("obsidian");
+      expect(result.source?.extension).toBe("obsidian");
     });
 
     test("should require id, name, createdAt, and updatedAt", () => {
@@ -218,8 +216,8 @@ describe("Core Domain Entities", () => {
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-02"),
         source: {
-          extensionId: "obsidian",
-          sourceId: "Areas/complete-area.md",
+          extension: "obsidian",
+          source: "Areas/complete-area.md",
         },
       };
 
@@ -227,7 +225,7 @@ describe("Core Domain Entities", () => {
       expect(result.name).toBe("Complete Area");
       expect(result.description).toBe("An area with all properties");
       expect(result.tags).toEqual(["context"]);
-      expect(result.source?.extensionId).toBe("obsidian");
+      expect(result.source?.extension).toBe("obsidian");
     });
 
     test("should require id, name, createdAt, and updatedAt", () => {
