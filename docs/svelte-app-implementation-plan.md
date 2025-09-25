@@ -154,16 +154,16 @@ export class ExtensionRegistry {
     this.extensions.set(extension.id, extension);
   }
 
-  unregister(extension: string): void {
-    const extension = this.extensions.get(extension);
+  unregister(extensionId: string): void {
+    const extension = this.extensions.get(extensionId);
     if (extension) {
       extension.shutdown();
-      this.extensions.delete(extension);
+      this.extensions.delete(extensionId);
     }
   }
 
-  get(extension: string): Extension | undefined {
-    return this.extensions.get(extension);
+  get(extensionId: string): Extension | undefined {
+    return this.extensions.get(extensionId);
   }
 
   getAll(): Extension[] {
