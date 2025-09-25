@@ -8,63 +8,63 @@ import { EntityType } from "./extension";
 
 export type DomainEvent =
   // Task events
-  | { type: "tasks.created"; task: Task; extensionId: string }
+  | { type: "tasks.created"; task: Task; extension: string }
   | {
       type: "tasks.updated";
       task: Task;
       changes: Partial<Task>;
-      extensionId: string;
+      extension: string;
     }
-  | { type: "tasks.deleted"; taskId: string; extensionId: string }
-  | { type: "tasks.loaded"; tasks: readonly Task[]; extensionId: string }
+  | { type: "tasks.deleted"; taskId: string; extension: string }
+  | { type: "tasks.loaded"; tasks: readonly Task[]; extension: string }
 
   // Project events
-  | { type: "projects.created"; project: Project; extensionId: string }
+  | { type: "projects.created"; project: Project; extension: string }
   | {
       type: "projects.updated";
       project: Project;
       changes: Partial<Project>;
-      extensionId: string;
+      extension: string;
     }
-  | { type: "projects.deleted"; projectId: string; extensionId: string }
+  | { type: "projects.deleted"; projectId: string; extension: string }
   | {
       type: "projects.loaded";
       projects: readonly Project[];
-      extensionId: string;
+      extension: string;
     }
 
   // Area events
-  | { type: "areas.created"; area: Area; extensionId: string }
+  | { type: "areas.created"; area: Area; extension: string }
   | {
       type: "areas.updated";
       area: Area;
       changes: Partial<Area>;
-      extensionId: string;
+      extension: string;
     }
-  | { type: "areas.deleted"; areaId: string; extensionId: string }
-  | { type: "areas.loaded"; areas: readonly Area[]; extensionId: string }
+  | { type: "areas.deleted"; areaId: string; extension: string }
+  | { type: "areas.loaded"; areas: readonly Area[]; extension: string }
 
   // Extension lifecycle events
   | {
       type: "extension.registered";
-      extensionId: string;
+      extension: string;
       supportedEntities: readonly EntityType[];
     }
-  | { type: "extension.unregistered"; extensionId: string }
+  | { type: "extension.unregistered"; extension: string }
   | {
       type: "extension.sync.started";
-      extensionId: string;
+      extension: string;
       entityType: EntityType;
     }
   | {
       type: "extension.sync.completed";
-      extensionId: string;
+      extension: string;
       entityType: EntityType;
       entityCount: number;
     }
   | {
       type: "extension.sync.failed";
-      extensionId: string;
+      extension: string;
       entityType: EntityType;
       error: string;
     };

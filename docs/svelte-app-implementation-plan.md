@@ -32,7 +32,7 @@ export const TaskStatusSchema = z.enum(['Backlog', 'In Progress', 'Done', 'Cance
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 
 export const TaskSourceSchema = z.object({
-  extensionId: z.string(), // 'obsidian', 'github', 'apple-reminders'
+  extension: z.string(), // 'obsidian', 'github', 'apple-reminders'
   sourceId: z.string(), // unique identifier within the extension
   url: z.string().optional(),
   metadata: z.record(z.any()).optional()
@@ -154,16 +154,16 @@ export class ExtensionRegistry {
     this.extensions.set(extension.id, extension);
   }
 
-  unregister(extensionId: string): void {
-    const extension = this.extensions.get(extensionId);
+  unregister(extension: string): void {
+    const extension = this.extensions.get(extension);
     if (extension) {
       extension.shutdown();
-      this.extensions.delete(extensionId);
+      this.extensions.delete(extension);
     }
   }
 
-  get(extensionId: string): Extension | undefined {
-    return this.extensions.get(extensionId);
+  get(extension: string): Extension | undefined {
+    return this.extensions.get(extension);
   }
 
   getAll(): Extension[] {
@@ -190,29 +190,29 @@ import { EntityType } from './extension';
 
 export type DomainEvent =
   // Task events
-  | { type: 'tasks.created'; task: Task; extensionId: string }
-  | { type: 'tasks.updated'; task: Task; changes: Partial<Task>; extensionId: string }
-  | { type: 'tasks.deleted'; taskId: string; extensionId: string }
-  | { type: 'tasks.loaded'; tasks: readonly Task[]; extensionId: string }
+  | { type: 'tasks.created'; task: Task; extension: string }
+  | { type: 'tasks.updated'; task: Task; changes: Partial<Task>; extension: string }
+  | { type: 'tasks.deleted'; taskId: string; extension: string }
+  | { type: 'tasks.loaded'; tasks: readonly Task[]; extension: string }
 
   // Project events
-  | { type: 'projects.created'; project: Project; extensionId: string }
-  | { type: 'projects.updated'; project: Project; changes: Partial<Project>; extensionId: string }
-  | { type: 'projects.deleted'; projectId: string; extensionId: string }
-  | { type: 'projects.loaded'; projects: readonly Project[]; extensionId: string }
+  | { type: 'projects.created'; project: Project; extension: string }
+  | { type: 'projects.updated'; project: Project; changes: Partial<Project>; extension: string }
+  | { type: 'projects.deleted'; projectId: string; extension: string }
+  | { type: 'projects.loaded'; projects: readonly Project[]; extension: string }
 
   // Area events
-  | { type: 'areas.created'; area: Area; extensionId: string }
-  | { type: 'areas.updated'; area: Area; changes: Partial<Area>; extensionId: string }
-  | { type: 'areas.deleted'; areaId: string; extensionId: string }
-  | { type: 'areas.loaded'; areas: readonly Area[]; extensionId: string }
+  | { type: 'areas.created'; area: Area; extension: string }
+  | { type: 'areas.updated'; area: Area; changes: Partial<Area>; extension: string }
+  | { type: 'areas.deleted'; areaId: string; extension: string }
+  | { type: 'areas.loaded'; areas: readonly Area[]; extension: string }
 
   // Extension events
-  | { type: 'extension.registered'; extensionId: string; supportedEntities: EntityType[] }
-  | { type: 'extension.unregistered'; extensionId: string }
-  | { type: 'extension.sync.started'; extensionId: string; entityType: EntityType }
-  | { type: 'extension.sync.completed'; extensionId: string; entityType: EntityType; entityCount: number }
-  | { type: 'extension.sync.failed'; extensionId: string; entityType: EntityType; error: string };
+  | { type: 'extension.registered'; extension: string; supportedEntities: EntityType[] }
+  | { type: 'extension.unregistered'; extension: string }
+  | { type: 'extension.sync.started'; extension: string; entityType: EntityType }
+  | { type: 'extension.sync.completed'; extension: string; entityType: EntityType; entityCount: number }
+  | { type: 'extension.sync.failed'; extension: string; entityType: EntityType; error: string };
 
 export class EventBus {
   private handlers = new Map<string, ((event: DomainEvent) => void)[]>();
@@ -292,7 +292,7 @@ export class ObsidianExtension implements Extension {
     // Trigger extension registered event
     eventBus.trigger({
       type: 'extension.registered',
-      extensionId: this.id,
+      extension: this.id,
       supportedEntities: [...this.supportedEntities]
     });
 
@@ -303,7 +303,7 @@ export class ObsidianExtension implements Extension {
   async shutdown(): Promise<void> {
     eventBus.trigger({
       type: 'extension.unregistered',
-      extensionId: this.id
+      extension: this.id
     });
   }
 
@@ -319,9 +319,9 @@ export class ObsidianExtension implements Extension {
         this.areas.findAll()
       ]);
 
-      eventBus.trigger({ type: 'tasks.loaded', tasks, extensionId: this.id });
-      eventBus.trigger({ type: 'projects.loaded', projects, extensionId: this.id });
-      eventBus.trigger({ type: 'areas.loaded', areas, extensionId: this.id });
+      eventBus.trigger({ type: 'tasks.loaded', tasks, extension: this.id });
+      eventBus.trigger({ type: 'projects.loaded', projects, extension: this.id });
+      eventBus.trigger({ type: 'areas.loaded', areas, extension: this.id });
     } catch (error) {
       console.error('Failed to load entities from Obsidian:', error);
     }
@@ -353,20 +353,20 @@ export class ObsidianTaskOperations implements EntityOperations<Task> {
       createdAt: now,
       updatedAt: now,
       source: {
-        extensionId: 'obsidian',
+        extension: 'obsidian',
         sourceId: `${this.folder}/${taskData.title}.md`
       }
     };
 
     await this.saveTaskToFile(task);
-    eventBus.trigger({ type: 'tasks.created', task, extensionId: 'obsidian' });
+    eventBus.trigger({ type: 'tasks.created', task, extension: 'obsidian' });
     return task;
   }
 
   async update(task: Task): Promise<Task> {
     const updatedTask = { ...task, updatedAt: new Date() };
     await this.saveTaskToFile(updatedTask);
-    eventBus.trigger({ type: 'tasks.updated', task: updatedTask, changes: {}, extensionId: 'obsidian' });
+    eventBus.trigger({ type: 'tasks.updated', task: updatedTask, changes: {}, extension: 'obsidian' });
     return updatedTask;
   }
 
@@ -376,7 +376,7 @@ export class ObsidianTaskOperations implements EntityOperations<Task> {
 
     if (file instanceof TFile) {
       await this.app.vault.delete(file);
-      eventBus.trigger({ type: 'tasks.deleted', taskId: id, extensionId: 'obsidian' });
+      eventBus.trigger({ type: 'tasks.deleted', taskId: id, extension: 'obsidian' });
     }
   }
 
@@ -501,7 +501,7 @@ export class ObsidianTaskOperations implements EntityOperations<Task> {
         createdAt: new Date(file.stat.ctime),
         updatedAt: new Date(file.stat.mtime),
         source: {
-          extensionId: 'obsidian',
+          extension: 'obsidian',
           sourceId: file.path
         }
       });
@@ -586,7 +586,7 @@ function createTaskStore() {
     update(state => {
       // Merge tasks from different extensions
       const existingTasks = state.tasks.filter(t =>
-        t.source?.extensionId !== event.extensionId
+        t.source?.extension !== event.extension
       );
       return {
         ...state,
@@ -611,12 +611,12 @@ function createTaskStore() {
     },
 
     async updateTask(task: Task) {
-      const extensionId = task.source?.extensionId || 'obsidian';
-      const extension = extensionRegistry.get(extensionId);
+      const extension = task.source?.extension || 'obsidian';
+      const extension = extensionRegistry.get(extension);
       if (extension?.tasks) {
         return extension.tasks.update(task);
       }
-      throw new Error(`Extension ${extensionId} not available`);
+      throw new Error(`Extension ${extension} not available`);
     },
 
     async deleteTask(taskId: string) {
@@ -627,8 +627,8 @@ function createTaskStore() {
       })();
 
       if (task) {
-        const extensionId = task.source?.extensionId || 'obsidian';
-        const extension = extensionRegistry.get(extensionId);
+        const extension = task.source?.extension || 'obsidian';
+        const extension = extensionRegistry.get(extension);
         if (extension?.tasks) {
           return extension.tasks.delete(taskId);
         }
@@ -644,11 +644,11 @@ export const taskStore = createTaskStore();
 export const tasksByExtension = derived(taskStore, $store => {
   const grouped = new Map<string, Task[]>();
   for (const task of $store.tasks) {
-    const extensionId = task.source?.extensionId || 'unknown';
-    if (!grouped.has(extensionId)) {
-      grouped.set(extensionId, []);
+    const extension = task.source?.extension || 'unknown';
+    if (!grouped.has(extension)) {
+      grouped.set(extension, []);
     }
-    grouped.get(extensionId)!.push(task);
+    grouped.get(extension)!.push(task);
   }
   return grouped;
 });

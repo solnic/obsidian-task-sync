@@ -53,7 +53,7 @@ describe("EventBus", () => {
       const event: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       eventBus.trigger(event);
@@ -68,7 +68,7 @@ describe("EventBus", () => {
       const event: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       eventBus.trigger(event);
@@ -86,7 +86,7 @@ describe("EventBus", () => {
       const event: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       eventBus.trigger(event);
@@ -106,13 +106,13 @@ describe("EventBus", () => {
       const taskEvent: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       const projectEvent: DomainEvent = {
         type: "projects.created",
         project: mockProject,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       eventBus.trigger(taskEvent);
@@ -138,7 +138,7 @@ describe("EventBus", () => {
       const event: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       eventBus.trigger(event);
@@ -162,7 +162,7 @@ describe("EventBus", () => {
       const event: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       eventBus.trigger(event);
@@ -204,7 +204,7 @@ describe("EventBus", () => {
       const event: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       // Should not throw and should process successful handler
@@ -228,7 +228,7 @@ describe("EventBus", () => {
       const event: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       eventBus.trigger(event);
@@ -256,14 +256,14 @@ describe("EventBus", () => {
       const createEvent: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       const updateEvent: DomainEvent = {
         type: "tasks.updated",
         task: mockTask,
         changes: { title: "Updated" },
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       eventBus.trigger(createEvent);
@@ -289,20 +289,20 @@ describe("EventBus", () => {
       const createEvent: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       const updateEvent: DomainEvent = {
         type: "tasks.updated",
         task: mockTask,
         changes: { title: "Updated" },
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       const projectEvent: DomainEvent = {
         type: "projects.created",
         project: mockProject,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       eventBus.trigger(createEvent);
@@ -322,7 +322,7 @@ describe("EventBus", () => {
 
       const event: DomainEvent = {
         type: "extension.registered",
-        extensionId: "test-extension",
+        extension: "test-extension",
         supportedEntities: ["task"],
       };
 
@@ -345,12 +345,12 @@ describe("EventBus", () => {
       const taskEvent: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       const syncEvent: DomainEvent = {
         type: "extension.sync.started",
-        extensionId: "test-extension",
+        extension: "test-extension",
         entityType: "task",
       };
 
@@ -369,7 +369,7 @@ describe("EventBus", () => {
 
       const event: DomainEvent = {
         type: "extension.registered",
-        extensionId: "obsidian-extension",
+        extension: "obsidian-extension",
         supportedEntities: ["task", "project", "area"],
       };
 
@@ -391,20 +391,20 @@ describe("EventBus", () => {
 
       const startEvent: DomainEvent = {
         type: "extension.sync.started",
-        extensionId: "github-extension",
+        extension: "github-extension",
         entityType: "task",
       };
 
       const completeEvent: DomainEvent = {
         type: "extension.sync.completed",
-        extensionId: "github-extension",
+        extension: "github-extension",
         entityType: "task",
         entityCount: 42,
       };
 
       const failEvent: DomainEvent = {
         type: "extension.sync.failed",
-        extensionId: "github-extension",
+        extension: "github-extension",
         entityType: "task",
         error: "Network timeout",
       };
@@ -436,7 +436,7 @@ describe("EventBus", () => {
       const event: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "test-extension",
+        extension: "test-extension",
       };
 
       eventBus.trigger(event);
@@ -466,7 +466,7 @@ describe("EventBus", () => {
       const event: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
-        extensionId: "obsidian",
+        extension: "obsidian",
       };
 
       eventBus.trigger(event);
