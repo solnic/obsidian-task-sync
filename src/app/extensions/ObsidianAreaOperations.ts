@@ -136,14 +136,12 @@ export class ObsidianAreaOperations implements EntityOperations<Area> {
       tags: area.tags.length > 0 ? area.tags : undefined,
     };
 
-    // Remove undefined values
-    Object.keys(frontMatter).forEach((key) => {
-      if ((frontMatter as any)[key] === undefined) {
-        delete (frontMatter as any)[key];
-      }
-    });
+    // Remove undefined values safely
+    const cleanedFrontMatter = Object.fromEntries(
+      Object.entries(frontMatter).filter(([_, value]) => value !== undefined)
+    );
 
-    const frontMatterYaml = stringifyYaml(frontMatter);
+    const frontMatterYaml = stringifyYaml(cleanedFrontMatter);
     const content = `---\n${frontMatterYaml}---\n\n${area.description || ""}`;
 
     const existingFile = this.app.vault.getAbstractFileByPath(

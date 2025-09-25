@@ -46,7 +46,7 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   const unsubscribeFunctions: (() => void)[] = [];
 
   // Subscribe to extension events
-  const unsubscribeCreated = eventBus.on("areas.created", (event: any) => {
+  const unsubscribeCreated = eventBus.on("areas.created", (event) => {
     update((state) => ({
       ...state,
       areas: [...state.areas, event.area],
@@ -55,7 +55,7 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   });
   unsubscribeFunctions.push(unsubscribeCreated);
 
-  const unsubscribeUpdated = eventBus.on("areas.updated", (event: any) => {
+  const unsubscribeUpdated = eventBus.on("areas.updated", (event) => {
     update((state) => ({
       ...state,
       areas: state.areas.map((a) => (a.id === event.area.id ? event.area : a)),
@@ -64,7 +64,7 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   });
   unsubscribeFunctions.push(unsubscribeUpdated);
 
-  const unsubscribeDeleted = eventBus.on("areas.deleted", (event: any) => {
+  const unsubscribeDeleted = eventBus.on("areas.deleted", (event) => {
     update((state) => ({
       ...state,
       areas: state.areas.filter((a) => a.id !== event.areaId),
@@ -73,7 +73,7 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   });
   unsubscribeFunctions.push(unsubscribeDeleted);
 
-  const unsubscribeLoaded = eventBus.on("areas.loaded", (event: any) => {
+  const unsubscribeLoaded = eventBus.on("areas.loaded", (event) => {
     update((state) => ({
       ...state,
       areas: [...event.areas],

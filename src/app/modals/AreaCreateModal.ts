@@ -6,12 +6,13 @@
 import { App, Modal } from "obsidian";
 import { mount, unmount } from "svelte";
 import AreaCreateModalSvelte from "../components/AreaCreateModal.svelte";
+import type TaskSyncPlugin from "../../main";
 
 export class AreaCreateModal extends Modal {
   private component: any = null;
-  private plugin: any;
+  private plugin: TaskSyncPlugin;
 
-  constructor(app: App, plugin: any) {
+  constructor(app: App, plugin: TaskSyncPlugin) {
     super(app);
     this.plugin = plugin;
   }

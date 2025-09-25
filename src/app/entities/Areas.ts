@@ -98,7 +98,7 @@ export class Areas extends Entities {
     ): Promise<Area> {
       return new Promise((resolve, reject) => {
         // Listen for the creation completion
-        const unsubscribe = eventBus.on("areas.created", (event: any) => {
+        const unsubscribe = eventBus.on("areas.created", (event) => {
           unsubscribe();
           clearTimeout(timeout);
           resolve(event.area);
@@ -117,7 +117,7 @@ export class Areas extends Entities {
 
     async update(area: Area): Promise<Area> {
       return new Promise((resolve, reject) => {
-        const unsubscribe = eventBus.on("areas.updated", (event: any) => {
+        const unsubscribe = eventBus.on("areas.updated", (event) => {
           if (event.area.id === area.id) {
             unsubscribe();
             clearTimeout(timeout);
@@ -136,7 +136,7 @@ export class Areas extends Entities {
 
     async delete(id: string): Promise<void> {
       return new Promise((resolve, reject) => {
-        const unsubscribe = eventBus.on("areas.deleted", (event: any) => {
+        const unsubscribe = eventBus.on("areas.deleted", (event) => {
           if (event.areaId === id) {
             unsubscribe();
             clearTimeout(timeout);

@@ -77,6 +77,19 @@ test.describe("Area Creation with New Architecture", () => {
     // Modal should still be open
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
+    // Verify input has error styling
+    await expect(page.locator('[data-testid="area-name-input"]')).toHaveClass(
+      /task-sync-input-error/
+    );
+
+    // Type in the name input to clear the error
+    await page.fill('[data-testid="area-name-input"]', "Test Area");
+
+    // Verify error styling is removed
+    await expect(
+      page.locator('[data-testid="area-name-input"]')
+    ).not.toHaveClass(/task-sync-input-error/);
+
     // Cancel the modal
     await page.click('[data-testid="cancel-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
@@ -111,14 +124,7 @@ test.describe("Area Creation with New Architecture", () => {
     await waitForFileCreation(page, expectedFilePath);
 
     // Verify the file content
-    const fileContent = await page.evaluate(async (filePath) => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(filePath);
-      if (file) {
-        return await app.vault.read(file);
-      }
-      return null;
-    }, expectedFilePath);
+    const fileContent = await readVaultFile(page, expectedFilePath);
 
     expect(fileContent).toBeTruthy();
     expect(fileContent).toContain("Name: Minimal Test Area");

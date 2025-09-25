@@ -83,7 +83,7 @@ export class ObsidianExtension implements Extension {
 
   private setupEventListeners(): void {
     // Listen for area creation requests
-    eventBus.on("areas.create.requested", async (event: any) => {
+    eventBus.on("areas.create.requested", async (event) => {
       try {
         const area = await this.areas.create(event.areaData);
         // The ObsidianAreaOperations will trigger the areas.created event
@@ -93,7 +93,7 @@ export class ObsidianExtension implements Extension {
     });
 
     // Listen for area update requests
-    eventBus.on("areas.update.requested", async (event: any) => {
+    eventBus.on("areas.update.requested", async (event) => {
       try {
         const area = await this.areas.update(event.area.id, event.area);
         // The ObsidianAreaOperations will trigger the areas.updated event
@@ -103,7 +103,7 @@ export class ObsidianExtension implements Extension {
     });
 
     // Listen for area deletion requests
-    eventBus.on("areas.delete.requested", async (event: any) => {
+    eventBus.on("areas.delete.requested", async (event) => {
       try {
         await this.areas.delete(event.areaId);
         // The ObsidianAreaOperations will trigger the areas.deleted event
