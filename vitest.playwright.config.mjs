@@ -10,7 +10,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: true,
-    include: ['e2e/**/*.e2e.ts'],
+    include: ['e2e/specs/vitest/**/*.e2e.ts'],
     exclude: ['tests/**/*'],
     testTimeout: isCI ? 30000 : 10000,
     hookTimeout: isCI ? 30000 : 10000,

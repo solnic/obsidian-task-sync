@@ -1,6 +1,7 @@
 import { exec } from "child_process";
 import { promisify } from "util";
-import { cleanupAllWorkerContexts } from "./helpers/shared-context";
+import * as fs from "fs";
+import * as path from "path";
 
 const execAsync = promisify(exec);
 
@@ -12,15 +13,15 @@ export default async function globalTeardown() {
   console.log("🧹 Starting global e2e test teardown...");
 
   try {
-    // Clean up all worker contexts first
-    await cleanupAllWorkerContexts();
+    // Clean up test environments
+    await cleanupTestEnvironments();
 
     // Kill any remaining Electron processes
     console.log("🔍 Cleaning up any remaining Electron processes...");
 
     try {
       const { stdout } = await execAsync(
-        'pgrep -f "Electron.*obsidian.*main.js" || true',
+        'pgrep -f "Electron.*obsidian.*main.js" || true'
       );
 
       if (stdout.trim()) {
@@ -29,7 +30,7 @@ export default async function globalTeardown() {
           .split("\n")
           .filter((pid) => pid.trim());
         console.log(
-          `🔪 Found ${pids.length} remaining Electron processes, killing them...`,
+          `🔪 Found ${pids.length} remaining Electron processes, killing them...`
         );
 
         for (const pid of pids) {
@@ -46,7 +47,7 @@ export default async function globalTeardown() {
     } catch (error) {
       console.log(
         "⚠️ Error checking for remaining Electron processes:",
-        error.message,
+        error.message
       );
     }
 
@@ -54,5 +55,27 @@ export default async function globalTeardown() {
   } catch (error) {
     console.error("❌ Global teardown failed:", error);
     // Don't throw error in teardown to avoid masking test failures
+  }
+}
+
+/**
+ * Clean up test environments
+ */
+async function cleanupTestEnvironments(): Promise<void> {
+  try {
+    const testEnvDir = path.join(process.cwd(), "e2e/test-environments");
+    if (fs.existsSync(testEnvDir)) {
+      const entries = await fs.promises.readdir(testEnvDir);
+      for (const entry of entries) {
+        const entryPath = path.join(testEnvDir, entry);
+        try {
+          await fs.promises.rm(entryPath, { recursive: true, force: true });
+        } catch (error) {
+          console.log(`⚠️ Could not clean up ${entry}:`, error.message);
+        }
+      }
+    }
+  } catch (error) {
+    console.log("⚠️ Error cleaning up test environments:", error.message);
   }
 }

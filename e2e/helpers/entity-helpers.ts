@@ -3,14 +3,14 @@
  * Leverages the plugin's automatic entity caching system
  */
 
-import type { SharedTestContext } from "./shared-context";
+import type { ExtendedPage } from "./global";
 
 export async function updateEntity(
-  context: SharedTestContext,
+  page: ExtendedPage,
   entity: any,
   props: any
 ) {
-  return await context.page.evaluate(
+  return await page.evaluate(
     async ({ entity, props }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -26,7 +26,7 @@ export async function updateEntity(
  * Returns the created entity directly from the plugin
  */
 export async function createTask(
-  context: SharedTestContext,
+  page: ExtendedPage,
   props: {
     title: string;
     description?: string;
@@ -42,7 +42,7 @@ export async function createTask(
   },
   content: string = ""
 ): Promise<any> {
-  return await context.page.evaluate(
+  return await page.evaluate(
     async ({ props, content }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -67,13 +67,13 @@ export async function createTask(
  * Returns the created entity directly from the plugin
  */
 export async function createArea(
-  context: SharedTestContext,
+  page: ExtendedPage,
   props: {
     name: string;
     description?: string;
   }
 ): Promise<any> {
-  return await context.page.evaluate(
+  return await page.evaluate(
     async ({ props }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -100,14 +100,14 @@ export async function createArea(
  * Returns the created entity directly from the plugin
  */
 export async function createProject(
-  context: SharedTestContext,
+  page: ExtendedPage,
   props: {
     name: string;
     description?: string;
     areas?: string[];
   }
 ): Promise<any> {
-  return await context.page.evaluate(
+  return await page.evaluate(
     async ({ props }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];

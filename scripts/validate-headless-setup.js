@@ -81,7 +81,7 @@ if (missingLibs.length === 0) {
 console.log('\n🖥️ Testing headless detection logic...');
 
 try {
-  const result = execSync('node scripts/test-headless-detection.js', { 
+  const result = execSync('node scripts/test-headless-detection.js', {
     encoding: 'utf8',
     stdio: 'pipe'
   });
@@ -95,7 +95,7 @@ try {
 console.log('\n🧪 Testing xvfb functionality...');
 
 try {
-  const result = execSync('node scripts/test-xvfb-electron.js', { 
+  const result = execSync('node scripts/test-xvfb-electron.js', {
     encoding: 'utf8',
     stdio: 'pipe'
   });
@@ -112,7 +112,7 @@ const requiredFiles = [
   'package.json',
   'vitest.playwright.config.mjs',
   'e2e/helpers/plugin-setup.ts',
-  'e2e/helpers/shared-context.ts',
+  'e2e/helpers/shared-context-vitest.ts',
   '.obsidian-unpacked/main.js'
 ];
 
@@ -158,9 +158,9 @@ console.log(`   Current environment: ${JSON.stringify(currentEnv)}`);
 // Simulate headless detection
 const isHeadless = process.env.E2E_HEADLESS === 'false' ? false :
   (process.env.CI === 'true' ||
-   process.env.E2E_HEADLESS === 'true' ||
-   process.env.DISPLAY === undefined ||
-   process.env.DISPLAY === '');
+    process.env.E2E_HEADLESS === 'true' ||
+    process.env.DISPLAY === undefined ||
+    process.env.DISPLAY === '');
 
 addCheck('Environment detection', true, `Detected mode: ${isHeadless ? 'headless' : 'windowed'}`);
 
@@ -177,7 +177,7 @@ if (!success) {
   allChecks.filter(check => !check.passed).forEach(check => {
     console.log(`   • ${check.name}${check.details ? ': ' + check.details : ''}`);
   });
-  
+
   console.log('\n🔧 Recommended actions:');
   console.log('   1. Run: npm run setup:headless');
   console.log('   2. Ensure all dependencies are installed');

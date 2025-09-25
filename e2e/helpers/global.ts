@@ -1,10 +1,34 @@
+import * as fs from "fs";
+import * as path from "path";
+
 import type { Page } from "playwright";
 import { TFile } from "obsidian";
 
-import { type SharedTestContext } from "./shared-context";
-import { captureScreenshotOnFailure } from "./shared-context";
-
 import type { Area, Project, Task } from "../../src/types/entities";
+
+// Type for extended Page object with test context properties
+export type ExtendedPage = Page & {
+  testId: string;
+  vaultPath: string;
+  dataPath: string;
+  workerId: string;
+  electronApp: any;
+  logs: Array<{ type: string; text: string; timestamp: Date }>;
+};
+
+export async function updatePluginSettings(
+  page: ExtendedPage,
+  settings: any
+): Promise<void> {
+  await page.evaluate(async (settings) => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+    Object.assign(plugin.settings, settings);
+
+    await plugin.saveSettings();
+  }, settings);
+}
 
 /**
  * Wait for a base file to be created or updated
@@ -128,54 +152,6 @@ export async function waitForFileContentToContain(
     `Timeout waiting for file "${filePath}" to contain "${expectedContent}" after ${timeout}ms.\n` +
       `Current file content:\n${currentContent}`
   );
-}
-
-/**
- * Wait for the event system to be idle (no processing files)
- */
-export async function waitForEventSystemIdle(
-  page: Page,
-  timeout: number = 5000
-): Promise<void> {
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeout) {
-    const isIdle = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
-
-      if (!plugin || !plugin.eventManager) {
-        return false; // Plugin not ready
-      }
-
-      // Check if StatusDoneHandler has any processing files
-      const handlers = plugin.eventManager.handlers;
-      if (handlers) {
-        for (const handlerList of handlers.values()) {
-          for (const handler of handlerList) {
-            if (
-              handler.constructor.name === "StatusDoneHandler" &&
-              handler.processingFiles
-            ) {
-              if (handler.processingFiles.size > 0) {
-                return false; // Still processing
-              }
-            }
-          }
-        }
-      }
-
-      return true; // System is idle
-    });
-
-    if (isIdle) {
-      return; // Success!
-    }
-
-    await page.waitForTimeout(50); // Check every 50ms
-  }
-
-  console.warn(`Event system did not become idle within ${timeout}ms`);
 }
 
 /**
@@ -710,17 +686,17 @@ export async function getFile(page: Page, filePath: string): Promise<any> {
 }
 
 export async function executeCommand(
-  context: SharedTestContext,
+  page: ExtendedPage,
   command: string,
   options?: { notice?: string }
 ): Promise<void> {
-  await context.page.keyboard.press("Control+P");
-  await context.page.waitForSelector(".prompt-input");
-  await context.page.fill(".prompt-input", command);
-  await context.page.keyboard.press("Enter");
+  await page.keyboard.press("Control+P");
+  await page.waitForSelector(".prompt-input");
+  await page.fill(".prompt-input", command);
+  await page.keyboard.press("Enter");
 
   if (options?.notice) {
-    await expectNotice(context, options.notice);
+    await expectNotice(page, options.notice);
   }
 }
 
@@ -728,26 +704,46 @@ export async function executeCommand(
  * Wait for and check if a notice with specific text appears
  */
 export async function waitForNotice(
-  context: SharedTestContext,
+  page: ExtendedPage,
   expectedText: string,
   timeout: number = 5000
 ): Promise<boolean> {
-  try {
-    await context.page.waitForFunction(
-      ({ text }) => {
-        const noticeElements = document.querySelectorAll(".notice");
-        const notices = Array.from(noticeElements).map(
-          (el) => el.textContent || ""
-        );
-        return notices.some((notice) => notice.includes(text));
-      },
-      { text: expectedText },
-      { timeout }
-    );
-    return true;
-  } catch (error) {
-    return false;
-  }
+  await page.waitForFunction(
+    ({ text }) => {
+      const noticeElements = document.querySelectorAll(".notice");
+      const notices = Array.from(noticeElements).map(
+        (el) => el.textContent || ""
+      );
+      return notices.some((notice) => notice.includes(text));
+    },
+    { text: expectedText },
+    { timeout }
+  );
+  return true;
+}
+
+/**
+ * Capture a screenshot for debugging purposes using Playwright Electron support
+ */
+export async function captureScreenshotOnFailure(
+  page: ExtendedPage,
+  name: string
+): Promise<void> {
+  const baseDebugDir = path.join(process.cwd(), "e2e", "debug");
+  const testDebugDir = path.join(baseDebugDir, name);
+
+  await fs.promises.mkdir(testDebugDir, { recursive: true });
+
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const filename = `screenshot-${timestamp}-${page.workerId}.png`;
+  const screenshotPath = path.join(testDebugDir, filename);
+
+  await page.screenshot({
+    path: screenshotPath,
+    fullPage: true,
+    type: "png",
+    timeout: 10000,
+  });
 }
 
 /**
@@ -755,19 +751,19 @@ export async function waitForNotice(
  * Enhanced to wait for notices to appear and provide better debugging
  */
 export async function expectNotice(
-  context: SharedTestContext,
+  page: ExtendedPage,
   expectedText: string,
   timeout: number = 10000
 ): Promise<void> {
   // First wait for any notice to appear
   try {
-    await context.page.waitForSelector(".notice", {
+    await page.waitForSelector(".notice", {
       timeout: Math.min(timeout, 5000),
     });
   } catch (error) {
     // If no notice appears at all, take a screenshot for debugging
     await captureScreenshotOnFailure(
-      context,
+      page,
       `no-notice-appeared-${expectedText.replace(/[^a-zA-Z0-9]/g, "-")}`
     );
     throw new Error(
@@ -779,17 +775,17 @@ export async function expectNotice(
   }
 
   // Then wait for the specific notice text
-  const noticeAppeared = await waitForNotice(context, expectedText, timeout);
+  const noticeAppeared = await waitForNotice(page, expectedText, timeout);
 
   if (!noticeAppeared) {
     // Get current notices for debugging
-    const currentNotices = await context.page.evaluate(() => {
+    const currentNotices = await page.evaluate(() => {
       const noticeElements = document.querySelectorAll(".notice");
       return Array.from(noticeElements).map((el) => el.textContent || "");
     });
 
     await captureScreenshotOnFailure(
-      context,
+      page,
       `wrong-notice-${expectedText.replace(/[^a-zA-Z0-9]/g, "-")}`
     );
 
@@ -803,8 +799,8 @@ export async function expectNotice(
 /**
  * Helper to open a file and wait for it to load properly
  */
-export async function openFile(context: SharedTestContext, filePath: string) {
-  await context.page.evaluate(async (path) => {
+export async function openFile(page: ExtendedPage, filePath: string) {
+  await page.evaluate(async (path) => {
     const app = (window as any).app;
     const file = app.vault.getAbstractFileByPath(path);
 
@@ -827,32 +823,28 @@ export async function openFile(context: SharedTestContext, filePath: string) {
     });
   }, filePath);
 
-  await context.page.waitForSelector(
-    ".markdown-source-view, .markdown-preview-view",
-    { timeout: 5000 }
-  );
+  await page.waitForSelector(".markdown-source-view, .markdown-preview-view", {
+    timeout: 5000,
+  });
 }
 
 /**
  * Helper to wait for base view to load properly
  */
-export async function waitForBaseView(
-  context: SharedTestContext,
-  timeout = 5000
-) {
-  await context.page.waitForSelector(".bases-view", { timeout });
-  await context.page.waitForSelector(".bases-table-container", {
+export async function waitForBaseView(page: ExtendedPage, timeout = 5000) {
+  await page.waitForSelector(".bases-view", { timeout });
+  await page.waitForSelector(".bases-table-container", {
     timeout: 5000,
   });
 }
 
 export async function createFile(
-  context: SharedTestContext,
+  page: ExtendedPage,
   filePath: string,
   frontmatter: Record<string, any> = {},
   content: string = ""
 ): Promise<TFile> {
-  return await context.page.evaluate(
+  return await page.evaluate(
     async ({ filePath, frontmatter, content }) => {
       const app = (window as any).app;
       await app.vault.create(filePath, content);
@@ -871,10 +863,10 @@ export async function createFile(
 }
 
 export async function getFrontMatter(
-  context: SharedTestContext,
+  page: ExtendedPage,
   filePath: string
 ): Promise<Record<string, any>> {
-  return await context.page.evaluate(
+  return await page.evaluate(
     async ({ filePath }) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(filePath);
@@ -888,11 +880,9 @@ export async function getFrontMatter(
 /**
  * Open Task Sync plugin settings
  */
-export async function openTaskSyncSettings(
-  context: SharedTestContext
-): Promise<void> {
-  await executeCommand(context, "Open Settings");
-  await waitForSettingsModal(context.page);
+export async function openTaskSyncSettings(page: ExtendedPage): Promise<void> {
+  await executeCommand(page, "Open Settings");
+  await waitForSettingsModal(page);
 
   const taskSyncSelectors = [
     '.vertical-tab-nav-item:has-text("Task Sync")',
@@ -903,17 +893,17 @@ export async function openTaskSyncSettings(
 
   for (const selector of taskSyncSelectors) {
     try {
-      const element = context.page.locator(selector);
+      const element = page.locator(selector);
       const count = await element.count();
 
       if (count > 0 && (await element.first().isVisible())) {
         await element.first().click();
         // Wait for the Task Sync settings to load by looking for the settings container
-        await context.page.waitForSelector(".task-sync-settings", {
+        await page.waitForSelector(".task-sync-settings", {
           timeout: 5000,
         });
         // Also wait for the header to be visible
-        await context.page.waitForSelector(
+        await page.waitForSelector(
           '.task-sync-settings-header h2:has-text("Task Sync Settings")',
           { timeout: 5000 }
         );
@@ -1146,35 +1136,32 @@ export async function toggleTaskStatusInProgress(
 /**
  * Open Task Sync settings and navigate to Task Statuses section
  */
-export async function openTaskStatusSettings(context: any): Promise<void> {
-  await openTaskSyncSettings(context);
-  await scrollToSettingsSection(context.page, "Task Statuses");
+export async function openTaskStatusSettings(
+  page: ExtendedPage
+): Promise<void> {
+  await openTaskSyncSettings(page);
+  await scrollToSettingsSection(page, "Task Statuses");
 }
 
 /**
  * Toggle area bases enabled setting via UI
  */
 export async function toggleAreaBasesEnabled(
-  context: SharedTestContext,
+  page: ExtendedPage,
   enabled: boolean
 ): Promise<void> {
-  await toggleSetting(
-    context,
-    "Bases Integration",
-    "Enable Area Bases",
-    enabled
-  );
+  await toggleSetting(page, "Bases Integration", "Enable Area Bases", enabled);
 }
 
 /**
  * Toggle project bases enabled setting via UI
  */
 export async function toggleProjectBasesEnabled(
-  context: SharedTestContext,
+  page: ExtendedPage,
   enabled: boolean
 ): Promise<void> {
   await toggleSetting(
-    context,
+    page,
     "Bases Integration",
     "Enable Project Bases",
     enabled
@@ -1186,13 +1173,13 @@ export async function toggleProjectBasesEnabled(
  * Note: Currently bypasses UI due to UI inversion bug and directly updates plugin settings
  */
 export async function toggleSetting(
-  context: SharedTestContext,
+  page: ExtendedPage,
   _sectionName: string,
   settingName: string,
   enabled: boolean
 ): Promise<void> {
   // Get the current plugin setting value
-  const currentPluginSetting = await context.page.evaluate(
+  const currentPluginSetting = await page.evaluate(
     async (settingName: string) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -1221,7 +1208,7 @@ export async function toggleSetting(
   }
 
   // We need to change the setting, so directly update the plugin setting
-  await context.page.evaluate(
+  await page.evaluate(
     async ({
       settingName,
       enabled,
@@ -1247,7 +1234,7 @@ export async function toggleSetting(
   );
 
   // Verify the setting was updated correctly
-  const finalPluginSetting = await context.page.evaluate(
+  const finalPluginSetting = await page.evaluate(
     async (settingName: string) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -1272,30 +1259,30 @@ export async function toggleSetting(
  * Generic helper to fill an input setting in a specific section
  */
 export async function fillSetting(
-  context: SharedTestContext,
+  page: ExtendedPage,
   sectionName: string,
   settingName: string,
   value: string
 ): Promise<void> {
-  await openTaskSyncSettings(context);
-  await scrollToSettingsSection(context.page, sectionName);
+  await openTaskSyncSettings(page);
+  await scrollToSettingsSection(page, sectionName);
 
-  const input = context.page
+  const input = page
     .locator(".setting-item")
     .filter({ hasText: settingName })
     .locator('input[type="text"], input[type="password"], textarea');
   await input.fill(value);
   // Give UI time to process the change
-  await context.page.waitForTimeout(200);
+  await page.waitForTimeout(200);
 
-  await closeSettings(context.page);
+  await closeSettings(page);
 }
 
 /**
  * Configure both area and project bases settings via UI
  */
 export async function configureBasesSettings(
-  context: SharedTestContext,
+  page: ExtendedPage,
   areaBasesEnabled: boolean,
   projectBasesEnabled: boolean
 ): Promise<void> {
@@ -1304,7 +1291,7 @@ export async function configureBasesSettings(
   );
 
   // Check current plugin settings before making changes
-  const currentSettings = await context.page.evaluate(async () => {
+  const currentSettings = await page.evaluate(async () => {
     const app = (window as any).app;
     const plugin = app.plugins.plugins["obsidian-task-sync"];
     return {
@@ -1330,20 +1317,20 @@ export async function configureBasesSettings(
 
   // Use the generic toggleSetting helper for both settings
   await toggleSetting(
-    context,
+    page,
     "Bases Integration",
     "Enable Area Bases",
     areaBasesEnabled
   );
   await toggleSetting(
-    context,
+    page,
     "Bases Integration",
     "Enable Project Bases",
     projectBasesEnabled
   );
 
   // Check final plugin settings after making changes
-  const finalSettings = await context.page.evaluate(async () => {
+  const finalSettings = await page.evaluate(async () => {
     const app = (window as any).app;
     const plugin = app.plugins.plugins["obsidian-task-sync"];
     return {
@@ -1367,39 +1354,18 @@ export async function waitForFileCreation(
   filePath: string,
   timeout: number = 5000
 ): Promise<void> {
-  const startTime = Date.now();
-  let waitTime = 100; // Start with 100ms
-  const maxWaitTime = 1000; // Cap individual waits at 1 second for file creation
+  await page.waitForFunction(
+    async ({ path }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
 
-  while (Date.now() - startTime < timeout) {
-    // Check if file exists and has content
-    const fileExists = await page.evaluate(
-      async ({ path }) => {
-        const app = (window as any).app;
-        const file = app.vault.getAbstractFileByPath(path);
-        if (!file) return false;
+      if (!file) return false;
 
-        try {
-          const content = await app.vault.read(file);
-          return content.length > 0; // File exists and has content
-        } catch (error) {
-          return false;
-        }
-      },
-      { path: filePath }
-    );
-
-    if (fileExists) {
-      return; // Success!
-    }
-
-    // Wait with exponential backoff
-    await page.waitForTimeout(waitTime);
-    waitTime = Math.min(waitTime * 2, maxWaitTime);
-  }
-
-  throw new Error(
-    `Timeout waiting for file "${filePath}" to be created after ${timeout}ms`
+      const fileContent = await app.vault.read(file);
+      return fileContent.trim() !== "";
+    },
+    { path: filePath },
+    { timeout }
   );
 }
 
@@ -1678,11 +1644,6 @@ export async function enableIntegration(
       plugin.settings.integrations[integrationKey].enabled = true;
       Object.assign(plugin.settings.integrations[integrationKey], config);
 
-      console.debug(
-        "Enabling integration",
-        integrationKey,
-        plugin.settings.integrations[integrationKey]
-      );
       await plugin.saveSettings();
     },
     { name, config }
