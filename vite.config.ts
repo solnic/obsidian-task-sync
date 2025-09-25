@@ -1,45 +1,44 @@
-import { defineConfig } from 'vitest/config';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
-import { svelteTesting } from '@testing-library/svelte/vite';
+import { defineConfig } from "vitest/config";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 export default defineConfig({
   plugins: [
     svelte({
       compilerOptions: {
-        css: 'injected',
+        css: "injected",
         compatibility: {
-          componentApi: 4
-        }
-      }
+          componentApi: 4,
+        },
+      },
     }),
-    svelteTesting()
   ],
   test: {
     // Set up DOM environment for component testing
-    environment: 'jsdom',
+    environment: "jsdom",
     globals: true,
-    include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
-    exclude: ['e2e/**/*', 'node_modules/**/*'],
+    include: ["tests/**/*.test.ts", "src/**/*.test.ts"],
+    exclude: ["e2e/**/*", "node_modules/**/*"],
     testTimeout: 10000,
     hookTimeout: 10000,
-    pool: 'threads',
+    pool: "threads",
     poolOptions: {
       threads: {
         singleThread: false,
-        isolate: true
-      }
+        isolate: true,
+      },
     },
-    reporter: 'default',
-    setupFiles: ['./tests/setup.ts']
+    reporters: ["default"],
+    setupFiles: ["./tests/setup.ts"],
   },
   resolve: {
     alias: {
-      'obsidian': new URL('./tests/__mocks__/obsidian.ts', import.meta.url).pathname
+      obsidian: new URL("./tests/__mocks__/obsidian.ts", import.meta.url)
+        .pathname,
     },
     // Tell Vitest to use the `browser` entry points in `package.json` files, even though it's running in Node
-    conditions: process.env.VITEST ? ['browser'] : undefined
+    conditions: process.env.VITEST ? ["browser"] : undefined,
   },
   define: {
-    global: 'globalThis'
-  }
+    global: "globalThis",
+  },
 });
