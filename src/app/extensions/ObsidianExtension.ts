@@ -52,6 +52,9 @@ export class ObsidianExtension implements Extension {
         supportedEntities: [...this.supportedEntities],
       });
 
+      // Set up event listeners for request events
+      this.setupEventListeners();
+
       // Load initial data
       await this.loadAllEntities();
 
@@ -76,6 +79,38 @@ export class ObsidianExtension implements Extension {
 
   async isHealthy(): Promise<boolean> {
     return this.app.vault !== null && this.initialized;
+  }
+
+  private setupEventListeners(): void {
+    // Listen for area creation requests
+    eventBus.on("areas.create.requested", async (event: any) => {
+      try {
+        const area = await this.areas.create(event.areaData);
+        // The ObsidianAreaOperations will trigger the areas.created event
+      } catch (error) {
+        console.error("Failed to handle area creation request:", error);
+      }
+    });
+
+    // Listen for area update requests
+    eventBus.on("areas.update.requested", async (event: any) => {
+      try {
+        const area = await this.areas.update(event.area.id, event.area);
+        // The ObsidianAreaOperations will trigger the areas.updated event
+      } catch (error) {
+        console.error("Failed to handle area update request:", error);
+      }
+    });
+
+    // Listen for area deletion requests
+    eventBus.on("areas.delete.requested", async (event: any) => {
+      try {
+        await this.areas.delete(event.areaId);
+        // The ObsidianAreaOperations will trigger the areas.deleted event
+      } catch (error) {
+        console.error("Failed to handle area deletion request:", error);
+      }
+    });
   }
 
   private async loadAllEntities(): Promise<void> {

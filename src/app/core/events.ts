@@ -44,6 +44,14 @@ export type DomainEvent =
   | { type: "areas.deleted"; areaId: string; extension: string }
   | { type: "areas.loaded"; areas: readonly Area[]; extension: string }
 
+  // Area request events (triggered by stores, handled by extensions)
+  | {
+      type: "areas.create.requested";
+      areaData: Omit<Area, "id" | "createdAt" | "updatedAt">;
+    }
+  | { type: "areas.update.requested"; area: Area }
+  | { type: "areas.delete.requested"; areaId: string }
+
   // Extension lifecycle events
   | {
       type: "extension.registered";

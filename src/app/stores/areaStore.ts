@@ -1,12 +1,11 @@
 /**
- * Extension-aware area store with event bus integration
- * Maintains reactive state for areas from multiple extensions
+ * Pure area store with event-driven architecture
+ * Maintains reactive state and triggers events - no extension knowledge
  */
 
-import { writable, derived, get, type Readable } from "svelte/store";
+import { writable, derived, type Readable } from "svelte/store";
 import { Area } from "../core/entities";
-import { EventBus, type DomainEvent, eventBus } from "../core/events";
-import { extensionRegistry } from "../core/extension";
+import { eventBus, type EventBus, type DomainEvent } from "../core/events";
 
 interface AreaStoreState {
   areas: readonly Area[];
@@ -25,12 +24,12 @@ interface AreaStore extends Readable<AreaStoreState> {
   setError: (error: string | null) => void;
   cleanup: () => void;
 
-  // Command methods that delegate to appropriate extensions
-  createArea: (
+  // Command methods that trigger events - extensions will handle the actual work
+  requestCreateArea: (
     areaData: Omit<Area, "id" | "createdAt" | "updatedAt">
-  ) => Promise<Area>;
-  updateArea: (area: Area) => Promise<Area>;
-  deleteArea: (areaId: string) => Promise<boolean>;
+  ) => void;
+  requestUpdateArea: (area: Area) => void;
+  requestDeleteArea: (areaId: string) => void;
 }
 
 export function createAreaStore(eventBus: EventBus): AreaStore {
@@ -47,7 +46,7 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   const unsubscribeFunctions: (() => void)[] = [];
 
   // Subscribe to extension events
-  const unsubscribeCreated = eventBus.on("areas.created", (event) => {
+  const unsubscribeCreated = eventBus.on("areas.created", (event: any) => {
     update((state) => ({
       ...state,
       areas: [...state.areas, event.area],
@@ -56,7 +55,7 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   });
   unsubscribeFunctions.push(unsubscribeCreated);
 
-  const unsubscribeUpdated = eventBus.on("areas.updated", (event) => {
+  const unsubscribeUpdated = eventBus.on("areas.updated", (event: any) => {
     update((state) => ({
       ...state,
       areas: state.areas.map((a) => (a.id === event.area.id ? event.area : a)),
@@ -65,7 +64,7 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   });
   unsubscribeFunctions.push(unsubscribeUpdated);
 
-  const unsubscribeDeleted = eventBus.on("areas.deleted", (event) => {
+  const unsubscribeDeleted = eventBus.on("areas.deleted", (event: any) => {
     update((state) => ({
       ...state,
       areas: state.areas.filter((a) => a.id !== event.areaId),
@@ -74,7 +73,7 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   });
   unsubscribeFunctions.push(unsubscribeDeleted);
 
-  const unsubscribeLoaded = eventBus.on("areas.loaded", (event) => {
+  const unsubscribeLoaded = eventBus.on("areas.loaded", (event: any) => {
     update((state) => ({
       ...state,
       areas: [...event.areas],
@@ -113,41 +112,28 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
     unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
   };
 
-  // Command methods that delegate to appropriate extensions
-  const createArea = async (
+  // Command methods that trigger events - extensions will handle the actual work
+  const requestCreateArea = (
     areaData: Omit<Area, "id" | "createdAt" | "updatedAt">
-  ): Promise<Area> => {
-    const extension = extensionRegistry.getById("obsidian"); // Default to Obsidian
-    if (extension?.areas) {
-      return extension.areas.create(areaData);
-    }
-    throw new Error("No extension available to create areas");
+  ): void => {
+    eventBus.trigger({
+      type: "areas.create.requested",
+      areaData,
+    });
   };
 
-  const updateArea = async (area: Area): Promise<Area> => {
-    const extensionId = area.source?.extension || "obsidian";
-    const extension = extensionRegistry.getById(extensionId);
-    if (extension?.areas) {
-      return extension.areas.update(area.id, area);
-    }
-    throw new Error(`Extension ${extensionId} not available`);
+  const requestUpdateArea = (area: Area): void => {
+    eventBus.trigger({
+      type: "areas.update.requested",
+      area,
+    });
   };
 
-  const deleteArea = async (areaId: string): Promise<boolean> => {
-    // Find which extension owns this area
-    let area: Area | undefined;
-    const store = { subscribe };
-    const currentState = get(store);
-    area = currentState.areas.find((a: Area) => a.id === areaId);
-
-    if (area) {
-      const extensionId = area.source?.extension || "obsidian";
-      const extension = extensionRegistry.getById(extensionId);
-      if (extension?.areas) {
-        return extension.areas.delete(areaId);
-      }
-    }
-    throw new Error("Area not found or extension not available");
+  const requestDeleteArea = (areaId: string): void => {
+    eventBus.trigger({
+      type: "areas.delete.requested",
+      areaId,
+    });
   };
 
   return {
@@ -157,9 +143,9 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
     setLoading,
     setError,
     cleanup,
-    createArea,
-    updateArea,
-    deleteArea,
+    requestCreateArea,
+    requestUpdateArea,
+    requestDeleteArea,
   };
 }
 

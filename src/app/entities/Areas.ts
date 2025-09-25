@@ -10,7 +10,7 @@ import {
   EntitiesOperations,
 } from "../core/entities-base";
 import { areaStore } from "../stores/areaStore";
-import { get } from "svelte/store";
+import { eventBus } from "../core/events";
 
 export class Areas extends Entities {
   protected entityType = "area" as const;
@@ -96,18 +96,61 @@ export class Areas extends Entities {
     async create(
       areaData: Omit<Area, "id" | "createdAt" | "updatedAt">
     ): Promise<Area> {
-      return areaStore.createArea(areaData);
+      return new Promise((resolve, reject) => {
+        // Listen for the creation completion
+        const unsubscribe = eventBus.on("areas.created", (event: any) => {
+          unsubscribe();
+          clearTimeout(timeout);
+          resolve(event.area);
+        });
+
+        // Set a timeout in case no extension handles the request
+        const timeout = setTimeout(() => {
+          unsubscribe();
+          reject(new Error("No extension handled the area creation request"));
+        }, 5000);
+
+        // Trigger the request
+        areaStore.requestCreateArea(areaData);
+      });
     }
 
     async update(area: Area): Promise<Area> {
-      return areaStore.updateArea(area);
+      return new Promise((resolve, reject) => {
+        const unsubscribe = eventBus.on("areas.updated", (event: any) => {
+          if (event.area.id === area.id) {
+            unsubscribe();
+            clearTimeout(timeout);
+            resolve(event.area);
+          }
+        });
+
+        const timeout = setTimeout(() => {
+          unsubscribe();
+          reject(new Error("No extension handled the area update request"));
+        }, 5000);
+
+        areaStore.requestUpdateArea(area);
+      });
     }
 
     async delete(id: string): Promise<void> {
-      const success = await areaStore.deleteArea(id);
-      if (!success) {
-        throw new Error(`Failed to delete area with id: ${id}`);
-      }
+      return new Promise((resolve, reject) => {
+        const unsubscribe = eventBus.on("areas.deleted", (event: any) => {
+          if (event.areaId === id) {
+            unsubscribe();
+            clearTimeout(timeout);
+            resolve();
+          }
+        });
+
+        const timeout = setTimeout(() => {
+          unsubscribe();
+          reject(new Error("No extension handled the area deletion request"));
+        }, 5000);
+
+        areaStore.requestDeleteArea(id);
+      });
     }
 
     // Area-specific operation methods
