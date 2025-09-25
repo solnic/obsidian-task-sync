@@ -667,92 +667,458 @@ export const todayTasks = derived(taskStore, $store => {
 
 ## Phase 5: Application Layer
 
-### 5.1 Application Services
+### 5.1 Abstract Base Classes
 
-**File: `src/app/services/TaskService.ts`**
+**File: `src/app/core/entities-base.ts`**
+
+```typescript
+import { Task, Project, Area } from './entities';
+import { extensionRegistry } from './extension';
+
+// Generic entity union type
+export type Entity = Task | Project | Area;
+export type EntityType = 'task' | 'project' | 'area';
+
+// Abstract base class for all Queries
+export abstract class Entities {
+  protected abstract entityType: EntityType;
+
+  // Common query functionality that all entities share
+  protected getStore() {
+    // Return appropriate store based on entity type
+    switch (this.entityType) {
+      case 'task':
+        return import('../stores/taskStore').then(m => m.taskStore);
+      case 'project':
+        return import('../stores/projectStore').then(m => m.projectStore);
+      case 'area':
+        return import('../stores/areaStore').then(m => m.areaStore);
+      default:
+        throw new Error(`Unknown entity type: ${this.entityType}`);
+    }
+  }
+
+  protected getExtension(extensionId?: string) {
+    const defaultExtension = extensionRegistry.get('obsidian');
+    if (extensionId) {
+      return extensionRegistry.get(extensionId);
+    }
+    return defaultExtension;
+  }
+
+  // Abstract nested classes that must be implemented
+  static Queries: typeof Entities.Queries;
+  static Operations: typeof Entities.Operations;
+
+  // Abstract base class for Queries (pure functions that return data)
+  static abstract class Queries {
+    protected abstract entityType: EntityType;
+
+    // Common query methods that all entities support
+    abstract getAll(): Promise<readonly Entity[]>;
+    abstract getById(id: string): Promise<Entity | null>;
+    abstract getByExtension(extensionId: string): Promise<readonly Entity[]>;
+  }
+
+  // Abstract base class for Operations (functions with side-effects)
+  static abstract class Operations {
+    protected abstract entityType: EntityType;
+
+    // Common operation methods that all entities support
+    abstract create(entityData: Omit<Entity, 'id' | 'createdAt' | 'updatedAt'>): Promise<Entity>;
+    abstract update(entity: Entity): Promise<Entity>;
+    abstract delete(id: string): Promise<void>;
+  }
+}
+```
+
+### 5.2 Task Queries and Operations
+
+**File: `src/app/entities/Tasks.ts`**
 
 ```typescript
 import { Task } from '../core/entities';
-import { extensionRegistry } from '../core/extension';
+import { Entities } from '../core/entities-base';
 import { taskStore } from '../stores/taskStore';
+import { extensionRegistry } from '../core/extension';
 
-export class TaskService {
-  async createTask(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
-    return taskStore.createTask(taskData);
-  }
+export class Tasks extends Entities {
+  protected entityType = 'task' as const;
 
-  async updateTask(task: Task): Promise<Task> {
-    return taskStore.updateTask(task);
-  }
+  static Queries = class TaskQueries extends Entities.Queries {
+    protected entityType = 'task' as const;
 
-  async deleteTask(taskId: string): Promise<void> {
-    return taskStore.deleteTask(taskId);
-  }
-
-  async markTaskDone(taskId: string): Promise<void> {
-    // Find the task and update it
-    let task: Task | undefined;
-    taskStore.subscribe(state => {
-      task = state.tasks.find(t => t.id === taskId);
-    })();
-
-    if (task) {
-      await this.updateTask({
-        ...task,
-        done: true,
-        status: 'Done'
+    async getAll(): Promise<readonly Task[]> {
+      return new Promise(resolve => {
+        taskStore.subscribe(state => {
+          resolve(state.tasks);
+        })();
       });
     }
-  }
 
-  async scheduleTask(taskId: string, doDate: Date): Promise<void> {
-    let task: Task | undefined;
-    taskStore.subscribe(state => {
-      task = state.tasks.find(t => t.id === taskId);
-    })();
-
-    if (task) {
-      await this.updateTask({
-        ...task,
-        doDate
+    async getById(id: string): Promise<Task | null> {
+      return new Promise(resolve => {
+        taskStore.subscribe(state => {
+          const task = state.tasks.find(t => t.id === id);
+          resolve(task || null);
+        })();
       });
     }
-  }
 
-  // Query methods
-  getTasksByProject(project: string): Task[] {
-    let result: Task[] = [];
-    taskStore.subscribe(state => {
-      result = state.tasks.filter(t => t.project === project);
-    })();
-    return result;
-  }
+    async getByExtension(extensionId: string): Promise<readonly Task[]> {
+      return new Promise(resolve => {
+        taskStore.subscribe(state => {
+          const tasks = state.tasks.filter(t => t.source?.extension === extensionId);
+          resolve(tasks);
+        })();
+      });
+    }
 
-  getTasksByArea(area: string): Task[] {
-    let result: Task[] = [];
-    taskStore.subscribe(state => {
-      result = state.tasks.filter(t => t.areas.includes(area));
-    })();
-    return result;
-  }
+    // Task-specific query methods
+    async getByProject(project: string): Promise<readonly Task[]> {
+      return new Promise(resolve => {
+        taskStore.subscribe(state => {
+          const tasks = state.tasks.filter(t => t.project === project);
+          resolve(tasks);
+        })();
+      });
+    }
 
-  getTasksForToday(): Task[] {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    async getByArea(area: string): Promise<readonly Task[]> {
+      return new Promise(resolve => {
+        taskStore.subscribe(state => {
+          const tasks = state.tasks.filter(t => t.areas.includes(area));
+          resolve(tasks);
+        })();
+      });
+    }
 
-    let result: Task[] = [];
-    taskStore.subscribe(state => {
-      result = state.tasks.filter(t =>
-        t.doDate && t.doDate >= today && t.doDate < tomorrow
-      );
-    })();
-    return result;
-  }
+    async getForToday(): Promise<readonly Task[]> {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      return new Promise(resolve => {
+        taskStore.subscribe(state => {
+          const tasks = state.tasks.filter(t =>
+            t.doDate && t.doDate >= today && t.doDate < tomorrow
+          );
+          resolve(tasks);
+        })();
+      });
+    }
+
+    async getByStatus(status: Task['status']): Promise<readonly Task[]> {
+      return new Promise(resolve => {
+        taskStore.subscribe(state => {
+          const tasks = state.tasks.filter(t => t.status === status);
+          resolve(tasks);
+        })();
+      });
+    }
+
+    async search(query: string): Promise<readonly Task[]> {
+      const searchTerm = query.toLowerCase();
+      return new Promise(resolve => {
+        taskStore.subscribe(state => {
+          const tasks = state.tasks.filter(t =>
+            t.title.toLowerCase().includes(searchTerm) ||
+            t.description?.toLowerCase().includes(searchTerm) ||
+            t.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+          );
+          resolve(tasks);
+        })();
+      });
+    }
+  };
+
+  static Operations = class TaskOperations extends Entities.Operations {
+    protected entityType = 'task' as const;
+
+    async create(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
+      return taskStore.createTask(taskData);
+    }
+
+    async update(task: Task): Promise<Task> {
+      return taskStore.updateTask(task);
+    }
+
+    async delete(id: string): Promise<void> {
+      return taskStore.deleteTask(id);
+    }
+
+    // Task-specific operation methods
+    async markDone(taskId: string): Promise<void> {
+      const task = await new Tasks.Queries().getById(taskId);
+      if (task) {
+        await this.update({
+          ...task,
+          done: true,
+          status: 'Done'
+        });
+      }
+    }
+
+    async schedule(taskId: string, doDate: Date): Promise<void> {
+      const task = await new Tasks.Queries().getById(taskId);
+      if (task) {
+        await this.update({
+          ...task,
+          doDate
+        });
+      }
+    }
+
+    async setDueDate(taskId: string, dueDate: Date): Promise<void> {
+      const task = await new Tasks.Queries().getById(taskId);
+      if (task) {
+        await this.update({
+          ...task,
+          dueDate
+        });
+      }
+    }
+
+    async addToProject(taskId: string, project: string): Promise<void> {
+      const task = await new Tasks.Queries().getById(taskId);
+      if (task) {
+        await this.update({
+          ...task,
+          project
+        });
+      }
+    }
+
+    async addToArea(taskId: string, area: string): Promise<void> {
+      const task = await new Tasks.Queries().getById(taskId);
+      if (task) {
+        const areas = task.areas.includes(area) ? task.areas : [...task.areas, area];
+        await this.update({
+          ...task,
+          areas
+        });
+      }
+    }
+
+    async removeFromArea(taskId: string, area: string): Promise<void> {
+      const task = await new Tasks.Queries().getById(taskId);
+      if (task) {
+        await this.update({
+          ...task,
+          areas: task.areas.filter(a => a !== area)
+        });
+      }
+    }
+
+    async addTag(taskId: string, tag: string): Promise<void> {
+      const task = await new Tasks.Queries().getById(taskId);
+      if (task) {
+        const tags = task.tags.includes(tag) ? task.tags : [...task.tags, tag];
+        await this.update({
+          ...task,
+          tags
+        });
+      }
+    }
+
+    async removeTag(taskId: string, tag: string): Promise<void> {
+      const task = await new Tasks.Queries().getById(taskId);
+      if (task) {
+        await this.update({
+          ...task,
+          tags: task.tags.filter(t => t !== tag)
+        });
+      }
+    }
+  };
 }
 
-export const taskService = new TaskService();
+// Export instances for easy use
+export const taskQueries = new Tasks.Queries();
+export const taskOperations = new Tasks.Operations();
+```
+
+### 5.3 Project and Area Entities
+
+**File: `src/app/entities/Projects.ts`**
+
+```typescript
+import { Project } from '../core/entities';
+import { Entities } from '../core/entities-base';
+import { projectStore } from '../stores/projectStore';
+
+export class Projects extends Entities {
+  protected entityType = 'project' as const;
+
+  static Queries = class ProjectQueries extends Entities.Queries {
+    protected entityType = 'project' as const;
+
+    async getAll(): Promise<readonly Project[]> {
+      return new Promise(resolve => {
+        projectStore.subscribe(state => {
+          resolve(state.projects);
+        })();
+      });
+    }
+
+    async getById(id: string): Promise<Project | null> {
+      return new Promise(resolve => {
+        projectStore.subscribe(state => {
+          const project = state.projects.find(p => p.id === id);
+          resolve(project || null);
+        })();
+      });
+    }
+
+    async getByExtension(extensionId: string): Promise<readonly Project[]> {
+      return new Promise(resolve => {
+        projectStore.subscribe(state => {
+          const projects = state.projects.filter(p => p.source?.extension === extensionId);
+          resolve(projects);
+        })();
+      });
+    }
+
+    async getByArea(area: string): Promise<readonly Project[]> {
+      return new Promise(resolve => {
+        projectStore.subscribe(state => {
+          const projects = state.projects.filter(p => p.areas.includes(area));
+          resolve(projects);
+        })();
+      });
+    }
+
+    async search(query: string): Promise<readonly Project[]> {
+      const searchTerm = query.toLowerCase();
+      return new Promise(resolve => {
+        projectStore.subscribe(state => {
+          const projects = state.projects.filter(p =>
+            p.name.toLowerCase().includes(searchTerm) ||
+            p.description?.toLowerCase().includes(searchTerm) ||
+            p.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+          );
+          resolve(projects);
+        })();
+      });
+    }
+  };
+
+  static Operations = class ProjectOperations extends Entities.Operations {
+    protected entityType = 'project' as const;
+
+    async create(projectData: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>): Promise<Project> {
+      return projectStore.createProject(projectData);
+    }
+
+    async update(project: Project): Promise<Project> {
+      return projectStore.updateProject(project);
+    }
+
+    async delete(id: string): Promise<void> {
+      return projectStore.deleteProject(id);
+    }
+
+    async addToArea(projectId: string, area: string): Promise<void> {
+      const project = await new Projects.Queries().getById(projectId);
+      if (project) {
+        const areas = project.areas.includes(area) ? project.areas : [...project.areas, area];
+        await this.update({
+          ...project,
+          areas
+        });
+      }
+    }
+
+    async removeFromArea(projectId: string, area: string): Promise<void> {
+      const project = await new Projects.Queries().getById(projectId);
+      if (project) {
+        await this.update({
+          ...project,
+          areas: project.areas.filter(a => a !== area)
+        });
+      }
+    }
+  };
+}
+
+export const projectQueries = new Projects.Queries();
+export const projectOperations = new Projects.Operations();
+```
+
+**File: `src/app/entities/Areas.ts`**
+
+```typescript
+import { Area } from '../core/entities';
+import { Entities } from '../core/entities-base';
+import { areaStore } from '../stores/areaStore';
+
+export class Areas extends Entities {
+  protected entityType = 'area' as const;
+
+  static Queries = class AreaQueries extends Entities.Queries {
+    protected entityType = 'area' as const;
+
+    async getAll(): Promise<readonly Area[]> {
+      return new Promise(resolve => {
+        areaStore.subscribe(state => {
+          resolve(state.areas);
+        })();
+      });
+    }
+
+    async getById(id: string): Promise<Area | null> {
+      return new Promise(resolve => {
+        areaStore.subscribe(state => {
+          const area = state.areas.find(a => a.id === id);
+          resolve(area || null);
+        })();
+      });
+    }
+
+    async getByExtension(extensionId: string): Promise<readonly Area[]> {
+      return new Promise(resolve => {
+        areaStore.subscribe(state => {
+          const areas = state.areas.filter(a => a.source?.extension === extensionId);
+          resolve(areas);
+        })();
+      });
+    }
+
+    async search(query: string): Promise<readonly Area[]> {
+      const searchTerm = query.toLowerCase();
+      return new Promise(resolve => {
+        areaStore.subscribe(state => {
+          const areas = state.areas.filter(a =>
+            a.name.toLowerCase().includes(searchTerm) ||
+            a.description?.toLowerCase().includes(searchTerm) ||
+            a.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+          );
+          resolve(areas);
+        })();
+      });
+    }
+  };
+
+  static Operations = class AreaOperations extends Entities.Operations {
+    protected entityType = 'area' as const;
+
+    async create(areaData: Omit<Area, 'id' | 'createdAt' | 'updatedAt'>): Promise<Area> {
+      return areaStore.createArea(areaData);
+    }
+
+    async update(area: Area): Promise<Area> {
+      return areaStore.updateArea(area);
+    }
+
+    async delete(id: string): Promise<void> {
+      return areaStore.deleteArea(id);
+    }
+  };
+}
+
+export const areaQueries = new Areas.Queries();
+export const areaOperations = new Areas.Operations();
 ```
 
 ## Phase 6: Application Initialization
@@ -844,6 +1210,9 @@ export const taskSyncApp = new TaskSyncApp();
   import { onMount, onDestroy } from 'svelte';
   import { taskStore, tasksByExtension } from './stores/taskStore';
   import { taskSyncApp } from './App';
+  import { taskQueries, taskOperations } from './entities/Tasks';
+  import { projectQueries, projectOperations } from './entities/Projects';
+  import { areaQueries, areaOperations } from './entities/Areas';
 
   // Import existing components
   import TasksView from '../components/svelte/TasksView.svelte';
@@ -1027,6 +1396,7 @@ This clean architecture provides:
 - **No `filePath` in Task entity**: File paths are Obsidian-specific, handled by ObsidianExtension
 - **No front-matter coupling**: Core entities are pure data structures
 - **Extension-based architecture**: Each source (Obsidian, GitHub) is a separate extension
+- **Queries and Operations pattern**: Instead of services, use Tasks.Queries/Tasks.Operations classes that inherit from abstract Entities.Queries/Entities.Operations
 - **Proper Obsidian API usage**: Leverages `processFrontMatter`, `getFrontMatterInfo`, `parseYaml`, `stringifyYaml`
 
 ### ✅ **Implementation Flow**
@@ -1397,17 +1767,21 @@ This plan provides a comprehensive roadmap for transforming the Obsidian Task Sy
 
 ### Priority 2: Command/Query Architecture (Week 2-3)
 
-#### Task 2.1: Command System
-- [ ] Create `src/app/commands/TaskCommands.ts` with CRUD operations
-- [ ] Implement validation and error handling for all commands
-- [ ] Add support for batch operations
-- [ ] Write unit tests for command handlers
-
-#### Task 2.2: Query System
-- [ ] Create `src/app/queries/TaskQueries.ts` with reactive and snapshot queries
-- [ ] Implement advanced filtering and search capabilities
+#### Task 2.1: Entities.Queries Classes
+- [ ] Create `src/app/entities/Tasks.ts` with Tasks.Queries class extending Entities.Queries
+- [ ] Create `src/app/entities/Projects.ts` with Projects.Queries class extending Entities.Queries
+- [ ] Create `src/app/entities/Areas.ts` with Areas.Queries class extending Entities.Queries
+- [ ] Implement advanced filtering and search capabilities in each Queries class
 - [ ] Add performance optimization for large datasets
 - [ ] Write tests for query accuracy and performance
+
+#### Task 2.2: Entities.Operations Classes
+- [ ] Implement Tasks.Operations class extending Entities.Operations with CRUD operations
+- [ ] Implement Projects.Operations class extending Entities.Operations with CRUD operations
+- [ ] Implement Areas.Operations class extending Entities.Operations with CRUD operations
+- [ ] Implement validation and error handling for all operations
+- [ ] Add support for batch operations
+- [ ] Write unit tests for operation handlers
 
 #### Task 2.3: Multi-Entity Source Registry
 - [ ] Create `src/app/core/SourceRegistry.ts` for multi-source, multi-entity management
@@ -1425,8 +1799,10 @@ This plan provides a comprehensive roadmap for transforming the Obsidian Task Sy
 - [ ] Write E2E tests for app initialization
 
 #### Task 3.2: Component Migration
-- [ ] Update existing Svelte components to use new stores and commands
-- [ ] Ensure all components use new reactive patterns
+- [ ] Update existing Svelte components to use Tasks.Queries and Tasks.Operations instead of services
+- [ ] Update components to use Projects.Queries and Projects.Operations for project management
+- [ ] Update components to use Areas.Queries and Areas.Operations for area management
+- [ ] Ensure all components use new reactive patterns with Entities.Queries
 - [ ] Maintain existing UI/UX while upgrading internals
 - [ ] Write component tests for new architecture
 
