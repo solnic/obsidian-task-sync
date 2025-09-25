@@ -1,6 +1,6 @@
 import { Modal } from "obsidian";
 import { mount, unmount } from "svelte";
-import type TaskSyncPlugin from "../../main";
+import type TaskSyncPlugin from "../../main-old";
 
 export abstract class SvelteModal extends Modal {
   protected component: any = null;

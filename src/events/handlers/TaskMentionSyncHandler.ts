@@ -10,7 +10,7 @@ import {
   PluginEvent,
   TaskMentionStateChangedEventData,
 } from "../EventTypes";
-import { TaskSyncSettings } from "../../main";
+import { TaskSyncSettings } from "../../main-old";
 import { taskStore } from "../../stores/taskStore";
 import { NoteManagers } from "../../services/NoteManagers";
 

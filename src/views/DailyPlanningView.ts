@@ -8,7 +8,7 @@ import DailyPlanningViewSvelte from "../components/svelte/DailyPlanningView.svel
 import { mount, unmount } from "svelte";
 import { AppleCalendarService } from "../services/AppleCalendarService";
 import { DailyNoteService } from "../services/DailyNoteService";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import { setDailyPlanningMode } from "../components/svelte/context";
 
 export const DAILY_PLANNING_VIEW_TYPE = "daily-planning";

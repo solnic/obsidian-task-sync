@@ -4,7 +4,7 @@
  */
 
 import { App } from "obsidian";
-import type { FileContext } from "../main";
+import type { FileContext } from "../main-old";
 import type { TaskSyncSettings } from "../components/ui/settings/types";
 
 export class ContextService {

@@ -4,7 +4,7 @@
  */
 
 import { App, Vault, TFile } from "obsidian";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import { PROPERTY_REGISTRY } from "../types/properties";
 import {
   PROPERTY_SETS,

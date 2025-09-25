@@ -10,7 +10,7 @@ import {
   PluginEvent,
   TaskEventData,
 } from "../EventTypes";
-import { TaskSyncSettings } from "../../main";
+import { TaskSyncSettings } from "../../main-old";
 
 /**
  * Handler that sets default property values for newly created projects

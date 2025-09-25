@@ -5,7 +5,7 @@
  */
 
 import { App, Vault, TFile, normalizePath } from "obsidian";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
 import { generateId as generateUlid } from "../utils/idGenerator";
 

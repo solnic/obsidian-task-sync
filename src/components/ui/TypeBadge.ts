@@ -3,7 +3,7 @@
  * across the Task Sync plugin interface
  */
 
-import { TaskType } from "../../main";
+import { TaskType } from "../../main-old";
 
 /**
  * Creates a task category badge element with appropriate styling

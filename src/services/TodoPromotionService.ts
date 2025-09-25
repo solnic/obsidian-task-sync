@@ -5,7 +5,7 @@
  */
 
 import { App, MarkdownView, TFile, Notice } from "obsidian";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import { NoteManagers } from "./NoteManagers";
 import { TaskFileManager } from "./TaskFileManager";
 import { BaseManager } from "./BaseManager";

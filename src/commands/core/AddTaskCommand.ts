@@ -7,7 +7,7 @@ import { Command, type CommandContext } from "../Command";
 import { CommandModal } from "../CommandModal";
 import TaskCreateModalComponent from "../../components/svelte/TaskCreateModal.svelte";
 import type { TaskCreateData } from "../../components/modals/TaskCreateModal";
-import type { FileContext } from "../../main";
+import type { FileContext } from "../../main-old";
 
 class Modal extends CommandModal {
   private context: FileContext;
