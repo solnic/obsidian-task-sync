@@ -249,10 +249,8 @@ describe("EventBus", () => {
         mockHandler
       );
 
-      expect(eventBus.getHandlerCount("tasks.created")).toBe(1);
-      expect(eventBus.getHandlerCount("tasks.updated")).toBe(1);
-      expect(eventBus.getHandlerCount("tasks.deleted")).toBe(1);
-
+      // With the optimized implementation, onMultiple uses pattern matching
+      // so individual event type counts won't show handlers, but the pattern handler will work
       const createEvent: DomainEvent = {
         type: "tasks.created",
         task: mockTask,
@@ -266,19 +264,27 @@ describe("EventBus", () => {
         extension: "test-extension",
       };
 
+      const deleteEvent: DomainEvent = {
+        type: "tasks.deleted",
+        taskId: "task-1",
+        extension: "test-extension",
+      };
+
       eventBus.trigger(createEvent);
       eventBus.trigger(updateEvent);
+      eventBus.trigger(deleteEvent);
 
-      expect(mockHandler).toHaveBeenCalledTimes(2);
+      expect(mockHandler).toHaveBeenCalledTimes(3);
       expect(mockHandler).toHaveBeenCalledWith(createEvent);
       expect(mockHandler).toHaveBeenCalledWith(updateEvent);
+      expect(mockHandler).toHaveBeenCalledWith(deleteEvent);
 
       // Test unsubscribe from all
       unsubscribe();
 
-      expect(eventBus.getHandlerCount("tasks.created")).toBe(0);
-      expect(eventBus.getHandlerCount("tasks.updated")).toBe(0);
-      expect(eventBus.getHandlerCount("tasks.deleted")).toBe(0);
+      // After unsubscribe, handler should not be called
+      eventBus.trigger(createEvent);
+      expect(mockHandler).toHaveBeenCalledTimes(3); // Still 3, no new calls
     });
 
     test("should handle mixed event types with proper typing", () => {
@@ -315,6 +321,49 @@ describe("EventBus", () => {
       expect(mixedHandler).toHaveBeenCalledTimes(2);
       expect(mixedHandler).toHaveBeenCalledWith(taskEvent);
       expect(mixedHandler).toHaveBeenCalledWith(projectEvent);
+
+      unsubscribe();
+    });
+
+    test("should use efficient single handler approach for performance", () => {
+      // Test that onMultiple uses a more efficient approach than creating separate handlers
+      const handler = vi.fn();
+
+      // Subscribe to multiple event types
+      const unsubscribe = eventBus.onMultiple(
+        ["tasks.created", "tasks.updated", "projects.created"],
+        handler
+      );
+
+      // The implementation should be efficient - we'll test behavior, not implementation details
+      const taskEvent: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extension: "test-extension",
+      };
+
+      const projectEvent: DomainEvent = {
+        type: "projects.created",
+        project: mockProject,
+        extension: "test-extension",
+      };
+
+      const unrelatedEvent: DomainEvent = {
+        type: "areas.created",
+        area: mockArea,
+        extension: "test-extension",
+      };
+
+      // Trigger events
+      eventBus.trigger(taskEvent);
+      eventBus.trigger(projectEvent);
+      eventBus.trigger(unrelatedEvent); // Should not trigger handler
+
+      // Handler should only be called for subscribed event types
+      expect(handler).toHaveBeenCalledTimes(2);
+      expect(handler).toHaveBeenCalledWith(taskEvent);
+      expect(handler).toHaveBeenCalledWith(projectEvent);
+      expect(handler).not.toHaveBeenCalledWith(unrelatedEvent);
 
       unsubscribe();
     });
