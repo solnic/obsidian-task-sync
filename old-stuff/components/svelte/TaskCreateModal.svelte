@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { getPluginContext } from "./context";
   import type { TaskCreateData } from "../modals/TaskCreateModal";
-  import type { FileContext } from "../../main";
+  import type { FileContext } from "../../../main";
   import type {
     TaskType,
     TaskPriority,

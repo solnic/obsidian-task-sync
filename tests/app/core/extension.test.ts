@@ -10,8 +10,8 @@ import {
   ExtensionRegistry,
   type EntityType,
   type Entity,
-} from "../../src/app/core/extension";
-import { Task, Project, Area } from "../../src/app/core/entities";
+} from "../../../src/app/core/extension";
+import { Task, Project, Area } from "../../../src/app/core/entities";
 
 // Mock extension for testing
 class MockExtension implements Extension {

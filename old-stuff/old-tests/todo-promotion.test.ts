@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { TodoItem, FileContext } from "../src/main";
+import { TodoItem, FileContext } from "../../src/main";
 
 /**
  * Helper function to parse todo items from text lines

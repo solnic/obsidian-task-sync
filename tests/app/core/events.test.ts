@@ -5,8 +5,8 @@
  */
 
 import { describe, test, expect, beforeEach, vi } from "vitest";
-import { EventBus, DomainEvent } from "../../../../src/app/core/events";
-import { Task, Project, Area } from "../../../../src/app/core/entities";
+import { EventBus, DomainEvent } from "../../../src/app/core/events";
+import { Task, Project, Area } from "../../../src/app/core/entities";
 
 // Mock entities for testing
 const mockTask: Task = {

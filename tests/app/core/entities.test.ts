@@ -11,11 +11,8 @@ import {
   TaskSourceSchema,
   TaskStatusSchema,
   type Task,
-  type Project,
-  type Area,
-  type TaskSource,
   type TaskStatus,
-} from "../../src/app/core/entities";
+} from "../../../src/app/core/entities";
 
 describe("Core Domain Entities", () => {
   describe("TaskStatusSchema", () => {

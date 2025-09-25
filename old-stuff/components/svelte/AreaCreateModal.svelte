@@ -3,9 +3,11 @@
   import { getPluginContext } from "./context";
   import type { AreaCreateData } from "../../commands/core/CreateAreaCommand";
   import { Notice } from "obsidian";
+  import { areaOperations } from "../../../src/app/entities/Areas";
+  import type { Area } from "../../../src/app/core/entities";
 
   interface Props {
-    onsubmit: (data: AreaCreateData) => void;
+    onsubmit?: (data: AreaCreateData) => void;
     oncancel: () => void;
   }
 
@@ -30,7 +32,7 @@
     nameInput?.focus();
   });
 
-  function handleSubmit() {
+  async function handleSubmit() {
     // Clear previous errors
     hasNameError = false;
 
@@ -41,13 +43,34 @@
       return;
     }
 
-    // Prepare area data
-    const areaData: AreaCreateData = {
-      name: formData.name.trim(),
-      description: formData.description?.trim() || undefined,
-    };
+    try {
+      // Prepare area data for new entities system
+      const areaData: Omit<Area, "id" | "createdAt" | "updatedAt"> = {
+        name: formData.name.trim(),
+        description: formData.description?.trim() || undefined,
+        tags: [],
+      };
 
-    onsubmit(areaData);
+      // Create area using new entities system
+      const createdArea = await areaOperations.create(areaData);
+
+      new Notice(`Area "${createdArea.name}" created successfully`);
+
+      // Call legacy onsubmit if provided for backward compatibility
+      if (onsubmit) {
+        const legacyData: AreaCreateData = {
+          name: formData.name.trim(),
+          description: formData.description?.trim() || undefined,
+        };
+        onsubmit(legacyData);
+      } else {
+        // Close modal directly if no legacy handler
+        oncancel();
+      }
+    } catch (error) {
+      console.error("Failed to create area:", error);
+      new Notice(`Failed to create area: ${error.message}`);
+    }
   }
 
   function handleCancel() {

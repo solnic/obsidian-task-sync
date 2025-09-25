@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { Note, NoteFactory } from "../src/services/NoteService";
-import { TaskSyncSettings } from "../src/main";
+import { TaskSyncSettings } from "../../src/main";
 
 // Mock Obsidian API
 const mockApp = {
