@@ -144,12 +144,12 @@ export class EventBus {
    * Subscribe to multiple event types with the same handler
    * Returns an unsubscribe function that removes the handler from all event types
    */
-  onMultiple<T extends DomainEvent["type"]>(
-    eventTypes: T[],
-    handler: (event: Extract<DomainEvent, { type: T }>) => void
+  onMultiple<T extends readonly DomainEvent["type"][]>(
+    eventTypes: T,
+    handler: (event: Extract<DomainEvent, { type: T[number] }>) => void
   ): () => void {
     const unsubscribeFunctions = eventTypes.map((eventType) =>
-      this.on(eventType, handler)
+      this.on(eventType, handler as any)
     );
 
     // Return function that unsubscribes from all event types

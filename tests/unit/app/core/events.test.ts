@@ -280,6 +280,44 @@ describe("EventBus", () => {
       expect(eventBus.getHandlerCount("tasks.updated")).toBe(0);
       expect(eventBus.getHandlerCount("tasks.deleted")).toBe(0);
     });
+
+    test("should handle mixed event types with proper typing", () => {
+      // Test that handler can receive different event types
+      const mixedHandler = vi.fn((event: DomainEvent) => {
+        // Handler should be able to handle all event types in the array
+        if (event.type === "tasks.created") {
+          expect(event.task).toBeDefined();
+        } else if (event.type === "projects.created") {
+          expect(event.project).toBeDefined();
+        }
+      });
+
+      const unsubscribe = eventBus.onMultiple(
+        ["tasks.created", "projects.created"],
+        mixedHandler
+      );
+
+      const taskEvent: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extension: "test-extension",
+      };
+
+      const projectEvent: DomainEvent = {
+        type: "projects.created",
+        project: mockProject,
+        extension: "test-extension",
+      };
+
+      eventBus.trigger(taskEvent);
+      eventBus.trigger(projectEvent);
+
+      expect(mixedHandler).toHaveBeenCalledTimes(2);
+      expect(mixedHandler).toHaveBeenCalledWith(taskEvent);
+      expect(mixedHandler).toHaveBeenCalledWith(projectEvent);
+
+      unsubscribe();
+    });
   });
 
   describe("Pattern Matching (Advanced Feature)", () => {
