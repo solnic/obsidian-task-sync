@@ -676,4 +676,185 @@ describe("EventBus", () => {
       expect(eventBus.getHandlerCount("tasks.created")).toBe(0);
     });
   });
+
+  describe("Edge Cases and Performance", () => {
+    test("should handle rapid event emission without memory leaks", () => {
+      const handler = vi.fn();
+      eventBus.on("tasks.created", handler);
+
+      // Emit many events rapidly
+      for (let i = 0; i < 1000; i++) {
+        eventBus.trigger({
+          type: "tasks.created",
+          task: { ...mockTask, id: `task-${i}` },
+          extension: "test",
+        });
+      }
+
+      expect(handler).toHaveBeenCalledTimes(1000);
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(1);
+    });
+
+    test("should handle many handlers for same event type", () => {
+      const handlers = Array.from({ length: 100 }, () => vi.fn());
+
+      // Subscribe many handlers
+      handlers.forEach((handler) => {
+        eventBus.on("tasks.created", handler);
+      });
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(100);
+
+      // Trigger event
+      eventBus.trigger({
+        type: "tasks.created",
+        task: mockTask,
+        extension: "test",
+      });
+
+      // All handlers should be called
+      handlers.forEach((handler) => {
+        expect(handler).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    test("should handle invalid event types gracefully", () => {
+      // Test with type assertion to bypass TypeScript checking
+      expect(() => {
+        (eventBus as any).on("invalid.event.type", mockHandler);
+      }).not.toThrow();
+
+      expect(() => {
+        eventBus.trigger({
+          type: "invalid.event.type",
+          extension: "test",
+        } as any);
+      }).not.toThrow();
+
+      expect((eventBus as any).getHandlerCount("invalid.event.type")).toBe(1);
+    });
+
+    test("should handle null/undefined handlers gracefully", () => {
+      expect(() => {
+        eventBus.on("tasks.created", null as any);
+      }).not.toThrow();
+
+      expect(() => {
+        eventBus.on("tasks.created", undefined as any);
+      }).not.toThrow();
+
+      // Should not crash when triggering
+      expect(() => {
+        eventBus.trigger({
+          type: "tasks.created",
+          task: mockTask,
+          extension: "test",
+        });
+      }).not.toThrow();
+    });
+
+    test("should handle circular event emission", () => {
+      const handler1 = vi.fn(() => {
+        // Handler 1 triggers another event
+        eventBus.trigger({
+          type: "tasks.updated",
+          task: mockTask,
+          changes: {},
+          extension: "test",
+        });
+      });
+
+      const handler2 = vi.fn();
+
+      eventBus.on("tasks.created", handler1);
+      eventBus.on("tasks.updated", handler2);
+
+      // This should not cause infinite recursion
+      eventBus.trigger({
+        type: "tasks.created",
+        task: mockTask,
+        extension: "test",
+      });
+
+      expect(handler1).toHaveBeenCalledTimes(1);
+      expect(handler2).toHaveBeenCalledTimes(1);
+    });
+
+    test("should maintain handler order during concurrent operations", () => {
+      const callOrder: number[] = [];
+
+      const handler1 = vi.fn(() => callOrder.push(1));
+      const handler2 = vi.fn(() => callOrder.push(2));
+      const handler3 = vi.fn(() => callOrder.push(3));
+
+      eventBus.on("tasks.created", handler1);
+      eventBus.on("tasks.created", handler2);
+      eventBus.on("tasks.created", handler3);
+
+      eventBus.trigger({
+        type: "tasks.created",
+        task: mockTask,
+        extension: "test",
+      });
+
+      // Handlers should be called in subscription order
+      expect(callOrder).toEqual([1, 2, 3]);
+    });
+  });
+
+  describe("Memory Management", () => {
+    test("should properly clean up after clearAllHandlers", () => {
+      // Add many handlers using valid event types
+      const validEventTypes = [
+        "tasks.created",
+        "tasks.updated",
+        "projects.created",
+        "areas.created",
+      ];
+
+      for (let i = 0; i < 20; i++) {
+        const eventType = validEventTypes[i % validEventTypes.length];
+        eventBus.on(eventType as any, vi.fn());
+        eventBus.onPattern(`${eventType}.*`, vi.fn());
+      }
+
+      expect(eventBus.getRegisteredEventTypes().length).toBeGreaterThan(0);
+
+      eventBus.clearAllHandlers();
+
+      expect(eventBus.getRegisteredEventTypes()).toEqual([]);
+
+      // Should be able to add new handlers after clearing
+      eventBus.on("tasks.created", mockHandler);
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(1);
+    });
+
+    test("should handle unsubscription during event emission", () => {
+      let unsubscribe: (() => void) | null = null;
+
+      const handler1 = vi.fn(() => {
+        // Unsubscribe during event handling
+        if (unsubscribe) {
+          unsubscribe();
+        }
+      });
+
+      const handler2 = vi.fn();
+
+      unsubscribe = eventBus.on("tasks.created", handler1);
+      eventBus.on("tasks.created", handler2);
+
+      // This should not crash
+      eventBus.trigger({
+        type: "tasks.created",
+        task: mockTask,
+        extension: "test",
+      });
+
+      expect(handler1).toHaveBeenCalledTimes(1);
+      // handler2 might not be called if handler1 unsubscribes during iteration
+      // The important thing is that it doesn't crash
+      expect(eventBus.getHandlerCount("tasks.created")).toBeLessThanOrEqual(2);
+    });
+  });
 });

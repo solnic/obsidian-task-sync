@@ -198,5 +198,84 @@ describe("Extension-Aware Task Store", () => {
 
       consoleSpy.mockRestore();
     });
+
+    test("should handle invalid task updates gracefully", () => {
+      // Add initial task
+      eventBus.trigger({
+        type: "tasks.created",
+        task: mockTask1,
+        extension: "obsidian",
+      });
+
+      // Try to update non-existent task
+      const nonExistentTask = { ...mockTask1, id: "non-existent" };
+      eventBus.trigger({
+        type: "tasks.updated",
+        task: nonExistentTask,
+        changes: { title: "Updated" },
+        extension: "obsidian",
+      });
+
+      // Original task should remain unchanged
+      const state = get(taskStore);
+      expect(state.tasks).toHaveLength(1);
+      expect(state.tasks[0]).toEqual(mockTask1);
+    });
+
+    test("should handle invalid task deletions gracefully", () => {
+      // Add initial task
+      eventBus.trigger({
+        type: "tasks.created",
+        task: mockTask1,
+        extension: "obsidian",
+      });
+
+      // Try to delete non-existent task
+      eventBus.trigger({
+        type: "tasks.deleted",
+        taskId: "non-existent",
+        extension: "obsidian",
+      });
+
+      // Original task should remain
+      const state = get(taskStore);
+      expect(state.tasks).toHaveLength(1);
+      expect(state.tasks[0]).toEqual(mockTask1);
+    });
+  });
+
+  describe("Cleanup", () => {
+    test("should unsubscribe from event bus when cleanup is called", () => {
+      // Add a task to verify store is working
+      eventBus.trigger({
+        type: "tasks.created",
+        task: mockTask1,
+        extension: "obsidian",
+      });
+
+      expect(get(taskStore).tasks).toHaveLength(1);
+
+      // Call cleanup
+      taskStore.cleanup();
+
+      // Add another task - should not be processed after cleanup
+      eventBus.trigger({
+        type: "tasks.created",
+        task: mockTask2,
+        extension: "obsidian",
+      });
+
+      // Store should still have only the first task
+      expect(get(taskStore).tasks).toHaveLength(1);
+      expect(get(taskStore).tasks[0]).toEqual(mockTask1);
+    });
+
+    test("should not throw errors when cleanup is called multiple times", () => {
+      expect(() => {
+        taskStore.cleanup();
+        taskStore.cleanup();
+        taskStore.cleanup();
+      }).not.toThrow();
+    });
   });
 });
