@@ -4,32 +4,39 @@
  */
 
 import { describe, test, expect } from "vitest";
-import { 
-  TaskSchema, 
-  ProjectSchema, 
-  AreaSchema, 
+import {
+  TaskSchema,
+  ProjectSchema,
+  AreaSchema,
   TaskSourceSchema,
   TaskStatusSchema,
   type Task,
   type Project,
   type Area,
   type TaskSource,
-  type TaskStatus
+  type TaskStatus,
 } from "../../src/app/core/entities";
 
 describe("Core Domain Entities", () => {
   describe("TaskStatusSchema", () => {
-    test("should validate valid task statuses", () => {
+    test("should validate any string as task status", () => {
       expect(TaskStatusSchema.parse("Backlog")).toBe("Backlog");
       expect(TaskStatusSchema.parse("In Progress")).toBe("In Progress");
       expect(TaskStatusSchema.parse("Done")).toBe("Done");
       expect(TaskStatusSchema.parse("Cancelled")).toBe("Cancelled");
+      expect(TaskStatusSchema.parse("Custom Status")).toBe("Custom Status");
+      expect(TaskStatusSchema.parse("Another Status")).toBe("Another Status");
     });
 
-    test("should reject invalid task statuses", () => {
-      expect(() => TaskStatusSchema.parse("Invalid")).toThrow();
-      expect(() => TaskStatusSchema.parse("")).toThrow();
+    test("should reject non-string task statuses", () => {
+      expect(() => TaskStatusSchema.parse(123)).toThrow();
       expect(() => TaskStatusSchema.parse(null)).toThrow();
+      expect(() => TaskStatusSchema.parse(undefined)).toThrow();
+      expect(() => TaskStatusSchema.parse({})).toThrow();
+    });
+
+    test("should reject empty string task statuses", () => {
+      expect(() => TaskStatusSchema.parse("")).toThrow();
     });
   });
 
@@ -37,9 +44,9 @@ describe("Core Domain Entities", () => {
     test("should validate valid task source", () => {
       const validSource = {
         extensionId: "obsidian",
-        sourceId: "Tasks/test-task.md"
+        sourceId: "Tasks/test-task.md",
       };
-      
+
       const result = TaskSourceSchema.parse(validSource);
       expect(result.extensionId).toBe("obsidian");
       expect(result.sourceId).toBe("Tasks/test-task.md");
@@ -47,7 +54,9 @@ describe("Core Domain Entities", () => {
 
     test("should require extensionId and sourceId", () => {
       expect(() => TaskSourceSchema.parse({})).toThrow();
-      expect(() => TaskSourceSchema.parse({ extensionId: "obsidian" })).toThrow();
+      expect(() =>
+        TaskSourceSchema.parse({ extensionId: "obsidian" })
+      ).toThrow();
       expect(() => TaskSourceSchema.parse({ sourceId: "test" })).toThrow();
     });
   });
@@ -58,7 +67,7 @@ describe("Core Domain Entities", () => {
         id: "task-1",
         title: "Test Task",
         createdAt: new Date("2024-01-01"),
-        updatedAt: new Date("2024-01-01")
+        updatedAt: new Date("2024-01-01"),
       };
 
       const result = TaskSchema.parse(validTask);
@@ -89,8 +98,8 @@ describe("Core Domain Entities", () => {
         updatedAt: new Date("2024-01-02"),
         source: {
           extensionId: "github",
-          sourceId: "issue-123"
-        }
+          sourceId: "issue-123",
+        },
       };
 
       const result = TaskSchema.parse(completeTask);
@@ -114,11 +123,13 @@ describe("Core Domain Entities", () => {
       expect(() => TaskSchema.parse({})).toThrow();
       expect(() => TaskSchema.parse({ id: "task-1" })).toThrow();
       expect(() => TaskSchema.parse({ id: "task-1", title: "Test" })).toThrow();
-      expect(() => TaskSchema.parse({ 
-        id: "task-1", 
-        title: "Test", 
-        createdAt: new Date() 
-      })).toThrow();
+      expect(() =>
+        TaskSchema.parse({
+          id: "task-1",
+          title: "Test",
+          createdAt: new Date(),
+        })
+      ).toThrow();
     });
 
     test("should make Task type readonly", () => {
@@ -126,7 +137,7 @@ describe("Core Domain Entities", () => {
         id: "task-1",
         title: "Test Task",
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
       };
 
       // TypeScript should prevent modification
@@ -141,7 +152,7 @@ describe("Core Domain Entities", () => {
         id: "project-1",
         name: "Test Project",
         createdAt: new Date("2024-01-01"),
-        updatedAt: new Date("2024-01-01")
+        updatedAt: new Date("2024-01-01"),
       };
 
       const result = ProjectSchema.parse(validProject);
@@ -162,8 +173,8 @@ describe("Core Domain Entities", () => {
         updatedAt: new Date("2024-01-02"),
         source: {
           extensionId: "obsidian",
-          sourceId: "Projects/complete-project.md"
-        }
+          sourceId: "Projects/complete-project.md",
+        },
       };
 
       const result = ProjectSchema.parse(completeProject);
@@ -177,7 +188,9 @@ describe("Core Domain Entities", () => {
     test("should require id, name, createdAt, and updatedAt", () => {
       expect(() => ProjectSchema.parse({})).toThrow();
       expect(() => ProjectSchema.parse({ id: "project-1" })).toThrow();
-      expect(() => ProjectSchema.parse({ id: "project-1", name: "Test" })).toThrow();
+      expect(() =>
+        ProjectSchema.parse({ id: "project-1", name: "Test" })
+      ).toThrow();
     });
   });
 
@@ -187,7 +200,7 @@ describe("Core Domain Entities", () => {
         id: "area-1",
         name: "Test Area",
         createdAt: new Date("2024-01-01"),
-        updatedAt: new Date("2024-01-01")
+        updatedAt: new Date("2024-01-01"),
       };
 
       const result = AreaSchema.parse(validArea);
@@ -206,8 +219,8 @@ describe("Core Domain Entities", () => {
         updatedAt: new Date("2024-01-02"),
         source: {
           extensionId: "obsidian",
-          sourceId: "Areas/complete-area.md"
-        }
+          sourceId: "Areas/complete-area.md",
+        },
       };
 
       const result = AreaSchema.parse(completeArea);

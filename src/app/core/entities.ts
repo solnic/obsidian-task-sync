@@ -3,16 +3,18 @@
  * Source-agnostic entity definitions for the Svelte app architecture
  */
 
-import { z } from 'zod';
+import { z } from "zod";
 
 // Core domain entities - completely source agnostic
-export const TaskStatusSchema = z.enum(['Backlog', 'In Progress', 'Done', 'Cancelled']);
+export const TaskStatusSchema = z
+  .string()
+  .min(1, "Task status cannot be empty");
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 
 // Source tracking for tasks from external systems
 export const TaskSourceSchema = z.object({
   extensionId: z.string(),
-  sourceId: z.string()
+  sourceId: z.string(),
 });
 export type TaskSource = z.infer<typeof TaskSourceSchema>;
 
@@ -23,7 +25,7 @@ export const TaskSchema = z.object({
   // Core task properties
   title: z.string(),
   description: z.string().optional(),
-  status: TaskStatusSchema.default('Backlog'),
+  status: TaskStatusSchema.default("Backlog"),
   done: z.boolean().default(false),
 
   // Organization
@@ -43,7 +45,7 @@ export const TaskSchema = z.object({
   updatedAt: z.date(),
 
   // Source tracking (which extension owns this task)
-  source: TaskSourceSchema.optional()
+  source: TaskSourceSchema.optional(),
 });
 
 export type Task = Readonly<z.infer<typeof TaskSchema>>;
@@ -56,7 +58,7 @@ export const ProjectSchema = z.object({
   tags: z.array(z.string()).default([]),
   createdAt: z.date(),
   updatedAt: z.date(),
-  source: TaskSourceSchema.optional()
+  source: TaskSourceSchema.optional(),
 });
 
 export type Project = Readonly<z.infer<typeof ProjectSchema>>;
@@ -68,7 +70,7 @@ export const AreaSchema = z.object({
   tags: z.array(z.string()).default([]),
   createdAt: z.date(),
   updatedAt: z.date(),
-  source: TaskSourceSchema.optional()
+  source: TaskSourceSchema.optional(),
 });
 
 export type Area = Readonly<z.infer<typeof AreaSchema>>;
