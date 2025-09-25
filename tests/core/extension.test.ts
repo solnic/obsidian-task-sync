@@ -4,12 +4,12 @@
  */
 
 import { describe, test, expect, beforeEach } from "vitest";
-import { 
+import {
   Extension,
   EntityOperations,
   ExtensionRegistry,
   type EntityType,
-  type Entity
+  type Entity,
 } from "../../src/app/core/extension";
 import { Task, Project, Area } from "../../src/app/core/entities";
 
@@ -38,46 +38,54 @@ class MockExtension implements Extension {
   tasks: EntityOperations<Task> = {
     getAll: async () => [],
     getById: async (id: string) => undefined,
-    create: async (entity: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => {
+    create: async (entity: Omit<Task, "id" | "createdAt" | "updatedAt">) => {
       return {
         id: "mock-task-1",
         createdAt: new Date(),
         updatedAt: new Date(),
-        ...entity
+        ...entity,
       } as Task;
     },
     update: async (id: string, updates: Partial<Task>) => {
       return {
         id,
-        title: "Updated Task",
+        title: "Test Task", // Default title
+        status: "Backlog",
+        done: false,
+        areas: [],
+        tags: [],
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        ...updates, // Apply the actual updates
       } as Task;
     },
-    delete: async (id: string) => true
+    delete: async (id: string) => true,
   };
 
   // Mock project operations
   projects: EntityOperations<Project> = {
     getAll: async () => [],
     getById: async (id: string) => undefined,
-    create: async (entity: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
+    create: async (entity: Omit<Project, "id" | "createdAt" | "updatedAt">) => {
       return {
         id: "mock-project-1",
         createdAt: new Date(),
         updatedAt: new Date(),
-        ...entity
+        ...entity,
       } as Project;
     },
     update: async (id: string, updates: Partial<Project>) => {
       return {
         id,
-        name: "Updated Project",
+        name: "Test Project", // Default name
+        areas: [],
+        tags: [],
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        ...updates, // Apply the actual updates
       } as Project;
     },
-    delete: async (id: string) => true
+    delete: async (id: string) => true,
   };
 }
 
@@ -100,10 +108,10 @@ describe("Extension System Foundation", () => {
 
     test("should implement lifecycle methods", async () => {
       expect(await mockExtension.isHealthy()).toBe(false);
-      
+
       await mockExtension.initialize();
       expect(await mockExtension.isHealthy()).toBe(true);
-      
+
       await mockExtension.shutdown();
       expect(await mockExtension.isHealthy()).toBe(false);
     });
@@ -124,15 +132,19 @@ describe("Extension System Foundation", () => {
       expect(task).toBeUndefined();
 
       const newTask = await mockExtension.tasks!.create({
-        title: "Test Task"
+        title: "Test Task",
+        status: "Backlog",
+        done: false,
+        areas: [],
+        tags: [],
       });
       expect(newTask.id).toBe("mock-task-1");
       expect(newTask.title).toBe("Test Task");
 
       const updatedTask = await mockExtension.tasks!.update("test-id", {
-        title: "Updated Title"
+        title: "Updated Title",
       });
-      expect(updatedTask.title).toBe("Updated Task");
+      expect(updatedTask.title).toBe("Updated Title");
 
       const deleted = await mockExtension.tasks!.delete("test-id");
       expect(deleted).toBe(true);
@@ -143,7 +155,9 @@ describe("Extension System Foundation", () => {
       expect(Array.isArray(projects)).toBe(true);
 
       const newProject = await mockExtension.projects!.create({
-        name: "Test Project"
+        name: "Test Project",
+        areas: [],
+        tags: [],
       });
       expect(newProject.id).toBe("mock-project-1");
       expect(newProject.name).toBe("Test Project");
@@ -153,10 +167,10 @@ describe("Extension System Foundation", () => {
   describe("ExtensionRegistry", () => {
     test("should register and retrieve extensions", () => {
       registry.register(mockExtension);
-      
+
       const retrieved = registry.getById("mock-extension");
       expect(retrieved).toBe(mockExtension);
-      
+
       const all = registry.getAll();
       expect(all).toContain(mockExtension);
       expect(all.length).toBe(1);
@@ -164,7 +178,7 @@ describe("Extension System Foundation", () => {
 
     test("should prevent duplicate registration", () => {
       registry.register(mockExtension);
-      
+
       expect(() => registry.register(mockExtension)).toThrow(
         "Extension with id 'mock-extension' is already registered"
       );
@@ -173,7 +187,7 @@ describe("Extension System Foundation", () => {
     test("should unregister extensions", () => {
       registry.register(mockExtension);
       expect(registry.getById("mock-extension")).toBe(mockExtension);
-      
+
       registry.unregister("mock-extension");
       expect(registry.getById("mock-extension")).toBeUndefined();
       expect(registry.getAll().length).toBe(0);
@@ -183,28 +197,28 @@ describe("Extension System Foundation", () => {
       const taskOnlyExtension = {
         ...mockExtension,
         id: "task-only",
-        supportedEntities: ["task"] as const
+        supportedEntities: ["task"] as const,
       };
-      
+
       registry.register(mockExtension);
       registry.register(taskOnlyExtension);
-      
+
       const taskExtensions = registry.getByEntityType("task");
       expect(taskExtensions.length).toBe(2);
       expect(taskExtensions).toContain(mockExtension);
       expect(taskExtensions).toContain(taskOnlyExtension);
-      
+
       const projectExtensions = registry.getByEntityType("project");
       expect(projectExtensions.length).toBe(1);
       expect(projectExtensions).toContain(mockExtension);
-      
+
       const areaExtensions = registry.getByEntityType("area");
       expect(areaExtensions.length).toBe(0);
     });
 
     test("should handle non-existent extension gracefully", () => {
       expect(registry.getById("non-existent")).toBeUndefined();
-      
+
       // Should not throw when unregistering non-existent extension
       expect(() => registry.unregister("non-existent")).not.toThrow();
     });
