@@ -1,0 +1,538 @@
+/**
+ * Unit tests for the new EventBus system
+ * Tests event subscription, unsubscription, emission, and pattern matching
+ * Critical for hot-loadable extensions that need to add/remove event listeners
+ */
+
+import { describe, test, expect, beforeEach, vi } from "vitest";
+import { EventBus, DomainEvent } from "../../../../src/app/core/events";
+import { Task, Project, Area } from "../../../../src/app/core/entities";
+
+// Mock entities for testing
+const mockTask: Task = {
+  id: "task-1",
+  title: "Test Task",
+  status: "Backlog",
+  done: false,
+  areas: [],
+  tags: [],
+  createdAt: new Date("2024-01-01"),
+  updatedAt: new Date("2024-01-01"),
+};
+
+const mockProject: Project = {
+  id: "project-1",
+  name: "Test Project",
+  areas: [],
+  tags: [],
+  createdAt: new Date("2024-01-01"),
+  updatedAt: new Date("2024-01-01"),
+};
+
+const mockArea: Area = {
+  id: "area-1",
+  name: "Test Area",
+  tags: [],
+  createdAt: new Date("2024-01-01"),
+  updatedAt: new Date("2024-01-01"),
+};
+
+describe("EventBus", () => {
+  let eventBus: EventBus;
+  let mockHandler: vi.MockedFunction<(event: DomainEvent) => void>;
+
+  beforeEach(() => {
+    eventBus = new EventBus();
+    mockHandler = vi.fn();
+  });
+
+  describe("Basic Event Subscription and Emission", () => {
+    test("should subscribe to and receive events", () => {
+      eventBus.on("tasks.created", mockHandler);
+
+      const event: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      eventBus.trigger(event);
+
+      expect(mockHandler).toHaveBeenCalledTimes(1);
+      expect(mockHandler).toHaveBeenCalledWith(event);
+    });
+
+    test("should not receive events for unsubscribed types", () => {
+      eventBus.on("tasks.updated", mockHandler);
+
+      const event: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      eventBus.trigger(event);
+
+      expect(mockHandler).not.toHaveBeenCalled();
+    });
+
+    test("should support multiple handlers for same event type", () => {
+      const handler1 = vi.fn();
+      const handler2 = vi.fn();
+
+      eventBus.on("tasks.created", handler1);
+      eventBus.on("tasks.created", handler2);
+
+      const event: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      eventBus.trigger(event);
+
+      expect(handler1).toHaveBeenCalledTimes(1);
+      expect(handler2).toHaveBeenCalledTimes(1);
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(2);
+    });
+
+    test("should handle different event types independently", () => {
+      const taskHandler = vi.fn();
+      const projectHandler = vi.fn();
+
+      eventBus.on("tasks.created", taskHandler);
+      eventBus.on("projects.created", projectHandler);
+
+      const taskEvent: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      const projectEvent: DomainEvent = {
+        type: "projects.created",
+        project: mockProject,
+        extensionId: "test-extension",
+      };
+
+      eventBus.trigger(taskEvent);
+      eventBus.trigger(projectEvent);
+
+      expect(taskHandler).toHaveBeenCalledWith(taskEvent);
+      expect(projectHandler).toHaveBeenCalledWith(projectEvent);
+      expect(taskHandler).not.toHaveBeenCalledWith(projectEvent);
+      expect(projectHandler).not.toHaveBeenCalledWith(taskEvent);
+    });
+  });
+
+  describe("Unsubscription (Critical for Hot-Loadable Extensions)", () => {
+    test("should unsubscribe handler using returned function", () => {
+      const unsubscribe = eventBus.on("tasks.created", mockHandler);
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(1);
+
+      unsubscribe();
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(0);
+
+      const event: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      eventBus.trigger(event);
+
+      expect(mockHandler).not.toHaveBeenCalled();
+    });
+
+    test("should unsubscribe only the specific handler", () => {
+      const handler1 = vi.fn();
+      const handler2 = vi.fn();
+
+      const unsubscribe1 = eventBus.on("tasks.created", handler1);
+      eventBus.on("tasks.created", handler2);
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(2);
+
+      unsubscribe1();
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(1);
+
+      const event: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      eventBus.trigger(event);
+
+      expect(handler1).not.toHaveBeenCalled();
+      expect(handler2).toHaveBeenCalledTimes(1);
+    });
+
+    test("should handle multiple unsubscribe calls gracefully", () => {
+      const unsubscribe = eventBus.on("tasks.created", mockHandler);
+
+      unsubscribe();
+      unsubscribe(); // Should not throw
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(0);
+    });
+
+    test("should handle unsubscribe of non-existent handler gracefully", () => {
+      const unsubscribe = eventBus.on("tasks.created", mockHandler);
+
+      // Manually remove handler to simulate edge case
+      eventBus.clearHandlers("tasks.created");
+
+      // Should not throw
+      expect(() => unsubscribe()).not.toThrow();
+    });
+  });
+
+  describe("Error Handling", () => {
+    test("should continue processing other handlers when one throws error", () => {
+      const errorHandler = vi.fn(() => {
+        throw new Error("Handler error");
+      });
+      const successHandler = vi.fn();
+
+      eventBus.on("tasks.created", errorHandler);
+      eventBus.on("tasks.created", successHandler);
+
+      const event: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      // Should not throw and should process successful handler
+      expect(() => eventBus.trigger(event)).not.toThrow();
+
+      expect(errorHandler).toHaveBeenCalledTimes(1);
+      expect(successHandler).toHaveBeenCalledTimes(1);
+    });
+
+    test("should log errors from handlers", () => {
+      const consoleSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      const errorHandler = vi.fn(() => {
+        throw new Error("Test error");
+      });
+
+      eventBus.on("tasks.created", errorHandler);
+
+      const event: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      eventBus.trigger(event);
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Error in event handler for tasks.created:",
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
+    });
+  });
+
+  describe("Multiple Event Type Subscription", () => {
+    test("should subscribe to multiple event types with same handler", () => {
+      const unsubscribe = eventBus.onMultiple(
+        ["tasks.created", "tasks.updated", "tasks.deleted"],
+        mockHandler
+      );
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(1);
+      expect(eventBus.getHandlerCount("tasks.updated")).toBe(1);
+      expect(eventBus.getHandlerCount("tasks.deleted")).toBe(1);
+
+      const createEvent: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      const updateEvent: DomainEvent = {
+        type: "tasks.updated",
+        task: mockTask,
+        changes: { title: "Updated" },
+        extensionId: "test-extension",
+      };
+
+      eventBus.trigger(createEvent);
+      eventBus.trigger(updateEvent);
+
+      expect(mockHandler).toHaveBeenCalledTimes(2);
+      expect(mockHandler).toHaveBeenCalledWith(createEvent);
+      expect(mockHandler).toHaveBeenCalledWith(updateEvent);
+
+      // Test unsubscribe from all
+      unsubscribe();
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(0);
+      expect(eventBus.getHandlerCount("tasks.updated")).toBe(0);
+      expect(eventBus.getHandlerCount("tasks.deleted")).toBe(0);
+    });
+  });
+
+  describe("Pattern Matching (Advanced Feature)", () => {
+    test("should subscribe to events matching pattern", () => {
+      const unsubscribe = eventBus.onPattern("tasks.*", mockHandler);
+
+      const createEvent: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      const updateEvent: DomainEvent = {
+        type: "tasks.updated",
+        task: mockTask,
+        changes: { title: "Updated" },
+        extensionId: "test-extension",
+      };
+
+      const projectEvent: DomainEvent = {
+        type: "projects.created",
+        project: mockProject,
+        extensionId: "test-extension",
+      };
+
+      eventBus.trigger(createEvent);
+      eventBus.trigger(updateEvent);
+      eventBus.trigger(projectEvent);
+
+      expect(mockHandler).toHaveBeenCalledTimes(2); // Only task events
+      expect(mockHandler).toHaveBeenCalledWith(createEvent);
+      expect(mockHandler).toHaveBeenCalledWith(updateEvent);
+      expect(mockHandler).not.toHaveBeenCalledWith(projectEvent);
+
+      unsubscribe();
+    });
+
+    test("should unsubscribe from pattern matching", () => {
+      const unsubscribe = eventBus.onPattern("extension.*", mockHandler);
+
+      const event: DomainEvent = {
+        type: "extension.registered",
+        extensionId: "test-extension",
+        supportedEntities: ["task"],
+      };
+
+      eventBus.trigger(event);
+      expect(mockHandler).toHaveBeenCalledTimes(1);
+
+      unsubscribe();
+
+      eventBus.trigger(event);
+      expect(mockHandler).toHaveBeenCalledTimes(1); // Should not be called again
+    });
+
+    test("should handle complex patterns", () => {
+      const allEventsHandler = vi.fn();
+      const syncEventsHandler = vi.fn();
+
+      eventBus.onPattern("*", allEventsHandler);
+      eventBus.onPattern("*.sync.*", syncEventsHandler);
+
+      const taskEvent: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      const syncEvent: DomainEvent = {
+        type: "extension.sync.started",
+        extensionId: "test-extension",
+        entityType: "task",
+      };
+
+      eventBus.trigger(taskEvent);
+      eventBus.trigger(syncEvent);
+
+      expect(allEventsHandler).toHaveBeenCalledTimes(2); // All events
+      expect(syncEventsHandler).toHaveBeenCalledTimes(1); // Only sync events
+      expect(syncEventsHandler).toHaveBeenCalledWith(syncEvent);
+    });
+  });
+
+  describe("Extension Lifecycle Events", () => {
+    test("should handle extension registration events", () => {
+      eventBus.on("extension.registered", mockHandler);
+
+      const event: DomainEvent = {
+        type: "extension.registered",
+        extensionId: "obsidian-extension",
+        supportedEntities: ["task", "project", "area"],
+      };
+
+      eventBus.trigger(event);
+
+      expect(mockHandler).toHaveBeenCalledWith(event);
+    });
+
+    test("should handle extension sync events", () => {
+      const syncHandler = vi.fn();
+      eventBus.onMultiple(
+        [
+          "extension.sync.started",
+          "extension.sync.completed",
+          "extension.sync.failed",
+        ],
+        syncHandler
+      );
+
+      const startEvent: DomainEvent = {
+        type: "extension.sync.started",
+        extensionId: "github-extension",
+        entityType: "task",
+      };
+
+      const completeEvent: DomainEvent = {
+        type: "extension.sync.completed",
+        extensionId: "github-extension",
+        entityType: "task",
+        entityCount: 42,
+      };
+
+      const failEvent: DomainEvent = {
+        type: "extension.sync.failed",
+        extensionId: "github-extension",
+        entityType: "task",
+        error: "Network timeout",
+      };
+
+      eventBus.trigger(startEvent);
+      eventBus.trigger(completeEvent);
+      eventBus.trigger(failEvent);
+
+      expect(syncHandler).toHaveBeenCalledTimes(3);
+      expect(syncHandler).toHaveBeenCalledWith(startEvent);
+      expect(syncHandler).toHaveBeenCalledWith(completeEvent);
+      expect(syncHandler).toHaveBeenCalledWith(failEvent);
+    });
+  });
+
+  describe("Real-world Extension Scenarios", () => {
+    test("should simulate hot-loadable extension lifecycle", () => {
+      const extensionHandlers: (() => void)[] = [];
+
+      // Extension registers handlers
+      extensionHandlers.push(eventBus.on("tasks.created", mockHandler));
+      extensionHandlers.push(eventBus.on("tasks.updated", mockHandler));
+      extensionHandlers.push(eventBus.onPattern("extension.*", mockHandler));
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(1);
+      expect(eventBus.getHandlerCount("tasks.updated")).toBe(1);
+
+      // Extension is active and receives events
+      const event: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "test-extension",
+      };
+
+      eventBus.trigger(event);
+      expect(mockHandler).toHaveBeenCalledTimes(1);
+
+      // Extension is unloaded - cleanup all handlers
+      extensionHandlers.forEach((unsubscribe) => unsubscribe());
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(0);
+      expect(eventBus.getHandlerCount("tasks.updated")).toBe(0);
+
+      // Events should no longer be received
+      eventBus.trigger(event);
+      expect(mockHandler).toHaveBeenCalledTimes(1); // No additional calls
+    });
+
+    test("should handle multiple extensions with same event types", () => {
+      const obsidianHandler = vi.fn();
+      const githubHandler = vi.fn();
+
+      // Two extensions subscribe to same event type
+      const obsidianUnsubscribe = eventBus.on("tasks.created", obsidianHandler);
+      eventBus.on("tasks.created", githubHandler);
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(2);
+
+      const event: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extensionId: "obsidian",
+      };
+
+      eventBus.trigger(event);
+
+      expect(obsidianHandler).toHaveBeenCalledWith(event);
+      expect(githubHandler).toHaveBeenCalledWith(event);
+
+      // One extension unloads
+      obsidianUnsubscribe();
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(1);
+
+      eventBus.trigger(event);
+
+      expect(obsidianHandler).toHaveBeenCalledTimes(1); // No additional calls
+      expect(githubHandler).toHaveBeenCalledTimes(2); // Still receiving events
+    });
+  });
+
+  describe("Utility Methods", () => {
+    test("should get handler count correctly", () => {
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(0);
+
+      eventBus.on("tasks.created", mockHandler);
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(1);
+
+      eventBus.on("tasks.created", vi.fn());
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(2);
+    });
+
+    test("should get registered event types", () => {
+      expect(eventBus.getRegisteredEventTypes()).toEqual([]);
+
+      eventBus.on("tasks.created", mockHandler);
+      eventBus.on("projects.created", mockHandler);
+
+      const types = eventBus.getRegisteredEventTypes();
+      expect(types).toContain("tasks.created");
+      expect(types).toContain("projects.created");
+      expect(types).toHaveLength(2);
+    });
+
+    test("should clear handlers for specific event type", () => {
+      eventBus.on("tasks.created", mockHandler);
+      eventBus.on("projects.created", mockHandler);
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(1);
+      expect(eventBus.getHandlerCount("projects.created")).toBe(1);
+
+      eventBus.clearHandlers("tasks.created");
+
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(0);
+      expect(eventBus.getHandlerCount("projects.created")).toBe(1);
+    });
+
+    test("should clear all handlers", () => {
+      eventBus.on("tasks.created", mockHandler);
+      eventBus.on("projects.created", mockHandler);
+      eventBus.on("areas.created", mockHandler);
+
+      expect(eventBus.getRegisteredEventTypes()).toHaveLength(3);
+
+      eventBus.clearAllHandlers();
+
+      expect(eventBus.getRegisteredEventTypes()).toHaveLength(0);
+      expect(eventBus.getHandlerCount("tasks.created")).toBe(0);
+    });
+  });
+});

@@ -1,0 +1,230 @@
+/**
+ * Domain Events System for the Svelte app architecture
+ * Provides event-driven communication between extensions and the core app
+ */
+
+import { Task, Project, Area } from "./entities";
+import { EntityType } from "./extension";
+
+export type DomainEvent =
+  // Task events
+  | { type: "tasks.created"; task: Task; extensionId: string }
+  | {
+      type: "tasks.updated";
+      task: Task;
+      changes: Partial<Task>;
+      extensionId: string;
+    }
+  | { type: "tasks.deleted"; taskId: string; extensionId: string }
+  | { type: "tasks.loaded"; tasks: readonly Task[]; extensionId: string }
+
+  // Project events
+  | { type: "projects.created"; project: Project; extensionId: string }
+  | {
+      type: "projects.updated";
+      project: Project;
+      changes: Partial<Project>;
+      extensionId: string;
+    }
+  | { type: "projects.deleted"; projectId: string; extensionId: string }
+  | {
+      type: "projects.loaded";
+      projects: readonly Project[];
+      extensionId: string;
+    }
+
+  // Area events
+  | { type: "areas.created"; area: Area; extensionId: string }
+  | {
+      type: "areas.updated";
+      area: Area;
+      changes: Partial<Area>;
+      extensionId: string;
+    }
+  | { type: "areas.deleted"; areaId: string; extensionId: string }
+  | { type: "areas.loaded"; areas: readonly Area[]; extensionId: string }
+
+  // Extension lifecycle events
+  | {
+      type: "extension.registered";
+      extensionId: string;
+      supportedEntities: readonly EntityType[];
+    }
+  | { type: "extension.unregistered"; extensionId: string }
+  | {
+      type: "extension.sync.started";
+      extensionId: string;
+      entityType: EntityType;
+    }
+  | {
+      type: "extension.sync.completed";
+      extensionId: string;
+      entityType: EntityType;
+      entityCount: number;
+    }
+  | {
+      type: "extension.sync.failed";
+      extensionId: string;
+      entityType: EntityType;
+      error: string;
+    };
+
+/**
+ * EventBus for coordinating events between extensions and the core app
+ * Supports subscribing/unsubscribing for hot-loadable extensions
+ */
+export class EventBus {
+  private handlers = new Map<string, ((event: DomainEvent) => void)[]>();
+
+  /**
+   * Subscribe to events of a specific type
+   * Returns an unsubscribe function for cleanup (crucial for hot-loadable extensions)
+   */
+  on<T extends DomainEvent["type"]>(
+    eventType: T,
+    handler: (event: Extract<DomainEvent, { type: T }>) => void
+  ): () => void {
+    const handlers = this.handlers.get(eventType) || [];
+    handlers.push(handler as any);
+    this.handlers.set(eventType, handlers);
+
+    // Return unsubscribe function for cleanup
+    return () => {
+      const currentHandlers = this.handlers.get(eventType) || [];
+      const index = currentHandlers.indexOf(handler as any);
+      if (index > -1) {
+        currentHandlers.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * Trigger an event to all registered handlers
+   * Handles errors gracefully to prevent one handler from breaking others
+   */
+  trigger(event: DomainEvent): void {
+    this.triggerWithPatterns(event);
+  }
+
+  /**
+   * Get the number of handlers registered for a specific event type
+   * Useful for testing and debugging
+   */
+  getHandlerCount(eventType: DomainEvent["type"]): number {
+    const handlers = this.handlers.get(eventType);
+    return handlers ? handlers.length : 0;
+  }
+
+  /**
+   * Get all registered event types
+   * Useful for debugging and introspection
+   */
+  getRegisteredEventTypes(): string[] {
+    return Array.from(this.handlers.keys());
+  }
+
+  /**
+   * Clear all handlers for a specific event type
+   * Useful for testing and cleanup
+   */
+  clearHandlers(eventType: DomainEvent["type"]): void {
+    this.handlers.delete(eventType);
+  }
+
+  /**
+   * Clear all handlers for all event types
+   * Useful for testing and complete cleanup
+   */
+  clearAllHandlers(): void {
+    this.handlers.clear();
+  }
+
+  /**
+   * Subscribe to multiple event types with the same handler
+   * Returns an unsubscribe function that removes the handler from all event types
+   */
+  onMultiple<T extends DomainEvent["type"]>(
+    eventTypes: T[],
+    handler: (event: Extract<DomainEvent, { type: T }>) => void
+  ): () => void {
+    const unsubscribeFunctions = eventTypes.map((eventType) =>
+      this.on(eventType, handler)
+    );
+
+    // Return function that unsubscribes from all event types
+    return () => {
+      unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
+    };
+  }
+
+  /**
+   * Subscribe to all events matching a pattern (e.g., 'tasks.*')
+   * Returns an unsubscribe function for cleanup
+   */
+  onPattern(
+    pattern: string,
+    handler: (event: DomainEvent) => void
+  ): () => void {
+    const regex = new RegExp(pattern.replace("*", ".*"));
+    const matchingTypes = this.getRegisteredEventTypes().filter((type) =>
+      regex.test(type)
+    );
+
+    // Subscribe to existing matching types
+    const unsubscribeFunctions = matchingTypes.map((eventType) =>
+      this.on(eventType as DomainEvent["type"], handler)
+    );
+
+    // Store pattern for future events
+    const patternKey = `__pattern__${pattern}`;
+    const patternHandlers = this.handlers.get(patternKey) || [];
+    patternHandlers.push(handler);
+    this.handlers.set(patternKey, patternHandlers);
+
+    return () => {
+      // Unsubscribe from all matching types
+      unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
+
+      // Remove from pattern handlers
+      const currentPatternHandlers = this.handlers.get(patternKey) || [];
+      const index = currentPatternHandlers.indexOf(handler);
+      if (index > -1) {
+        currentPatternHandlers.splice(index, 1);
+      }
+    };
+  }
+
+  /**
+   * Override trigger to handle pattern matching
+   */
+  private triggerWithPatterns(event: DomainEvent): void {
+    // Trigger normal handlers
+    const handlers = this.handlers.get(event.type) || [];
+    handlers.forEach((handler) => {
+      try {
+        handler(event);
+      } catch (error) {
+        console.error(`Error in event handler for ${event.type}:`, error);
+      }
+    });
+
+    // Trigger pattern handlers
+    for (const [key, patternHandlers] of this.handlers.entries()) {
+      if (key.startsWith("__pattern__")) {
+        const pattern = key.replace("__pattern__", "");
+        const regex = new RegExp(pattern.replace("*", ".*"));
+        if (regex.test(event.type)) {
+          patternHandlers.forEach((handler) => {
+            try {
+              handler(event);
+            } catch (error) {
+              console.error(`Error in pattern handler for ${pattern}:`, error);
+            }
+          });
+        }
+      }
+    }
+  }
+}
+
+export const eventBus = new EventBus();
