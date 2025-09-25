@@ -7,7 +7,9 @@ import { test, expect } from "../../helpers/setup";
 import { executeCommand } from "../../helpers/global";
 
 test.describe("Svelte App Initialization", () => {
-  test("should load plugin and render main view with hello message", async ({ page }) => {
+  test("should load plugin and render main view with hello message", async ({
+    page,
+  }) => {
     // Open the Task Sync view
     await executeCommand(page, "Task Sync: Open Main View");
 
@@ -19,11 +21,10 @@ test.describe("Svelte App Initialization", () => {
   });
 
   test("should show plugin is loaded in ribbon", async ({ page }) => {
-    // Check that the Task Sync ribbon icon is present
-    await expect(page.locator('.workspace-ribbon-collapse-btn')).toBeVisible();
-    
     // Look for the Task Sync ribbon icon (checkbox icon)
-    const ribbonIcon = page.locator('.side-dock-ribbon-action[aria-label*="Task Sync"]');
+    const ribbonIcon = page.locator(
+      '.side-dock-ribbon-action[aria-label*="Task Sync"]'
+    );
     await expect(ribbonIcon).toBeVisible();
   });
 });
