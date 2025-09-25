@@ -75,6 +75,7 @@ export type DomainEvent =
  */
 export class EventBus {
   private handlers = new Map<string, ((event: DomainEvent) => void)[]>();
+  private compiledPatterns = new Map<string, RegExp>();
 
   /**
    * Subscribe to events of a specific type
@@ -165,31 +166,31 @@ export class EventBus {
     pattern: string,
     handler: (event: DomainEvent) => void
   ): () => void {
-    const regex = new RegExp(pattern.replace("*", ".*"));
-    const matchingTypes = this.getRegisteredEventTypes().filter((type) =>
-      regex.test(type)
-    );
+    // Cache the compiled regex for performance
+    if (!this.compiledPatterns.has(pattern)) {
+      this.compiledPatterns.set(
+        pattern,
+        new RegExp(pattern.replace("*", ".*"))
+      );
+    }
 
-    // Subscribe to existing matching types
-    const unsubscribeFunctions = matchingTypes.map((eventType) =>
-      this.on(eventType as DomainEvent["type"], handler)
-    );
-
-    // Store pattern for future events
+    // Store pattern handler for future events
     const patternKey = `__pattern__${pattern}`;
     const patternHandlers = this.handlers.get(patternKey) || [];
     patternHandlers.push(handler);
     this.handlers.set(patternKey, patternHandlers);
 
     return () => {
-      // Unsubscribe from all matching types
-      unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
-
       // Remove from pattern handlers
       const currentPatternHandlers = this.handlers.get(patternKey) || [];
       const index = currentPatternHandlers.indexOf(handler);
       if (index > -1) {
         currentPatternHandlers.splice(index, 1);
+        // Clean up empty pattern handler arrays
+        if (currentPatternHandlers.length === 0) {
+          this.handlers.delete(patternKey);
+          this.compiledPatterns.delete(pattern);
+        }
       }
     };
   }
@@ -212,8 +213,8 @@ export class EventBus {
     for (const [key, patternHandlers] of this.handlers.entries()) {
       if (key.startsWith("__pattern__")) {
         const pattern = key.replace("__pattern__", "");
-        const regex = new RegExp(pattern.replace("*", ".*"));
-        if (regex.test(event.type)) {
+        const regex = this.compiledPatterns.get(pattern);
+        if (regex && regex.test(event.type)) {
           patternHandlers.forEach((handler) => {
             try {
               handler(event);

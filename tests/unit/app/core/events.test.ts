@@ -361,6 +361,60 @@ describe("EventBus", () => {
       expect(syncEventsHandler).toHaveBeenCalledTimes(1); // Only sync events
       expect(syncEventsHandler).toHaveBeenCalledWith(syncEvent);
     });
+
+    test("should match patterns for events triggered after pattern subscription", () => {
+      // This test demonstrates that pattern matching should work for events
+      // that are triggered after pattern subscription, even if no handlers were
+      // previously registered for those specific event types
+      const patternHandler = vi.fn();
+
+      // Subscribe to pattern before any specific event handlers are registered
+      const unsubscribe = eventBus.onPattern("tasks.*", patternHandler);
+
+      // Trigger an event that matches the pattern
+      // This should work even though no specific handler for "tasks.created" was registered
+      const createEvent: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extension: "test-extension",
+      };
+
+      eventBus.trigger(createEvent);
+
+      // Pattern handler should have been called
+      expect(patternHandler).toHaveBeenCalledTimes(1);
+      expect(patternHandler).toHaveBeenCalledWith(createEvent);
+
+      unsubscribe();
+    });
+
+    test("should not create duplicate handlers for existing event types", () => {
+      // This test verifies that onPattern doesn't create unnecessary duplicate handlers
+      // for event types that already have handlers registered
+      const specificHandler = vi.fn();
+      const patternHandler = vi.fn();
+
+      // Register a specific handler first
+      const unsubscribeSpecific = eventBus.on("tasks.created", specificHandler);
+
+      // Then register a pattern handler
+      const unsubscribePattern = eventBus.onPattern("tasks.*", patternHandler);
+
+      const createEvent: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extension: "test-extension",
+      };
+
+      eventBus.trigger(createEvent);
+
+      // Both handlers should be called exactly once
+      expect(specificHandler).toHaveBeenCalledTimes(1);
+      expect(patternHandler).toHaveBeenCalledTimes(1);
+
+      unsubscribeSpecific();
+      unsubscribePattern();
+    });
   });
 
   describe("Extension Lifecycle Events", () => {
