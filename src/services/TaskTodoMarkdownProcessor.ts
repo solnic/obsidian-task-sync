@@ -10,7 +10,7 @@ import {
   MarkdownPostProcessor,
   MarkdownPostProcessorContext,
 } from "obsidian";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import { NoteManagers } from "./NoteManagers";
 import { TaskFileManager } from "./TaskFileManager";
 import { getOptimalTextColor } from "../utils/colorUtils";

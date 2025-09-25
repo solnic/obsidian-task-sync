@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import { CacheManager } from "../cache/CacheManager";
 import { SchemaCache } from "../cache/SchemaCache";
 import { TaskImportManager } from "./TaskImportManager";

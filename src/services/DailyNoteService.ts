@@ -5,7 +5,7 @@
  */
 
 import { App, Vault, TFile } from "obsidian";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import { getDateString } from "../utils/dateFiltering";
 
 export interface DailyNoteResult {

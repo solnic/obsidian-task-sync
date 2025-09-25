@@ -4,7 +4,7 @@
  */
 
 import type { Task } from "../types/entities";
-import type { FileContext } from "../main";
+import type { FileContext } from "../main-old";
 import type { GitHubIssue, GitHubPullRequest } from "../services/GitHubService";
 import { extractDisplayValue } from "./linkUtils";
 

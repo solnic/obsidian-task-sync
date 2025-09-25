@@ -5,7 +5,7 @@
  */
 
 import { App, Vault, TFile } from "obsidian";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import { FileManager } from "./FileManager";
 import { generateProjectFrontMatter } from "./base-definitions/BaseConfigurations";
 import { Project } from "../types/entities";

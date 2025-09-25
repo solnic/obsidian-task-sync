@@ -12,7 +12,7 @@ import {
   StatusChangedEventData,
   DoneChangedEventData,
 } from "../EventTypes";
-import { TaskSyncSettings } from "../../main";
+import { TaskSyncSettings } from "../../main-old";
 import { taskStore } from "../../stores/taskStore";
 import { projectStore } from "../../stores/projectStore";
 import { areaStore } from "../../stores/areaStore";

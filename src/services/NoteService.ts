@@ -5,7 +5,7 @@
  */
 
 import { App, TFile, CachedMetadata, ListItemCache } from "obsidian";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import { Task, TaskSource } from "../types/entities";
 
 /**

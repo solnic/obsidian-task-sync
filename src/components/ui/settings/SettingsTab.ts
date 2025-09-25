@@ -3,7 +3,7 @@
  */
 
 import { App, PluginSettingTab } from "obsidian";
-import TaskSyncPlugin from "../../../main";
+import TaskSyncPlugin from "../../../main-old";
 import { TaskSyncSettings } from "./types";
 import SettingsViewSvelte from "./svelte/SettingsView.svelte";
 import { mount, unmount } from "svelte";

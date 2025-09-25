@@ -14,7 +14,7 @@ import {
   BaseFileInfo,
   FolderValidationResult,
 } from "../types";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 
 export class VaultScanner implements VaultScannerService {
   constructor(private vault: Vault, private settings: TaskSyncSettings) {}

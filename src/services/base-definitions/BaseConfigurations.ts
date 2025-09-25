@@ -6,7 +6,7 @@
 import * as yaml from "js-yaml";
 import { pluralize } from "inflection";
 
-import { TaskSyncSettings } from "../../main";
+import { TaskSyncSettings } from "../../main-old";
 import { PROPERTY_REGISTRY, PropertyDefinition } from "../../types/properties";
 import { FilterCondition, FilterBuilder } from "../../types/filters";
 

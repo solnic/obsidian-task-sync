@@ -5,7 +5,7 @@
 
 import { App } from "obsidian";
 import type { Task, Project, Area } from "../types/entities";
-import type { FileContext } from "../main";
+import type { FileContext } from "../main-old";
 import type { TaskImportConfig } from "../types/integrations";
 import type { AreaCreateData } from "../commands/core/CreateAreaCommand";
 import type { ProjectCreateData } from "../commands/core/CreateProjectCommand";

@@ -5,7 +5,7 @@
  */
 
 import { App, TFile } from "obsidian";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import { TaskMention } from "../types/entities";
 import { taskMentionStore } from "../stores/taskMentionStore";
 import {

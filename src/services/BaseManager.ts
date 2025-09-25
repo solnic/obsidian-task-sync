@@ -5,7 +5,7 @@
  */
 
 import { App, Vault, TFile } from "obsidian";
-import { TaskSyncSettings } from "../main";
+import { TaskSyncSettings } from "../main-old";
 import * as yaml from "js-yaml";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
 import { settingsChanged } from "../utils/equality";

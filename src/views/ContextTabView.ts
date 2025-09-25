@@ -4,7 +4,7 @@
  */
 
 import { ItemView, WorkspaceLeaf } from "obsidian";
-import type { FileContext } from "../main";
+import type { FileContext } from "../main-old";
 import ContextTabViewSvelte from "../components/svelte/ContextTabView.svelte";
 import type { SvelteComponent } from "svelte";
 

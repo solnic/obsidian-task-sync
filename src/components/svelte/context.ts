@@ -1,7 +1,7 @@
 import { getContext, setContext } from "svelte";
 import { writable, get, type Writable } from "svelte/store";
-import type TaskSyncPlugin from "../../main";
-import type { FileContext } from "../../main";
+import type TaskSyncPlugin from "../../main-old";
+import type { FileContext } from "../../main-old";
 
 export interface PluginContext {
   plugin: TaskSyncPlugin;
