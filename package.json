@@ -8,7 +8,7 @@
     "build": "npm run build:css && tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "build:css": "postcss src/styles/main.css -o styles.css",
     "build:css:watch": "postcss src/styles/main.css -o styles.css --watch",
-    "test": "npm run test:unit && npm run test:e2e && npm run test:e2e:headless",
+    "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
     "test:ci": "vitest run",
     "test:watch": "vitest --watch",
