@@ -1,52 +1,41 @@
 # Svelte App Implementation Plan
 
-> **Comprehensive plan for porting the Obsidian Task Sync plugin to a modern Svelte 5 application architecture**
->
-> This plan adapts the conceptual framework from `svelte-app-rework.md` to work with our existing entity definitions, property registry, and current implementation patterns.
+> **Clean architecture for a standalone Svelte 5 task management application with extension system**
 
 ## Overview
 
-Transform the current Obsidian plugin into a standalone Svelte 5 application where the Obsidian plugin becomes just one of many possible backends. The core application will be framework-agnostic with clean separation between:
+Build a standalone Svelte 5 application with a clean extension system where Obsidian is just one of many possible extensions. The core application is completely source-agnostic with clear separation between:
 
-1. **Core Domain Layer** - Immutable entities with Zod validation
+1. **Core Domain Layer** - Pure entities with Zod validation (no source-specific concerns)
 2. **Application Layer** - Commands, queries, and business logic
-3. **Infrastructure Layer** - Sources (Obsidian, GitHub, etc.)
+3. **Extension Layer** - Pluggable extensions (Obsidian, GitHub, etc.)
 4. **Presentation Layer** - Svelte 5 SPA with reactive stores
 
-## Current State Analysis
+## Architecture Principles
 
-### Existing Strengths
-- ✅ Well-defined entity types (`Task`, `Project`, `Area`) with property registry
-- ✅ Comprehensive Svelte 5 components already implemented
-- ✅ External source integration patterns (GitHub, Apple Reminders)
-- ✅ File-based storage with front-matter handling
-- ✅ Command pattern with `CommandManager` and `CommandRegistry`
+- **Source Agnostic**: Core domain knows nothing about Obsidian, files, or any specific storage
+- **Extension Based**: All source integrations are extensions that register with the core app
+- **Clean Boundaries**: No leakage of extension concerns into the core domain
+- **Breaking Changes OK**: This is unreleased, we can redesign without migration concerns
 
-### Current Limitations
-- ❌ Tight coupling between Obsidian plugin and business logic
-- ❌ No unified event system for cross-component communication
-- ❌ Mixed responsibilities in stores and services
-- ❌ No clear separation between domain and infrastructure concerns
+## Phase 1: Pure Core Domain Layer
 
-## Phase 1: Core Domain Layer Foundation
+### 1.1 Source-Agnostic Entity Definitions
 
-### 1.1 Enhanced Entity Definitions with Zod Validation
-
-**File: `src/core/entities.ts`**
+**File: `src/app/core/entities.ts`**
 
 ```typescript
 import { z } from 'zod';
 
-// Reuse existing property definitions but add Zod validation
+// Core domain entities - completely source agnostic
 export const TaskStatusSchema = z.enum(['Backlog', 'In Progress', 'Done', 'Cancelled']);
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 
 export const TaskSourceSchema = z.object({
-  name: z.string(), // 'github', 'obsidian', 'apple-reminders'
-  key: z.string(),
+  extensionId: z.string(), // 'obsidian', 'github', 'apple-reminders'
+  sourceId: z.string(), // unique identifier within the extension
   url: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
-  data: z.record(z.any()).optional()
+  metadata: z.record(z.any()).optional()
 });
 export type TaskSource = z.infer<typeof TaskSourceSchema>;
 
@@ -54,123 +43,176 @@ export const TaskSchema = z.object({
   // Core identity
   id: z.string(),
 
-  // Front-matter properties (align with existing PROPERTY_REGISTRY)
+  // Core task properties
   title: z.string(),
-  type: z.string().default('Task'),
-  category: z.string().optional(),
-  priority: z.string().optional(),
+  description: z.string().optional(),
   status: TaskStatusSchema.default('Backlog'),
   done: z.boolean().default(false),
+
+  // Organization
+  category: z.string().optional(),
+  priority: z.string().optional(),
   parentTask: z.string().optional(),
   project: z.string().optional(),
   areas: z.array(z.string()).default([]),
+  tags: z.array(z.string()).default([]),
+
+  // Scheduling
   doDate: z.date().optional(),
   dueDate: z.date().optional(),
-  tags: z.array(z.string()).default([]),
 
   // System properties
   createdAt: z.date(),
   updatedAt: z.date(),
 
-  // External source tracking
-  source: TaskSourceSchema.optional(),
-
-  // File system integration
-  filePath: z.string(),
-
-  // Content
-  description: z.string().optional()
+  // Source tracking (which extension owns this task)
+  source: TaskSourceSchema.optional()
 });
 
 export type Task = Readonly<z.infer<typeof TaskSchema>>;
 
-// Front-matter subset for file operations
-export const TaskFrontMatterSchema = TaskSchema.pick({
-  title: true,
-  type: true,
-  category: true,
-  priority: true,
-  status: true,
-  done: true,
-  parentTask: true,
-  project: true,
-  areas: true,
-  doDate: true,
-  dueDate: true,
-  tags: true
+export const ProjectSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  areas: z.array(z.string()).default([]),
+  tags: z.array(z.string()).default([]),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  source: TaskSourceSchema.optional()
 });
-export type TaskFrontMatter = z.infer<typeof TaskFrontMatterSchema>;
+
+export type Project = Readonly<z.infer<typeof ProjectSchema>>;
+
+export const AreaSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  source: TaskSourceSchema.optional()
+});
+
+export type Area = Readonly<z.infer<typeof AreaSchema>>;
 ```
 
-### 1.2 Note Abstraction
+### 1.2 Extension System Foundation
 
-**File: `src/core/note.ts`**
+**File: `src/app/core/extension.ts`**
 
 ```typescript
-export interface Note {
-  filePath: string;
-  frontMatter: TaskFrontMatter;
-  body: string;
-  lastModified: Date;
+import { Task, Project, Area } from './entities';
+
+// Generic entity union type
+export type Entity = Task | Project | Area;
+export type EntityType = 'task' | 'project' | 'area';
+
+// Extension interface - completely agnostic to implementation details
+export interface Extension {
+  readonly id: string;
+  readonly name: string;
+  readonly version: string;
+  readonly supportedEntities: readonly EntityType[];
+
+  // Lifecycle
+  initialize(): Promise<void>;
+  shutdown(): Promise<void>;
+
+  // Entity operations (optional - extensions can support subset)
+  tasks?: EntityOperations<Task>;
+  projects?: EntityOperations<Project>;
+  areas?: EntityOperations<Area>;
+
+  // Health check
+  isHealthy(): Promise<boolean>;
 }
 
-export class NoteUtils {
-  static fromTask(task: Task): Note {
-    return {
-      filePath: task.filePath,
-      frontMatter: TaskFrontMatterSchema.parse(task),
-      body: task.description || '',
-      lastModified: task.updatedAt
-    };
+// Generic entity operations interface
+export interface EntityOperations<T extends Entity> {
+  // CRUD operations
+  create(entity: Omit<T, 'id' | 'createdAt' | 'updatedAt'>): Promise<T>;
+  update(entity: T): Promise<T>;
+  delete(id: string): Promise<void>;
+
+  // Queries
+  findById(id: string): Promise<T | null>;
+  findAll(): Promise<readonly T[]>;
+
+  // Real-time updates (optional)
+  subscribe?(callback: (entities: readonly T[]) => void): () => void;
+}
+
+// Extension registry
+export class ExtensionRegistry {
+  private extensions = new Map<string, Extension>();
+
+  register(extension: Extension): void {
+    if (this.extensions.has(extension.id)) {
+      throw new Error(`Extension ${extension.id} is already registered`);
+    }
+    this.extensions.set(extension.id, extension);
   }
 
-  static toTask(note: Note, metadata: { id: string; createdAt: Date; source?: TaskSource }): Task {
-    return TaskSchema.parse({
-      ...note.frontMatter,
-      ...metadata,
-      description: note.body,
-      filePath: note.filePath,
-      updatedAt: note.lastModified
-    });
+  unregister(extensionId: string): void {
+    const extension = this.extensions.get(extensionId);
+    if (extension) {
+      extension.shutdown();
+      this.extensions.delete(extensionId);
+    }
+  }
+
+  get(extensionId: string): Extension | undefined {
+    return this.extensions.get(extensionId);
+  }
+
+  getAll(): Extension[] {
+    return Array.from(this.extensions.values());
+  }
+
+  getByEntityType(entityType: EntityType): Extension[] {
+    return this.getAll().filter(ext => ext.supportedEntities.includes(entityType));
   }
 }
+
+export const extensionRegistry = new ExtensionRegistry();
 ```
 
 ## Phase 2: Event-Driven Architecture
 
 ### 2.1 Domain Events System
 
-**File: `src/core/events.ts`**
+**File: `src/app/core/events.ts`**
 
 ```typescript
-// Generic entity types for events
-export type EntityType = 'task' | 'project' | 'area';
+import { Task, Project, Area } from './entities';
+import { EntityType } from './extension';
 
 export type DomainEvent =
   // Task events
-  | { type: 'tasks.created'; task: Task; source: string }
-  | { type: 'tasks.updated'; task: Task; changes: Partial<Task>; source: string }
-  | { type: 'tasks.deleted'; taskId: string; source: string }
-  | { type: 'tasks.loaded'; tasks: readonly Task[]; source: string }
+  | { type: 'tasks.created'; task: Task; extensionId: string }
+  | { type: 'tasks.updated'; task: Task; changes: Partial<Task>; extensionId: string }
+  | { type: 'tasks.deleted'; taskId: string; extensionId: string }
+  | { type: 'tasks.loaded'; tasks: readonly Task[]; extensionId: string }
 
-  // Project events (for future implementation)
-  | { type: 'projects.created'; project: Project; source: string }
-  | { type: 'projects.updated'; project: Project; changes: Partial<Project>; source: string }
-  | { type: 'projects.deleted'; projectId: string; source: string }
-  | { type: 'projects.loaded'; projects: readonly Project[]; source: string }
+  // Project events
+  | { type: 'projects.created'; project: Project; extensionId: string }
+  | { type: 'projects.updated'; project: Project; changes: Partial<Project>; extensionId: string }
+  | { type: 'projects.deleted'; projectId: string; extensionId: string }
+  | { type: 'projects.loaded'; projects: readonly Project[]; extensionId: string }
 
-  // Area events (for future implementation)
-  | { type: 'areas.created'; area: Area; source: string }
-  | { type: 'areas.updated'; area: Area; changes: Partial<Area>; source: string }
-  | { type: 'areas.deleted'; areaId: string; source: string }
-  | { type: 'areas.loaded'; areas: readonly Area[]; source: string }
+  // Area events
+  | { type: 'areas.created'; area: Area; extensionId: string }
+  | { type: 'areas.updated'; area: Area; changes: Partial<Area>; extensionId: string }
+  | { type: 'areas.deleted'; areaId: string; extensionId: string }
+  | { type: 'areas.loaded'; areas: readonly Area[]; extensionId: string }
 
-  // Source events
-  | { type: 'source.connected'; sourceType: string; supportedEntities: EntityType[] }
-  | { type: 'source.disconnected'; sourceType: string }
-  | { type: 'sync.started'; sourceType: string; entityType: EntityType }
-  | { type: 'sync.completed'; sourceType: string; entityType: EntityType; entityCount: number }
-  | { type: 'sync.failed'; sourceType: string; entityType: EntityType; error: string };
+  // Extension events
+  | { type: 'extension.registered'; extensionId: string; supportedEntities: EntityType[] }
+  | { type: 'extension.unregistered'; extensionId: string }
+  | { type: 'extension.sync.started'; extensionId: string; entityType: EntityType }
+  | { type: 'extension.sync.completed'; extensionId: string; entityType: EntityType; entityCount: number }
+  | { type: 'extension.sync.failed'; extensionId: string; entityType: EntityType; error: string };
 
 export class EventBus {
   private handlers = new Map<string, ((event: DomainEvent) => void)[]>();
@@ -183,7 +225,6 @@ export class EventBus {
     handlers.push(handler as any);
     this.handlers.set(eventType, handlers);
 
-    // Return unsubscribe function
     return () => {
       const currentHandlers = this.handlers.get(eventType) || [];
       const index = currentHandlers.indexOf(handler as any);
@@ -203,120 +244,32 @@ export class EventBus {
       }
     });
   }
-
-  // Legacy alias for backward compatibility
-  emit(event: DomainEvent): void {
-    this.trigger(event);
-  }
 }
 
 export const eventBus = new EventBus();
 ```
 
-## Phase 3: Source Abstraction Layer
+## Phase 3: Obsidian Extension Implementation
 
-### 3.1 Universal Source Interface
+### 3.1 Obsidian Extension
 
-**File: `src/core/source.ts`**
-
-```typescript
-import { Task, Project, Area } from './entities';
-import { EntityType, eventBus, DomainEvent } from './events';
-
-// Generic entity union type
-export type Entity = Task | Project | Area;
-
-// Entity-specific operations interface
-export interface EntityOperations<T extends Entity> {
-  loadAll(): Promise<readonly T[]>;
-  sync(entity: T): Promise<void>;
-  delete(entityId: string): Promise<void>;
-  observe(callback: (entities: readonly T[]) => void): () => void;
-}
-
-export interface Source {
-  readonly name: string;
-  readonly type: string;
-  readonly isConnected: boolean;
-  readonly supportedEntities: readonly EntityType[];
-
-  // Entity-specific operations
-  tasks?: EntityOperations<Task>;
-  projects?: EntityOperations<Project>;
-  areas?: EntityOperations<Area>;
-
-  // Connection management
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
-
-  // Health check
-  healthCheck(): Promise<boolean>;
-
-  // Check if entity type is supported
-  supports(entityType: EntityType): boolean;
-}
-
-export abstract class BaseSource implements Source {
-  abstract readonly name: string;
-  abstract readonly type: string;
-  abstract readonly supportedEntities: readonly EntityType[];
-
-  protected _isConnected = false;
-
-  get isConnected(): boolean {
-    return this._isConnected;
-  }
-
-  protected trigger(event: DomainEvent): void {
-    eventBus.trigger(event);
-  }
-
-  supports(entityType: EntityType): boolean {
-    return this.supportedEntities.includes(entityType);
-  }
-
-  async connect(): Promise<void> {
-    this._isConnected = true;
-    this.trigger({
-      type: 'source.connected',
-      sourceType: this.type,
-      supportedEntities: [...this.supportedEntities]
-    });
-  }
-
-  async disconnect(): Promise<void> {
-    this._isConnected = false;
-    this.trigger({ type: 'source.disconnected', sourceType: this.type });
-  }
-
-  async healthCheck(): Promise<boolean> {
-    return this.isConnected;
-  }
-}
-```
-
-### 3.2 Obsidian Source Implementation
-
-**File: `src/sources/ObsidianSource.ts`**
+**File: `src/app/extensions/ObsidianExtension.ts`**
 
 ```typescript
-import { App, Plugin, TFile, processFrontMatter } from 'obsidian';
-import { BaseSource, EntityOperations } from '../core/source';
-import { Task, Project, Area, TaskSchema, TaskFrontMatterSchema } from '../core/entities';
+import { App, Plugin, TFile, getFrontMatterInfo, parseYaml, stringifyYaml } from 'obsidian';
+import { Extension, EntityOperations, extensionRegistry } from '../core/extension';
+import { Task, Project, Area, TaskSchema, ProjectSchema, AreaSchema } from '../core/entities';
 import { EntityType, eventBus } from '../core/events';
-import { Note, NoteUtils } from '../core/note';
 
-export class ObsidianSource extends BaseSource {
-  readonly name = 'Vault';
-  readonly type = 'obsidian';
+export class ObsidianExtension implements Extension {
+  readonly id = 'obsidian';
+  readonly name = 'Obsidian Vault';
+  readonly version = '1.0.0';
   readonly supportedEntities: readonly EntityType[] = ['task', 'project', 'area'];
 
-  // Entity operations
   readonly tasks: EntityOperations<Task>;
   readonly projects: EntityOperations<Project>;
   readonly areas: EntityOperations<Area>;
-
-  private unsubscribeFileWatcher?: () => void;
 
   constructor(
     private app: App,
@@ -327,23 +280,116 @@ export class ObsidianSource extends BaseSource {
       areasFolder: string;
     }
   ) {
-    super();
+    this.tasks = new ObsidianTaskOperations(app, settings.tasksFolder);
+    this.projects = new ObsidianProjectOperations(app, settings.projectsFolder);
+    this.areas = new ObsidianAreaOperations(app, settings.areasFolder);
+  }
 
-    // Initialize entity operations
-    this.tasks = new ObsidianTaskOperations(app, plugin, settings.tasksFolder);
-    this.projects = new ObsidianProjectOperations(app, plugin, settings.projectsFolder);
-    this.areas = new ObsidianAreaOperations(app, plugin, settings.areasFolder);
+  async initialize(): Promise<void> {
+    // Register with the core app
+    extensionRegistry.register(this);
+
+    // Trigger extension registered event
+    eventBus.trigger({
+      type: 'extension.registered',
+      extensionId: this.id,
+      supportedEntities: [...this.supportedEntities]
+    });
+
+    // Load initial data
+    await this.loadAllEntities();
+  }
+
+  async shutdown(): Promise<void> {
+    eventBus.trigger({
+      type: 'extension.unregistered',
+      extensionId: this.id
+    });
+  }
+
+  async isHealthy(): Promise<boolean> {
+    return this.app.vault !== null;
+  }
+
+  private async loadAllEntities(): Promise<void> {
+    try {
+      const [tasks, projects, areas] = await Promise.all([
+        this.tasks.findAll(),
+        this.projects.findAll(),
+        this.areas.findAll()
+      ]);
+
+      eventBus.trigger({ type: 'tasks.loaded', tasks, extensionId: this.id });
+      eventBus.trigger({ type: 'projects.loaded', projects, extensionId: this.id });
+      eventBus.trigger({ type: 'areas.loaded', areas, extensionId: this.id });
+    } catch (error) {
+      console.error('Failed to load entities from Obsidian:', error);
+    }
   }
 }
+```
 
-class ObsidianTaskOperations implements EntityOperations<Task> {
+### 3.2 Obsidian Task Operations
+
+**File: `src/app/extensions/ObsidianTaskOperations.ts`**
+
+```typescript
+import { App, TFile, getFrontMatterInfo, parseYaml, stringifyYaml } from 'obsidian';
+import { EntityOperations } from '../core/extension';
+import { Task, TaskSchema } from '../core/entities';
+import { eventBus } from '../core/events';
+
+export class ObsidianTaskOperations implements EntityOperations<Task> {
   constructor(
     private app: App,
-    private plugin: Plugin,
     private folder: string
   ) {}
 
-  async loadAll(): Promise<readonly Task[]> {
+  async create(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
+    const now = new Date();
+    const task: Task = {
+      ...taskData,
+      id: crypto.randomUUID(),
+      createdAt: now,
+      updatedAt: now,
+      source: {
+        extensionId: 'obsidian',
+        sourceId: `${this.folder}/${taskData.title}.md`
+      }
+    };
+
+    await this.saveTaskToFile(task);
+    eventBus.trigger({ type: 'tasks.created', task, extensionId: 'obsidian' });
+    return task;
+  }
+
+  async update(task: Task): Promise<Task> {
+    const updatedTask = { ...task, updatedAt: new Date() };
+    await this.saveTaskToFile(updatedTask);
+    eventBus.trigger({ type: 'tasks.updated', task: updatedTask, changes: {}, extensionId: 'obsidian' });
+    return updatedTask;
+  }
+
+  async delete(id: string): Promise<void> {
+    const filePath = `${this.folder}/${id}.md`;
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+
+    if (file instanceof TFile) {
+      await this.app.vault.delete(file);
+      eventBus.trigger({ type: 'tasks.deleted', taskId: id, extensionId: 'obsidian' });
+    }
+  }
+
+  async findById(id: string): Promise<Task | null> {
+    const filePath = `${this.folder}/${id}.md`;
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+
+    if (!file) return null;
+
+    return this.loadTaskFromFile(file);
+  }
+
+  async findAll(): Promise<readonly Task[]> {
     const files = this.app.vault.getMarkdownFiles()
       .filter(f => f.path.startsWith(this.folder + '/'));
 
@@ -351,9 +397,8 @@ class ObsidianTaskOperations implements EntityOperations<Task> {
 
     for (const file of files) {
       try {
-        const note = await this.readNote(file);
-        if (note) {
-          const task = this.noteToTask(note, file);
+        const task = await this.loadTaskFromFile(file);
+        if (task) {
           tasks.push(task);
         }
       } catch (error) {
@@ -361,213 +406,139 @@ class ObsidianTaskOperations implements EntityOperations<Task> {
       }
     }
 
-    eventBus.trigger({ type: 'tasks.loaded', tasks, source: 'obsidian' });
     return tasks;
   }
 
-  async sync(task: Task): Promise<void> {
-    const note = NoteUtils.fromTask(task);
-    const filePath = `${this.folder}/${task.id}.md`;
-
-    try {
-      const file = this.app.vault.getAbstractFileByPath(filePath) as TFile | null;
-
-      if (file) {
-        // Update existing file
-        await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
-          Object.assign(frontMatter, note.frontMatter);
-        });
-
-        // Update body if needed
-        const currentContent = await this.app.vault.read(file);
-        const bodyStart = currentContent.indexOf('---', 3) + 4;
-        const newContent = currentContent.substring(0, bodyStart) + '\n' + note.body;
-        await this.app.vault.modify(file, newContent);
-      } else {
-        // Create new file
-        const frontMatterYaml = this.serializeFrontMatter(note.frontMatter);
-        const content = `---\n${frontMatterYaml}\n---\n\n${note.body}`;
-        await this.app.vault.create(filePath, content);
-      }
-
-      eventBus.trigger({ type: 'tasks.updated', task, changes: {}, source: 'obsidian' });
-    } catch (error) {
-      console.error(`Failed to sync task ${task.id}:`, error);
-      throw error;
-    }
-  }
-
-  async delete(taskId: string): Promise<void> {
-    const filePath = `${this.folder}/${taskId}.md`;
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-
-    if (file instanceof TFile) {
-      await this.app.vault.delete(file);
-      eventBus.trigger({ type: 'tasks.deleted', taskId, source: 'obsidian' });
-    }
-  }
-
-  observe(callback: (tasks: readonly Task[]) => void): () => void {
+  subscribe(callback: (tasks: readonly Task[]) => void): () => void {
     const handleFileChange = async (file: TFile) => {
       if (file.path.startsWith(this.folder + '/')) {
-        try {
-          const note = await this.readNote(file);
-          if (note) {
-            const task = this.noteToTask(note, file);
-            callback([task]);
-          }
-        } catch (error) {
-          console.warn(`Failed to process file change for ${file.path}:`, error);
-        }
+        const tasks = await this.findAll();
+        callback(tasks);
       }
     };
 
     this.app.vault.on('modify', handleFileChange);
     this.app.vault.on('create', handleFileChange);
+    this.app.vault.on('delete', handleFileChange);
 
     return () => {
       this.app.vault.off('modify', handleFileChange);
       this.app.vault.off('create', handleFileChange);
+      this.app.vault.off('delete', handleFileChange);
     };
   }
 
   // Private helper methods
-  private async readNote(file: TFile): Promise<Note | null> {
-    try {
-      const frontMatter: Record<string, any> = {};
-      await this.app.fileManager.processFrontMatter(file, (fm) => {
-        Object.assign(frontMatter, fm);
-      });
+  private async saveTaskToFile(task: Task): Promise<void> {
+    const filePath = `${this.folder}/${task.id}.md`;
 
-      // Validate that this is a task file
-      if (frontMatter.type !== 'Task' || !frontMatter.title) {
-        return null;
+    // Convert task to front-matter (exclude core system properties)
+    const frontMatter = {
+      title: task.title,
+      status: task.status,
+      done: task.done,
+      category: task.category,
+      priority: task.priority,
+      parentTask: task.parentTask,
+      project: task.project,
+      areas: task.areas,
+      tags: task.tags,
+      doDate: task.doDate?.toISOString(),
+      dueDate: task.dueDate?.toISOString()
+    };
+
+    // Remove undefined values
+    Object.keys(frontMatter).forEach(key => {
+      if (frontMatter[key] === undefined) {
+        delete frontMatter[key];
       }
+    });
 
-      const content = await this.app.vault.read(file);
-      const body = content.replace(/^---[\s\S]*?---\n?/, '').trim();
+    const frontMatterYaml = stringifyYaml(frontMatter);
+    const content = `---\n${frontMatterYaml}---\n\n${task.description || ''}`;
 
-      return {
-        filePath: file.path,
-        frontMatter: TaskFrontMatterSchema.parse(frontMatter),
-        body,
-        lastModified: new Date(file.stat.mtime)
-      };
-    } catch (error) {
-      console.warn(`Failed to read note ${file.path}:`, error);
-      return null;
+    const existingFile = this.app.vault.getAbstractFileByPath(filePath) as TFile;
+
+    if (existingFile) {
+      await this.app.vault.modify(existingFile, content);
+    } else {
+      await this.app.vault.create(filePath, content);
     }
   }
 
-  private noteToTask(note: Note, file: TFile): Task {
-    return TaskSchema.parse({
-      ...note.frontMatter,
-      id: file.basename,
-      description: note.body,
-      filePath: note.filePath,
-      createdAt: new Date(file.stat.ctime),
-      updatedAt: note.lastModified,
-      source: {
-        name: 'obsidian',
-        key: file.path,
-        metadata: { folder: this.settings.tasksFolder }
+  private async loadTaskFromFile(file: TFile): Promise<Task | null> {
+    try {
+      const content = await this.app.vault.read(file);
+      const frontMatterInfo = getFrontMatterInfo(content);
+
+      if (!frontMatterInfo.exists) {
+        return null;
       }
-    });
-  }
 
-  private serializeFrontMatter(frontMatter: TaskFrontMatter): string {
-    return Object.entries(frontMatter)
-      .filter(([, value]) => value !== undefined && value !== null)
-      .map(([key, value]) => {
-        if (value instanceof Date) {
-          return `${key}: ${value.toISOString()}`;
+      const frontMatter = parseYaml(frontMatterInfo.frontmatter);
+
+      // Validate this is a task file
+      if (!frontMatter.title) {
+        return null;
+      }
+
+      const body = content.substring(frontMatterInfo.contentStart).trim();
+
+      return TaskSchema.parse({
+        id: file.basename,
+        title: frontMatter.title,
+        description: body,
+        status: frontMatter.status || 'Backlog',
+        done: frontMatter.done || false,
+        category: frontMatter.category,
+        priority: frontMatter.priority,
+        parentTask: frontMatter.parentTask,
+        project: frontMatter.project,
+        areas: frontMatter.areas || [],
+        tags: frontMatter.tags || [],
+        doDate: frontMatter.doDate ? new Date(frontMatter.doDate) : undefined,
+        dueDate: frontMatter.dueDate ? new Date(frontMatter.dueDate) : undefined,
+        createdAt: new Date(file.stat.ctime),
+        updatedAt: new Date(file.stat.mtime),
+        source: {
+          extensionId: 'obsidian',
+          sourceId: file.path
         }
-        if (Array.isArray(value)) {
-          return `${key}: [${value.map(v => `"${v}"`).join(', ')}]`;
-        }
-        if (typeof value === 'string') {
-          return `${key}: "${value}"`;
-        }
-        return `${key}: ${value}`;
-      })
-      .join('\n');
+      });
+    } catch (error) {
+      console.warn(`Failed to load task from ${file.path}:`, error);
+      return null;
+    }
   }
 }
 
-// Placeholder implementations for Project and Area operations
-class ObsidianProjectOperations implements EntityOperations<Project> {
-  constructor(
-    private app: App,
-    private plugin: Plugin,
-    private folder: string
-  ) {}
+// Similar implementations for Project and Area operations
+export class ObsidianProjectOperations implements EntityOperations<Project> {
+  constructor(private app: App, private folder: string) {}
 
-  async loadAll(): Promise<readonly Project[]> {
-    // Implementation similar to tasks but for projects
-    const projects: Project[] = [];
-    // ... project loading logic
-    eventBus.trigger({ type: 'projects.loaded', projects, source: 'obsidian' });
-    return projects;
-  }
-
-  async sync(project: Project): Promise<void> {
-    // Project sync implementation
-    eventBus.trigger({ type: 'projects.updated', project, changes: {}, source: 'obsidian' });
-  }
-
-  async delete(projectId: string): Promise<void> {
-    // Project deletion implementation
-    eventBus.trigger({ type: 'projects.deleted', projectId, source: 'obsidian' });
-  }
-
-  observe(callback: (projects: readonly Project[]) => void): () => void {
-    // Project file watching implementation
-    return () => {};
-  }
+  // Implementation follows same pattern as ObsidianTaskOperations
+  // but works with Project entities and project-specific front-matter
 }
 
-class ObsidianAreaOperations implements EntityOperations<Area> {
-  constructor(
-    private app: App,
-    private plugin: Plugin,
-    private folder: string
-  ) {}
+export class ObsidianAreaOperations implements EntityOperations<Area> {
+  constructor(private app: App, private folder: string) {}
 
-  async loadAll(): Promise<readonly Area[]> {
-    // Implementation similar to tasks but for areas
-    const areas: Area[] = [];
-    // ... area loading logic
-    eventBus.trigger({ type: 'areas.loaded', areas, source: 'obsidian' });
-    return areas;
-  }
-
-  async sync(area: Area): Promise<void> {
-    // Area sync implementation
-    eventBus.trigger({ type: 'areas.updated', area, changes: {}, source: 'obsidian' });
-  }
-
-  async delete(areaId: string): Promise<void> {
-    // Area deletion implementation
-    eventBus.trigger({ type: 'areas.deleted', areaId, source: 'obsidian' });
-  }
-
-  observe(callback: (areas: readonly Area[]) => void): () => void {
-    // Area file watching implementation
-    return () => {};
-  }
+  // Implementation follows same pattern as ObsidianTaskOperations
+  // but works with Area entities and area-specific front-matter
 }
 ```
 
 ## Phase 4: Reactive State Management
 
-### 4.1 Enhanced Task Store with Event Integration
+### 4.1 Extension-Aware Store System
 
-**File: `src/stores/taskStore.ts`**
+**File: `src/app/stores/taskStore.ts`**
 
 ```typescript
-import { writable, derived, type Writable } from 'svelte/store';
+import { writable, derived } from 'svelte/store';
 import { Task } from '../core/entities';
 import { eventBus } from '../core/events';
+import { extensionRegistry } from '../core/extension';
 
 interface TaskStoreState {
   tasks: readonly Task[];
@@ -576,23 +547,7 @@ interface TaskStoreState {
   lastSync: Date | null;
 }
 
-function createTaskStore(): Writable<TaskStoreState> & {
-  // Query methods
-  getById: (id: string) => Task | undefined;
-  getByProject: (project: string) => Task[];
-  getByArea: (area: string) => Task[];
-  getScheduledForToday: () => Task[];
-
-  // Command methods
-  add: (task: Task) => void;
-  update: (task: Task) => void;
-  remove: (id: string) => void;
-  setAll: (tasks: readonly Task[]) => void;
-
-  // State management
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-} {
+function createTaskStore() {
   const initialState: TaskStoreState = {
     tasks: [],
     loading: false,
@@ -602,7 +557,7 @@ function createTaskStore(): Writable<TaskStoreState> & {
 
   const { subscribe, update } = writable(initialState);
 
-  // Subscribe to domain events
+  // Subscribe to extension events
   eventBus.on('tasks.created', (event) => {
     update(state => ({
       ...state,
@@ -628,86 +583,57 @@ function createTaskStore(): Writable<TaskStoreState> & {
   });
 
   eventBus.on('tasks.loaded', (event) => {
-    update(state => ({
-      ...state,
-      tasks: event.tasks,
-      loading: false,
-      error: null,
-      lastSync: new Date()
-    }));
+    update(state => {
+      // Merge tasks from different extensions
+      const existingTasks = state.tasks.filter(t =>
+        t.source?.extensionId !== event.extensionId
+      );
+      return {
+        ...state,
+        tasks: [...existingTasks, ...event.tasks],
+        loading: false,
+        error: null,
+        lastSync: new Date()
+      };
+    });
   });
 
   return {
     subscribe,
 
-    // Query methods
-    getById: (id: string) => {
-      let result: Task | undefined;
+    // Command methods that delegate to appropriate extensions
+    async createTask(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) {
+      const extension = extensionRegistry.get('obsidian'); // Default to Obsidian
+      if (extension?.tasks) {
+        return extension.tasks.create(taskData);
+      }
+      throw new Error('No extension available to create tasks');
+    },
+
+    async updateTask(task: Task) {
+      const extensionId = task.source?.extensionId || 'obsidian';
+      const extension = extensionRegistry.get(extensionId);
+      if (extension?.tasks) {
+        return extension.tasks.update(task);
+      }
+      throw new Error(`Extension ${extensionId} not available`);
+    },
+
+    async deleteTask(taskId: string) {
+      // Find which extension owns this task
+      let task: Task | undefined;
       subscribe(state => {
-        result = state.tasks.find(t => t.id === id);
+        task = state.tasks.find(t => t.id === taskId);
       })();
-      return result;
-    },
 
-    getByProject: (project: string) => {
-      let result: Task[] = [];
-      subscribe(state => {
-        result = state.tasks.filter(t =>
-          t.project === project || t.project === `[[${project}]]`
-        );
-      })();
-      return result;
-    },
-
-    getByArea: (area: string) => {
-      let result: Task[] = [];
-      subscribe(state => {
-        result = state.tasks.filter(t =>
-          t.areas?.includes(area) || t.areas?.includes(`[[${area}]]`)
-        );
-      })();
-      return result;
-    },
-
-    getScheduledForToday: () => {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      let result: Task[] = [];
-      subscribe(state => {
-        result = state.tasks.filter(t =>
-          t.doDate && t.doDate >= today && t.doDate < tomorrow
-        );
-      })();
-      return result;
-    },
-
-    // Command methods
-    add: (task: Task) => {
-      eventBus.trigger({ type: 'tasks.created', task, source: 'ui' });
-    },
-
-    update: (task: Task) => {
-      eventBus.trigger({ type: 'tasks.updated', task, changes: {}, source: 'ui' });
-    },
-
-    remove: (id: string) => {
-      eventBus.trigger({ type: 'tasks.deleted', taskId: id, source: 'ui' });
-    },
-
-    setAll: (tasks: readonly Task[]) => {
-      update(state => ({ ...state, tasks, lastSync: new Date() }));
-    },
-
-    // State management
-    setLoading: (loading: boolean) => {
-      update(state => ({ ...state, loading }));
-    },
-
-    setError: (error: string | null) => {
-      update(state => ({ ...state, error }));
+      if (task) {
+        const extensionId = task.source?.extensionId || 'obsidian';
+        const extension = extensionRegistry.get(extensionId);
+        if (extension?.tasks) {
+          return extension.tasks.delete(taskId);
+        }
+      }
+      throw new Error('Task not found or extension not available');
     }
   };
 }
@@ -715,13 +641,17 @@ function createTaskStore(): Writable<TaskStoreState> & {
 export const taskStore = createTaskStore();
 
 // Derived stores for common queries
-export const importedTasks = derived(taskStore, $store =>
-  $store.tasks.filter(task => task.source && task.source.name !== 'obsidian')
-);
-
-export const localTasks = derived(taskStore, $store =>
-  $store.tasks.filter(task => !task.source || task.source.name === 'obsidian')
-);
+export const tasksByExtension = derived(taskStore, $store => {
+  const grouped = new Map<string, Task[]>();
+  for (const task of $store.tasks) {
+    const extensionId = task.source?.extensionId || 'unknown';
+    if (!grouped.has(extensionId)) {
+      grouped.set(extensionId, []);
+    }
+    grouped.get(extensionId)!.push(task);
+  }
+  return grouped;
+});
 
 export const todayTasks = derived(taskStore, $store => {
   const today = new Date();
@@ -735,715 +665,231 @@ export const todayTasks = derived(taskStore, $store => {
 });
 ```
 
-## Phase 5: Command/Query Separation (CQS)
+## Phase 5: Application Layer
 
-### 5.1 Command Handlers
+### 5.1 Application Services
 
-**File: `src/commands/TaskCommands.ts`**
-
-```typescript
-import { Task, TaskSchema } from '../core/entities';
-import { eventBus } from '../core/events';
-import { taskStore } from '../stores/taskStore';
-
-export interface CreateTaskCommand {
-  title: string;
-  description?: string;
-  project?: string;
-  areas?: string[];
-  priority?: string;
-  doDate?: Date;
-  dueDate?: Date;
-}
-
-export interface UpdateTaskCommand {
-  id: string;
-  changes: Partial<Task>;
-}
-
-export class TaskCommands {
-  static async create(command: CreateTaskCommand): Promise<Task> {
-    const now = new Date();
-    const task = TaskSchema.parse({
-      id: crypto.randomUUID(),
-      ...command,
-      type: 'Task',
-      status: 'Backlog',
-      done: false,
-      tags: [],
-      areas: command.areas || [],
-      createdAt: now,
-      updatedAt: now,
-      filePath: `Tasks/${command.title}.md`
-    });
-
-    taskStore.add(task);
-    return task;
-  }
-
-  static async update(command: UpdateTaskCommand): Promise<Task | null> {
-    const existing = taskStore.getById(command.id);
-    if (!existing) {
-      throw new Error(`Task ${command.id} not found`);
-    }
-
-    const updated = TaskSchema.parse({
-      ...existing,
-      ...command.changes,
-      updatedAt: new Date()
-    });
-
-    taskStore.update(updated);
-    return updated;
-  }
-
-  static async delete(id: string): Promise<void> {
-    const existing = taskStore.getById(id);
-    if (!existing) {
-      throw new Error(`Task ${id} not found`);
-    }
-
-    taskStore.remove(id);
-  }
-
-  static async markDone(id: string): Promise<Task | null> {
-    return this.update({
-      id,
-      changes: { done: true, status: 'Done', updatedAt: new Date() }
-    });
-  }
-
-  static async schedule(id: string, doDate: Date): Promise<Task | null> {
-    return this.update({
-      id,
-      changes: { doDate, updatedAt: new Date() }
-    });
-  }
-}
-```
-
-### 5.2 Query Handlers
-
-**File: `src/queries/TaskQueries.ts`**
+**File: `src/app/services/TaskService.ts`**
 
 ```typescript
-import { derived, type Readable } from 'svelte/store';
-import { taskStore } from '../stores/taskStore';
 import { Task } from '../core/entities';
+import { extensionRegistry } from '../core/extension';
+import { taskStore } from '../stores/taskStore';
 
-export class TaskQueries {
-  // Real-time reactive queries
-  static getAll(): Readable<readonly Task[]> {
-    return derived(taskStore, $store => $store.tasks);
+export class TaskService {
+  async createTask(taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
+    return taskStore.createTask(taskData);
   }
 
-  static getByProject(project: string): Readable<Task[]> {
-    return derived(taskStore, $store =>
-      $store.tasks.filter(t =>
-        t.project === project || t.project === `[[${project}]]`
-      )
-    );
+  async updateTask(task: Task): Promise<Task> {
+    return taskStore.updateTask(task);
   }
 
-  static getByArea(area: string): Readable<Task[]> {
-    return derived(taskStore, $store =>
-      $store.tasks.filter(t =>
-        t.areas?.includes(area) || t.areas?.includes(`[[${area}]]`)
-      )
-    );
+  async deleteTask(taskId: string): Promise<void> {
+    return taskStore.deleteTask(taskId);
   }
 
-  static getScheduledForDate(date: Date): Readable<Task[]> {
-    return derived(taskStore, $store => {
-      const targetDate = new Date(date);
-      targetDate.setHours(0, 0, 0, 0);
-      const nextDay = new Date(targetDate);
-      nextDay.setDate(nextDay.getDate() + 1);
-
-      return $store.tasks.filter(t =>
-        t.doDate && t.doDate >= targetDate && t.doDate < nextDay
-      );
-    });
-  }
-
-  static getOverdue(): Readable<Task[]> {
-    return derived(taskStore, $store => {
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-
-      return $store.tasks.filter(t =>
-        t.dueDate && t.dueDate < now && !t.done
-      );
-    });
-  }
-
-  static getByStatus(status: string): Readable<Task[]> {
-    return derived(taskStore, $store =>
-      $store.tasks.filter(t => t.status === status)
-    );
-  }
-
-  // Snapshot queries (for one-time data access)
-  static async findById(id: string): Promise<Task | null> {
-    return taskStore.getById(id) || null;
-  }
-
-  static async search(query: string): Promise<Task[]> {
-    const searchTerm = query.toLowerCase();
-    let results: Task[] = [];
-
-    taskStore.subscribe($store => {
-      results = $store.tasks.filter(t =>
-        t.title.toLowerCase().includes(searchTerm) ||
-        t.description?.toLowerCase().includes(searchTerm) ||
-        t.project?.toLowerCase().includes(searchTerm) ||
-        t.areas?.some(area => area.toLowerCase().includes(searchTerm))
-      );
+  async markTaskDone(taskId: string): Promise<void> {
+    // Find the task and update it
+    let task: Task | undefined;
+    taskStore.subscribe(state => {
+      task = state.tasks.find(t => t.id === taskId);
     })();
 
-    return results;
-  }
-}
-```
-
-## Phase 6: Source Registry and Multi-Source Coordination
-
-### 6.1 Source Registry
-
-**File: `src/core/SourceRegistry.ts`**
-
-```typescript
-import { Source } from './source';
-import { eventBus } from './events';
-
-export class SourceRegistry {
-  private sources = new Map<string, Source>();
-  private activeSources = new Set<string>();
-
-  register(source: Source): void {
-    this.sources.set(source.type, source);
-
-    // Subscribe to source events for each supported entity type
-    if (source.tasks) {
-      source.tasks.observe((tasks) => {
-        eventBus.trigger({
-          type: 'tasks.loaded',
-          tasks,
-          source: source.type
-        });
-      });
-    }
-
-    if (source.projects) {
-      source.projects.observe((projects) => {
-        eventBus.trigger({
-          type: 'projects.loaded',
-          projects,
-          source: source.type
-        });
-      });
-    }
-
-    if (source.areas) {
-      source.areas.observe((areas) => {
-        eventBus.trigger({
-          type: 'areas.loaded',
-          areas,
-          source: source.type
-        });
+    if (task) {
+      await this.updateTask({
+        ...task,
+        done: true,
+        status: 'Done'
       });
     }
   }
 
-  unregister(sourceType: string): void {
-    const source = this.sources.get(sourceType);
-    if (source && source.isConnected) {
-      source.disconnect();
-    }
-    this.sources.delete(sourceType);
-    this.activeSources.delete(sourceType);
-  }
+  async scheduleTask(taskId: string, doDate: Date): Promise<void> {
+    let task: Task | undefined;
+    taskStore.subscribe(state => {
+      task = state.tasks.find(t => t.id === taskId);
+    })();
 
-  async activateSource(sourceType: string): Promise<void> {
-    const source = this.sources.get(sourceType);
-    if (!source) {
-      throw new Error(`Source ${sourceType} not registered`);
-    }
-
-    if (!source.isConnected) {
-      await source.connect();
-    }
-
-    this.activeSources.add(sourceType);
-
-    // Load initial data for all supported entity types
-    for (const entityType of source.supportedEntities) {
-      try {
-        eventBus.trigger({ type: 'sync.started', sourceType, entityType });
-
-        let entityCount = 0;
-        if (entityType === 'task' && source.tasks) {
-          const tasks = await source.tasks.loadAll();
-          entityCount = tasks.length;
-        } else if (entityType === 'project' && source.projects) {
-          const projects = await source.projects.loadAll();
-          entityCount = projects.length;
-        } else if (entityType === 'area' && source.areas) {
-          const areas = await source.areas.loadAll();
-          entityCount = areas.length;
-        }
-
-        eventBus.trigger({
-          type: 'sync.completed',
-          sourceType,
-          entityType,
-          entityCount
-        });
-      } catch (error) {
-        eventBus.trigger({
-          type: 'sync.failed',
-          sourceType,
-          entityType,
-          error: error.message
-        });
-      }
+    if (task) {
+      await this.updateTask({
+        ...task,
+        doDate
+      });
     }
   }
 
-  async deactivateSource(sourceType: string): Promise<void> {
-    const source = this.sources.get(sourceType);
-    if (source && source.isConnected) {
-      await source.disconnect();
-    }
-    this.activeSources.delete(sourceType);
+  // Query methods
+  getTasksByProject(project: string): Task[] {
+    let result: Task[] = [];
+    taskStore.subscribe(state => {
+      result = state.tasks.filter(t => t.project === project);
+    })();
+    return result;
   }
 
-  getSource(sourceType: string): Source | undefined {
-    return this.sources.get(sourceType);
+  getTasksByArea(area: string): Task[] {
+    let result: Task[] = [];
+    taskStore.subscribe(state => {
+      result = state.tasks.filter(t => t.areas.includes(area));
+    })();
+    return result;
   }
 
-  getActiveSources(): Source[] {
-    return Array.from(this.activeSources)
-      .map(type => this.sources.get(type))
-      .filter(Boolean) as Source[];
-  }
+  getTasksForToday(): Task[] {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-  getAllSources(): Source[] {
-    return Array.from(this.sources.values());
-  }
-
-  async syncEntity(entityType: EntityType, entity: Entity): Promise<void> {
-    const sourceType = entity.source?.name || 'obsidian';
-    const source = this.sources.get(sourceType);
-
-    if (!source) {
-      throw new Error(`Source ${sourceType} not available for sync`);
-    }
-
-    if (!source.supports(entityType)) {
-      throw new Error(`Source ${sourceType} does not support ${entityType} entities`);
-    }
-
-    // Route to appropriate entity operations
-    if (entityType === 'task' && source.tasks) {
-      await source.tasks.sync(entity as Task);
-    } else if (entityType === 'project' && source.projects) {
-      await source.projects.sync(entity as Project);
-    } else if (entityType === 'area' && source.areas) {
-      await source.areas.sync(entity as Area);
-    } else {
-      throw new Error(`Source ${sourceType} does not have ${entityType} operations available`);
-    }
-  }
-
-  async deleteEntity(entityType: EntityType, entityId: string): Promise<void> {
-    // Find the source that owns this entity (simplified - could be more sophisticated)
-    const sources = this.getActiveSources();
-
-    for (const source of sources) {
-      if (!source.supports(entityType)) continue;
-
-      try {
-        if (entityType === 'task' && source.tasks) {
-          await source.tasks.delete(entityId);
-          return;
-        } else if (entityType === 'project' && source.projects) {
-          await source.projects.delete(entityId);
-          return;
-        } else if (entityType === 'area' && source.areas) {
-          await source.areas.delete(entityId);
-          return;
-        }
-      } catch (error) {
-        // Continue to next source if this one fails
-        console.warn(`Failed to delete ${entityType} ${entityId} from ${source.type}:`, error);
-      }
-    }
-
-    throw new Error(`No source available to delete ${entityType} ${entityId}`);
+    let result: Task[] = [];
+    taskStore.subscribe(state => {
+      result = state.tasks.filter(t =>
+        t.doDate && t.doDate >= today && t.doDate < tomorrow
+      );
+    })();
+    return result;
   }
 }
 
-export const sourceRegistry = new SourceRegistry();
+export const taskService = new TaskService();
 ```
 
-### 6.2 Multi-Source Coordination Service
+## Phase 6: Application Initialization
 
-**File: `src/services/SyncCoordinator.ts`**
+### 6.1 App Bootstrap
+
+**File: `src/app/App.ts`**
 
 ```typescript
-import { sourceRegistry } from '../core/SourceRegistry';
-import { eventBus } from '../core/events';
-import { taskStore } from '../stores/taskStore';
+import { extensionRegistry } from './core/extension';
+import { ObsidianExtension } from './extensions/ObsidianExtension';
+import { eventBus } from './core/events';
 
-export class SyncCoordinator {
-  private syncInProgress = new Set<string>();
+export class TaskSyncApp {
+  private initialized = false;
 
-  constructor() {
-    this.setupEventHandlers();
-  }
+  async initialize(obsidianApp: any, plugin: any, settings: any): Promise<void> {
+    if (this.initialized) return;
 
-  private setupEventHandlers(): void {
-    // Handle task commands and route to appropriate sources
-    eventBus.on('tasks.created', async (event) => {
-      if (event.source === 'ui') {
-        await this.syncEntityToSource('task', event.task);
-      }
-    });
-
-    eventBus.on('tasks.updated', async (event) => {
-      if (event.source === 'ui') {
-        await this.syncEntityToSource('task', event.task);
-      }
-    });
-
-    eventBus.on('tasks.deleted', async (event) => {
-      if (event.source === 'ui') {
-        await this.deleteEntityFromSource('task', event.taskId);
-      }
-    });
-
-    // Handle project commands
-    eventBus.on('projects.created', async (event) => {
-      if (event.source === 'ui') {
-        await this.syncEntityToSource('project', event.project);
-      }
-    });
-
-    eventBus.on('projects.updated', async (event) => {
-      if (event.source === 'ui') {
-        await this.syncEntityToSource('project', event.project);
-      }
-    });
-
-    eventBus.on('projects.deleted', async (event) => {
-      if (event.source === 'ui') {
-        await this.deleteEntityFromSource('project', event.projectId);
-      }
-    });
-
-    // Handle area commands
-    eventBus.on('areas.created', async (event) => {
-      if (event.source === 'ui') {
-        await this.syncEntityToSource('area', event.area);
-      }
-    });
-
-    eventBus.on('areas.updated', async (event) => {
-      if (event.source === 'ui') {
-        await this.syncEntityToSource('area', event.area);
-      }
-    });
-
-    eventBus.on('areas.deleted', async (event) => {
-      if (event.source === 'ui') {
-        await this.deleteEntityFromSource('area', event.areaId);
-      }
-    });
-  }
-
-  async syncAll(): Promise<void> {
-    const sources = sourceRegistry.getActiveSources();
-
-    for (const source of sources) {
-      // Sync each supported entity type
-      for (const entityType of source.supportedEntities) {
-        const syncKey = `${source.type}-${entityType}`;
-
-        if (this.syncInProgress.has(syncKey)) {
-          continue; // Skip if already syncing
-        }
-
-        try {
-          this.syncInProgress.add(syncKey);
-          eventBus.trigger({
-            type: 'sync.started',
-            sourceType: source.type,
-            entityType
-          });
-
-          let entities: readonly Entity[] = [];
-          let entityCount = 0;
-
-          // Load entities based on type
-          if (entityType === 'task' && source.tasks) {
-            entities = await source.tasks.loadAll();
-            entityCount = entities.length;
-          } else if (entityType === 'project' && source.projects) {
-            entities = await source.projects.loadAll();
-            entityCount = entities.length;
-          } else if (entityType === 'area' && source.areas) {
-            entities = await source.areas.loadAll();
-            entityCount = entities.length;
-          }
-
-          eventBus.trigger({
-            type: 'sync.completed',
-            sourceType: source.type,
-            entityType,
-            entityCount
-          });
-        } catch (error) {
-          eventBus.trigger({
-            type: 'sync.failed',
-            sourceType: source.type,
-            entityType,
-            error: error.message
-          });
-        } finally {
-          this.syncInProgress.delete(syncKey);
-        }
-      }
-    }
-  }
-
-  private async syncEntityToSource(entityType: EntityType, entity: Entity): Promise<void> {
     try {
-      await sourceRegistry.syncEntity(entityType, entity);
+      // Initialize Obsidian extension
+      const obsidianExtension = new ObsidianExtension(obsidianApp, plugin, {
+        tasksFolder: settings.tasksFolder,
+        projectsFolder: settings.projectsFolder,
+        areasFolder: settings.areasFolder
+      });
+
+      await obsidianExtension.initialize();
+
+      // Register additional extensions here as needed
+      // await this.registerGitHubExtension(settings.github);
+      // await this.registerAppleRemindersExtension(settings.appleReminders);
+
+      this.initialized = true;
+      console.log('TaskSync app initialized successfully');
     } catch (error) {
-      console.error(`Failed to sync ${entityType} ${entity.id}:`, error);
+      console.error('Failed to initialize TaskSync app:', error);
+      throw error;
     }
   }
 
-  private async deleteEntityFromSource(entityType: EntityType, entityId: string): Promise<void> {
-    try {
-      await sourceRegistry.deleteEntity(entityType, entityId);
-    } catch (error) {
-      console.error(`Failed to delete ${entityType} ${entityId}:`, error);
-    }
+  async shutdown(): Promise<void> {
+    if (!this.initialized) return;
+
+    // Shutdown all extensions
+    const extensions = extensionRegistry.getAll();
+    await Promise.all(extensions.map(ext => ext.shutdown()));
+
+    this.initialized = false;
   }
 
-  async healthCheck(): Promise<Record<string, boolean>> {
-    const sources = sourceRegistry.getAllSources();
-    const results: Record<string, boolean> = {};
+  isInitialized(): boolean {
+    return this.initialized;
+  }
 
-    for (const source of sources) {
-      try {
-        results[source.type] = await source.healthCheck();
-      } catch (error) {
-        results[source.type] = false;
-      }
-    }
+  getExtensions() {
+    return extensionRegistry.getAll();
+  }
 
-    return results;
+  // Future extension registration methods
+  private async registerGitHubExtension(settings: any): Promise<void> {
+    if (!settings?.enabled) return;
+
+    // const { GitHubExtension } = await import('./extensions/GitHubExtension');
+    // const githubExtension = new GitHubExtension(settings);
+    // await githubExtension.initialize();
+  }
+
+  private async registerAppleRemindersExtension(settings: any): Promise<void> {
+    if (!settings?.enabled) return;
+
+    // const { AppleRemindersExtension } = await import('./extensions/AppleRemindersExtension');
+    // const appleExtension = new AppleRemindersExtension(settings);
+    // await appleExtension.initialize();
   }
 }
 
-export const syncCoordinator = new SyncCoordinator();
+export const taskSyncApp = new TaskSyncApp();
 ```
 
-### 6.3 Example: GitHub Source (Task-Only)
+## Phase 7: Svelte Application
 
-**File: `src/sources/GitHubSource.ts`**
-
-```typescript
-import { BaseSource, EntityOperations } from '../core/source';
-import { Task, TaskSchema } from '../core/entities';
-import { EntityType } from '../core/events';
-
-export class GitHubSource extends BaseSource {
-  readonly name = 'GitHub';
-  readonly type = 'github';
-  readonly supportedEntities: readonly EntityType[] = ['task']; // Only supports tasks
-
-  // Only task operations available
-  readonly tasks: EntityOperations<Task>;
-
-  // Projects and areas are undefined - not supported
-  readonly projects = undefined;
-  readonly areas = undefined;
-
-  constructor(private settings: { token: string; repositories: string[] }) {
-    super();
-    this.tasks = new GitHubTaskOperations(settings);
-  }
-}
-
-class GitHubTaskOperations implements EntityOperations<Task> {
-  constructor(private settings: { token: string; repositories: string[] }) {}
-
-  async loadAll(): Promise<readonly Task[]> {
-    // Load GitHub issues as tasks
-    const tasks: Task[] = [];
-
-    for (const repo of this.settings.repositories) {
-      try {
-        const issues = await this.fetchIssues(repo);
-        const repoTasks = issues.map(issue => this.issueToTask(issue, repo));
-        tasks.push(...repoTasks);
-      } catch (error) {
-        console.warn(`Failed to load issues from ${repo}:`, error);
-      }
-    }
-
-    eventBus.trigger({ type: 'tasks.loaded', tasks, source: 'github' });
-    return tasks;
-  }
-
-  async sync(task: Task): Promise<void> {
-    // GitHub is read-only in this example
-    throw new Error('GitHub source is read-only');
-  }
-
-  async delete(taskId: string): Promise<void> {
-    // GitHub is read-only in this example
-    throw new Error('GitHub source is read-only');
-  }
-
-  observe(callback: (tasks: readonly Task[]) => void): () => void {
-    // Could implement webhooks or polling here
-    return () => {}; // No-op for now
-  }
-
-  private async fetchIssues(repo: string): Promise<any[]> {
-    // GitHub API implementation
-    return [];
-  }
-
-  private issueToTask(issue: any, repo: string): Task {
-    return TaskSchema.parse({
-      id: `github-${repo}-${issue.number}`,
-      title: issue.title,
-      description: issue.body,
-      status: issue.state === 'open' ? 'Backlog' : 'Done',
-      type: 'Task',
-      done: issue.state === 'closed',
-      areas: [],
-      tags: issue.labels?.map((l: any) => l.name) || [],
-      createdAt: new Date(issue.created_at),
-      updatedAt: new Date(issue.updated_at),
-      filePath: `GitHub/${repo}/${issue.number}.md`,
-      source: {
-        name: 'github',
-        key: `${repo}#${issue.number}`,
-        url: issue.html_url,
-        data: issue
-      }
-    });
-  }
-}
-```
-
-## Phase 7: Enhanced Svelte Components
-
-### 7.1 Application Root Component
+### 7.1 Main App Component
 
 **File: `src/app/App.svelte`**
 
-```typescript
+```svelte
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { taskStore } from '../stores/taskStore';
-  import { sourceRegistry } from '../core/SourceRegistry';
-  import { syncCoordinator } from '../services/SyncCoordinator';
-  import { eventBus } from '../core/events';
+  import { onMount, onDestroy } from 'svelte';
+  import { taskStore, tasksByExtension } from './stores/taskStore';
+  import { taskSyncApp } from './App';
 
   // Import existing components
   import TasksView from '../components/svelte/TasksView.svelte';
-  import ContextTabView from '../components/svelte/ContextTabView.svelte';
-  import { setPluginContext } from '../components/svelte/context';
 
   interface Props {
-    plugin: any; // Obsidian plugin instance
-    initialView?: 'tasks' | 'context';
+    obsidianApp: any;
+    plugin: any;
+    settings: any;
   }
 
-  let { plugin, initialView = 'tasks' }: Props = $props();
+  let { obsidianApp, plugin, settings }: Props = $props();
 
-  let currentView = $state(initialView);
   let isInitialized = $state(false);
   let initError = $state<string | null>(null);
 
   onMount(async () => {
     try {
-      // Set plugin context for child components
-      setPluginContext({ plugin });
-
-      // Initialize sources
-      await initializeSources();
-
-      // Perform initial sync
-      await syncCoordinator.syncAll();
-
+      await taskSyncApp.initialize(obsidianApp, plugin, settings);
       isInitialized = true;
     } catch (error) {
-      console.error('Failed to initialize app:', error);
+      console.error('Failed to initialize TaskSync app:', error);
       initError = error.message;
     }
   });
 
-  async function initializeSources(): Promise<void> {
-    // Register Obsidian source
-    const { ObsidianSource } = await import('../sources/ObsidianSource');
-    const obsidianSource = new ObsidianSource(
-      plugin.app,
-      plugin,
-      { tasksFolder: plugin.settings.tasksFolder }
-    );
-    sourceRegistry.register(obsidianSource);
-    await sourceRegistry.activateSource('obsidian');
-
-    // Register other sources based on settings
-    if (plugin.settings.integrations?.github?.enabled) {
-      const { GitHubSource } = await import('../sources/GitHubSource');
-      const githubSource = new GitHubSource(plugin.settings.integrations.github);
-      sourceRegistry.register(githubSource);
-      await sourceRegistry.activateSource('github');
-    }
-
-    // Add more sources as needed...
-  }
-
-  function switchView(view: 'tasks' | 'context'): void {
-    currentView = view;
-  }
+  onDestroy(async () => {
+    await taskSyncApp.shutdown();
+  });
 </script>
 
-<div class="task-sync-app" data-initialized={isInitialized}>
+<div class="task-sync-app">
   {#if !isInitialized}
     <div class="app-loading">
       {#if initError}
         <div class="error-state">
           <h3>Initialization Failed</h3>
           <p>{initError}</p>
-          <button onclick={() => window.location.reload()}>Retry</button>
         </div>
       {:else}
         <div class="loading-state">
-          <div class="task-sync-spinner"></div>
-          <p>Initializing Task Sync...</p>
+          <p>Initializing TaskSync...</p>
         </div>
       {/if}
     </div>
   {:else}
-    <!-- Main Application -->
-    <div class="app-content">
-      {#if currentView === 'tasks'}
-        <TasksView />
-      {:else if currentView === 'context'}
-        <ContextTabView context={plugin.getCurrentContext()} />
-      {/if}
-    </div>
+    <TasksView />
   {/if}
 </div>
 
@@ -1465,59 +911,38 @@ class GitHubTaskOperations implements EntityOperations<Task> {
   .loading-state, .error-state {
     text-align: center;
   }
-
-  .app-content {
-    flex: 1;
-    overflow: hidden;
-  }
 </style>
 ```
 
-## Phase 8: Plugin Integration Layer
+## Phase 8: Obsidian Plugin Integration
 
-### 8.1 Lightweight Obsidian Plugin Wrapper
+### 8.1 Lightweight Plugin Wrapper
 
 **File: `src/main.ts` (Updated)**
 
 ```typescript
-import { Plugin } from 'obsidian';
+import { Plugin, ItemView, WorkspaceLeaf } from 'obsidian';
 import { mount, unmount } from 'svelte';
 import App from './app/App.svelte';
 import { TaskSyncSettings, DEFAULT_SETTINGS } from './settings';
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
-  private appComponent: any = null;
 
   async onload() {
-    // Load settings
     await this.loadSettings();
 
-    // Register views
     this.registerView('task-sync-main', (leaf) => {
       return new TaskSyncView(leaf, this);
     });
 
-    // Add ribbon icon
     this.addRibbonIcon('checkbox', 'Task Sync', () => {
       this.activateView();
     });
 
-    // Register commands
-    this.addCommand({
-      id: 'open-task-sync',
-      name: 'Open Task Sync',
-      callback: () => this.activateView()
-    });
-
-    // Initialize on layout ready
     this.app.workspace.onLayoutReady(() => {
       this.activateView();
     });
-  }
-
-  onunload() {
-    // Cleanup is handled by the view
   }
 
   async loadSettings() {
@@ -1530,7 +955,6 @@ export default class TaskSyncPlugin extends Plugin {
 
   async activateView() {
     const { workspace } = this.app;
-
     let leaf = workspace.getLeavesOfType('task-sync-main')[0];
 
     if (!leaf) {
@@ -1566,14 +990,13 @@ class TaskSyncView extends ItemView {
   async onOpen() {
     const container = this.containerEl.children[1];
     container.empty();
-    container.addClass('task-sync-view-container');
 
-    // Mount Svelte app
     this.appComponent = mount(App, {
       target: container,
       props: {
+        obsidianApp: this.app,
         plugin: this.plugin,
-        initialView: 'tasks'
+        settings: this.plugin.settings
       }
     });
   }
@@ -1587,57 +1010,35 @@ class TaskSyncView extends ItemView {
 }
 ```
 
-### 8.2 Settings Integration
+## Summary
 
-**File: `src/settings/index.ts`**
+This clean architecture provides:
 
-```typescript
-export interface TaskSyncSettings {
-  // Folder settings
-  tasksFolder: string;
-  projectsFolder: string;
-  areasFolder: string;
-  templateFolder: string;
+### ✅ **Core Benefits**
 
-  // Integration settings
-  integrations: {
-    github: {
-      enabled: boolean;
-      token?: string;
-      repositories: string[];
-    };
-    appleReminders: {
-      enabled: boolean;
-      lists: string[];
-    };
-  };
+1. **Source Agnostic Core**: Pure domain entities with no Obsidian coupling
+2. **Extension System**: Pluggable extensions for different sources (Obsidian, GitHub, etc.)
+3. **Clean Boundaries**: No leakage of extension concerns into core domain
+4. **Event-Driven**: Reactive updates across the application
+5. **Breaking Changes OK**: No migration complexity since this is unreleased
 
-  // UI settings
-  defaultView: 'tasks' | 'context';
-  enableRealTimeSync: boolean;
-  syncInterval: number; // minutes
-}
+### ✅ **Key Design Decisions**
 
-export const DEFAULT_SETTINGS: TaskSyncSettings = {
-  tasksFolder: 'Tasks',
-  projectsFolder: 'Projects',
-  areasFolder: 'Areas',
-  templateFolder: 'Templates',
-  integrations: {
-    github: {
-      enabled: false,
-      repositories: []
-    },
-    appleReminders: {
-      enabled: false,
-      lists: []
-    }
-  },
-  defaultView: 'tasks',
-  enableRealTimeSync: true,
-  syncInterval: 5
-};
-```
+- **No `filePath` in Task entity**: File paths are Obsidian-specific, handled by ObsidianExtension
+- **No front-matter coupling**: Core entities are pure data structures
+- **Extension-based architecture**: Each source (Obsidian, GitHub) is a separate extension
+- **Proper Obsidian API usage**: Leverages `processFrontMatter`, `getFrontMatterInfo`, `parseYaml`, `stringifyYaml`
+
+### ✅ **Implementation Flow**
+
+1. **Core Domain**: Pure entities with Zod validation
+2. **Extension System**: Register extensions with the core app
+3. **Event Bus**: Coordinate between extensions and UI
+4. **Reactive Stores**: Svelte stores that listen to extension events
+5. **Svelte App**: Clean UI that knows nothing about sources
+6. **Plugin Wrapper**: Minimal Obsidian plugin that bootstraps the Svelte app
+
+This architecture makes it trivial to add new sources (GitHub, Linear, Apple Reminders) without touching the core application or existing extensions.
 
 ## Phase 9: Migration Strategy
 
@@ -1676,7 +1077,7 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
 
 ### 9.2 Migration Utilities
 
-**File: `src/migration/DataMigrator.ts`**
+**File: `src/app/migration/DataMigrator.ts`**
 
 ```typescript
 import { Task, TaskSchema } from '../core/entities';
@@ -1701,7 +1102,6 @@ export class DataMigrator {
       createdAt: legacyTask.createdAt || new Date(),
       updatedAt: legacyTask.updatedAt || new Date(),
       source: legacyTask.source,
-      filePath: legacyTask.filePath,
       description: '' // Extract from file content if needed
     });
   }
@@ -1731,7 +1131,7 @@ export class DataMigrator {
 
 ```typescript
 import { describe, it, expect } from 'vitest';
-import { TaskSchema, TaskFrontMatterSchema } from '../../src/core/entities';
+import { TaskSchema, TaskFrontMatterSchema } from '../../src/app/core/entities';
 
 describe('Task Entity', () => {
   it('should validate a complete task', () => {
@@ -1798,8 +1198,8 @@ describe('Task Entity', () => {
 
 ```typescript
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ObsidianSource } from '../../src/sources/ObsidianSource';
-import { Task } from '../../src/core/entities';
+import { ObsidianSource } from '../../src/app/sources/ObsidianSource';
+import { Task } from '../../src/app/core/entities';
 
 // Mock Obsidian API
 const mockApp = {
@@ -1971,25 +1371,25 @@ This plan provides a comprehensive roadmap for transforming the Obsidian Task Sy
 ### Priority 1: Foundation (Start Immediately)
 
 #### Task 1.1: Core Domain Setup
-- [ ] Create `src/core/entities.ts` with Zod-validated Task, Project, Area schemas
-- [ ] Create `src/core/note.ts` with Note abstraction and utilities
-- [ ] Create `src/core/events.ts` with EventBus and dot-notation event types
+- [ ] Create `src/app/core/entities.ts` with Zod-validated Task, Project, Area schemas
+- [ ] Create `src/app/core/note.ts` with Note abstraction and utilities
+- [ ] Create `src/app/core/events.ts` with EventBus and dot-notation event types
 - [ ] Write unit tests for all core domain types
 
 #### Task 1.2: Generic Source Interface Foundation
-- [ ] Create `src/core/source.ts` with generic Source interface supporting multiple entity types
+- [ ] Create `src/app/core/source.ts` with generic Source interface supporting multiple entity types
 - [ ] Implement entity-specific operations interfaces (EntityOperations<T>)
 - [ ] Create BaseSource with `this.trigger()` method and entity type support checking
 - [ ] Write unit tests for source interface and base implementation
 
 #### Task 1.3: Obsidian Source Implementation
-- [ ] Implement `src/sources/ObsidianSource.ts` with support for tasks, projects, and areas
+- [ ] Implement `src/app/sources/ObsidianSource.ts` with support for tasks, projects, and areas
 - [ ] Create separate operation classes for each entity type (ObsidianTaskOperations, etc.)
 - [ ] Migrate existing TaskFileManager, ProjectFileManager, AreaFileManager logic
 - [ ] Write integration tests for all entity types in ObsidianSource
 
 #### Task 1.4: Enhanced Store Architecture
-- [ ] Create `src/stores/taskStore.ts` with event-driven reactive store using dot-notation events
+- [ ] Create `src/app/stores/taskStore.ts` with event-driven reactive store using dot-notation events
 - [ ] Create similar stores for projects and areas (`projectStore.ts`, `areaStore.ts`)
 - [ ] Implement derived stores for common queries (today, imported, etc.)
 - [ ] Add comprehensive error handling and loading states
@@ -1998,28 +1398,28 @@ This plan provides a comprehensive roadmap for transforming the Obsidian Task Sy
 ### Priority 2: Command/Query Architecture (Week 2-3)
 
 #### Task 2.1: Command System
-- [ ] Create `src/commands/TaskCommands.ts` with CRUD operations
+- [ ] Create `src/app/commands/TaskCommands.ts` with CRUD operations
 - [ ] Implement validation and error handling for all commands
 - [ ] Add support for batch operations
 - [ ] Write unit tests for command handlers
 
 #### Task 2.2: Query System
-- [ ] Create `src/queries/TaskQueries.ts` with reactive and snapshot queries
+- [ ] Create `src/app/queries/TaskQueries.ts` with reactive and snapshot queries
 - [ ] Implement advanced filtering and search capabilities
 - [ ] Add performance optimization for large datasets
 - [ ] Write tests for query accuracy and performance
 
 #### Task 2.3: Multi-Entity Source Registry
-- [ ] Create `src/core/SourceRegistry.ts` for multi-source, multi-entity management
+- [ ] Create `src/app/core/SourceRegistry.ts` for multi-source, multi-entity management
 - [ ] Implement entity-type-aware sync operations (syncEntity, deleteEntity)
-- [ ] Implement `src/services/SyncCoordinator.ts` with support for all entity types
+- [ ] Implement `src/app/services/SyncCoordinator.ts` with support for all entity types
 - [ ] Add health checking and error recovery for each entity type
 - [ ] Write integration tests for multi-source, multi-entity scenarios
 
 ### Priority 3: Application Layer (Week 3-4)
 
 #### Task 3.1: Svelte App Root
-- [ ] Create `src/app/App.svelte` as main application component
+- [ ] Create `src/app/app/App.svelte` as main application component
 - [ ] Implement initialization and error handling
 - [ ] Add loading states and user feedback
 - [ ] Write E2E tests for app initialization
@@ -2031,7 +1431,7 @@ This plan provides a comprehensive roadmap for transforming the Obsidian Task Sy
 - [ ] Write component tests for new architecture
 
 #### Task 3.3: Plugin Integration
-- [ ] Update `src/main.ts` to use lightweight plugin wrapper
+- [ ] Update `src/app/main.ts` to use lightweight plugin wrapper
 - [ ] Implement proper cleanup and lifecycle management
 - [ ] Add settings integration for new architecture
 - [ ] Write E2E tests for plugin integration
@@ -2061,7 +1461,7 @@ This plan provides a comprehensive roadmap for transforming the Obsidian Task Sy
 ### Priority 5: Migration and Cleanup (Week 5-6)
 
 #### Task 5.1: Data Migration
-- [ ] Create `src/migration/DataMigrator.ts` for safe data migration
+- [ ] Create `src/app/migration/DataMigrator.ts` for safe data migration
 - [ ] Implement backup and rollback mechanisms
 - [ ] Add validation for migrated data integrity
 - [ ] Write migration tests with real user data
