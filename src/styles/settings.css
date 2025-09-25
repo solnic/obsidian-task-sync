@@ -51,8 +51,8 @@
 }
 
 /* Compact settings layout for task configuration - target by preview elements */
-/* NOTE: The :has() pseudo-class is only supported in Chrome 105+, Safari 15.4+, and Edge 105+. */
-/* For broader browser support, use the .has-task-sync-settings-badge-preview class as a fallback. */
+/* NOTE: As of 2025, the :has() pseudo-class is widely supported in all major browsers. */
+/* The .has-task-sync-settings-badge-preview class can be used for legacy fallback if needed. */
 .setting-item:has(.task-sync-settings-badge-preview) .setting-item-info,
 .setting-item.has-task-sync-settings-badge-preview .setting-item-info {
   display: none; /* Hide the left side name/description for task config items */

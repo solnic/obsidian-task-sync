@@ -4,7 +4,11 @@
  */
 
 import { test, expect } from "../../helpers/setup";
-import { executeCommand, waitForFileCreation } from "../../helpers/global";
+import {
+  executeCommand,
+  waitForFileCreation,
+  readVaultFile,
+} from "../../helpers/global";
 
 test.describe("Area Creation with New Architecture", () => {
   test("should create area through modal and verify area file is created", async ({
@@ -41,14 +45,7 @@ test.describe("Area Creation with New Architecture", () => {
     await waitForFileCreation(page, expectedFilePath);
 
     // Verify the file content contains the correct front-matter and description
-    const fileContent = await page.evaluate(async (filePath) => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(filePath);
-      if (file) {
-        return await app.vault.read(file);
-      }
-      return null;
-    }, expectedFilePath);
+    const fileContent = await readVaultFile(page, expectedFilePath);
 
     expect(fileContent).toBeTruthy();
     expect(fileContent).toContain("Name: Test Area E2E");

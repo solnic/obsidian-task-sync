@@ -128,8 +128,9 @@ export class ObsidianAreaOperations implements EntityOperations<Area> {
     const fileName = this.sanitizeFileName(area.name);
     const filePath = `${this.folder}/${fileName}.md`;
 
-    // Convert area to front-matter (exclude core system properties)
+    // Convert area to front-matter (include Id for reliable identification)
     const frontMatter = {
+      Id: area.id,
       Name: area.name,
       Type: "Area",
       tags: area.tags.length > 0 ? area.tags : undefined,
@@ -174,8 +175,24 @@ export class ObsidianAreaOperations implements EntityOperations<Area> {
 
       const body = content.substring(frontMatterInfo.contentStart).trim();
 
+      // Use ULID from frontmatter, generate and store if missing
+      let areaId = frontMatter.Id;
+      if (!areaId) {
+        areaId = generateId();
+        // Update frontmatter with new Id and write back to file
+        frontMatter.Id = areaId;
+        const newFrontMatter = stringifyYaml(frontMatter);
+        // Reconstruct the file content with updated frontmatter
+        const updatedContent =
+          "---\n" +
+          newFrontMatter.trim() +
+          "\n---\n" +
+          content.substring(frontMatterInfo.contentStart).trim();
+        await this.app.vault.modify(file, updatedContent);
+      }
+
       return AreaSchema.parse({
-        id: file.basename, // Use file basename as ID for now
+        id: areaId,
         name: frontMatter.Name,
         description: body || undefined,
         tags: frontMatter.tags || [],

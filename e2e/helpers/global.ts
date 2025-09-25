@@ -6,6 +6,31 @@ import { TFile } from "obsidian";
 
 import type { Area, Project, Task } from "../../src/types/entities";
 
+/**
+ * Helper function to access Obsidian app instance in e2e tests
+ * Abstracts the global window access pattern
+ */
+export async function getObsidianApp(page: Page): Promise<any> {
+  return page.evaluate(() => (window as any).app);
+}
+
+/**
+ * Helper function to read file content from Obsidian vault
+ */
+export async function readVaultFile(
+  page: Page,
+  filePath: string
+): Promise<string | null> {
+  return page.evaluate(async (filePath) => {
+    const app = (window as any).app;
+    const file = app.vault.getAbstractFileByPath(filePath);
+    if (file) {
+      return await app.vault.read(file);
+    }
+    return null;
+  }, filePath);
+}
+
 // Type for extended Page object with test context properties
 export type ExtendedPage = Page & {
   testId: string;
