@@ -6,6 +6,11 @@ type: "always_apply"
 
 Project: Obsidian Task Sync
 
+# 🚨 IMPORTANT INFORMATION ABOUT E2E TESTS 🚨
+
+- The project is in transition phase from `vitest` with `playwright` to just `playwright` - all new e2e tests from now on must be implemented in `playwright` only
+- All existing `vitest` e2e tests will be migrated to `playwright` gradually
+
 # 🚨 IMPLEMENTATION RULES - NEVER VIOLATE 🚨
 
 - There is a lot of very defensive code in this code base with complex error try/catch logic and awful fallbacks like `foo.?bar || 0` - such code is bad and you MUST NOT follow such patterns when writing new code or changing existing code.
@@ -22,10 +27,9 @@ Project: Obsidian Task Sync
 
 # Running tests
 
-- `npm test` to run unit and e2e tests
-- `npm run test:e2e:headless` to run end-to-end tests only
-- `npm run test:e2e:failed:headless` to rerun only tests that failed in previous run
-- `npm run test:e2e:changed:headless` to run tests for changed files only
+- `npm test` to run all tests
+- `npm test:e2e` to run all `e2e` tests - both `playwright` and `vitest`
+- `npm run test:e2e:failed:headless` to rerun only tests that failed in previous run from `e2e/specs/vitest`
 
 # Test workflow and failed test rerun
 
