@@ -5,6 +5,7 @@ type: "always_apply"
 # Current Project Context
 
 Project: Obsidian Task Sync
+Status: UNRELEASED
 
 # 🚨 IMPORTANT INFORMATION ABOUT E2E TESTS 🚨
 
