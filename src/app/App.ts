@@ -1,27 +1,39 @@
 /**
  * TaskSync App Bootstrap Class
- * Minimal implementation for Phase 6.1 - just basic initialization
+ * Initializes the new entities system with Obsidian extension
  */
+
+import { ObsidianExtension } from "./extensions/ObsidianExtension";
 
 export class TaskSyncApp {
   private initialized = false;
+  private obsidianExtension?: ObsidianExtension;
 
-  async initialize(obsidianApp: any, plugin: any, settings: any): Promise<void> {
+  async initialize(
+    obsidianApp: any,
+    plugin: any,
+    settings: any
+  ): Promise<void> {
     if (this.initialized) return;
 
     try {
-      console.log('TaskSync app initializing...', {
+      console.log("TaskSync app initializing...", {
         hasObsidianApp: !!obsidianApp,
         hasPlugin: !!plugin,
-        hasSettings: !!settings
+        hasSettings: !!settings,
       });
 
-      // For now, just mark as initialized
-      // In future phases, this will initialize extensions, event bus, etc.
+      // Initialize Obsidian extension
+      this.obsidianExtension = new ObsidianExtension(obsidianApp, plugin, {
+        areasFolder: settings.areasFolder || "Areas",
+      });
+
+      await this.obsidianExtension.initialize();
+
       this.initialized = true;
-      console.log('TaskSync app initialized successfully');
+      console.log("TaskSync app initialized successfully");
     } catch (error) {
-      console.error('Failed to initialize TaskSync app:', error);
+      console.error("Failed to initialize TaskSync app:", error);
       throw error;
     }
   }
@@ -29,9 +41,14 @@ export class TaskSyncApp {
   async shutdown(): Promise<void> {
     if (!this.initialized) return;
 
-    console.log('TaskSync app shutting down...');
+    console.log("TaskSync app shutting down...");
+
+    if (this.obsidianExtension) {
+      await this.obsidianExtension.shutdown();
+    }
+
     this.initialized = false;
-    console.log('TaskSync app shutdown complete');
+    console.log("TaskSync app shutdown complete");
   }
 
   isInitialized(): boolean {
