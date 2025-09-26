@@ -8,63 +8,71 @@ import { EntityType } from "./extension";
 
 export type DomainEvent =
   // Task events
-  | { type: "tasks.created"; task: Task; extension: string }
+  | { type: "tasks.created"; task: Task; extension?: string }
   | {
       type: "tasks.updated";
       task: Task;
-      changes: Partial<Task>;
-      extension: string;
+      changes?: Partial<Task>;
+      extension?: string;
     }
-  | { type: "tasks.deleted"; taskId: string; extension: string }
-  | { type: "tasks.loaded"; tasks: readonly Task[]; extension: string }
+  | { type: "tasks.deleted"; taskId: string; extension?: string }
+  | { type: "tasks.loaded"; tasks: readonly Task[]; extension?: string }
 
   // Project events
-  | { type: "projects.created"; project: Project; extension: string }
+  | { type: "projects.created"; project: Project; extension?: string }
   | {
       type: "projects.updated";
       project: Project;
-      changes: Partial<Project>;
-      extension: string;
+      changes?: Partial<Project>;
+      extension?: string;
     }
-  | { type: "projects.deleted"; projectId: string; extension: string }
+  | { type: "projects.deleted"; projectId: string; extension?: string }
   | {
       type: "projects.loaded";
       projects: readonly Project[];
-      extension: string;
+      extension?: string;
     }
 
   // Area events
-  | { type: "areas.created"; area: Area; extension: string }
+  | { type: "areas.created"; area: Area; extension?: string }
   | {
       type: "areas.updated";
       area: Area;
-      changes: Partial<Area>;
-      extension: string;
+      changes?: Partial<Area>;
+      extension?: string;
     }
-  | { type: "areas.deleted"; areaId: string; extension: string }
-  | { type: "areas.loaded"; areas: readonly Area[]; extension: string }
+  | { type: "areas.deleted"; areaId: string; extension?: string }
+  | { type: "areas.loaded"; areas: readonly Area[]; extension?: string }
+
+  // Area request events (triggered by stores, handled by extensions)
+  | {
+      type: "areas.create.requested";
+      areaData: Omit<Area, "id" | "createdAt" | "updatedAt">;
+    }
+  | { type: "areas.update.requested"; area: Area }
+  | { type: "areas.delete.requested"; areaId: string }
 
   // Extension lifecycle events
   | {
       type: "extension.registered";
-      extension: string;
+      extension?: string;
       supportedEntities: readonly EntityType[];
     }
-  | { type: "extension.unregistered"; extension: string }
+  | { type: "extension.unregistered"; extension?: string }
   | {
       type: "extension.sync.started";
-      extension: string;
+      extension?: string;
       entityType: EntityType;
     }
   | {
       type: "extension.sync.completed";
-      extension: string;
+      extension?: string;
       entityType: EntityType;
       entityCount: number;
     }
   | {
       type: "extension.sync.failed";
-      extension: string;
+      extension?: string;
       entityType: EntityType;
       error: string;
     };

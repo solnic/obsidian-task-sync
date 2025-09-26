@@ -5,7 +5,6 @@
 
 import { writable, derived, type Readable } from "svelte/store";
 import { Project } from "../core/entities";
-import { EventBus, type DomainEvent } from "../core/events";
 
 interface ProjectStoreState {
   projects: readonly Project[];
@@ -23,9 +22,14 @@ interface ProjectStore extends Readable<ProjectStoreState> {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   cleanup: () => void;
+
+  // Direct store manipulation methods (for core operations)
+  addProject: (project: Project) => void;
+  updateProject: (project: Project) => void;
+  removeProject: (projectId: string) => void;
 }
 
-export function createProjectStore(eventBus: EventBus): ProjectStore {
+export function createProjectStore(): ProjectStore {
   const initialState: ProjectStoreState = {
     projects: [],
     loading: false,
@@ -38,44 +42,8 @@ export function createProjectStore(eventBus: EventBus): ProjectStore {
   // Store cleanup functions for event subscriptions
   const unsubscribeFunctions: (() => void)[] = [];
 
-  // Subscribe to extension events
-  const unsubscribeCreated = eventBus.on("projects.created", (event) => {
-    update((state) => ({
-      ...state,
-      projects: [...state.projects, event.project],
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeCreated);
-
-  const unsubscribeUpdated = eventBus.on("projects.updated", (event) => {
-    update((state) => ({
-      ...state,
-      projects: state.projects.map((p) =>
-        p.id === event.project.id ? event.project : p
-      ),
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeUpdated);
-
-  const unsubscribeDeleted = eventBus.on("projects.deleted", (event) => {
-    update((state) => ({
-      ...state,
-      projects: state.projects.filter((p) => p.id !== event.projectId),
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeDeleted);
-
-  const unsubscribeLoaded = eventBus.on("projects.loaded", (event) => {
-    update((state) => ({
-      ...state,
-      projects: [...event.projects],
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeLoaded);
+  // Store should NOT listen to domain events - that creates circular dependencies
+  // Domain events are for extensions to react to, not for updating the store
 
   // Derived stores for common queries
   const projectsByExtension = derived({ subscribe }, ($store) => {
@@ -107,6 +75,31 @@ export function createProjectStore(eventBus: EventBus): ProjectStore {
     unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
   };
 
+  // Direct store manipulation methods (for core operations)
+  const addProject = (project: Project): void => {
+    update((state) => ({
+      ...state,
+      projects: [...state.projects, project],
+      lastSync: new Date(),
+    }));
+  };
+
+  const updateProject = (project: Project): void => {
+    update((state) => ({
+      ...state,
+      projects: state.projects.map((p) => (p.id === project.id ? project : p)),
+      lastSync: new Date(),
+    }));
+  };
+
+  const removeProject = (projectId: string): void => {
+    update((state) => ({
+      ...state,
+      projects: state.projects.filter((p) => p.id !== projectId),
+      lastSync: new Date(),
+    }));
+  };
+
   return {
     subscribe,
     projectsByExtension,
@@ -114,5 +107,11 @@ export function createProjectStore(eventBus: EventBus): ProjectStore {
     setLoading,
     setError,
     cleanup,
+    addProject,
+    updateProject,
+    removeProject,
   };
 }
+
+// Global project store instance
+export const projectStore = createProjectStore();

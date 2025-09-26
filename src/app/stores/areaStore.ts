@@ -1,12 +1,10 @@
 /**
- * Extension-aware area store with event bus integration
- * Maintains reactive state for areas from multiple extensions
+ * Pure area store with event-driven architecture
+ * Maintains reactive state and triggers events - no extension knowledge
  */
 
 import { writable, derived, type Readable } from "svelte/store";
 import { Area } from "../core/entities";
-import { EventBus, type DomainEvent, eventBus } from "../core/events";
-import { extensionRegistry } from "../core/extension";
 
 interface AreaStoreState {
   areas: readonly Area[];
@@ -24,9 +22,16 @@ interface AreaStore extends Readable<AreaStoreState> {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   cleanup: () => void;
+
+  // Direct store manipulation methods (for core operations)
+  addArea: (area: Area) => void;
+  updateArea: (area: Area) => void;
+  removeArea: (areaId: string) => void;
+
+  // Request methods removed - operations now directly manipulate store and trigger events
 }
 
-export function createAreaStore(eventBus: EventBus): AreaStore {
+export function createAreaStore(): AreaStore {
   const initialState: AreaStoreState = {
     areas: [],
     loading: false,
@@ -39,42 +44,10 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   // Store cleanup functions for event subscriptions
   const unsubscribeFunctions: (() => void)[] = [];
 
-  // Subscribe to extension events
-  const unsubscribeCreated = eventBus.on("areas.created", (event) => {
-    update((state) => ({
-      ...state,
-      areas: [...state.areas, event.area],
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeCreated);
+  // Store should NOT listen to domain events - that creates circular dependencies
+  // Domain events are for extensions to react to, not for updating the store
 
-  const unsubscribeUpdated = eventBus.on("areas.updated", (event) => {
-    update((state) => ({
-      ...state,
-      areas: state.areas.map((a) => (a.id === event.area.id ? event.area : a)),
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeUpdated);
-
-  const unsubscribeDeleted = eventBus.on("areas.deleted", (event) => {
-    update((state) => ({
-      ...state,
-      areas: state.areas.filter((a) => a.id !== event.areaId),
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeDeleted);
-
-  const unsubscribeLoaded = eventBus.on("areas.loaded", (event) => {
-    update((state) => ({
-      ...state,
-      areas: [...event.areas],
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeLoaded);
+  // Removed areas.loaded event listener - stores should not listen to events
 
   // Derived stores for common queries
   const areasByExtension = derived({ subscribe }, ($store) => {
@@ -106,6 +79,33 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
     unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
   };
 
+  // Request methods removed - operations now directly manipulate store and trigger events
+
+  // Direct store manipulation methods (for core operations)
+  const addArea = (area: Area): void => {
+    update((state) => ({
+      ...state,
+      areas: [...state.areas, area],
+      lastSync: new Date(),
+    }));
+  };
+
+  const updateArea = (area: Area): void => {
+    update((state) => ({
+      ...state,
+      areas: state.areas.map((a) => (a.id === area.id ? area : a)),
+      lastSync: new Date(),
+    }));
+  };
+
+  const removeArea = (areaId: string): void => {
+    update((state) => ({
+      ...state,
+      areas: state.areas.filter((a) => a.id !== areaId),
+      lastSync: new Date(),
+    }));
+  };
+
   return {
     subscribe,
     areasByExtension,
@@ -113,5 +113,11 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
     setLoading,
     setError,
     cleanup,
+    addArea,
+    updateArea,
+    removeArea,
   };
 }
+
+// Global area store instance
+export const areaStore = createAreaStore();
