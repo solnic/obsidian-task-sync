@@ -48,13 +48,10 @@ export class ObsidianAreaOperations implements EntityOperations<Area> {
   }
 
   async getByFilePath(filePath: string): Promise<Area | undefined> {
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (file instanceof this.app.vault.adapter.constructor) {
-      return undefined;
-    }
+    const file = this.app.vault.getAbstractFileByPath(filePath) as TFile;
 
     try {
-      return await this.loadAreaFromFile(file as any);
+      return await this.loadAreaFromFile(file);
     } catch (error) {
       console.warn(`Failed to load area from ${filePath}:`, error);
       return undefined;

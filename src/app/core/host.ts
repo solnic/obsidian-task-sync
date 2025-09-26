@@ -1,0 +1,81 @@
+/**
+ * Host abstraction for TaskSync application
+ * Defines the required interface for mounting and operating TaskSync within different host environments
+ * 
+ * The Host provides access to the primary persistence storage where the TaskSync application 
+ * stores its canonical data. This is fundamentally different from Extensions and their storage 
+ * mechanisms. Extensions store different and/or limited representations of entities for their 
+ * specific purposes.
+ * 
+ * For example: The ObsidianExtension persists tasks as markdown note files, but this is only 
+ * a representation layer for displaying tasks within Obsidian's note system. This is NOT the 
+ * same as the Host's task persistence - task entities stored by the Host are the canonical, 
+ * high-level data structures that include complete metadata like IDs, source information, 
+ * and full entity state that may not be represented in the extension's view layer.
+ */
+
+import { TaskSyncSettings } from "../types/settings";
+
+/**
+ * Abstract Host class that defines the required interface for mounting and operating 
+ * the TaskSync application within different host environments.
+ * 
+ * This is a higher-level mounting concept - not to be confused with Svelte's component 
+ * mount() function - where the TaskSync app can be initialized and operate within a 
+ * given host environment.
+ */
+export abstract class Host {
+  /**
+   * Load TaskSync settings from the host's storage system.
+   * For ObsidianHost, this loads settings from Obsidian's plugin data storage.
+   * 
+   * @returns Promise resolving to the TaskSync settings object
+   * @throws Error if settings cannot be loaded
+   */
+  abstract loadSettings(): Promise<TaskSyncSettings>;
+
+  /**
+   * Persist TaskSync settings to the host's storage system.
+   * For ObsidianHost, this saves to Obsidian's plugin data storage.
+   * 
+   * @param settings - The TaskSync settings object to persist
+   * @throws Error if settings cannot be saved
+   */
+  abstract saveSettings(settings: TaskSyncSettings): Promise<void>;
+
+  /**
+   * Persist TaskSync application data to the host's storage system.
+   * This stores the canonical, high-level data structures that include complete 
+   * metadata like IDs, source information, and full entity state.
+   * 
+   * @param data - The TaskSync application data to persist
+   * @throws Error if data cannot be saved
+   */
+  abstract saveData(data: any): Promise<void>;
+
+  /**
+   * Load TaskSync application data from the host's persistence storage.
+   * This loads the canonical, high-level data structures that include complete 
+   * metadata like IDs, source information, and full entity state.
+   * 
+   * @returns Promise resolving to the TaskSync application data
+   * @throws Error if data cannot be loaded
+   */
+  abstract loadData(): Promise<any>;
+
+  /**
+   * Lifecycle callback that runs when TaskSync initializes in the host environment.
+   * This is where the host can perform any necessary setup operations.
+   * 
+   * @throws Error if initialization fails
+   */
+  abstract onload(): Promise<void>;
+
+  /**
+   * Lifecycle callback that runs when TaskSync unloads from the host environment.
+   * This is where the host can perform any necessary cleanup operations.
+   * 
+   * @throws Error if cleanup fails
+   */
+  abstract onunload(): Promise<void>;
+}
