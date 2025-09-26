@@ -5,7 +5,6 @@
 
 import { writable, derived, type Readable } from "svelte/store";
 import { Task } from "../core/entities";
-import { EventBus, type DomainEvent } from "../core/events";
 
 interface TaskStoreState {
   tasks: readonly Task[];
@@ -24,9 +23,14 @@ interface TaskStore extends Readable<TaskStoreState> {
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
   cleanup: () => void;
+
+  // Direct store manipulation methods (for core operations)
+  addTask: (task: Task) => void;
+  updateTask: (task: Task) => void;
+  removeTask: (taskId: string) => void;
 }
 
-export function createTaskStore(eventBus: EventBus): TaskStore {
+export function createTaskStore(): TaskStore {
   const initialState: TaskStoreState = {
     tasks: [],
     loading: false,
@@ -39,42 +43,8 @@ export function createTaskStore(eventBus: EventBus): TaskStore {
   // Store cleanup functions for event subscriptions
   const unsubscribeFunctions: (() => void)[] = [];
 
-  // Subscribe to extension events
-  const unsubscribeCreated = eventBus.on("tasks.created", (event) => {
-    update((state) => ({
-      ...state,
-      tasks: [...state.tasks, event.task],
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeCreated);
-
-  const unsubscribeUpdated = eventBus.on("tasks.updated", (event) => {
-    update((state) => ({
-      ...state,
-      tasks: state.tasks.map((t) => (t.id === event.task.id ? event.task : t)),
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeUpdated);
-
-  const unsubscribeDeleted = eventBus.on("tasks.deleted", (event) => {
-    update((state) => ({
-      ...state,
-      tasks: state.tasks.filter((t) => t.id !== event.taskId),
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeDeleted);
-
-  const unsubscribeLoaded = eventBus.on("tasks.loaded", (event) => {
-    update((state) => ({
-      ...state,
-      tasks: [...event.tasks],
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeLoaded);
+  // Store should NOT listen to domain events - that creates circular dependencies
+  // Domain events are for extensions to react to, not for updating the store
 
   // Derived stores for common queries
   const tasksByExtension = derived({ subscribe }, ($store) => {
@@ -117,6 +87,31 @@ export function createTaskStore(eventBus: EventBus): TaskStore {
     unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
   };
 
+  // Direct store manipulation methods (for core operations)
+  const addTask = (task: Task): void => {
+    update((state) => ({
+      ...state,
+      tasks: [...state.tasks, task],
+      lastSync: new Date(),
+    }));
+  };
+
+  const updateTask = (task: Task): void => {
+    update((state) => ({
+      ...state,
+      tasks: state.tasks.map((t) => (t.id === task.id ? task : t)),
+      lastSync: new Date(),
+    }));
+  };
+
+  const removeTask = (taskId: string): void => {
+    update((state) => ({
+      ...state,
+      tasks: state.tasks.filter((t) => t.id !== taskId),
+      lastSync: new Date(),
+    }));
+  };
+
   return {
     subscribe,
     tasksByExtension,
@@ -125,5 +120,11 @@ export function createTaskStore(eventBus: EventBus): TaskStore {
     setLoading,
     setError,
     cleanup,
+    addTask,
+    updateTask,
+    removeTask,
   };
 }
+
+// Global task store instance
+export const taskStore = createTaskStore();

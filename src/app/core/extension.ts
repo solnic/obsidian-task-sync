@@ -35,8 +35,7 @@ export interface Extension {
   onEntityUpdated(event: DomainEvent): Promise<void>;
   onEntityDeleted(event: DomainEvent): Promise<void>;
 
-  // Entity operations (optional - extensions can support subset)
-  // DEPRECATED: Extensions should be event-driven, not direct entity managers
+  // Entity operations
   tasks?: EntityOperations<Task>;
   projects?: EntityOperations<Project>;
   areas?: EntityOperations<Area>;

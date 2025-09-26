@@ -5,7 +5,6 @@
 
 import { writable, derived, type Readable } from "svelte/store";
 import { Area } from "../core/entities";
-import { eventBus, type EventBus, type DomainEvent } from "../core/events";
 
 interface AreaStoreState {
   areas: readonly Area[];
@@ -29,15 +28,10 @@ interface AreaStore extends Readable<AreaStoreState> {
   updateArea: (area: Area) => void;
   removeArea: (areaId: string) => void;
 
-  // Command methods that trigger events - extensions will handle the actual work
-  requestCreateArea: (
-    areaData: Omit<Area, "id" | "createdAt" | "updatedAt">
-  ) => void;
-  requestUpdateArea: (area: Area) => void;
-  requestDeleteArea: (areaId: string) => void;
+  // Request methods removed - operations now directly manipulate store and trigger events
 }
 
-export function createAreaStore(eventBus: EventBus): AreaStore {
+export function createAreaStore(): AreaStore {
   const initialState: AreaStoreState = {
     areas: [],
     loading: false,
@@ -53,14 +47,7 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   // Store should NOT listen to domain events - that creates circular dependencies
   // Domain events are for extensions to react to, not for updating the store
 
-  const unsubscribeLoaded = eventBus.on("areas.loaded", (event) => {
-    update((state) => ({
-      ...state,
-      areas: [...event.areas],
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeLoaded);
+  // Removed areas.loaded event listener - stores should not listen to events
 
   // Derived stores for common queries
   const areasByExtension = derived({ subscribe }, ($store) => {
@@ -92,29 +79,7 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
     unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
   };
 
-  // Command methods that trigger events - extensions will handle the actual work
-  const requestCreateArea = (
-    areaData: Omit<Area, "id" | "createdAt" | "updatedAt">
-  ): void => {
-    eventBus.trigger({
-      type: "areas.create.requested",
-      areaData,
-    });
-  };
-
-  const requestUpdateArea = (area: Area): void => {
-    eventBus.trigger({
-      type: "areas.update.requested",
-      area,
-    });
-  };
-
-  const requestDeleteArea = (areaId: string): void => {
-    eventBus.trigger({
-      type: "areas.delete.requested",
-      areaId,
-    });
-  };
+  // Request methods removed - operations now directly manipulate store and trigger events
 
   // Direct store manipulation methods (for core operations)
   const addArea = (area: Area): void => {
@@ -151,11 +116,8 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
     addArea,
     updateArea,
     removeArea,
-    requestCreateArea,
-    requestUpdateArea,
-    requestDeleteArea,
   };
 }
 
 // Global area store instance
-export const areaStore = createAreaStore(eventBus);
+export const areaStore = createAreaStore();
