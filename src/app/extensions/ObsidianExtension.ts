@@ -9,21 +9,24 @@ import { Extension, extensionRegistry, EntityType } from "../core/extension";
 import { eventBus } from "../core/events";
 import { ObsidianAreaOperations } from "./ObsidianAreaOperations";
 import { ObsidianProjectOperations } from "./ObsidianProjectOperations";
+import { ObsidianTaskOperations } from "./ObsidianTaskOperations";
 
 export interface ObsidianExtensionSettings {
   areasFolder: string;
   projectsFolder: string;
+  tasksFolder: string;
 }
 
 export class ObsidianExtension implements Extension {
   readonly id = "obsidian";
   readonly name = "Obsidian Vault";
   readonly version = "1.0.0";
-  readonly supportedEntities: readonly EntityType[] = ["area", "project"];
+  readonly supportedEntities: readonly EntityType[] = ["area", "project", "task"];
 
   private initialized = false;
   private areaOperations: ObsidianAreaOperations;
   private projectOperations: ObsidianProjectOperations;
+  private taskOperations: ObsidianTaskOperations;
 
   constructor(
     private app: App,
@@ -35,6 +38,7 @@ export class ObsidianExtension implements Extension {
       app,
       settings.projectsFolder
     );
+    this.taskOperations = new ObsidianTaskOperations(app, settings.tasksFolder);
   }
 
   async initialize(): Promise<void> {
@@ -85,6 +89,9 @@ export class ObsidianExtension implements Extension {
     } else if (event.type === "projects.created") {
       // React to project creation by creating the corresponding Obsidian note
       await this.projectOperations.createNote(event.project);
+    } else if (event.type === "tasks.created") {
+      // React to task creation by creating the corresponding Obsidian note
+      await this.taskOperations.createNote(event.task);
     }
   }
 
@@ -95,6 +102,9 @@ export class ObsidianExtension implements Extension {
     } else if (event.type === "projects.updated") {
       // React to project update by updating the corresponding Obsidian note
       await this.projectOperations.updateNote(event.project);
+    } else if (event.type === "tasks.updated") {
+      // React to task update by updating the corresponding Obsidian note
+      await this.taskOperations.updateNote(event.task);
     }
   }
 
@@ -105,6 +115,9 @@ export class ObsidianExtension implements Extension {
     } else if (event.type === "projects.deleted") {
       // React to project deletion by deleting the corresponding Obsidian note
       await this.projectOperations.deleteNote(event.projectId);
+    } else if (event.type === "tasks.deleted") {
+      // React to task deletion by deleting the corresponding Obsidian note
+      await this.taskOperations.deleteNote(event.taskId);
     }
   }
 
@@ -117,5 +130,9 @@ export class ObsidianExtension implements Extension {
     eventBus.on("projects.created", this.onEntityCreated.bind(this));
     eventBus.on("projects.updated", this.onEntityUpdated.bind(this));
     eventBus.on("projects.deleted", this.onEntityDeleted.bind(this));
+
+    eventBus.on("tasks.created", this.onEntityCreated.bind(this));
+    eventBus.on("tasks.updated", this.onEntityUpdated.bind(this));
+    eventBus.on("tasks.deleted", this.onEntityDeleted.bind(this));
   }
 }

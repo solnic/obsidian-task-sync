@@ -38,6 +38,7 @@ export class TaskSyncApp {
           {
             areasFolder: settings.areasFolder || "Areas",
             projectsFolder: settings.projectsFolder || "Projects",
+            tasksFolder: settings.tasksFolder || "Tasks",
           }
         );
 

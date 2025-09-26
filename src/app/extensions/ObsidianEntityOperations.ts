@@ -4,10 +4,10 @@
  */
 
 import { App, stringifyYaml } from "obsidian";
-import { Area, Project } from "../core/entities";
+import { Area, Project, Task } from "../core/entities";
 
 // Union type for entities that can be managed by Obsidian operations
-export type ObsidianEntity = Area | Project;
+export type ObsidianEntity = Area | Project | Task;
 
 // Interface for entity-specific front-matter generation
 export interface EntityFrontMatterGenerator<T extends ObsidianEntity> {
@@ -29,7 +29,9 @@ export abstract class ObsidianEntityOperations<T extends ObsidianEntity> {
   // Common note management methods for reactive updates (called by ObsidianExtension)
   async createNote(entity: T): Promise<void> {
     try {
-      const fileName = this.sanitizeFileName(entity.name);
+      // Use different name property based on entity type
+      const entityName = 'name' in entity ? entity.name : 'title' in entity ? entity.title : 'Unknown';
+      const fileName = this.sanitizeFileName(entityName);
       const filePath = `${this.folder}/${fileName}.md`;
 
       // Generate entity-specific front-matter

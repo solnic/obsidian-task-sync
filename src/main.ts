@@ -63,6 +63,15 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
+    // Add command to create task
+    this.addCommand({
+      id: "create-task",
+      name: "Create Task",
+      callback: () => {
+        this.openCreateTaskModal();
+      },
+    });
+
     // Activate view when layout is ready
     this.app.workspace.onLayoutReady(() => {
       this.activateView();
@@ -106,6 +115,11 @@ export default class TaskSyncPlugin extends Plugin {
       "./app/modals/ProjectCreateModal"
     );
     new ProjectCreateModal(this.app, this).open();
+  }
+
+  async openCreateTaskModal() {
+    const { TaskCreateModal } = await import("./app/modals/TaskCreateModal");
+    new TaskCreateModal(this.app, this).open();
   }
 }
 
