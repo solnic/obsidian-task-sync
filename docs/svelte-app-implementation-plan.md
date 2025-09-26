@@ -6,17 +6,79 @@
 
 Build a standalone Svelte 5 application with a clean extension system where Obsidian is just one of many possible extensions. The core application is completely source-agnostic with clear separation between:
 
-1. **Core Domain Layer** - Pure entities with Zod validation (no source-specific concerns)
-2. **Application Layer** - Commands, queries, and business logic
-3. **Extension Layer** - Pluggable extensions (Obsidian, GitHub, etc.)
-4. **Presentation Layer** - Svelte 5 SPA with reactive stores
+1. **Host Layer** - Abstract mounting interface for different host environments
+2. **Core Domain Layer** - Pure entities with Zod validation (no source-specific concerns)
+3. **Application Layer** - Commands, queries, and business logic
+4. **Extension Layer** - Pluggable extensions (Obsidian, GitHub, etc.)
+5. **Presentation Layer** - Svelte 5 SPA with reactive stores
 
 ## Architecture Principles
 
+- **Host Agnostic**: Core application can run in any host environment through Host abstraction
 - **Source Agnostic**: Core domain knows nothing about Obsidian, files, or any specific storage
 - **Extension Based**: All source integrations are extensions that register with the core app
 - **Clean Boundaries**: No leakage of extension concerns into the core domain
 - **Breaking Changes OK**: This is unreleased, we can redesign without migration concerns
+
+## Host Abstraction
+
+The Host abstraction provides the mounting interface for TaskSync application within different host environments. This is a higher-level mounting concept - not to be confused with Svelte's component `mount()` function - where the TaskSync app can be initialized and operate within a given host environment.
+
+### Host Interface
+
+The abstract `Host` class defines the required interface methods:
+
+- `loadSettings()` - Returns the TaskSync settings object
+- `saveSettings(settings)` - Persists TaskSync settings
+- `saveData(data)` - Persists TaskSync application data to the host's storage system
+- `loadData()` - Loads TaskSync application data from the host's persistence storage
+- `onload()` - Lifecycle callback that runs when TaskSync initializes in the host environment
+- `onunload()` - Lifecycle callback that runs when TaskSync unloads from the host environment
+
+### ObsidianHost Implementation
+
+The `ObsidianHost` class inherits from `Host` and provides Obsidian-specific implementations:
+
+- **Settings persistence**: Uses Obsidian's plugin data storage via `plugin.loadData()` and `plugin.saveData()`
+- **Data persistence**: Stores canonical TaskSync application data in Obsidian's plugin storage
+- **Lifecycle management**: Delegates to the underlying Obsidian plugin's lifecycle methods
+
+### Host vs Extension Storage
+
+**Critical distinction**: The Host abstraction provides access to the primary persistence storage where the TaskSync application stores its canonical data. This is fundamentally different from Extensions and their storage mechanisms.
+
+**Host Storage (Canonical Data)**:
+- Stores complete, high-level TaskSync entities
+- Includes full metadata like IDs, source information, and entity state
+- Authoritative data store for TaskSync application
+- Managed through Host interface (`saveData()`, `loadData()`)
+
+**Extension Storage (Representation Layer)**:
+- Stores different and/or limited representations of entities for specific purposes
+- Example: ObsidianExtension persists tasks as markdown note files for display within Obsidian's note system
+- This is NOT the same as Host's task persistence
+- Representation layer for displaying entities within the extension's environment
+
+### TaskSyncPlugin as ObsidianHost
+
+The existing `TaskSyncPlugin` class has been refactored to formally implement the Host pattern:
+
+```typescript
+export default class TaskSyncPlugin extends Plugin {
+  private host: ObsidianHost;
+
+  async onload() {
+    // Create ObsidianHost instance
+    this.host = new ObsidianHost(this);
+
+    // Load settings through host
+    this.settings = await this.host.loadSettings();
+
+    // Initialize TaskSync app with Host abstraction
+    await taskSyncApp.initialize(this.host);
+  }
+}
+```
 
 ## Phase 1: Pure Core Domain Layer
 
@@ -1125,32 +1187,48 @@ export const areaOperations = new Areas.Operations();
 
 ### 6.1 App Bootstrap
 
-**File: `src/app/App.ts`**
+**File: `src/app/App.ts` (Updated with Host abstraction)**
 
 ```typescript
-import { extensionRegistry } from './core/extension';
 import { ObsidianExtension } from './extensions/ObsidianExtension';
-import { eventBus } from './core/events';
+import { Host } from './core/host';
 
 export class TaskSyncApp {
   private initialized = false;
+  private obsidianExtension?: ObsidianExtension;
+  private host?: Host;
 
-  async initialize(obsidianApp: any, plugin: any, settings: any): Promise<void> {
+  async initialize(host: Host): Promise<void> {
     if (this.initialized) return;
 
     try {
-      // Initialize Obsidian extension
-      const obsidianExtension = new ObsidianExtension(obsidianApp, plugin, {
-        tasksFolder: settings.tasksFolder,
-        projectsFolder: settings.projectsFolder,
-        areasFolder: settings.areasFolder
+      console.log("TaskSync app initializing with Host...");
+
+      this.host = host;
+
+      // Load settings from host
+      const settings = await host.loadSettings();
+
+      console.log("TaskSync app initializing...", {
+        hasHost: !!host,
+        hasSettings: !!settings,
       });
 
-      await obsidianExtension.initialize();
+      // Initialize Obsidian extension - we still need the raw Obsidian objects for the extension
+      // The Host abstraction is for the app-level concerns, Extensions still need Obsidian APIs
+      // TODO: This will need to be refactored when we make the app truly host-agnostic
+      const obsidianHost = host as any; // Cast to access underlying plugin
+      if (obsidianHost.plugin && obsidianHost.plugin.app) {
+        this.obsidianExtension = new ObsidianExtension(
+          obsidianHost.plugin.app,
+          obsidianHost.plugin,
+          {
+            areasFolder: settings.areasFolder || "Areas",
+          }
+        );
 
-      // Register additional extensions here as needed
-      // await this.registerGitHubExtension(settings.github);
-      // await this.registerAppleRemindersExtension(settings.appleReminders);
+        await this.obsidianExtension.initialize();
+      }
 
       this.initialized = true;
       console.log('TaskSync app initialized successfully');
@@ -1163,11 +1241,14 @@ export class TaskSyncApp {
   async shutdown(): Promise<void> {
     if (!this.initialized) return;
 
-    // Shutdown all extensions
-    const extensions = extensionRegistry.getAll();
-    await Promise.all(extensions.map(ext => ext.shutdown()));
+    console.log("TaskSync app shutting down...");
+
+    if (this.obsidianExtension) {
+      await this.obsidianExtension.shutdown();
+    }
 
     this.initialized = false;
+    console.log("TaskSync app shutdown complete");
   }
 
   isInitialized(): boolean {
@@ -1285,21 +1366,33 @@ export const taskSyncApp = new TaskSyncApp();
 
 ## Phase 8: Obsidian Plugin Integration
 
-### 8.1 Lightweight Plugin Wrapper
+### 8.1 Lightweight Plugin Wrapper with Host Abstraction
 
-**File: `src/main.ts` (Updated)**
+**File: `src/main.ts` (Updated with Host abstraction)**
 
 ```typescript
 import { Plugin, ItemView, WorkspaceLeaf } from 'obsidian';
 import { mount, unmount } from 'svelte';
 import App from './app/App.svelte';
-import { TaskSyncSettings, DEFAULT_SETTINGS } from './settings';
+import { TaskSyncSettings } from './app/types/settings';
+import { taskSyncApp } from './app/App';
+import { ObsidianHost } from './app/hosts/ObsidianHost';
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
+  private host: ObsidianHost;
 
   async onload() {
-    await this.loadSettings();
+    console.log("TaskSync plugin loading...");
+
+    // Create ObsidianHost instance
+    this.host = new ObsidianHost(this);
+
+    // Load settings through host
+    this.settings = await this.host.loadSettings();
+
+    // Initialize the TaskSync app with Host abstraction
+    await taskSyncApp.initialize(this.host);
 
     this.registerView('task-sync-main', (leaf) => {
       return new TaskSyncView(leaf, this);
@@ -1312,14 +1405,21 @@ export default class TaskSyncPlugin extends Plugin {
     this.app.workspace.onLayoutReady(() => {
       this.activateView();
     });
+
+    console.log("TaskSync plugin loaded successfully");
+  }
+
+  async onunload() {
+    console.log("TaskSync plugin unloading...");
+    await taskSyncApp.shutdown();
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings = await this.host.loadSettings();
   }
 
   async saveSettings() {
-    await this.saveData(this.settings);
+    await this.host.saveSettings(this.settings);
   }
 
   async activateView() {
@@ -1385,14 +1485,18 @@ This clean architecture provides:
 
 ### ✅ **Core Benefits**
 
-1. **Source Agnostic Core**: Pure domain entities with no Obsidian coupling
-2. **Extension System**: Pluggable extensions for different sources (Obsidian, GitHub, etc.)
-3. **Clean Boundaries**: No leakage of extension concerns into core domain
-4. **Event-Driven**: Reactive updates across the application
-5. **Breaking Changes OK**: No migration complexity since this is unreleased
+1. **Host Agnostic Core**: TaskSync app can run in any host environment through Host abstraction
+2. **Source Agnostic Core**: Pure domain entities with no Obsidian coupling
+3. **Extension System**: Pluggable extensions for different sources (Obsidian, GitHub, etc.)
+4. **Clean Boundaries**: No leakage of extension concerns into core domain
+5. **Event-Driven**: Reactive updates across the application
+6. **Breaking Changes OK**: No migration complexity since this is unreleased
 
 ### ✅ **Key Design Decisions**
 
+- **Host abstraction**: TaskSync app mounts through Host interface, making it environment-agnostic
+- **ObsidianHost implementation**: Provides Obsidian-specific Host implementation for settings and data persistence
+- **Host vs Extension storage**: Clear distinction between canonical data (Host) and representation layers (Extensions)
 - **No `filePath` in Task entity**: File paths are Obsidian-specific, handled by ObsidianExtension
 - **No front-matter coupling**: Core entities are pure data structures
 - **Extension-based architecture**: Each source (Obsidian, GitHub) is a separate extension
