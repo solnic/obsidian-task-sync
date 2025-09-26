@@ -1,24 +1,30 @@
 /**
  * Lightweight Obsidian Plugin Wrapper for Svelte App
- * Phase 8.1 - Minimal implementation to get the app rendering
+ * Refactored to use ObsidianHost abstraction
  */
 
 import { Plugin, ItemView, WorkspaceLeaf } from "obsidian";
 import { mount, unmount } from "svelte";
 import App from "./app/App.svelte";
-import { TaskSyncSettings, DEFAULT_SETTINGS } from "./app/types/settings";
+import { TaskSyncSettings } from "./app/types/settings";
 import { taskSyncApp } from "./app/App";
+import { ObsidianHost } from "./app/hosts/ObsidianHost";
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
+  private host: ObsidianHost;
 
   async onload() {
     console.log("TaskSync plugin loading...");
 
-    await this.loadSettings();
+    // Create ObsidianHost instance
+    this.host = new ObsidianHost(this);
 
-    // Initialize the TaskSync app with the new architecture
-    await taskSyncApp.initialize(this.app, this, this.settings);
+    // Load settings through host
+    this.settings = await this.host.loadSettings();
+
+    // Initialize the TaskSync app with Host abstraction
+    await taskSyncApp.initialize(this.host);
 
     // Register the main view
     this.registerView("task-sync-main", (leaf) => {
@@ -62,11 +68,11 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    this.settings = await this.host.loadSettings();
   }
 
   async saveSettings() {
-    await this.saveData(this.settings);
+    await this.host.saveSettings(this.settings);
   }
 
   async activateView() {

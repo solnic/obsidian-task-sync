@@ -1,0 +1,152 @@
+/**
+ * ObsidianHost implementation
+ * Provides Obsidian-specific Host implementation for TaskSync application
+ * 
+ * This class implements the Host interface for the Obsidian environment,
+ * providing access to Obsidian's plugin data storage for both settings
+ * and canonical TaskSync application data.
+ */
+
+import { Host } from "../core/host";
+import { TaskSyncSettings, DEFAULT_SETTINGS } from "../types/settings";
+
+/**
+ * Interface for Obsidian Plugin that provides the necessary methods
+ * for data persistence and lifecycle management.
+ */
+interface ObsidianPlugin {
+  loadData(): Promise<any>;
+  saveData(data: any): Promise<void>;
+  onload?(): Promise<void> | void;
+  onunload?(): Promise<void> | void;
+}
+
+/**
+ * ObsidianHost provides the Host implementation for Obsidian environments.
+ * 
+ * This class bridges the TaskSync application with Obsidian's plugin system,
+ * providing access to Obsidian's data persistence mechanisms for storing
+ * both TaskSync settings and canonical application data.
+ * 
+ * The ObsidianHost stores canonical, high-level data structures that include
+ * complete metadata like IDs, source information, and full entity state.
+ * This is fundamentally different from the ObsidianExtension which stores
+ * representation layers (markdown files) for display within Obsidian's
+ * note system.
+ */
+export class ObsidianHost extends Host {
+  constructor(private plugin: ObsidianPlugin) {
+    super();
+  }
+
+  /**
+   * Load TaskSync settings from Obsidian's plugin data storage.
+   * 
+   * If no settings exist, returns default settings.
+   * If partial settings exist, merges them with defaults.
+   * 
+   * @returns Promise resolving to the TaskSync settings object
+   * @throws Error if settings cannot be loaded from Obsidian
+   */
+  async loadSettings(): Promise<TaskSyncSettings> {
+    try {
+      const data = await this.plugin.loadData();
+      
+      if (!data) {
+        return { ...DEFAULT_SETTINGS };
+      }
+
+      // Merge loaded data with defaults to handle partial settings
+      return {
+        ...DEFAULT_SETTINGS,
+        ...data,
+      };
+    } catch (error) {
+      throw new Error(`Failed to load settings from Obsidian: ${error.message}`);
+    }
+  }
+
+  /**
+   * Persist TaskSync settings to Obsidian's plugin data storage.
+   * 
+   * @param settings - The TaskSync settings object to persist
+   * @throws Error if settings cannot be saved to Obsidian
+   */
+  async saveSettings(settings: TaskSyncSettings): Promise<void> {
+    try {
+      await this.plugin.saveData(settings);
+    } catch (error) {
+      throw new Error(`Failed to save settings to Obsidian: ${error.message}`);
+    }
+  }
+
+  /**
+   * Persist TaskSync application data to Obsidian's plugin storage.
+   * 
+   * This stores the canonical, high-level data structures that include
+   * complete metadata like IDs, source information, and full entity state.
+   * This is the authoritative data store for TaskSync entities.
+   * 
+   * @param data - The TaskSync application data to persist
+   * @throws Error if data cannot be saved to Obsidian
+   */
+  async saveData(data: any): Promise<void> {
+    try {
+      await this.plugin.saveData(data);
+    } catch (error) {
+      throw new Error(`Failed to save data to Obsidian: ${error.message}`);
+    }
+  }
+
+  /**
+   * Load TaskSync application data from Obsidian's plugin storage.
+   * 
+   * This loads the canonical, high-level data structures that include
+   * complete metadata like IDs, source information, and full entity state.
+   * This is the authoritative data store for TaskSync entities.
+   * 
+   * @returns Promise resolving to the TaskSync application data, or null if none exists
+   * @throws Error if data cannot be loaded from Obsidian
+   */
+  async loadData(): Promise<any> {
+    try {
+      return await this.plugin.loadData();
+    } catch (error) {
+      throw new Error(`Failed to load data from Obsidian: ${error.message}`);
+    }
+  }
+
+  /**
+   * Lifecycle callback that runs when TaskSync initializes in Obsidian.
+   * 
+   * Delegates to the Obsidian plugin's onload method if available.
+   * 
+   * @throws Error if Obsidian plugin initialization fails
+   */
+  async onload(): Promise<void> {
+    try {
+      if (this.plugin.onload) {
+        await this.plugin.onload();
+      }
+    } catch (error) {
+      throw new Error(`Failed to initialize Obsidian plugin: ${error.message}`);
+    }
+  }
+
+  /**
+   * Lifecycle callback that runs when TaskSync unloads from Obsidian.
+   * 
+   * Delegates to the Obsidian plugin's onunload method if available.
+   * 
+   * @throws Error if Obsidian plugin cleanup fails
+   */
+  async onunload(): Promise<void> {
+    try {
+      if (this.plugin.onunload) {
+        await this.plugin.onunload();
+      }
+    } catch (error) {
+      throw new Error(`Failed to cleanup Obsidian plugin: ${error.message}`);
+    }
+  }
+}

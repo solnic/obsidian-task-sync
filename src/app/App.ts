@@ -1,34 +1,47 @@
 /**
  * TaskSync App Bootstrap Class
- * Initializes the new entities system with Obsidian extension
+ * Initializes the new entities system with Host abstraction
  */
 
 import { ObsidianExtension } from "./extensions/ObsidianExtension";
+import { Host } from "./core/host";
 
 export class TaskSyncApp {
   private initialized = false;
   private obsidianExtension?: ObsidianExtension;
+  private host?: Host;
 
-  async initialize(
-    obsidianApp: any,
-    plugin: any,
-    settings: any
-  ): Promise<void> {
+  async initialize(host: Host): Promise<void> {
     if (this.initialized) return;
 
     try {
+      console.log("TaskSync app initializing with Host...");
+
+      this.host = host;
+
+      // Load settings from host
+      const settings = await host.loadSettings();
+
       console.log("TaskSync app initializing...", {
-        hasObsidianApp: !!obsidianApp,
-        hasPlugin: !!plugin,
+        hasHost: !!host,
         hasSettings: !!settings,
       });
 
-      // Initialize Obsidian extension
-      this.obsidianExtension = new ObsidianExtension(obsidianApp, plugin, {
-        areasFolder: settings.areasFolder || "Areas",
-      });
+      // Initialize Obsidian extension - we still need the raw Obsidian objects for the extension
+      // The Host abstraction is for the app-level concerns, Extensions still need Obsidian APIs
+      // TODO: This will need to be refactored when we make the app truly host-agnostic
+      const obsidianHost = host as any; // Cast to access underlying plugin
+      if (obsidianHost.plugin && obsidianHost.plugin.app) {
+        this.obsidianExtension = new ObsidianExtension(
+          obsidianHost.plugin.app,
+          obsidianHost.plugin,
+          {
+            areasFolder: settings.areasFolder || "Areas",
+          }
+        );
 
-      await this.obsidianExtension.initialize();
+        await this.obsidianExtension.initialize();
+      }
 
       this.initialized = true;
       console.log("TaskSync app initialized successfully");
