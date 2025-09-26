@@ -5,13 +5,7 @@
  */
 
 import { App, Plugin } from "obsidian";
-import {
-  Extension,
-  EntityOperations,
-  extensionRegistry,
-  EntityType,
-} from "../core/extension";
-import { Area } from "../core/entities";
+import { Extension, extensionRegistry, EntityType } from "../core/extension";
 import { eventBus } from "../core/events";
 import { ObsidianAreaOperations } from "./ObsidianAreaOperations";
 
@@ -26,7 +20,7 @@ export class ObsidianExtension implements Extension {
   readonly version = "1.0.0";
   readonly supportedEntities: readonly EntityType[] = ["area"]; // Start with areas only
 
-  readonly areas: EntityOperations<Area>;
+  readonly areas: ObsidianAreaOperations;
 
   private initialized = false;
 
@@ -83,50 +77,31 @@ export class ObsidianExtension implements Extension {
 
   // Event handler methods required by Extension interface
   async onEntityCreated(event: any): Promise<void> {
-    // TODO: Implement reactive note creation based on entity events
-    console.log(`ObsidianExtension: Entity created event received`, event);
+    if (event.type === "areas.created") {
+      // Use ObsidianAreaOperations to create the note
+      await this.areas.createNote(event.area);
+    }
   }
 
   async onEntityUpdated(event: any): Promise<void> {
-    // TODO: Implement reactive note updates based on entity events
-    console.log(`ObsidianExtension: Entity updated event received`, event);
+    if (event.type === "areas.updated") {
+      // Use ObsidianAreaOperations to update the note
+      await this.areas.updateNote(event.area);
+    }
   }
 
   async onEntityDeleted(event: any): Promise<void> {
-    // TODO: Implement reactive note deletion based on entity events
-    console.log(`ObsidianExtension: Entity deleted event received`, event);
+    if (event.type === "areas.deleted") {
+      // Use ObsidianAreaOperations to delete the note
+      await this.areas.deleteNote(event.areaId);
+    }
   }
 
   private setupEventListeners(): void {
-    // Listen for area creation requests
-    eventBus.on("areas.create.requested", async (event) => {
-      try {
-        const area = await this.areas.create(event.areaData);
-        // The ObsidianAreaOperations will trigger the areas.created event
-      } catch (error) {
-        console.error("Failed to handle area creation request:", error);
-      }
-    });
-
-    // Listen for area update requests
-    eventBus.on("areas.update.requested", async (event) => {
-      try {
-        const area = await this.areas.update(event.area.id, event.area);
-        // The ObsidianAreaOperations will trigger the areas.updated event
-      } catch (error) {
-        console.error("Failed to handle area update request:", error);
-      }
-    });
-
-    // Listen for area deletion requests
-    eventBus.on("areas.delete.requested", async (event) => {
-      try {
-        await this.areas.delete(event.areaId);
-        // The ObsidianAreaOperations will trigger the areas.deleted event
-      } catch (error) {
-        console.error("Failed to handle area deletion request:", error);
-      }
-    });
+    // Subscribe to domain events to reactively manage Obsidian notes
+    eventBus.on("areas.created", this.onEntityCreated.bind(this));
+    eventBus.on("areas.updated", this.onEntityUpdated.bind(this));
+    eventBus.on("areas.deleted", this.onEntityDeleted.bind(this));
   }
 
   private async loadAllEntities(): Promise<void> {

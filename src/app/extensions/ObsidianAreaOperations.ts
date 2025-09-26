@@ -18,6 +18,59 @@ import { generateId } from "../utils/idGenerator";
 export class ObsidianAreaOperations implements EntityOperations<Area> {
   constructor(private app: App, private folder: string) {}
 
+  // Note management methods for reactive updates (called by ObsidianExtension)
+  async createNote(area: Area): Promise<void> {
+    try {
+      const fileName = this.sanitizeFileName(area.name);
+      const filePath = `${this.folder}/${fileName}.md`;
+
+      // Convert area to front-matter (only store user-visible properties)
+      const frontMatter = {
+        Name: area.name,
+        Type: "Area",
+        tags: area.tags.length > 0 ? area.tags : undefined,
+      };
+
+      // Remove undefined values safely
+      const cleanedFrontMatter = Object.fromEntries(
+        Object.entries(frontMatter).filter(([_, value]) => value !== undefined)
+      );
+
+      const frontMatterYaml = stringifyYaml(cleanedFrontMatter);
+      const content = `---\n${frontMatterYaml}---\n\n${area.description || ""}`;
+
+      const existingFile = this.app.vault.getAbstractFileByPath(filePath);
+      if (existingFile) {
+        await this.app.vault.modify(existingFile as any, content);
+      } else {
+        await this.app.vault.create(filePath, content);
+      }
+    } catch (error) {
+      console.error("Failed to create area note:", error);
+    }
+  }
+
+  async updateNote(area: Area): Promise<void> {
+    // For now, just recreate the note with updated content
+    await this.createNote(area);
+  }
+
+  async deleteNote(areaId: string): Promise<void> {
+    try {
+      // Find the note file by searching for the area
+      // This is a simplified implementation - in practice we'd need better mapping
+      const files = this.app.vault
+        .getMarkdownFiles()
+        .filter((f) => f.path.startsWith(this.folder + "/"));
+
+      // For now, we can't easily map from ID to file without additional tracking
+      // This would need to be improved in a real implementation
+      console.log(`Would delete area note for ID: ${areaId}`);
+    } catch (error) {
+      console.error("Failed to delete area note:", error);
+    }
+  }
+
   async getAll(): Promise<Area[]> {
     const files = this.app.vault
       .getMarkdownFiles()
