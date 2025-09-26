@@ -12,13 +12,19 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
     super(app, folder);
   }
 
+  // Implement abstract method to get entity display name for file naming
+  protected getEntityDisplayName(project: Project): string {
+    return project.name;
+  }
+
   // Implement abstract methods for project-specific behavior
   protected generateFrontMatter(project: Project): Record<string, any> {
     return {
       Name: project.name,
       Type: "Project",
-      Areas: project.areas.length > 0 ? project.areas : undefined,
-      tags: project.tags.length > 0 ? project.tags : undefined,
+      Areas:
+        project.areas && project.areas.length > 0 ? project.areas : undefined,
+      tags: project.tags && project.tags.length > 0 ? project.tags : undefined,
     };
   }
 

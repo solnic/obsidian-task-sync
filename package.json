@@ -79,6 +79,7 @@
     "ical.js": "^2.2.1",
     "inflection": "^3.0.2",
     "js-yaml": "^4.1.0",
+    "mcp-remote": "^0.1.29",
     "moment": "^2.30.1",
     "node-osascript": "^2.1.0",
     "superjson": "^2.2.2",

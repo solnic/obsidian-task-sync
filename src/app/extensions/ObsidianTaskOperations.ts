@@ -12,61 +12,32 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     super(app, folder);
   }
 
-  // Override createNote to handle task-specific naming (title instead of name)
-  async createNote(task: Task): Promise<void> {
-    try {
-      const fileName = this.sanitizeFileName(task.title);
-      const filePath = `${this.folder}/${fileName}.md`;
-
-      // Generate task-specific front-matter
-      const frontMatter = this.generateFrontMatter(task);
-
-      // Remove undefined values safely
-      const cleanedFrontMatter = Object.fromEntries(
-        Object.entries(frontMatter).filter(([_, value]) => value !== undefined)
-      );
-
-      const frontMatterYaml = stringifyYaml(cleanedFrontMatter);
-      const content = `---\n${frontMatterYaml}---\n\n${task.description || ""}`;
-
-      const existingFile = this.app.vault.getAbstractFileByPath(filePath);
-      if (existingFile) {
-        await this.app.vault.modify(existingFile as any, content);
-      } else {
-        await this.app.vault.create(filePath, content);
-      }
-    } catch (error) {
-      console.error(`Failed to create task note:`, error);
-    }
-  }
-
-  // Override updateNote as well
-  async updateNote(task: Task): Promise<void> {
-    await this.createNote(task);
+  // Implement abstract method to get entity display name for file naming
+  protected getEntityDisplayName(task: Task): string {
+    return task.title;
   }
 
   // Implement abstract methods for task-specific behavior
   protected generateFrontMatter(task: Task): Record<string, any> {
+    // Based on properties.ts from old-stuff, only include frontmatter: true properties
     return {
-      Title: task.title,
-      Type: task.category || "Task",
-      Status: task.status,
-      Priority: task.priority || undefined,
-      Done: task.done,
-      Project: task.project || undefined,
-      Areas: task.areas.length > 0 ? task.areas : undefined,
-      Tags: task.tags.length > 0 ? task.tags : undefined,
-      Created: task.createdAt.toISOString().split('T')[0],
-      Updated: task.updatedAt.toISOString().split('T')[0],
+      Title: task.title, // TITLE property
+      Type: task.category || "Task", // TYPE/CATEGORY property
+      Status: task.status, // STATUS property
+      Priority: task.priority, // PRIORITY property (can be undefined)
+      Done: task.done, // DONE property
+      Project: task.project, // PROJECT property (can be undefined)
+      Areas: task.areas && task.areas.length > 0 ? task.areas : undefined, // AREAS property
+      "Parent task": task.parentTask, // PARENT_TASK property (note the space in name)
+      "Do Date": task.doDate?.toISOString().split("T")[0], // DO_DATE property
+      "Due Date": task.dueDate?.toISOString().split("T")[0], // DUE_DATE property
+      tags: task.tags && task.tags.length > 0 ? task.tags : undefined, // TAGS property (lowercase)
+      // Note: createdAt and updatedAt are NOT frontmatter properties according to properties.ts
+      // They come from file.ctime and file.mtime (frontmatter: false)
     };
   }
 
   protected getEntityType(): string {
     return "Task";
-  }
-
-  // Protected helper method available from parent class
-  protected sanitizeFileName(name: string): string {
-    return name.replace(/[<>:"/\\|?*]/g, "").trim();
   }
 }
