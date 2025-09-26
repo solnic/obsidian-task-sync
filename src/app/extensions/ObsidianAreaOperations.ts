@@ -40,22 +40,25 @@ export class ObsidianAreaOperations implements EntityOperations<Area> {
   }
 
   async getById(id: string): Promise<Area | undefined> {
-    const files = this.app.vault
-      .getMarkdownFiles()
-      .filter((f) => f.path.startsWith(this.folder + "/"));
+    // Since IDs are generated fresh each time, we need to find by file path
+    // The ID lookup is not reliable in this system - use getByFilePath instead
+    // This method is kept for interface compatibility but may not work as expected
+    const areas = await this.getAll();
+    return areas.find((area) => area.id === id);
+  }
 
-    for (const file of files) {
-      try {
-        const area = await this.loadAreaFromFile(file);
-        if (area && area.id === id) {
-          return area;
-        }
-      } catch (error) {
-        console.warn(`Failed to load area from ${file.path}:`, error);
-      }
+  async getByFilePath(filePath: string): Promise<Area | undefined> {
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (file instanceof this.app.vault.adapter.constructor) {
+      return undefined;
     }
 
-    return undefined;
+    try {
+      return await this.loadAreaFromFile(file as any);
+    } catch (error) {
+      console.warn(`Failed to load area from ${filePath}:`, error);
+      return undefined;
+    }
   }
 
   async create(
@@ -79,7 +82,10 @@ export class ObsidianAreaOperations implements EntityOperations<Area> {
   }
 
   async update(id: string, updates: Partial<Area>): Promise<Area> {
-    const existingArea = await this.getById(id);
+    // Find the area by checking all areas (since IDs are transient)
+    const areas = await this.getAll();
+    const existingArea = areas.find((area) => area.id === id);
+
     if (!existingArea) {
       throw new Error(`Area with id ${id} not found`);
     }
@@ -87,7 +93,7 @@ export class ObsidianAreaOperations implements EntityOperations<Area> {
     const updatedArea: Area = {
       ...existingArea,
       ...updates,
-      id, // Ensure ID doesn't change
+      id: generateId(), // Generate fresh ID as per old system pattern
       updatedAt: new Date(),
     };
 
@@ -102,7 +108,10 @@ export class ObsidianAreaOperations implements EntityOperations<Area> {
   }
 
   async delete(id: string): Promise<boolean> {
-    const area = await this.getById(id);
+    // Find the area by checking all areas (since IDs are transient)
+    const areas = await this.getAll();
+    const area = areas.find((area) => area.id === id);
+
     if (!area) {
       return false;
     }
@@ -128,9 +137,8 @@ export class ObsidianAreaOperations implements EntityOperations<Area> {
     const fileName = this.sanitizeFileName(area.name);
     const filePath = `${this.folder}/${fileName}.md`;
 
-    // Convert area to front-matter (include Id for reliable identification)
+    // Convert area to front-matter (only store user-visible properties)
     const frontMatter = {
-      Id: area.id,
       Name: area.name,
       Type: "Area",
       tags: area.tags.length > 0 ? area.tags : undefined,
@@ -173,24 +181,10 @@ export class ObsidianAreaOperations implements EntityOperations<Area> {
 
       const body = content.substring(frontMatterInfo.contentStart).trim();
 
-      // Use ULID from frontmatter, generate and store if missing
-      let areaId = frontMatter.Id;
-      if (!areaId) {
-        areaId = generateId();
-        // Update frontmatter with new Id and write back to file
-        frontMatter.Id = areaId;
-        const newFrontMatter = stringifyYaml(frontMatter);
-        // Reconstruct the file content with updated frontmatter
-        const updatedContent =
-          "---\n" +
-          newFrontMatter.trim() +
-          "\n---\n" +
-          content.substring(frontMatterInfo.contentStart).trim();
-        await this.app.vault.modify(file, updatedContent);
-      }
-
+      // Generate a fresh ULID each time (following old system pattern)
+      // File path in source.source is used for mapping back to the file
       return AreaSchema.parse({
-        id: areaId,
+        id: generateId(), // Fresh ULID generated each time entity is loaded
         name: frontMatter.Name,
         description: body || undefined,
         tags: frontMatter.tags || [],

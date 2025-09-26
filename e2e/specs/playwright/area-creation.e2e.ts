@@ -52,6 +52,10 @@ test.describe("Area Creation with New Architecture", () => {
     expect(fileContent).toContain("Type: Area");
     expect(fileContent).toContain(areaDescription);
 
+    // Verify that internal ID is NOT stored in frontmatter (as per old system)
+    expect(fileContent).not.toContain("Id:");
+    expect(fileContent).not.toContain("id:");
+
     // Verify the area appears in the areas list (if there's a view for it)
     // This would depend on having an areas view implemented
     // For now, we'll just verify the file creation which is the core requirement
