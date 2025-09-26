@@ -37,6 +37,7 @@ export class TaskSyncApp {
           obsidianHost.plugin,
           {
             areasFolder: settings.areasFolder || "Areas",
+            projectsFolder: settings.projectsFolder || "Projects",
           }
         );
 
