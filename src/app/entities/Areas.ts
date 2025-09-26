@@ -103,17 +103,15 @@ export class Areas extends Entities {
         id: crypto.randomUUID(),
         createdAt: now,
         updatedAt: now,
-        source: {
-          extension: "obsidian", // Default to obsidian for now
-          source: `areas/${areaData.name}.md`,
-        },
       };
 
       // Actually create the area entity in the store first
       areaStore.addArea(area);
 
       // THEN trigger domain event so extensions can react (e.g., create notes)
-      eventBus.trigger({ type: "areas.created", area, extension: "obsidian" });
+      // Use extension from source if available, otherwise default to "local"
+      const extension = area.source?.extension || "local";
+      eventBus.trigger({ type: "areas.created", area, extension });
 
       return area;
     }
