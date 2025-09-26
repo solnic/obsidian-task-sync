@@ -9,6 +9,7 @@ import App from "./app/App.svelte";
 import { TaskSyncSettings } from "./app/types/settings";
 import { taskSyncApp } from "./app/App";
 import { ObsidianHost } from "./app/hosts/ObsidianHost";
+import { TaskSyncSettingTab } from "./app/components/settings";
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
@@ -25,6 +26,9 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize the TaskSync app with Host abstraction
     await taskSyncApp.initialize(this.host);
+
+    // Register settings tab
+    this.addSettingTab(new TaskSyncSettingTab(this.app, this));
 
     // Register the main view
     this.registerView("task-sync-main", (leaf) => {
