@@ -74,21 +74,21 @@ export class ObsidianExtension implements Extension {
   // Event handler methods required by Extension interface
   async onEntityCreated(event: any): Promise<void> {
     if (event.type === "areas.created") {
-      // Use ObsidianAreaOperations to create the note
+      // React to area creation by creating the corresponding Obsidian note
       await this.areaOperations.createNote(event.area);
     }
   }
 
   async onEntityUpdated(event: any): Promise<void> {
     if (event.type === "areas.updated") {
-      // Use ObsidianAreaOperations to update the note
+      // React to area update by updating the corresponding Obsidian note
       await this.areaOperations.updateNote(event.area);
     }
   }
 
   async onEntityDeleted(event: any): Promise<void> {
     if (event.type === "areas.deleted") {
-      // Use ObsidianAreaOperations to delete the note
+      // React to area deletion by deleting the corresponding Obsidian note
       await this.areaOperations.deleteNote(event.areaId);
     }
   }

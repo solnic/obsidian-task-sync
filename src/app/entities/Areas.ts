@@ -96,60 +96,58 @@ export class Areas extends Entities {
     async create(
       areaData: Omit<Area, "id" | "createdAt" | "updatedAt">
     ): Promise<Area> {
-      return new Promise((resolve, reject) => {
-        // Listen for the creation completion
-        const unsubscribe = eventBus.on("areas.created", (event) => {
-          unsubscribe();
-          clearTimeout(timeout);
-          resolve(event.area);
-        });
+      // Generate ID and create area entity
+      const now = new Date();
+      const area: Area = {
+        ...areaData,
+        id: crypto.randomUUID(),
+        createdAt: now,
+        updatedAt: now,
+        source: {
+          extension: "obsidian", // Default to obsidian for now
+          source: `areas/${areaData.name}.md`,
+        },
+      };
 
-        // Set a timeout in case no extension handles the request
-        const timeout = setTimeout(() => {
-          unsubscribe();
-          reject(new Error("No extension handled the area creation request"));
-        }, 5000);
+      // Actually create the area entity in the store first
+      areaStore.addArea(area);
 
-        // Trigger the request
-        areaStore.requestCreateArea(areaData);
-      });
+      // THEN trigger domain event so extensions can react (e.g., create notes)
+      eventBus.trigger({ type: "areas.created", area, extension: "obsidian" });
+
+      return area;
     }
 
     async update(area: Area): Promise<Area> {
-      return new Promise((resolve, reject) => {
-        const unsubscribe = eventBus.on("areas.updated", (event) => {
-          if (event.area.id === area.id) {
-            unsubscribe();
-            clearTimeout(timeout);
-            resolve(event.area);
-          }
-        });
+      // Update the area entity directly
+      const updatedArea: Area = {
+        ...area,
+        updatedAt: new Date(),
+      };
 
-        const timeout = setTimeout(() => {
-          unsubscribe();
-          reject(new Error("No extension handled the area update request"));
-        }, 5000);
+      // Actually update the area entity in the store first
+      areaStore.updateArea(updatedArea);
 
-        areaStore.requestUpdateArea(area);
+      // THEN trigger domain event so extensions can react (e.g., update notes)
+      eventBus.trigger({
+        type: "areas.updated",
+        area: updatedArea,
+        changes: {}, // We don't track specific changes here
+        extension: "obsidian",
       });
+
+      return updatedArea;
     }
 
     async delete(id: string): Promise<void> {
-      return new Promise((resolve, reject) => {
-        const unsubscribe = eventBus.on("areas.deleted", (event) => {
-          if (event.areaId === id) {
-            unsubscribe();
-            clearTimeout(timeout);
-            resolve();
-          }
-        });
+      // Actually delete the area entity from the store first
+      areaStore.removeArea(id);
 
-        const timeout = setTimeout(() => {
-          unsubscribe();
-          reject(new Error("No extension handled the area deletion request"));
-        }, 5000);
-
-        areaStore.requestDeleteArea(id);
+      // THEN trigger domain event so extensions can react (e.g., delete notes)
+      eventBus.trigger({
+        type: "areas.deleted",
+        areaId: id,
+        extension: "obsidian",
       });
     }
 

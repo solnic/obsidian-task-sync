@@ -24,6 +24,11 @@ interface AreaStore extends Readable<AreaStoreState> {
   setError: (error: string | null) => void;
   cleanup: () => void;
 
+  // Direct store manipulation methods (for core operations)
+  addArea: (area: Area) => void;
+  updateArea: (area: Area) => void;
+  removeArea: (areaId: string) => void;
+
   // Command methods that trigger events - extensions will handle the actual work
   requestCreateArea: (
     areaData: Omit<Area, "id" | "createdAt" | "updatedAt">
@@ -45,33 +50,8 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
   // Store cleanup functions for event subscriptions
   const unsubscribeFunctions: (() => void)[] = [];
 
-  // Subscribe to extension events
-  const unsubscribeCreated = eventBus.on("areas.created", (event) => {
-    update((state) => ({
-      ...state,
-      areas: [...state.areas, event.area],
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeCreated);
-
-  const unsubscribeUpdated = eventBus.on("areas.updated", (event) => {
-    update((state) => ({
-      ...state,
-      areas: state.areas.map((a) => (a.id === event.area.id ? event.area : a)),
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeUpdated);
-
-  const unsubscribeDeleted = eventBus.on("areas.deleted", (event) => {
-    update((state) => ({
-      ...state,
-      areas: state.areas.filter((a) => a.id !== event.areaId),
-      lastSync: new Date(),
-    }));
-  });
-  unsubscribeFunctions.push(unsubscribeDeleted);
+  // Store should NOT listen to domain events - that creates circular dependencies
+  // Domain events are for extensions to react to, not for updating the store
 
   const unsubscribeLoaded = eventBus.on("areas.loaded", (event) => {
     update((state) => ({
@@ -136,6 +116,31 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
     });
   };
 
+  // Direct store manipulation methods (for core operations)
+  const addArea = (area: Area): void => {
+    update((state) => ({
+      ...state,
+      areas: [...state.areas, area],
+      lastSync: new Date(),
+    }));
+  };
+
+  const updateArea = (area: Area): void => {
+    update((state) => ({
+      ...state,
+      areas: state.areas.map((a) => (a.id === area.id ? area : a)),
+      lastSync: new Date(),
+    }));
+  };
+
+  const removeArea = (areaId: string): void => {
+    update((state) => ({
+      ...state,
+      areas: state.areas.filter((a) => a.id !== areaId),
+      lastSync: new Date(),
+    }));
+  };
+
   return {
     subscribe,
     areasByExtension,
@@ -143,6 +148,9 @@ export function createAreaStore(eventBus: EventBus): AreaStore {
     setLoading,
     setError,
     cleanup,
+    addArea,
+    updateArea,
+    removeArea,
     requestCreateArea,
     requestUpdateArea,
     requestDeleteArea,
