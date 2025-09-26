@@ -5,6 +5,7 @@
 
 import { Task, Project, Area } from "./entities";
 import { extensionRegistry } from "./extension";
+import { generateId } from "../utils/idGenerator";
 
 // Generic entity union type
 export type Entity = Task | Project | Area;
@@ -51,4 +52,21 @@ export abstract class EntitiesOperations {
   ): Promise<Entity>;
   abstract update(entity: Entity): Promise<Entity>;
   abstract delete(id: string): Promise<void>;
+
+  public buildEntity(
+    entityData: Omit<Entity, "id" | "createdAt" | "updatedAt">
+  ) {
+    const now = this.timestamp();
+
+    return {
+      id: generateId(),
+      createdAt: now,
+      updatedAt: now,
+      ...entityData,
+    } as Entity;
+  }
+
+  public timestamp() {
+    return new Date();
+  }
 }
