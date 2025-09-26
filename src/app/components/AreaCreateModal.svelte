@@ -78,6 +78,10 @@
       handleSubmit();
     }
   }
+
+  function handleNameInput() {
+    hasNameError = false;
+  }
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -106,9 +110,7 @@
         class="task-sync-input task-sync-required-field"
         class:task-sync-input-error={hasNameError}
         data-testid="area-name-input"
-        oninput={() => {
-          hasNameError = false;
-        }}
+        oninput={handleNameInput}
       />
       <div class="task-sync-field-description">
         Enter a descriptive name for the area
