@@ -20,16 +20,15 @@ export class ObsidianExtension implements Extension {
   readonly version = "1.0.0";
   readonly supportedEntities: readonly EntityType[] = ["area"]; // Start with areas only
 
-  readonly areas: ObsidianAreaOperations;
-
   private initialized = false;
+  private areaOperations: ObsidianAreaOperations;
 
   constructor(
     private app: App,
     private plugin: Plugin,
     private settings: ObsidianExtensionSettings
   ) {
-    this.areas = new ObsidianAreaOperations(app, settings.areasFolder);
+    this.areaOperations = new ObsidianAreaOperations(app, settings.areasFolder);
   }
 
   async initialize(): Promise<void> {
@@ -46,11 +45,8 @@ export class ObsidianExtension implements Extension {
         supportedEntities: [...this.supportedEntities],
       });
 
-      // Set up event listeners for request events
+      // Set up event listeners for domain events
       this.setupEventListeners();
-
-      // Load initial data
-      await this.loadAllEntities();
 
       this.initialized = true;
       console.log("ObsidianExtension initialized successfully");
@@ -79,21 +75,21 @@ export class ObsidianExtension implements Extension {
   async onEntityCreated(event: any): Promise<void> {
     if (event.type === "areas.created") {
       // Use ObsidianAreaOperations to create the note
-      await this.areas.createNote(event.area);
+      await this.areaOperations.createNote(event.area);
     }
   }
 
   async onEntityUpdated(event: any): Promise<void> {
     if (event.type === "areas.updated") {
       // Use ObsidianAreaOperations to update the note
-      await this.areas.updateNote(event.area);
+      await this.areaOperations.updateNote(event.area);
     }
   }
 
   async onEntityDeleted(event: any): Promise<void> {
     if (event.type === "areas.deleted") {
       // Use ObsidianAreaOperations to delete the note
-      await this.areas.deleteNote(event.areaId);
+      await this.areaOperations.deleteNote(event.areaId);
     }
   }
 
@@ -102,38 +98,5 @@ export class ObsidianExtension implements Extension {
     eventBus.on("areas.created", this.onEntityCreated.bind(this));
     eventBus.on("areas.updated", this.onEntityUpdated.bind(this));
     eventBus.on("areas.deleted", this.onEntityDeleted.bind(this));
-  }
-
-  private async loadAllEntities(): Promise<void> {
-    try {
-      eventBus.trigger({
-        type: "extension.sync.started",
-        extension: this.id,
-        entityType: "area",
-      });
-
-      const areas = await this.areas.getAll();
-
-      eventBus.trigger({
-        type: "areas.loaded",
-        areas,
-        extension: this.id,
-      });
-
-      eventBus.trigger({
-        type: "extension.sync.completed",
-        extension: this.id,
-        entityType: "area",
-        entityCount: areas.length,
-      });
-    } catch (error) {
-      console.error("Failed to load entities from Obsidian:", error);
-      eventBus.trigger({
-        type: "extension.sync.failed",
-        extension: this.id,
-        entityType: "area",
-        error: error.message,
-      });
-    }
   }
 }
