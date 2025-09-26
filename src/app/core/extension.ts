@@ -4,6 +4,7 @@
  */
 
 import { Task, Project, Area } from "./entities";
+import { DomainEvent } from "./events";
 
 // Generic entity union type
 export type Entity = Task | Project | Area;
@@ -29,7 +30,13 @@ export interface Extension {
   initialize(): Promise<void>;
   shutdown(): Promise<void>;
 
+  // Event-driven methods for reacting to entity changes
+  onEntityCreated(event: DomainEvent): Promise<void>;
+  onEntityUpdated(event: DomainEvent): Promise<void>;
+  onEntityDeleted(event: DomainEvent): Promise<void>;
+
   // Entity operations (optional - extensions can support subset)
+  // DEPRECATED: Extensions should be event-driven, not direct entity managers
   tasks?: EntityOperations<Task>;
   projects?: EntityOperations<Project>;
   areas?: EntityOperations<Area>;

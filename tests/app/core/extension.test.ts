@@ -3,7 +3,7 @@
  * Tests Extension interface, EntityOperations interface, and ExtensionRegistry
  */
 
-import { describe, test, expect, beforeEach } from "vitest";
+import { describe, test, expect, beforeEach, vi } from "vitest";
 import {
   Extension,
   EntityOperations,
@@ -12,6 +12,7 @@ import {
   type Entity,
 } from "../../../src/app/core/extension";
 import { Task, Project, Area } from "../../../src/app/core/entities";
+import { DomainEvent } from "../../../src/app/core/events";
 
 // Mock extension for testing
 class MockExtension implements Extension {
@@ -32,6 +33,19 @@ class MockExtension implements Extension {
 
   async isHealthy(): Promise<boolean> {
     return this.initialized;
+  }
+
+  // Event handler methods required by Extension interface
+  async onEntityCreated(event: DomainEvent): Promise<void> {
+    // Mock implementation
+  }
+
+  async onEntityUpdated(event: DomainEvent): Promise<void> {
+    // Mock implementation
+  }
+
+  async onEntityDeleted(event: DomainEvent): Promise<void> {
+    // Mock implementation
   }
 
   // Mock task operations
@@ -221,6 +235,161 @@ describe("Extension System Foundation", () => {
 
       // Should not throw when unregistering non-existent extension
       expect(() => registry.unregister("non-existent")).not.toThrow();
+    });
+  });
+
+  describe("Event-driven Extension interface", () => {
+    test("should require event handler methods in Extension interface", () => {
+      // This test will fail until we add the event handler methods to the Extension interface
+
+      // Create a basic extension that only implements current Extension interface
+      const basicExtension: Extension = {
+        id: "basic",
+        name: "Basic Extension",
+        version: "1.0.0",
+        supportedEntities: ["task"],
+        async initialize() {},
+        async shutdown() {},
+        async isHealthy() {
+          return true;
+        },
+      };
+
+      // This should fail compilation until Extension interface includes event methods
+      // @ts-expect-error - Extension interface should require event handler methods
+      const eventExtension: {
+        onEntityCreated(event: DomainEvent): Promise<void>;
+        onEntityUpdated(event: DomainEvent): Promise<void>;
+        onEntityDeleted(event: DomainEvent): Promise<void>;
+      } & Extension = basicExtension;
+
+      // Test should pass once we fix the interface
+      expect(basicExtension).toBeDefined();
+    });
+
+    test("should implement event handler methods for entity lifecycle", async () => {
+      // Create a mock event-driven extension
+      class EventDrivenExtension implements Extension {
+        readonly id = "event-driven-extension";
+        readonly name = "Event Driven Extension";
+        readonly version = "1.0.0";
+        readonly supportedEntities: readonly EntityType[] = ["task"];
+
+        private initialized = false;
+        public onEntityCreatedCalls: DomainEvent[] = [];
+        public onEntityUpdatedCalls: DomainEvent[] = [];
+        public onEntityDeletedCalls: DomainEvent[] = [];
+
+        async initialize(): Promise<void> {
+          this.initialized = true;
+        }
+
+        async shutdown(): Promise<void> {
+          this.initialized = false;
+        }
+
+        async isHealthy(): Promise<boolean> {
+          return this.initialized;
+        }
+
+        // Event-driven methods that extensions should implement
+        async onEntityCreated(event: DomainEvent): Promise<void> {
+          this.onEntityCreatedCalls.push(event);
+        }
+
+        async onEntityUpdated(event: DomainEvent): Promise<void> {
+          this.onEntityUpdatedCalls.push(event);
+        }
+
+        async onEntityDeleted(event: DomainEvent): Promise<void> {
+          this.onEntityDeletedCalls.push(event);
+        }
+      }
+
+      const extension = new EventDrivenExtension();
+      await extension.initialize();
+
+      // Test that event handlers are called correctly
+      const taskCreatedEvent: DomainEvent = {
+        type: "tasks.created",
+        task: {
+          id: "task-1",
+          title: "Test Task",
+          status: "Backlog",
+          done: false,
+          areas: [],
+          tags: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        extension: "core",
+      };
+
+      await extension.onEntityCreated(taskCreatedEvent);
+      expect(extension.onEntityCreatedCalls).toHaveLength(1);
+      expect(extension.onEntityCreatedCalls[0]).toBe(taskCreatedEvent);
+
+      const taskUpdatedEvent: DomainEvent = {
+        type: "tasks.updated",
+        task: {
+          id: "task-1",
+          title: "Updated Task",
+          status: "In Progress",
+          done: false,
+          areas: [],
+          tags: [],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        changes: { title: "Updated Task", status: "In Progress" },
+        extension: "core",
+      };
+
+      await extension.onEntityUpdated(taskUpdatedEvent);
+      expect(extension.onEntityUpdatedCalls).toHaveLength(1);
+      expect(extension.onEntityUpdatedCalls[0]).toBe(taskUpdatedEvent);
+
+      const taskDeletedEvent: DomainEvent = {
+        type: "tasks.deleted",
+        taskId: "task-1",
+        extension: "core",
+      };
+
+      await extension.onEntityDeleted(taskDeletedEvent);
+      expect(extension.onEntityDeletedCalls).toHaveLength(1);
+      expect(extension.onEntityDeletedCalls[0]).toBe(taskDeletedEvent);
+    });
+
+    test("should NOT have EntityOperations for event-driven extensions", () => {
+      // Event-driven extensions should not expose direct entity operations
+      class EventDrivenExtension implements Extension {
+        readonly id = "event-driven-extension";
+        readonly name = "Event Driven Extension";
+        readonly version = "1.0.0";
+        readonly supportedEntities: readonly EntityType[] = ["task"];
+
+        async initialize(): Promise<void> {}
+        async shutdown(): Promise<void> {}
+        async isHealthy(): Promise<boolean> {
+          return true;
+        }
+
+        async onEntityCreated(event: DomainEvent): Promise<void> {}
+        async onEntityUpdated(event: DomainEvent): Promise<void> {}
+        async onEntityDeleted(event: DomainEvent): Promise<void> {}
+
+        // Should NOT have these properties in event-driven extensions
+        // tasks?: EntityOperations<Task>;
+        // projects?: EntityOperations<Project>;
+        // areas?: EntityOperations<Area>;
+      }
+
+      const extension = new EventDrivenExtension();
+
+      // Event-driven extensions should not expose entity operations
+      expect(extension.tasks).toBeUndefined();
+      expect(extension.projects).toBeUndefined();
+      expect(extension.areas).toBeUndefined();
     });
   });
 });

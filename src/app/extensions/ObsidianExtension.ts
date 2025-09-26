@@ -81,6 +81,22 @@ export class ObsidianExtension implements Extension {
     return this.app.vault !== null && this.initialized;
   }
 
+  // Event handler methods required by Extension interface
+  async onEntityCreated(event: any): Promise<void> {
+    // TODO: Implement reactive note creation based on entity events
+    console.log(`ObsidianExtension: Entity created event received`, event);
+  }
+
+  async onEntityUpdated(event: any): Promise<void> {
+    // TODO: Implement reactive note updates based on entity events
+    console.log(`ObsidianExtension: Entity updated event received`, event);
+  }
+
+  async onEntityDeleted(event: any): Promise<void> {
+    // TODO: Implement reactive note deletion based on entity events
+    console.log(`ObsidianExtension: Entity deleted event received`, event);
+  }
+
   private setupEventListeners(): void {
     // Listen for area creation requests
     eventBus.on("areas.create.requested", async (event) => {
