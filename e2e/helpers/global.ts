@@ -891,6 +891,23 @@ export async function getFrontMatter(
   page: ExtendedPage,
   filePath: string
 ): Promise<Record<string, any>> {
+  // First wait for the frontmatter to be available
+  await page.waitForFunction(
+    async ({ filePath }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(filePath);
+      if (!file) return false;
+
+      const cache = app.metadataCache.getFileCache(file);
+      if (!cache || !cache.frontmatter) return false;
+
+      return true; // Return true to indicate condition is met
+    },
+    { filePath },
+    { timeout: 5000 }
+  );
+
+  // Then get the actual frontmatter
   return await page.evaluate(
     async ({ filePath }) => {
       const app = (window as any).app;
