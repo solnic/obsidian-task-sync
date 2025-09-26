@@ -41,10 +41,15 @@
 
     try {
       // Prepare area data for new entities system
+      const areaName = formData.name.trim();
       const areaData: Omit<Area, "id" | "createdAt" | "updatedAt"> = {
-        name: formData.name.trim(),
+        name: areaName,
         description: formData.description?.trim() || undefined,
         tags: [],
+        source: {
+          extension: "obsidian",
+          source: `Areas/${areaName}.md`,
+        },
       };
 
       // Create area using new entities system
