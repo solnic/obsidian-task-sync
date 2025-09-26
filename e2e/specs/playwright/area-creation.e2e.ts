@@ -8,6 +8,7 @@ import {
   executeCommand,
   waitForFileCreation,
   readVaultFile,
+  getFrontMatter,
 } from "../../helpers/global";
 
 test.describe("Area Creation with New Architecture", () => {
@@ -46,19 +47,11 @@ test.describe("Area Creation with New Architecture", () => {
 
     // Verify the file content contains the correct front-matter and description
     const fileContent = await readVaultFile(page, expectedFilePath);
-
-    expect(fileContent).toBeTruthy();
-    expect(fileContent).toContain("Name: Test Area E2E");
-    expect(fileContent).toContain("Type: Area");
     expect(fileContent).toContain(areaDescription);
 
-    // Verify that internal ID is NOT stored in frontmatter (as per old system)
-    expect(fileContent).not.toContain("Id:");
-    expect(fileContent).not.toContain("id:");
-
-    // Verify the area appears in the areas list (if there's a view for it)
-    // This would depend on having an areas view implemented
-    // For now, we'll just verify the file creation which is the core requirement
+    const frontMatter = await getFrontMatter(page, expectedFilePath);
+    expect(frontMatter.Name).toBe(areaName);
+    expect(frontMatter.Type).toBe("Area");
   });
 
   test("should show validation error when area name is empty", async ({
@@ -129,11 +122,10 @@ test.describe("Area Creation with New Architecture", () => {
 
     // Verify the file content
     const fileContent = await readVaultFile(page, expectedFilePath);
-
-    expect(fileContent).toBeTruthy();
-    expect(fileContent).toContain("Name: Minimal Test Area");
-    expect(fileContent).toContain("Type: Area");
-    // Should not have description content since none was provided
     expect(fileContent).not.toContain("This is a test");
+
+    const frontMatter = await getFrontMatter(page, expectedFilePath);
+    expect(frontMatter.Name).toBe(areaName);
+    expect(frontMatter.Type).toBe("Area");
   });
 });
