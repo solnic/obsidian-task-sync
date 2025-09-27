@@ -10,6 +10,8 @@ import { TaskSyncSettings } from "./app/types/settings";
 import { taskSyncApp } from "./app/App";
 import { ObsidianHost } from "./app/hosts/ObsidianHost";
 import { TaskSyncSettingTab } from "./app/components/settings";
+import { TasksView, TASKS_VIEW_TYPE } from "./app/views/TasksView";
+import { taskStore } from "./app/stores/taskStore";
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
@@ -35,6 +37,11 @@ export default class TaskSyncPlugin extends Plugin {
       return new TaskSyncView(leaf, this);
     });
 
+    // Register the tasks view
+    this.registerView(TASKS_VIEW_TYPE, (leaf) => {
+      return new TasksView(leaf, this.host, this.settings);
+    });
+
     // Add ribbon icon
     this.addRibbonIcon("checkbox", "Task Sync", () => {
       this.activateView();
@@ -46,6 +53,15 @@ export default class TaskSyncPlugin extends Plugin {
       name: "Open Main View",
       callback: () => {
         this.activateView();
+      },
+    });
+
+    // Add command to open tasks view
+    this.addCommand({
+      id: "open-tasks-view",
+      name: "Open Tasks View",
+      callback: () => {
+        this.activateTasksView();
       },
     });
 
@@ -81,6 +97,9 @@ export default class TaskSyncPlugin extends Plugin {
       this.activateView();
     });
 
+    // Expose taskStore globally for testing
+    (window as any).taskStore = taskStore;
+
     console.log("TaskSync plugin loaded successfully");
   }
 
@@ -104,6 +123,18 @@ export default class TaskSyncPlugin extends Plugin {
     if (!leaf) {
       leaf = workspace.getRightLeaf(false);
       await leaf.setViewState({ type: "task-sync-main", active: true });
+    }
+
+    workspace.revealLeaf(leaf);
+  }
+
+  async activateTasksView() {
+    const { workspace } = this.app;
+    let leaf = workspace.getLeavesOfType(TASKS_VIEW_TYPE)[0];
+
+    if (!leaf) {
+      leaf = workspace.getRightLeaf(false);
+      await leaf.setViewState({ type: TASKS_VIEW_TYPE, active: true });
     }
 
     workspace.revealLeaf(leaf);
