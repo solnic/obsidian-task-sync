@@ -1,84 +1,80 @@
 <script lang="ts">
-  import type { SettingsSection, TaskSyncSettings } from "../../../types/settings";
-  import { Setting, App } from "obsidian";
-  import { onMount } from "svelte";
-
-  let container: HTMLElement;
+  import type {
+    SettingsSection,
+    TaskSyncSettings,
+  } from "../../../types/settings";
+  import { App } from "obsidian";
+  import type TaskSyncPlugin from "../../../../main";
+  import GitHubIntegrationSettings from "./GitHubIntegrationSettings.svelte";
+  import AppleRemindersIntegrationSettings from "./AppleRemindersIntegrationSettings.svelte";
+  import AppleCalendarIntegrationSettings from "./AppleCalendarIntegrationSettings.svelte";
 
   interface Props {
     section: SettingsSection;
     settings: TaskSyncSettings;
     saveSettings: (newSettings: TaskSyncSettings) => Promise<void>;
     app: App;
-    plugin: any;
+    plugin: TaskSyncPlugin;
   }
 
-  let { settings = $bindable(), saveSettings }: Props = $props();
+  let { settings = $bindable(), saveSettings, app, plugin }: Props = $props();
 
-  onMount(() => {
-    // GitHub Integration
-    new Setting(container)
-      .setName("GitHub Integration")
-      .setDesc("Enable GitHub issues integration")
-      .addToggle((toggle) => {
-        toggle
-          .setValue(settings.integrations.github.enabled)
-          .onChange((value) => {
-            settings.integrations.github.enabled = value;
-            saveSettings(settings);
-          });
-      });
+  // Local state for integration toggles
+  let githubEnabled = $state(settings.integrations.github.enabled);
+  let appleRemindersEnabled = $state(
+    settings.integrations.appleReminders.enabled
+  );
+  let appleCalendarEnabled = $state(
+    settings.integrations.appleCalendar.enabled
+  );
 
-    // GitHub Personal Access Token
-    new Setting(container)
-      .setName("GitHub Personal Access Token")
-      .setDesc("Your GitHub personal access token for API access")
-      .addText((text) => {
-        text
-          .setPlaceholder("ghp_...")
-          .setValue(settings.integrations.github.personalAccessToken)
-          .onChange((value) => {
-            settings.integrations.github.personalAccessToken = value;
-            saveSettings(settings);
-          });
-        text.inputEl.type = "password";
-      });
+  // Update settings when local state changes
+  async function updateGitHubEnabled(enabled: boolean) {
+    githubEnabled = enabled;
+    settings.integrations.github.enabled = enabled;
+    await saveSettings(settings);
+  }
 
-    // Apple Reminders Integration
-    new Setting(container)
-      .setName("Apple Reminders Integration")
-      .setDesc("Enable Apple Reminders integration")
-      .addToggle((toggle) => {
-        toggle
-          .setValue(settings.integrations.appleReminders.enabled)
-          .onChange((value) => {
-            settings.integrations.appleReminders.enabled = value;
-            saveSettings(settings);
-          });
-      });
+  async function updateAppleRemindersEnabled(enabled: boolean) {
+    appleRemindersEnabled = enabled;
+    settings.integrations.appleReminders.enabled = enabled;
+    await saveSettings(settings);
+  }
 
-    // Apple Calendar Integration
-    new Setting(container)
-      .setName("Apple Calendar Integration")
-      .setDesc("Enable Apple Calendar integration")
-      .addToggle((toggle) => {
-        toggle
-          .setValue(settings.integrations.appleCalendar.enabled)
-          .onChange((value) => {
-            settings.integrations.appleCalendar.enabled = value;
-            saveSettings(settings);
-          });
-      });
-
-    // Placeholder for more detailed integration settings
-    const placeholder = container.createDiv();
-    placeholder.innerHTML = `
-      <div style="padding: 20px; margin-top: 20px; background: var(--background-secondary); border-radius: 6px; color: var(--text-muted);">
-        <p><strong>Note:</strong> Detailed integration settings will be implemented in future updates.</p>
-        <p>This will include repository selection, label mapping, sync intervals, and more.</p>
-      </div>
-    `;
-  });
+  async function updateAppleCalendarEnabled(enabled: boolean) {
+    appleCalendarEnabled = enabled;
+    settings.integrations.appleCalendar.enabled = enabled;
+    await saveSettings(settings);
+  }
 </script>
 
-<div bind:this={container}></div>
+<div>
+  <!-- GitHub Integration Section -->
+  <h3 class="task-sync-subsection-header">GitHub</h3>
+  <GitHubIntegrationSettings
+    {settings}
+    {saveSettings}
+    {app}
+    {plugin}
+    enabled={githubEnabled}
+    onToggle={updateGitHubEnabled}
+  />
+
+  <!-- Apple Reminders Integration Section -->
+  <h3 class="task-sync-subsection-header">Apple Reminders</h3>
+  <AppleRemindersIntegrationSettings
+    {settings}
+    {saveSettings}
+    enabled={appleRemindersEnabled}
+    onToggle={updateAppleRemindersEnabled}
+  />
+
+  <!-- Apple Calendar Integration Section -->
+  <h3 class="task-sync-subsection-header">Apple Calendar</h3>
+  <AppleCalendarIntegrationSettings
+    {settings}
+    {saveSettings}
+    enabled={appleCalendarEnabled}
+    onToggle={updateAppleCalendarEnabled}
+  />
+</div>

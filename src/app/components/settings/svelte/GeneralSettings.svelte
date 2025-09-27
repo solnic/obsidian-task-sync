@@ -14,7 +14,7 @@
     saveSettings: (newSettings: TaskSyncSettings) => Promise<void>;
   }
 
-  let { settings, saveSettings }: Props = $props();
+  let { settings = $bindable(), saveSettings }: Props = $props();
 
   onMount(() => {
     // Tasks Folder setting
@@ -58,21 +58,7 @@
             saveSettings(settings);
           });
       });
-
-    // Daily Notes Folder setting
-    new Setting(container)
-      .setName("Daily Notes Folder")
-      .setDesc("Folder where daily notes are stored")
-      .addText((text) => {
-        text
-          .setPlaceholder("Daily Notes")
-          .setValue(settings.dailyNotesFolder)
-          .onChange((value) => {
-            settings.dailyNotesFolder = value;
-            saveSettings(settings);
-          });
-      });
   });
 </script>
 
-<div bind:this={container}></div>
+<div bind:this={container} data-testid="general-settings"></div>
