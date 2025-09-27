@@ -84,7 +84,6 @@
             saveSettings(settings);
           });
       });
-  });
 </script>
 
 <div bind:this={container}></div>
