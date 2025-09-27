@@ -28,17 +28,10 @@ describe("ObsidianHost Implementation", () => {
 
   describe("Settings persistence", () => {
     test("should load settings from Obsidian plugin data", async () => {
-      const mockSettings: TaskSyncSettings = {
+      const mockSettings: Partial<TaskSyncSettings> = {
         areasFolder: "TestAreas",
         projectsFolder: "TestProjects",
         tasksFolder: "TestTasks",
-        enableGitHubIntegration: true,
-        enableAppleRemindersIntegration: false,
-        enableAppleCalendarIntegration: false,
-        defaultView: "areas",
-        showCompletedTasks: false,
-        autoCreateFolders: true,
-        useTemplates: true,
       };
 
       mockPlugin.loadData.mockResolvedValue(mockSettings);
@@ -46,7 +39,14 @@ describe("ObsidianHost Implementation", () => {
       const loadedSettings = await obsidianHost.loadSettings();
 
       expect(mockPlugin.loadData).toHaveBeenCalledTimes(1);
-      expect(loadedSettings).toEqual(mockSettings);
+      // Should merge partial settings with defaults
+      expect(loadedSettings.areasFolder).toBe("TestAreas");
+      expect(loadedSettings.projectsFolder).toBe("TestProjects");
+      expect(loadedSettings.tasksFolder).toBe("TestTasks");
+      // Should have default values for other properties
+      expect(loadedSettings.templateFolder).toBe("Templates");
+      expect(loadedSettings.basesFolder).toBe("Bases");
+      expect(loadedSettings.taskTypes).toEqual(DEFAULT_SETTINGS.taskTypes);
     });
 
     test("should return default settings when no data exists", async () => {

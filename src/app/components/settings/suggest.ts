@@ -353,7 +353,7 @@ export class FileSuggestComponent {
     // Filter by extensions if specified
     if (this.options.fileExtensions && this.options.fileExtensions.length > 0) {
       fileNames = fileNames.filter((fileName) =>
-        this.options.fileExtensions!.some((ext) => fileName.endsWith(ext))
+        this.options.fileExtensions.some((ext) => fileName.endsWith(ext))
       );
     }
 

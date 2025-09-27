@@ -36,97 +36,6 @@ export class SortableGitHubMappingList {
     this.listElement = this.container.createDiv("sortable-github-mapping-list");
 
     this.render();
-    this.addStyles();
-  }
-
-  private addStyles(): void {
-    // Only add styles once
-    if (document.getElementById("sortable-github-mapping-list-styles")) {
-      return;
-    }
-
-    const style = document.createElement("style");
-    style.id = "sortable-github-mapping-list-styles";
-    style.textContent = `
-      .sortable-github-mapping-list {
-        border: 1px solid var(--background-modifier-border);
-        border-radius: 6px;
-        background: var(--background-primary);
-        overflow: hidden;
-      }
-
-      .github-mapping-item {
-        display: flex;
-        align-items: center;
-        padding: 12px;
-        border-bottom: 1px solid var(--background-modifier-border-hover);
-        cursor: move;
-        transition: background-color 0.2s ease;
-        user-select: none;
-        gap: 12px;
-      }
-
-      .github-mapping-item:last-child {
-        border-bottom: none;
-      }
-
-      .github-mapping-item:hover {
-        background: var(--background-modifier-hover);
-      }
-
-      .github-mapping-item.dragging {
-        opacity: 0.5;
-        background: var(--background-modifier-active-hover);
-      }
-
-      .github-mapping-item.drag-over {
-        background: var(--interactive-accent-hover);
-        border-color: var(--interactive-accent);
-      }
-
-      .mapping-drag-handle {
-        color: var(--text-muted);
-        font-size: 14px;
-        cursor: grab;
-      }
-
-      .mapping-drag-handle:active {
-        cursor: grabbing;
-      }
-
-      .mapping-content {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
-      .mapping-primary {
-        font-weight: 500;
-        color: var(--text-normal);
-      }
-
-      .mapping-secondary {
-        font-size: 12px;
-        color: var(--text-muted);
-      }
-
-      .mapping-actions {
-        display: flex;
-        gap: 8px;
-      }
-
-      .mapping-actions button {
-        padding: 4px 8px;
-        font-size: 12px;
-      }
-
-      .github-mapping-add-button {
-        margin-top: 12px;
-        width: 100%;
-      }
-    `;
-    document.head.appendChild(style);
   }
 
   private render(): void {
@@ -152,7 +61,10 @@ export class SortableGitHubMappingList {
     addButton.onclick = () => this.onAdd();
   }
 
-  private renderMappingItem(mapping: GitHubOrgRepoMapping, index: number): void {
+  private renderMappingItem(
+    mapping: GitHubOrgRepoMapping,
+    index: number
+  ): void {
     const item = this.listElement.createDiv("github-mapping-item");
     item.draggable = true;
     item.dataset.index = index.toString();
@@ -177,12 +89,14 @@ export class SortableGitHubMappingList {
 
     const targets = [];
     if (mapping.targetArea) targets.push(`Area: ${mapping.targetArea}`);
-    if (mapping.targetProject) targets.push(`Project: ${mapping.targetProject}`);
-    secondary.textContent = targets.length > 0 ? targets.join(", ") : "No targets set";
+    if (mapping.targetProject)
+      targets.push(`Project: ${mapping.targetProject}`);
+    secondary.textContent =
+      targets.length > 0 ? targets.join(", ") : "No targets set";
 
     // Actions
     const actions = item.createDiv("mapping-actions");
-    
+
     const editButton = actions.createEl("button", {
       text: "Edit",
       cls: "mod-muted",
