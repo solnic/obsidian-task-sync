@@ -1,5 +1,8 @@
 <script lang="ts">
-  import type { SettingsSection, TaskSyncSettings } from "../../../types/settings";
+  import type {
+    SettingsSection,
+    TaskSyncSettings,
+  } from "../../../types/settings";
   import { Setting } from "obsidian";
   import { onMount } from "svelte";
 
@@ -11,7 +14,7 @@
     saveSettings: (newSettings: TaskSyncSettings) => Promise<void>;
   }
 
-  let { settings = $bindable(), saveSettings }: Props = $props();
+  let { settings, saveSettings }: Props = $props();
 
   onMount(() => {
     // Tasks Folder setting
@@ -69,6 +72,7 @@
             saveSettings(settings);
           });
       });
+  });
 </script>
 
 <div bind:this={container}></div>

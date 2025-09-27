@@ -1,5 +1,8 @@
 <script lang="ts">
-  import type { SettingsSection, TaskSyncSettings } from "../../../types/settings";
+  import type {
+    SettingsSection,
+    TaskSyncSettings,
+  } from "../../../types/settings";
   import { Setting, App } from "obsidian";
   import { onMount } from "svelte";
 
@@ -13,7 +16,7 @@
     plugin: any;
   }
 
-  let { settings = $bindable(), saveSettings }: Props = $props();
+  let { settings, saveSettings }: Props = $props();
 
   onMount(() => {
     // Template Folder setting
@@ -35,12 +38,10 @@
       .setName("Use Templater")
       .setDesc("Enable Templater plugin integration for templates")
       .addToggle((toggle) => {
-        toggle
-          .setValue(settings.useTemplater)
-          .onChange((value) => {
-            settings.useTemplater = value;
-            saveSettings(settings);
-          });
+        toggle.setValue(settings.useTemplater).onChange((value) => {
+          settings.useTemplater = value;
+          saveSettings(settings);
+        });
       });
 
     // Default Task Template
@@ -84,6 +85,7 @@
             saveSettings(settings);
           });
       });
+  });
 </script>
 
 <div bind:this={container}></div>
