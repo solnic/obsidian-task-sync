@@ -3,17 +3,33 @@
  * Refactored to use ObsidianHost abstraction
  */
 
-import { Plugin, ItemView, WorkspaceLeaf, Notice } from "obsidian";
+import { Plugin, ItemView, WorkspaceLeaf } from "obsidian";
 import { mount, unmount } from "svelte";
 import App from "./app/App.svelte";
 import { TaskSyncSettings } from "./app/types/settings";
 import { taskSyncApp } from "./app/App";
 import { ObsidianHost } from "./app/hosts/ObsidianHost";
 import { TaskSyncSettingTab } from "./app/components/settings";
+import { taskStore, type TaskStore } from "./app/stores/taskStore";
+import { projectStore, type ProjectStore } from "./app/stores/projectStore";
+import { areaStore, type AreaStore } from "./app/stores/areaStore";
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
   private host: ObsidianHost;
+
+  // Expose stores for testing (like in the old implementation)
+  public get stores(): {
+    taskStore: TaskStore;
+    projectStore: ProjectStore;
+    areaStore: AreaStore;
+  } {
+    return {
+      taskStore,
+      projectStore,
+      areaStore,
+    };
+  }
 
   async onload() {
     console.log("TaskSync plugin loading...");
@@ -109,6 +125,11 @@ export default class TaskSyncPlugin extends Plugin {
     workspace.revealLeaf(leaf);
   }
 
+  // Backward compatibility method for e2e tests
+  async activateTasksView() {
+    return this.activateView();
+  }
+
   async openCreateAreaModal() {
     const { AreaCreateModal } = await import("./app/modals/AreaCreateModal");
     new AreaCreateModal(this.app, this).open();
@@ -125,31 +146,6 @@ export default class TaskSyncPlugin extends Plugin {
     const { TaskCreateModal } = await import("./app/modals/TaskCreateModal");
     new TaskCreateModal(this.app, this).open();
   }
-
-  // Placeholder methods for settings UI compatibility
-  // TODO: Implement these methods when base management is ported to new architecture
-  async syncAreaProjectBases(): Promise<void> {
-    console.warn(
-      "syncAreaProjectBases() not yet implemented in new architecture"
-    );
-    // For now, do nothing - this functionality will be implemented later
-  }
-
-  // Placeholder noteManagers object for settings UI compatibility
-  noteManagers = {
-    createTemplate: async (templateType: string): Promise<void> => {
-      console.warn(
-        `createTemplate(${templateType}) not yet implemented in new architecture`
-      );
-      new Notice(
-        `Template creation for ${templateType} is not yet available. This feature will be implemented in a future update.`,
-        5000
-      );
-      throw new Error(
-        `Template creation for ${templateType} is not yet available in the new architecture.`
-      );
-    },
-  };
 }
 
 class TaskSyncView extends ItemView {

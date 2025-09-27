@@ -203,8 +203,8 @@ export interface FileSuggestOptions {
   validateFile?: (file: string) => ValidationResult;
 }
 
-// Default folder and template configurations
-const DEFAULT_FOLDER_SETTINGS = {
+// Default settings with comprehensive configuration
+export const DEFAULT_SETTINGS: TaskSyncSettings = {
   tasksFolder: "Tasks",
   projectsFolder: "Projects",
   areasFolder: "Areas",
@@ -215,130 +215,106 @@ const DEFAULT_FOLDER_SETTINGS = {
   defaultProjectTemplate: "project-template.md",
   defaultAreaTemplate: "area-template.md",
   defaultParentTaskTemplate: "parent-task-template.md",
-} as const;
-
-// Default base-related configurations
-const DEFAULT_BASE_SETTINGS = {
+  // Base-related defaults
   basesFolder: "Bases",
   tasksBaseFile: "Tasks.base",
   autoGenerateBases: true,
   autoUpdateBaseViews: true,
+  // Task categories defaults
+  taskTypes: [
+    { name: "Task", color: "blue" },
+    { name: "Bug", color: "red" },
+    { name: "Feature", color: "green" },
+    { name: "Improvement", color: "purple" },
+    { name: "Chore", color: "gray" },
+  ],
+  // Task priorities defaults
+  taskPriorities: [
+    { name: "Low", color: "green" },
+    { name: "Medium", color: "yellow" },
+    { name: "High", color: "orange" },
+    { name: "Urgent", color: "red" },
+  ],
+  // Task statuses defaults
+  taskStatuses: [
+    { name: "Backlog", color: "gray", isDone: false, isInProgress: false },
+    { name: "In Progress", color: "blue", isDone: false, isInProgress: true },
+    { name: "Done", color: "green", isDone: true, isInProgress: false },
+  ],
+  // Individual area/project bases defaults
   areaBasesEnabled: true,
   projectBasesEnabled: true,
   autoSyncAreaProjectBases: true,
-} as const;
-
-// Default task type configurations
-const DEFAULT_TASK_TYPES: TaskType[] = [
-  { name: "Task", color: "blue" },
-  { name: "Bug", color: "red" },
-  { name: "Feature", color: "green" },
-  { name: "Improvement", color: "purple" },
-  { name: "Chore", color: "gray" },
-];
-
-// Default task priority configurations
-const DEFAULT_TASK_PRIORITIES: TaskPriority[] = [
-  { name: "Low", color: "green" },
-  { name: "Medium", color: "yellow" },
-  { name: "High", color: "orange" },
-  { name: "Urgent", color: "red" },
-];
-
-// Default task status configurations
-const DEFAULT_TASK_STATUSES: TaskStatus[] = [
-  { name: "Backlog", color: "gray", isDone: false, isInProgress: false },
-  { name: "In Progress", color: "blue", isDone: false, isInProgress: true },
-  { name: "Done", color: "green", isDone: true, isInProgress: false },
-];
-
-// Default task property ordering
-const DEFAULT_TASK_PROPERTY_ORDER = [
-  "title",
-  "status",
-  "priority",
-  "type",
-  "area",
-  "project",
-  "due",
-  "created",
-  "updated",
-] as const;
-
-// Default GitHub integration settings
-const DEFAULT_GITHUB_SETTINGS: GitHubIntegrationSettings = {
-  enabled: false,
-  personalAccessToken: "",
-  repositories: [],
-  defaultRepository: "",
-  issueFilters: {
-    state: "open",
-    assignee: "",
-    labels: [],
-  },
-  labelTypeMapping: {
-    bug: "Bug",
-    enhancement: "Feature",
-    feature: "Feature",
-    improvement: "Improvement",
-    chore: "Chore",
-    documentation: "Chore",
-  },
-  orgRepoMappings: [],
-};
-
-// Default Apple Reminders integration settings
-const DEFAULT_APPLE_REMINDERS_SETTINGS: AppleRemindersIntegrationSettings = {
-  enabled: false,
-  includeCompletedReminders: false,
-  reminderLists: [], // Empty array means sync all lists
-  syncInterval: 60, // 60 minutes
-  excludeAllDayReminders: false,
-  defaultTaskType: "Task",
-  importNotesAsDescription: true,
-  preservePriority: true,
-};
-
-// Default Apple Calendar integration settings
-const DEFAULT_APPLE_CALENDAR_SETTINGS: AppleCalendarIntegrationSettings = {
-  enabled: false,
-  username: "", // Apple ID
-  appSpecificPassword: "", // App-specific password
-  selectedCalendars: [], // Empty array means include all calendars
-  includeAllDayEvents: true,
-  includeBusyEvents: true,
-  includeFreeEvents: false,
-  daysAhead: 1, // Look ahead 1 day
-  daysBehind: 0, // Don't look back
-  includeLocation: true,
-  includeNotes: false,
-  timeFormat: "24h" as const,
-  defaultArea: "", // Default area for imported calendar events
-  // Day view configuration defaults
-  startHour: 8, // Start at 8 AM
-  endHour: 18, // End at 6 PM
-  timeIncrement: 15, // 15-minute increments
-  zoomLevel: 1, // Default zoom level (second level)
-  // Task scheduling defaults
-  schedulingEnabled: false, // Disabled by default
-  defaultSchedulingCalendar: "", // No default calendar
-  defaultEventDuration: 60, // 1 hour default duration
-  defaultReminders: [15], // 15 minutes before event
-  includeTaskDetailsInEvent: true, // Include task details by default
-};
-
-// Composed default settings from focused configuration objects
-export const DEFAULT_SETTINGS: TaskSyncSettings = {
-  ...DEFAULT_FOLDER_SETTINGS,
-  ...DEFAULT_BASE_SETTINGS,
-  taskTypes: DEFAULT_TASK_TYPES,
-  taskPriorities: DEFAULT_TASK_PRIORITIES,
-  taskStatuses: DEFAULT_TASK_STATUSES,
-  taskPropertyOrder: [...DEFAULT_TASK_PROPERTY_ORDER],
+  // Task property ordering defaults - simplified for now
+  taskPropertyOrder: [
+    "title",
+    "status",
+    "priority",
+    "type",
+    "area",
+    "project",
+    "due",
+    "created",
+    "updated",
+  ],
+  // Integration defaults
   integrations: {
-    github: DEFAULT_GITHUB_SETTINGS,
-    appleReminders: DEFAULT_APPLE_REMINDERS_SETTINGS,
-    appleCalendar: DEFAULT_APPLE_CALENDAR_SETTINGS,
+    github: {
+      enabled: false,
+      personalAccessToken: "",
+      repositories: [],
+      defaultRepository: "",
+      issueFilters: {
+        state: "open",
+        assignee: "",
+        labels: [],
+      },
+      labelTypeMapping: {
+        bug: "Bug",
+        enhancement: "Feature",
+        feature: "Feature",
+        improvement: "Improvement",
+        chore: "Chore",
+        documentation: "Chore",
+      },
+      orgRepoMappings: [],
+    },
+    appleReminders: {
+      enabled: false,
+      includeCompletedReminders: false,
+      reminderLists: [], // Empty array means sync all lists
+      syncInterval: 60, // 60 minutes
+      excludeAllDayReminders: false,
+      defaultTaskType: "Task",
+      importNotesAsDescription: true,
+      preservePriority: true,
+    },
+    appleCalendar: {
+      enabled: false,
+      username: "", // Apple ID
+      appSpecificPassword: "", // App-specific password
+      selectedCalendars: [], // Empty array means include all calendars
+      includeAllDayEvents: true,
+      includeBusyEvents: true,
+      includeFreeEvents: false,
+      daysAhead: 1, // Look ahead 1 day
+      daysBehind: 0, // Don't look back
+      includeLocation: true,
+      includeNotes: false,
+      timeFormat: "24h" as const,
+      defaultArea: "", // Default area for imported calendar events
+      // Day view configuration defaults
+      startHour: 8, // Start at 8 AM
+      endHour: 18, // End at 6 PM
+      timeIncrement: 15, // 15-minute increments
+      zoomLevel: 1, // Default zoom level (second level)
+      // Task scheduling defaults
+      schedulingEnabled: false, // Disabled by default
+      defaultSchedulingCalendar: "", // No default calendar
+      defaultEventDuration: 60, // 1 hour default duration
+      defaultReminders: [15], // 15 minutes before event
+      includeTaskDetailsInEvent: true, // Include task details by default
+    },
   },
 };
 

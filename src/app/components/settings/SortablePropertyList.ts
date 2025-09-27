@@ -43,6 +43,87 @@ export class SortablePropertyList {
     this.listElement = this.container.createDiv("sortable-property-list");
 
     this.render();
+    this.addStyles();
+  }
+
+  private addStyles(): void {
+    // Only add styles once
+    if (document.getElementById("sortable-property-list-styles")) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.id = "sortable-property-list-styles";
+    style.textContent = `
+      .sortable-property-list {
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 6px;
+        background: var(--background-primary);
+        max-height: 300px;
+        overflow-y: auto;
+      }
+
+      .sortable-property-item {
+        display: flex;
+        align-items: center;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--background-modifier-border-hover);
+        cursor: move;
+        transition: background-color 0.2s ease;
+        user-select: none;
+      }
+
+      .sortable-property-item:last-child {
+        border-bottom: none;
+      }
+
+      .sortable-property-item:hover {
+        background: var(--background-modifier-hover);
+      }
+
+      .sortable-property-item.dragging {
+        opacity: 0.5;
+        background: var(--background-modifier-active-hover);
+      }
+
+      .sortable-property-item.drag-over {
+        background: var(--interactive-accent-hover);
+        border-color: var(--interactive-accent);
+      }
+
+      .property-drag-handle {
+        margin-right: 8px;
+        color: var(--text-muted);
+        font-size: 14px;
+        cursor: grab;
+      }
+
+      .property-drag-handle:active {
+        cursor: grabbing;
+      }
+
+      .property-info {
+        flex: 1;
+      }
+
+      .property-name {
+        font-weight: 500;
+        color: var(--text-normal);
+        margin-bottom: 2px;
+      }
+
+      .property-description {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+
+      .sortable-property-actions {
+        margin-top: 12px;
+        display: flex;
+        justify-content: flex-end;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   private render(): void {

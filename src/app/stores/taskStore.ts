@@ -13,7 +13,7 @@ interface TaskStoreState {
   lastSync: Date | null;
 }
 
-interface TaskStore extends Readable<TaskStoreState> {
+export interface TaskStore extends Readable<TaskStoreState> {
   // Derived stores for common queries
   tasksByExtension: Readable<Map<string, Task[]>>;
   todayTasks: Readable<Task[]>;

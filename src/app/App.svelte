@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy } from "svelte";
+  import TasksView from "./components/TasksView.svelte";
 
   interface Props {
     obsidianApp: any;
@@ -7,7 +8,7 @@
     settings: any;
   }
 
-  let { obsidianApp, plugin, settings }: Props = $props();
+  let { plugin, settings }: Props = $props();
 
   let isInitialized = $state(false);
   let initError = $state<string | null>(null);
@@ -16,15 +17,15 @@
     try {
       // Basic initialization - just mark as initialized for now
       isInitialized = true;
-      console.log('TaskSync app initialized successfully');
+      console.log("TaskSync app initialized successfully");
     } catch (error) {
-      console.error('Failed to initialize TaskSync app:', error);
-      initError = error instanceof Error ? error.message : 'Unknown error';
+      console.error("Failed to initialize TaskSync app:", error);
+      initError = error instanceof Error ? error.message : "Unknown error";
     }
   });
 
   onDestroy(() => {
-    console.log('TaskSync app destroyed');
+    console.log("TaskSync app destroyed");
   });
 </script>
 
@@ -44,8 +45,7 @@
     </div>
   {:else}
     <div class="app-content">
-      <h1>Hello from Task Sync</h1>
-      <p>The new Svelte app is running!</p>
+      <TasksView {settings} host={plugin.host} testId="tasks-view" />
     </div>
   {/if}
 </div>
@@ -66,20 +66,13 @@
     padding: 2rem;
   }
 
-  .loading-state, .error-state {
+  .loading-state,
+  .error-state {
     text-align: center;
   }
 
   .app-content {
     flex: 1;
-  }
-
-  .app-content h1 {
-    color: var(--text-normal);
-    margin-bottom: 1rem;
-  }
-
-  .app-content p {
-    color: var(--text-muted);
+    height: 100%;
   }
 </style>
