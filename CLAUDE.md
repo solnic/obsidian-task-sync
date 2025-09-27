@@ -17,10 +17,6 @@ npm run build:css:watch        # Watch and compile CSS changes
 npm test                       # Run all tests (unit + e2e)
 npm run test:unit              # Run unit tests only
 npm run test:e2e               # Run e2e tests with xvfb (headless)
-npm run test:e2e:windowed      # Run e2e tests with visible browser
-npm run test:e2e:failed        # Rerun failed e2e tests
-npm run test:coverage          # Unit tests with coverage report
-npm run test:ui                # Vitest UI for unit tests
 ```
 
 ### Development Workflow
