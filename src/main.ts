@@ -3,7 +3,7 @@
  * Refactored to use ObsidianHost abstraction
  */
 
-import { Plugin, ItemView, WorkspaceLeaf } from "obsidian";
+import { Plugin, ItemView, WorkspaceLeaf, Notice } from "obsidian";
 import { mount, unmount } from "svelte";
 import App from "./app/App.svelte";
 import { TaskSyncSettings } from "./app/types/settings";
@@ -125,6 +125,31 @@ export default class TaskSyncPlugin extends Plugin {
     const { TaskCreateModal } = await import("./app/modals/TaskCreateModal");
     new TaskCreateModal(this.app, this).open();
   }
+
+  // Placeholder methods for settings UI compatibility
+  // TODO: Implement these methods when base management is ported to new architecture
+  async syncAreaProjectBases(): Promise<void> {
+    console.warn(
+      "syncAreaProjectBases() not yet implemented in new architecture"
+    );
+    // For now, do nothing - this functionality will be implemented later
+  }
+
+  // Placeholder noteManagers object for settings UI compatibility
+  noteManagers = {
+    createTemplate: async (templateType: string): Promise<void> => {
+      console.warn(
+        `createTemplate(${templateType}) not yet implemented in new architecture`
+      );
+      new Notice(
+        `Template creation for ${templateType} is not yet available. This feature will be implemented in a future update.`,
+        5000
+      );
+      throw new Error(
+        `Template creation for ${templateType} is not yet available in the new architecture.`
+      );
+    },
+  };
 }
 
 class TaskSyncView extends ItemView {

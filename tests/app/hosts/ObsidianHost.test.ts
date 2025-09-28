@@ -18,6 +18,18 @@ const mockPlugin = {
   onunload: vi.fn(),
 };
 
+/**
+ * Test fixture factory for creating complete TaskSyncSettings objects
+ */
+function createTestSettings(
+  overrides: Partial<TaskSyncSettings> = {}
+): TaskSyncSettings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...overrides,
+  };
+}
+
 describe("ObsidianHost Implementation", () => {
   let obsidianHost: ObsidianHost;
 
@@ -27,26 +39,22 @@ describe("ObsidianHost Implementation", () => {
   });
 
   describe("Settings persistence", () => {
-    test("should load settings from Obsidian plugin data", async () => {
-      const mockSettings: Partial<TaskSyncSettings> = {
+    test("should load complete settings from Obsidian plugin data", async () => {
+      const mockSettings = createTestSettings({
         areasFolder: "TestAreas",
         projectsFolder: "TestProjects",
         tasksFolder: "TestTasks",
-      };
+      });
 
       mockPlugin.loadData.mockResolvedValue(mockSettings);
 
       const loadedSettings = await obsidianHost.loadSettings();
 
       expect(mockPlugin.loadData).toHaveBeenCalledTimes(1);
-      // Should merge partial settings with defaults
+      expect(loadedSettings).toEqual(mockSettings);
       expect(loadedSettings.areasFolder).toBe("TestAreas");
       expect(loadedSettings.projectsFolder).toBe("TestProjects");
       expect(loadedSettings.tasksFolder).toBe("TestTasks");
-      // Should have default values for other properties
-      expect(loadedSettings.templateFolder).toBe("Templates");
-      expect(loadedSettings.basesFolder).toBe("Bases");
-      expect(loadedSettings.taskTypes).toEqual(DEFAULT_SETTINGS.taskTypes);
     });
 
     test("should return default settings when no data exists", async () => {
@@ -61,7 +69,8 @@ describe("ObsidianHost Implementation", () => {
     test("should merge partial settings with defaults", async () => {
       const partialSettings = {
         areasFolder: "CustomAreas",
-        enableGitHubIntegration: true,
+        basesFolder: "CustomBases",
+        autoGenerateBases: false,
       };
 
       mockPlugin.loadData.mockResolvedValue(partialSettings);
@@ -69,26 +78,36 @@ describe("ObsidianHost Implementation", () => {
       const loadedSettings = await obsidianHost.loadSettings();
 
       expect(loadedSettings.areasFolder).toBe("CustomAreas");
-      expect(loadedSettings.enableGitHubIntegration).toBe(true);
+      expect(loadedSettings.basesFolder).toBe("CustomBases");
+      expect(loadedSettings.autoGenerateBases).toBe(false);
       expect(loadedSettings.projectsFolder).toBe(
         DEFAULT_SETTINGS.projectsFolder
       );
       expect(loadedSettings.tasksFolder).toBe(DEFAULT_SETTINGS.tasksFolder);
+      // Should have default values for other properties
+      expect(loadedSettings.taskTypes).toEqual(DEFAULT_SETTINGS.taskTypes);
+      expect(loadedSettings.integrations).toEqual(
+        DEFAULT_SETTINGS.integrations
+      );
     });
 
     test("should save settings to Obsidian plugin data", async () => {
-      const testSettings: TaskSyncSettings = {
+      const testSettings = createTestSettings({
         areasFolder: "SavedAreas",
         projectsFolder: "SavedProjects",
         tasksFolder: "SavedTasks",
-        enableGitHubIntegration: false,
-        enableAppleRemindersIntegration: true,
-        enableAppleCalendarIntegration: false,
-        defaultView: "projects",
-        showCompletedTasks: true,
-        autoCreateFolders: false,
-        useTemplates: false,
-      };
+        integrations: {
+          ...DEFAULT_SETTINGS.integrations,
+          github: {
+            ...DEFAULT_SETTINGS.integrations.github,
+            enabled: false,
+          },
+          appleReminders: {
+            ...DEFAULT_SETTINGS.integrations.appleReminders,
+            enabled: true,
+          },
+        },
+      });
 
       await obsidianHost.saveSettings(testSettings);
 
