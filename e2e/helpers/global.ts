@@ -1186,6 +1186,164 @@ export async function openTaskStatusSettings(
 }
 
 /**
+ * Open Task Sync settings and navigate to Task Categories section
+ */
+export async function openTaskCategoriesSettings(
+  page: ExtendedPage
+): Promise<void> {
+  await openTaskSyncSettings(page);
+  await scrollToSettingsSection(page, "Task Categories");
+}
+
+/**
+ * Add a new task category through the UI
+ */
+export async function addTaskCategory(
+  page: Page,
+  categoryName: string,
+  color: string = "#3b82f6"
+): Promise<void> {
+  // Find the "Add New Task Category" section
+  const addSection = page.locator('[data-testid="add-task-category-section"]');
+  await addSection.scrollIntoViewIfNeeded();
+
+  // Fill in the category name
+  const nameInput = page.locator('[data-testid="task-category-name-input"]');
+  await nameInput.fill(categoryName);
+
+  // Note: Color picker interaction is complex with Obsidian's color picker component
+  // For now, we'll skip setting the color in tests and use the default
+
+  // Click the add button
+  const addButton = page.locator('[data-testid="add-task-category-button"]');
+  await addButton.click();
+
+  // Wait for the new category to appear in the list
+  await page.waitForFunction(
+    ({ categoryName }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      return plugin.settings.taskTypes.some(
+        (type: any) => type.name === categoryName
+      );
+    },
+    { categoryName },
+    { timeout: 5000 }
+  );
+}
+
+/**
+ * Get a specific task category setting element by name
+ */
+export async function getTaskCategorySetting(
+  page: Page,
+  categoryName: string
+): Promise<any> {
+  // Look for a setting item that contains the category name in a text input
+  const settingItems = page.locator(".setting-item");
+
+  for (let i = 0; i < (await settingItems.count()); i++) {
+    const item = settingItems.nth(i);
+    const textInput = item.locator('input[type="text"]');
+
+    if ((await textInput.count()) > 0) {
+      const value = await textInput.inputValue();
+      if (value === categoryName) {
+        return item;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Verify that a task category exists in the settings UI
+ */
+export async function verifyTaskCategoryExists(
+  page: Page,
+  categoryName: string
+): Promise<boolean> {
+  const setting = await getTaskCategorySetting(page, categoryName);
+  return setting !== null;
+}
+
+/**
+ * Delete a task category through the UI
+ */
+export async function deleteTaskCategory(
+  page: Page,
+  categoryName: string
+): Promise<void> {
+  const setting = await getTaskCategorySetting(page, categoryName);
+  if (!setting) {
+    throw new Error(`Task category "${categoryName}" not found`);
+  }
+
+  const deleteButton = setting.locator('button:has-text("Delete")');
+  await deleteButton.click();
+
+  // Wait for the category to be removed
+  await page.waitForFunction(
+    ({ categoryName }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      return !plugin.settings.taskTypes.some(
+        (type: any) => type.name === categoryName
+      );
+    },
+    { categoryName },
+    { timeout: 5000 }
+  );
+}
+
+/**
+ * Set a setting value and verify it was saved
+ */
+export async function setSettingValue(
+  page: Page,
+  settingName: string,
+  value: string
+): Promise<void> {
+  const input = page
+    .locator(".setting-item")
+    .filter({ hasText: settingName })
+    .locator('input[type="text"], input[type="password"], textarea')
+    .first();
+
+  await input.fill(value);
+
+  // Wait a moment for the setting to be saved
+  await page.waitForTimeout(500);
+}
+
+/**
+ * Get the current value of a plugin setting
+ */
+export async function getPluginSettingValue(
+  page: Page,
+  settingPath: string
+): Promise<any> {
+  return await page.evaluate(async (path) => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+    // Navigate to the setting using dot notation
+    const pathParts = path.split(".");
+    let value = plugin.settings;
+
+    for (const part of pathParts) {
+      value = value[part];
+      if (value === undefined) {
+        return undefined;
+      }
+    }
+
+    return value;
+  }, settingPath);
+}
+
+/**
  * Toggle area bases enabled setting via UI
  */
 export async function toggleAreaBasesEnabled(
