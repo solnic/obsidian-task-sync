@@ -12,79 +12,360 @@ TEST_VAULT_DIR="./dev-test-vault"
 OBSIDIAN_DATA_DIR="./dev-test-vault/.obsidian"
 PLUGIN_NAME="obsidian-task-sync"
 
-# Clean up existing test vault
+# Check if test vault exists and is properly set up
+VAULT_EXISTS=false
+VAULT_NEEDS_BOOTSTRAP=false
+
 if [ -d "$TEST_VAULT_DIR" ]; then
-    echo "🧹 Cleaning up existing test vault..."
-    rm -rf "$TEST_VAULT_DIR"
+    echo "📂 Test vault directory exists: $TEST_VAULT_DIR"
+    VAULT_EXISTS=true
+
+    # Check if vault has basic structure
+    if [ ! -d "$TEST_VAULT_DIR/Tasks" ] || [ ! -d "$TEST_VAULT_DIR/Projects" ] || [ ! -d "$TEST_VAULT_DIR/Areas" ]; then
+        echo "⚠️  Vault exists but missing basic folder structure - will bootstrap"
+        VAULT_NEEDS_BOOTSTRAP=true
+    elif [ ! -f "$TEST_VAULT_DIR/Tasks"/*.md ] 2>/dev/null && [ ! -f "$TEST_VAULT_DIR/Projects"/*.md ] 2>/dev/null; then
+        echo "⚠️  Vault exists but appears empty - will add sample content"
+        VAULT_NEEDS_BOOTSTRAP=true
+    else
+        echo "✅ Vault exists and appears to be set up - preserving existing content"
+    fi
+else
+    echo "📂 Creating new test vault directory: $TEST_VAULT_DIR"
+    VAULT_EXISTS=false
+    VAULT_NEEDS_BOOTSTRAP=true
 fi
 
-# Create test vault directory
+# Create directories if they don't exist
 mkdir -p "$TEST_VAULT_DIR"
 mkdir -p "$OBSIDIAN_DATA_DIR"
 
-echo "📋 Creating test vault structure..."
-
-# Copy pristine vault if it exists
-PRISTINE_VAULT_PATH="./tests/vault/Test.pristine"
-if [ -d "$PRISTINE_VAULT_PATH" ]; then
-    echo "📂 Copying pristine vault from $PRISTINE_VAULT_PATH..."
-    cp -r "$PRISTINE_VAULT_PATH"/* "$TEST_VAULT_DIR/"
+if [ "$VAULT_NEEDS_BOOTSTRAP" = true ]; then
+    echo "📋 Bootstrapping test vault structure..."
 else
-    echo "📝 Creating minimal test vault structure..."
-    # Create basic vault structure
+    echo "📋 Vault already set up, skipping content creation..."
+fi
+
+# Bootstrap vault content only if needed
+if [ "$VAULT_NEEDS_BOOTSTRAP" = true ]; then
+    # Copy pristine vault if it exists (for basic structure and welcome files)
+    PRISTINE_VAULT_PATH="./tests/vault/Test.pristine"
+    if [ -d "$PRISTINE_VAULT_PATH" ]; then
+        echo "📂 Copying pristine vault structure from $PRISTINE_VAULT_PATH..."
+        cp -r "$PRISTINE_VAULT_PATH"/* "$TEST_VAULT_DIR/"
+    fi
+
+    # Always create/ensure basic vault structure exists
+    echo "📝 Creating test vault structure and sample content..."
     mkdir -p "$TEST_VAULT_DIR/Tasks"
     mkdir -p "$TEST_VAULT_DIR/Projects"
     mkdir -p "$TEST_VAULT_DIR/Areas"
     mkdir -p "$TEST_VAULT_DIR/Templates"
     mkdir -p "$TEST_VAULT_DIR/Bases"
 
-    # Create a sample task
-    cat > "$TEST_VAULT_DIR/Tasks/Sample Task.md" << 'EOF'
+    # Create sample areas first (projects and tasks will reference them)
+    cat > "$TEST_VAULT_DIR/Areas/Work.md" << 'EOF'
 ---
-Title: Sample Task
+Name: Work
+Type: Area
+Status: Active
+tags: [professional, career]
+---
+
+Professional work and career development area.
+
+## Goals
+- Deliver high-quality projects on time
+- Improve technical skills
+- Build strong team relationships
+
+## Tasks
+![[Bases/Work Tasks.base]]
+EOF
+
+    cat > "$TEST_VAULT_DIR/Areas/Personal Development.md" << 'EOF'
+---
+Name: Personal Development
+Type: Area
+Status: Active
+tags: [learning, growth, skills]
+---
+
+Continuous learning and personal growth area.
+
+## Goals
+- Learn new technologies
+- Improve productivity
+- Maintain work-life balance
+
+## Tasks
+![[Bases/Personal Development Tasks.base]]
+EOF
+
+    # Create sample projects
+    cat > "$TEST_VAULT_DIR/Projects/Task Sync Plugin.md" << 'EOF'
+---
+Name: Task Sync Plugin
+Type: Project
+Status: Active
+Areas: [Work, Personal Development]
+tags: [obsidian, plugin, development]
+---
+
+Development of the Obsidian Task Sync plugin to synchronize tasks between Obsidian and external systems.
+
+## Overview
+This project involves creating a robust plugin that allows users to sync their tasks with various external systems while maintaining the flexibility of Obsidian's markdown format.
+
+## Tasks
+![[Bases/Task Sync Plugin Tasks.base]]
+EOF
+
+    cat > "$TEST_VAULT_DIR/Projects/Home Organization.md" << 'EOF'
+---
+Name: Home Organization
+Type: Project
+Status: Planning
+Areas: [Personal Development]
+tags: [home, organization, productivity]
+---
+
+Organizing and optimizing the home environment for better productivity and comfort.
+
+## Overview
+A comprehensive project to declutter, organize, and optimize living spaces for improved daily routines and productivity.
+
+## Tasks
+![[Bases/Home Organization Tasks.base]]
+EOF
+
+    # Create diverse sample tasks
+    cat > "$TEST_VAULT_DIR/Tasks/Fix authentication bug.md" << 'EOF'
+---
+Title: Fix authentication bug
+Type: Bug
+Priority: High
+Areas: [Work]
+Project: Task Sync Plugin
+Done: false
+Status: In Progress
+tags: [bug, authentication, urgent]
+---
+
+Users are experiencing authentication failures when connecting to GitHub API. Need to investigate and fix the token refresh mechanism.
+
+## Steps to Reproduce
+1. Connect to GitHub API
+2. Wait for token to expire
+3. Try to sync tasks
+4. Authentication fails
+
+## Expected Behavior
+Token should refresh automatically and sync should continue.
+EOF
+
+    cat > "$TEST_VAULT_DIR/Tasks/Implement dark mode support.md" << 'EOF'
+---
+Title: Implement dark mode support
+Type: Feature
+Priority: Medium
+Areas: [Work]
+Project: Task Sync Plugin
+Done: false
+Status: Backlog
+tags: [feature, ui, accessibility]
+---
+
+Add support for dark mode in the plugin interface to match Obsidian's theme.
+
+## Requirements
+- Detect Obsidian's current theme
+- Apply appropriate colors for dark/light modes
+- Ensure good contrast and readability
+- Test with popular community themes
+EOF
+
+    cat > "$TEST_VAULT_DIR/Tasks/Write plugin documentation.md" << 'EOF'
+---
+Title: Write plugin documentation
+Type: Task
+Priority: Medium
+Areas: [Work]
+Project: Task Sync Plugin
+Done: false
+Status: Todo
+tags: [documentation, user-guide]
+---
+
+Create comprehensive documentation for the Task Sync plugin including installation, configuration, and usage instructions.
+
+## Sections Needed
+- Installation guide
+- Configuration options
+- Usage examples
+- Troubleshooting
+- API reference
+EOF
+
+    cat > "$TEST_VAULT_DIR/Tasks/Set up home office.md" << 'EOF'
+---
+Title: Set up home office
+Type: Task
+Priority: High
+Areas: [Personal Development]
+Project: Home Organization
+Done: true
+Status: Done
+tags: [home, office, productivity]
+---
+
+Create a dedicated workspace at home for better focus and productivity.
+
+## Completed Items
+- ✅ Choose location for office
+- ✅ Purchase desk and chair
+- ✅ Set up lighting
+- ✅ Organize cables and equipment
+- ✅ Add plants for better air quality
+EOF
+
+    cat > "$TEST_VAULT_DIR/Tasks/Learn TypeScript advanced patterns.md" << 'EOF'
+---
+Title: Learn TypeScript advanced patterns
+Type: Task
+Priority: Low
+Areas: [Personal Development, Work]
+Done: false
+Status: Backlog
+tags: [learning, typescript, programming]
+---
+
+Study advanced TypeScript patterns and techniques to improve code quality and type safety.
+
+## Topics to Cover
+- Generic constraints and conditional types
+- Template literal types
+- Mapped types and utility types
+- Decorators and metadata
+- Advanced module patterns
+EOF
+
+    cat > "$TEST_VAULT_DIR/Tasks/Organize kitchen pantry.md" << 'EOF'
+---
+Title: Organize kitchen pantry
+Type: Chore
+Priority: Medium
+Areas: [Personal Development]
+Project: Home Organization
+Done: false
+Status: Todo
+tags: [home, kitchen, organization]
+---
+
+Sort through pantry items, discard expired products, and implement a better organization system.
+
+## Steps
+1. Remove all items from pantry
+2. Check expiration dates
+3. Clean shelves thoroughly
+4. Group similar items together
+5. Label shelves and containers
+6. Create inventory system
+EOF
+
+    # Create Welcome file
+    cat > "$TEST_VAULT_DIR/Welcome.md" << 'EOF'
+# Welcome to Task Sync Development Vault
+
+This is a development vault for testing the Task Sync plugin with realistic sample data.
+
+## What's Included
+
+### 📁 Folders
+- **Tasks**: Individual task files with various statuses and types
+- **Projects**: Project management files with task references
+- **Areas**: Areas of responsibility for organizing work
+- **Templates**: Templates for creating new tasks, projects, and areas
+- **Bases**: Database views for task management (auto-generated)
+
+### 📋 Sample Data
+- **2 Areas**: Work and Personal Development
+- **2 Projects**: Task Sync Plugin and Home Organization
+- **6 Tasks**: Various types (Bug, Feature, Task, Chore) with different statuses
+
+### 🔧 Plugin Features to Test
+- Task creation and editing
+- Project and area management
+- Task status updates
+- Cross-references between tasks, projects, and areas
+- Different task types and priorities
+
+## Getting Started
+
+1. Open the Task Sync plugin panel
+2. Explore the sample tasks in different statuses
+3. Try creating new tasks, projects, or areas
+4. Test the synchronization features
+5. Experiment with the various plugin settings
+
+Happy testing! 🚀
+EOF
+
+    # Create basic templates
+    cat > "$TEST_VAULT_DIR/Templates/Task.md" << 'EOF'
+---
+Title:
 Type: Task
 Priority: Medium
 Areas: []
 Project:
 Done: false
 Status: Backlog
-Parent task:
-Sub-tasks: []
 tags: []
 ---
 
-This is a sample task for testing the Task Sync plugin.
+## Description
+
+## Acceptance Criteria
+
+- [ ]
+- [ ]
+- [ ]
 EOF
 
-    # Create a sample project
-    cat > "$TEST_VAULT_DIR/Projects/Sample Project.md" << 'EOF'
+    cat > "$TEST_VAULT_DIR/Templates/Project.md" << 'EOF'
 ---
-Name: Sample Project
+Name:
 Type: Project
-Status: Active
+Status: Planning
 Areas: []
 tags: []
 ---
 
-This is a sample project for testing.
+## Overview
+
+## Goals
 
 ## Tasks
-![[Bases/Sample Project Tasks.base]]
+
+![[Bases/{{title}} Tasks.base]]
 EOF
 
-    # Create a sample area
-    cat > "$TEST_VAULT_DIR/Areas/Sample Area.md" << 'EOF'
+    cat > "$TEST_VAULT_DIR/Templates/Area.md" << 'EOF'
 ---
-Name: Sample Area
+Name:
 Type: Area
 Status: Active
 tags: []
 ---
 
-This is a sample area for testing.
+## Purpose
+
+## Goals
 
 ## Tasks
-![[Bases/Sample Area Tasks.base]]
+
+![[Bases/{{title}} Tasks.base]]
 EOF
 fi
 
@@ -92,7 +373,7 @@ fi
 TEST_VAULT_ABS_PATH=$(cd "$TEST_VAULT_DIR" && pwd)
 
 # Copy pristine Obsidian data if it exists
-PRISTINE_DATA_PATH="./e2e/obsidian-data.pristine"
+PRISTINE_DATA_PATH="./tests/e2e/obsidian-data.pristine"
 if [ -d "$PRISTINE_DATA_PATH" ]; then
     echo "⚙️ Copying pristine Obsidian data..."
     cp -r "$PRISTINE_DATA_PATH"/* "$OBSIDIAN_DATA_DIR/"
@@ -236,6 +517,75 @@ cp styles.css "$PLUGIN_DIR/"
 COMMUNITY_PLUGINS_JSON="$TEST_VAULT_DIR/.obsidian/community-plugins.json"
 echo '["obsidian-task-sync"]' > "$COMMUNITY_PLUGINS_JSON"
 
+# Create plugin configuration with proper settings
+PLUGIN_DATA_JSON="$PLUGIN_DIR/data.json"
+cat > "$PLUGIN_DATA_JSON" << 'EOF'
+{
+  "tasksFolder": "Tasks",
+  "projectsFolder": "Projects",
+  "areasFolder": "Areas",
+  "templateFolder": "Templates",
+  "useTemplater": false,
+  "defaultTaskTemplate": "Task.md",
+  "defaultProjectTemplate": "Project.md",
+  "defaultAreaTemplate": "Area.md",
+  "basesFolder": "Bases",
+  "tasksBaseFile": "Tasks.base",
+  "autoGenerateBases": true,
+  "autoUpdateBaseViews": true,
+  "taskTypes": [
+    {
+      "name": "Task",
+      "color": "blue"
+    },
+    {
+      "name": "Bug",
+      "color": "red"
+    },
+    {
+      "name": "Feature",
+      "color": "green"
+    },
+    {
+      "name": "Improvement",
+      "color": "purple"
+    },
+    {
+      "name": "Chore",
+      "color": "gray"
+    }
+  ],
+  "taskStatuses": [
+    "Backlog",
+    "Todo",
+    "In Progress",
+    "Review",
+    "Done",
+    "Cancelled"
+  ],
+  "taskPriorities": [
+    "Low",
+    "Medium",
+    "High",
+    "Urgent"
+  ],
+  "projectStatuses": [
+    "Planning",
+    "Active",
+    "On Hold",
+    "Completed",
+    "Cancelled"
+  ],
+  "areaStatuses": [
+    "Active",
+    "Inactive",
+    "Archived"
+  ]
+}
+EOF
+
+echo "⚙️ Plugin configuration created with sample settings"
+
 # Check if Obsidian is available
 OBSIDIAN_PATH=""
 
@@ -275,10 +625,12 @@ OBSIDIAN_DATA_ABS_PATH=$(cd "$OBSIDIAN_DATA_DIR" && pwd)
 echo "🎉 Obsidian should now open directly with your test vault!"
 echo ""
 echo "💡 Tips:"
-echo "   - The plugin is already installed and enabled"
-echo "   - Sample tasks, projects, and areas are created"
-echo "   - The vault is pre-configured to open automatically"
-echo "   - You can test plugin features immediately"
+echo "   - The plugin is already installed, enabled, and configured"
+echo "   - Sample content includes 6 tasks, 2 projects, and 2 areas"
+echo "   - Tasks have different types (Bug, Feature, Task, Chore) and statuses"
+echo "   - The vault preserves existing content on subsequent runs"
+echo "   - Templates are available for creating new content"
+echo "   - You can test all plugin features immediately"
 echo ""
 echo "ℹ️  Expected behavior:"
 echo "   - You may see some harmless warnings in the terminal (this is normal)"
