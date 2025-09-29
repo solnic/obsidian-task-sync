@@ -3,3 +3,4 @@ tmp
 
 tests/e2e/test-environments
 tests/e2e/.obsidian-unpacked
+dev-test-vault

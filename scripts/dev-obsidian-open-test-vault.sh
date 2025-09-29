@@ -8,8 +8,8 @@ set -e
 echo "🔧 Setting up test vault for development..."
 
 # Configuration
-TEST_VAULT_DIR="./dev-test-vault"
-OBSIDIAN_DATA_DIR="./dev-test-vault/.obsidian"
+TEST_VAULT_DIR="./tmp/dev-test-vault"
+OBSIDIAN_DATA_DIR="./tmp/dev-test-vault/.obsidian"
 PLUGIN_NAME="obsidian-task-sync"
 
 # Check if test vault exists and is properly set up

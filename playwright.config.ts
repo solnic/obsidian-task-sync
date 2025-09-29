@@ -1,5 +1,4 @@
 import { defineConfig, devices } from "@playwright/test";
-import * as path from "path";
 import * as os from "os";
 
 /**
@@ -35,7 +34,7 @@ export default defineConfig({
   // Reporter configuration
   reporter: [
     ["list"],
-    ["json", { outputFile: "e2e-test-results.json" }],
+    ["json", { outputFile: "./tests/e2e/results.json" }],
     ["html", { open: "never" }],
   ],
 

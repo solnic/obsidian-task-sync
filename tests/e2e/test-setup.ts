@@ -7,54 +7,32 @@ import * as fs from "fs";
 import * as path from "path";
 import { config } from "dotenv";
 
-// Load environment variables from .env file using dotenv
-try {
-  const result = config();
-  if (result.error) {
-    console.warn("⚠️ Failed to load .env file:", result.error.message);
-  } else {
-    console.log("🔧 Loaded environment variables from .env file");
-  }
-} catch (error) {
-  console.warn("⚠️ Failed to load .env file:", error.message);
-}
+const _result = config();
 
 const debugDir = path.join(process.cwd(), "e2e", "debug");
 
-try {
-  fs.mkdirSync(debugDir, { recursive: true });
-} catch (error) {
-  console.warn("⚠️ Failed to create e2e directories:", error.message);
-}
+const cleanupOldFiles = (dir: string, maxFiles: number = 50) => {
+  if (!fs.existsSync(dir)) return;
 
-try {
-  const cleanupOldFiles = (dir: string, maxFiles: number = 50) => {
-    if (!fs.existsSync(dir)) return;
+  const files = fs
+    .readdirSync(dir)
+    .map((file) => ({
+      name: file,
+      path: path.join(dir, file),
+      mtime: fs.statSync(path.join(dir, file)).mtime,
+    }))
+    .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
 
-    const files = fs
-      .readdirSync(dir)
-      .map((file) => ({
-        name: file,
-        path: path.join(dir, file),
-        mtime: fs.statSync(path.join(dir, file)).mtime,
-      }))
-      .sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
-
-    // Remove files beyond the limit
-    files.slice(maxFiles).forEach((file) => {
-      try {
-        if (fs.statSync(file.path).isDirectory()) {
-          fs.rmSync(file.path, { recursive: true });
-        } else {
-          fs.unlinkSync(file.path);
-        }
-      } catch (error) {
-        // Ignore cleanup errors
+  // Remove files beyond the limit
+  files.slice(maxFiles).forEach((file) => {
+    try {
+      if (fs.statSync(file.path).isDirectory()) {
+        fs.rmSync(file.path, { recursive: true });
+      } else {
+        fs.unlinkSync(file.path);
       }
-    });
-  };
+    } catch (error) {}
+  });
+};
 
-  cleanupOldFiles(debugDir);
-} catch (error) {
-  // Ignore cleanup errors
-}
+cleanupOldFiles(debugDir);

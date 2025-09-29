@@ -57,12 +57,7 @@ async function killExistingElectronProcesses(): Promise<void> {
         // Ignore errors when checking for remaining processes
       }
     }
-  } catch (error) {
-    console.log(
-      "⚠️ Error checking for existing Electron processes:",
-      error.message
-    );
-  }
+  } catch (error) {}
 }
 
 /**
@@ -77,43 +72,28 @@ async function cleanupDebugArtifacts(): Promise<void> {
     }
 
     await fs.promises.mkdir(debugDir, { recursive: true });
-  } catch (error) {
-    console.log("⚠️ Error cleaning up debug artifacts:", error.message);
-  }
+  } catch (error) {}
 }
 
 export default async function globalSetup() {
-  try {
-    // Kill any existing Electron processes first
-    await killExistingElectronProcesses();
+  // Kill any existing Electron processes first
+  await killExistingElectronProcesses();
 
-    // Clean up old debug artifacts from previous runs
-    await cleanupDebugArtifacts();
+  // Clean up old debug artifacts from previous runs
+  await cleanupDebugArtifacts();
+  await execAsync("npm run build", { cwd: process.cwd() });
 
-    try {
-      await execAsync("npm run build", { cwd: process.cwd() });
-    } catch (buildError) {
-      throw new Error(`Plugin build failed: ${buildError.message}`);
+  // Ensure test environments directory exists
+  const testEnvDir = path.join(process.cwd(), "tests/e2e/test-environments");
+  await fs.promises.mkdir(testEnvDir, { recursive: true });
+
+  // Clean up any leftover test environments from previous runs
+  if (fs.existsSync(testEnvDir)) {
+    const entries = await fs.promises.readdir(testEnvDir);
+
+    for (const entry of entries) {
+      const entryPath = path.join(testEnvDir, entry);
+      await fs.promises.rm(entryPath, { recursive: true, force: true });
     }
-
-    // Ensure test environments directory exists
-    const testEnvDir = path.join(process.cwd(), "tests/e2e/test-environments");
-    await fs.promises.mkdir(testEnvDir, { recursive: true });
-
-    // Clean up any leftover test environments from previous runs
-    if (fs.existsSync(testEnvDir)) {
-      const entries = await fs.promises.readdir(testEnvDir);
-      for (const entry of entries) {
-        const entryPath = path.join(testEnvDir, entry);
-
-        try {
-          await fs.promises.rm(entryPath, { recursive: true, force: true });
-        } catch (error) {
-          console.log(`⚠️ Could not clean up ${entry}:`, error.message);
-        }
-      }
-    }
-  } catch (error) {
-    throw error;
   }
 }

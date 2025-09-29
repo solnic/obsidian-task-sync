@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-const RESULTS_FILE = 'e2e-test-results.json';
+const RESULTS_FILE = 'tests/e2e/results.json';
 
 function getFailedTestsFromResults() {
   if (!fs.existsSync(RESULTS_FILE)) {
@@ -89,7 +89,7 @@ function runFailedTests() {
   console.log('🚀 Running failed tests...');
 
   // Build the npm command with properly quoted test pattern
-  const npmArgs = ['run', 'test:e2e:headless', '--', '-t', `"${testPattern}"`];
+  const npmArgs = ['run', 'test:e2e', '--', '-g', `"${testPattern}"`];
 
   console.log(`Command: npm ${npmArgs.join(' ')}`);
   console.log('');

@@ -525,7 +525,7 @@ export async function captureFullDebugInfo(
   context: SharedTestContext,
   name: string
 ): Promise<void> {
-  const baseDebugDir = path.join(process.cwd(), "e2e", "debug");
+  const baseDebugDir = path.join(process.cwd(), "tests", "e2e", "debug");
 
   // Use test name without timestamp for consistent directory structure
   const debugDir = path.join(baseDebugDir, name);

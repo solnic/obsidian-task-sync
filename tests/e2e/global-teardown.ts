@@ -10,36 +10,30 @@ const execAsync = promisify(exec);
  * Cleans up any remaining processes and test artifacts
  */
 export default async function globalTeardown() {
+  // Clean up test environments
+  await cleanupTestEnvironments();
+
+  // Kill any remaining Electron processes
+  console.log("🔍 Cleaning up any remaining Electron processes...");
+
   try {
-    // Clean up test environments
-    await cleanupTestEnvironments();
+    const { stdout } = await execAsync(
+      'pgrep -f "Electron.*obsidian.*main.js" || true'
+    );
 
-    // Kill any remaining Electron processes
-    console.log("🔍 Cleaning up any remaining Electron processes...");
+    if (stdout.trim()) {
+      const pids = stdout
+        .trim()
+        .split("\n")
+        .filter((pid) => pid.trim());
 
-    try {
-      const { stdout } = await execAsync(
-        'pgrep -f "Electron.*obsidian.*main.js" || true'
-      );
-
-      if (stdout.trim()) {
-        const pids = stdout
-          .trim()
-          .split("\n")
-          .filter((pid) => pid.trim());
-
-        for (const pid of pids) {
-          try {
-            process.kill(parseInt(pid), "SIGKILL");
-          } catch (error) {}
-        }
+      for (const pid of pids) {
+        try {
+          process.kill(parseInt(pid), "SIGKILL");
+        } catch (error) {}
       }
-    } catch (error) {}
-
-    console.log("✅ Global e2e test teardown complete");
-  } catch (error) {
-    console.error("❌ Global teardown failed:", error);
-  }
+    }
+  } catch (error) {}
 }
 
 /**
