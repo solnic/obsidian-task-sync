@@ -10,6 +10,7 @@ import { eventBus } from "../core/events";
 import { ObsidianAreaOperations } from "./ObsidianAreaOperations";
 import { ObsidianProjectOperations } from "./ObsidianProjectOperations";
 import { ObsidianTaskOperations } from "./ObsidianTaskOperations";
+import { taskStore } from "../stores/taskStore";
 
 export interface ObsidianExtensionSettings {
   areasFolder: string;
@@ -21,7 +22,11 @@ export class ObsidianExtension implements Extension {
   readonly id = "obsidian";
   readonly name = "Obsidian Vault";
   readonly version = "1.0.0";
-  readonly supportedEntities: readonly EntityType[] = ["area", "project", "task"];
+  readonly supportedEntities: readonly EntityType[] = [
+    "area",
+    "project",
+    "task",
+  ];
 
   private initialized = false;
   private areaOperations: ObsidianAreaOperations;
@@ -58,6 +63,11 @@ export class ObsidianExtension implements Extension {
       // Set up event listeners for domain events
       this.setupEventListeners();
 
+      // Scan existing tasks and populate the store
+      // This follows the new architecture: extensions scan their representations
+      // and populate the canonical store during initialization
+      await this.scanAndPopulateExistingTasks();
+
       this.initialized = true;
       console.log("ObsidianExtension initialized successfully");
     } catch (error) {
@@ -79,6 +89,33 @@ export class ObsidianExtension implements Extension {
 
   async isHealthy(): Promise<boolean> {
     return this.app.vault !== null && this.initialized;
+  }
+
+  /**
+   * Scan existing task files and populate the canonical task store
+   * This follows the new architecture where extensions scan their representations
+   * during initialization and populate the canonical store
+   */
+  private async scanAndPopulateExistingTasks(): Promise<void> {
+    try {
+      console.log("Scanning existing tasks from Obsidian vault...");
+
+      // Scan existing task files using the task operations
+      const existingTasks = await this.taskOperations.scanExistingTasks();
+
+      console.log(`Found ${existingTasks.length} existing tasks`);
+
+      // Populate the canonical task store with existing tasks
+      // This is the initial population - subsequent changes will be event-driven
+      for (const task of existingTasks) {
+        taskStore.addTask(task);
+      }
+
+      console.log("Successfully populated task store with existing tasks");
+    } catch (error) {
+      console.error("Failed to scan and populate existing tasks:", error);
+      // Don't throw - this shouldn't prevent extension initialization
+    }
   }
 
   // Event handler methods required by Extension interface
