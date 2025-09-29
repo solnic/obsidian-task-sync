@@ -5,6 +5,7 @@
 
 import { writable, derived, type Readable } from "svelte/store";
 import { Task } from "../core/entities";
+import { generateId } from "../utils/idGenerator";
 
 interface TaskStoreState {
   tasks: readonly Task[];
@@ -13,7 +14,7 @@ interface TaskStoreState {
   lastSync: Date | null;
 }
 
-interface TaskStore extends Readable<TaskStoreState> {
+export interface TaskStore extends Readable<TaskStoreState> {
   // Derived stores for common queries
   tasksByExtension: Readable<Map<string, Task[]>>;
   todayTasks: Readable<Task[]>;
@@ -28,6 +29,9 @@ interface TaskStore extends Readable<TaskStoreState> {
   addTask: (task: Task) => void;
   updateTask: (task: Task) => void;
   removeTask: (taskId: string) => void;
+
+  // Upsert method for extension scanning
+  upsertTask: (taskData: Omit<Task, "id"> & { naturalKey: string }) => Task;
 }
 
 export function createTaskStore(): TaskStore {
@@ -112,6 +116,54 @@ export function createTaskStore(): TaskStore {
     }));
   };
 
+  // Upsert method for extension scanning - handles natural key matching and ID generation
+  const upsertTask = (
+    taskData: Omit<Task, "id"> & { naturalKey: string }
+  ): Task => {
+    let resultTask: Task;
+
+    update((state) => {
+      // Find existing task by natural key (source.source for Obsidian = file path)
+      const existingTask = state.tasks.find(
+        (t) => t.source?.source === taskData.naturalKey
+      );
+
+      if (existingTask) {
+        // Update existing task, preserving ID and created timestamp
+        resultTask = {
+          ...taskData,
+          id: existingTask.id,
+          createdAt: existingTask.createdAt,
+          updatedAt: new Date(),
+        } as Task;
+
+        return {
+          ...state,
+          tasks: state.tasks.map((t) =>
+            t.id === existingTask.id ? resultTask : t
+          ),
+          lastSync: new Date(),
+        };
+      } else {
+        // Create new task with generated ID
+        resultTask = {
+          ...taskData,
+          id: generateId(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        } as Task;
+
+        return {
+          ...state,
+          tasks: [...state.tasks, resultTask],
+          lastSync: new Date(),
+        };
+      }
+    });
+
+    return resultTask!;
+  };
+
   return {
     subscribe,
     tasksByExtension,
@@ -123,6 +175,7 @@ export function createTaskStore(): TaskStore {
     addTask,
     updateTask,
     removeTask,
+    upsertTask,
   };
 }
 

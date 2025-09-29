@@ -674,13 +674,5 @@ export async function captureFullDebugInfo(
       metadataPath,
       JSON.stringify(htmlStructure.metadata, null, 2)
     );
-
-    console.log(
-      `🌐 HTML structure captured: ${htmlPath} (${Math.round(
-        htmlStructure.htmlContent.length / 1024
-      )}KB)`
-    );
-
-    console.log(`📋 HTML metadata captured: ${metadataPath}`);
   }
 }

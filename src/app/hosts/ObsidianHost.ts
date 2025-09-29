@@ -1,7 +1,7 @@
 /**
  * ObsidianHost implementation
  * Provides Obsidian-specific Host implementation for TaskSync application
- * 
+ *
  * This class implements the Host interface for the Obsidian environment,
  * providing access to Obsidian's plugin data storage for both settings
  * and canonical TaskSync application data.
@@ -9,6 +9,7 @@
 
 import { Host } from "../core/host";
 import { TaskSyncSettings, DEFAULT_SETTINGS } from "../types/settings";
+import { Area, Project, Task } from "../core/entities";
 
 /**
  * Interface for Obsidian Plugin that provides the necessary methods
@@ -19,15 +20,16 @@ interface ObsidianPlugin {
   saveData(data: any): Promise<void>;
   onload?(): Promise<void> | void;
   onunload?(): Promise<void> | void;
+  app: any; // Obsidian App instance for file operations
 }
 
 /**
  * ObsidianHost provides the Host implementation for Obsidian environments.
- * 
+ *
  * This class bridges the TaskSync application with Obsidian's plugin system,
  * providing access to Obsidian's data persistence mechanisms for storing
  * both TaskSync settings and canonical application data.
- * 
+ *
  * The ObsidianHost stores canonical, high-level data structures that include
  * complete metadata like IDs, source information, and full entity state.
  * This is fundamentally different from the ObsidianExtension which stores
@@ -41,17 +43,17 @@ export class ObsidianHost extends Host {
 
   /**
    * Load TaskSync settings from Obsidian's plugin data storage.
-   * 
+   *
    * If no settings exist, returns default settings.
    * If partial settings exist, merges them with defaults.
-   * 
+   *
    * @returns Promise resolving to the TaskSync settings object
    * @throws Error if settings cannot be loaded from Obsidian
    */
   async loadSettings(): Promise<TaskSyncSettings> {
     try {
       const data = await this.plugin.loadData();
-      
+
       if (!data) {
         return { ...DEFAULT_SETTINGS };
       }
@@ -62,13 +64,15 @@ export class ObsidianHost extends Host {
         ...data,
       };
     } catch (error) {
-      throw new Error(`Failed to load settings from Obsidian: ${error.message}`);
+      throw new Error(
+        `Failed to load settings from Obsidian: ${error.message}`
+      );
     }
   }
 
   /**
    * Persist TaskSync settings to Obsidian's plugin data storage.
-   * 
+   *
    * @param settings - The TaskSync settings object to persist
    * @throws Error if settings cannot be saved to Obsidian
    */
@@ -81,12 +85,29 @@ export class ObsidianHost extends Host {
   }
 
   /**
+   * Load and initialize extensions after Obsidian's layout is ready.
+   * This ensures that the vault is fully loaded and all APIs are available
+   * before extensions attempt to scan files or perform vault operations.
+   *
+   * @throws Error if extension loading fails
+   */
+  async load(): Promise<void> {
+    try {
+      // Import TaskSyncApp and trigger extension loading
+      const { taskSyncApp } = await import("../App");
+      await taskSyncApp.load();
+    } catch (error) {
+      throw new Error(`Failed to load extensions: ${error.message}`);
+    }
+  }
+
+  /**
    * Persist TaskSync application data to Obsidian's plugin storage.
-   * 
+   *
    * This stores the canonical, high-level data structures that include
    * complete metadata like IDs, source information, and full entity state.
    * This is the authoritative data store for TaskSync entities.
-   * 
+   *
    * @param data - The TaskSync application data to persist
    * @throws Error if data cannot be saved to Obsidian
    */
@@ -100,11 +121,11 @@ export class ObsidianHost extends Host {
 
   /**
    * Load TaskSync application data from Obsidian's plugin storage.
-   * 
+   *
    * This loads the canonical, high-level data structures that include
    * complete metadata like IDs, source information, and full entity state.
    * This is the authoritative data store for TaskSync entities.
-   * 
+   *
    * @returns Promise resolving to the TaskSync application data, or null if none exists
    * @throws Error if data cannot be loaded from Obsidian
    */
@@ -117,10 +138,23 @@ export class ObsidianHost extends Host {
   }
 
   /**
+   * Open a file in Obsidian's workspace.
+   *
+   * @param filePath - The path to the file to open
+   * @throws Error if file cannot be opened or found
+   */
+  async openFile(entity: Area | Project | Task): Promise<void> {
+    const app = this.plugin.app;
+    const file = app.vault.getAbstractFileByPath(entity.source.source);
+
+    await app.workspace.getLeaf().openFile(file);
+  }
+
+  /**
    * Lifecycle callback that runs when TaskSync initializes in Obsidian.
-   * 
+   *
    * Delegates to the Obsidian plugin's onload method if available.
-   * 
+   *
    * @throws Error if Obsidian plugin initialization fails
    */
   async onload(): Promise<void> {
@@ -135,9 +169,9 @@ export class ObsidianHost extends Host {
 
   /**
    * Lifecycle callback that runs when TaskSync unloads from Obsidian.
-   * 
+   *
    * Delegates to the Obsidian plugin's onunload method if available.
-   * 
+   *
    * @throws Error if Obsidian plugin cleanup fails
    */
   async onunload(): Promise<void> {

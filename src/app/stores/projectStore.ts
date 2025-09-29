@@ -13,7 +13,7 @@ interface ProjectStoreState {
   lastSync: Date | null;
 }
 
-interface ProjectStore extends Readable<ProjectStoreState> {
+export interface ProjectStore extends Readable<ProjectStoreState> {
   // Derived stores for common queries
   projectsByExtension: Readable<Map<string, Project[]>>;
   importedProjects: Readable<Project[]>;

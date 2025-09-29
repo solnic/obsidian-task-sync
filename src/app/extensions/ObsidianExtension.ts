@@ -10,6 +10,7 @@ import { eventBus } from "../core/events";
 import { ObsidianAreaOperations } from "./ObsidianAreaOperations";
 import { ObsidianProjectOperations } from "./ObsidianProjectOperations";
 import { ObsidianTaskOperations } from "./ObsidianTaskOperations";
+import { taskStore } from "../stores/taskStore";
 
 export interface ObsidianExtensionSettings {
   areasFolder: string;
@@ -21,7 +22,11 @@ export class ObsidianExtension implements Extension {
   readonly id = "obsidian";
   readonly name = "Obsidian Vault";
   readonly version = "1.0.0";
-  readonly supportedEntities: readonly EntityType[] = ["area", "project", "task"];
+  readonly supportedEntities: readonly EntityType[] = [
+    "area",
+    "project",
+    "task",
+  ];
 
   private initialized = false;
   private areaOperations: ObsidianAreaOperations;
@@ -66,6 +71,25 @@ export class ObsidianExtension implements Extension {
     }
   }
 
+  async load(): Promise<void> {
+    if (!this.initialized) {
+      throw new Error("ObsidianExtension must be initialized before loading");
+    }
+
+    try {
+      console.log("Loading ObsidianExtension - scanning existing tasks...");
+
+      // Scan existing tasks and populate the store
+      // This runs after Obsidian's layout is ready and vault is fully loaded
+      await this.scanAndPopulateExistingTasks();
+
+      console.log("ObsidianExtension loaded successfully");
+    } catch (error) {
+      console.error("Failed to load ObsidianExtension:", error);
+      throw error;
+    }
+  }
+
   async shutdown(): Promise<void> {
     if (!this.initialized) return;
 
@@ -79,6 +103,33 @@ export class ObsidianExtension implements Extension {
 
   async isHealthy(): Promise<boolean> {
     return this.app.vault !== null && this.initialized;
+  }
+
+  /**
+   * Scan existing task files and populate the canonical task store
+   * This follows the new architecture where extensions scan their representations
+   * during initialization and populate the canonical store using upsert logic
+   */
+  private async scanAndPopulateExistingTasks(): Promise<void> {
+    try {
+      console.log("Scanning existing tasks from Obsidian vault...");
+
+      // Scan existing task files using the task operations (returns data without IDs)
+      const existingTasksData = await this.taskOperations.scanExistingTasks();
+
+      console.log(`Found ${existingTasksData.length} existing tasks`);
+
+      // Populate the canonical task store using upsert logic
+      // Store will handle ID generation for new tasks
+      for (const taskData of existingTasksData) {
+        taskStore.upsertTask(taskData);
+      }
+
+      console.log("Successfully populated task store with existing tasks");
+    } catch (error) {
+      console.error("Failed to scan and populate existing tasks:", error);
+      // Don't throw - this shouldn't prevent extension initialization
+    }
   }
 
   // Event handler methods required by Extension interface

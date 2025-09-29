@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod";
+import { DEFAULT_TASK_STATUS } from "../constants/defaults";
 
 // Core domain entities - completely source agnostic
 export const TaskStatusSchema = z
@@ -25,7 +26,7 @@ export const TaskSchema = z.object({
   // Core task properties
   title: z.string(),
   description: z.string().optional(),
-  status: TaskStatusSchema.default("Backlog"),
+  status: TaskStatusSchema.default(DEFAULT_TASK_STATUS),
   done: z.boolean().default(false),
 
   // Organization

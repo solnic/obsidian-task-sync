@@ -13,7 +13,7 @@ interface AreaStoreState {
   lastSync: Date | null;
 }
 
-interface AreaStore extends Readable<AreaStoreState> {
+export interface AreaStore extends Readable<AreaStoreState> {
   // Derived stores for common queries
   areasByExtension: Readable<Map<string, Area[]>>;
   importedAreas: Readable<Area[]>;

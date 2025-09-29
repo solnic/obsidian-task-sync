@@ -28,6 +28,7 @@ export interface Extension {
 
   // Lifecycle
   initialize(): Promise<void>;
+  load(): Promise<void>;
   shutdown(): Promise<void>;
 
   // Event-driven methods for reacting to entity changes

@@ -41,21 +41,30 @@ export function createBadge(
 /**
  * Creates a type badge
  */
-export function createTypeBadge(config: BadgeConfig, className?: string): HTMLElement {
+export function createTypeBadge(
+  config: BadgeConfig,
+  className?: string
+): HTMLElement {
   return createBadge(config, "type", className);
 }
 
 /**
  * Creates a priority badge
  */
-export function createPriorityBadge(config: BadgeConfig, className?: string): HTMLElement {
+export function createPriorityBadge(
+  config: BadgeConfig,
+  className?: string
+): HTMLElement {
   return createBadge(config, "priority", className);
 }
 
 /**
  * Creates a status badge
  */
-export function createStatusBadge(config: BadgeConfig, className?: string): HTMLElement {
+export function createStatusBadge(
+  config: BadgeConfig,
+  className?: string
+): HTMLElement {
   return createBadge(config, "status", className);
 }
 
@@ -69,21 +78,27 @@ export const DEFAULT_TASK_TYPES: BadgeConfig[] = [
   { name: "Research", color: "#f59e0b" },
 ];
 
-/**
- * Default task priorities
- */
-export const DEFAULT_TASK_PRIORITIES: BadgeConfig[] = [
-  { name: "High", color: "#ef4444" },
-  { name: "Medium", color: "#f59e0b" },
-  { name: "Low", color: "#10b981" },
-];
+// Import centralized defaults
+import {
+  DEFAULT_TASK_PRIORITIES as CENTRALIZED_PRIORITIES,
+  DEFAULT_TASK_STATUSES as CENTRALIZED_STATUSES,
+} from "../constants/defaults";
 
 /**
- * Default task statuses
+ * Default task priorities (imported from centralized constants)
  */
-export const DEFAULT_TASK_STATUSES: BadgeConfig[] = [
-  { name: "Backlog", color: "#64748b" },
-  { name: "In Progress", color: "#3b82f6" },
-  { name: "Review", color: "#f59e0b" },
-  { name: "Done", color: "#10b981" },
-];
+export const DEFAULT_TASK_PRIORITIES: BadgeConfig[] =
+  CENTRALIZED_PRIORITIES.map((p) => ({
+    name: p.name,
+    color: p.color,
+  }));
+
+/**
+ * Default task statuses (imported from centralized constants)
+ */
+export const DEFAULT_TASK_STATUSES: BadgeConfig[] = CENTRALIZED_STATUSES.map(
+  (s) => ({
+    name: s.name,
+    color: s.color,
+  })
+);

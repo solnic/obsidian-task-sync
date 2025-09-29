@@ -33,6 +33,11 @@ class MockHost extends Host {
     return this.mockData;
   }
 
+  async openFile(filePath: string): Promise<void> {
+    // Mock implementation - just log the file path
+    console.log(`Mock opening file: ${filePath}`);
+  }
+
   async onload(): Promise<void> {
     this.loadCalled = true;
   }
@@ -120,7 +125,9 @@ describe("Host Abstraction", () => {
 
     test("should handle missing settings gracefully", async () => {
       // Don't set mock settings
-      await expect(mockHost.loadSettings()).rejects.toThrow("No settings available");
+      await expect(mockHost.loadSettings()).rejects.toThrow(
+        "No settings available"
+      );
     });
 
     test("should handle null data gracefully", async () => {
