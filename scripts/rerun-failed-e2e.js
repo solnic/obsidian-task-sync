@@ -2,11 +2,10 @@
 
 /**
  * Rerun E2E tests that failed in the previous run
- * Simply runs npm run test:e2e:headless with the failed test pattern
+ * Parses Playwright JSON results and runs npm run test:e2e with the failed test pattern
  */
 
 const fs = require('fs');
-const path = require('path');
 const { spawn } = require('child_process');
 
 const RESULTS_FILE = 'tests/e2e/results.json';
@@ -22,30 +21,31 @@ function getFailedTestsFromResults() {
     const results = JSON.parse(fs.readFileSync(RESULTS_FILE, 'utf8'));
     const failedTests = [];
 
-    // Parse Vitest JSON results to find failed tests
-    if (results.testResults) {
-      results.testResults.forEach(file => {
-        if (file.assertionResults) {
-          file.assertionResults.forEach(test => {
-            if (test.status === 'failed') {
-              failedTests.push({
-                file: file.name,
-                testName: test.title,
-                fullName: test.fullName || test.title
-              });
-            }
-          });
-        }
-        // Also check if the entire file failed (beforeAll/beforeEach failures)
-        if (file.status === 'failed' && (!file.assertionResults || file.assertionResults.length === 0)) {
-          // For file-level failures, we'll need to run the entire file
-          failedTests.push({
-            file: file.name,
-            testName: `*`, // Wildcard to match all tests in file
-            fullName: `All tests in ${path.basename(file.name)}`
-          });
-        }
-      });
+    // Parse Playwright JSON results to find failed tests
+    if (results.suites) {
+      function extractFailedTests(suites) {
+        suites.forEach(suite => {
+          // Check specs in this suite
+          if (suite.specs) {
+            suite.specs.forEach(spec => {
+              if (spec.ok === false) {
+                failedTests.push({
+                  file: spec.file,
+                  testName: spec.title,
+                  fullName: spec.title
+                });
+              }
+            });
+          }
+
+          // Recursively check nested suites
+          if (suite.suites) {
+            extractFailedTests(suite.suites);
+          }
+        });
+      }
+
+      extractFailedTests(results.suites);
     }
 
     return failedTests;
@@ -69,27 +69,13 @@ function runFailedTests() {
   });
   console.log('');
 
-  // Check if we have file-level failures (indicated by wildcard test names)
-  const fileLevelFailures = failedTests.filter(test => test.testName === '*');
-  const testLevelFailures = failedTests.filter(test => test.testName !== '*');
-
-  let testPattern;
-  if (fileLevelFailures.length > 0) {
-    // If we have file-level failures, we'll need to run the entire files
-    // For now, just use all test names as pattern
-    testPattern = failedTests.map(test => test.testName === '*' ? '.*' : test.testName).join('|');
-  } else if (testLevelFailures.length > 0) {
-    // If we only have test-level failures, use testNamePattern
-    testPattern = testLevelFailures.map(test => test.testName).join('|');
-  } else {
-    console.log('❌ No valid failed tests found to rerun');
-    return;
-  }
+  // For Playwright, we can use --grep to match test titles
+  const testPattern = failedTests.map(test => test.testName).join('|');
 
   console.log('🚀 Running failed tests...');
 
-  // Build the npm command with properly quoted test pattern
-  const npmArgs = ['run', 'test:e2e', '--', '-g', `"${testPattern}"`];
+  // Build the npm command with properly quoted test pattern for Playwright
+  const npmArgs = ['run', 'test:e2e', '--', '--grep', `"${testPattern}"`];
 
   console.log(`Command: npm ${npmArgs.join(' ')}`);
   console.log('');
@@ -127,8 +113,8 @@ function main() {
     console.log('Usage: node scripts/rerun-failed-e2e.js');
     console.log('');
     console.log('This script reruns only the tests that failed in the previous run.');
-    console.log('It reads test results from e2e-test-results.json and runs');
-    console.log('npm run test:e2e:headless with the failed test pattern.');
+    console.log('It reads test results from tests/e2e/results.json and runs');
+    console.log('npm run test:e2e with the failed test pattern.');
     console.log('');
     console.log('Options:');
     console.log('  --help, -h    Show this help message');
