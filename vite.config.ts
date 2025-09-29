@@ -16,8 +16,8 @@ export default defineConfig({
     // Set up DOM environment for component testing
     environment: "jsdom",
     globals: true,
-    include: ["tests/**/*.test.ts", "src/**/*.test.ts"],
-    exclude: ["e2e/**/*", "node_modules/**/*"],
+    include: ["tests/**/*.ts", "src/**/*.test.ts"],
+    exclude: ["node_modules/**/*"],
     testTimeout: 10000,
     hookTimeout: 10000,
     pool: "threads",

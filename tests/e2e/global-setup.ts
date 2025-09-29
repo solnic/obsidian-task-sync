@@ -16,7 +16,7 @@ const execAsync = promisify(exec);
 async function killExistingElectronProcesses(): Promise<void> {
   try {
     const { stdout } = await execAsync(
-      'pgrep -f "Electron.*obsidian.*main.js" || true',
+      'pgrep -f "Electron.*obsidian.*main.js" || true'
     );
 
     if (stdout.trim()) {
@@ -38,7 +38,7 @@ async function killExistingElectronProcesses(): Promise<void> {
       // Force kill any remaining processes
       try {
         const { stdout: remainingProcesses } = await execAsync(
-          'pgrep -f "Electron.*obsidian.*main.js" || true',
+          'pgrep -f "Electron.*obsidian.*main.js" || true'
         );
         if (remainingProcesses.trim()) {
           const remainingPids = remainingProcesses
@@ -60,7 +60,7 @@ async function killExistingElectronProcesses(): Promise<void> {
   } catch (error) {
     console.log(
       "⚠️ Error checking for existing Electron processes:",
-      error.message,
+      error.message
     );
   }
 }
@@ -70,7 +70,7 @@ async function killExistingElectronProcesses(): Promise<void> {
  */
 async function cleanupDebugArtifacts(): Promise<void> {
   try {
-    const debugDir = path.join(process.cwd(), "e2e/debug");
+    const debugDir = path.join(process.cwd(), "tests/e2e/debug");
 
     if (fs.existsSync(debugDir)) {
       await fs.promises.rm(debugDir, { recursive: true, force: true });
@@ -97,7 +97,7 @@ export default async function globalSetup() {
     }
 
     // Ensure test environments directory exists
-    const testEnvDir = path.join(process.cwd(), "e2e/test-environments");
+    const testEnvDir = path.join(process.cwd(), "tests/e2e/test-environments");
     await fs.promises.mkdir(testEnvDir, { recursive: true });
 
     // Clean up any leftover test environments from previous runs

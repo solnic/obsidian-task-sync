@@ -1,6 +1,5 @@
 node_modules
 tmp
-node_modules
-tmp
-e2e/test-environments
-.obsidian-unpacked
+
+tests/e2e/test-environments
+tests/e2e/.obsidian-unpacked

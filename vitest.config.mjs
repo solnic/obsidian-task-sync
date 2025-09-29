@@ -5,7 +5,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     include: ['tests/**/*.test.ts'],
-    exclude: ['e2e/**/*', 'node_modules/**/*'],
+    exclude: ['tests/e2e/**/*', 'node_modules/**/*'],
     testTimeout: 10000,
     hookTimeout: 10000,
     pool: 'threads',

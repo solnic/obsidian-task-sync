@@ -26,7 +26,7 @@
   "exclude": [
     "node_modules",
     "tmp/**/*",
-    "e2e/**/*",
+    "tests/e2e/**/*",
     "tests/**/*",
     "old-stuff/**/*"
   ]

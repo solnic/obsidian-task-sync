@@ -11,14 +11,14 @@ const isCI = process.env.CI === "true";
 
 export default defineConfig({
   // Test directory
-  testDir: "./e2e/specs/playwright",
+  testDir: "./tests/e2e/specs/playwright",
 
   // Test file patterns
   testMatch: "**/*.e2e.ts",
 
   // Global setup and teardown
-  globalSetup: require.resolve("./e2e/global-setup.ts"),
-  globalTeardown: require.resolve("./e2e/global-teardown.ts"),
+  globalSetup: require.resolve("./tests/e2e/global-setup.ts"),
+  globalTeardown: require.resolve("./tests/e2e/global-teardown.ts"),
 
   // Timeout configuration
   timeout: isCI ? 30000 : 10000,
@@ -64,7 +64,7 @@ export default defineConfig({
   // Global helpers are imported directly in test files
 
   // Output directory for test artifacts
-  outputDir: "./e2e/debug/test-results",
+  outputDir: "./tests/e2e/debug/test-results",
 
   // Projects configuration (we only need one for Electron)
   projects: [

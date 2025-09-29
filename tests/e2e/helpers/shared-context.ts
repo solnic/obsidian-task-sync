@@ -1,125 +1,26 @@
+/**
+ * Core shared context functions without vitest dependencies
+ * This file can be imported by both vitest and Playwright tests
+ */
+
 import * as fs from "fs";
 import * as path from "path";
 import { randomUUID } from "crypto";
-import { dasherize } from "inflection";
 
 import type { Page, ElectronApplication } from "playwright";
-import { beforeAll, beforeEach, afterEach, afterAll } from "vitest";
-
-import { toggleSidebar } from "./global";
-import type { ExtendedPage } from "./global";
 
 /**
  * Shared context for all e2e tests
  * Provides access to the global Electron instance with worker isolation
  */
 export interface SharedTestContext {
-  page: ExtendedPage;
+  page: Page;
   electronApp: ElectronApplication;
   testId: string;
   vaultPath: string;
   dataPath: string;
   workerId: string;
   logs: Array<{ type: string; text: string; timestamp: Date }>;
-}
-
-// Map of worker-specific contexts for parallel execution
-const workerContexts = new Map<string, SharedTestContext>();
-
-/**
- * Get the current worker ID for test isolation
- * Uses process.env.VITEST_WORKER_ID or falls back to process.pid
- */
-function getWorkerId(): string {
-  // Vitest sets VITEST_WORKER_ID for each worker process
-  const workerId =
-    process.env.VITEST_WORKER_ID ||
-    process.env.VITEST_POOL_ID ||
-    process.pid.toString();
-  return `worker-${workerId}`;
-}
-
-/**
- * Sets up common e2e test hooks and returns a context proxy
- * This eliminates duplication of beforeAll/beforeEach/afterEach/afterAll setup across test files
- * Includes automatic plugin settings reset and screenshot capture on test failure
- *
- * Usage:
- * ```typescript
- * describe("My Test", () => {
- *   const context = setupE2ETestHooks();
- *
- *   test("my test", async () => {
- *     await context.page.click(...);
- *   });
- * });
- * ```
- */
-export function setupE2ETestHooks(): SharedTestContext {
-  let context: SharedTestContext;
-  let currentTestName = "unknown-test";
-
-  beforeEach(async (testContext) => {
-    currentTestName = testContext.task.name;
-    console.log(`🧪 Setting up test: ${currentTestName}`);
-
-    // Create a fresh isolated context for each test
-    context = await createFreshTestContext();
-    console.log(`📁 Using fresh vault: ${context.vaultPath}`);
-
-    // Create test folders in the fresh environment
-    await createTestFolders(context.page);
-
-    // Reset UI state
-    await resetObsidianUI(context.page);
-
-    // Reload plugin settings to ensure clean state
-    await reloadPluginSettings(context.page);
-
-    console.log(`✅ Test setup complete for: ${currentTestName}`);
-  });
-
-  afterEach(async (testContext) => {
-    if (!context) return;
-
-    if (testContext.task?.result?.state === "fail") {
-      await captureFullDebugInfo(
-        context,
-        `test-failure-${dasherize(currentTestName)}`
-      );
-    }
-
-    // Clean up the test context completely
-    await cleanupTestContext(context);
-  });
-
-  afterAll(async () => {
-    // Note: Global cleanup is handled by vitest.playwright.config.mjs globalTeardown
-    // Individual worker contexts are cleaned up there to avoid race conditions
-  });
-
-  // Return a Proxy that delegates to the context once it's available
-  return new Proxy({} as SharedTestContext, {
-    get(_target, prop) {
-      if (!context) {
-        throw new Error(
-          `Context not yet initialized. Make sure you're accessing context properties inside test functions, not at the top level.`
-        );
-      }
-
-      return context[prop as keyof SharedTestContext];
-    },
-
-    set(_target, prop, value) {
-      if (!context) {
-        throw new Error(
-          `Context not yet initialized. Make sure you're accessing context properties inside test functions, not at the top level.`
-        );
-      }
-      (context as any)[prop] = value;
-      return true;
-    },
-  });
 }
 
 /**
@@ -141,7 +42,6 @@ export async function createTestFolders(page: Page): Promise<void> {
       const exists = await app.vault.adapter.exists(folder);
       if (!exists) {
         await app.vault.createFolder(folder);
-      } else {
       }
     }
   });
@@ -160,13 +60,17 @@ export async function setupObsidianElectron(
 ): Promise<{ electronApp: ElectronApplication; page: Page }> {
   const { _electron: electron } = await import("playwright");
 
+  const obsidianUnpackedPath = path.resolve("./tests/e2e/.obsidian-unpacked");
+
   // Check for different possible Obsidian structures
-  const mainJsPath = path.resolve("./.obsidian-unpacked/main.js");
+  const mainJsPath = path.resolve(obsidianUnpackedPath + "/main.js");
   const appExtractedMainJs = path.resolve(
-    "./.obsidian-unpacked/app-extracted/main.js"
+    obsidianUnpackedPath + "/app-extracted/main.js"
   );
-  const obsidianBinaryPath = path.resolve("./.obsidian-unpacked/obsidian");
-  const appAsarPath = path.resolve("./.obsidian-unpacked/resources/app.asar");
+  const obsidianBinaryPath = path.resolve(obsidianUnpackedPath + "/obsidian");
+  const appAsarPath = path.resolve(
+    obsidianUnpackedPath + "/resources/app.asar"
+  );
 
   let appPath: string;
   if (fs.existsSync(appExtractedMainJs)) {
@@ -189,13 +93,16 @@ export async function setupObsidianElectron(
   const userDataDir = path.resolve(dataDir);
 
   // Determine if we should run in headless mode
+  // Default to headless unless explicitly set to false
   const isHeadless =
     process.env.E2E_HEADLESS === "false"
       ? false
-      : process.env.CI === "true" ||
-        process.env.E2E_HEADLESS === "true" ||
-        process.env.DISPLAY === undefined ||
-        process.env.DISPLAY === "";
+      : process.env.E2E_HEADLESS === "true" ||
+        process.env.CI === "true" ||
+        !process.env.DISPLAY ||
+        process.env.DISPLAY === "" ||
+        process.env.DISPLAY === ":0" ||
+        true; // Default to headless for safety
 
   // Prepare launch arguments for Electron
   const launchArgs = [
@@ -265,11 +172,6 @@ export async function setupObsidianElectron(
 
   page = await electronApp.firstWindow({ timeout: isHeadless ? 60000 : 30000 });
 
-  const extendedPage = page as any;
-  extendedPage.vaultPath = vaultPath;
-  extendedPage.electronApp = electronApp;
-  extendedPage.logs = logs;
-
   page.on("console", (msg) => {
     logs.push({
       type: msg.type(),
@@ -277,7 +179,9 @@ export async function setupObsidianElectron(
       timestamp: new Date(),
     });
 
-    console.log("[Obsidian]", msg.text());
+    if (process.env.DEBUG === "true") {
+      console.log("[Obsidian]", msg.text());
+    }
   });
 
   await page.setViewportSize({ width: 1920, height: 1080 });
@@ -346,103 +250,35 @@ export async function waitForTaskSyncPlugin(
 }
 
 /**
- * Create a fresh test context for each test (proper isolation)
+ * Toggle sidebar open/closed
  */
-export async function createFreshTestContext(): Promise<SharedTestContext> {
-  // Create a unique test ID for this specific test
-  const testId = randomUUID();
-  const workerId = getWorkerId();
-
-  // Create isolated environment for this test
-  const {
-    testId: envTestId,
-    vaultPath,
-    dataPath,
-  } = await createIsolatedTestEnvironment(testId);
-
-  let electronApp: any, page: any;
-  let logs = [] as Array<{ type: string; text: string; timestamp: Date }>;
-
-  const result = await setupObsidianElectron(vaultPath, dataPath, logs);
-
-  electronApp = result.electronApp;
-  page = result.page;
-
-  const context: SharedTestContext = {
-    electronApp,
-    page,
-    testId: envTestId,
-    vaultPath,
-    dataPath,
-    workerId,
-    logs: logs,
-  };
-
-  return context;
-}
-
-/**
- * Clean up a test context completely
- */
-export async function cleanupTestContext(
-  context: SharedTestContext
+export async function toggleSidebar(
+  page: Page,
+  sidebar: "left" | "right",
+  open: boolean
 ): Promise<void> {
-  try {
-    // Close the page first
-    if (context.page && !context.page.isClosed()) {
-      await context.page.close();
-    }
+  await page.evaluate(
+    async ({ sidebar, open }) => {
+      const app = (window as any).app;
 
-    // Close the Electron app
-    if (context.electronApp) {
-      await context.electronApp.close();
-    }
-
-    // Clean up the isolated environment
-    await cleanupIsolatedTestEnvironment(context.testId);
-  } catch (error) {
-    console.warn(`⚠️ Error cleaning up test context:`, error);
-  }
-}
-
-/**
- * Get the shared test context with worker isolation (legacy - kept for compatibility)
- */
-export async function getSharedTestContext(): Promise<SharedTestContext> {
-  const workerId = getWorkerId();
-
-  // Check if we already have a context for this worker
-  const existingContext = workerContexts.get(workerId);
-  if (existingContext) {
-    return existingContext;
-  }
-
-  // Create isolated environment for this worker
-  const { testId, vaultPath, dataPath } = await createIsolatedTestEnvironment(
-    workerId
+      if (app?.workspace) {
+        if (sidebar === "left") {
+          if (open) {
+            app.workspace.leftSplit.expand();
+          } else {
+            app.workspace.leftSplit.collapse();
+          }
+        } else if (sidebar === "right") {
+          if (open) {
+            app.workspace.rightSplit.expand();
+          } else {
+            app.workspace.rightSplit.collapse();
+          }
+        }
+      }
+    },
+    { sidebar, open }
   );
-
-  let electronApp: any, page: any;
-  let logs = [] as Array<{ type: string; text: string; timestamp: Date }>;
-
-  const result = await setupObsidianElectron(vaultPath, dataPath, logs);
-
-  electronApp = result.electronApp;
-  page = result.page;
-
-  const context: SharedTestContext = {
-    electronApp,
-    page,
-    testId,
-    vaultPath,
-    dataPath,
-    workerId,
-    logs: logs,
-  };
-
-  workerContexts.set(workerId, context);
-
-  return context;
 }
 
 /**
@@ -566,151 +402,120 @@ export async function resetObsidianUI(page: Page): Promise<void> {
 }
 
 /**
- * Reload plugin settings from disk to ensure clean state between tests
+ * Create an isolated test environment with unique vault and data directories
+ * @param workerId Optional worker ID for consistent naming across worker processes
  */
-async function reloadPluginSettings(page: Page): Promise<void> {
-  await page.evaluate(async () => {
-    const app = (window as any).app;
-    const plugin = app.plugins.plugins["obsidian-task-sync"];
+export async function createIsolatedTestEnvironment(
+  workerId?: string
+): Promise<{ testId: string; vaultPath: string; dataPath: string }> {
+  const testId = workerId || randomUUID();
+  const baseTestDir = path.resolve("./tests/e2e/test-environments");
+  const testDir = path.join(baseTestDir, testId);
+  const vaultPath = path.join(testDir, "vault");
+  const dataPath = path.join(testDir, "data");
 
-    if (plugin && plugin.loadSettings) {
-      console.log("🔄 Reloading plugin settings from disk for test isolation");
-      await plugin.loadSettings();
-    }
-  });
-}
+  // Ensure base test directory exists
+  await fs.promises.mkdir(baseTestDir, { recursive: true });
+  await fs.promises.mkdir(testDir, { recursive: true });
 
-/**
- * Reset UI state for the next test
- * This should be called in beforeEach hooks
- * Note: This is now simplified since we use fresh environments per test
- */
-export async function resetSharedTestContext(): Promise<void> {
-  const context = await getSharedTestContext();
-  await resetObsidianUI(context.page);
+  const pristineVaultPath = path.resolve("./tests/vault/Test.pristine");
+  await copyDirectory(pristineVaultPath, vaultPath);
 
-  // Reload plugin settings from disk to ensure clean state
-  await reloadPluginSettings(context.page);
-}
+  const pristineDataPath = path.resolve("./tests/e2e/obsidian-data.pristine");
+  await copyDirectory(pristineDataPath, dataPath);
 
-/**
- * Clean up all worker contexts and isolated environments
- * This should be called during global teardown
- */
-export async function cleanupAllWorkerContexts(): Promise<void> {
-  console.log("🧹 Cleaning up all worker contexts...");
-
-  for (const [workerId, context] of workerContexts.entries()) {
-    // Close Electron app for this worker
-    if (context.electronApp) {
-      try {
-        // Get the process PID before closing for force cleanup if needed
-        const electronProcess = context.electronApp.process();
-        const pid = electronProcess?.pid;
-
-        if (context.page && !context.page.isClosed()) {
-          await context.page.close();
-        }
-
-        // Try graceful close first
-        await context.electronApp.close();
-
-        // If we have a PID and the process is still running, force kill it
-        if (pid) {
-          try {
-            process.kill(pid, 0); // Check if process still exists
-            process.kill(pid, "SIGTERM");
-
-            // Give it a moment to terminate
-            await new Promise((resolve) => setTimeout(resolve, 500));
-
-            // Check if it's still running and force kill if needed
-            try {
-              process.kill(pid, 0);
-              process.kill(pid, "SIGKILL");
-            } catch {
-              // Process already terminated
-            }
-          } catch {
-            // Process already terminated or doesn't exist
-          }
-        }
-      } catch (error) {}
-    }
-
-    // Clean up isolated environment
-    await cleanupIsolatedTestEnvironment(context.testId);
-  }
-
-  workerContexts.clear();
-}
-
-/**
- * Clean up old debug artifacts for a specific test to avoid accumulation
- * Note: Global setup now cleans entire debug directory, but this provides per-test cleanup
- */
-async function cleanupOldTestArtifacts(testName: string): Promise<void> {
-  const baseDebugDir = path.join(process.cwd(), "e2e", "debug");
-
-  // Clean up old debug directories for this test
-  if (fs.existsSync(baseDebugDir)) {
-    const entries = await fs.promises.readdir(baseDebugDir, {
-      withFileTypes: true,
-    });
-
-    const testDebugDirs = entries.filter(
-      (entry) =>
-        entry.isDirectory() && entry.name.startsWith(`test-failure-${testName}`)
+  // Update obsidian.json to point to the isolated vault path
+  const obsidianJsonPath = path.join(dataPath, "obsidian.json");
+  if (fs.existsSync(obsidianJsonPath)) {
+    const obsidianConfig = JSON.parse(
+      await fs.promises.readFile(obsidianJsonPath, "utf8")
     );
 
-    for (const dir of testDebugDirs) {
-      await fs.promises.rm(path.join(baseDebugDir, dir.name), {
-        recursive: true,
-        force: true,
-      });
+    // Update all vault paths to point to the isolated vault
+    if (obsidianConfig.vaults) {
+      for (const vaultId in obsidianConfig.vaults) {
+        obsidianConfig.vaults[vaultId].path = vaultPath;
+      }
+    }
+
+    await fs.promises.writeFile(
+      obsidianJsonPath,
+      JSON.stringify(obsidianConfig, null, 2)
+    );
+  }
+
+  // Copy the freshly built plugin files to the test environment
+  await copyBuiltPluginToTestEnvironment(vaultPath);
+
+  return { testId, vaultPath, dataPath };
+}
+
+/**
+ * Clean up isolated test environment
+ */
+export async function cleanupIsolatedTestEnvironment(
+  testId: string
+): Promise<void> {
+  const baseTestDir = path.resolve("./tests/e2e/test-environments");
+  const testDir = path.join(baseTestDir, testId);
+
+  if (fs.existsSync(testDir)) {
+    await fs.promises.rm(testDir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * Copy the freshly built plugin files to the test environment
+ */
+async function copyBuiltPluginToTestEnvironment(
+  vaultPath: string
+): Promise<void> {
+  const pluginDir = path.join(
+    vaultPath,
+    ".obsidian",
+    "plugins",
+    "obsidian-task-sync"
+  );
+
+  // Ensure plugin directory exists
+  await fs.promises.mkdir(pluginDir, { recursive: true });
+
+  // Copy the freshly built files from the project root
+  const projectRoot = path.resolve(".");
+  const filesToCopy = ["main.js", "manifest.json", "styles.css"];
+
+  for (const file of filesToCopy) {
+    const srcPath = path.join(projectRoot, file);
+    const destPath = path.join(pluginDir, file);
+
+    if (fs.existsSync(srcPath)) {
+      await fs.promises.copyFile(srcPath, destPath);
+    } else {
+      console.warn(`⚠️ Built file ${file} not found at ${srcPath}`);
     }
   }
 }
 
 /**
- * Capture a screenshot for debugging purposes using Playwright Electron support
+ * Recursively copy directory
  */
-export async function captureScreenshotOnFailure(
-  context: SharedTestContext,
-  name: string
-): Promise<void> {
-  const baseDebugDir = path.join(process.cwd(), "e2e", "debug");
-  const testDebugDir = path.join(baseDebugDir, name);
+async function copyDirectory(src: string, dest: string): Promise<void> {
+  await fs.promises.mkdir(dest, { recursive: true });
 
-  await fs.promises.mkdir(testDebugDir, { recursive: true });
+  const entries = await fs.promises.readdir(src, { withFileTypes: true });
 
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const filename = `screenshot-${timestamp}-${context.workerId}.png`;
-  const screenshotPath = path.join(testDebugDir, filename);
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
 
-  await context.page.screenshot({
-    path: screenshotPath,
-    fullPage: true,
-    type: "png",
-    timeout: 10000,
-  });
-}
-
-/**
- * Copy vault state for debugging failed tests
- */
-async function copyVaultForDebug(
-  context: SharedTestContext,
-  debugDir: string
-): Promise<void> {
-  const vaultDebugPath = path.join(debugDir, "vault");
-
-  // Copy the entire vault directory
-  await copyDirectory(context.vaultPath, vaultDebugPath);
-
-  // Also copy the Obsidian data directory for complete state
-  const dataDebugPath = path.join(debugDir, "obsidian-data");
-  await copyDirectory(context.dataPath, dataDebugPath);
+    if (entry.isDirectory()) {
+      await copyDirectory(srcPath, destPath);
+    } else {
+      try {
+        await fs.promises.copyFile(srcPath, destPath);
+      } catch (error) {}
+    }
+  }
 }
 
 /**
@@ -721,9 +526,6 @@ export async function captureFullDebugInfo(
   name: string
 ): Promise<void> {
   const baseDebugDir = path.join(process.cwd(), "e2e", "debug");
-
-  // Clean up old debug info for this test first
-  await cleanupOldTestArtifacts(name.replace("test-failure-", ""));
 
   // Use test name without timestamp for consistent directory structure
   const debugDir = path.join(baseDebugDir, name);
@@ -880,124 +682,5 @@ export async function captureFullDebugInfo(
     );
 
     console.log(`📋 HTML metadata captured: ${metadataPath}`);
-
-    await copyVaultForDebug(context, debugDir);
-  }
-}
-
-/**
- * Create an isolated test environment with unique vault and data directories
- * @param workerId Optional worker ID for consistent naming across worker processes
- */
-export async function createIsolatedTestEnvironment(
-  workerId?: string
-): Promise<{ testId: string; vaultPath: string; dataPath: string }> {
-  const testId = workerId || randomUUID();
-  const baseTestDir = path.resolve("./e2e/test-environments");
-  const testDir = path.join(baseTestDir, testId);
-  const vaultPath = path.join(testDir, "vault");
-  const dataPath = path.join(testDir, "data");
-
-  // Ensure base test directory exists
-  await fs.promises.mkdir(baseTestDir, { recursive: true });
-  await fs.promises.mkdir(testDir, { recursive: true });
-
-  const pristineVaultPath = path.resolve("./tests/vault/Test.pristine");
-  await copyDirectory(pristineVaultPath, vaultPath);
-
-  const pristineDataPath = path.resolve("./e2e/obsidian-data.pristine");
-  await copyDirectory(pristineDataPath, dataPath);
-
-  // Update obsidian.json to point to the isolated vault path
-  const obsidianJsonPath = path.join(dataPath, "obsidian.json");
-  if (fs.existsSync(obsidianJsonPath)) {
-    const obsidianConfig = JSON.parse(
-      await fs.promises.readFile(obsidianJsonPath, "utf8")
-    );
-
-    // Update all vault paths to point to the isolated vault
-    if (obsidianConfig.vaults) {
-      for (const vaultId in obsidianConfig.vaults) {
-        obsidianConfig.vaults[vaultId].path = vaultPath;
-      }
-    }
-
-    await fs.promises.writeFile(
-      obsidianJsonPath,
-      JSON.stringify(obsidianConfig, null, 2)
-    );
-  }
-
-  // Copy the freshly built plugin files to the test environment
-  await copyBuiltPluginToTestEnvironment(vaultPath);
-
-  return { testId, vaultPath, dataPath };
-}
-
-/**
- * Clean up isolated test environment
- */
-export async function cleanupIsolatedTestEnvironment(
-  testId: string
-): Promise<void> {
-  const baseTestDir = path.resolve("./e2e/test-environments");
-  const testDir = path.join(baseTestDir, testId);
-
-  if (fs.existsSync(testDir)) {
-    await fs.promises.rm(testDir, { recursive: true, force: true });
-  }
-}
-
-/**
- * Copy the freshly built plugin files to the test environment
- */
-async function copyBuiltPluginToTestEnvironment(
-  vaultPath: string
-): Promise<void> {
-  const pluginDir = path.join(
-    vaultPath,
-    ".obsidian",
-    "plugins",
-    "obsidian-task-sync"
-  );
-
-  // Ensure plugin directory exists
-  await fs.promises.mkdir(pluginDir, { recursive: true });
-
-  // Copy the freshly built files from the project root
-  const projectRoot = path.resolve(".");
-  const filesToCopy = ["main.js", "manifest.json", "styles.css"];
-
-  for (const file of filesToCopy) {
-    const srcPath = path.join(projectRoot, file);
-    const destPath = path.join(pluginDir, file);
-
-    if (fs.existsSync(srcPath)) {
-      await fs.promises.copyFile(srcPath, destPath);
-    } else {
-      console.warn(`⚠️ Built file ${file} not found at ${srcPath}`);
-    }
-  }
-}
-
-/**
- * Recursively copy directory
- */
-async function copyDirectory(src: string, dest: string): Promise<void> {
-  await fs.promises.mkdir(dest, { recursive: true });
-
-  const entries = await fs.promises.readdir(src, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-
-    if (entry.isDirectory()) {
-      await copyDirectory(srcPath, destPath);
-    } else {
-      try {
-        await fs.promises.copyFile(srcPath, destPath);
-      } catch (error) {}
-    }
   }
 }

@@ -111,8 +111,8 @@ console.log('\n📁 Checking project structure...');
 const requiredFiles = [
   'package.json',
   'vitest.playwright.config.mjs',
-  'e2e/helpers/plugin-setup.ts',
-  'e2e/helpers/shared-context-vitest.ts',
+  'tests/e2e/helpers/plugin-setup.ts',
+  'tests/e2e/helpers/shared-context-vitest.ts',
   '.obsidian-unpacked/main.js'
 ];
 
