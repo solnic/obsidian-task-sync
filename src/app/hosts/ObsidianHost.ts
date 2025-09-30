@@ -10,6 +10,7 @@
 import { Host } from "../core/host";
 import { TaskSyncSettings, DEFAULT_SETTINGS } from "../types/settings";
 import { Area, Project, Task } from "../core/entities";
+import { Extension, extensionRegistry } from "../core/extension";
 
 /**
  * Interface for Obsidian Plugin that provides the necessary methods
@@ -148,6 +149,20 @@ export class ObsidianHost extends Host {
     const file = app.vault.getAbstractFileByPath(entity.source.filePath);
 
     await app.workspace.getLeaf().openFile(file);
+  }
+
+  /**
+   * Get an extension by its ID.
+   * For the "local" service ID, this returns the ObsidianExtension.
+   *
+   * @param extensionId - The ID of the extension to retrieve (e.g., "local", "obsidian", "github")
+   * @returns The extension instance, or undefined if not found
+   */
+  getExtensionById(extensionId: string): Extension | undefined {
+    // Map "local" to "obsidian" extension for backward compatibility
+    const actualExtensionId =
+      extensionId === "local" ? "obsidian" : extensionId;
+    return extensionRegistry.getById(actualExtensionId);
   }
 
   /**

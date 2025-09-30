@@ -5,6 +5,7 @@
 
 import { Task, Project, Area } from "./entities";
 import { DomainEvent } from "./events";
+import type { Readable } from "svelte/store";
 
 // Generic entity union type
 export type Entity = Task | Project | Area;
@@ -19,8 +20,25 @@ export interface EntityOperations<T extends Entity> {
   delete(id: string): Promise<boolean>;
 }
 
+/**
+ * Data access interface for extensions to provide to UI components
+ * Extensions expose their data through observable stores and refresh methods
+ */
+export interface ExtensionDataAccess {
+  /**
+   * Observable store containing the tasks for this extension
+   * UI components subscribe to this for reactive updates
+   */
+  getTasks(): Readable<readonly Task[]>;
+
+  /**
+   * Refresh the extension's data
+   */
+  refresh(): Promise<void>;
+}
+
 // Extension interface - completely agnostic to implementation details
-export interface Extension {
+export interface Extension extends ExtensionDataAccess {
   readonly id: string;
   readonly name: string;
   readonly version: string;

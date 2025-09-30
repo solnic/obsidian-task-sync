@@ -11,6 +11,8 @@ import { ObsidianAreaOperations } from "./ObsidianAreaOperations";
 import { ObsidianProjectOperations } from "./ObsidianProjectOperations";
 import { ObsidianTaskOperations } from "./ObsidianTaskOperations";
 import { taskStore } from "../stores/taskStore";
+import { derived, type Readable } from "svelte/store";
+import type { Task } from "../core/entities";
 
 export interface ObsidianExtensionSettings {
   areasFolder: string;
@@ -31,7 +33,7 @@ export class ObsidianExtension implements Extension {
   private initialized = false;
   private areaOperations: ObsidianAreaOperations;
   private projectOperations: ObsidianProjectOperations;
-  private taskOperations: ObsidianTaskOperations;
+  readonly taskOperations: ObsidianTaskOperations;
 
   constructor(
     private app: App,
@@ -103,6 +105,76 @@ export class ObsidianExtension implements Extension {
 
   async isHealthy(): Promise<boolean> {
     return this.app.vault !== null && this.initialized;
+  }
+
+  /**
+   * Get observable tasks for this extension
+   * Returns the full task store - LocalTasksService will handle filtering/display
+   * The extension provides all tasks, and the UI component decides what to show
+   */
+  getTasks(): Readable<readonly Task[]> {
+    return derived(taskStore, ($store) => $store.tasks);
+  }
+
+  /**
+   * Refresh tasks by re-scanning the vault
+   * Public method that can be called by UI components
+   * Handles both upserting existing tasks and removing deleted ones
+   */
+  async refresh(): Promise<void> {
+    try {
+      taskStore.setLoading(true);
+      taskStore.setError(null);
+
+      console.log("Refreshing Obsidian tasks...");
+
+      // Get current tasks to identify which ones to remove (no longer exist in files)
+      const currentState = await new Promise((resolve) => {
+        let unsubscribe: (() => void) | undefined;
+        unsubscribe = taskStore.subscribe((state) => {
+          resolve(state);
+          if (unsubscribe) unsubscribe();
+        });
+      });
+
+      const currentTasks = (currentState as any).tasks;
+
+      // Scan existing task files
+      const freshTasksData = await this.taskOperations.scanExistingTasks();
+      console.log(`Refresh found ${freshTasksData.length} tasks`);
+
+      // Create a set of natural keys from fresh data to identify removed tasks
+      const freshNaturalKeys = new Set(
+        freshTasksData.map((taskData) => taskData.naturalKey)
+      );
+
+      // Remove tasks that no longer exist in the file system
+      for (const task of currentTasks) {
+        if (
+          task.source?.extension === "obsidian" &&
+          task.source?.filePath &&
+          !freshNaturalKeys.has(task.source.filePath)
+        ) {
+          console.log(
+            `Removing deleted task: ${task.title} (${task.source.filePath})`
+          );
+          taskStore.removeTask(task.id);
+        }
+      }
+
+      // Upsert fresh tasks - store will handle ID generation/preservation
+      for (const taskData of freshTasksData) {
+        taskStore.upsertTask(taskData);
+      }
+
+      taskStore.setLoading(false);
+      console.log("Refresh completed successfully");
+    } catch (err: any) {
+      console.error("Failed to refresh tasks:", err);
+      taskStore.setError(err.message);
+      taskStore.setLoading(false);
+      throw err;
+    }
   }
 
   /**

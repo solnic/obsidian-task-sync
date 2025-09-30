@@ -4,8 +4,6 @@
    * Provides task listing, filtering, sorting, and search functionality
    */
 
-  import { onMount } from "svelte";
-  import { taskStore } from "../stores/taskStore";
   import SearchInput from "./SearchInput.svelte";
   import RefreshButton from "./RefreshButton.svelte";
   import FilterButton from "./FilterButton.svelte";
@@ -17,7 +15,7 @@
   import { createLocalTask, type LocalTask } from "../types/LocalTask";
   import type { Task } from "../core/entities";
   import { PRIORITY_ORDER } from "../constants/defaults";
-  import type { LocalTasksService } from "../services/LocalTasksService";
+  import type { Extension } from "../core/extension";
 
   interface SortField {
     key: string;
@@ -46,8 +44,8 @@
     // Local tasks view specific settings
     localTasksSettings?: LocalTasksViewSettings;
 
-    // LocalTasks service with extension injected
-    localTasksService?: LocalTasksService;
+    // Extension that provides data access
+    extension: Extension;
 
     // Host for data persistence
     host?: any; // Host interface for saving/loading data
@@ -56,7 +54,7 @@
     testId?: string;
   }
 
-  let { settings, localTasksSettings, localTasksService, host, testId }: Props =
+  let { settings, localTasksSettings, extension, host, testId }: Props =
     $props();
 
   // State
@@ -266,12 +264,11 @@
     hoveredTask = null;
   });
 
-  onMount(() => {
-    // Subscribe to task store updates immediately
-    const unsubscribe = taskStore.subscribe((state) => {
-      tasks = [...state.tasks]; // Create mutable copy
-      isLoading = state.loading;
-      error = state.error;
+  // Subscribe to extension's tasks observable
+  $effect(() => {
+    const tasksStore = extension.getTasks();
+    const unsubscribe = tasksStore.subscribe((extensionTasks) => {
+      tasks = [...extensionTasks]; // Create mutable copy
     });
 
     return unsubscribe;
@@ -279,7 +276,10 @@
 
   // Note: Settings are now provided via props, no need to load/save via host
 
-  function searchLocalTasks(query: string, localTaskList: LocalTask[]): LocalTask[] {
+  function searchLocalTasks(
+    query: string,
+    localTaskList: LocalTask[]
+  ): LocalTask[] {
     const lowerQuery = query.toLowerCase();
 
     return localTaskList.filter((localTask) => {
@@ -403,7 +403,7 @@
   }
 
   async function refresh(): Promise<void> {
-    await localTasksService.refresh();
+    await extension.refresh();
   }
 
   // Task actions

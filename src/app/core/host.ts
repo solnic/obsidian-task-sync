@@ -16,6 +16,7 @@
 
 import { TaskSyncSettings } from "../types/settings";
 import { Area, Project, Task } from "./entities";
+import { Extension } from "./extension";
 
 /**
  * Abstract Host class that defines the required interface for mounting and operating
@@ -97,4 +98,12 @@ export abstract class Host {
    * @throws Error if cleanup fails
    */
   abstract onunload(): Promise<void>;
+
+  /**
+   * Get an extension by its ID.
+   *
+   * @param extensionId - The ID of the extension to retrieve
+   * @returns The extension instance, or undefined if not found
+   */
+  abstract getExtensionById(id: string): Extension | undefined;
 }
