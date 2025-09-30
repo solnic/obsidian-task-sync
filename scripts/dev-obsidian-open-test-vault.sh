@@ -517,72 +517,21 @@ cp styles.css "$PLUGIN_DIR/"
 COMMUNITY_PLUGINS_JSON="$TEST_VAULT_DIR/.obsidian/community-plugins.json"
 echo '["obsidian-task-sync"]' > "$COMMUNITY_PLUGINS_JSON"
 
-# Create plugin configuration with proper settings
+# Copy plugin data.json from pristine vault if it doesn't exist
 PLUGIN_DATA_JSON="$PLUGIN_DIR/data.json"
-cat > "$PLUGIN_DATA_JSON" << 'EOF'
-{
-  "tasksFolder": "Tasks",
-  "projectsFolder": "Projects",
-  "areasFolder": "Areas",
-  "templateFolder": "Templates",
-  "useTemplater": false,
-  "defaultTaskTemplate": "Task.md",
-  "defaultProjectTemplate": "Project.md",
-  "defaultAreaTemplate": "Area.md",
-  "basesFolder": "Bases",
-  "tasksBaseFile": "Tasks.base",
-  "autoGenerateBases": true,
-  "autoUpdateBaseViews": true,
-  "taskTypes": [
-    {
-      "name": "Task",
-      "color": "blue"
-    },
-    {
-      "name": "Bug",
-      "color": "red"
-    },
-    {
-      "name": "Feature",
-      "color": "green"
-    },
-    {
-      "name": "Improvement",
-      "color": "purple"
-    },
-    {
-      "name": "Chore",
-      "color": "gray"
-    }
-  ],
-  "taskStatuses": [
-    "Backlog",
-    "Todo",
-    "In Progress",
-    "Review",
-    "Done",
-    "Cancelled"
-  ],
-  "taskPriorities": [
-    "Low",
-    "Medium",
-    "High",
-    "Urgent"
-  ],
-  "projectStatuses": [
-    "Planning",
-    "Active",
-    "On Hold",
-    "Completed",
-    "Cancelled"
-  ],
-  "areaStatuses": [
-    "Active",
-    "Inactive",
-    "Archived"
-  ]
-}
-EOF
+PRISTINE_PLUGIN_DATA="./tests/vault/Test.pristine/.obsidian/plugins/obsidian-task-sync/data.json"
+
+if [ ! -f "$PLUGIN_DATA_JSON" ]; then
+  if [ -f "$PRISTINE_PLUGIN_DATA" ]; then
+    echo "📝 Copying plugin data.json from pristine vault..."
+    cp "$PRISTINE_PLUGIN_DATA" "$PLUGIN_DATA_JSON"
+  else
+    echo "❌ Pristine plugin data.json not found at $PRISTINE_PLUGIN_DATA"
+    exit 1
+  fi
+else
+  echo "📝 Plugin data.json already exists, preserving it..."
+fi
 
 echo "⚙️ Plugin configuration created with sample settings"
 
