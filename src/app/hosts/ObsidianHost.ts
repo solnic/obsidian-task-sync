@@ -198,4 +198,16 @@ export class ObsidianHost extends Host {
       throw new Error(`Failed to cleanup Obsidian plugin: ${error.message}`);
     }
   }
+
+  /**
+   * Get the TaskSync application instance.
+   * This provides access to the app for testing and advanced operations.
+   *
+   * @returns The TaskSync application instance
+   */
+  getApp(): any {
+    // Import taskSyncApp from App.ts
+    const { taskSyncApp } = require("../App");
+    return taskSyncApp;
+  }
 }

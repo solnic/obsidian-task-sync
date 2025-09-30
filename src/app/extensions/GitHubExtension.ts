@@ -362,13 +362,17 @@ export class GitHubExtension implements Extension {
           status: response.status,
           statusText: response.status.toString(),
           headers: {
-            get: (name: string) => headersMap.get(name.toLowerCase()),
-            has: (name: string) => headersMap.has(name.toLowerCase()),
-            forEach: (callback: any) => headersMap.forEach(callback),
+            get: (name: string): string | null =>
+              headersMap.get(name.toLowerCase()) || null,
+            has: (name: string): boolean => headersMap.has(name.toLowerCase()),
+            entries: () => headersMap.entries(),
+            keys: () => headersMap.keys(),
+            values: () => headersMap.values(),
+            [Symbol.iterator]: () => headersMap.entries(),
           },
+          json: async () => JSON.parse(response.text),
           text: async () => response.text,
-          json: async () => response.json,
-          arrayBuffer: async () => response.arrayBuffer,
+          url: url,
         };
       } catch (error) {
         throw error;

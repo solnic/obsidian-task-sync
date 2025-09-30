@@ -8,6 +8,8 @@
   import TabView from "./TabView.svelte";
   import type { TaskSyncSettings } from "../types/settings";
   import { setIcon } from "obsidian";
+  import { extensionRegistry } from "../core/extension";
+  import { eventBus } from "../core/events";
 
   interface Props {
     // Settings for configuration
@@ -23,18 +25,61 @@
   let { settings, host, testId }: Props = $props();
 
   // State - simplified to only support local tasks initially
-  let activeService = $state<"local">("local");
+  let activeService = $state<string>("local");
 
-  // Available services - simplified for initial implementation
-  let services = $derived([
-    {
-      id: "local",
-      name: "Local Tasks",
-      icon: "file-text",
-      enabled: true,
-    },
-    // TODO: Add GitHub and Apple Reminders services in future iterations
-  ]);
+  // Reactive state that updates when extensions are registered/unregistered
+  let extensionsVersion = $state(0);
+
+  // Listen to extension lifecycle events to trigger reactivity
+  $effect(() => {
+    const unsubscribeRegistered = eventBus.on("extension.registered", () => {
+      extensionsVersion++;
+    });
+
+    const unsubscribeUnregistered = eventBus.on(
+      "extension.unregistered",
+      () => {
+        extensionsVersion++;
+      }
+    );
+
+    return () => {
+      unsubscribeRegistered();
+      unsubscribeUnregistered();
+    };
+  });
+
+  // Available services - reactively built from registered extensions
+  let services = $derived.by(() => {
+    // Access extensionsVersion to make this reactive
+    extensionsVersion;
+
+    const allServices = [];
+
+    // Always include local tasks (obsidian extension)
+    const obsidianExt = extensionRegistry.getById("obsidian");
+    if (obsidianExt) {
+      allServices.push({
+        id: "local",
+        name: "Local Tasks",
+        icon: "file-text",
+        enabled: true,
+      });
+    }
+
+    // Include GitHub if extension is registered
+    const githubExt = extensionRegistry.getById("github");
+    if (githubExt) {
+      allServices.push({
+        id: "github",
+        name: "GitHub",
+        icon: "github",
+        enabled: true,
+      });
+    }
+
+    return allServices;
+  });
 
   // Set Obsidian icons after component mounts
   $effect(() => {
@@ -89,6 +134,9 @@
           disabled={!service.enabled}
           data-testid="service-{service.id}"
           aria-label="Switch to {service.name}"
+          onclick={() => {
+            activeService = service.id;
+          }}
         >
           <span class="service-icon-vertical" data-icon={service.icon}></span>
         </button>

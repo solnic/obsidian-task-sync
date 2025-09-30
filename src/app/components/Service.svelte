@@ -2,6 +2,7 @@
   import type { TaskSyncSettings } from "../types/settings";
   import type { Extension } from "../core/extension";
   import LocalTasksService from "./LocalTasksService.svelte";
+  import GitHubService from "./GitHubService.svelte";
   import { Host } from "../core/host";
 
   interface Props {
@@ -29,7 +30,7 @@
   // This is where we define which component renders which service
   const serviceComponents: Record<string, any> = {
     local: LocalTasksService,
-    // Future: github: GitHubTasksService,
+    github: GitHubService,
     // Future: apple-reminders: AppleRemindersService,
   };
 

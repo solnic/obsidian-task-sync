@@ -13,6 +13,7 @@ import type { Page } from "playwright";
 function loadFixture(service: string, fixtureName: string): any {
   const fixturePath = path.join(
     process.cwd(),
+    "tests",
     "e2e",
     "fixtures",
     service,
@@ -43,7 +44,13 @@ function loadFixture(service: string, fixtureName: string): any {
  * Get list of available fixtures for a service
  */
 function getAvailableFixtures(service: string): string[] {
-  const fixturesDir = path.join(process.cwd(), "e2e", "fixtures", service);
+  const fixturesDir = path.join(
+    process.cwd(),
+    "tests",
+    "e2e",
+    "fixtures",
+    service
+  );
 
   if (!fs.existsSync(fixturesDir)) {
     return [];

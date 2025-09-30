@@ -36,11 +36,13 @@ The project is in a transition phase moving from an Obsidian plugin to a Svelte 
 # Running tests
 
 - `npm test` to run all tests
-- `npm test:e2e` to run all `e2e` tests
+- `npm run test:e2e` to run all `e2e` tests
+- `npm run test:e2e:failed` to run e2e tests that previously failed
 
 # Debugging failing e2e tests
 
-- Debug test artifacts can be found in tests/e2e/debug
+- Debug test artifacts can be found in `tests/e2e/debug`
+- Run tests with `DEBUG=true` to see console output from the Obsidian electron app
 
 ## UI and front-end
 

@@ -6,12 +6,14 @@
 import { ObsidianExtension } from "./extensions/ObsidianExtension";
 import { GitHubExtension } from "./extensions/GitHubExtension";
 import { Host } from "./core/host";
+import type { TaskSyncSettings } from "./types/settings";
 
 export class TaskSyncApp {
   private initialized = false;
   private obsidianExtension?: ObsidianExtension;
-  private githubExtension?: GitHubExtension;
+  public githubExtension?: GitHubExtension;
   private host?: Host;
+  private settings: TaskSyncSettings | null = null;
 
   async initialize(host: Host): Promise<void> {
     if (this.initialized) return;
@@ -22,11 +24,11 @@ export class TaskSyncApp {
       this.host = host;
 
       // Load settings from host
-      const settings = await host.loadSettings();
+      this.settings = await host.loadSettings();
 
       console.log("TaskSync app initializing...", {
         hasHost: !!host,
-        hasSettings: !!settings,
+        hasSettings: !!this.settings,
       });
 
       // Initialize Obsidian extension - we still need the raw Obsidian objects for the extension
@@ -35,9 +37,9 @@ export class TaskSyncApp {
       const obsidianHost = host as any; // Cast to access underlying plugin
       if (obsidianHost.plugin && obsidianHost.plugin.app) {
         const extensionSettings = {
-          areasFolder: settings.areasFolder || "Areas",
-          projectsFolder: settings.projectsFolder || "Projects",
-          tasksFolder: settings.tasksFolder || "Tasks",
+          areasFolder: this.settings.areasFolder || "Areas",
+          projectsFolder: this.settings.projectsFolder || "Projects",
+          tasksFolder: this.settings.tasksFolder || "Tasks",
         };
 
         this.obsidianExtension = new ObsidianExtension(
@@ -50,14 +52,7 @@ export class TaskSyncApp {
       }
 
       // Initialize GitHub extension if enabled
-      if (settings.integrations?.github?.enabled && obsidianHost.plugin) {
-        this.githubExtension = new GitHubExtension(
-          settings.integrations.github,
-          obsidianHost.plugin
-        );
-
-        await this.githubExtension.initialize();
-      }
+      await this.initializeGitHubExtension();
 
       this.initialized = true;
       console.log("TaskSync app initialized successfully");
@@ -110,6 +105,72 @@ export class TaskSyncApp {
 
   isInitialized(): boolean {
     return this.initialized;
+  }
+
+  /**
+   * Update settings and reactively initialize/shutdown extensions
+   */
+  async updateSettings(newSettings: TaskSyncSettings): Promise<void> {
+    if (!this.initialized || !this.host) {
+      throw new Error(
+        "TaskSync app must be initialized before updating settings"
+      );
+    }
+
+    const oldSettings = this.settings;
+    this.settings = newSettings;
+
+    // Check if GitHub integration was enabled/disabled
+    const wasGitHubEnabled = oldSettings?.integrations?.github?.enabled;
+    const isGitHubEnabled = newSettings.integrations?.github?.enabled;
+
+    if (!wasGitHubEnabled && isGitHubEnabled) {
+      // GitHub was just enabled - initialize it
+      console.log("GitHub integration enabled, initializing...");
+      await this.initializeGitHubExtension();
+    } else if (wasGitHubEnabled && !isGitHubEnabled) {
+      // GitHub was just disabled - shutdown
+      console.log("GitHub integration disabled, shutting down...");
+      if (this.githubExtension) {
+        await this.githubExtension.shutdown();
+        this.githubExtension = undefined;
+      }
+    }
+  }
+
+  /**
+   * Initialize GitHub extension if enabled in settings
+   */
+  private async initializeGitHubExtension(): Promise<void> {
+    if (!this.settings?.integrations?.github?.enabled) {
+      return;
+    }
+
+    const obsidianHost = this.host as any;
+    if (!obsidianHost.plugin) {
+      return;
+    }
+
+    // Don't reinitialize if already initialized
+    if (this.githubExtension) {
+      console.log("GitHub extension already initialized");
+      return;
+    }
+
+    console.log("Initializing GitHub extension...");
+    this.githubExtension = new GitHubExtension(
+      this.settings.integrations.github,
+      obsidianHost.plugin
+    );
+
+    await this.githubExtension.initialize();
+
+    // If app is already loaded, load the extension too
+    if (this.initialized) {
+      await this.githubExtension.load();
+    }
+
+    console.log("GitHub extension initialized successfully");
   }
 }
 

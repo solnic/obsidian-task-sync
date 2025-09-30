@@ -16,7 +16,7 @@ import { areaStore, type AreaStore } from "./app/stores/areaStore";
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
-  private host: ObsidianHost;
+  public host: ObsidianHost;
 
   // Expose stores for testing (like in the old implementation)
   public get stores(): {
@@ -29,6 +29,11 @@ export default class TaskSyncPlugin extends Plugin {
       projectStore,
       areaStore,
     };
+  }
+
+  // Expose taskSyncApp for testing
+  public get taskSyncApp() {
+    return taskSyncApp;
   }
 
   async onload() {
@@ -114,6 +119,8 @@ export default class TaskSyncPlugin extends Plugin {
 
   async saveSettings() {
     await this.host.saveSettings(this.settings);
+    // Notify app of settings change to reactively update extensions
+    await taskSyncApp.updateSettings(this.settings);
   }
 
   async activateView() {

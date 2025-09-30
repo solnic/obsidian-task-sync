@@ -436,7 +436,7 @@ export async function stubGitHubWithFixtures(
   }
 ): Promise<void> {
   // Use the simplified stubbing system that handles plugin reloads
-  const { stubGitHubAPIs } = await import("./api-stubbing");
+  const { stubGitHubAPIs } = require("./api-stubbing");
   await stubGitHubAPIs(page, fixtures);
 }
 
