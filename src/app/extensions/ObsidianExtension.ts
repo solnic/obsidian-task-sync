@@ -285,6 +285,54 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
+   * Filter tasks by criteria
+   * Filters by project, area, source, and completed status
+   */
+  filterTasks(
+    tasks: readonly Task[],
+    criteria: {
+      project?: string | null;
+      area?: string | null;
+      source?: string | null;
+      showCompleted?: boolean;
+    }
+  ): readonly Task[] {
+    return tasks.filter((task) => {
+      // Project filter
+      if (criteria.project) {
+        if (task.project !== criteria.project) {
+          return false;
+        }
+      }
+
+      // Area filter
+      if (criteria.area) {
+        if (!task.areas || !Array.isArray(task.areas)) {
+          return false;
+        }
+        if (!task.areas.includes(criteria.area)) {
+          return false;
+        }
+      }
+
+      // Source filter
+      if (criteria.source) {
+        const taskSource = task.source?.filePath;
+        if (taskSource !== criteria.source) {
+          return false;
+        }
+      }
+
+      // Completed filter - exclude completed tasks unless showCompleted is true
+      if (!criteria.showCompleted && task.done === true) {
+        return false;
+      }
+
+      return true;
+    });
+  }
+
+  /**
    * Scan existing task files and populate the canonical task store
    * This follows the new architecture where extensions scan their representations
    * during initialization and populate the canonical store using upsert logic

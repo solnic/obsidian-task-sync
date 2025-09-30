@@ -55,6 +55,22 @@ export interface ExtensionDataAccess {
     tasks: readonly Task[],
     sortFields: Array<{ key: string; direction: "asc" | "desc" }>
   ): readonly Task[];
+
+  /**
+   * Filter tasks by criteria
+   * @param tasks - Tasks to filter
+   * @param criteria - Filter criteria (project, area, source, showCompleted)
+   * @returns Filtered tasks
+   */
+  filterTasks(
+    tasks: readonly Task[],
+    criteria: {
+      project?: string | null;
+      area?: string | null;
+      source?: string | null;
+      showCompleted?: boolean;
+    }
+  ): readonly Task[];
 }
 
 // Extension interface - completely agnostic to implementation details
