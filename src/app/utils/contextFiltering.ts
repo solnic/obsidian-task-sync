@@ -4,7 +4,6 @@
  */
 
 import type { Task } from "../core/entities";
-import { extractDisplayValue } from "./linkUtils";
 
 /**
  * Get available filter options from tasks
@@ -23,49 +22,19 @@ export function getFilterOptions(tasks: Task[]): {
   tasks.forEach((task) => {
     // Collect projects
     if (task.project) {
-      const project =
-        typeof task.project === "string"
-          ? extractDisplayValue(task.project) ||
-            task.project.replace(/^\[\[|\]\]$/g, "")
-          : task.project;
-      if (project) {
-        projects.add(project);
-      }
+      projects.add(task.project);
     }
 
-    // Collect areas - ensure areas is an array before iterating
-    if (task.areas) {
-      if (Array.isArray(task.areas)) {
-        task.areas.forEach((area) => {
-          const cleanArea =
-            typeof area === "string"
-              ? extractDisplayValue(area) || area.replace(/^\[\[|\]\]$/g, "")
-              : area;
-          if (cleanArea) {
-            areas.add(cleanArea);
-          }
-        });
-      } else if (typeof (task.areas as any) === "string") {
-        // Handle case where areas is a single string (runtime safety)
-        const areaStr = task.areas as any;
-        const cleanArea =
-          extractDisplayValue(areaStr) || areaStr.replace(/^\[\[|\]\]$/g, "");
-        if (cleanArea) {
-          areas.add(cleanArea);
-        }
-      }
+    // Collect areas
+    if (task.areas && Array.isArray(task.areas)) {
+      task.areas.forEach((area) => {
+        areas.add(area);
+      });
     }
 
     // Collect parent tasks
     if (task.parentTask) {
-      const parent =
-        typeof task.parentTask === "string"
-          ? extractDisplayValue(task.parentTask) ||
-            task.parentTask.replace(/^\[\[|\]\]$/g, "")
-          : task.parentTask;
-      if (parent) {
-        parentTasks.add(parent);
-      }
+      parentTasks.add(task.parentTask);
     }
 
     // Collect sources

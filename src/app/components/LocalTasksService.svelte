@@ -10,7 +10,6 @@
   import SortDropdown from "./SortDropdown.svelte";
   import LocalTaskItem from "./LocalTaskItem.svelte";
   import { getFilterOptions } from "../utils/contextFiltering";
-  import { extractDisplayValue } from "../utils/linkUtils";
   import type { TaskSyncSettings } from "../types/settings";
   import { createLocalTask, type LocalTask } from "../types/LocalTask";
   import type { Task } from "../core/entities";
@@ -112,13 +111,9 @@
     return getFilterOptions(tasks);
   });
 
-  // Extract display values for filter options
-  let projectOptions = $derived(
-    filterOptions.projects.map((p) => extractDisplayValue(p) || p)
-  );
-  let areaOptions = $derived(
-    filterOptions.areas.map((a) => extractDisplayValue(a) || a)
-  );
+  // Filter options are already clean strings from entities
+  let projectOptions = $derived(filterOptions.projects);
+  let areaOptions = $derived(filterOptions.areas);
   let sourceOptions = $derived(filterOptions.sources);
 
   // Computed filtered tasks - delegate to extension
@@ -239,9 +234,7 @@
       <div class="task-sync-local-filters">
         <FilterButton
           label="Project"
-          currentValue={selectedProject
-            ? extractDisplayValue(selectedProject) || selectedProject
-            : "All projects"}
+          currentValue={selectedProject || "All projects"}
           allOptions={projectOptions}
           defaultOption="All projects"
           onselect={(value: string) => {
@@ -263,9 +256,7 @@
 
         <FilterButton
           label="Area"
-          currentValue={selectedArea
-            ? extractDisplayValue(selectedArea) || selectedArea
-            : "All areas"}
+          currentValue={selectedArea || "All areas"}
           allOptions={areaOptions}
           defaultOption="All areas"
           onselect={(value: string) => {
