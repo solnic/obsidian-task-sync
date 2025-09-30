@@ -10,7 +10,7 @@ import { z } from "zod";
 
 export interface LocalTask {
   /** Original task entity */
-  task: any; // Allow any task structure for now
+  task: Task;
 
   /** Sortable attributes that expose the correct values for sorting */
   sortable: {
@@ -97,10 +97,10 @@ export function createLocalTask(task: Task): ValidatedLocalTask {
     sortable: {
       createdAt,
       updatedAt,
-      title: task.title || "",
-      priority: task.priority || "",
-      status: task.status || "",
-      category: task.category || "",
+      title: task.title,
+      priority: task.priority,
+      status: task.status,
+      category: task.category,
       project: extractProjectDisplayValue(task.project),
       areas: extractAreasDisplayValue(task.areas),
     },

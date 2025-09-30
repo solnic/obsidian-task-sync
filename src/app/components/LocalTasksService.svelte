@@ -183,7 +183,7 @@
 
   // Create LocalTask view objects for proper sorting
   let localTasks = $derived.by(() => {
-    return tasks.map((task: any) => createLocalTask(task));
+    return tasks.map((task: Task) => createLocalTask(task));
   });
 
   // Computed filtered tasks with manual filters only
