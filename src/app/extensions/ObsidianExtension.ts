@@ -204,6 +204,87 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
+   * Sort tasks by multiple fields
+   * Supports sorting by title, createdAt, updatedAt, priority, status, category, project, areas
+   */
+  sortTasks(
+    tasks: readonly Task[],
+    sortFields: Array<{ key: string; direction: "asc" | "desc" }>
+  ): readonly Task[] {
+    return [...tasks].sort((a, b) => {
+      for (const field of sortFields) {
+        let aValue: any;
+        let bValue: any;
+
+        // Get values based on field key
+        switch (field.key) {
+          case "title":
+            aValue = a.title;
+            bValue = b.title;
+            break;
+          case "createdAt":
+            aValue = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            bValue = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            break;
+          case "updatedAt":
+            aValue = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+            bValue = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+            break;
+          case "priority":
+            // Use priority order from constants if available
+            // For now, just use string comparison
+            aValue = a.priority || "";
+            bValue = b.priority || "";
+            break;
+          case "status":
+            aValue = a.status || "";
+            bValue = b.status || "";
+            break;
+          case "category":
+            aValue = a.category || "";
+            bValue = b.category || "";
+            break;
+          case "project":
+            aValue = a.project || "";
+            bValue = b.project || "";
+            break;
+          case "areas":
+            aValue = Array.isArray(a.areas) ? a.areas.join(", ") : "";
+            bValue = Array.isArray(b.areas) ? b.areas.join(", ") : "";
+            break;
+          default:
+            aValue = "";
+            bValue = "";
+        }
+
+        // Compare values
+        let comparison = 0;
+        if (typeof aValue === "string" && typeof bValue === "string") {
+          comparison = aValue.localeCompare(bValue);
+        } else if (typeof aValue === "number" && typeof bValue === "number") {
+          comparison = aValue - bValue;
+        } else {
+          // Handle mixed types by converting to strings
+          comparison = String(aValue).localeCompare(String(bValue));
+        }
+
+        // Apply direction
+        if (field.direction === "desc") {
+          comparison = -comparison;
+        }
+
+        // If not equal, return the comparison result
+        if (comparison !== 0) {
+          return comparison;
+        }
+      }
+
+      // If all fields are equal, maintain original order
+      return 0;
+    });
+  }
+
+  /**
    * Scan existing task files and populate the canonical task store
    * This follows the new architecture where extensions scan their representations
    * during initialization and populate the canonical store using upsert logic

@@ -44,6 +44,17 @@ export interface ExtensionDataAccess {
    * @returns Filtered tasks matching the query
    */
   searchTasks(query: string, tasks: readonly Task[]): readonly Task[];
+
+  /**
+   * Sort tasks by multiple fields
+   * @param tasks - Tasks to sort
+   * @param sortFields - Array of sort field configurations
+   * @returns Sorted tasks
+   */
+  sortTasks(
+    tasks: readonly Task[],
+    sortFields: Array<{ key: string; direction: "asc" | "desc" }>
+  ): readonly Task[];
 }
 
 // Extension interface - completely agnostic to implementation details
