@@ -38,10 +38,22 @@
 </script>
 
 <!-- Render the service component dynamically -->
-{#if ServiceComponent && extension}
+{#if ServiceComponent && extension && settings}
   <ServiceComponent
     {settings}
-    localTasksSettings={{}}
+    localTasksSettings={{
+      recentlyUsedProjects: [],
+      recentlyUsedAreas: [],
+      recentlyUsedSources: [],
+      selectedProject: null,
+      selectedArea: null,
+      selectedSource: null,
+      showCompleted: false,
+      sortFields: [
+        { key: "updatedAt", label: "Updated", direction: "desc" },
+        { key: "title", label: "Title", direction: "asc" },
+      ],
+    }}
     {extension}
     {host}
     testId={testId || `${serviceId}-service`}
@@ -54,7 +66,9 @@
     <p>
       The selected service "{serviceId}" is not available{!extension
         ? " (extension not found)"
-        : " (no UI component)"}.
+        : !settings
+          ? " (settings not provided)"
+          : " (no UI component)"}.
     </p>
   </div>
 {/if}

@@ -16,6 +16,7 @@
   import type { Task } from "../core/entities";
   import { PRIORITY_ORDER } from "../constants/defaults";
   import type { Extension } from "../core/extension";
+  import type { Host } from "../core/host";
 
   interface SortField {
     key: string;
@@ -39,16 +40,16 @@
 
   interface Props {
     // Settings for badge colors and configuration
-    settings?: TaskSyncSettings;
+    settings: TaskSyncSettings;
 
     // Local tasks view specific settings
-    localTasksSettings?: LocalTasksViewSettings;
+    localTasksSettings: LocalTasksViewSettings;
 
     // Extension that provides data access
     extension: Extension;
 
     // Host for data persistence
-    host?: any; // Host interface for saving/loading data
+    host: Host;
 
     // Test attributes
     testId?: string;
