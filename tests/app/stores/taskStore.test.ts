@@ -28,7 +28,7 @@ describe("TaskStore", () => {
         updatedAt: new Date("2024-01-01"),
         source: {
           extension: "obsidian",
-          source: "Tasks/New Task.md",
+          filePath: "Tasks/New Task.md",
         },
         naturalKey: "Tasks/New Task.md",
       };
@@ -38,7 +38,7 @@ describe("TaskStore", () => {
       expect(result.id).toBeDefined();
       expect(result.id).toMatch(/^[0123456789ABCDEFGHJKMNPQRSTVWXYZ]{26}$/); // ULID pattern
       expect(result.title).toBe("New Task");
-      expect(result.source?.source).toBe("Tasks/New Task.md");
+      expect(result.source?.filePath).toBe("Tasks/New Task.md");
 
       // Verify task was added to store
       let storeState: any;
@@ -65,7 +65,7 @@ describe("TaskStore", () => {
         updatedAt: new Date("2024-01-01"),
         source: {
           extension: "obsidian",
-          source: "Tasks/Test Task.md",
+          filePath: "Tasks/Test Task.md",
         },
         naturalKey: "Tasks/Test Task.md",
       };
@@ -87,7 +87,7 @@ describe("TaskStore", () => {
         updatedAt: new Date("2024-01-02"),
         source: {
           extension: "obsidian",
-          source: "Tasks/Test Task.md",
+          filePath: "Tasks/Test Task.md",
         },
         naturalKey: "Tasks/Test Task.md",
       };
@@ -130,7 +130,7 @@ describe("TaskStore", () => {
         updatedAt: new Date("2024-01-01"),
         source: {
           extension: "obsidian",
-          source: "Tasks/Task 1.md",
+          filePath: "Tasks/Task 1.md",
         },
         naturalKey: "Tasks/Task 1.md",
       };
@@ -147,7 +147,7 @@ describe("TaskStore", () => {
         updatedAt: new Date("2024-01-01"),
         source: {
           extension: "obsidian",
-          source: "Tasks/Task 2.md",
+          filePath: "Tasks/Task 2.md",
         },
         naturalKey: "Tasks/Task 2.md",
       };

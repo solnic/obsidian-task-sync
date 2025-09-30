@@ -98,108 +98,78 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   private async parseFileToTaskData(
     file: TFile
   ): Promise<(Omit<Task, "id"> & { naturalKey: string }) | null> {
-    try {
-      // Get frontmatter from the file - wait for metadata cache if needed
-      let fileCache = this.app.metadataCache.getFileCache(file);
+    const fileCache = this.app.metadataCache.getFileCache(file);
+    const frontMatter = fileCache.frontmatter;
 
-      // If metadata cache is not ready, wait for it
-      if (!fileCache) {
-        await new Promise<void>((resolve) => {
-          const checkCache = () => {
-            fileCache = this.app.metadataCache.getFileCache(file);
-            if (fileCache) {
-              resolve();
-            } else {
-              setTimeout(checkCache, 100); // Check again in 100ms
-            }
-          };
-          checkCache();
-        });
-      }
-
-      const frontMatter = fileCache?.frontmatter;
-
-      if (!frontMatter || frontMatter.Type !== "Task") {
-        console.log(
-          `Skipping file ${file.path}: not a task file (Type: ${frontMatter?.Type})`
-        );
-        return null; // Not a task file
-      }
-
-      // Skip if essential properties are missing
-      if (!frontMatter.Title) {
-        return null;
-      }
-
-      // Helper function to clean link formatting from strings
-      const cleanLinkFormat = (value: any): any => {
-        if (typeof value === "string") {
-          return value.replace(/^\[\[|\]\]$/g, "");
-        }
-        if (Array.isArray(value)) {
-          return value.map((item) =>
-            typeof item === "string" ? item.replace(/^\[\[|\]\]$/g, "") : item
-          );
-        }
-        return value;
-      };
-
-      // Ensure areas is always an array
-      let areas = cleanLinkFormat(frontMatter.Areas);
-      if (!Array.isArray(areas)) {
-        if (areas === undefined || areas === null) {
-          areas = [];
-        } else if (typeof areas === "string") {
-          areas = [areas];
-        } else {
-          areas = [];
-        }
-      }
-
-      // Helper function to parse date strings
-      const parseDate = (dateValue: any): Date | undefined => {
-        if (!dateValue || dateValue === "") {
-          return undefined;
-        }
-        if (dateValue instanceof Date) {
-          return dateValue;
-        }
-        if (typeof dateValue === "string") {
-          const date = new Date(dateValue);
-          return isNaN(date.getTime()) ? undefined : date;
-        }
-        return undefined;
-      };
-
-      // Create Task data without ID - store will handle ID generation and upsert
-      const taskData: Omit<Task, "id"> & { naturalKey: string } = {
-        title: frontMatter.Title,
-        description: frontMatter.Description || "",
-        category: frontMatter.Type || "Task",
-        status: frontMatter.Status || "Not Started",
-        priority: frontMatter.Priority,
-        done: frontMatter.Done || false,
-        project: cleanLinkFormat(frontMatter.Project),
-        areas: areas,
-        parentTask: cleanLinkFormat(frontMatter["Parent task"]),
-        doDate: parseDate(frontMatter["Do Date"]),
-        dueDate: parseDate(frontMatter["Due Date"]),
-        tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
-        createdAt: new Date(file.stat.ctime),
-        updatedAt: new Date(file.stat.mtime),
-        // Source information for tracking
-        source: {
-          extension: "obsidian",
-          source: file.path, // Use file path as the source identifier
-        },
-        // Natural key for store upsert logic
-        naturalKey: file.path,
-      };
-
-      return taskData;
-    } catch (error) {
-      console.error(`Failed to parse task file ${file.path}:`, error);
-      return null;
+    if (frontMatter?.Type !== "Task" || !frontMatter?.Title) {
+      return null; // Not a task file
     }
+
+    // Helper function to clean link formatting from strings
+    const cleanLinkFormat = (value: any): any => {
+      if (typeof value === "string") {
+        return value.replace(/^\[\[|\]\]$/g, "");
+      }
+      if (Array.isArray(value)) {
+        return value.map((item) =>
+          typeof item === "string" ? item.replace(/^\[\[|\]\]$/g, "") : item
+        );
+      }
+      return value;
+    };
+
+    // Ensure areas is always an array
+    let areas = cleanLinkFormat(frontMatter.Areas);
+    if (!Array.isArray(areas)) {
+      if (areas === undefined || areas === null) {
+        areas = [];
+      } else if (typeof areas === "string") {
+        areas = [areas];
+      } else {
+        areas = [];
+      }
+    }
+
+    // Helper function to parse date strings
+    const parseDate = (dateValue: any): Date | undefined => {
+      if (!dateValue || dateValue === "") {
+        return undefined;
+      }
+      if (dateValue instanceof Date) {
+        return dateValue;
+      }
+      if (typeof dateValue === "string") {
+        const date = new Date(dateValue);
+        return isNaN(date.getTime()) ? undefined : date;
+      }
+      return undefined;
+    };
+
+    // Create Task data without ID - store will handle ID generation and upsert
+    const taskData: Omit<Task, "id"> & { naturalKey: string } = {
+      title: frontMatter.Title,
+      description: frontMatter.Description || "",
+      category: frontMatter.Type || "Task",
+      status: frontMatter.Status || "Not Started",
+      priority: frontMatter.Priority,
+      done: frontMatter.Done || false,
+      project: cleanLinkFormat(frontMatter.Project),
+      areas: areas,
+      parentTask: cleanLinkFormat(frontMatter["Parent task"]),
+      doDate: parseDate(frontMatter["Do Date"]),
+      dueDate: parseDate(frontMatter["Due Date"]),
+      tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
+      createdAt: new Date(file.stat.ctime),
+      updatedAt: new Date(file.stat.mtime),
+      // Source information for tracking
+      source: {
+        extension: "obsidian",
+        filePath: file.path, // Use file path as the source identifier
+      },
+      // Natural key for store upsert logic
+      naturalKey: file.path,
+    };
+
+    return taskData;
   }
 }

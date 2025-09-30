@@ -10,7 +10,7 @@
     DEFAULT_TASK_TYPES,
     DEFAULT_TASK_PRIORITIES,
     DEFAULT_TASK_STATUSES,
-    type BadgeConfig
+    type BadgeConfig,
   } from "../utils/badges";
   import { AbstractInputSuggest } from "obsidian";
 
@@ -77,7 +77,12 @@
     oncancel?: () => void;
   }
 
-  let { obsidianApp, context = { type: "none" }, onsubmit, oncancel }: Props = $props();
+  let {
+    obsidianApp,
+    context = { type: "none" },
+    onsubmit,
+    oncancel,
+  }: Props = $props();
 
   // Form data matching new Task entity
   let formData = $state({
@@ -165,7 +170,9 @@
 
   function updateCategoryBadge() {
     if (!categoryBadgeEl) return;
-    const selectedType = DEFAULT_TASK_TYPES.find((t) => t.name === formData.category) || DEFAULT_TASK_TYPES[0];
+    const selectedType =
+      DEFAULT_TASK_TYPES.find((t) => t.name === formData.category) ||
+      DEFAULT_TASK_TYPES[0];
 
     categoryBadgeEl.innerHTML = "";
 
@@ -214,7 +221,9 @@
 
   function updateStatusBadge() {
     if (!statusBadgeEl) return;
-    const selectedStatus = DEFAULT_TASK_STATUSES.find((s) => s.name === formData.status) || DEFAULT_TASK_STATUSES[0];
+    const selectedStatus =
+      DEFAULT_TASK_STATUSES.find((s) => s.name === formData.status) ||
+      DEFAULT_TASK_STATUSES[0];
 
     statusBadgeEl.innerHTML = "";
 
@@ -380,7 +389,7 @@
         tags: formData.tags,
         source: {
           extension: "obsidian",
-          source: `Tasks/${taskTitle}.md`,
+          filePath: `Tasks/${taskTitle}.md`,
         },
       };
 

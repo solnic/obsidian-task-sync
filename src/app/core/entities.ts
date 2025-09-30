@@ -15,7 +15,8 @@ export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 // Source tracking for tasks from external systems
 export const TaskSourceSchema = z.object({
   extension: z.string(),
-  source: z.string(),
+  filePath: z.string().optional(),
+  url: z.string().optional(),
 });
 export type TaskSource = z.infer<typeof TaskSourceSchema>;
 

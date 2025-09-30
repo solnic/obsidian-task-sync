@@ -41,18 +41,20 @@ describe("Core Domain Entities", () => {
     test("should validate valid task source", () => {
       const validSource = {
         extension: "obsidian",
-        source: "Tasks/test-task.md",
+        filePath: "Tasks/test-task.md",
       };
 
       const result = TaskSourceSchema.parse(validSource);
       expect(result.extension).toBe("obsidian");
-      expect(result.source).toBe("Tasks/test-task.md");
+      expect(result.filePath).toBe("Tasks/test-task.md");
     });
 
-    test("should require extension and source", () => {
+    test("should require extension and filePath", () => {
       expect(() => TaskSourceSchema.parse({})).toThrow();
-      expect(() => TaskSourceSchema.parse({ extension: "obsidian" })).toThrow();
-      expect(() => TaskSourceSchema.parse({ source: "test" })).toThrow();
+      expect(() =>
+        TaskSourceSchema.parse({ extension: "obsidian" })
+      ).not.toThrow();
+      expect(() => TaskSourceSchema.parse({ filePath: "test" })).toThrow();
     });
   });
 
@@ -93,7 +95,7 @@ describe("Core Domain Entities", () => {
         updatedAt: new Date("2024-01-02"),
         source: {
           extension: "github",
-          source: "issue-123",
+          filePath: "issue-123",
         },
       };
 
@@ -111,7 +113,7 @@ describe("Core Domain Entities", () => {
       expect(result.doDate).toEqual(new Date("2024-02-01"));
       expect(result.dueDate).toEqual(new Date("2024-02-15"));
       expect(result.source?.extension).toBe("github");
-      expect(result.source?.source).toBe("issue-123");
+      expect(result.source?.filePath).toBe("issue-123");
     });
 
     test("should require id, title, createdAt, and updatedAt", () => {
@@ -168,7 +170,7 @@ describe("Core Domain Entities", () => {
         updatedAt: new Date("2024-01-02"),
         source: {
           extension: "obsidian",
-          source: "Projects/complete-project.md",
+          filePath: "Projects/complete-project.md",
         },
       };
 

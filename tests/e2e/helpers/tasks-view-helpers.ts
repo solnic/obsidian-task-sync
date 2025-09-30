@@ -425,7 +425,7 @@ ${taskProps.description || ""}`;
         parentTask: undefined,
         source: {
           extension: "obsidian",
-          source: filePath, // Use the actual file path
+          filePath: filePath, // Use the actual file path
         },
         createdAt: new Date(),
         updatedAt: new Date(),

@@ -48,7 +48,7 @@
         tags: [],
         source: {
           extension: "obsidian",
-          source: `Areas/${areaName}.md`,
+          filePath: `Areas/${areaName}.md`,
         },
       };
 

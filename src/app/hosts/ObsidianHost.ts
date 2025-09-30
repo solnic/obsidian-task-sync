@@ -145,7 +145,7 @@ export class ObsidianHost extends Host {
    */
   async openFile(entity: Area | Project | Task): Promise<void> {
     const app = this.plugin.app;
-    const file = app.vault.getAbstractFileByPath(entity.source.source);
+    const file = app.vault.getAbstractFileByPath(entity.source.filePath);
 
     await app.workspace.getLeaf().openFile(file);
   }

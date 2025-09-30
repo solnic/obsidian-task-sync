@@ -123,9 +123,9 @@ export function createTaskStore(): TaskStore {
     let resultTask: Task;
 
     update((state) => {
-      // Find existing task by natural key (source.source for Obsidian = file path)
+      // Find existing task by natural key (source.filePath for Obsidian = file path)
       const existingTask = state.tasks.find(
-        (t) => t.source?.source === taskData.naturalKey
+        (t) => t.source?.filePath === taskData.naturalKey
       );
 
       if (existingTask) {

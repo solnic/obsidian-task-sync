@@ -65,11 +65,11 @@ export class LocalTasksService {
       for (const task of currentTasks) {
         if (
           task.source?.extension === "obsidian" &&
-          task.source?.source &&
-          !freshNaturalKeys.has(task.source.source)
+          task.source?.filePath &&
+          !freshNaturalKeys.has(task.source.filePath)
         ) {
           console.log(
-            `Removing deleted task: ${task.title} (${task.source.source})`
+            `Removing deleted task: ${task.title} (${task.source.filePath})`
           );
           taskStore.removeTask(task.id);
         }

@@ -231,7 +231,7 @@
 
       // Source filter
       if (selectedSource) {
-        const taskSource = task.source?.source;
+        const taskSource = task.source?.filePath;
         if (taskSource !== selectedSource) {
           return false;
         }

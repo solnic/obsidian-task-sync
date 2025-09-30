@@ -69,8 +69,8 @@ export function getFilterOptions(tasks: Task[]): {
     }
 
     // Collect sources
-    if (task.source?.source) {
-      sources.add(task.source.source);
+    if (task.source?.filePath) {
+      sources.add(task.source.filePath);
     }
   });
 
