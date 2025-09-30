@@ -9,7 +9,7 @@ echo "🔧 Setting up Obsidian for e2e testing..."
 
 # Configuration
 DOWNLOAD_DIR="./tmp"
-UNPACKED_DIR="./.obsidian-unpacked"
+UNPACKED_DIR="./tests/e2e/.obsidian-unpacked"
 
 # Function to get latest Obsidian version from GitHub API
 get_latest_version() {
