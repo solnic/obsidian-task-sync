@@ -67,38 +67,3 @@ export function createStatusBadge(
 ): HTMLElement {
   return createBadge(config, "status", className);
 }
-
-/**
- * Default task types - simplified for new architecture
- */
-export const DEFAULT_TASK_TYPES: BadgeConfig[] = [
-  { name: "Task", color: "#3b82f6" },
-  { name: "Feature", color: "#10b981" },
-  { name: "Bug", color: "#ef4444" },
-  { name: "Research", color: "#f59e0b" },
-];
-
-// Import centralized defaults
-import {
-  DEFAULT_TASK_PRIORITIES as CENTRALIZED_PRIORITIES,
-  DEFAULT_TASK_STATUSES as CENTRALIZED_STATUSES,
-} from "../constants/defaults";
-
-/**
- * Default task priorities (imported from centralized constants)
- */
-export const DEFAULT_TASK_PRIORITIES: BadgeConfig[] =
-  CENTRALIZED_PRIORITIES.map((p) => ({
-    name: p.name,
-    color: p.color,
-  }));
-
-/**
- * Default task statuses (imported from centralized constants)
- */
-export const DEFAULT_TASK_STATUSES: BadgeConfig[] = CENTRALIZED_STATUSES.map(
-  (s) => ({
-    name: s.name,
-    color: s.color,
-  })
-);

@@ -7,12 +7,9 @@
     createTypeBadge,
     createPriorityBadge,
     createStatusBadge,
-    DEFAULT_TASK_TYPES,
-    DEFAULT_TASK_PRIORITIES,
-    DEFAULT_TASK_STATUSES,
-    type BadgeConfig,
   } from "../utils/badges";
   import { AbstractInputSuggest } from "obsidian";
+  import type { TaskSyncSettings } from "../types/settings";
 
   // Autocomplete classes
   class ProjectSuggest extends AbstractInputSuggest<string> {
@@ -72,6 +69,7 @@
 
   interface Props {
     obsidianApp: any;
+    settings: TaskSyncSettings;
     context?: FileContext;
     onsubmit?: (task: Task) => void;
     oncancel?: () => void;
@@ -79,6 +77,7 @@
 
   let {
     obsidianApp,
+    settings,
     context = { type: "none" },
     onsubmit,
     oncancel,
@@ -88,9 +87,9 @@
   let formData = $state({
     title: "",
     description: "",
-    category: DEFAULT_TASK_TYPES[0].name,
+    category: settings.taskTypes[0]?.name || "",
     priority: "",
-    status: DEFAULT_TASK_STATUSES[0].name,
+    status: settings.taskStatuses[0]?.name || "",
     project: "",
     areas: [] as string[],
     parentTask: "",
@@ -171,8 +170,8 @@
   function updateCategoryBadge() {
     if (!categoryBadgeEl) return;
     const selectedType =
-      DEFAULT_TASK_TYPES.find((t) => t.name === formData.category) ||
-      DEFAULT_TASK_TYPES[0];
+      settings.taskTypes.find((t) => t.name === formData.category) ||
+      settings.taskTypes[0];
 
     categoryBadgeEl.innerHTML = "";
 
@@ -191,7 +190,7 @@
 
   function updatePriorityBadge() {
     if (!priorityBadgeEl) return;
-    const selectedPriority = DEFAULT_TASK_PRIORITIES.find(
+    const selectedPriority = settings.taskPriorities.find(
       (p) => p.name === formData.priority
     );
 
@@ -222,8 +221,8 @@
   function updateStatusBadge() {
     if (!statusBadgeEl) return;
     const selectedStatus =
-      DEFAULT_TASK_STATUSES.find((s) => s.name === formData.status) ||
-      DEFAULT_TASK_STATUSES[0];
+      settings.taskStatuses.find((s) => s.name === formData.status) ||
+      settings.taskStatuses[0];
 
     statusBadgeEl.innerHTML = "";
 
@@ -279,7 +278,7 @@
   function showTypeSelector() {
     const menu = createSelectorMenu(categoryBadgeEl);
 
-    DEFAULT_TASK_TYPES.forEach((type) => {
+    settings.taskTypes.forEach((type) => {
       const item = menu.createDiv("task-sync-selector-item");
       const badge = createTypeBadge(type);
       item.appendChild(badge);
@@ -307,7 +306,7 @@
       menu.remove();
     });
 
-    DEFAULT_TASK_PRIORITIES.forEach((priority) => {
+    settings.taskPriorities.forEach((priority) => {
       const item = menu.createDiv("task-sync-selector-item");
       const badge = createPriorityBadge(priority);
       item.appendChild(badge);
@@ -323,7 +322,7 @@
   function showStatusSelector() {
     const menu = createSelectorMenu(statusBadgeEl);
 
-    DEFAULT_TASK_STATUSES.forEach((status) => {
+    settings.taskStatuses.forEach((status) => {
       const item = menu.createDiv("task-sync-selector-item");
       const badge = createStatusBadge(status);
       item.appendChild(badge);
