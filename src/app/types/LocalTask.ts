@@ -98,9 +98,11 @@ export function createLocalTask(task: Task): ValidatedLocalTask {
       createdAt,
       updatedAt,
       title: task.title,
-      priority: task.priority,
-      status: task.status,
-      category: task.category,
+      // Use fallbacks to ensure sortable fields are always strings, never undefined
+      // This matches the old implementation in old-stuff/types/LocalTask.ts
+      priority: task.priority || "",
+      status: task.status || "",
+      category: task.category || "",
       project: extractProjectDisplayValue(task.project),
       areas: extractAreasDisplayValue(task.areas),
     },

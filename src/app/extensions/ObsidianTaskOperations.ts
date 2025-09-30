@@ -67,19 +67,38 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
   // Implement abstract methods for task-specific behavior
   protected generateFrontMatter(task: Task): Record<string, any> {
-    // Based on properties.ts from old-stuff, only include frontmatter: true properties
+    // Based on properties.ts from old-stuff, ALL frontmatter properties must be defined
+    // even if they have null/empty defaults. This ensures consistent front-matter structure
+    // and prevents validation errors when creating LocalTask objects.
+    //
+    // Property defaults from PROPERTY_REGISTRY in old-stuff/types/properties.ts:
+    // - TITLE: no default (required)
+    // - TYPE: default "Task" (entity type, always "Task" for tasks)
+    // - CATEGORY: no default (task category like "Feature", "Bug", etc.)
+    // - PRIORITY: default null
+    // - AREAS: default []
+    // - PROJECT: no default (empty string)
+    // - DONE: default false
+    // - STATUS: default "Backlog"
+    // - PARENT_TASK: no default (empty string)
+    // - DO_DATE: default null
+    // - DUE_DATE: default null
+    // - TAGS: default []
+    // - REMINDERS: default []
     return {
-      Title: task.title, // TITLE property
-      Type: task.category || "Task", // TYPE/CATEGORY property
+      Title: task.title, // TITLE property (required)
+      Type: "Task", // TYPE property (always "Task" for task entities)
+      Category: task.category || "", // CATEGORY property (task type like "Feature", "Bug")
+      Priority: task.priority || "", // PRIORITY property (empty string if not set)
+      Areas: task.areas || [], // AREAS property (always array)
+      Project: task.project || "", // PROJECT property (empty string if not set)
+      Done: task.done, // DONE property (boolean)
       Status: task.status, // STATUS property
-      Priority: task.priority, // PRIORITY property (can be undefined)
-      Done: task.done, // DONE property
-      Project: task.project, // PROJECT property (can be undefined)
-      Areas: task.areas && task.areas.length > 0 ? task.areas : undefined, // AREAS property
-      "Parent task": task.parentTask, // PARENT_TASK property (note the space in name)
-      "Do Date": task.doDate?.toISOString().split("T")[0], // DO_DATE property
-      "Due Date": task.dueDate?.toISOString().split("T")[0], // DUE_DATE property
-      tags: task.tags && task.tags.length > 0 ? task.tags : undefined, // TAGS property (lowercase)
+      "Parent task": task.parentTask || "", // PARENT_TASK property (note the space in name)
+      "Do Date": task.doDate?.toISOString().split("T")[0] || null, // DO_DATE property
+      "Due Date": task.dueDate?.toISOString().split("T")[0] || null, // DUE_DATE property
+      tags: task.tags || [], // TAGS property (lowercase, always array)
+      Reminders: [], // REMINDERS property (not yet implemented, default empty array)
       // Note: createdAt and updatedAt are NOT frontmatter properties according to properties.ts
       // They come from file.ctime and file.mtime (frontmatter: false)
     };
@@ -149,9 +168,9 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     const taskData: Omit<Task, "id"> & { naturalKey: string } = {
       title: frontMatter.Title,
       description: frontMatter.Description || "",
-      category: frontMatter.Type || "Task",
+      category: frontMatter.Category || "", // Use Category property, not Type
       status: frontMatter.Status || "Not Started",
-      priority: frontMatter.Priority,
+      priority: frontMatter.Priority || "", // Ensure priority is always a string
       done: frontMatter.Done || false,
       project: cleanLinkFormat(frontMatter.Project),
       areas: areas,
