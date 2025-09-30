@@ -1,0 +1,756 @@
+/**
+ * GitHub Extension for TaskSync
+ * Provides GitHub issue/PR import functionality following the Extension pattern
+ */
+
+import { Octokit } from "@octokit/rest";
+import { requestUrl, Plugin } from "obsidian";
+import { Extension, extensionRegistry, EntityType } from "../core/extension";
+import { eventBus } from "../core/events";
+import { taskStore } from "../stores/taskStore";
+import { derived, type Readable } from "svelte/store";
+import type { Task } from "../core/entities";
+import { SchemaCache } from "../cache/SchemaCache";
+import {
+  GitHubIssueListSchema,
+  GitHubLabelListSchema,
+  GitHubRepositoryListSchema,
+  GitHubOrganizationListSchema,
+  type GitHubIssue,
+  type GitHubIssueList,
+  type GitHubLabel,
+  type GitHubLabelList,
+  type GitHubRepository,
+  type GitHubRepositoryList,
+  type GitHubOrganization,
+  type GitHubOrganizationList,
+} from "../cache/schemas/github";
+
+export interface GitHubPullRequest {
+  id: number;
+  number: number;
+  title: string;
+  body: string | null;
+  state: "open" | "closed";
+  assignee: { login: string } | null;
+  assignees: Array<{ login: string }>;
+  labels: Array<{ name: string; color?: string }>;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  merged_at: string | null;
+  html_url: string;
+  diff_url: string;
+  patch_url: string;
+  head: {
+    label: string;
+    ref: string;
+    sha: string;
+    user: { login: string };
+  };
+  base: {
+    label: string;
+    ref: string;
+    sha: string;
+    user: { login: string };
+  };
+  user: { login: string };
+  requested_reviewers: Array<{ login: string }>;
+  draft: boolean;
+}
+
+export interface GitHubIntegrationSettings {
+  enabled: boolean;
+  personalAccessToken: string;
+  defaultRepository: string;
+  issueFilters: {
+    state: "open" | "closed" | "all";
+    assignee: string;
+    labels: string[];
+  };
+  labelTypeMapping?: Record<string, string>;
+  orgRepoMappings?: any[];
+}
+
+export class GitHubExtension implements Extension {
+  readonly id = "github";
+  readonly name = "GitHub";
+  readonly version = "1.0.0";
+  readonly supportedEntities: readonly EntityType[] = ["task"];
+
+  private initialized = false;
+  private octokit: Octokit | undefined;
+  private plugin: Plugin;
+  private settings: GitHubIntegrationSettings;
+
+  // Cache instances
+  private issuesCache?: SchemaCache<GitHubIssueList>;
+  private labelsCache?: SchemaCache<GitHubLabelList>;
+  private repositoriesCache?: SchemaCache<GitHubRepositoryList>;
+  private organizationsCache?: SchemaCache<GitHubOrganizationList>;
+
+  constructor(settings: GitHubIntegrationSettings, plugin: Plugin) {
+    this.settings = settings;
+    this.plugin = plugin;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      console.log("Initializing GitHubExtension...");
+
+      // Setup caches
+      await this.setupCaches();
+
+      // Initialize Octokit
+      this.initializeOctokit();
+
+      // Register extension
+      extensionRegistry.register(this);
+
+      // Trigger extension registered event
+      eventBus.trigger({
+        type: "extension.registered",
+        extension: this.id,
+        supportedEntities: this.supportedEntities,
+      });
+
+      this.initialized = true;
+      console.log("GitHubExtension initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize GitHubExtension:", error);
+      throw error;
+    }
+  }
+
+  async load(): Promise<void> {
+    if (!this.initialized) {
+      throw new Error("GitHubExtension must be initialized before loading");
+    }
+
+    try {
+      console.log("Loading GitHubExtension - preloading caches...");
+
+      // Preload caches from persistent storage
+      await this.preloadCaches();
+
+      console.log("GitHubExtension loaded successfully");
+    } catch (error) {
+      console.error("Failed to load GitHubExtension:", error);
+      throw error;
+    }
+  }
+
+  async shutdown(): Promise<void> {
+    if (!this.initialized) return;
+
+    eventBus.trigger({
+      type: "extension.unregistered",
+      extension: this.id,
+    });
+
+    this.initialized = false;
+  }
+
+  async isHealthy(): Promise<boolean> {
+    return this.initialized && this.octokit !== undefined;
+  }
+
+  /**
+   * Get observable tasks for this extension
+   * Returns tasks that were imported from GitHub
+   */
+  getTasks(): Readable<readonly Task[]> {
+    return derived(taskStore, ($store) =>
+      $store.tasks.filter((task) => task.source?.extension === "github")
+    );
+  }
+
+  /**
+   * Refresh GitHub data by clearing caches
+   */
+  async refresh(): Promise<void> {
+    try {
+      taskStore.setLoading(true);
+      taskStore.setError(null);
+
+      console.log("Refreshing GitHub data...");
+
+      // Clear all caches to force fresh data fetch
+      await this.clearCache();
+
+      taskStore.setLoading(false);
+      console.log("GitHub refresh completed successfully");
+    } catch (err: any) {
+      console.error("Failed to refresh GitHub data:", err);
+      taskStore.setError(err.message);
+      taskStore.setLoading(false);
+      throw err;
+    }
+  }
+
+  /**
+   * Search tasks by query string
+   */
+  searchTasks(query: string, tasks: readonly Task[]): readonly Task[] {
+    if (!query) return tasks;
+
+    const lowerQuery = query.toLowerCase();
+    return tasks.filter((task) => {
+      return (
+        task.title.toLowerCase().includes(lowerQuery) ||
+        task.category?.toLowerCase().includes(lowerQuery) ||
+        task.status.toLowerCase().includes(lowerQuery) ||
+        task.project?.toLowerCase().includes(lowerQuery) ||
+        task.areas.some((area) => area.toLowerCase().includes(lowerQuery))
+      );
+    });
+  }
+
+  /**
+   * Sort tasks by multiple fields
+   */
+  sortTasks(
+    tasks: readonly Task[],
+    sortFields: Array<{ key: string; direction: "asc" | "desc" }>
+  ): readonly Task[] {
+    return [...tasks].sort((a, b) => {
+      for (const field of sortFields) {
+        const aVal = (a as any)[field.key];
+        const bVal = (b as any)[field.key];
+
+        let comparison = 0;
+        if (aVal < bVal) comparison = -1;
+        if (aVal > bVal) comparison = 1;
+
+        if (comparison !== 0) {
+          return field.direction === "asc" ? comparison : -comparison;
+        }
+      }
+      return 0;
+    });
+  }
+
+  /**
+   * Filter tasks by criteria
+   */
+  filterTasks(
+    tasks: readonly Task[],
+    criteria: {
+      project?: string | null;
+      area?: string | null;
+      source?: string | null;
+      showCompleted?: boolean;
+    }
+  ): readonly Task[] {
+    return tasks.filter((task) => {
+      if (criteria.project && task.project !== criteria.project) return false;
+      if (criteria.area && !task.areas.includes(criteria.area)) return false;
+      if (criteria.source && task.source?.extension !== criteria.source)
+        return false;
+      if (!criteria.showCompleted && task.done) return false;
+      return true;
+    });
+  }
+
+  // Event handler methods required by Extension interface
+  async onEntityCreated(_event: any): Promise<void> {
+    // GitHub extension doesn't create entities in response to events
+  }
+
+  async onEntityUpdated(_event: any): Promise<void> {
+    // GitHub extension doesn't update entities in response to events
+  }
+
+  async onEntityDeleted(_event: any): Promise<void> {
+    // GitHub extension doesn't delete entities in response to events
+  }
+
+  /**
+   * Setup GitHub-specific caches
+   */
+  private async setupCaches(): Promise<void> {
+    this.issuesCache = new SchemaCache(
+      this.plugin,
+      "github-issues",
+      GitHubIssueListSchema
+    );
+    this.labelsCache = new SchemaCache(
+      this.plugin,
+      "github-labels",
+      GitHubLabelListSchema
+    );
+    this.repositoriesCache = new SchemaCache(
+      this.plugin,
+      "github-repositories",
+      GitHubRepositoryListSchema
+    );
+    this.organizationsCache = new SchemaCache(
+      this.plugin,
+      "github-organizations",
+      GitHubOrganizationListSchema
+    );
+  }
+
+  /**
+   * Preload GitHub caches from persistent storage
+   */
+  private async preloadCaches(): Promise<void> {
+    const caches = [
+      this.issuesCache,
+      this.labelsCache,
+      this.repositoriesCache,
+      this.organizationsCache,
+    ];
+
+    await Promise.all(
+      caches.map(async (cache) => {
+        if (cache) {
+          await cache.preloadFromStorage();
+        }
+      })
+    );
+  }
+
+  /**
+   * Initialize Octokit client if integration is enabled and token is provided
+   */
+  private initializeOctokit(): void {
+    const trimmedToken = this.settings.personalAccessToken?.trim();
+
+    if (this.settings.enabled && trimmedToken) {
+      this.octokit = new Octokit({
+        auth: trimmedToken,
+        userAgent: "obsidian-task-sync",
+        request: {
+          fetch: this.createObsidianFetch(),
+        },
+      });
+    } else {
+      // Clear octokit if integration is disabled or no token
+      this.octokit = undefined;
+    }
+  }
+
+  /**
+   * Create a fetch-compatible function using Obsidian's requestUrl
+   */
+  private createObsidianFetch() {
+    return async (url: string, options: any = {}) => {
+      try {
+        // Use Obsidian's requestUrl which returns a proper response object
+        const response = await requestUrl({
+          url,
+          method: options.method || "GET",
+          headers: options.headers || {},
+          body: options.body,
+          throw: false, // Don't throw on HTTP errors, let Octokit handle them
+        });
+
+        // Create a Response-like object that Octokit expects
+        // Make headers object iterable like the Headers API
+        const headersMap = new Map();
+        if (response.headers) {
+          Object.entries(response.headers).forEach(([key, value]) => {
+            headersMap.set(key.toLowerCase(), value);
+          });
+        }
+
+        return {
+          ok: response.status >= 200 && response.status < 300,
+          status: response.status,
+          statusText: response.status.toString(),
+          headers: {
+            get: (name: string) => headersMap.get(name.toLowerCase()),
+            has: (name: string) => headersMap.has(name.toLowerCase()),
+            forEach: (callback: any) => headersMap.forEach(callback),
+          },
+          text: async () => response.text,
+          json: async () => response.json,
+          arrayBuffer: async () => response.arrayBuffer,
+        };
+      } catch (error) {
+        throw error;
+      }
+    };
+  }
+
+  /**
+   * Generate consistent cache key for GitHub resources
+   */
+  private generateCacheKey(
+    category: "issues" | "labels" | "repositories" | "organizations",
+    repository?: string,
+    filters?: { state?: string; assignee?: string; labels?: string[] }
+  ): string {
+    const parts = ["github"];
+
+    if (repository) {
+      const [owner, repo] = repository.split("/");
+      parts.push(`org:${owner}`, `repo:${repo}`);
+    }
+
+    parts.push(`category:${category}`);
+
+    if (filters) {
+      if (filters.state) {
+        parts.push(`status:${filters.state}`);
+      }
+      if (filters.assignee) {
+        parts.push(`assignee:${filters.assignee}`);
+      }
+      if (filters.labels && filters.labels.length > 0) {
+        parts.push(`labels:${filters.labels.sort().join(",")}`);
+      }
+    }
+
+    return parts.join("|");
+  }
+
+  /**
+   * Validate repository format (owner/repo)
+   */
+  private validateRepository(repository: string): boolean {
+    if (!repository || typeof repository !== "string") {
+      return false;
+    }
+
+    const parts = repository.split("/");
+    return parts.length === 2 && parts[0].length > 0 && parts[1].length > 0;
+  }
+
+  /**
+   * Clear all GitHub-specific caches
+   */
+  async clearCache(): Promise<void> {
+    // Clear all cache instances
+    if (this.issuesCache) {
+      await this.issuesCache.clear();
+    }
+
+    if (this.labelsCache) {
+      await this.labelsCache.clear();
+    }
+
+    if (this.repositoriesCache) {
+      await this.repositoriesCache.clear();
+    }
+
+    if (this.organizationsCache) {
+      await this.organizationsCache.clear();
+    }
+  }
+
+  /**
+   * Check if GitHub integration is enabled
+   */
+  isEnabled(): boolean {
+    return this.settings.enabled && !!this.octokit;
+  }
+
+  /**
+   * Fetch issues from a GitHub repository with caching
+   */
+  async fetchIssues(repository: string): Promise<GitHubIssue[]> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    if (!this.validateRepository(repository)) {
+      throw new Error("Invalid repository format. Expected: owner/repo");
+    }
+
+    const filters = this.settings.issueFilters;
+    const cacheKey = this.generateCacheKey("issues", repository, {
+      state: filters.state,
+      assignee: filters.assignee,
+      labels: filters.labels,
+    });
+
+    // Check cache first
+    if (this.issuesCache) {
+      const cachedIssues = await this.issuesCache.get(cacheKey);
+      if (cachedIssues) {
+        return cachedIssues;
+      }
+    }
+
+    const [owner, repo] = repository.split("/");
+
+    try {
+      const response = await this.octokit.rest.issues.listForRepo({
+        owner,
+        repo,
+        state: filters.state,
+        assignee: filters.assignee || undefined,
+        labels:
+          filters.labels.length > 0 ? filters.labels.join(",") : undefined,
+        per_page: 100,
+      });
+
+      const issues = response.data as GitHubIssue[];
+
+      // Cache the results
+      if (this.issuesCache) {
+        await this.issuesCache.set(cacheKey, issues);
+      }
+
+      return issues;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch repositories for the authenticated user
+   */
+  async fetchRepositories(): Promise<GitHubRepository[]> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    const cacheKey = this.generateCacheKey("repositories");
+
+    // Check cache first
+    if (this.repositoriesCache) {
+      const cachedRepos = await this.repositoriesCache.get(cacheKey);
+      if (cachedRepos) {
+        return cachedRepos;
+      }
+    }
+
+    try {
+      const allRepositories: GitHubRepository[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await this.octokit.rest.repos.listForAuthenticatedUser(
+          {
+            sort: "updated",
+            per_page: 100,
+            page: page,
+          }
+        );
+
+        const repositories = response.data as GitHubRepository[];
+        allRepositories.push(...repositories);
+
+        // Check if we have more pages
+        hasMore = repositories.length === 100;
+        page++;
+
+        // Safety check to prevent infinite loops
+        if (page > 50) {
+          console.warn(
+            "GitHub API: Stopping pagination after 50 pages (5000 repos) for safety"
+          );
+          break;
+        }
+      }
+
+      // Cache the results
+      if (this.repositoriesCache) {
+        await this.repositoriesCache.set(cacheKey, allRepositories);
+      }
+
+      return allRepositories;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch organizations for the authenticated user
+   */
+  async fetchOrganizations(): Promise<GitHubOrganization[]> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    const cacheKey = this.generateCacheKey("organizations");
+
+    // Check cache first
+    if (this.organizationsCache) {
+      const cachedOrgs = await this.organizationsCache.get(cacheKey);
+      if (cachedOrgs) {
+        return cachedOrgs;
+      }
+    }
+
+    try {
+      const response = await this.octokit.rest.orgs.listForAuthenticatedUser({
+        per_page: 100,
+      });
+
+      const organizations = response.data as GitHubOrganization[];
+
+      // Cache the results
+      if (this.organizationsCache) {
+        await this.organizationsCache.set(cacheKey, organizations);
+      }
+
+      return organizations;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch labels for a repository
+   */
+  async fetchLabels(repository: string): Promise<GitHubLabel[]> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    if (!this.validateRepository(repository)) {
+      throw new Error("Invalid repository format. Expected: owner/repo");
+    }
+
+    const cacheKey = this.generateCacheKey("labels", repository);
+
+    // Check cache first
+    if (this.labelsCache) {
+      const cachedLabels = await this.labelsCache.get(cacheKey);
+      if (cachedLabels) {
+        return cachedLabels;
+      }
+    }
+
+    const [owner, repo] = repository.split("/");
+
+    try {
+      const response = await this.octokit.rest.issues.listLabelsForRepo({
+        owner,
+        repo,
+        per_page: 100,
+      });
+
+      const labels = response.data as GitHubLabel[];
+
+      // Cache the labels
+      if (this.labelsCache) {
+        await this.labelsCache.set(cacheKey, labels);
+      }
+
+      return labels;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Get the authenticated user information
+   */
+  async getCurrentUser(): Promise<{
+    login: string;
+    id: number;
+    avatar_url: string;
+  } | null> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    try {
+      const response = await this.octokit.rest.users.getAuthenticated();
+      return {
+        login: response.data.login,
+        id: response.data.id,
+        avatar_url: response.data.avatar_url,
+      };
+    } catch (error) {
+      console.error("Failed to fetch current user:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch pull requests from a GitHub repository
+   */
+  async fetchPullRequests(repository: string): Promise<GitHubPullRequest[]> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    if (!this.validateRepository(repository)) {
+      throw new Error("Invalid repository format. Expected: owner/repo");
+    }
+
+    const [owner, repo] = repository.split("/");
+
+    try {
+      const response = await this.octokit.rest.pulls.list({
+        owner,
+        repo,
+        state: "open",
+        per_page: 100,
+      });
+
+      return response.data as GitHubPullRequest[];
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch repositories for an organization
+   */
+  async fetchRepositoriesForOrganization(
+    org: string
+  ): Promise<GitHubRepository[]> {
+    if (!this.octokit) {
+      throw new Error("GitHub integration is not enabled or configured");
+    }
+
+    const cacheKey = this.generateCacheKey("repositories", `${org}/*`);
+
+    // Check cache first
+    if (this.repositoriesCache) {
+      const cachedRepos = await this.repositoriesCache.get(cacheKey);
+      if (cachedRepos) {
+        return cachedRepos;
+      }
+    }
+
+    try {
+      const allRepositories: GitHubRepository[] = [];
+      let page = 1;
+      let hasMore = true;
+
+      while (hasMore) {
+        const response = await this.octokit.rest.repos.listForOrg({
+          org,
+          sort: "updated",
+          per_page: 100,
+          page: page,
+        });
+
+        const repositories = response.data as GitHubRepository[];
+        allRepositories.push(...repositories);
+
+        // Check if we have more pages
+        hasMore = repositories.length === 100;
+        page++;
+
+        // Safety check to prevent infinite loops
+        if (page > 50) {
+          console.warn(
+            `GitHub API: Stopping pagination after 50 pages (5000 repos) for ${org} for safety`
+          );
+          break;
+        }
+      }
+
+      // Cache the results
+      if (this.repositoriesCache) {
+        await this.repositoriesCache.set(cacheKey, allRepositories);
+      }
+
+      return allRepositories;
+    } catch (error) {
+      throw error;
+    }
+  }
+}

@@ -4,11 +4,13 @@
  */
 
 import { ObsidianExtension } from "./extensions/ObsidianExtension";
+import { GitHubExtension } from "./extensions/GitHubExtension";
 import { Host } from "./core/host";
 
 export class TaskSyncApp {
   private initialized = false;
   private obsidianExtension?: ObsidianExtension;
+  private githubExtension?: GitHubExtension;
   private host?: Host;
 
   async initialize(host: Host): Promise<void> {
@@ -47,6 +49,16 @@ export class TaskSyncApp {
         await this.obsidianExtension.initialize();
       }
 
+      // Initialize GitHub extension if enabled
+      if (settings.integrations?.github?.enabled && obsidianHost.plugin) {
+        this.githubExtension = new GitHubExtension(
+          settings.integrations.github,
+          obsidianHost.plugin
+        );
+
+        await this.githubExtension.initialize();
+      }
+
       this.initialized = true;
       console.log("TaskSync app initialized successfully");
     } catch (error) {
@@ -68,6 +80,10 @@ export class TaskSyncApp {
         await this.obsidianExtension.load();
       }
 
+      if (this.githubExtension) {
+        await this.githubExtension.load();
+      }
+
       console.log("TaskSync app extensions loaded successfully");
     } catch (error) {
       console.error("Failed to load TaskSync app extensions:", error);
@@ -82,6 +98,10 @@ export class TaskSyncApp {
 
     if (this.obsidianExtension) {
       await this.obsidianExtension.shutdown();
+    }
+
+    if (this.githubExtension) {
+      await this.githubExtension.shutdown();
     }
 
     this.initialized = false;
