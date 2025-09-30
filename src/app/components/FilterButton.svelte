@@ -8,7 +8,9 @@
   interface Props {
     label: string;
     currentValue: string;
-    options: string[];
+    allOptions?: string[]; // All available options (will be combined with recently used)
+    defaultOption?: string; // Default option (e.g., "All projects")
+    options?: string[]; // Pre-built options list (for backward compatibility)
     onselect: (value: string) => void;
     placeholder?: string;
     disabled?: boolean;
@@ -25,6 +27,8 @@
   let {
     label,
     currentValue,
+    allOptions,
+    defaultOption,
     options,
     onselect,
     placeholder = "Select...",
@@ -42,9 +46,44 @@
   let buttonEl: HTMLButtonElement | null = $state(null);
   let isMenuOpen = $state(false);
 
+  // Build options list with recently used items at the top
+  let optionsWithRecent = $derived.by(() => {
+    // If options are provided directly, use them (backward compatibility)
+    if (options) {
+      return options;
+    }
+
+    // Otherwise, build from allOptions and recentlyUsedItems
+    if (!allOptions) {
+      return [];
+    }
+
+    const recentItems = recentlyUsedItems.filter((item) =>
+      allOptions.includes(item)
+    );
+    const otherItems = allOptions.filter((item) => !recentItems.includes(item));
+
+    const result = [];
+    if (defaultOption) {
+      result.push(defaultOption);
+    }
+
+    if (recentItems.length > 0) {
+      result.push(...recentItems);
+      if (otherItems.length > 0) {
+        result.push("---"); // Separator
+        result.push(...otherItems);
+      }
+    } else {
+      result.push(...otherItems);
+    }
+
+    return result;
+  });
+
   // Convert options to dropdown items
   let dropdownItems = $derived(
-    options.map((option) => ({
+    optionsWithRecent.map((option) => ({
       value: option,
       label: option,
       isSeparator: option === "---",
@@ -62,7 +101,7 @@
       return;
     }
 
-    if (!disabled && options.length > 0) {
+    if (!disabled && optionsWithRecent.length > 0) {
       isMenuOpen = true;
     }
   }

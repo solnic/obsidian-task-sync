@@ -112,74 +112,14 @@
     return getFilterOptions(tasks);
   });
 
-  // Computed options with recently used items at the top
-  let projectOptionsWithRecent = $derived.by(() => {
-    const allProjects = filterOptions.projects.map(
-      (p) => extractDisplayValue(p) || p
-    );
-    const recentProjects = recentlyUsedProjects.filter((project) =>
-      allProjects.includes(project)
-    );
-    const otherProjects = allProjects.filter(
-      (project) => !recentProjects.includes(project)
-    );
-
-    const options = ["All projects"];
-    if (recentProjects.length > 0) {
-      options.push(...recentProjects);
-      if (otherProjects.length > 0) {
-        options.push("---"); // Separator
-        options.push(...otherProjects);
-      }
-    } else {
-      options.push(...otherProjects);
-    }
-    return options;
-  });
-
-  let areaOptionsWithRecent = $derived.by(() => {
-    const allAreas = filterOptions.areas.map(
-      (a) => extractDisplayValue(a) || a
-    );
-    const recentAreas = recentlyUsedAreas.filter((area) =>
-      allAreas.includes(area)
-    );
-    const otherAreas = allAreas.filter((area) => !recentAreas.includes(area));
-
-    const options = ["All areas"];
-    if (recentAreas.length > 0) {
-      options.push(...recentAreas);
-      if (otherAreas.length > 0) {
-        options.push("---"); // Separator
-        options.push(...otherAreas);
-      }
-    } else {
-      options.push(...otherAreas);
-    }
-    return options;
-  });
-
-  let sourceOptionsWithRecent = $derived.by(() => {
-    const allSources = filterOptions.sources;
-    const recentSources = recentlyUsedSources.filter((source) =>
-      allSources.includes(source)
-    );
-    const otherSources = allSources.filter(
-      (source) => !recentSources.includes(source)
-    );
-
-    const options = ["All sources"];
-    if (recentSources.length > 0) {
-      options.push(...recentSources);
-      if (otherSources.length > 0) {
-        options.push("---"); // Separator
-        options.push(...otherSources);
-      }
-    } else {
-      options.push(...otherSources);
-    }
-    return options;
-  });
+  // Extract display values for filter options
+  let projectOptions = $derived(
+    filterOptions.projects.map((p) => extractDisplayValue(p) || p)
+  );
+  let areaOptions = $derived(
+    filterOptions.areas.map((a) => extractDisplayValue(a) || a)
+  );
+  let sourceOptions = $derived(filterOptions.sources);
 
   // Computed filtered tasks - delegate to extension
   let filteredTasks = $derived.by(() => {
@@ -302,7 +242,8 @@
           currentValue={selectedProject
             ? extractDisplayValue(selectedProject) || selectedProject
             : "All projects"}
-          options={projectOptionsWithRecent}
+          allOptions={projectOptions}
+          defaultOption="All projects"
           onselect={(value: string) => {
             const newProject =
               value === "All projects" || value === "" ? null : value;
@@ -325,7 +266,8 @@
           currentValue={selectedArea
             ? extractDisplayValue(selectedArea) || selectedArea
             : "All areas"}
-          options={areaOptionsWithRecent}
+          allOptions={areaOptions}
+          defaultOption="All areas"
           onselect={(value: string) => {
             const newArea =
               value === "All areas" || value === "" ? null : value;
@@ -346,7 +288,8 @@
         <FilterButton
           label="Source"
           currentValue={selectedSource || "All sources"}
-          options={sourceOptionsWithRecent}
+          allOptions={sourceOptions}
+          defaultOption="All sources"
           onselect={(value: string) => {
             const newSource =
               value === "All sources" || value === "" ? null : value;
