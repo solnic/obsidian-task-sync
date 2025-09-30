@@ -14,7 +14,6 @@
   import type { TaskSyncSettings } from "../types/settings";
   import { createLocalTask, type LocalTask } from "../types/LocalTask";
   import type { Task } from "../core/entities";
-  import { PRIORITY_ORDER } from "../constants/defaults";
   import type { Extension } from "../core/extension";
   import type { Host } from "../core/host";
 
@@ -182,80 +181,31 @@
     return options;
   });
 
-  // Create LocalTask view objects for proper sorting
-  let localTasks = $derived.by(() => {
-    return tasks.map((task: Task) => createLocalTask(task));
-  });
-
-  // Computed filtered tasks with manual filters only
+  // Computed filtered tasks - delegate to extension
   let filteredTasks = $derived.by(() => {
-    // Start with all LocalTask objects, apply only manual filters
-    let filtered = localTasks.filter((localTask) => {
-      const task = localTask.task;
+    // Start with all tasks
+    let filtered: readonly Task[] = tasks;
 
-      // Project filter
-      if (selectedProject) {
-        const taskProject =
-          typeof task.project === "string"
-            ? extractDisplayValue(task.project) ||
-              task.project.replace(/^\[\[|\]\]$/g, "")
-            : task.project;
-        if (taskProject !== selectedProject) {
-          return false;
-        }
-      }
-
-      // Area filter
-      if (selectedArea) {
-        let taskAreas: string[] = [];
-        if (task.areas) {
-          if (Array.isArray(task.areas)) {
-            taskAreas = task.areas.map((area: any) =>
-              typeof area === "string"
-                ? extractDisplayValue(area) || area.replace(/^\[\[|\]\]$/g, "")
-                : area
-            );
-          } else if (typeof (task.areas as any) === "string") {
-            const areaStr = task.areas as any;
-            taskAreas = [
-              extractDisplayValue(areaStr) ||
-                areaStr.replace(/^\[\[|\]\]$/g, ""),
-            ];
-          }
-        }
-        if (!taskAreas.includes(selectedArea)) {
-          return false;
-        }
-      }
-
-      // Source filter
-      if (selectedSource) {
-        const taskSource = task.source?.filePath;
-        if (taskSource !== selectedSource) {
-          return false;
-        }
-      }
-
-      // Completed filter - exclude completed tasks unless showCompleted is true
-      if (!showCompleted && task.done === true) {
-        return false;
-      }
-
-      return true;
+    // Apply filtering using extension
+    filtered = extension.filterTasks(filtered, {
+      project: selectedProject,
+      area: selectedArea,
+      source: selectedSource,
+      showCompleted: showCompleted,
     });
 
-    // Apply search filter
+    // Apply search using extension
     if (searchQuery) {
-      filtered = searchLocalTasks(searchQuery, filtered);
+      filtered = extension.searchTasks(searchQuery, filtered);
     }
 
-    // Apply sorting using LocalTask sortable attributes
+    // Apply sorting using extension
     if (sortFields.length > 0) {
-      filtered = sortLocalTasks(filtered, sortFields);
+      filtered = extension.sortTasks(filtered, sortFields);
     }
 
-    // Return the LocalTask objects for rendering
-    return filtered;
+    // Convert to LocalTask objects for rendering
+    return filtered.map((task: Task) => createLocalTask(task));
   });
 
   // Reset hover state when filtered tasks change
@@ -276,132 +226,6 @@
   });
 
   // Note: Settings are now provided via props, no need to load/save via host
-
-  function searchLocalTasks(
-    query: string,
-    localTaskList: LocalTask[]
-  ): LocalTask[] {
-    const lowerQuery = query.toLowerCase();
-
-    return localTaskList.filter((localTask) => {
-      const task = localTask.task;
-      return (
-        task.title.toLowerCase().includes(lowerQuery) ||
-        (task.category && task.category.toLowerCase().includes(lowerQuery)) ||
-        (task.status && task.status.toLowerCase().includes(lowerQuery)) ||
-        (task.project &&
-          typeof task.project === "string" &&
-          task.project.toLowerCase().includes(lowerQuery)) ||
-        (task.areas &&
-          ((Array.isArray(task.areas) &&
-            task.areas.some(
-              (area: any) =>
-                typeof area === "string" &&
-                area.toLowerCase().includes(lowerQuery)
-            )) ||
-            (typeof (task.areas as any) === "string" &&
-              (task.areas as any).toLowerCase().includes(lowerQuery))))
-      );
-    });
-  }
-
-  function sortLocalTasks(
-    localTaskList: any[],
-    sortFields: SortField[]
-  ): any[] {
-    return [...localTaskList].sort((a, b) => {
-      for (const field of sortFields) {
-        let aValue: any;
-        let bValue: any;
-
-        // Get values from sortable attributes
-        switch (field.key) {
-          case "title":
-            aValue = a.sortable.title;
-            bValue = b.sortable.title;
-            break;
-          case "createdAt":
-            aValue =
-              a.sortable.createdAt && !isNaN(a.sortable.createdAt.getTime())
-                ? a.sortable.createdAt.getTime()
-                : 0;
-            bValue =
-              b.sortable.createdAt && !isNaN(b.sortable.createdAt.getTime())
-                ? b.sortable.createdAt.getTime()
-                : 0;
-            break;
-          case "updatedAt":
-            aValue =
-              a.sortable.updatedAt && !isNaN(a.sortable.updatedAt.getTime())
-                ? a.sortable.updatedAt.getTime()
-                : 0;
-            bValue =
-              b.sortable.updatedAt && !isNaN(b.sortable.updatedAt.getTime())
-                ? b.sortable.updatedAt.getTime()
-                : 0;
-            break;
-          case "priority":
-            // Priority order from centralized constants
-            aValue =
-              (a.sortable.priority &&
-                PRIORITY_ORDER[
-                  a.sortable.priority as keyof typeof PRIORITY_ORDER
-                ]) ||
-              0;
-            bValue =
-              (b.sortable.priority &&
-                PRIORITY_ORDER[
-                  b.sortable.priority as keyof typeof PRIORITY_ORDER
-                ]) ||
-              0;
-            break;
-          case "status":
-            aValue = a.sortable.status;
-            bValue = b.sortable.status;
-            break;
-          case "category":
-            aValue = a.sortable.category;
-            bValue = b.sortable.category;
-            break;
-          case "project":
-            aValue = a.sortable.project;
-            bValue = b.sortable.project;
-            break;
-          case "areas":
-            aValue = a.sortable.areas;
-            bValue = b.sortable.areas;
-            break;
-          default:
-            aValue = "";
-            bValue = "";
-        }
-
-        // Compare values
-        let comparison = 0;
-        if (typeof aValue === "string" && typeof bValue === "string") {
-          comparison = aValue.localeCompare(bValue);
-        } else if (typeof aValue === "number" && typeof bValue === "number") {
-          comparison = aValue - bValue;
-        } else {
-          // Handle mixed types by converting to strings
-          comparison = String(aValue).localeCompare(String(bValue));
-        }
-
-        // Apply direction
-        if (field.direction === "desc") {
-          comparison = -comparison;
-        }
-
-        // If not equal, return the comparison result
-        if (comparison !== 0) {
-          return comparison;
-        }
-      }
-
-      // If all fields are equal, maintain original order
-      return 0;
-    });
-  }
 
   async function refresh(): Promise<void> {
     await extension.refresh();
