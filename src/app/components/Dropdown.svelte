@@ -54,7 +54,10 @@
   );
 
   onMount(() => {
-    if (anchor) {
+    if (anchor && menuEl) {
+      // Append menu to document.body for proper positioning
+      document.body.appendChild(menuEl);
+
       // Position the menu below the anchor element
       const rect = anchor.getBoundingClientRect();
       menuPosition = {
@@ -76,6 +79,11 @@
 
   onDestroy(() => {
     document.removeEventListener("click", handleClickOutside);
+
+    // Remove menu from document.body
+    if (menuEl && menuEl.parentNode === document.body) {
+      document.body.removeChild(menuEl);
+    }
   });
 
   function handleClickOutside(e: MouseEvent) {
