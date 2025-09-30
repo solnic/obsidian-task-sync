@@ -3,7 +3,6 @@
     SettingsSection,
     TaskSyncSettings,
     TaskStatus,
-    TaskStatusColor,
   } from "../../../types/settings";
 
   import { Setting } from "obsidian";
@@ -82,55 +81,22 @@
 
     // Add color picker
     setting.addColorPicker((colorPicker) => {
-      // Convert named color to hex for color picker
-      const colorMap: Record<TaskStatusColor, string> = {
-        blue: "#3b82f6",
-        red: "#ef4444",
-        green: "#10b981",
-        yellow: "#f59e0b",
-        purple: "#8b5cf6",
-        orange: "#f97316",
-        pink: "#ec4899",
-        gray: "#6b7280",
-        teal: "#14b8a6",
-        indigo: "#6366f1",
-      };
+      colorPicker.setValue(taskStatus.color).onChange(async (value: string) => {
+        if (isNewStatus) {
+          taskStatus.color = value;
+        } else {
+          settings.taskStatuses[index].color = value;
+          await saveSettings(settings);
 
-      colorPicker
-        .setValue(colorMap[taskStatus.color as TaskStatusColor])
-        .onChange(async (value: string) => {
-          // Convert hex back to named color (find closest match)
-          const hexToColor = Object.entries(colorMap).reduce(
-            (closest, [color, hex]) => {
-              const currentDistance = Math.abs(
-                parseInt(value.slice(1), 16) - parseInt(hex.slice(1), 16)
-              );
-              const closestDistance = Math.abs(
-                parseInt(value.slice(1), 16) -
-                  parseInt(colorMap[closest as TaskStatusColor].slice(1), 16)
-              );
-              return currentDistance < closestDistance
-                ? (color as TaskStatusColor)
-                : closest;
-            },
-            "blue" as TaskStatusColor
-          );
+          // Update badge background color (pill style)
+          badge.style.backgroundColor = value;
 
-          if (isNewStatus) {
-            taskStatus.color = hexToColor;
-          } else {
-            settings.taskStatuses[index].color = hexToColor;
-            await saveSettings(settings);
-
-            // Trigger base sync if enabled
-            if (settings.autoSyncAreaProjectBases) {
-              await plugin.syncAreaProjectBases();
-            }
+          // Trigger base sync if enabled
+          if (settings.autoSyncAreaProjectBases) {
+            await plugin.syncAreaProjectBases();
           }
-
-          // Update badge color
-          badge.className = `task-status-badge task-status-${hexToColor}`;
-        });
+        }
+      });
     });
 
     // Add state radio buttons (inline)
@@ -254,7 +220,7 @@
   function createAddTaskStatusSection(): void {
     let newTaskStatus: TaskStatus = {
       name: "",
-      color: "blue",
+      color: "#3b82f6", // Default blue color
       isDone: false,
       isInProgress: false,
     };

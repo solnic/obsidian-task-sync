@@ -6,70 +6,22 @@
 // Task category interface with color support
 export interface TaskType {
   name: string;
-  color: string;
+  color: string; // Hex color code (e.g., "#3b82f6")
 }
-
-// Available colors for task categories
-export const TASK_TYPE_COLORS = [
-  "blue",
-  "red",
-  "green",
-  "yellow",
-  "purple",
-  "orange",
-  "pink",
-  "gray",
-  "teal",
-  "indigo",
-] as const;
-
-export type TaskTypeColor = (typeof TASK_TYPE_COLORS)[number];
 
 // Task priority interface with color support
 export interface TaskPriority {
   name: string;
-  color: string;
+  color: string; // Hex color code (e.g., "#ef4444")
 }
-
-// Available colors for task priorities
-export const TASK_PRIORITY_COLORS = [
-  "blue",
-  "red",
-  "green",
-  "yellow",
-  "purple",
-  "orange",
-  "pink",
-  "gray",
-  "teal",
-  "indigo",
-] as const;
-
-export type TaskPriorityColor = (typeof TASK_PRIORITY_COLORS)[number];
 
 // Task status interface with color support
 export interface TaskStatus {
   name: string;
-  color: string;
+  color: string; // Hex color code (e.g., "#10b981")
   isDone: boolean; // Indicates if this status represents a completed/done state
   isInProgress: boolean; // Indicates if this status represents an active/in-progress state
 }
-
-// Available colors for task statuses
-export const TASK_STATUS_COLORS = [
-  "blue",
-  "red",
-  "green",
-  "yellow",
-  "purple",
-  "orange",
-  "pink",
-  "gray",
-  "teal",
-  "indigo",
-] as const;
-
-export type TaskStatusColor = (typeof TASK_STATUS_COLORS)[number];
 
 // GitHub integration interfaces
 export interface GitHubIssueFilters {
@@ -222,24 +174,29 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   autoUpdateBaseViews: true,
   // Task categories defaults
   taskTypes: [
-    { name: "Task", color: "blue" },
-    { name: "Bug", color: "red" },
-    { name: "Feature", color: "green" },
-    { name: "Improvement", color: "purple" },
-    { name: "Chore", color: "gray" },
+    { name: "Task", color: "#3b82f6" },
+    { name: "Bug", color: "#ef4444" },
+    { name: "Feature", color: "#10b981" },
+    { name: "Improvement", color: "#8b5cf6" },
+    { name: "Chore", color: "#6b7280" },
   ],
   // Task priorities defaults
   taskPriorities: [
-    { name: "Low", color: "green" },
-    { name: "Medium", color: "yellow" },
-    { name: "High", color: "orange" },
-    { name: "Urgent", color: "red" },
+    { name: "Low", color: "#10b981" },
+    { name: "Medium", color: "#f59e0b" },
+    { name: "High", color: "#f97316" },
+    { name: "Urgent", color: "#ef4444" },
   ],
   // Task statuses defaults
   taskStatuses: [
-    { name: "Backlog", color: "gray", isDone: false, isInProgress: false },
-    { name: "In Progress", color: "blue", isDone: false, isInProgress: true },
-    { name: "Done", color: "green", isDone: true, isInProgress: false },
+    { name: "Backlog", color: "#6b7280", isDone: false, isInProgress: false },
+    {
+      name: "In Progress",
+      color: "#3b82f6",
+      isDone: false,
+      isInProgress: true,
+    },
+    { name: "Done", color: "#10b981", isDone: true, isInProgress: false },
   ],
   // Individual area/project bases defaults
   areaBasesEnabled: true,

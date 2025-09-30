@@ -49,33 +49,12 @@
 
       // Add color picker (positioned next to badge preview)
       setting.addColorPicker((colorPicker) => {
-        // Convert named color to hex if needed
-        let currentColor = taskType.color;
-        if (!currentColor.startsWith("#")) {
-          // Convert named color to hex for color picker
-          const colorMap: Record<string, string> = {
-            blue: "#3b82f6",
-            red: "#ef4444",
-            green: "#10b981",
-            yellow: "#f59e0b",
-            purple: "#8b5cf6",
-            orange: "#f97316",
-            pink: "#ec4899",
-            gray: "#6b7280",
-            teal: "#14b8a6",
-            indigo: "#6366f1",
-          };
-          currentColor = colorMap[taskType.color] || "#3b82f6";
-        }
-
-        colorPicker.setValue(currentColor).onChange(async (value: string) => {
-          // Store the hex color directly
+        colorPicker.setValue(taskType.color).onChange(async (value: string) => {
           settings.taskTypes[index].color = value;
           await saveSettings(settings);
 
-          // Update badge color with custom color
+          // Update badge background color (pill style)
           badge.style.backgroundColor = value;
-          badge.className = "task-type-badge"; // Remove predefined color classes
 
           // Trigger base sync if enabled
           if (settings.autoSyncAreaProjectBases) {
@@ -156,9 +135,11 @@
     addSetting.addColorPicker((colorPicker) => {
       colorPicker.setValue(newCategoryColor).onChange((value: string) => {
         newCategoryColor = value;
-        // Update preview badge with custom color
-        badge.style.backgroundColor = value;
-        badge.className = "task-type-badge"; // Remove predefined color classes
+        // Update preview badge color dot
+        const dot = badge.querySelector(".task-sync-color-dot") as HTMLElement;
+        if (dot) {
+          dot.style.backgroundColor = value;
+        }
       });
     });
 
@@ -167,8 +148,11 @@
       .addText((text) => {
         text.setPlaceholder("Category name").onChange((value) => {
           newCategoryName = value.trim();
-          // Update preview badge
-          badge.textContent = newCategoryName || "New Category";
+          // Update preview badge text
+          const label = badge.querySelector("span:not(.task-sync-color-dot)");
+          if (label) {
+            label.textContent = newCategoryName || "New Category";
+          }
         });
       })
       .then((setting) => {

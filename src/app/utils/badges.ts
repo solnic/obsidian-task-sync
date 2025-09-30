@@ -9,7 +9,8 @@ export interface BadgeConfig {
 }
 
 /**
- * Creates a badge element with appropriate styling
+ * Creates a pill-style badge element (entire badge has background color)
+ * Used in settings UI for category/priority/status configuration
  */
 export function createBadge(
   config: BadgeConfig,
@@ -23,17 +24,9 @@ export function createBadge(
     badge.className += ` ${className}`;
   }
 
-  // Create color dot
-  const dot = document.createElement("span");
-  dot.className = "task-sync-color-dot";
-  dot.style.backgroundColor = config.color;
-
-  // Create label
-  const label = document.createElement("span");
-  label.textContent = config.name;
-
-  badge.appendChild(dot);
-  badge.appendChild(label);
+  // Set background color directly on the badge (pill style)
+  badge.style.backgroundColor = config.color;
+  badge.textContent = config.name;
 
   return badge;
 }
