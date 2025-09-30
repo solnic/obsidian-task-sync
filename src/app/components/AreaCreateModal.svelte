@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
-  import { areaOperations } from "../entities/Areas";
+  import { obsidianOperations } from "../entities/Obsidian";
   import type { Area } from "../core/entities";
 
   interface Props {
@@ -40,20 +40,15 @@
     }
 
     try {
-      // Prepare area data for new entities system
-      const areaName = formData.name.trim();
       const areaData: Omit<Area, "id" | "createdAt" | "updatedAt"> = {
-        name: areaName,
+        name: formData.name.trim(),
         description: formData.description?.trim() || undefined,
         tags: [],
-        source: {
-          extension: "obsidian",
-          filePath: `Areas/${areaName}.md`,
-        },
       };
 
-      // Create area using new entities system
-      const createdArea = await areaOperations.create(areaData);
+      // Create area using Obsidian-specific operations
+      // This will automatically set source.filePath based on the area name
+      const createdArea = await obsidianOperations.areas.create(areaData);
 
       new Notice(`Area "${createdArea.name}" created successfully`);
 

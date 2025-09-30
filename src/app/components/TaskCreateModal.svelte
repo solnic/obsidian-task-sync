@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
-  import { taskOperations } from "../entities/Tasks";
+  import { obsidianOperations } from "../entities/Obsidian";
   import type { Task } from "../core/entities";
   import {
     createTypeBadge,
@@ -248,9 +248,8 @@
 
     try {
       // Prepare task data for new entities system
-      const taskTitle = formData.title.trim();
       const taskData: Omit<Task, "id" | "createdAt" | "updatedAt"> = {
-        title: taskTitle,
+        title: formData.title.trim(),
         description: formData.description?.trim() || undefined,
         status: formData.status,
         done: formData.done,
@@ -260,14 +259,11 @@
         project: formData.project || undefined,
         areas: formData.areas,
         tags: formData.tags,
-        source: {
-          extension: "obsidian",
-          filePath: `Tasks/${taskTitle}.md`,
-        },
       };
 
-      // Create task using new entities system
-      const createdTask = await taskOperations.create(taskData);
+      // Create task using Obsidian-specific operations
+      // This will automatically set source.filePath based on the task title
+      const createdTask = await obsidianOperations.tasks.create(taskData);
 
       new Notice(`Task "${createdTask.title}" created successfully`);
 
