@@ -5,6 +5,7 @@
 
 import { Task, Project, Area } from "./entities";
 import { DomainEvent } from "./events";
+import type { Readable } from "svelte/store";
 
 // Generic entity union type
 export type Entity = Task | Project | Area;
@@ -19,8 +20,61 @@ export interface EntityOperations<T extends Entity> {
   delete(id: string): Promise<boolean>;
 }
 
+/**
+ * Data access interface for extensions to provide to UI components
+ * Extensions expose their data through observable stores and refresh methods
+ */
+export interface ExtensionDataAccess {
+  /**
+   * Observable store containing the tasks for this extension
+   * UI components subscribe to this for reactive updates
+   */
+  getTasks(): Readable<readonly Task[]>;
+
+  /**
+   * Refresh the extension's data
+   */
+  refresh(): Promise<void>;
+
+  /**
+   * Search tasks by query string
+   * Searches in title, category, status, project, and areas
+   * @param query - Search query string
+   * @param tasks - Tasks to search through
+   * @returns Filtered tasks matching the query
+   */
+  searchTasks(query: string, tasks: readonly Task[]): readonly Task[];
+
+  /**
+   * Sort tasks by multiple fields
+   * @param tasks - Tasks to sort
+   * @param sortFields - Array of sort field configurations
+   * @returns Sorted tasks
+   */
+  sortTasks(
+    tasks: readonly Task[],
+    sortFields: Array<{ key: string; direction: "asc" | "desc" }>
+  ): readonly Task[];
+
+  /**
+   * Filter tasks by criteria
+   * @param tasks - Tasks to filter
+   * @param criteria - Filter criteria (project, area, source, showCompleted)
+   * @returns Filtered tasks
+   */
+  filterTasks(
+    tasks: readonly Task[],
+    criteria: {
+      project?: string | null;
+      area?: string | null;
+      source?: string | null;
+      showCompleted?: boolean;
+    }
+  ): readonly Task[];
+}
+
 // Extension interface - completely agnostic to implementation details
-export interface Extension {
+export interface Extension extends ExtensionDataAccess {
   readonly id: string;
   readonly name: string;
   readonly version: string;
@@ -28,6 +82,7 @@ export interface Extension {
 
   // Lifecycle
   initialize(): Promise<void>;
+  load(): Promise<void>;
   shutdown(): Promise<void>;
 
   // Event-driven methods for reacting to entity changes

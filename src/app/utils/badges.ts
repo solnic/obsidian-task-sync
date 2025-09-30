@@ -9,7 +9,8 @@ export interface BadgeConfig {
 }
 
 /**
- * Creates a badge element with appropriate styling
+ * Creates a pill-style badge element (entire badge has background color)
+ * Used in settings UI for category/priority/status configuration
  */
 export function createBadge(
   config: BadgeConfig,
@@ -23,17 +24,9 @@ export function createBadge(
     badge.className += ` ${className}`;
   }
 
-  // Create color dot
-  const dot = document.createElement("span");
-  dot.className = "task-sync-color-dot";
-  dot.style.backgroundColor = config.color;
-
-  // Create label
-  const label = document.createElement("span");
-  label.textContent = config.name;
-
-  badge.appendChild(dot);
-  badge.appendChild(label);
+  // Set background color directly on the badge (pill style)
+  badge.style.backgroundColor = config.color;
+  badge.textContent = config.name;
 
   return badge;
 }
@@ -41,49 +34,29 @@ export function createBadge(
 /**
  * Creates a type badge
  */
-export function createTypeBadge(config: BadgeConfig, className?: string): HTMLElement {
+export function createTypeBadge(
+  config: BadgeConfig,
+  className?: string
+): HTMLElement {
   return createBadge(config, "type", className);
 }
 
 /**
  * Creates a priority badge
  */
-export function createPriorityBadge(config: BadgeConfig, className?: string): HTMLElement {
+export function createPriorityBadge(
+  config: BadgeConfig,
+  className?: string
+): HTMLElement {
   return createBadge(config, "priority", className);
 }
 
 /**
  * Creates a status badge
  */
-export function createStatusBadge(config: BadgeConfig, className?: string): HTMLElement {
+export function createStatusBadge(
+  config: BadgeConfig,
+  className?: string
+): HTMLElement {
   return createBadge(config, "status", className);
 }
-
-/**
- * Default task types - simplified for new architecture
- */
-export const DEFAULT_TASK_TYPES: BadgeConfig[] = [
-  { name: "Task", color: "#3b82f6" },
-  { name: "Feature", color: "#10b981" },
-  { name: "Bug", color: "#ef4444" },
-  { name: "Research", color: "#f59e0b" },
-];
-
-/**
- * Default task priorities
- */
-export const DEFAULT_TASK_PRIORITIES: BadgeConfig[] = [
-  { name: "High", color: "#ef4444" },
-  { name: "Medium", color: "#f59e0b" },
-  { name: "Low", color: "#10b981" },
-];
-
-/**
- * Default task statuses
- */
-export const DEFAULT_TASK_STATUSES: BadgeConfig[] = [
-  { name: "Backlog", color: "#64748b" },
-  { name: "In Progress", color: "#3b82f6" },
-  { name: "Review", color: "#f59e0b" },
-  { name: "Done", color: "#10b981" },
-];

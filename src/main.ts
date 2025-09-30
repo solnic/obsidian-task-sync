@@ -92,8 +92,11 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
-    // Activate view when layout is ready
-    this.app.workspace.onLayoutReady(() => {
+    // Load extensions and activate view when layout is ready
+    this.app.workspace.onLayoutReady(async () => {
+      await this.host.load();
+
+      // Now activate the view
       this.activateView();
     });
 

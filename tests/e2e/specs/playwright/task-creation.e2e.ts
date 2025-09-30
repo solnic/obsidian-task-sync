@@ -82,9 +82,9 @@ test.describe("Task Creation with New Architecture", () => {
     await page.fill('[data-testid="title-input"]', "Valid Title");
 
     // Verify error styling is removed
-    await expect(
-      page.locator('[data-testid="title-input"]')
-    ).not.toHaveClass(/task-sync-input-error/);
+    await expect(page.locator('[data-testid="title-input"]')).not.toHaveClass(
+      /task-sync-input-error/
+    );
 
     // Cancel the modal
     await page.click('[data-testid="cancel-button"]');
@@ -150,7 +150,7 @@ test.describe("Task Creation with New Architecture", () => {
     // Verify the front-matter contains all the set properties
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Title).toBe(taskTitle);
-    expect(frontMatter.Type).toBe("Feature");
+    expect(frontMatter.Type).toBe("Task");
     expect(frontMatter.Status).toBe("In Progress");
     expect(frontMatter.Priority).toBe("High");
     expect(frontMatter.Areas).toEqual(["Development", "Testing"]);

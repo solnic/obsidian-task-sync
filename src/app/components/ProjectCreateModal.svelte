@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
-  import { projectOperations } from "../entities/Projects";
+  import { obsidianOperations } from "../entities/Obsidian";
   import type { Project } from "../core/entities";
 
   interface Props {
@@ -41,27 +41,25 @@
     }
 
     try {
-      // Prepare project data for new entities system
-      const projectName = formData.name.trim();
-      
       // Parse areas from comma-separated string
       const areas = formData.areas
-        ? formData.areas.split(",").map(area => area.trim()).filter(area => area)
+        ? formData.areas
+            .split(",")
+            .map((area) => area.trim())
+            .filter((area) => area)
         : [];
 
       const projectData: Omit<Project, "id" | "createdAt" | "updatedAt"> = {
-        name: projectName,
+        name: formData.name.trim(),
         description: formData.description?.trim() || undefined,
         areas,
         tags: [],
-        source: {
-          extension: "obsidian",
-          source: `Projects/${projectName}.md`,
-        },
       };
 
-      // Create project using new entities system
-      const createdProject = await projectOperations.create(projectData);
+      // Create project using Obsidian-specific operations
+      // This will automatically set source.filePath based on the project name
+      const createdProject =
+        await obsidianOperations.projects.create(projectData);
 
       new Notice(`Project "${createdProject.name}" created successfully`);
 
@@ -105,8 +103,8 @@
   <div class="task-sync-modal-header">
     <h2>Create New Project</h2>
     <p class="task-sync-modal-description">
-      Create a new project to organize related tasks and track progress. Projects represent
-      specific outcomes or deliverables with a defined scope.
+      Create a new project to organize related tasks and track progress.
+      Projects represent specific outcomes or deliverables with a defined scope.
     </p>
   </div>
 
@@ -114,7 +112,9 @@
   <div class="task-sync-main-content">
     <!-- Project name input -->
     <div class="task-sync-field">
-      <label for="project-name" class="task-sync-field-label">Project Name *</label>
+      <label for="project-name" class="task-sync-field-label"
+        >Project Name *</label
+      >
       <input
         bind:this={nameInput}
         bind:value={formData.name}
@@ -149,7 +149,9 @@
 
     <!-- Project description input -->
     <div class="task-sync-field">
-      <label for="project-description" class="task-sync-field-label">Description</label>
+      <label for="project-description" class="task-sync-field-label"
+        >Description</label
+      >
       <textarea
         bind:value={formData.description}
         id="project-description"

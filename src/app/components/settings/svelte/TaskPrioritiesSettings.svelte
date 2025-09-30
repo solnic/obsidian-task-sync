@@ -3,7 +3,6 @@
     SettingsSection,
     TaskSyncSettings,
     TaskPriority,
-    TaskPriorityColor,
   } from "../../../types/settings";
 
   import { Setting } from "obsidian";
@@ -71,48 +70,14 @@
 
       // Add color picker
       setting.addColorPicker((colorPicker) => {
-        // Convert named color to hex for color picker
-        const colorMap: Record<TaskPriorityColor, string> = {
-          blue: "#3b82f6",
-          red: "#ef4444",
-          green: "#10b981",
-          yellow: "#f59e0b",
-          purple: "#8b5cf6",
-          orange: "#f97316",
-          pink: "#ec4899",
-          gray: "#6b7280",
-          teal: "#14b8a6",
-          indigo: "#6366f1",
-        };
-
         colorPicker
-          .setValue(colorMap[taskPriority.color as TaskPriorityColor])
+          .setValue(taskPriority.color)
           .onChange(async (value: string) => {
-            // Convert hex back to named color (find closest match)
-            const hexToColor = Object.entries(colorMap).reduce(
-              (closest, [color, hex]) => {
-                const currentDistance = Math.abs(
-                  parseInt(value.slice(1), 16) - parseInt(hex.slice(1), 16)
-                );
-                const closestDistance = Math.abs(
-                  parseInt(value.slice(1), 16) -
-                    parseInt(
-                      colorMap[closest as TaskPriorityColor].slice(1),
-                      16
-                    )
-                );
-                return currentDistance < closestDistance
-                  ? (color as TaskPriorityColor)
-                  : closest;
-              },
-              "blue" as TaskPriorityColor
-            );
-
-            settings.taskPriorities[index].color = hexToColor;
+            settings.taskPriorities[index].color = value;
             await saveSettings(settings);
 
-            // Update badge color
-            badge.className = `task-priority-badge task-priority-${hexToColor}`;
+            // Update badge background color (pill style)
+            badge.style.backgroundColor = value;
 
             // Trigger base sync if enabled
             if (settings.autoSyncAreaProjectBases) {
@@ -147,7 +112,7 @@
 
   function createAddTaskPrioritySection(): void {
     let newPriorityName = "";
-    let newPriorityColor: TaskPriorityColor = "blue";
+    let newPriorityColor = "#3b82f6"; // Default blue color
 
     const addSetting = new Setting(container);
 
@@ -165,51 +130,24 @@
     addSetting.addText((text) => {
       text.setPlaceholder("Priority name").onChange((value) => {
         newPriorityName = value.trim();
-        // Update preview badge
-        badge.textContent = newPriorityName || "New Priority";
+        // Update preview badge text
+        const label = badge.querySelector("span:not(.task-sync-color-dot)");
+        if (label) {
+          label.textContent = newPriorityName || "New Priority";
+        }
       });
     });
 
     // Color picker
     addSetting.addColorPicker((colorPicker) => {
-      // Convert named color to hex for color picker
-      const colorMap: Record<TaskPriorityColor, string> = {
-        blue: "#3b82f6",
-        red: "#ef4444",
-        green: "#10b981",
-        yellow: "#f59e0b",
-        purple: "#8b5cf6",
-        orange: "#f97316",
-        pink: "#ec4899",
-        gray: "#6b7280",
-        teal: "#14b8a6",
-        indigo: "#6366f1",
-      };
-
-      colorPicker
-        .setValue(colorMap[newPriorityColor])
-        .onChange((value: string) => {
-          // Convert hex back to named color (find closest match)
-          const hexToColor = Object.entries(colorMap).reduce(
-            (closest, [color, hex]) => {
-              const currentDistance = Math.abs(
-                parseInt(value.slice(1), 16) - parseInt(hex.slice(1), 16)
-              );
-              const closestDistance = Math.abs(
-                parseInt(value.slice(1), 16) -
-                  parseInt(colorMap[closest as TaskPriorityColor].slice(1), 16)
-              );
-              return currentDistance < closestDistance
-                ? (color as TaskPriorityColor)
-                : closest;
-            },
-            "blue" as TaskPriorityColor
-          );
-
-          newPriorityColor = hexToColor;
-          // Update preview badge
-          badge.className = `task-priority-badge task-priority-${hexToColor}`;
-        });
+      colorPicker.setValue(newPriorityColor).onChange((value: string) => {
+        newPriorityColor = value;
+        // Update preview badge color dot
+        const dot = badge.querySelector(".task-sync-color-dot") as HTMLElement;
+        if (dot) {
+          dot.style.backgroundColor = value;
+        }
+      });
     });
 
     // Add button

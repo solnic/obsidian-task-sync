@@ -26,6 +26,7 @@ export class TaskCreateModal extends Modal {
         target: contentEl,
         props: {
           obsidianApp: this.app,
+          settings: this.plugin.settings,
           onsubmit: (taskData: any) => {
             console.log("Task created:", taskData);
             this.close();

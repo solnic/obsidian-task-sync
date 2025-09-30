@@ -815,7 +815,7 @@ Provides consistent styling for all UI components
 
 .task-sync-tab-content {
   flex: 1;
-  padding: 12px;
+  padding: 8px 12px 12px 8px;
 }
 
 /* Info Box Styles */
@@ -2384,11 +2384,11 @@ Provides consistent styling for all UI components
 .task-sync-task-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .task-sync-task-list-item {
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   background: var(--background-primary);
@@ -2396,11 +2396,17 @@ Provides consistent styling for all UI components
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.task-sync-task-list-item:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-primary-alt);
 }
 
 .task-sync-task-list-item.hovered {
-  background: var(--background-modifier-hover);
-  border-color: var(--background-modifier-border-hover);
+  border-color: var(--interactive-accent);
+  background: var(--background-primary-alt);
 }
 
 .task-sync-task-list-item.imported {
@@ -2680,18 +2686,6 @@ Provides consistent styling for all UI components
   border-color: var(--interactive-accent-hover);
 }
 
-/* Service Switcher Styles */
-.service-switcher-vertical {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 8px;
-  background: var(--background-secondary);
-  border-left: 1px solid var(--background-modifier-border);
-  width: 48px;
-  flex-shrink: 0;
-}
-
 .service-button-vertical {
   display: flex;
   align-items: center;
@@ -2777,7 +2771,7 @@ Provides consistent styling for all UI components
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 8px;
+  padding: 0 0 0 12px;
   background: var(--background-secondary);
   border-left: 1px solid var(--background-modifier-border);
   width: 48px;
@@ -2967,7 +2961,7 @@ button.tab-item.active {
 .apple-reminders-header,
 .github-service-header,
 .task-service-header {
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 
 /* LocalTasks Unified Header - matches ContextWidget styling */
@@ -3022,7 +3016,7 @@ button.tab-item.active {
 .search-and-filters {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .task-sync-filter-section {

@@ -1,69 +1,16 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
-  import { taskOperations } from "../entities/Tasks";
+  import { obsidianOperations } from "../entities/Obsidian";
   import type { Task } from "../core/entities";
   import {
     createTypeBadge,
     createPriorityBadge,
     createStatusBadge,
-    DEFAULT_TASK_TYPES,
-    DEFAULT_TASK_PRIORITIES,
-    DEFAULT_TASK_STATUSES,
-    type BadgeConfig
   } from "../utils/badges";
-  import { AbstractInputSuggest } from "obsidian";
-
-  // Autocomplete classes
-  class ProjectSuggest extends AbstractInputSuggest<string> {
-    projectFiles: string[];
-
-    constructor(app: any, inputEl: HTMLInputElement, projectFiles: string[]) {
-      super(app, inputEl);
-      this.projectFiles = projectFiles;
-    }
-
-    getSuggestions(query: string): string[] {
-      return this.projectFiles
-        .filter((project) =>
-          project.toLowerCase().includes(query.toLowerCase())
-        )
-        .slice(0, 10);
-    }
-
-    renderSuggestion(value: string, el: HTMLElement): void {
-      el.createEl("div", { text: value });
-    }
-
-    selectSuggestion(value: string): void {
-      this.setValue(value);
-      this.close();
-    }
-  }
-
-  class AreaSuggest extends AbstractInputSuggest<string> {
-    areaFiles: string[];
-
-    constructor(app: any, inputEl: HTMLInputElement, areaFiles: string[]) {
-      super(app, inputEl);
-      this.areaFiles = areaFiles;
-    }
-
-    getSuggestions(query: string): string[] {
-      return this.areaFiles
-        .filter((area) => area.toLowerCase().includes(query.toLowerCase()))
-        .slice(0, 10);
-    }
-
-    renderSuggestion(value: string, el: HTMLElement): void {
-      el.createEl("div", { text: value });
-    }
-
-    selectSuggestion(value: string): void {
-      this.setValue(value);
-      this.close();
-    }
-  }
+  import type { TaskSyncSettings } from "../types/settings";
+  import Dropdown from "./Dropdown.svelte";
+  import Autocomplete from "./Autocomplete.svelte";
 
   interface FileContext {
     type: "project" | "area" | "task" | "none";
@@ -72,20 +19,27 @@
 
   interface Props {
     obsidianApp: any;
+    settings: TaskSyncSettings;
     context?: FileContext;
     onsubmit?: (task: Task) => void;
     oncancel?: () => void;
   }
 
-  let { obsidianApp, context = { type: "none" }, onsubmit, oncancel }: Props = $props();
+  let {
+    obsidianApp,
+    settings,
+    context = { type: "none" },
+    onsubmit,
+    oncancel,
+  }: Props = $props();
 
   // Form data matching new Task entity
   let formData = $state({
     title: "",
     description: "",
-    category: DEFAULT_TASK_TYPES[0].name,
+    category: settings.taskTypes[0]?.name || "",
     priority: "",
-    status: DEFAULT_TASK_STATUSES[0].name,
+    status: settings.taskStatuses[0]?.name || "",
     project: "",
     areas: [] as string[],
     parentTask: "",
@@ -99,6 +53,11 @@
   // Error state for input styling
   let hasTitleError = $state<boolean>(false);
 
+  // Dropdown state
+  let showCategoryDropdown = $state(false);
+  let showPriorityDropdown = $state(false);
+  let showStatusDropdown = $state(false);
+
   // Context-aware pre-filling
   $effect(() => {
     if (context.type === "project" && context.name) {
@@ -110,23 +69,18 @@
   });
 
   // Badge elements
-  let categoryBadgeEl: HTMLElement;
-  let priorityBadgeEl: HTMLElement;
-  let statusBadgeEl: HTMLElement;
+  let categoryBadgeEl = $state<HTMLElement | null>(null);
+  let priorityBadgeEl = $state<HTMLElement | null>(null);
+  let statusBadgeEl = $state<HTMLElement | null>(null);
 
   // Input elements
   let titleInput: HTMLInputElement;
   let contentTextarea: HTMLTextAreaElement;
-  let projectInput = $state<HTMLInputElement>();
-  let areasInput = $state<HTMLInputElement>();
 
-  // Autocomplete suggestions
-  let projectSuggestions: string[] = [];
-  let areaSuggestions: string[] = [];
-
-  // Autocomplete instances
-  let projectSuggest: ProjectSuggest;
-  let areaSuggest: AreaSuggest;
+  // Autocomplete suggestions and values
+  let projectSuggestions = $state<string[]>([]);
+  let areaSuggestions = $state<string[]>([]);
+  let areasInputValue = $state("");
 
   onMount(() => {
     // Focus title input
@@ -143,18 +97,6 @@
         .getMarkdownFiles()
         .filter((file: any) => file.path.startsWith("Areas/"))
         .map((file: any) => file.basename);
-
-      // Setup autocomplete
-      if (projectInput) {
-        projectSuggest = new ProjectSuggest(
-          obsidianApp,
-          projectInput,
-          projectSuggestions
-        );
-      }
-      if (areasInput) {
-        areaSuggest = new AreaSuggest(obsidianApp, areasInput, areaSuggestions);
-      }
     }
 
     // Create initial badges
@@ -165,7 +107,9 @@
 
   function updateCategoryBadge() {
     if (!categoryBadgeEl) return;
-    const selectedType = DEFAULT_TASK_TYPES.find((t) => t.name === formData.category) || DEFAULT_TASK_TYPES[0];
+    const selectedType =
+      settings.taskTypes.find((t) => t.name === formData.category) ||
+      settings.taskTypes[0];
 
     categoryBadgeEl.innerHTML = "";
 
@@ -184,7 +128,7 @@
 
   function updatePriorityBadge() {
     if (!priorityBadgeEl) return;
-    const selectedPriority = DEFAULT_TASK_PRIORITIES.find(
+    const selectedPriority = settings.taskPriorities.find(
       (p) => p.name === formData.priority
     );
 
@@ -214,7 +158,9 @@
 
   function updateStatusBadge() {
     if (!statusBadgeEl) return;
-    const selectedStatus = DEFAULT_TASK_STATUSES.find((s) => s.name === formData.status) || DEFAULT_TASK_STATUSES[0];
+    const selectedStatus =
+      settings.taskStatuses.find((s) => s.name === formData.status) ||
+      settings.taskStatuses[0];
 
     statusBadgeEl.innerHTML = "";
 
@@ -231,126 +177,62 @@
     statusBadgeEl.appendChild(label);
   }
 
+  // Dropdown handlers
   function handleCategoryClick() {
-    showTypeSelector();
+    showCategoryDropdown = true;
   }
 
   function handlePriorityClick() {
-    showPrioritySelector();
-  }
-
-  function handleProjectClick() {
-    showProjectSelector();
-  }
-
-  function showProjectSelector() {
-    if (!projectSuggestions.length) return;
-
-    const projectButton = document.querySelector(
-      ".task-sync-text-button"
-    ) as HTMLElement;
-    if (!projectButton) return;
-
-    const menu = createSelectorMenu(projectButton);
-
-    projectSuggestions.forEach((projectName) => {
-      const item = menu.createDiv("task-sync-selector-item");
-      item.textContent = projectName;
-      item.addEventListener("click", () => {
-        formData.project = projectName;
-        menu.remove();
-      });
-    });
+    showPriorityDropdown = true;
   }
 
   function handleStatusClick() {
-    showStatusSelector();
+    showStatusDropdown = true;
   }
 
-  function showTypeSelector() {
-    const menu = createSelectorMenu(categoryBadgeEl);
-
-    DEFAULT_TASK_TYPES.forEach((type) => {
-      const item = menu.createDiv("task-sync-selector-item");
-      const badge = createTypeBadge(type);
-      item.appendChild(badge);
-
-      item.addEventListener("click", () => {
-        formData.category = type.name;
-        updateCategoryBadge();
-        menu.remove();
-      });
-    });
+  function handleCategorySelect(categoryName: string) {
+    formData.category = categoryName;
+    updateCategoryBadge();
+    showCategoryDropdown = false;
   }
 
-  function showPrioritySelector() {
-    const menu = createSelectorMenu(priorityBadgeEl);
-
-    // Add "No priority" option
-    const noPriorityItem = menu.createDiv("task-sync-selector-item");
-    noPriorityItem.createEl("span", {
-      text: "No priority",
-      cls: "task-sync-no-priority",
-    });
-    noPriorityItem.addEventListener("click", () => {
-      formData.priority = "";
-      updatePriorityBadge();
-      menu.remove();
-    });
-
-    DEFAULT_TASK_PRIORITIES.forEach((priority) => {
-      const item = menu.createDiv("task-sync-selector-item");
-      const badge = createPriorityBadge(priority);
-      item.appendChild(badge);
-
-      item.addEventListener("click", () => {
-        formData.priority = priority.name;
-        updatePriorityBadge();
-        menu.remove();
-      });
-    });
+  function handlePrioritySelect(priorityName: string) {
+    formData.priority = priorityName;
+    updatePriorityBadge();
+    showPriorityDropdown = false;
   }
 
-  function showStatusSelector() {
-    const menu = createSelectorMenu(statusBadgeEl);
-
-    DEFAULT_TASK_STATUSES.forEach((status) => {
-      const item = menu.createDiv("task-sync-selector-item");
-      const badge = createStatusBadge(status);
-      item.appendChild(badge);
-
-      item.addEventListener("click", () => {
-        formData.status = status.name;
-        updateStatusBadge();
-        menu.remove();
-      });
-    });
+  function handleStatusSelect(statusName: string) {
+    formData.status = statusName;
+    updateStatusBadge();
+    showStatusDropdown = false;
   }
 
-  function createSelectorMenu(anchorEl: HTMLElement): HTMLElement {
-    const menu = document.createElement("div");
-    menu.className = "task-sync-selector-menu";
+  // Convert settings to dropdown items
+  let categoryItems = $derived(
+    settings.taskTypes.map((type) => ({
+      value: type.name,
+      label: type.name,
+      customContent: createTypeBadge(type).outerHTML,
+    }))
+  );
 
-    // Position the menu below the anchor element
-    const rect = anchorEl.getBoundingClientRect();
-    menu.style.position = "absolute";
-    menu.style.top = `${rect.bottom + 5}px`;
-    menu.style.left = `${rect.left}px`;
-    menu.style.zIndex = "1000";
+  let priorityItems = $derived([
+    { value: "", label: "No priority" },
+    ...settings.taskPriorities.map((priority) => ({
+      value: priority.name,
+      label: priority.name,
+      customContent: createPriorityBadge(priority).outerHTML,
+    })),
+  ]);
 
-    document.body.appendChild(menu);
-
-    // Close menu when clicking outside
-    const closeMenu = (e: MouseEvent) => {
-      if (!menu.contains(e.target as Node)) {
-        menu.remove();
-        document.removeEventListener("click", closeMenu);
-      }
-    };
-    setTimeout(() => document.addEventListener("click", closeMenu), 0);
-
-    return menu;
-  }
+  let statusItems = $derived(
+    settings.taskStatuses.map((status) => ({
+      value: status.name,
+      label: status.name,
+      customContent: createStatusBadge(status).outerHTML,
+    }))
+  );
 
   async function handleSubmit() {
     // Clear previous errors
@@ -366,9 +248,8 @@
 
     try {
       // Prepare task data for new entities system
-      const taskTitle = formData.title.trim();
       const taskData: Omit<Task, "id" | "createdAt" | "updatedAt"> = {
-        title: taskTitle,
+        title: formData.title.trim(),
         description: formData.description?.trim() || undefined,
         status: formData.status,
         done: formData.done,
@@ -378,14 +259,11 @@
         project: formData.project || undefined,
         areas: formData.areas,
         tags: formData.tags,
-        source: {
-          extension: "obsidian",
-          source: `Tasks/${taskTitle}.md`,
-        },
       };
 
-      // Create task using new entities system
-      const createdTask = await taskOperations.create(taskData);
+      // Create task using Obsidian-specific operations
+      // This will automatically set source.filePath based on the task title
+      const createdTask = await obsidianOperations.tasks.create(taskData);
 
       new Notice(`Task "${createdTask.title}" created successfully`);
 
@@ -406,9 +284,9 @@
     oncancel?.();
   }
 
-  function handleAreasChange(event: Event) {
-    const target = event.target as HTMLInputElement;
-    formData.areas = target.value
+  function handleAreasInput(value: string) {
+    // Parse comma-separated areas
+    formData.areas = value
       .split(",")
       .map((a) => a.trim())
       .filter((a) => a);
@@ -483,19 +361,7 @@
         aria-label="Select priority"
       ></button>
 
-      <!-- Project Button (only if not in project context) -->
-      {#if context.type !== "project"}
-        <button
-          type="button"
-          onclick={handleProjectClick}
-          class="task-sync-property-button task-sync-text-button"
-          data-testid="project-button"
-        >
-          <span class="task-sync-button-label">
-            {formData.project || "Project"}
-          </span>
-        </button>
-      {/if}
+      <!-- Project field moved to extra fields section -->
 
       <!-- More options button -->
       <button
@@ -512,19 +378,32 @@
     <!-- Extra fields (collapsible) -->
     {#if showExtraFields}
       <div class="task-sync-extra-fields">
+        <!-- Project Input (only if not in project context) -->
+        {#if context.type !== "project"}
+          <div class="task-sync-field-group">
+            <label class="task-sync-field-label" for="project-input"
+              >Project</label
+            >
+            <Autocomplete
+              bind:value={formData.project}
+              suggestions={projectSuggestions}
+              placeholder="Type to search projects..."
+              onInput={(value) => (formData.project = value)}
+              testId="project-input"
+            />
+          </div>
+        {/if}
+
         <!-- Areas Input (only if not in area context) -->
         {#if context.type !== "area"}
           <div class="task-sync-field-group">
             <label class="task-sync-field-label" for="areas-input">Areas</label>
-            <input
-              id="areas-input"
-              bind:this={areasInput}
-              value={formData.areas.join(", ")}
-              oninput={handleAreasChange}
-              type="text"
-              placeholder="Enter areas..."
-              class="task-sync-field-input"
-              data-testid="areas-input"
+            <Autocomplete
+              bind:value={areasInputValue}
+              suggestions={areaSuggestions}
+              placeholder="Type to search areas..."
+              onInput={handleAreasInput}
+              testId="areas-input"
             />
           </div>
         {/if}
@@ -580,4 +459,38 @@
       </button>
     </div>
   </div>
+
+  <!-- Dropdowns -->
+  {#if showCategoryDropdown && categoryBadgeEl}
+    <Dropdown
+      anchor={categoryBadgeEl}
+      items={categoryItems}
+      selectedValue={formData.category}
+      onSelect={handleCategorySelect}
+      onClose={() => (showCategoryDropdown = false)}
+      testId="category-dropdown"
+    />
+  {/if}
+
+  {#if showPriorityDropdown && priorityBadgeEl}
+    <Dropdown
+      anchor={priorityBadgeEl}
+      items={priorityItems}
+      selectedValue={formData.priority}
+      onSelect={handlePrioritySelect}
+      onClose={() => (showPriorityDropdown = false)}
+      testId="priority-dropdown"
+    />
+  {/if}
+
+  {#if showStatusDropdown && statusBadgeEl}
+    <Dropdown
+      anchor={statusBadgeEl}
+      items={statusItems}
+      selectedValue={formData.status}
+      onSelect={handleStatusSelect}
+      onClose={() => (showStatusDropdown = false)}
+      testId="status-dropdown"
+    />
+  {/if}
 </div>

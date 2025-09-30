@@ -15,59 +15,59 @@
   "taskTypes": [
     {
       "name": "Task",
-      "color": "blue"
+      "color": "#3b82f6"
     },
     {
       "name": "Bug",
-      "color": "red"
+      "color": "#ef4444"
     },
     {
       "name": "Feature",
-      "color": "green"
+      "color": "#10b981"
     },
     {
       "name": "Improvement",
-      "color": "purple"
+      "color": "#8b5cf6"
     },
     {
       "name": "Chore",
-      "color": "gray"
+      "color": "#6b7280"
     }
   ],
   "taskPriorities": [
     {
       "name": "Low",
-      "color": "green"
+      "color": "#10b981"
     },
     {
       "name": "Medium",
-      "color": "yellow"
+      "color": "#f59e0b"
     },
     {
       "name": "High",
-      "color": "orange"
+      "color": "#f97316"
     },
     {
       "name": "Urgent",
-      "color": "red"
+      "color": "#ef4444"
     }
   ],
   "taskStatuses": [
     {
       "name": "Backlog",
-      "color": "gray",
+      "color": "#6b7280",
       "isDone": false,
       "isInProgress": false
     },
     {
       "name": "In Progress",
-      "color": "blue",
+      "color": "#3b82f6",
       "isDone": false,
       "isInProgress": true
     },
     {
       "name": "Done",
-      "color": "green",
+      "color": "#10b981",
       "isDone": true,
       "isInProgress": false
     }
