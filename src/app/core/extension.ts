@@ -35,6 +35,15 @@ export interface ExtensionDataAccess {
    * Refresh the extension's data
    */
   refresh(): Promise<void>;
+
+  /**
+   * Search tasks by query string
+   * Searches in title, category, status, project, and areas
+   * @param query - Search query string
+   * @param tasks - Tasks to search through
+   * @returns Filtered tasks matching the query
+   */
+  searchTasks(query: string, tasks: readonly Task[]): readonly Task[];
 }
 
 // Extension interface - completely agnostic to implementation details

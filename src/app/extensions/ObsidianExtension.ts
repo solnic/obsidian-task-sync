@@ -178,6 +178,32 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
+   * Search tasks by query string
+   * Searches in title, category, status, project, and areas
+   */
+  searchTasks(query: string, tasks: readonly Task[]): readonly Task[] {
+    const lowerQuery = query.toLowerCase();
+
+    return tasks.filter((task) => {
+      return (
+        task.title.toLowerCase().includes(lowerQuery) ||
+        (task.category && task.category.toLowerCase().includes(lowerQuery)) ||
+        (task.status && task.status.toLowerCase().includes(lowerQuery)) ||
+        (task.project &&
+          typeof task.project === "string" &&
+          task.project.toLowerCase().includes(lowerQuery)) ||
+        (task.areas &&
+          Array.isArray(task.areas) &&
+          task.areas.some(
+            (area: string) =>
+              typeof area === "string" &&
+              area.toLowerCase().includes(lowerQuery)
+          ))
+      );
+    });
+  }
+
+  /**
    * Scan existing task files and populate the canonical task store
    * This follows the new architecture where extensions scan their representations
    * during initialization and populate the canonical store using upsert logic
