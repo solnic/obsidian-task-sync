@@ -158,26 +158,33 @@ describe("ObsidianHost Implementation", () => {
   });
 
   describe("Lifecycle callbacks", () => {
-    test("should call plugin onload during host onload", async () => {
+    test("should set up event handlers during host onload", async () => {
       await obsidianHost.onload();
 
-      expect(mockPlugin.onload).toHaveBeenCalledTimes(1);
+      // Verify that event handlers are registered by checking handler count
+      const { eventBus } = await import("../../../src/app/core/events");
+      const handlerCount = eventBus.getHandlerCount("obsidian.notes.created");
+
+      expect(handlerCount).toBeGreaterThan(0);
     });
 
-    test("should call plugin onunload during host onunload", async () => {
+    test("should clean up event handlers during host onunload", async () => {
+      // First set up handlers
+      await obsidianHost.onload();
+
+      // Then clean them up
       await obsidianHost.onunload();
 
-      expect(mockPlugin.onunload).toHaveBeenCalledTimes(1);
+      // Verify that event handlers are cleared
+      const { eventBus } = await import("../../../src/app/core/events");
+      const handlerCount = eventBus.getHandlerCount("obsidian.notes.created");
+
+      expect(handlerCount).toBe(0);
     });
 
-    test("should handle plugin lifecycle errors gracefully", async () => {
-      const error = new Error("Plugin lifecycle error");
-      mockPlugin.onload.mockRejectedValue(error);
-
-      await expect(obsidianHost.onload()).rejects.toThrow(
-        "Plugin lifecycle error"
-      );
-      expect(mockPlugin.onload).toHaveBeenCalledTimes(1);
+    test("should successfully complete onload without errors", async () => {
+      // onload should not throw errors
+      await expect(obsidianHost.onload()).resolves.toBeUndefined();
     });
   });
 

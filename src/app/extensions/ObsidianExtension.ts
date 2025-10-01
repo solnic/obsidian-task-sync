@@ -370,7 +370,28 @@ export class ObsidianExtension implements Extension {
     } else if (event.type === "tasks.created") {
       // React to task creation by creating the corresponding Obsidian note
       await this.taskOperations.createNote(event.task);
+
+      // After creating the note, update the task's source to include the filePath
+      // This allows tasks from other extensions (e.g., GitHub) to have both their
+      // original source (extension: "github", url: "...") AND the Obsidian filePath
+      const fileName = this.sanitizeFileName(event.task.title);
+      const filePath = `${this.settings.tasksFolder}/${fileName}.md`;
+
+      const updatedTask = {
+        ...event.task,
+        source: {
+          ...event.task.source,
+          filePath,
+        },
+      };
+
+      taskStore.updateTask(updatedTask);
     }
+  }
+
+  private sanitizeFileName(name: string): string {
+    // Basic sanitization - remove invalid characters
+    return name.replace(/[<>:"/\\|?*]/g, "").trim();
   }
 
   async onEntityUpdated(event: any): Promise<void> {

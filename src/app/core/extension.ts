@@ -5,6 +5,7 @@
 
 import { Task, Project, Area } from "./entities";
 import { DomainEvent } from "./events";
+import { eventBus } from "./events";
 import type { Readable } from "svelte/store";
 
 // Generic entity union type
@@ -128,6 +129,23 @@ export class ExtensionRegistry {
     return this.getAll().filter((ext) =>
       ext.supportedEntities.includes(entityType)
     );
+  }
+}
+
+export abstract class EntityOperations<T extends Entity> {
+  public id: string;
+
+  constructor(options: { id: string }) {
+    this.id = options.id;
+  }
+
+  /**
+   * Trigger an extension-specific event
+   * @param type - Event type suffix (will be prefixed with extension id)
+   * @param eventData - Additional event data to include
+   */
+  protected trigger(type: string, eventData: Record<string, any> = {}): void {
+    eventBus.trigger({ type: `${this.id}.${type}`, ...eventData });
   }
 }
 

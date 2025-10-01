@@ -857,4 +857,121 @@ describe("EventBus", () => {
       expect(eventBus.getHandlerCount("tasks.created")).toBeLessThanOrEqual(2);
     });
   });
+
+  describe("Extension-Specific Events", () => {
+    test("should support extension-specific event types", () => {
+      const extensionHandler = vi.fn();
+
+      // Subscribe to an extension-specific event
+      eventBus.on("obsidian.notes.created", extensionHandler);
+
+      // Trigger the extension event
+      const extensionEvent = {
+        type: "obsidian.notes.created",
+        filePath: "/path/to/note.md",
+      };
+
+      eventBus.trigger(extensionEvent);
+
+      expect(extensionHandler).toHaveBeenCalledTimes(1);
+      expect(extensionHandler).toHaveBeenCalledWith(extensionEvent);
+    });
+
+    test("should support pattern matching for extension events", () => {
+      const patternHandler = vi.fn();
+
+      // Subscribe to all obsidian events using pattern
+      const unsubscribe = eventBus.onPattern("obsidian.*", patternHandler);
+
+      // Trigger multiple extension events
+      eventBus.trigger({
+        type: "obsidian.notes.created",
+        filePath: "/note1.md",
+      });
+
+      eventBus.trigger({
+        type: "obsidian.notes.updated",
+        filePath: "/note2.md",
+      });
+
+      eventBus.trigger({
+        type: "obsidian.notes.deleted",
+        filePath: "/note3.md",
+      });
+
+      // Should have received all three events
+      expect(patternHandler).toHaveBeenCalledTimes(3);
+
+      unsubscribe();
+    });
+
+    test("should allow extensions to trigger namespaced events", () => {
+      const handler1 = vi.fn();
+      const handler2 = vi.fn();
+
+      // Subscribe to different extension events
+      eventBus.on("github.issues.imported", handler1);
+      eventBus.on("obsidian.notes.created", handler2);
+
+      // Trigger GitHub extension event
+      eventBus.trigger({
+        type: "github.issues.imported",
+        count: 5,
+        repository: "test/repo",
+      });
+
+      // Trigger Obsidian extension event
+      eventBus.trigger({
+        type: "obsidian.notes.created",
+        filePath: "/note.md",
+      });
+
+      // Each handler should only receive its own event
+      expect(handler1).toHaveBeenCalledTimes(1);
+      expect(handler1).toHaveBeenCalledWith({
+        type: "github.issues.imported",
+        count: 5,
+        repository: "test/repo",
+      });
+
+      expect(handler2).toHaveBeenCalledTimes(1);
+      expect(handler2).toHaveBeenCalledWith({
+        type: "obsidian.notes.created",
+        filePath: "/note.md",
+      });
+    });
+
+    test("should support both core and extension events simultaneously", () => {
+      const coreHandler = vi.fn();
+      const extensionHandler = vi.fn();
+
+      // Subscribe to core event
+      eventBus.on("tasks.created", coreHandler);
+
+      // Subscribe to extension event
+      eventBus.on("obsidian.notes.created", extensionHandler);
+
+      // Trigger core event
+      const coreEvent: DomainEvent = {
+        type: "tasks.created",
+        task: mockTask,
+        extension: "test",
+      };
+      eventBus.trigger(coreEvent);
+
+      // Trigger extension event
+      const extensionEvent = {
+        type: "obsidian.notes.created",
+        filePath: "/note.md",
+      };
+      eventBus.trigger(extensionEvent);
+
+      // Both handlers should have been called
+      expect(coreHandler).toHaveBeenCalledTimes(1);
+      expect(coreHandler).toHaveBeenCalledWith(coreEvent);
+
+      expect(extensionHandler).toHaveBeenCalledTimes(1);
+      expect(extensionHandler).toHaveBeenCalledWith(extensionEvent);
+    });
+  });
 });

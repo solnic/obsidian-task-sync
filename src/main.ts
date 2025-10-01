@@ -48,6 +48,9 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize the TaskSync app with Host abstraction
     await taskSyncApp.initialize(this.host);
 
+    // Call host onload to set up event handlers
+    await this.host.onload();
+
     // Register settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
 
@@ -110,6 +113,7 @@ export default class TaskSyncPlugin extends Plugin {
 
   async onunload() {
     console.log("TaskSync plugin unloading...");
+    await this.host.onunload();
     await taskSyncApp.shutdown();
   }
 

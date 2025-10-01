@@ -11,6 +11,7 @@ import { Host } from "../core/host";
 import { TaskSyncSettings, DEFAULT_SETTINGS } from "../types/settings";
 import { Area, Project, Task } from "../core/entities";
 import { Extension, extensionRegistry } from "../core/extension";
+import { eventBus } from "../core/events";
 
 /**
  * Interface for Obsidian Plugin that provides the necessary methods
@@ -139,16 +140,34 @@ export class ObsidianHost extends Host {
   }
 
   /**
-   * Open a file in Obsidian's workspace.
+   * Open a file in Obsidian's workspace by file path.
    *
    * @param filePath - The path to the file to open
    * @throws Error if file cannot be opened or found
    */
-  async openFile(entity: Area | Project | Task): Promise<void> {
+  async openFileByPath(filePath: string): Promise<void> {
     const app = this.plugin.app;
-    const file = app.vault.getAbstractFileByPath(entity.source.filePath);
+    const file = app.vault.getAbstractFileByPath(filePath);
 
-    await app.workspace.getLeaf().openFile(file);
+    if (!file) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    await app.workspace.getLeaf().openFile(file as any);
+  }
+
+  /**
+   * Open a file in Obsidian's workspace.
+   *
+   * @param entity - The entity whose file should be opened
+   * @throws Error if file cannot be opened or found
+   */
+  async openFile(entity: Area | Project | Task): Promise<void> {
+    if (!entity.source?.filePath) {
+      throw new Error(`Entity ${entity.id} does not have a filePath`);
+    }
+
+    await this.openFileByPath(entity.source.filePath);
   }
 
   /**
@@ -168,35 +187,27 @@ export class ObsidianHost extends Host {
   /**
    * Lifecycle callback that runs when TaskSync initializes in Obsidian.
    *
-   * Delegates to the Obsidian plugin's onload method if available.
+   * Sets up event handlers and other host-level initialization.
+   * This is called by the plugin's onload method, NOT the other way around.
    *
-   * @throws Error if Obsidian plugin initialization fails
+   * @throws Error if Obsidian host initialization fails
    */
   async onload(): Promise<void> {
-    try {
-      if (this.plugin.onload) {
-        await this.plugin.onload();
-      }
-    } catch (error) {
-      throw new Error(`Failed to initialize Obsidian plugin: ${error.message}`);
-    }
+    // Subscribe to note creation events and automatically open the created note
+    eventBus.on("obsidian.notes.created", async ({ filePath }) => {
+      await this.openFileByPath(filePath);
+    });
   }
 
   /**
    * Lifecycle callback that runs when TaskSync unloads from Obsidian.
    *
-   * Delegates to the Obsidian plugin's onunload method if available.
+   * Cleans up event handlers and other host-level resources.
    *
-   * @throws Error if Obsidian plugin cleanup fails
+   * @throws Error if Obsidian host cleanup fails
    */
   async onunload(): Promise<void> {
-    try {
-      if (this.plugin.onunload) {
-        await this.plugin.onunload();
-      }
-    } catch (error) {
-      throw new Error(`Failed to cleanup Obsidian plugin: ${error.message}`);
-    }
+    eventBus.clearHandlers("obsidian.notes.created");
   }
 
   /**
