@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { TaskSyncSettings } from "../types/settings";
   import type { Extension } from "../core/extension";
+  import type { Schedule } from "../core/entities";
+  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
   import LocalTasksService from "./LocalTasksService.svelte";
   import GitHubService from "./GitHubService.svelte";
   import { Host } from "../core/host";
@@ -15,11 +17,24 @@
     // Host for data persistence and extension resolution
     host: Host;
 
+    // Daily planning mode state
+    isPlanningActive?: boolean;
+    currentSchedule?: Schedule | null;
+    dailyPlanningExtension?: DailyPlanningExtension;
+
     // Test attributes
     testId?: string;
   }
 
-  let { serviceId, settings, host, testId }: Props = $props();
+  let {
+    serviceId,
+    settings,
+    host,
+    isPlanningActive = false,
+    currentSchedule = null,
+    dailyPlanningExtension,
+    testId,
+  }: Props = $props();
 
   // Resolve the extension from the host
   let extension = $derived<Extension | undefined>(
@@ -57,6 +72,9 @@
     }}
     {extension}
     {host}
+    {isPlanningActive}
+    {currentSchedule}
+    {dailyPlanningExtension}
     testId={testId || `${serviceId}-service`}
   />
 {:else}

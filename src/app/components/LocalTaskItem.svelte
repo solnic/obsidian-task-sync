@@ -15,6 +15,7 @@
     task: Task;
     localTask: LocalTask;
     isHovered?: boolean;
+    isSelected?: boolean;
     onHover?: (hovered: boolean) => void;
     onClick?: () => void;
     dayPlanningMode?: boolean;
@@ -29,6 +30,7 @@
     task,
     localTask,
     isHovered = false,
+    isSelected = false,
     onHover,
     onClick,
     dayPlanningMode = false,
@@ -161,6 +163,7 @@
   updatedAt={localTask.sortable.updatedAt}
   {isHovered}
   {isImported}
+  {isSelected}
   {isScheduled}
   scheduledDate={task.doDate}
   {onHover}

@@ -10,13 +10,15 @@
   import { setIcon } from "obsidian";
   import { extensionRegistry } from "../core/extension";
   import { eventBus } from "../core/events";
+  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
+  import type { Host } from "../core/host";
 
   interface Props {
     // Settings for configuration
     settings?: TaskSyncSettings;
 
-    // Host for data persistence
-    host?: any;
+    // Host for data persistence and extension resolution
+    host: Host;
 
     // Test attributes
     testId?: string;
@@ -29,6 +31,36 @@
 
   // Reactive state that updates when extensions are registered/unregistered
   let extensionsVersion = $state(0);
+
+  // Get daily planning extension and track its planning state
+  let dailyPlanningExtension = $derived<DailyPlanningExtension | undefined>(
+    host.getExtensionById("daily-planning") as DailyPlanningExtension
+  );
+
+  // Track planning active state reactively
+  let isPlanningActive = $state(false);
+  let currentSchedule = $state(null);
+
+  // Subscribe to daily planning state changes
+  $effect(() => {
+    if (dailyPlanningExtension) {
+      const planningActiveStore = dailyPlanningExtension.getPlanningActive();
+      const currentScheduleStore = dailyPlanningExtension.getCurrentSchedule();
+
+      const unsubscribePlanning = planningActiveStore.subscribe((active) => {
+        isPlanningActive = active;
+      });
+
+      const unsubscribeSchedule = currentScheduleStore.subscribe((schedule) => {
+        currentSchedule = schedule;
+      });
+
+      return () => {
+        unsubscribePlanning();
+        unsubscribeSchedule();
+      };
+    }
+  });
 
   // Listen to extension lifecycle events to trigger reactivity
   $effect(() => {
@@ -117,6 +149,9 @@
             serviceId={activeService}
             {settings}
             {host}
+            {isPlanningActive}
+            {currentSchedule}
+            {dailyPlanningExtension}
             testId="{activeService}-service"
           />
         </div>

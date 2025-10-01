@@ -11,9 +11,10 @@
   import { getFilterOptions } from "../utils/contextFiltering";
   import type { TaskSyncSettings } from "../types/settings";
   import { createLocalTask, type LocalTask } from "../types/LocalTask";
-  import type { Task } from "../core/entities";
+  import type { Task, Schedule } from "../core/entities";
   import type { Extension } from "../core/extension";
   import type { Host } from "../core/host";
+  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
 
   interface SortField {
     key: string;
@@ -48,12 +49,25 @@
     // Host for data persistence
     host: Host;
 
+    // Daily planning mode state
+    isPlanningActive?: boolean;
+    currentSchedule?: Schedule | null;
+    dailyPlanningExtension?: DailyPlanningExtension;
+
     // Test attributes
     testId?: string;
   }
 
-  let { settings, localTasksSettings, extension, host, testId }: Props =
-    $props();
+  let {
+    settings,
+    localTasksSettings,
+    extension,
+    host,
+    isPlanningActive = false,
+    currentSchedule = null,
+    dailyPlanningExtension,
+    testId,
+  }: Props = $props();
 
   // State
   let tasks = $state<Task[]>([]);
@@ -61,6 +75,10 @@
   let error = $state<string | null>(null);
   let isLoading = $state(false);
   let hoveredTask = $state<string | null>(null);
+
+  // Planning mode state
+  let selectedTasksForPlanning = $state<Set<string>>(new Set());
+  let stagedTasks = $state<Task[]>([]);
 
   // Additional filter state - initialized from provided settings
   let selectedProject = $state<string | null>(
@@ -209,12 +227,90 @@
   function handleSortChange(newSortFields: SortField[]): void {
     sortFields = newSortFields;
   }
+
+  // Planning mode functions
+  function toggleTaskSelection(task: Task): void {
+    if (!isPlanningActive) return;
+
+    const taskId = task.id;
+    const newSelection = new Set(selectedTasksForPlanning);
+
+    if (newSelection.has(taskId)) {
+      newSelection.delete(taskId);
+    } else {
+      newSelection.add(taskId);
+    }
+
+    selectedTasksForPlanning = newSelection;
+  }
+
+  function addSelectedTasksToSchedule(): void {
+    if (!isPlanningActive || !dailyPlanningExtension) return;
+
+    const tasksToAdd = filteredTasks
+      .filter((localTask) => selectedTasksForPlanning.has(localTask.task.id))
+      .map((localTask) => localTask.task);
+
+    // Add tasks to staging area
+    stagedTasks = [...stagedTasks, ...tasksToAdd];
+
+    // Move tasks to today's schedule via the daily planning extension
+    tasksToAdd.forEach(async (task) => {
+      try {
+        await dailyPlanningExtension.moveTaskToToday(task);
+      } catch (error) {
+        console.error("Failed to add task to schedule:", error);
+      }
+    });
+
+    // Clear selection
+    selectedTasksForPlanning = new Set();
+  }
+
+  function clearSelection(): void {
+    selectedTasksForPlanning = new Set();
+  }
 </script>
 
 <div
   class="task-sync-service-container local-service"
   data-testid="local-service"
 >
+  <!-- Planning Mode Header -->
+  {#if isPlanningActive}
+    <div class="planning-header" data-testid="planning-header">
+      <div class="planning-info">
+        <h3>📅 Daily Planning Mode</h3>
+        <p>Select tasks to add to today's schedule</p>
+      </div>
+      <div class="planning-actions">
+        {#if selectedTasksForPlanning.size > 0}
+          <button
+            class="planning-btn add-selected"
+            onclick={addSelectedTasksToSchedule}
+            data-testid="add-selected-tasks"
+          >
+            Add {selectedTasksForPlanning.size} task{selectedTasksForPlanning.size ===
+            1
+              ? ""
+              : "s"} to schedule
+          </button>
+          <button
+            class="planning-btn clear-selection"
+            onclick={clearSelection}
+            data-testid="clear-selection"
+          >
+            Clear selection
+          </button>
+        {:else}
+          <span class="planning-hint"
+            >Click tasks to select them for scheduling</span
+          >
+        {/if}
+      </div>
+    </div>
+  {/if}
+
   <!-- Header Section -->
   <header>
     <!-- 1. Search with refresh group -->
@@ -338,9 +434,17 @@
               task={localTask.task}
               {localTask}
               isHovered={hoveredTask === localTask.task.id}
+              isSelected={isPlanningActive &&
+                selectedTasksForPlanning.has(localTask.task.id)}
               onHover={(hovered: boolean) =>
                 (hoveredTask = hovered ? localTask.task.id : null)}
-              onClick={() => openTask(localTask.task)}
+              onClick={() => {
+                if (isPlanningActive) {
+                  toggleTaskSelection(localTask.task);
+                } else {
+                  openTask(localTask.task);
+                }
+              }}
               {settings}
               testId="local-task-item-{localTask.task.title
                 .replace(/\s+/g, '-')
@@ -352,3 +456,76 @@
     {/if}
   </div>
 </div>
+
+<style>
+  .planning-header {
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .planning-info h3 {
+    margin: 0 0 4px 0;
+    color: var(--text-normal);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .planning-info p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .planning-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .planning-btn {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: opacity 0.2s ease;
+  }
+
+  .planning-btn:hover {
+    opacity: 0.8;
+  }
+
+  .planning-btn.clear-selection {
+    background: var(--background-modifier-border);
+    color: var(--text-normal);
+  }
+
+  .planning-hint {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  @media (max-width: 768px) {
+    .planning-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .planning-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
+  }
+</style>
