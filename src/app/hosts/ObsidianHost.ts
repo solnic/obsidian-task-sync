@@ -11,6 +11,12 @@ import { Host } from "../core/host";
 import { TaskSyncSettings, DEFAULT_SETTINGS } from "../types/settings";
 import { Area, Project, Task } from "../core/entities";
 import { Extension, extensionRegistry } from "../core/extension";
+import { eventBus } from "../core/events";
+import { taskStore } from "../stores/taskStore";
+import { projectStore } from "../stores/projectStore";
+import { areaStore } from "../stores/areaStore";
+import { get } from "svelte/store";
+import { taskSyncApp } from "../App";
 
 /**
  * Interface for Obsidian Plugin that provides the necessary methods
@@ -74,12 +80,24 @@ export class ObsidianHost extends Host {
   /**
    * Persist TaskSync settings to Obsidian's plugin data storage.
    *
+   * Settings are stored at the root level of the plugin data.
+   * Entity data is stored under the 'entities' key to avoid conflicts.
+   *
    * @param settings - The TaskSync settings object to persist
    * @throws Error if settings cannot be saved to Obsidian
    */
   async saveSettings(settings: TaskSyncSettings): Promise<void> {
     try {
-      await this.plugin.saveData(settings);
+      // Load existing data to preserve entity data
+      const existingData = (await this.plugin.loadData()) || {};
+
+      // Merge settings at root level, preserving entity data
+      const updatedData = {
+        ...settings,
+        entities: existingData.entities, // Preserve entity data
+      };
+
+      await this.plugin.saveData(updatedData);
     } catch (error) {
       throw new Error(`Failed to save settings to Obsidian: ${error.message}`);
     }
@@ -109,12 +127,23 @@ export class ObsidianHost extends Host {
    * complete metadata like IDs, source information, and full entity state.
    * This is the authoritative data store for TaskSync entities.
    *
+   * Entity data is stored under the 'entities' key to avoid conflicts with settings.
+   *
    * @param data - The TaskSync application data to persist
    * @throws Error if data cannot be saved to Obsidian
    */
   async saveData(data: any): Promise<void> {
     try {
-      await this.plugin.saveData(data);
+      // Load existing data to preserve settings
+      const existingData = (await this.plugin.loadData()) || {};
+
+      // Store entity data under 'entities' key, preserving settings at root level
+      const updatedData = {
+        ...existingData,
+        entities: data,
+      };
+
+      await this.plugin.saveData(updatedData);
     } catch (error) {
       throw new Error(`Failed to save data to Obsidian: ${error.message}`);
     }
@@ -127,28 +156,50 @@ export class ObsidianHost extends Host {
    * complete metadata like IDs, source information, and full entity state.
    * This is the authoritative data store for TaskSync entities.
    *
+   * Entity data is stored under the 'entities' key to avoid conflicts with settings.
+   *
    * @returns Promise resolving to the TaskSync application data, or null if none exists
    * @throws Error if data cannot be loaded from Obsidian
    */
   async loadData(): Promise<any> {
     try {
-      return await this.plugin.loadData();
+      const data = await this.plugin.loadData();
+      // Return entity data from 'entities' key, or null if not present
+      return data?.entities || null;
     } catch (error) {
       throw new Error(`Failed to load data from Obsidian: ${error.message}`);
     }
   }
 
   /**
-   * Open a file in Obsidian's workspace.
+   * Open a file in Obsidian's workspace by file path.
    *
    * @param filePath - The path to the file to open
    * @throws Error if file cannot be opened or found
    */
-  async openFile(entity: Area | Project | Task): Promise<void> {
+  async openFileByPath(filePath: string): Promise<void> {
     const app = this.plugin.app;
-    const file = app.vault.getAbstractFileByPath(entity.source.filePath);
+    const file = app.vault.getAbstractFileByPath(filePath);
 
-    await app.workspace.getLeaf().openFile(file);
+    if (!file) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    await app.workspace.getLeaf().openFile(file as any);
+  }
+
+  /**
+   * Open a file in Obsidian's workspace.
+   *
+   * @param entity - The entity whose file should be opened
+   * @throws Error if file cannot be opened or found
+   */
+  async openFile(entity: Area | Project | Task): Promise<void> {
+    if (!entity.source?.filePath) {
+      throw new Error(`Entity ${entity.id} does not have a filePath`);
+    }
+
+    await this.openFileByPath(entity.source.filePath);
   }
 
   /**
@@ -168,34 +219,89 @@ export class ObsidianHost extends Host {
   /**
    * Lifecycle callback that runs when TaskSync initializes in Obsidian.
    *
-   * Delegates to the Obsidian plugin's onload method if available.
+   * Sets up event handlers and other host-level initialization.
+   * This is called by the plugin's onload method, NOT the other way around.
    *
-   * @throws Error if Obsidian plugin initialization fails
+   * @throws Error if Obsidian host initialization fails
    */
   async onload(): Promise<void> {
-    try {
-      if (this.plugin.onload) {
-        await this.plugin.onload();
+    // Subscribe to note creation events and automatically open the created note
+    eventBus.on("obsidian.notes.created", async ({ filePath }) => {
+      await this.openFileByPath(filePath);
+    });
+
+    // Subscribe to entity change events and persist data to Obsidian storage
+    // This ensures that all entity changes are automatically saved
+    const persistData = async () => {
+      try {
+        const tasks = get(taskStore).tasks;
+        const projects = get(projectStore).projects;
+        const areas = get(areaStore).areas;
+
+        const data = {
+          tasks,
+          projects,
+          areas,
+          lastSync: new Date().toISOString(),
+        };
+
+        await this.saveData(data);
+      } catch (error) {
+        console.error("Failed to persist entity data:", error);
       }
-    } catch (error) {
-      throw new Error(`Failed to initialize Obsidian plugin: ${error.message}`);
-    }
+    };
+
+    // Subscribe to all entity change events
+    eventBus.on("tasks.created", persistData);
+    eventBus.on("tasks.updated", persistData);
+    eventBus.on("tasks.deleted", persistData);
+    eventBus.on("tasks.loaded", persistData);
+
+    eventBus.on("projects.created", persistData);
+    eventBus.on("projects.updated", persistData);
+    eventBus.on("projects.deleted", persistData);
+    eventBus.on("projects.loaded", persistData);
+
+    eventBus.on("areas.created", persistData);
+    eventBus.on("areas.updated", persistData);
+    eventBus.on("areas.deleted", persistData);
+    eventBus.on("areas.loaded", persistData);
   }
 
   /**
    * Lifecycle callback that runs when TaskSync unloads from Obsidian.
    *
-   * Delegates to the Obsidian plugin's onunload method if available.
+   * Cleans up event handlers and other host-level resources.
    *
-   * @throws Error if Obsidian plugin cleanup fails
+   * @throws Error if Obsidian host cleanup fails
    */
   async onunload(): Promise<void> {
-    try {
-      if (this.plugin.onunload) {
-        await this.plugin.onunload();
-      }
-    } catch (error) {
-      throw new Error(`Failed to cleanup Obsidian plugin: ${error.message}`);
-    }
+    // Clear all event handlers registered by this host
+    eventBus.clearHandlers("obsidian.notes.created");
+
+    eventBus.clearHandlers("tasks.created");
+    eventBus.clearHandlers("tasks.updated");
+    eventBus.clearHandlers("tasks.deleted");
+    eventBus.clearHandlers("tasks.loaded");
+
+    eventBus.clearHandlers("projects.created");
+    eventBus.clearHandlers("projects.updated");
+    eventBus.clearHandlers("projects.deleted");
+    eventBus.clearHandlers("projects.loaded");
+
+    eventBus.clearHandlers("areas.created");
+    eventBus.clearHandlers("areas.updated");
+    eventBus.clearHandlers("areas.deleted");
+    eventBus.clearHandlers("areas.loaded");
+  }
+
+  /**
+   * Get the TaskSync application instance.
+   * This provides access to the app for testing and advanced operations.
+   *
+   * @returns The TaskSync application instance
+   */
+  getApp(): any {
+    return taskSyncApp;
   }
 }

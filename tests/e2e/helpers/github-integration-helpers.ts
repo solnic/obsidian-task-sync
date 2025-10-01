@@ -1,6 +1,5 @@
 import type { Page } from "playwright";
-import { type SharedTestContext } from "./shared-context";
-import { openTaskSyncSettings } from "./global";
+import { stubGitHubAPIs } from "./api-stubbing";
 
 /**
  * GitHub Integration helpers for e2e tests
@@ -238,16 +237,6 @@ export async function waitForGitHubSettings(
 }
 
 /**
- * Open GitHub integration settings
- */
-export async function openGitHubSettings(
-  context: SharedTestContext
-): Promise<void> {
-  await openTaskSyncSettings(context);
-  await waitForGitHubSettings(context.page);
-}
-
-/**
  * Toggle GitHub integration setting
  */
 export async function toggleGitHubIntegration(
@@ -436,7 +425,6 @@ export async function stubGitHubWithFixtures(
   }
 ): Promise<void> {
   // Use the simplified stubbing system that handles plugin reloads
-  const { stubGitHubAPIs } = await import("./api-stubbing");
   await stubGitHubAPIs(page, fixtures);
 }
 
@@ -621,55 +609,6 @@ export async function hasGitHubToggle(page: Page): Promise<boolean> {
 }
 
 /**
- * Debug GitHub view state - logs detailed information about the view
- */
-export async function debugGitHubViewState(page: Page): Promise<void> {
-  const debugInfo = await page.evaluate(() => {
-    const app = (window as any).app;
-    const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
-
-    // Check plugin state
-    const githubService = plugin?.integrationManager?.getGitHubService();
-    const pluginInfo = {
-      pluginExists: !!plugin,
-      githubServiceEnabled: githubService?.isEnabled?.() || false,
-      githubSettings: plugin?.settings?.integrations.github || null,
-    };
-
-    // Check workspace leaves
-    const leaves = app?.workspace?.getLeavesOfType?.("github-issues") || [];
-    const leavesInfo = {
-      count: leaves.length,
-      leaves: leaves.map((leaf: any) => ({
-        viewType: leaf.view?.getViewType?.(),
-        isVisible: leaf.view?.containerEl?.offsetParent !== null,
-      })),
-    };
-
-    // Check DOM elements
-    const viewByDataType = document.querySelector(
-      '[data-type="github-issues"]'
-    );
-    const viewByClass = document.querySelector(".github-issues-view");
-    const domInfo = {
-      foundByDataType: !!viewByDataType,
-      foundByClass: !!viewByClass,
-      element: viewByDataType || viewByClass,
-      hasHeader: !!(viewByDataType || viewByClass)?.querySelector(
-        ".github-issues-header"
-      ),
-      hasContent: !!(viewByDataType || viewByClass)?.querySelector(
-        ".github-issues-content"
-      ),
-      textContent:
-        (viewByDataType || viewByClass)?.textContent?.substring(0, 200) || null,
-    };
-
-    return { pluginInfo, leavesInfo, domInfo };
-  });
-}
-
-/**
  * Click import button for a specific GitHub issue in the UI
  * Note: Import buttons now appear on hover, so we need to hover first
  */
@@ -678,9 +617,11 @@ export async function clickIssueImportButton(
   issueNumber: number
 ): Promise<void> {
   // Find the issue item and hover over it
-  const issueLocator = page.locator('[data-testid="issue-item"]').filter({
-    hasText: `#${issueNumber}`,
-  });
+  const issueLocator = page
+    .locator('[data-testid="github-issue-item"]')
+    .filter({
+      hasText: `#${issueNumber}`,
+    });
 
   // Wait for the issue to be visible
   await issueLocator.waitFor({ state: "visible", timeout: 10000 });
@@ -708,9 +649,11 @@ export async function waitForIssueImportComplete(
   timeout: number = 10000
 ): Promise<void> {
   // Find the issue item and wait for it to have data-imported="true"
-  const issueLocator = page.locator('[data-testid="issue-item"]').filter({
-    hasText: `#${issueNumber}`,
-  });
+  const issueLocator = page
+    .locator('[data-testid="github-issue-item"]')
+    .filter({
+      hasText: `#${issueNumber}`,
+    });
 
   // Wait for the issue to be visible first
   await issueLocator.waitFor({ state: "visible", timeout: 5000 });
@@ -724,7 +667,7 @@ export async function waitForIssueImportComplete(
   await page.waitForFunction(
     (issueNumber) => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]'
+        '[data-testid="github-issue-item"]'
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
@@ -737,56 +680,4 @@ export async function waitForIssueImportComplete(
     issueNumber,
     { timeout }
   );
-}
-
-/**
- * Get GitHub view UI structure information
- */
-export async function getGitHubViewStructure(page: Page): Promise<{
-  exists: boolean;
-  hasHeader: boolean;
-  hasContent: boolean;
-  isVisible: boolean;
-  hasText: boolean;
-}> {
-  await debugGitHubViewState(page);
-
-  const result = await page.evaluate(() => {
-    // Look for the GitHub service component within the Tasks view
-    let viewElement = document.querySelector('[data-testid="github-service"]');
-
-    if (!viewElement) {
-      // Fallback: look for the view content inside any workspace leaf
-      const leaves = document.querySelectorAll(".workspace-leaf-content");
-      for (let i = 0; i < leaves.length; i++) {
-        const leaf = leaves[i];
-        const githubView = leaf.querySelector('[data-testid="github-service"]');
-        if (githubView) {
-          viewElement = githubView;
-          break;
-        }
-      }
-    }
-
-    if (!viewElement) {
-      return {
-        exists: false,
-        hasHeader: false,
-        hasContent: false,
-        isVisible: false,
-        hasText: false,
-      };
-    }
-
-    return {
-      exists: true,
-      hasHeader: viewElement.querySelector(".github-issues-header") !== null,
-      hasContent: viewElement.querySelector(".github-issues-content") !== null,
-      isVisible: (viewElement as HTMLElement).offsetParent !== null,
-      hasText:
-        viewElement.textContent !== null && viewElement.textContent.length > 0,
-    };
-  });
-
-  return result;
 }

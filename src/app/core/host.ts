@@ -106,4 +106,12 @@ export abstract class Host {
    * @returns The extension instance, or undefined if not found
    */
   abstract getExtensionById(id: string): Extension | undefined;
+
+  /**
+   * Get the TaskSync application instance.
+   * This provides access to the app for testing and advanced operations.
+   *
+   * @returns The TaskSync application instance
+   */
+  abstract getApp(): any;
 }

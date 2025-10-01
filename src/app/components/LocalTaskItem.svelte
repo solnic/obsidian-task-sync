@@ -5,6 +5,7 @@
 
   import TaskItem from "./TaskItem.svelte";
   import ImportButton from "./ImportButton.svelte";
+  import SeeOnServiceButton from "./SeeOnServiceButton.svelte";
   import { extractDisplayValue } from "../utils/linkUtils";
   import type { Task } from "../core/entities";
   import type { LocalTask } from "../types/LocalTask";
@@ -142,6 +143,16 @@
   </div>
 {/snippet}
 
+{#snippet secondaryActionSnippet()}
+  {#if task.source?.url}
+    <SeeOnServiceButton
+      serviceName={task.source.extension}
+      url={task.source.url}
+      testId="see-on-service-button"
+    />
+  {/if}
+{/snippet}
+
 <TaskItem
   title={task.title}
   badges={primaryBadges}
@@ -156,5 +167,6 @@
   {settings}
   actionContent={true}
   actions={actionSnippet}
+  secondaryActions={secondaryActionSnippet}
   {testId}
 />

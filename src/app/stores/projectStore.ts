@@ -27,6 +27,9 @@ export interface ProjectStore extends Readable<ProjectStoreState> {
   addProject: (project: Project) => void;
   updateProject: (project: Project) => void;
   removeProject: (projectId: string) => void;
+
+  // Query methods
+  findByFilePath: (filePath: string) => Project | undefined;
 }
 
 export function createProjectStore(): ProjectStore {
@@ -100,6 +103,16 @@ export function createProjectStore(): ProjectStore {
     }));
   };
 
+  // Query methods - synchronous access to current state
+  const findByFilePath = (filePath: string): Project | undefined => {
+    let result: Project | undefined;
+    const unsubscribe = subscribe((state) => {
+      result = state.projects.find((p) => p.source?.filePath === filePath);
+    });
+    unsubscribe();
+    return result;
+  };
+
   return {
     subscribe,
     projectsByExtension,
@@ -110,6 +123,7 @@ export function createProjectStore(): ProjectStore {
     addProject,
     updateProject,
     removeProject,
+    findByFilePath,
   };
 }
 

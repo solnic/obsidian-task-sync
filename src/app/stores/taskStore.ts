@@ -32,6 +32,11 @@ export interface TaskStore extends Readable<TaskStoreState> {
 
   // Upsert method for extension scanning
   upsertTask: (taskData: Omit<Task, "id"> & { naturalKey: string }) => Task;
+
+  // Query methods
+  findBySourceUrl: (url: string) => Task | undefined;
+  findById: (id: string) => Task | undefined;
+  findByFilePath: (filePath: string) => Task | undefined;
 }
 
 export function createTaskStore(): TaskStore {
@@ -164,6 +169,34 @@ export function createTaskStore(): TaskStore {
     return resultTask!;
   };
 
+  // Query methods - synchronous access to current state
+  const findBySourceUrl = (url: string): Task | undefined => {
+    let result: Task | undefined;
+    const unsubscribe = subscribe((state) => {
+      result = state.tasks.find((t) => t.source?.url === url);
+    });
+    unsubscribe();
+    return result;
+  };
+
+  const findById = (id: string): Task | undefined => {
+    let result: Task | undefined;
+    const unsubscribe = subscribe((state) => {
+      result = state.tasks.find((t) => t.id === id);
+    });
+    unsubscribe();
+    return result;
+  };
+
+  const findByFilePath = (filePath: string): Task | undefined => {
+    let result: Task | undefined;
+    const unsubscribe = subscribe((state) => {
+      result = state.tasks.find((t) => t.source?.filePath === filePath);
+    });
+    unsubscribe();
+    return result;
+  };
+
   return {
     subscribe,
     tasksByExtension,
@@ -176,6 +209,9 @@ export function createTaskStore(): TaskStore {
     updateTask,
     removeTask,
     upsertTask,
+    findBySourceUrl,
+    findById,
+    findByFilePath,
   };
 }
 

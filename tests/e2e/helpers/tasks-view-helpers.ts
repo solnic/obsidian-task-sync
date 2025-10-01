@@ -37,7 +37,7 @@ export async function waitForLocalTasksToLoad(
   timeout: number = 5000
 ): Promise<void> {
   // Wait for the local tasks service to be visible
-  await page.waitForSelector('[data-testid="local-tasks-service"]', {
+  await page.waitForSelector('[data-testid="local-service"]', {
     state: "visible",
     timeout,
   });
@@ -69,14 +69,14 @@ export async function searchTasks(
   page: Page,
   searchTerm: string
 ): Promise<void> {
-  const searchInput = page.locator('[data-testid="local-search-input"]');
+  const searchInput = page.locator('[data-testid="task-sync-search-input"]');
   await searchInput.fill(searchTerm);
 
   // Wait for search to be applied by checking if the search input value matches
   await page.waitForFunction(
     (term) => {
       const input = document.querySelector(
-        '[data-testid="local-search-input"]'
+        '[data-testid="task-sync-search-input"]'
       ) as HTMLInputElement;
       return input && input.value === term;
     },
@@ -89,14 +89,14 @@ export async function searchTasks(
  * Clear the search input
  */
 export async function clearSearch(page: Page): Promise<void> {
-  const searchInput = page.locator('[data-testid="local-search-input"]');
+  const searchInput = page.locator('[data-testid="task-sync-search-input"]');
   await searchInput.clear();
 
   // Wait for search to be cleared by checking if the input is empty
   await page.waitForFunction(
     () => {
       const input = document.querySelector(
-        '[data-testid="local-search-input"]'
+        '[data-testid="task-sync-search-input"]'
       ) as HTMLInputElement;
       return input && input.value === "";
     },
@@ -109,7 +109,9 @@ export async function clearSearch(page: Page): Promise<void> {
  * Click the refresh button in the search input
  */
 export async function refreshTasks(page: Page): Promise<void> {
-  const refreshButton = page.locator('[data-testid="local-refresh-button"]');
+  const refreshButton = page.locator(
+    '[data-testid="task-sync-local-refresh-button"]'
+  );
   await refreshButton.click();
 
   // Wait for refresh to complete by waiting for loading state to finish

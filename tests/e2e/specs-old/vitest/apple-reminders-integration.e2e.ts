@@ -316,7 +316,7 @@ describe("Apple Reminders Integration", () => {
 
     // Check if refresh button exists and click it
     const refreshButtonExists = await context.page.isVisible(
-      '[data-testid="apple-reminders-search-input-refresh"]'
+      '[data-testid="apple-reminders-task-sync-search-input-refresh"]'
     );
 
     if (refreshButtonExists) {
@@ -331,7 +331,7 @@ describe("Apple Reminders Integration", () => {
       const refreshWorked = await context.page.evaluate(async () => {
         // Click the refresh button
         const refreshButton = document.querySelector(
-          '[data-testid="apple-reminders-search-input-refresh"]'
+          '[data-testid="apple-reminders-task-sync-search-input-refresh"]'
         );
         if (refreshButton) {
           (refreshButton as HTMLElement).click();

@@ -5,6 +5,7 @@
 
 import { App, stringifyYaml } from "obsidian";
 import { Area, Project, Task } from "../core/entities";
+import { EntityOperations } from "../core/extension";
 
 // Union type for entities that can be managed by Obsidian operations
 export type ObsidianEntity = Area | Project | Task;
@@ -24,8 +25,12 @@ export interface EntityNameProvider {
  * Abstract base class for Obsidian entity operations
  * Handles common note management patterns for entities
  */
-export abstract class ObsidianEntityOperations<T extends ObsidianEntity> {
-  constructor(protected app: App, protected folder: string) {}
+export abstract class ObsidianEntityOperations<
+  T extends ObsidianEntity
+> extends EntityOperations<T> {
+  constructor(protected app: App, protected folder: string) {
+    super({ id: "obsidian" });
+  }
 
   // Abstract method that subclasses must implement to define entity-specific front-matter
   protected abstract generateFrontMatter(entity: T): Record<string, any>;
@@ -60,6 +65,13 @@ export abstract class ObsidianEntityOperations<T extends ObsidianEntity> {
         await this.app.vault.modify(existingFile as any, content);
       } else {
         await this.app.vault.create(filePath, content);
+
+        // Trigger event with both entity and filePath
+        // The entity retains its original source (e.g., github), and filePath is added separately
+        this.trigger("notes.created", {
+          entityId: entity.id,
+          filePath,
+        });
       }
     } catch (error) {
       console.error(

@@ -5,7 +5,6 @@
    */
 
   import SearchInput from "./SearchInput.svelte";
-  import RefreshButton from "./RefreshButton.svelte";
   import FilterButton from "./FilterButton.svelte";
   import SortDropdown from "./SortDropdown.svelte";
   import LocalTaskItem from "./LocalTaskItem.svelte";
@@ -213,117 +212,111 @@
 </script>
 
 <div
-  class="local-tasks-service"
-  data-type="local-tasks-service"
-  data-testid={testId || "local-tasks-service"}
+  class="task-sync-service-container local-service"
+  data-testid="local-service"
 >
   <!-- Header Section -->
-  <div class="local-tasks-header">
-    <!-- Search and Filters -->
-    <div class="search-and-filters">
-      <SearchInput
-        bind:value={searchQuery}
-        placeholder="Search local tasks..."
-        onInput={(value) => (searchQuery = value)}
-        showRefreshButton={false}
-        testId="local-search-input"
+  <header>
+    <!-- 1. Search with refresh group -->
+    <SearchInput
+      bind:value={searchQuery}
+      placeholder="Search local tasks..."
+      onInput={(value) => (searchQuery = value)}
+      service="local"
+      onRefresh={refresh}
+    />
+
+    <!-- 2. Primary filter buttons group - Project/Area/Source -->
+    <div class="primary-filters">
+      <FilterButton
+        label="Project"
+        currentValue={selectedProject || "All projects"}
+        allOptions={projectOptions}
+        defaultOption="All projects"
+        onselect={(value: string) => {
+          const newProject =
+            value === "All projects" || value === "" ? null : value;
+          selectedProject = newProject;
+          if (newProject) {
+            addRecentlyUsedProject(newProject);
+          }
+        }}
+        placeholder="All projects"
+        testId="project-filter"
+        autoSuggest={true}
+        allowClear={true}
+        isActive={selectedProject !== null}
+        recentlyUsedItems={recentlyUsedProjects}
+        onRemoveRecentItem={removeRecentlyUsedProject}
       />
-      <RefreshButton onRefresh={refresh} testId="local-refresh-button" />
 
-      <!-- Filter Buttons with Auto-suggest -->
-      <div class="task-sync-local-filters">
-        <FilterButton
-          label="Project"
-          currentValue={selectedProject || "All projects"}
-          allOptions={projectOptions}
-          defaultOption="All projects"
-          onselect={(value: string) => {
-            const newProject =
-              value === "All projects" || value === "" ? null : value;
-            selectedProject = newProject;
-            if (newProject) {
-              addRecentlyUsedProject(newProject);
-            }
-          }}
-          placeholder="All projects"
-          testId="project-filter"
-          autoSuggest={true}
-          allowClear={true}
-          isActive={selectedProject !== null}
-          recentlyUsedItems={recentlyUsedProjects}
-          onRemoveRecentItem={removeRecentlyUsedProject}
-        />
+      <FilterButton
+        label="Area"
+        currentValue={selectedArea || "All areas"}
+        allOptions={areaOptions}
+        defaultOption="All areas"
+        onselect={(value: string) => {
+          const newArea = value === "All areas" || value === "" ? null : value;
+          selectedArea = newArea;
+          if (newArea) {
+            addRecentlyUsedArea(newArea);
+          }
+        }}
+        placeholder="All areas"
+        testId="area-filter"
+        autoSuggest={true}
+        allowClear={true}
+        isActive={selectedArea !== null}
+        recentlyUsedItems={recentlyUsedAreas}
+        onRemoveRecentItem={removeRecentlyUsedArea}
+      />
 
-        <FilterButton
-          label="Area"
-          currentValue={selectedArea || "All areas"}
-          allOptions={areaOptions}
-          defaultOption="All areas"
-          onselect={(value: string) => {
-            const newArea =
-              value === "All areas" || value === "" ? null : value;
-            selectedArea = newArea;
-            if (newArea) {
-              addRecentlyUsedArea(newArea);
-            }
-          }}
-          placeholder="All areas"
-          testId="area-filter"
-          autoSuggest={true}
-          allowClear={true}
-          isActive={selectedArea !== null}
-          recentlyUsedItems={recentlyUsedAreas}
-          onRemoveRecentItem={removeRecentlyUsedArea}
-        />
-
-        <FilterButton
-          label="Source"
-          currentValue={selectedSource || "All sources"}
-          allOptions={sourceOptions}
-          defaultOption="All sources"
-          onselect={(value: string) => {
-            const newSource =
-              value === "All sources" || value === "" ? null : value;
-            selectedSource = newSource;
-            if (newSource) {
-              addRecentlyUsedSource(newSource);
-            }
-          }}
-          placeholder="All sources"
-          testId="source-filter"
-          autoSuggest={true}
-          allowClear={true}
-          isActive={selectedSource !== null}
-          recentlyUsedItems={recentlyUsedSources}
-          onRemoveRecentItem={removeRecentlyUsedSource}
-        />
-
-        <!-- Show completed toggle -->
-        <button
-          class="task-sync-filter-toggle {showCompleted ? 'active' : ''}"
-          onclick={() => {
-            showCompleted = !showCompleted;
-          }}
-          data-testid="show-completed-toggle"
-          type="button"
-          title="Toggle showing completed tasks"
-        >
-          Show completed
-        </button>
-      </div>
-
-      <!-- Sorting Section -->
-      <div class="task-sync-sort-section">
-        <SortDropdown
-          label="Sort by"
-          {sortFields}
-          availableFields={availableSortFields}
-          onSortChange={handleSortChange}
-          testId="local-tasks-sort"
-        />
-      </div>
+      <FilterButton
+        label="Source"
+        currentValue={selectedSource || "All sources"}
+        allOptions={sourceOptions}
+        defaultOption="All sources"
+        onselect={(value: string) => {
+          const newSource =
+            value === "All sources" || value === "" ? null : value;
+          selectedSource = newSource;
+          if (newSource) {
+            addRecentlyUsedSource(newSource);
+          }
+        }}
+        placeholder="All sources"
+        testId="source-filter"
+        autoSuggest={true}
+        allowClear={true}
+        isActive={selectedSource !== null}
+        recentlyUsedItems={recentlyUsedSources}
+        onRemoveRecentItem={removeRecentlyUsedSource}
+      />
     </div>
-  </div>
+
+    <!-- 3. Secondary filter buttons group - first row: Show completed -->
+    <div class="secondary-filters-row-1">
+      <button
+        class="task-sync-filter-toggle {showCompleted ? 'active' : ''}"
+        onclick={() => {
+          showCompleted = !showCompleted;
+        }}
+        data-testid="show-completed-toggle"
+        title="Toggle showing completed tasks"
+      >
+        Show completed
+      </button>
+    </div>
+
+    <!-- 5. Sort controls group -->
+    <SortDropdown
+      label="Sort by"
+      {sortFields}
+      availableFields={availableSortFields}
+      onSortChange={handleSortChange}
+      testId="local-tasks-sort"
+    />
+  </header>
 
   <!-- Content Section -->
   <div class="task-sync-task-list-container">

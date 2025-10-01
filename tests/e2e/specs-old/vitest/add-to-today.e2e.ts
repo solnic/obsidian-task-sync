@@ -328,7 +328,7 @@ describe("Add to Today Functionality", () => {
 
     // Wait for the local tasks service to be visible and active
     await context.page.waitForSelector(
-      '[data-testid="local-tasks-service"]:not([style*="display: none"])'
+      '[data-testid="local-service"]:not([style*="display: none"])'
     );
 
     // Wait for tasks to load

@@ -6,7 +6,10 @@
 import { Task, Project, Area } from "./entities";
 import { EntityType } from "./extension";
 
-export type DomainEvent =
+/**
+ * Core domain events - these are the standard events emitted by the core system
+ */
+export type CoreDomainEvent =
   // Task events
   | { type: "tasks.created"; task: Task; extension?: string }
   | {
@@ -78,6 +81,21 @@ export type DomainEvent =
     };
 
 /**
+ * Extension-specific event - allows extensions to define their own event types
+ * The type field can be any string, allowing for namespaced events like "obsidian.notes.created"
+ */
+export interface ExtensionEvent {
+  type: string;
+  [key: string]: any;
+}
+
+/**
+ * Union of core and extension events
+ * This allows the event bus to handle both predefined core events and custom extension events
+ */
+export type DomainEvent = CoreDomainEvent | ExtensionEvent;
+
+/**
  * EventBus for coordinating events between extensions and the core app
  * Supports subscribing/unsubscribing for hot-loadable extensions
  */
@@ -87,11 +105,16 @@ export class EventBus {
 
   /**
    * Subscribe to events of a specific type
+   * Supports both core event types and extension-specific event types (any string)
    * Returns an unsubscribe function for cleanup (crucial for hot-loadable extensions)
    */
-  on<T extends DomainEvent["type"]>(
+  on<T extends string>(
     eventType: T,
-    handler: (event: Extract<DomainEvent, { type: T }>) => void
+    handler: (
+      event: T extends CoreDomainEvent["type"]
+        ? Extract<CoreDomainEvent, { type: T }>
+        : ExtensionEvent
+    ) => void
   ): () => void {
     const handlers = this.handlers.get(eventType) || [];
     handlers.push(handler as any);
@@ -119,7 +142,7 @@ export class EventBus {
    * Get the number of handlers registered for a specific event type
    * Useful for testing and debugging
    */
-  getHandlerCount(eventType: DomainEvent["type"]): number {
+  getHandlerCount(eventType: string): number {
     const handlers = this.handlers.get(eventType);
     return handlers ? handlers.length : 0;
   }
@@ -136,7 +159,7 @@ export class EventBus {
    * Clear all handlers for a specific event type
    * Useful for testing and cleanup
    */
-  clearHandlers(eventType: DomainEvent["type"]): void {
+  clearHandlers(eventType: string): void {
     this.handlers.delete(eventType);
   }
 
@@ -152,15 +175,16 @@ export class EventBus {
    * Subscribe to multiple event types with the same handler
    * Returns an unsubscribe function that removes the handler from all event types
    * Uses efficient single handler approach that filters events by type
+   * Supports both core and extension event types
    */
-  onMultiple<T extends readonly DomainEvent["type"][]>(
+  onMultiple<T extends readonly string[]>(
     eventTypes: T,
-    handler: (event: Extract<DomainEvent, { type: T[number] }>) => void
+    handler: (event: DomainEvent) => void
   ): () => void {
     // Create a single filtered handler that only processes matching event types
     const filteredHandler = (event: DomainEvent) => {
-      if (eventTypes.includes(event.type as T[number])) {
-        handler(event as Extract<DomainEvent, { type: T[number] }>);
+      if (eventTypes.includes(event.type)) {
+        handler(event);
       }
     };
 

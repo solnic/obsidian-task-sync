@@ -13,6 +13,7 @@ import type { Page } from "playwright";
 function loadFixture(service: string, fixtureName: string): any {
   const fixturePath = path.join(
     process.cwd(),
+    "tests",
     "e2e",
     "fixtures",
     service,
@@ -43,7 +44,13 @@ function loadFixture(service: string, fixtureName: string): any {
  * Get list of available fixtures for a service
  */
 function getAvailableFixtures(service: string): string[] {
-  const fixturesDir = path.join(process.cwd(), "e2e", "fixtures", service);
+  const fixturesDir = path.join(
+    process.cwd(),
+    "tests",
+    "e2e",
+    "fixtures",
+    service
+  );
 
   if (!fs.existsSync(fixturesDir)) {
     return [];
@@ -479,51 +486,62 @@ export async function stubGitHubAPIs(
       const app = (window as any).app;
       const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
 
-      // Get GitHub service through IntegrationManager
-      const githubService = plugin?.integrationManager?.getGitHubService();
-      if (!githubService) {
+      // Get GitHub extension through the new architecture
+      const taskSyncApp = plugin?.host?.getApp();
+      const githubExtension = taskSyncApp?.githubExtension;
+
+      if (!githubExtension) {
+        console.warn("GitHub extension not found for stubbing");
         return false;
       }
 
       // Only stub if not already stubbed
-      if (githubService.__isStubbed) {
+      if (githubExtension.__isStubbed) {
         return true;
       }
 
       // Store originals
-      githubService.__originals = {
-        fetchIssues: githubService.fetchIssues,
-        fetchRepositories: githubService.fetchRepositories,
-        fetchPullRequests: githubService.fetchPullRequests,
-        fetchOrganizations: githubService.fetchOrganizations,
+      githubExtension.__originals = {
+        fetchIssues: githubExtension.fetchIssues,
+        fetchRepositories: githubExtension.fetchRepositories,
+        fetchPullRequests: githubExtension.fetchPullRequests,
+        fetchOrganizations: githubExtension.fetchOrganizations,
         fetchRepositoriesForOrganization:
-          githubService.fetchRepositoriesForOrganization,
-        getCurrentUser: githubService.getCurrentUser,
-        fetchLabels: githubService.fetchLabels,
+          githubExtension.fetchRepositoriesForOrganization,
+        getCurrentUser: githubExtension.getCurrentUser,
+        fetchLabels: githubExtension.fetchLabels,
       };
 
       // Install stubs
-      githubService.fetchIssues = async () => {
-        console.log("🔧 Stubbed fetchIssues called");
-        return (window as any).__githubApiStubs?.issues || [];
+      githubExtension.fetchIssues = async (repository?: string) => {
+        console.log(
+          "🔧 Stubbed fetchIssues called for repository:",
+          repository
+        );
+        const allItems = (window as any).__githubApiStubs?.issues || [];
+        // Filter out pull requests - same logic as real implementation
+        // Pull requests have a "pull_request" field that distinguishes them from actual issues
+        return allItems.filter((item: any) => !item.pull_request);
       };
 
-      githubService.fetchRepositories = async () => {
+      githubExtension.fetchRepositories = async () => {
         console.log("🔧 Stubbed fetchRepositories called");
         return (window as any).__githubApiStubs?.repositories || [];
       };
 
-      githubService.fetchPullRequests = async () => {
+      githubExtension.fetchPullRequests = async () => {
         console.log("🔧 Stubbed fetchPullRequests called");
         return (window as any).__githubApiStubs?.pullRequests || [];
       };
 
-      githubService.fetchOrganizations = async () => {
+      githubExtension.fetchOrganizations = async () => {
         console.log("🔧 Stubbed fetchOrganizations called");
         return (window as any).__githubApiStubs?.organizations || [];
       };
 
-      githubService.fetchRepositoriesForOrganization = async (org: string) => {
+      githubExtension.fetchRepositoriesForOrganization = async (
+        org: string
+      ) => {
         console.log(
           `🔧 Stubbed fetchRepositoriesForOrganization called for: ${org}`
         );
@@ -533,17 +551,17 @@ export async function stubGitHubAPIs(
         );
       };
 
-      githubService.getCurrentUser = async () => {
+      githubExtension.getCurrentUser = async () => {
         console.log("🔧 Stubbed getCurrentUser called");
         return (window as any).__githubApiStubs?.currentUser || null;
       };
 
-      githubService.fetchLabels = async (repository: string) => {
+      githubExtension.fetchLabels = async (repository: string) => {
         console.log(`🔧 Stubbed fetchLabels called for: ${repository}`);
         return (window as any).__githubApiStubs?.labels || [];
       };
 
-      githubService.__isStubbed = true;
+      githubExtension.__isStubbed = true;
       return true;
     };
 
@@ -560,23 +578,26 @@ export async function restoreGitHubAPIs(page: Page): Promise<void> {
     const app = (window as any).app;
     const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
 
-    // Get GitHub service through IntegrationManager
-    const githubService = plugin?.integrationManager?.getGitHubService();
-    if (githubService?.__originals) {
-      githubService.fetchIssues = githubService.__originals.fetchIssues;
-      githubService.fetchRepositories =
-        githubService.__originals.fetchRepositories;
-      githubService.fetchPullRequests =
-        githubService.__originals.fetchPullRequests;
-      githubService.fetchOrganizations =
-        githubService.__originals.fetchOrganizations;
-      githubService.fetchRepositoriesForOrganization =
-        githubService.__originals.fetchRepositoriesForOrganization;
-      githubService.getCurrentUser = githubService.__originals.getCurrentUser;
-      githubService.fetchLabels = githubService.__originals.fetchLabels;
+    // Get GitHub extension through the new architecture
+    const taskSyncApp = plugin?.host?.getApp();
+    const githubExtension = taskSyncApp?.githubExtension;
 
-      delete githubService.__originals;
-      delete githubService.__isStubbed;
+    if (githubExtension?.__originals) {
+      githubExtension.fetchIssues = githubExtension.__originals.fetchIssues;
+      githubExtension.fetchRepositories =
+        githubExtension.__originals.fetchRepositories;
+      githubExtension.fetchPullRequests =
+        githubExtension.__originals.fetchPullRequests;
+      githubExtension.fetchOrganizations =
+        githubExtension.__originals.fetchOrganizations;
+      githubExtension.fetchRepositoriesForOrganization =
+        githubExtension.__originals.fetchRepositoriesForOrganization;
+      githubExtension.getCurrentUser =
+        githubExtension.__originals.getCurrentUser;
+      githubExtension.fetchLabels = githubExtension.__originals.fetchLabels;
+
+      delete githubExtension.__originals;
+      delete githubExtension.__isStubbed;
     }
 
     // Clean up global stubs

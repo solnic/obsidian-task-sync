@@ -4,7 +4,7 @@ import * as path from "path";
 import type { Page } from "playwright";
 import { TFile } from "obsidian";
 
-import type { Area, Project, Task } from "../../src/types/entities";
+import type { Area, Project, Task } from "../../../src/app/core/entities";
 
 /**
  * Helper function to access Obsidian app instance in e2e tests
@@ -344,13 +344,6 @@ export async function getTaskSyncPlugin(page: Page): Promise<any> {
   return await page.evaluate(() => {
     return (window as any).app.plugins.plugins["obsidian-task-sync"];
   });
-}
-
-/**
- * Create a test folder structure
- */
-export async function createTestFolders(page: Page): Promise<void> {
-  console.warn("Creating test folders is no longer needed - remove call");
 }
 
 /**
@@ -1814,69 +1807,33 @@ export async function assertTaskProperty(
   }
 }
 
+const DEFAULT_INTEGRATION_CONFIGS: Record<string, any> = {
+  github: {
+    enabled: true,
+    personalAccessToken: "fake-token-for-testing",
+  },
+};
+
 export async function enableIntegration(
   page: Page,
   name: string,
   config: any = {}
 ) {
+  const integration_config = {
+    ...DEFAULT_INTEGRATION_CONFIGS[name],
+    ...config,
+  };
+
   await page.evaluate(
-    async ({ name, config }) => {
+    async ({ name, integration_config }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Map old integration names to new structure
-      const integrationKeyMap: Record<string, string> = {
-        githubIntegration: "github",
-        appleRemindersIntegration: "appleReminders",
-        appleCalendarIntegration: "appleCalendar",
-      };
-
-      const integrationKey = integrationKeyMap[name] || name;
-
-      if (!plugin.settings.integrations) {
-        plugin.settings.integrations = {};
-      }
-
-      if (!plugin.settings.integrations[integrationKey]) {
-        plugin.settings.integrations[integrationKey] = {};
-      }
-
-      plugin.settings.integrations[integrationKey].enabled = true;
-      Object.assign(plugin.settings.integrations[integrationKey], config);
+      Object.assign(plugin.settings.integrations[name], integration_config);
 
       await plugin.saveSettings();
     },
-    { name, config }
-  );
-
-  // Wait for the integration to be properly initialized
-  await page.waitForFunction(
-    async ({ integrationName }) => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-      if (integrationName === "githubIntegration") {
-        const service = plugin.integrationManager.getGitHubService();
-        const isEnabled = service?.isEnabled();
-        console.debug("Waiting for GitHub service to be enabled", {
-          service: !!service,
-          isEnabled,
-        });
-        return isEnabled;
-      } else if (integrationName === "appleRemindersIntegration") {
-        const service = plugin.integrationManager.getAppleRemindersService();
-        const isEnabled = service?.isEnabled();
-        console.debug("Waiting for Apple Reminders service to be enabled", {
-          service: !!service,
-          isEnabled,
-        });
-        return isEnabled;
-      }
-
-      return false;
-    },
-    { integrationName: name },
-    { timeout: 10000 }
+    { name, integration_config }
   );
 }
 
@@ -1960,4 +1917,96 @@ export async function getAreaByName(page: Page, name: string): Promise<Area> {
 
     return plugin.stores.areaStore.getAreaByName(name);
   }, name);
+}
+
+export async function selectFromDropdown(
+  page: Page,
+  dropdown: string,
+  option: string
+): Promise<void> {
+  await page.locator(`[data-testid="${dropdown}"]`).click();
+
+  await page
+    .locator(`[data-testid="${dropdown}-dropdown-item"]:has-text("${option}")`)
+    .click();
+}
+
+/**
+ * Delete a file from the vault
+ */
+export async function deleteVaultFile(
+  page: Page,
+  filePath: string
+): Promise<void> {
+  await page.evaluate(async (filePath) => {
+    const app = (window as any).app;
+    const file = app.vault.getAbstractFileByPath(filePath);
+    if (file) {
+      await app.vault.delete(file);
+    }
+  }, filePath);
+}
+
+/**
+ * Wait for a file to be deleted
+ */
+export async function waitForFileDeletion(
+  page: Page,
+  filePath: string,
+  timeout: number = 5000
+): Promise<void> {
+  await page.waitForFunction(
+    ({ path }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      return file === null;
+    },
+    { path: filePath },
+    { timeout }
+  );
+}
+
+/**
+ * Get tasks from the tasks view
+ */
+export async function getTasksFromView(page: Page): Promise<Task[]> {
+  return page.evaluate(() => {
+    const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+    let tasks: Task[] = [];
+    const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
+      tasks = state.tasks;
+    });
+    unsubscribe();
+    return tasks;
+  });
+}
+
+/**
+ * Get projects from the projects view
+ */
+export async function getProjectsFromView(page: Page): Promise<Project[]> {
+  return page.evaluate(() => {
+    const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+    let projects: Project[] = [];
+    const unsubscribe = plugin.stores.projectStore.subscribe((state: any) => {
+      projects = state.projects;
+    });
+    unsubscribe();
+    return projects;
+  });
+}
+
+/**
+ * Get areas from the areas view
+ */
+export async function getAreasFromView(page: Page): Promise<Area[]> {
+  return page.evaluate(() => {
+    const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+    let areas: Area[] = [];
+    const unsubscribe = plugin.stores.areaStore.subscribe((state: any) => {
+      areas = state.areas;
+    });
+    unsubscribe();
+    return areas;
+  });
 }

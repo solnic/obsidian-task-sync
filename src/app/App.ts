@@ -4,12 +4,19 @@
  */
 
 import { ObsidianExtension } from "./extensions/ObsidianExtension";
+import { GitHubExtension } from "./extensions/GitHubExtension";
 import { Host } from "./core/host";
+import type { TaskSyncSettings } from "./types/settings";
+import { taskStore } from "./stores/taskStore";
+import { projectStore } from "./stores/projectStore";
+import { areaStore } from "./stores/areaStore";
 
 export class TaskSyncApp {
   private initialized = false;
   private obsidianExtension?: ObsidianExtension;
+  public githubExtension?: GitHubExtension;
   private host?: Host;
+  private settings: TaskSyncSettings | null = null;
 
   async initialize(host: Host): Promise<void> {
     if (this.initialized) return;
@@ -20,11 +27,14 @@ export class TaskSyncApp {
       this.host = host;
 
       // Load settings from host
-      const settings = await host.loadSettings();
+      this.settings = await host.loadSettings();
+
+      // Load persisted entity data from host storage
+      await this.loadPersistedData(host);
 
       console.log("TaskSync app initializing...", {
         hasHost: !!host,
-        hasSettings: !!settings,
+        hasSettings: !!this.settings,
       });
 
       // Initialize Obsidian extension - we still need the raw Obsidian objects for the extension
@@ -33,9 +43,9 @@ export class TaskSyncApp {
       const obsidianHost = host as any; // Cast to access underlying plugin
       if (obsidianHost.plugin && obsidianHost.plugin.app) {
         const extensionSettings = {
-          areasFolder: settings.areasFolder || "Areas",
-          projectsFolder: settings.projectsFolder || "Projects",
-          tasksFolder: settings.tasksFolder || "Tasks",
+          areasFolder: this.settings.areasFolder || "Areas",
+          projectsFolder: this.settings.projectsFolder || "Projects",
+          tasksFolder: this.settings.tasksFolder || "Tasks",
         };
 
         this.obsidianExtension = new ObsidianExtension(
@@ -46,6 +56,9 @@ export class TaskSyncApp {
 
         await this.obsidianExtension.initialize();
       }
+
+      // Initialize GitHub extension if enabled
+      await this.initializeGitHubExtension();
 
       this.initialized = true;
       console.log("TaskSync app initialized successfully");
@@ -68,6 +81,10 @@ export class TaskSyncApp {
         await this.obsidianExtension.load();
       }
 
+      if (this.githubExtension) {
+        await this.githubExtension.load();
+      }
+
       console.log("TaskSync app extensions loaded successfully");
     } catch (error) {
       console.error("Failed to load TaskSync app extensions:", error);
@@ -84,12 +101,143 @@ export class TaskSyncApp {
       await this.obsidianExtension.shutdown();
     }
 
+    if (this.githubExtension) {
+      await this.githubExtension.shutdown();
+    }
+
     this.initialized = false;
     console.log("TaskSync app shutdown complete");
   }
 
   isInitialized(): boolean {
     return this.initialized;
+  }
+
+  /**
+   * Update settings and reactively initialize/shutdown extensions
+   */
+  async updateSettings(newSettings: TaskSyncSettings): Promise<void> {
+    if (!this.initialized || !this.host) {
+      throw new Error(
+        "TaskSync app must be initialized before updating settings"
+      );
+    }
+
+    const oldSettings = this.settings;
+    this.settings = newSettings;
+
+    // Check if GitHub integration was enabled/disabled
+    const wasGitHubEnabled = oldSettings?.integrations?.github?.enabled;
+    const isGitHubEnabled = newSettings.integrations?.github?.enabled;
+
+    if (!wasGitHubEnabled && isGitHubEnabled) {
+      // GitHub was just enabled - initialize it
+      console.log("GitHub integration enabled, initializing...");
+      await this.initializeGitHubExtension();
+    } else if (wasGitHubEnabled && !isGitHubEnabled) {
+      // GitHub was just disabled - shutdown
+      console.log("GitHub integration disabled, shutting down...");
+      if (this.githubExtension) {
+        await this.githubExtension.shutdown();
+        this.githubExtension = undefined;
+      }
+    }
+  }
+
+  /**
+   * Load persisted entity data from host storage and populate stores
+   */
+  private async loadPersistedData(host: Host): Promise<void> {
+    try {
+      const data = await host.loadData();
+
+      if (!data) {
+        console.log("No persisted data found, starting with empty stores");
+        return;
+      }
+
+      // Load tasks into store
+      if (data.tasks && Array.isArray(data.tasks)) {
+        console.log(`Loading ${data.tasks.length} persisted tasks`);
+        for (const task of data.tasks) {
+          // Convert date strings back to Date objects
+          const taskWithDates = {
+            ...task,
+            createdAt: new Date(task.createdAt),
+            updatedAt: new Date(task.updatedAt),
+            doDate: task.doDate ? new Date(task.doDate) : undefined,
+            dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+          };
+          taskStore.addTask(taskWithDates);
+        }
+      }
+
+      // Load projects into store
+      if (data.projects && Array.isArray(data.projects)) {
+        console.log(`Loading ${data.projects.length} persisted projects`);
+        for (const project of data.projects) {
+          const projectWithDates = {
+            ...project,
+            createdAt: new Date(project.createdAt),
+            updatedAt: new Date(project.updatedAt),
+          };
+          projectStore.addProject(projectWithDates);
+        }
+      }
+
+      // Load areas into store
+      if (data.areas && Array.isArray(data.areas)) {
+        console.log(`Loading ${data.areas.length} persisted areas`);
+        for (const area of data.areas) {
+          const areaWithDates = {
+            ...area,
+            createdAt: new Date(area.createdAt),
+            updatedAt: new Date(area.updatedAt),
+          };
+          areaStore.addArea(areaWithDates);
+        }
+      }
+
+      console.log("Persisted data loaded successfully");
+    } catch (error) {
+      console.error("Failed to load persisted data:", error);
+      // Don't throw - allow app to continue with empty stores
+    }
+  }
+
+  /**
+   * Initialize GitHub extension if enabled in settings
+   */
+  private async initializeGitHubExtension(): Promise<void> {
+    if (!this.settings?.integrations?.github?.enabled) {
+      return;
+    }
+
+    const obsidianHost = this.host as any;
+    if (!obsidianHost.plugin) {
+      return;
+    }
+
+    // Don't reinitialize if already initialized
+    if (this.githubExtension) {
+      console.log("GitHub extension already initialized");
+      return;
+    }
+
+    console.log("Initializing GitHub extension...");
+    this.githubExtension = new GitHubExtension(
+      this.settings.integrations.github,
+      obsidianHost.plugin
+    );
+
+    await this.githubExtension.initialize();
+
+    // If app is already loaded, load the extension too
+    if (this.initialized) {
+      await this.githubExtension.load();
+    }
+
+    console.log("GitHub extension initialized successfully");
   }
 }
 
