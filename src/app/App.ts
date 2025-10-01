@@ -46,13 +46,17 @@ export class TaskSyncApp {
           areasFolder: this.settings.areasFolder || "Areas",
           projectsFolder: this.settings.projectsFolder || "Projects",
           tasksFolder: this.settings.tasksFolder || "Tasks",
+          basesFolder: this.settings.basesFolder || "Bases",
+          projectBasesEnabled: this.settings.projectBasesEnabled || false,
+          autoSyncAreaProjectBases:
+            this.settings.autoSyncAreaProjectBases || false,
         };
 
         this.obsidianExtension = new ObsidianExtension(
           obsidianHost.plugin.app,
           obsidianHost.plugin,
           extensionSettings,
-          this.settings // Pass full settings for markdown processor
+          this.settings
         );
 
         await this.obsidianExtension.initialize();
@@ -115,6 +119,17 @@ export class TaskSyncApp {
   }
 
   /**
+   * Sync project bases - create individual bases for projects
+   * Public method that can be called when settings change or manually triggered
+   */
+  async syncProjectBases(): Promise<void> {
+    if (!this.obsidianExtension) {
+      throw new Error("ObsidianExtension not initialized");
+    }
+    await this.obsidianExtension.syncProjectBases();
+  }
+
+  /**
    * Update settings and reactively initialize/shutdown extensions
    */
   async updateSettings(newSettings: TaskSyncSettings): Promise<void> {
@@ -126,6 +141,11 @@ export class TaskSyncApp {
 
     const oldSettings = this.settings;
     this.settings = newSettings;
+
+    // Update base manager settings in ObsidianExtension
+    if (this.obsidianExtension) {
+      this.obsidianExtension.updateBaseManagerSettings(newSettings);
+    }
 
     // Check if GitHub integration was enabled/disabled
     const wasGitHubEnabled = oldSettings?.integrations?.github?.enabled;
