@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+// Shared GitHub User schema for nested user objects
+export const GitHubUserSchema = z.object({
+  login: z.string(),
+});
+
+// Shared GitHub Label schema for nested label objects (basic version)
+export const GitHubLabelBasicSchema = z.object({
+  name: z.string(),
+  color: z.string().optional(),
+});
+
 // Raw GitHub API response schemas
 export const GitHubIssueSchema = z.object({
   id: z.number(),
@@ -7,17 +18,8 @@ export const GitHubIssueSchema = z.object({
   title: z.string(),
   body: z.string().nullable(),
   state: z.enum(["open", "closed"]),
-  assignee: z
-    .object({
-      login: z.string(),
-    })
-    .nullable(),
-  labels: z.array(
-    z.object({
-      name: z.string(),
-      color: z.string().optional(),
-    })
-  ),
+  assignee: GitHubUserSchema.nullable(),
+  labels: z.array(GitHubLabelBasicSchema),
   created_at: z.string(),
   updated_at: z.string(),
   html_url: z.string().url(),
@@ -31,22 +33,9 @@ export const GitHubPullRequestSchema = z.object({
   title: z.string(),
   body: z.string().nullable(),
   state: z.enum(["open", "closed"]),
-  assignee: z
-    .object({
-      login: z.string(),
-    })
-    .nullable(),
-  assignees: z.array(
-    z.object({
-      login: z.string(),
-    })
-  ),
-  labels: z.array(
-    z.object({
-      name: z.string(),
-      color: z.string().optional(),
-    })
-  ),
+  assignee: GitHubUserSchema.nullable(),
+  assignees: z.array(GitHubUserSchema),
+  labels: z.array(GitHubLabelBasicSchema),
   created_at: z.string(),
   updated_at: z.string(),
   closed_at: z.string().nullable(),
@@ -58,26 +47,16 @@ export const GitHubPullRequestSchema = z.object({
     label: z.string(),
     ref: z.string(),
     sha: z.string(),
-    user: z.object({
-      login: z.string(),
-    }),
+    user: GitHubUserSchema,
   }),
   base: z.object({
     label: z.string(),
     ref: z.string(),
     sha: z.string(),
-    user: z.object({
-      login: z.string(),
-    }),
+    user: GitHubUserSchema,
   }),
-  user: z.object({
-    login: z.string(),
-  }),
-  requested_reviewers: z.array(
-    z.object({
-      login: z.string(),
-    })
-  ),
+  user: GitHubUserSchema,
+  requested_reviewers: z.array(GitHubUserSchema),
   draft: z.boolean(),
 });
 
@@ -136,4 +115,3 @@ export type GitHubOrganization = z.infer<typeof GitHubOrganizationSchema>;
 export type GitHubOrganizationList = z.infer<
   typeof GitHubOrganizationListSchema
 >;
-

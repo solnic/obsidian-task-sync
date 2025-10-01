@@ -24,54 +24,10 @@ import {
   type GitHubRepositoryList,
   type GitHubOrganization,
   type GitHubOrganizationList,
+  type GitHubPullRequest,
 } from "../cache/schemas/github";
 import { githubOperations } from "../entities/GitHub";
-
-export interface GitHubPullRequest {
-  id: number;
-  number: number;
-  title: string;
-  body: string | null;
-  state: "open" | "closed";
-  assignee: { login: string } | null;
-  assignees: Array<{ login: string }>;
-  labels: Array<{ name: string; color?: string }>;
-  created_at: string;
-  updated_at: string;
-  closed_at: string | null;
-  merged_at: string | null;
-  html_url: string;
-  diff_url: string;
-  patch_url: string;
-  head: {
-    label: string;
-    ref: string;
-    sha: string;
-    user: { login: string };
-  };
-  base: {
-    label: string;
-    ref: string;
-    sha: string;
-    user: { login: string };
-  };
-  user: { login: string };
-  requested_reviewers: Array<{ login: string }>;
-  draft: boolean;
-}
-
-export interface GitHubIntegrationSettings {
-  enabled: boolean;
-  personalAccessToken: string;
-  defaultRepository: string;
-  issueFilters: {
-    state: "open" | "closed" | "all";
-    assignee: string;
-    labels: string[];
-  };
-  labelTypeMapping?: Record<string, string>;
-  orgRepoMappings?: any[];
-}
+import type { GitHubIntegrationSettings } from "../types/settings";
 
 export class GitHubExtension implements Extension {
   readonly id = "github";

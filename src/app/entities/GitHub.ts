@@ -5,8 +5,7 @@
 
 import { Task } from "../core/entities";
 import { Tasks } from "./Tasks";
-import type { GitHubIssue } from "../cache/schemas/github";
-import type { GitHubPullRequest } from "../extensions/GitHubExtension";
+import type { GitHubIssue, GitHubPullRequest } from "../cache/schemas/github";
 
 /**
  * GitHub namespace containing extension-specific operations
