@@ -611,55 +611,6 @@ export async function hasGitHubToggle(page: Page): Promise<boolean> {
 }
 
 /**
- * Debug GitHub view state - logs detailed information about the view
- */
-export async function debugGitHubViewState(page: Page): Promise<void> {
-  const debugInfo = await page.evaluate(() => {
-    const app = (window as any).app;
-    const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
-
-    // Check plugin state
-    const githubService = plugin?.integrationManager?.getGitHubService();
-    const pluginInfo = {
-      pluginExists: !!plugin,
-      githubServiceEnabled: githubService?.isEnabled?.() || false,
-      githubSettings: plugin?.settings?.integrations.github || null,
-    };
-
-    // Check workspace leaves
-    const leaves = app?.workspace?.getLeavesOfType?.("github-issues") || [];
-    const leavesInfo = {
-      count: leaves.length,
-      leaves: leaves.map((leaf: any) => ({
-        viewType: leaf.view?.getViewType?.(),
-        isVisible: leaf.view?.containerEl?.offsetParent !== null,
-      })),
-    };
-
-    // Check DOM elements
-    const viewByDataType = document.querySelector(
-      '[data-type="github-issues"]'
-    );
-    const viewByClass = document.querySelector(".github-issues-view");
-    const domInfo = {
-      foundByDataType: !!viewByDataType,
-      foundByClass: !!viewByClass,
-      element: viewByDataType || viewByClass,
-      hasHeader: !!(viewByDataType || viewByClass)?.querySelector(
-        ".github-issues-header"
-      ),
-      hasContent: !!(viewByDataType || viewByClass)?.querySelector(
-        ".github-issues-content"
-      ),
-      textContent:
-        (viewByDataType || viewByClass)?.textContent?.substring(0, 200) || null,
-    };
-
-    return { pluginInfo, leavesInfo, domInfo };
-  });
-}
-
-/**
  * Click import button for a specific GitHub issue in the UI
  * Note: Import buttons now appear on hover, so we need to hover first
  */

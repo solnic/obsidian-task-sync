@@ -87,7 +87,7 @@ describe("LocalTasksService", () => {
 
     // Use search input
     const searchInput = context.page.locator(
-      '[data-testid="local-search-input"]'
+      '[data-testid="task-sync-search-input"]'
     );
     await searchInput.fill("Search Test");
 

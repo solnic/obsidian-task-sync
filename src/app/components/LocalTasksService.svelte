@@ -212,19 +212,18 @@
 </script>
 
 <div
-  class="service-container local-service"
-  data-type="local-service"
-  data-testid={testId || "local-service"}
+  class="task-sync-service-container local-service"
+  data-testid="local-service"
 >
   <!-- Header Section -->
-  <div class="local-tasks-header">
+  <header>
     <!-- 1. Search with refresh group -->
     <SearchInput
       bind:value={searchQuery}
       placeholder="Search local tasks..."
       onInput={(value) => (searchQuery = value)}
+      service="local"
       onRefresh={refresh}
-      testId="local-search-input"
     />
 
     <!-- 2. Primary filter buttons group - Project/Area/Source -->
@@ -317,7 +316,7 @@
       onSortChange={handleSortChange}
       testId="local-tasks-sort"
     />
-  </div>
+  </header>
 
   <!-- Content Section -->
   <div class="task-sync-task-list-container">

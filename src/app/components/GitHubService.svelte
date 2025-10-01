@@ -673,12 +673,11 @@
 </script>
 
 <div
-  class="service-container github-service"
-  data-type="github-service"
-  data-testid={testId || "github-service"}
+  class="task-sync-service-container github-service"
+  data-testid="github-service"
 >
   <!-- Header Section -->
-  <div class="github-service-header">
+  <header>
     <!-- 1. Search with refresh group -->
     <SearchInput
       bind:value={searchQuery}
@@ -686,8 +685,8 @@
         ? 'issues'
         : 'pull requests'}..."
       onInput={(value) => (searchQuery = value)}
+      service="github"
       onRefresh={refresh}
-      testId="search-input"
     />
 
     <!-- 2. Primary filter buttons group - Org/Repo pulldowns 50/50 -->
@@ -823,7 +822,7 @@
       availableFields={availableSortFields}
       onSortChange={handleSortChange}
     />
-  </div>
+  </header>
 
   <!-- Content Section -->
   <div class="task-sync-task-list-container">

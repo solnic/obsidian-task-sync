@@ -118,7 +118,7 @@ describe("GitHub Mapping Precedence", () => {
     await switchToTaskService(context.page, "github");
 
     // Click refresh to force GitHub service to reload with new fixture data
-    await context.page.click('[data-testid="search-input-refresh"]');
+    await context.page.click('[data-testid="task-sync-search-input-refresh"]');
 
     await clickIssueImportButton(context.page, 456);
     await waitForIssueImportComplete(context.page, 456);
@@ -160,7 +160,7 @@ describe("GitHub Mapping Precedence", () => {
     await switchToTaskService(context.page, "github");
 
     // Click refresh to force GitHub service to reload with new fixture data
-    await context.page.click('[data-testid="search-input-refresh"]');
+    await context.page.click('[data-testid="task-sync-search-input-refresh"]');
 
     await clickIssueImportButton(context.page, 789);
     await waitForIssueImportComplete(context.page, 789);
@@ -209,7 +209,7 @@ describe("GitHub Mapping Precedence", () => {
     await switchToTaskService(context.page, "github");
 
     // Click refresh to force GitHub service to reload with new fixture data
-    await context.page.click('[data-testid="search-input-refresh"]');
+    await context.page.click('[data-testid="task-sync-search-input-refresh"]');
 
     await clickIssueImportButton(context.page, 999);
     await waitForIssueImportComplete(context.page, 999);

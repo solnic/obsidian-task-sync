@@ -10,7 +10,7 @@
     onInput: (value: string) => void;
     onRefresh?: () => void;
     disabled?: boolean;
-    testId?: string;
+    service?: string;
     showRefreshButton?: boolean;
   }
 
@@ -20,7 +20,7 @@
     onInput,
     onRefresh,
     disabled = false,
-    testId,
+    service,
     showRefreshButton = true,
   }: Props = $props();
 
@@ -46,48 +46,51 @@
   }
 </script>
 
-<div class="search-input-container" data-testid="{testId}-container">
-  <div class="search-input-wrapper">
+<div
+  class="task-sync-search-input-container"
+  data-testid="task-sync-search-container"
+>
+  <div class="task-sync-search-input-wrapper">
     <input
       type="text"
-      class="search-input"
+      class="task-sync-search-input"
       {placeholder}
       {value}
       {disabled}
       oninput={handleInput}
       onkeydown={handleKeydown}
-      data-testid={testId}
+      data-testid="task-sync-search-input"
     />
 
     {#if showRefreshButton && onRefresh}
       <button
-        class="refresh-button"
+        class="task-sync-refresh-button"
         title="Refresh"
         onclick={handleRefresh}
         {disabled}
-        data-testid="{testId}-refresh"
+        data-testid="task-sync-{service}-refresh-button"
       >
-        <span class="refresh-icon">↻</span>
-        <span class="refresh-text">Refresh</span>
+        <span class="task-sync-refresh-icon">↻</span>
+        <span class="task-sync-refresh-text">Refresh</span>
       </button>
     {/if}
   </div>
 </div>
 
 <style>
-  .search-input-container {
+  .task-sync-search-input-container {
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
 
-  .search-input-wrapper {
+  .task-sync-search-input-wrapper {
     display: flex;
     align-items: center;
     gap: 8px;
   }
 
-  .search-input {
+  .task-sync-search-input {
     flex: 1;
     padding: 8px 12px 8px 30px;
     border: 1px solid var(--background-modifier-border);
@@ -100,17 +103,17 @@
     transition: border-color 0.2s ease;
   }
 
-  .search-input:focus {
+  .task-sync-search-input:focus {
     outline: none;
     border-color: var(--interactive-accent);
   }
 
-  .search-input:disabled {
+  .task-sync-search-input:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  .refresh-button {
+  .task-sync-refresh-button {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -127,22 +130,22 @@
     white-space: nowrap;
   }
 
-  .refresh-button:hover:not(:disabled) {
+  .task-sync-refresh-button:hover:not(:disabled) {
     background: var(--background-modifier-hover);
     border-color: var(--background-modifier-border-hover);
   }
 
-  .refresh-button:disabled {
+  .task-sync-refresh-button:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 
-  .refresh-icon {
+  .task-sync-refresh-icon {
     font-size: 14px;
     line-height: 1;
   }
 
-  .refresh-text {
+  .task-sync-refresh-text {
     font-size: 13px;
     font-weight: 500;
   }

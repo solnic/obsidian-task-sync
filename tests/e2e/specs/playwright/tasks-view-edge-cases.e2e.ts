@@ -206,7 +206,7 @@ This task has minimal properties.`;
     expect(taskItems.length).toBe(0);
 
     // Clear search and verify tasks reappear
-    await page.locator('[data-testid="local-search-input"]').clear();
+    await page.locator('[data-testid="task-sync-search-input"]').clear();
     await page.waitForFunction(
       () => {
         const taskItems = document.querySelectorAll(
