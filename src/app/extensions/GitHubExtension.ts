@@ -25,6 +25,7 @@ import {
   type GitHubOrganization,
   type GitHubOrganizationList,
 } from "../cache/schemas/github";
+import { githubOperations } from "../entities/GitHub";
 
 export interface GitHubPullRequest {
   id: number;
@@ -755,6 +756,95 @@ export class GitHubExtension implements Extension {
       return allRepositories;
     } catch (error) {
       throw error;
+    }
+  }
+
+  /**
+   * Import a GitHub issue as a task
+   * Delegates to GitHub.TaskOperations which handles task creation and event triggering
+   */
+  async importIssueAsTask(
+    issue: GitHubIssue,
+    repository?: string
+  ): Promise<{ success: boolean; taskId?: string; error?: string }> {
+    try {
+      // Check if already imported by looking for existing task with this URL
+      const existingTask = taskStore.findBySourceUrl(issue.html_url);
+
+      if (existingTask) {
+        console.log(
+          `GitHub issue #${issue.number} already imported as task ${existingTask.id}`
+        );
+        return {
+          success: true,
+          taskId: existingTask.id,
+        };
+      }
+
+      // Use GitHub.TaskOperations to import the issue
+      // This handles task creation, store updates, and event triggering
+      const task = await githubOperations.tasks.importIssue(issue, repository);
+
+      console.log(
+        `Successfully imported GitHub issue #${issue.number} as task ${task.id}`
+      );
+
+      return {
+        success: true,
+        taskId: task.id,
+      };
+    } catch (error: any) {
+      console.error("Failed to import GitHub issue:", error);
+      return {
+        success: false,
+        error: error.message || "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Import a GitHub pull request as a task
+   * Delegates to GitHub.TaskOperations which handles task creation and event triggering
+   */
+  async importPullRequestAsTask(
+    pr: GitHubPullRequest,
+    repository?: string
+  ): Promise<{ success: boolean; taskId?: string; error?: string }> {
+    try {
+      // Check if already imported by looking for existing task with this URL
+      const existingTask = taskStore.findBySourceUrl(pr.html_url);
+
+      if (existingTask) {
+        console.log(
+          `GitHub PR #${pr.number} already imported as task ${existingTask.id}`
+        );
+        return {
+          success: true,
+          taskId: existingTask.id,
+        };
+      }
+
+      // Use GitHub.TaskOperations to import the PR
+      // This handles task creation, store updates, and event triggering
+      const task = await githubOperations.tasks.importPullRequest(
+        pr,
+        repository
+      );
+
+      console.log(
+        `Successfully imported GitHub PR #${pr.number} as task ${task.id}`
+      );
+
+      return {
+        success: true,
+        taskId: task.id,
+      };
+    } catch (error: any) {
+      console.error("Failed to import GitHub PR:", error);
+      return {
+        success: false,
+        error: error.message || "Unknown error",
+      };
     }
   }
 }

@@ -732,12 +732,21 @@
       importingIssues.add(issue.number);
       importingIssues = new Set(importingIssues);
 
-      // TODO: Implement import functionality in GitHubExtension
-      // await githubExtension.importIssueAsTask(issue, currentRepository || "");
-      console.log("Import issue:", issue.title);
+      // Import issue using GitHubExtension
+      const result = await githubExtension.importIssueAsTask(
+        issue,
+        currentRepository || ""
+      );
 
-      // Refresh import status after successful import
-      refreshImportStatus();
+      if (result.success) {
+        console.log(
+          `Successfully imported issue #${issue.number} as task ${result.taskId}`
+        );
+        // Refresh import status after successful import
+        refreshImportStatus();
+      } else {
+        console.error(`Failed to import issue #${issue.number}:`, result.error);
+      }
     } catch (error: any) {
       console.error("Failed to import issue:", error);
     } finally {
@@ -751,12 +760,21 @@
       importingPullRequests.add(pr.number);
       importingPullRequests = new Set(importingPullRequests);
 
-      // TODO: Implement import functionality in GitHubExtension
-      // await githubExtension.importPullRequestAsTask(pr, currentRepository || "");
-      console.log("Import pull request:", pr.title);
+      // Import PR using GitHubExtension
+      const result = await githubExtension.importPullRequestAsTask(
+        pr,
+        currentRepository || ""
+      );
 
-      // Refresh import status after successful import
-      refreshImportStatus();
+      if (result.success) {
+        console.log(
+          `Successfully imported PR #${pr.number} as task ${result.taskId}`
+        );
+        // Refresh import status after successful import
+        refreshImportStatus();
+      } else {
+        console.error(`Failed to import PR #${pr.number}:`, result.error);
+      }
     } catch (error: any) {
       console.error("Failed to import pull request:", error);
     } finally {

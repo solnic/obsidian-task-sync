@@ -238,16 +238,6 @@ export async function waitForGitHubSettings(
 }
 
 /**
- * Open GitHub integration settings
- */
-export async function openGitHubSettings(
-  context: SharedTestContext
-): Promise<void> {
-  await openTaskSyncSettings(context);
-  await waitForGitHubSettings(context.page);
-}
-
-/**
  * Toggle GitHub integration setting
  */
 export async function toggleGitHubIntegration(
@@ -678,9 +668,11 @@ export async function clickIssueImportButton(
   issueNumber: number
 ): Promise<void> {
   // Find the issue item and hover over it
-  const issueLocator = page.locator('[data-testid="issue-item"]').filter({
-    hasText: `#${issueNumber}`,
-  });
+  const issueLocator = page
+    .locator('[data-testid="github-issue-item"]')
+    .filter({
+      hasText: `#${issueNumber}`,
+    });
 
   // Wait for the issue to be visible
   await issueLocator.waitFor({ state: "visible", timeout: 10000 });
@@ -708,9 +700,11 @@ export async function waitForIssueImportComplete(
   timeout: number = 10000
 ): Promise<void> {
   // Find the issue item and wait for it to have data-imported="true"
-  const issueLocator = page.locator('[data-testid="issue-item"]').filter({
-    hasText: `#${issueNumber}`,
-  });
+  const issueLocator = page
+    .locator('[data-testid="github-issue-item"]')
+    .filter({
+      hasText: `#${issueNumber}`,
+    });
 
   // Wait for the issue to be visible first
   await issueLocator.waitFor({ state: "visible", timeout: 5000 });
@@ -724,7 +718,7 @@ export async function waitForIssueImportComplete(
   await page.waitForFunction(
     (issueNumber) => {
       const issueItems = document.querySelectorAll(
-        '[data-testid="issue-item"]'
+        '[data-testid="github-issue-item"]'
       );
       for (let i = 0; i < issueItems.length; i++) {
         const item = issueItems[i];
