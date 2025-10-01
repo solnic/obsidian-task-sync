@@ -5,6 +5,8 @@
 
 import { ObsidianExtension } from "./extensions/ObsidianExtension";
 import { GitHubExtension } from "./extensions/GitHubExtension";
+import { CalendarExtension } from "./extensions/CalendarExtension";
+import { AppleCalendarService } from "./services/AppleCalendarService";
 import { Host } from "./core/host";
 import type { TaskSyncSettings } from "./types/settings";
 import { taskStore } from "./stores/taskStore";
@@ -15,6 +17,7 @@ export class TaskSyncApp {
   private initialized = false;
   private obsidianExtension?: ObsidianExtension;
   public githubExtension?: GitHubExtension;
+  public calendarExtension?: CalendarExtension;
   private host?: Host;
   private settings: TaskSyncSettings | null = null;
 
@@ -65,6 +68,9 @@ export class TaskSyncApp {
       // Initialize GitHub extension if enabled
       await this.initializeGitHubExtension();
 
+      // Initialize Calendar extension if enabled
+      await this.initializeCalendarExtension();
+
       this.initialized = true;
       console.log("TaskSync app initialized successfully");
     } catch (error) {
@@ -88,6 +94,10 @@ export class TaskSyncApp {
 
       if (this.githubExtension) {
         await this.githubExtension.load();
+      }
+
+      if (this.calendarExtension) {
+        await this.calendarExtension.load();
       }
 
       console.log("TaskSync app extensions loaded successfully");
@@ -272,6 +282,50 @@ export class TaskSyncApp {
       return this.githubExtension;
     }
     return null;
+  }
+
+  /**
+   * Initialize Calendar extension if enabled in settings
+   */
+  private async initializeCalendarExtension(): Promise<void> {
+    if (!this.settings?.integrations?.appleCalendar?.enabled) {
+      return;
+    }
+
+    const obsidianHost = this.host as any;
+    if (!obsidianHost.plugin) {
+      return;
+    }
+
+    // Don't reinitialize if already initialized
+    if (this.calendarExtension) {
+      console.log("Calendar extension already initialized");
+      return;
+    }
+
+    console.log("Initializing Calendar extension...");
+    this.calendarExtension = new CalendarExtension(
+      this.settings,
+      obsidianHost.plugin
+    );
+
+    await this.calendarExtension.initialize();
+
+    // Create and register Apple Calendar service
+    const appleCalendarService = new AppleCalendarService(
+      this.settings,
+      obsidianHost.plugin
+    );
+
+    await appleCalendarService.initialize();
+    this.calendarExtension.registerCalendarService(appleCalendarService);
+
+    // If app is already loaded, load the extension too
+    if (this.initialized) {
+      await this.calendarExtension.load();
+    }
+
+    console.log("Calendar extension initialized successfully");
   }
 }
 
