@@ -830,20 +830,22 @@ export class GitHubExtension implements Extension {
   }
 
   /**
-   * Import a GitHub issue as a task
-   * Delegates to GitHub.TaskOperations which handles task creation and event triggering
+   * Common import logic for GitHub items (issues and PRs)
+   * @private
    */
-  async importIssueAsTask(
-    issue: GitHubIssue,
-    repository?: string
+  private async importGitHubItem<T extends GitHubIssue | GitHubPullRequest>(
+    item: T,
+    repository: string | undefined,
+    itemType: "issue" | "PR",
+    importOperation: (item: T, repository?: string) => Promise<Task>
   ): Promise<{ success: boolean; taskId?: string; error?: string }> {
     try {
       // Check if already imported by looking for existing task with this URL
-      const existingTask = taskStore.findBySourceUrl(issue.html_url);
+      const existingTask = taskStore.findBySourceUrl(item.html_url);
 
       if (existingTask) {
         console.log(
-          `GitHub issue #${issue.number} already imported as task ${existingTask.id}`
+          `GitHub ${itemType} #${item.number} already imported as task ${existingTask.id}`
         );
         return {
           success: true,
@@ -851,12 +853,12 @@ export class GitHubExtension implements Extension {
         };
       }
 
-      // Use GitHub.TaskOperations to import the issue
+      // Use GitHub.TaskOperations to import the item
       // This handles task creation, store updates, and event triggering
-      const task = await githubOperations.tasks.importIssue(issue, repository);
+      const task = await importOperation(item, repository);
 
       console.log(
-        `Successfully imported GitHub issue #${issue.number} as task ${task.id}`
+        `Successfully imported GitHub ${itemType} #${item.number} as task ${task.id}`
       );
 
       return {
@@ -864,12 +866,25 @@ export class GitHubExtension implements Extension {
         taskId: task.id,
       };
     } catch (error: any) {
-      console.error("Failed to import GitHub issue:", error);
+      console.error(`Failed to import GitHub ${itemType}:`, error);
       return {
         success: false,
         error: error.message || "Unknown error",
       };
     }
+  }
+
+  /**
+   * Import a GitHub issue as a task
+   * Delegates to GitHub.TaskOperations which handles task creation and event triggering
+   */
+  async importIssueAsTask(
+    issue: GitHubIssue,
+    repository?: string
+  ): Promise<{ success: boolean; taskId?: string; error?: string }> {
+    return this.importGitHubItem(issue, repository, "issue", (item, repo) =>
+      githubOperations.tasks.importIssue(item, repo)
+    );
   }
 
   /**
@@ -880,41 +895,8 @@ export class GitHubExtension implements Extension {
     pr: GitHubPullRequest,
     repository?: string
   ): Promise<{ success: boolean; taskId?: string; error?: string }> {
-    try {
-      // Check if already imported by looking for existing task with this URL
-      const existingTask = taskStore.findBySourceUrl(pr.html_url);
-
-      if (existingTask) {
-        console.log(
-          `GitHub PR #${pr.number} already imported as task ${existingTask.id}`
-        );
-        return {
-          success: true,
-          taskId: existingTask.id,
-        };
-      }
-
-      // Use GitHub.TaskOperations to import the PR
-      // This handles task creation, store updates, and event triggering
-      const task = await githubOperations.tasks.importPullRequest(
-        pr,
-        repository
-      );
-
-      console.log(
-        `Successfully imported GitHub PR #${pr.number} as task ${task.id}`
-      );
-
-      return {
-        success: true,
-        taskId: task.id,
-      };
-    } catch (error: any) {
-      console.error("Failed to import GitHub PR:", error);
-      return {
-        success: false,
-        error: error.message || "Unknown error",
-      };
-    }
+    return this.importGitHubItem(pr, repository, "PR", (item, repo) =>
+      githubOperations.tasks.importPullRequest(item, repo)
+    );
   }
 }
