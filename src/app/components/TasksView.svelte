@@ -60,6 +60,10 @@
         unsubscribeSchedule();
       };
     }
+
+    return () => {
+      // No cleanup needed if extension not available
+    };
   });
 
   // Listen to extension lifecycle events to trigger reactivity
