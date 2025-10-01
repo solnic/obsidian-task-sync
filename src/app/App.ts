@@ -51,7 +51,8 @@ export class TaskSyncApp {
         this.obsidianExtension = new ObsidianExtension(
           obsidianHost.plugin.app,
           obsidianHost.plugin,
-          extensionSettings
+          extensionSettings,
+          settings // Pass full settings for markdown processor
         );
 
         await this.obsidianExtension.initialize();
