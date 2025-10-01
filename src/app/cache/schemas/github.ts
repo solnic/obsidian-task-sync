@@ -23,6 +23,15 @@ export const GitHubIssueSchema = z.object({
   created_at: z.string(),
   updated_at: z.string(),
   html_url: z.string().url(),
+  // GitHub API includes this field when the "issue" is actually a pull request
+  pull_request: z
+    .object({
+      url: z.string().url(),
+      html_url: z.string().url(),
+      diff_url: z.string().url(),
+      patch_url: z.string().url(),
+    })
+    .optional(),
 });
 
 export const GitHubIssueListSchema = z.array(GitHubIssueSchema);

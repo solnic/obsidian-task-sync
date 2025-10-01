@@ -518,7 +518,10 @@ export async function stubGitHubAPIs(
           "🔧 Stubbed fetchIssues called for repository:",
           repository
         );
-        return (window as any).__githubApiStubs?.issues || [];
+        const allItems = (window as any).__githubApiStubs?.issues || [];
+        // Filter out pull requests - same logic as real implementation
+        // Pull requests have a "pull_request" field that distinguishes them from actual issues
+        return allItems.filter((item: any) => !item.pull_request);
       };
 
       githubExtension.fetchRepositories = async () => {

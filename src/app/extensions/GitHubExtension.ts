@@ -518,7 +518,10 @@ export class GitHubExtension implements Extension {
       per_page: 100,
     });
 
-    const issues = response.data as GitHubIssue[];
+    // Filter out pull requests - GitHub API returns both issues and PRs from the issues endpoint
+    // Pull requests have a "pull_request" field that distinguishes them from actual issues
+    const allItems = response.data as GitHubIssue[];
+    const issues = allItems.filter((item) => !item.pull_request);
 
     // Cache the results
     if (this.issuesCache) {
