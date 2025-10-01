@@ -213,9 +213,9 @@
 </script>
 
 <div
-  class="local-tasks-service"
-  data-type="local-tasks-service"
-  data-testid={testId || "local-tasks-service"}
+  class="local-service"
+  data-type="local-service"
+  data-testid={testId || "local-service"}
 >
   <!-- Header Section -->
   <div class="local-tasks-header">

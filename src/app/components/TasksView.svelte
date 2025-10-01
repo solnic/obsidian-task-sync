@@ -117,7 +117,7 @@
             serviceId={activeService}
             {settings}
             {host}
-            testId="local-tasks-service"
+            testId="{activeService}-service"
           />
         </div>
       </TabView>

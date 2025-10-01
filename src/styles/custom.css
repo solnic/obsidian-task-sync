@@ -2018,8 +2018,6 @@ Provides consistent styling for all UI components
   background: var(--background-primary);
 }
 
-
-
 /* Main content */
 .task-sync-main-content {
   flex: 1;
@@ -2616,28 +2614,48 @@ Provides consistent styling for all UI components
 /* Combined scheduled and imported - gradient border with radius */
 .task-sync-task-list-item.scheduled-and-imported {
   border: 1px solid transparent !important;
-  background:
-    linear-gradient(var(--background-primary), var(--background-primary)) padding-box,
-    linear-gradient(to top, var(--interactive-accent) 0%, var(--color-blue) 100%) border-box !important;
+  background: linear-gradient(
+        var(--background-primary),
+        var(--background-primary)
+      )
+      padding-box,
+    linear-gradient(
+        to top,
+        var(--interactive-accent) 0%,
+        var(--color-blue) 100%
+      )
+      border-box !important;
   border-radius: 6px !important;
 }
 
 /* Ensure hover state also uses proper background for gradient border */
 .task-sync-task-list-item.scheduled-and-imported:hover {
-  background:
-    linear-gradient(var(--background-primary-alt), var(--background-primary-alt)) padding-box,
-    linear-gradient(to top, var(--interactive-accent) 0%, var(--color-blue) 100%) border-box !important;
+  background: linear-gradient(
+        var(--background-primary-alt),
+        var(--background-primary-alt)
+      )
+      padding-box,
+    linear-gradient(
+        to top,
+        var(--interactive-accent) 0%,
+        var(--color-blue) 100%
+      )
+      border-box !important;
 }
 
 /* Add left border emphasis for gradient case */
 .task-sync-task-list-item.scheduled-and-imported::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   width: 3px;
   height: 100%;
-  background: linear-gradient(to top, var(--interactive-accent) 0%, var(--color-blue) 100%);
+  background: linear-gradient(
+    to top,
+    var(--interactive-accent) 0%,
+    var(--color-blue) 100%
+  );
   border-radius: 6px 0 0 6px;
   z-index: 1;
 }
@@ -2664,8 +2682,6 @@ Provides consistent styling for all UI components
   outline: 2px solid var(--interactive-accent);
   outline-offset: 2px;
 }
-
-
 
 .add-to-today-button,
 .open-task-button {
@@ -2839,7 +2855,7 @@ Provides consistent styling for all UI components
   overflow: hidden;
 }
 
-.local-tasks-service {
+.local-service {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -2858,10 +2874,6 @@ Provides consistent styling for all UI components
   min-height: 0; /* Allow flex child to shrink */
   overflow: hidden; /* Prevent content from overflowing */
 }
-
-
-
-
 
 .task-sync-tab-header {
   display: flex;
@@ -3320,10 +3332,7 @@ button.tab-item.active {
   font-weight: 500;
 }
 
-
-
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;

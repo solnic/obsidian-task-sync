@@ -6,9 +6,12 @@
 
   import { onMount, onDestroy } from "svelte";
   import SearchInput from "./SearchInput.svelte";
-  import RefreshButton from "./RefreshButton.svelte";
   import SortDropdown from "./SortDropdown.svelte";
   import FilterButton from "./FilterButton.svelte";
+  import GitHubIssueItem from "./GitHubIssueItem.svelte";
+  import GitHubPullRequestItem from "./GitHubPullRequestItem.svelte";
+  import { taskStore } from "../stores/taskStore";
+  import type { Task } from "../core/entities";
   import type { TaskSyncSettings } from "../types/settings";
   import type { Extension } from "../core/extension";
   import type { Host } from "../core/host";
@@ -65,11 +68,18 @@
   let recentlyUsedOrgs = $state<string[]>([]);
   let recentlyUsedRepos = $state<string[]>([]);
   let hoveredIssue = $state<number | null>(null);
+  let hoveredPullRequest = $state<number | null>(null);
   let currentUser = $state<{
     login: string;
     id: number;
     avatar_url: string;
   } | null>(null);
+
+  // Import tracking state
+  let importingIssues = $state<Set<number>>(new Set());
+  let importedIssues = $state<Set<number>>(new Set());
+  let importingPullRequests = $state<Set<number>>(new Set());
+  let importedPullRequests = $state<Set<number>>(new Set());
 
   // Sorting state
   let sortFields = $state<SortField[]>([
@@ -212,10 +222,33 @@
     return options;
   });
 
-  onMount(async () => {
-    isLoading = true;
+  // Track if we've done initial load
+  let hasLoadedInitialData = $state(false);
 
-    if (githubExtension.isEnabled()) {
+  onMount(async () => {
+    if (githubExtension.isEnabled() && !hasLoadedInitialData) {
+      await loadInitialData();
+    }
+  });
+
+  // React to settings changes (specifically the enabled flag)
+  $effect(() => {
+    const isEnabled = settings.integrations.github.enabled;
+
+    if (isEnabled && !hasLoadedInitialData) {
+      loadInitialData();
+    }
+  });
+
+  async function loadInitialData(): Promise<void> {
+    if (hasLoadedInitialData) {
+      return;
+    }
+
+    isLoading = true;
+    hasLoadedInitialData = true;
+
+    try {
       // Load recently used filters first
       await loadRecentlyUsedFilters();
 
@@ -228,10 +261,10 @@
       if (currentRepository) {
         await loadIssues();
       }
+    } finally {
+      isLoading = false;
     }
-
-    isLoading = false;
-  });
+  }
 
   onDestroy(() => {
     // Save filter state when component is destroyed
@@ -284,7 +317,9 @@
   }
 
   async function loadIssues(): Promise<void> {
-    if (!currentRepository) return;
+    if (!currentRepository) {
+      return;
+    }
 
     try {
       isLoading = true;
@@ -348,6 +383,22 @@
     currentState = state;
   }
 
+  function toggleAssignedToMe(): void {
+    assignedToMe = !assignedToMe;
+    // Update the settings to persist the filter
+    settings.integrations.github.issueFilters.assignee = assignedToMe
+      ? "me"
+      : "";
+    // No need to reload data - filtering is reactive and happens client-side
+  }
+
+  function setLabelsFilter(labels: string[]): void {
+    selectedLabels = labels;
+    // Update the settings to persist the filter
+    settings.integrations.github.issueFilters.labels = labels;
+    // No need to reload data as filtering is done client-side
+  }
+
   function setOrganizationFilter(org: string | null): void {
     currentOrganization = org;
 
@@ -372,6 +423,34 @@
     }
   }
 
+  async function loadLabels(): Promise<void> {
+    if (!currentRepository) {
+      return;
+    }
+
+    try {
+      availableLabels = await githubExtension.fetchLabels(currentRepository);
+
+      // Validate selected labels against available labels
+      // Remove any selected labels that are no longer available
+      const availableLabelNames = availableLabels.map((label) => label.name);
+      const validSelectedLabels = selectedLabels.filter((label) =>
+        availableLabelNames.includes(label)
+      );
+
+      if (validSelectedLabels.length !== selectedLabels.length) {
+        selectedLabels = validSelectedLabels;
+        setLabelsFilter(validSelectedLabels);
+      }
+    } catch (err: any) {
+      console.warn("Failed to load labels:", err.message);
+      availableLabels = [];
+      // Clear selected labels if we can't load available labels
+      selectedLabels = [];
+      setLabelsFilter([]);
+    }
+  }
+
   async function setRepository(repository: string | null): Promise<void> {
     currentRepository = repository;
 
@@ -381,6 +460,7 @@
 
     if (repository) {
       await loadIssues();
+      await loadLabels();
       if (activeTab === "pull-requests") {
         await loadPullRequests();
       }
@@ -604,6 +684,86 @@
   function handleSortChange(newSortFields: SortField[]): void {
     sortFields = newSortFields;
   }
+
+  // Subscribe to task store to get current tasks
+  let tasks = $state<readonly Task[]>([]);
+  $effect(() => {
+    const unsubscribe = taskStore.subscribe((state) => {
+      tasks = state.tasks;
+    });
+    return unsubscribe;
+  });
+
+  /**
+   * Refresh import status for all issues and pull requests from task store
+   */
+  function refreshImportStatus(): void {
+    // Refresh import status for issues
+    const importedIssueNumbers = new Set<number>();
+    for (const issue of issues) {
+      const isImported = tasks.some(
+        (task) =>
+          task.source?.url === issue.html_url ||
+          (task.source?.extension === "github" && task.title === issue.title)
+      );
+      if (isImported) {
+        importedIssueNumbers.add(issue.number);
+      }
+    }
+    importedIssues = importedIssueNumbers;
+
+    // Refresh import status for pull requests
+    const importedPRNumbers = new Set<number>();
+    for (const pr of pullRequests) {
+      const isImported = tasks.some(
+        (task) =>
+          task.source?.url === pr.html_url ||
+          (task.source?.extension === "github" && task.title === pr.title)
+      );
+      if (isImported) {
+        importedPRNumbers.add(pr.number);
+      }
+    }
+    importedPullRequests = importedPRNumbers;
+  }
+
+  async function importIssue(issue: GitHubIssue): Promise<void> {
+    try {
+      importingIssues.add(issue.number);
+      importingIssues = new Set(importingIssues);
+
+      // TODO: Implement import functionality in GitHubExtension
+      // await githubExtension.importIssueAsTask(issue, currentRepository || "");
+      console.log("Import issue:", issue.title);
+
+      // Refresh import status after successful import
+      refreshImportStatus();
+    } catch (error: any) {
+      console.error("Failed to import issue:", error);
+    } finally {
+      importingIssues.delete(issue.number);
+      importingIssues = new Set(importingIssues);
+    }
+  }
+
+  async function importPullRequest(pr: GitHubPullRequest): Promise<void> {
+    try {
+      importingPullRequests.add(pr.number);
+      importingPullRequests = new Set(importingPullRequests);
+
+      // TODO: Implement import functionality in GitHubExtension
+      // await githubExtension.importPullRequestAsTask(pr, currentRepository || "");
+      console.log("Import pull request:", pr.title);
+
+      // Refresh import status after successful import
+      refreshImportStatus();
+    } catch (error: any) {
+      console.error("Failed to import pull request:", error);
+    } finally {
+      importingPullRequests.delete(pr.number);
+      importingPullRequests = new Set(importingPullRequests);
+    }
+  }
 </script>
 
 <div
@@ -752,69 +912,149 @@
               onRemoveRecentItem={removeRecentlyUsedRepo}
             />
           </div>
+
+          <!-- Assigned to me filter -->
+          <div class="task-sync-filter-group task-sync-filter-group--assignee">
+            <button
+              class="task-sync-filter-toggle {assignedToMe ? 'active' : ''}"
+              data-testid="assigned-to-me-filter"
+              onclick={() => toggleAssignedToMe()}
+              type="button"
+            >
+              Assigned to me
+            </button>
+          </div>
+
+          <!-- Labels filter -->
+          <div class="task-sync-filter-group task-sync-filter-group--labels">
+            <FilterButton
+              label="Labels"
+              currentValue={selectedLabels.length > 0
+                ? `${selectedLabels.length} selected`
+                : "All labels"}
+              options={[
+                "All labels",
+                ...availableLabels.map((label) => label.name),
+              ]}
+              placeholder="All labels"
+              disabled={availableLabels.length === 0}
+              onselect={(value) => {
+                if (value === "All labels") {
+                  setLabelsFilter([]);
+                } else {
+                  // Toggle label selection
+                  const newLabels = selectedLabels.includes(value)
+                    ? selectedLabels.filter((l) => l !== value)
+                    : [...selectedLabels, value];
+                  setLabelsFilter(newLabels);
+                }
+              }}
+              testId="labels-filter"
+              autoSuggest={true}
+              allowClear={true}
+              isActive={selectedLabels.length > 0}
+            />
+          </div>
         </div>
+      </div>
+
+      <!-- Sort Section -->
+      <div class="task-sync-sort-section">
+        <SortDropdown
+          {sortFields}
+          availableFields={availableSortFields}
+          onSortChange={handleSortChange}
+        />
       </div>
     </div>
   </div>
 
-  <!-- Issues List -->
-  {#if activeTab === "issues"}
-    <div class="github-issues-list" data-testid="github-issues-list">
-      {#if isLoading}
-        <div class="loading-message">Loading issues...</div>
-      {:else if error}
-        <div class="error-message">{error}</div>
-      {:else if filteredAndSortedIssues.length === 0}
-        <div class="empty-message">No issues found</div>
-      {:else}
-        {#each filteredAndSortedIssues as issue (issue.id)}
-          <div
-            class="github-issue-item"
-            data-testid="github-issue-item"
-            data-issue-number={issue.number}
-          >
-            <div class="issue-header">
-              <span class="issue-number">#{issue.number}</span>
-              <span class="issue-title">{issue.title}</span>
-              <span class="issue-state issue-state--{issue.state}">
-                {issue.state}
-              </span>
-            </div>
-          </div>
-        {/each}
-      {/if}
-    </div>
-  {/if}
-
-  <!-- Pull Requests List -->
-  {#if activeTab === "pull-requests"}
-    <div
-      class="github-pull-requests-list"
-      data-testid="github-pull-requests-list"
-    >
-      {#if isLoading}
-        <div class="loading-message">Loading pull requests...</div>
-      {:else if error}
-        <div class="error-message">{error}</div>
-      {:else if filteredAndSortedPullRequests.length === 0}
-        <div class="empty-message">No pull requests found</div>
-      {:else}
-        {#each filteredAndSortedPullRequests as pr (pr.id)}
-          <div
-            class="github-pr-item"
-            data-testid="github-pr-item"
-            data-pr-number={pr.number}
-          >
-            <div class="pr-header">
-              <span class="pr-number">#{pr.number}</span>
-              <span class="pr-title">{pr.title}</span>
-              <span class="pr-state pr-state--{pr.state}">
-                {pr.state}
-              </span>
-            </div>
-          </div>
-        {/each}
-      {/if}
-    </div>
-  {/if}
+  <!-- Content Section -->
+  <div class="task-sync-task-list-container">
+    {#if !githubExtension.isEnabled()}
+      <div class="task-sync-disabled-message">
+        GitHub integration is not enabled. Please configure it in settings.
+      </div>
+    {:else if error}
+      <div class="task-sync-error-message">
+        {error}
+      </div>
+    {:else if isLoading}
+      <div class="task-sync-loading-indicator">
+        Loading {activeTab === "issues" ? "issues" : "pull requests"}...
+      </div>
+    {:else if activeTab === "issues"}
+      <div class="task-sync-task-list" data-testid="github-issues-list">
+        {#if filteredAndSortedIssues.length === 0}
+          <div class="task-sync-empty-message">No issues found.</div>
+        {:else}
+          {#each filteredAndSortedIssues as issue (issue.id)}
+            {@const isImporting = importingIssues.has(issue.number)}
+            {@const isImported = importedIssues.has(issue.number)}
+            {@const importedTask = isImported
+              ? tasks.find(
+                  (task) =>
+                    task.source?.url === issue.html_url ||
+                    (task.source?.extension === "github" &&
+                      task.title === issue.title)
+                )
+              : null}
+            {@const isScheduled = importedTask?.doDate != null}
+            {@const scheduledDate = importedTask?.doDate}
+            <GitHubIssueItem
+              {issue}
+              repository={currentRepository}
+              isHovered={hoveredIssue === issue.number}
+              {isImported}
+              {isImporting}
+              {isScheduled}
+              {scheduledDate}
+              onHover={(hovered) =>
+                (hoveredIssue = hovered ? issue.number : null)}
+              onImport={importIssue}
+              {host}
+              {settings}
+              testId="github-issue-item"
+            />
+          {/each}
+        {/if}
+      </div>
+    {:else if activeTab === "pull-requests"}
+      <div class="task-sync-task-list">
+        {#if filteredAndSortedPullRequests.length === 0}
+          <div class="task-sync-empty-message">No pull requests found.</div>
+        {:else}
+          {#each filteredAndSortedPullRequests as pr (pr.id)}
+            {@const isImporting = importingPullRequests.has(pr.number)}
+            {@const isImported = importedPullRequests.has(pr.number)}
+            {@const importedTask = isImported
+              ? tasks.find(
+                  (task) =>
+                    task.source?.url === pr.html_url ||
+                    (task.source?.extension === "github" &&
+                      task.title === pr.title)
+                )
+              : null}
+            {@const isScheduled = importedTask?.doDate != null}
+            {@const scheduledDate = importedTask?.doDate}
+            <GitHubPullRequestItem
+              pullRequest={pr}
+              repository={currentRepository}
+              isHovered={hoveredPullRequest === pr.number}
+              {isImported}
+              {isImporting}
+              {isScheduled}
+              {scheduledDate}
+              onHover={(hovered) =>
+                (hoveredPullRequest = hovered ? pr.number : null)}
+              onImport={importPullRequest}
+              {host}
+              {settings}
+              testId="pr-item"
+            />
+          {/each}
+        {/if}
+      </div>
+    {/if}
+  </div>
 </div>

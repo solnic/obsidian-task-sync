@@ -37,7 +37,7 @@ export async function waitForLocalTasksToLoad(
   timeout: number = 5000
 ): Promise<void> {
   // Wait for the local tasks service to be visible
-  await page.waitForSelector('[data-testid="local-tasks-service"]', {
+  await page.waitForSelector('[data-testid="local-service"]', {
     state: "visible",
     timeout,
   });

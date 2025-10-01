@@ -4,7 +4,7 @@ import * as path from "path";
 import type { Page } from "playwright";
 import { TFile } from "obsidian";
 
-import type { Area, Project, Task } from "../../src/types/entities";
+import type { Area, Project, Task } from "../../../src/app/core/entities";
 
 /**
  * Helper function to access Obsidian app instance in e2e tests
@@ -1814,133 +1814,33 @@ export async function assertTaskProperty(
   }
 }
 
+const DEFAULT_INTEGRATION_CONFIGS: Record<string, any> = {
+  github: {
+    enabled: true,
+    personalAccessToken: "fake-token-for-testing",
+  },
+};
+
 export async function enableIntegration(
   page: Page,
   name: string,
   config: any = {}
 ) {
+  const integration_config = {
+    ...DEFAULT_INTEGRATION_CONFIGS[name],
+    ...config,
+  };
+
   await page.evaluate(
-    async ({ name, config }) => {
-      try {
-        const app = (window as any).app;
-        const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-        console.log(`Enabling integration: ${name}`, config);
-
-        // Map old integration names to new structure
-        const integrationKeyMap: Record<string, string> = {
-          githubIntegration: "github",
-          appleRemindersIntegration: "appleReminders",
-          appleCalendarIntegration: "appleCalendar",
-        };
-
-        const integrationKey = integrationKeyMap[name] || name;
-        console.log(`Integration key: ${integrationKey}`);
-
-        if (!plugin.settings.integrations) {
-          plugin.settings.integrations = {};
-        }
-
-        if (!plugin.settings.integrations[integrationKey]) {
-          plugin.settings.integrations[integrationKey] = {};
-        }
-
-        plugin.settings.integrations[integrationKey].enabled = true;
-        Object.assign(plugin.settings.integrations[integrationKey], config);
-
-        console.log(
-          `Settings updated for ${integrationKey}:`,
-          plugin.settings.integrations[integrationKey]
-        );
-
-        await plugin.saveSettings();
-        console.log("Settings saved successfully");
-      } catch (error) {
-        console.error("Error in enableIntegration:", error);
-        throw error;
-      }
-    },
-    { name, config }
-  );
-
-  // Reinitialize app to pick up new settings (new architecture)
-  await page.evaluate(async () => {
-    try {
+    async ({ name, integration_config }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Get taskSyncApp through plugin.host interface
-      const taskSyncApp = plugin.host.getApp();
+      Object.assign(plugin.settings.integrations[name], integration_config);
 
-      console.log("About to reinitialize app, taskSyncApp:", !!taskSyncApp);
-
-      if (taskSyncApp) {
-        console.log(
-          "Shutting down TaskSync app to reinitialize with new settings..."
-        );
-        await taskSyncApp.shutdown();
-        console.log("Reinitializing TaskSync app with new settings...");
-        await taskSyncApp.initialize(plugin.host);
-        console.log("TaskSync app reinitialized successfully");
-      } else {
-        console.warn("taskSyncApp is not available, cannot reinitialize");
-      }
-    } catch (error) {
-      console.error("Error during app reinitialization:", error);
-      throw error;
-    }
-  });
-
-  // Wait a bit for plugin to reload after settings change
-  await page.waitForTimeout(1000);
-
-  // Wait for the integration to be properly initialized
-  await page.waitForFunction(
-    async ({ integrationName }) => {
-      try {
-        const app = (window as any).app;
-        if (!app || !app.plugins) {
-          console.debug("App or plugins not available yet");
-          return false;
-        }
-
-        const plugin = app.plugins.plugins["obsidian-task-sync"];
-        if (!plugin) {
-          console.debug("Plugin not available yet");
-          return false;
-        }
-
-        if (
-          integrationName === "githubIntegration" ||
-          integrationName === "github"
-        ) {
-          // Get taskSyncApp through plugin.host interface
-          const taskSyncApp = plugin.host.getApp();
-          const extension = taskSyncApp?.githubExtension;
-          const isInitialized = extension?.initialized === true;
-          console.debug("Waiting for GitHub extension to be initialized", {
-            extension: !!extension,
-            isInitialized,
-          });
-          return isInitialized;
-        } else if (integrationName === "appleRemindersIntegration") {
-          const service = plugin.integrationManager?.getAppleRemindersService();
-          const isEnabled = service?.isEnabled();
-          console.debug("Waiting for Apple Reminders service to be enabled", {
-            service: !!service,
-            isEnabled,
-          });
-          return isEnabled;
-        }
-
-        return false;
-      } catch (error) {
-        console.debug("Error checking integration status:", error);
-        return false;
-      }
+      await plugin.saveSettings();
     },
-    { integrationName: name },
-    { timeout: 10000 }
+    { name, integration_config }
   );
 }
 
