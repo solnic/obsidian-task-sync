@@ -8,6 +8,7 @@ import {
   openView,
   enableIntegration,
   switchToTaskService,
+  selectFromDropdown,
 } from "../../helpers/global";
 import { stubGitHubWithFixtures } from "../../helpers/github-integration-helpers";
 
@@ -38,21 +39,8 @@ test.describe("GitHub Integration", () => {
 
     await switchToTaskService(page, "github");
 
-    await page.locator('[data-testid="organization-filter"]').click();
-
-    await page
-      .locator(
-        '[data-testid="organization-filter-dropdown-item"]:has-text("solnic")'
-      )
-      .click();
-
-    await page.locator('[data-testid="repository-filter"]').click();
-
-    await page
-      .locator(
-        '[data-testid="repository-filter-dropdown-item"]:has-text("obsidian-task-sync")'
-      )
-      .click();
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
 
     expect(
       await page

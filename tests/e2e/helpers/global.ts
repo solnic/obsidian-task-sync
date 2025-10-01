@@ -1918,3 +1918,15 @@ export async function getAreaByName(page: Page, name: string): Promise<Area> {
     return plugin.stores.areaStore.getAreaByName(name);
   }, name);
 }
+
+export async function selectFromDropdown(
+  page: Page,
+  dropdown: string,
+  option: string
+): Promise<void> {
+  await page.locator(`[data-testid="${dropdown}"]`).click();
+
+  await page
+    .locator(`[data-testid="${dropdown}-dropdown-item"]:has-text("${option}")`)
+    .click();
+}
