@@ -143,32 +143,30 @@
       >
         Open
       </button>
+    {:else}
+      <ImportButton
+        {isImported}
+        {isImporting}
+        {dayPlanningMode}
+        {dailyPlanningWizardMode}
+        testId={dailyPlanningWizardMode
+          ? "schedule-for-today-button"
+          : dayPlanningMode
+            ? "add-to-today-button"
+            : isImported
+              ? "imported-indicator"
+              : isImporting
+                ? "importing-indicator"
+                : "pr-import-button"}
+        onImport={handleImport}
+      />
     {/if}
-    <ImportButton
-      {isImported}
-      {isImporting}
-      {dayPlanningMode}
-      {dailyPlanningWizardMode}
-      testId={dailyPlanningWizardMode
-        ? "schedule-for-today-button"
-        : dayPlanningMode
-          ? "add-to-today-button"
-          : isImported
-            ? "imported-indicator"
-            : isImporting
-              ? "importing-indicator"
-              : "pr-import-button"}
-      onImport={handleImport}
+    <SeeOnServiceButton
+      serviceName="GitHub"
+      url={pullRequest.html_url}
+      testId="see-on-github-button"
     />
   </div>
-{/snippet}
-
-{#snippet secondaryActionSnippet()}
-  <SeeOnServiceButton
-    serviceName="GitHub"
-    url={pullRequest.html_url}
-    testId="see-on-github-button"
-  />
 {/snippet}
 
 <TaskItem
@@ -188,7 +186,6 @@
   {settings}
   actionContent={true}
   actions={actionSnippet}
-  secondaryActions={secondaryActionSnippet}
   {testId}
 />
 
