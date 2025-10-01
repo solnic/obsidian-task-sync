@@ -129,7 +129,15 @@ test.describe("GitHub Integration", () => {
 
     // Wait for the note to be created and opened
     // The note should be automatically opened after import
-    await page.waitForTimeout(2000);
+    await page.waitForFunction(
+      () => {
+        const app = (window as any).app;
+        return (
+          app.workspace.getActiveFile()?.path === "Tasks/First test issue.md"
+        );
+      },
+      { timeout: 10000 }
+    );
 
     // Verify the note was automatically opened in Obsidian
     // Check that the active file is the imported task note
