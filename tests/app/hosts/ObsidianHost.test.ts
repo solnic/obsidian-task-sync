@@ -125,26 +125,45 @@ describe("ObsidianHost Implementation", () => {
         lastSync: new Date().toISOString(),
       };
 
+      // Mock existing settings to ensure they're preserved
+      mockPlugin.loadData.mockResolvedValue({
+        areasFolder: "CustomAreas",
+        projectsFolder: "CustomProjects",
+        basesFolder: "CustomBases",
+        autoGenerateBases: false,
+      });
+
       await obsidianHost.saveData(testData);
 
       expect(mockPlugin.saveData).toHaveBeenCalledTimes(1);
-      expect(mockPlugin.saveData).toHaveBeenCalledWith(testData);
+      // Entity data should be stored under 'entities' key, preserving settings
+      expect(mockPlugin.saveData).toHaveBeenCalledWith({
+        areasFolder: "CustomAreas",
+        projectsFolder: "CustomProjects",
+        basesFolder: "CustomBases",
+        autoGenerateBases: false,
+        entities: testData,
+      });
     });
 
     test("should load application data from Obsidian plugin storage", async () => {
-      const mockData = {
+      const mockEntityData = {
         tasks: [{ id: "task-1", title: "Loaded Task" }],
         projects: [{ id: "project-1", name: "Loaded Project" }],
         areas: [{ id: "area-1", name: "Loaded Area" }],
         lastSync: "2024-01-01T00:00:00.000Z",
       };
 
-      mockPlugin.loadData.mockResolvedValue(mockData);
+      // Entity data is stored under 'entities' key
+      mockPlugin.loadData.mockResolvedValue({
+        areasFolder: "CustomAreas",
+        entities: mockEntityData,
+      });
 
       const loadedData = await obsidianHost.loadData();
 
       expect(mockPlugin.loadData).toHaveBeenCalledTimes(1);
-      expect(loadedData).toEqual(mockData);
+      expect(loadedData).toEqual(mockEntityData);
     });
 
     test("should return null when no application data exists", async () => {
@@ -242,7 +261,11 @@ describe("ObsidianHost Implementation", () => {
       settings.enableGitHubIntegration = true;
       await obsidianHost.saveSettings(settings);
 
-      expect(mockPlugin.saveData).toHaveBeenCalledWith(settings);
+      // Settings should be saved at root level, preserving entities
+      expect(mockPlugin.saveData).toHaveBeenCalledWith({
+        ...settings,
+        entities: undefined, // No entities yet
+      });
 
       // Load modified settings
       mockPlugin.loadData.mockResolvedValue(settings);
@@ -267,10 +290,15 @@ describe("ObsidianHost Implementation", () => {
       };
       await obsidianHost.saveData(initialData);
 
-      expect(mockPlugin.saveData).toHaveBeenCalledWith(initialData);
+      // Entity data should be stored under 'entities' key
+      expect(mockPlugin.saveData).toHaveBeenCalledWith({
+        entities: initialData,
+      });
 
-      // Load and modify data
-      mockPlugin.loadData.mockResolvedValue(initialData);
+      // Load and modify data - mock the storage structure
+      mockPlugin.loadData.mockResolvedValue({
+        entities: initialData,
+      });
       data = await obsidianHost.loadData();
 
       expect(data.tasks).toHaveLength(1);

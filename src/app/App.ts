@@ -7,6 +7,9 @@ import { ObsidianExtension } from "./extensions/ObsidianExtension";
 import { GitHubExtension } from "./extensions/GitHubExtension";
 import { Host } from "./core/host";
 import type { TaskSyncSettings } from "./types/settings";
+import { taskStore } from "./stores/taskStore";
+import { projectStore } from "./stores/projectStore";
+import { areaStore } from "./stores/areaStore";
 
 export class TaskSyncApp {
   private initialized = false;
@@ -25,6 +28,9 @@ export class TaskSyncApp {
 
       // Load settings from host
       this.settings = await host.loadSettings();
+
+      // Load persisted entity data from host storage
+      await this.loadPersistedData(host);
 
       console.log("TaskSync app initializing...", {
         hasHost: !!host,
@@ -135,6 +141,67 @@ export class TaskSyncApp {
         await this.githubExtension.shutdown();
         this.githubExtension = undefined;
       }
+    }
+  }
+
+  /**
+   * Load persisted entity data from host storage and populate stores
+   */
+  private async loadPersistedData(host: Host): Promise<void> {
+    try {
+      const data = await host.loadData();
+
+      if (!data) {
+        console.log("No persisted data found, starting with empty stores");
+        return;
+      }
+
+      // Load tasks into store
+      if (data.tasks && Array.isArray(data.tasks)) {
+        console.log(`Loading ${data.tasks.length} persisted tasks`);
+        for (const task of data.tasks) {
+          // Convert date strings back to Date objects
+          const taskWithDates = {
+            ...task,
+            createdAt: new Date(task.createdAt),
+            updatedAt: new Date(task.updatedAt),
+            doDate: task.doDate ? new Date(task.doDate) : undefined,
+            dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+          };
+          taskStore.addTask(taskWithDates);
+        }
+      }
+
+      // Load projects into store
+      if (data.projects && Array.isArray(data.projects)) {
+        console.log(`Loading ${data.projects.length} persisted projects`);
+        for (const project of data.projects) {
+          const projectWithDates = {
+            ...project,
+            createdAt: new Date(project.createdAt),
+            updatedAt: new Date(project.updatedAt),
+          };
+          projectStore.addProject(projectWithDates);
+        }
+      }
+
+      // Load areas into store
+      if (data.areas && Array.isArray(data.areas)) {
+        console.log(`Loading ${data.areas.length} persisted areas`);
+        for (const area of data.areas) {
+          const areaWithDates = {
+            ...area,
+            createdAt: new Date(area.createdAt),
+            updatedAt: new Date(area.updatedAt),
+          };
+          areaStore.addArea(areaWithDates);
+        }
+      }
+
+      console.log("Persisted data loaded successfully");
+    } catch (error) {
+      console.error("Failed to load persisted data:", error);
+      // Don't throw - allow app to continue with empty stores
     }
   }
 
