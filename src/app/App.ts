@@ -52,7 +52,7 @@ export class TaskSyncApp {
           obsidianHost.plugin.app,
           obsidianHost.plugin,
           extensionSettings,
-          settings // Pass full settings for markdown processor
+          this.settings // Pass full settings for markdown processor
         );
 
         await this.obsidianExtension.initialize();
