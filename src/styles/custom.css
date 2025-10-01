@@ -988,7 +988,8 @@ Provides consistent styling for all UI components
   flex-wrap: wrap;
 }
 
-.task-sync-filter-group {
+/* This is for old-style filter groups, NOT the new filter section */
+.task-sync-filters .task-sync-filter-group {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -2846,15 +2847,9 @@ Provides consistent styling for all UI components
   padding: 0;
 }
 
-.github-service {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  max-height: 100%;
-  padding: 0;
-  overflow: hidden;
-}
-
+/* Generic service container for all service views */
+.service-container,
+.github-service,
 .local-service {
   display: flex;
   flex-direction: column;
@@ -2968,13 +2963,7 @@ button.tab-item.active {
   font-size: 12px;
 }
 
-/* Unified Task Service Header Styles */
-.local-tasks-header,
-.apple-reminders-header,
-.github-service-header,
-.task-service-header {
-  margin-bottom: 0.5rem;
-}
+/* Unified Task Service Header Styles - removed, now using simplified structure below */
 
 /* LocalTasks Unified Header - matches ContextWidget styling */
 .local-tasks-unified-header {
@@ -3025,62 +3014,49 @@ button.tab-item.active {
   padding-bottom: 8px;
 }
 
-.search-and-filters {
+/* Removed .search-and-filters - now using direct children in service headers */
+
+/* Simplified filter layout structure */
+
+/* Service headers - add spacing between groups */
+.github-service-header,
+.local-tasks-header {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+/* 2. Primary filters - Org/Repo (GitHub) or Project/Area/Source (Local) */
+.primary-filters {
+  display: flex;
   gap: 8px;
 }
 
-.task-sync-filter-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  padding: 16px 0;
-}
-
-/* Filter rows */
-.task-sync-filter-row {
-  display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.task-sync-filter-row--primary {
-  /* Toggle buttons row */
-  gap: 16px;
-}
-
-.task-sync-filter-row--secondary {
-  /* Dropdown filters row */
-  gap: 16px;
-}
-
-/* Filter groups */
-.task-sync-filter-group {
-  display: flex;
-}
-
-.task-sync-filter-group--type,
-.task-sync-filter-group--state {
-  /* Toggle button groups */
-  flex-shrink: 0;
-}
-
-.task-sync-filter-group--org,
-.task-sync-filter-group--repo,
-.task-sync-filter-group--dropdown {
-  /* Dropdown filter groups */
+.primary-filters > * {
   flex: 1;
-  min-width: 200px;
+  min-width: 0; /* Allow flex items to shrink below content size */
 }
 
-/* Local tasks filters - simple horizontal layout */
-.task-sync-local-filters {
+/* 3. Secondary filters row 1 - Issues/PRs + Open/Closed (GitHub) or Show completed (Local) */
+.secondary-filters-row-1 {
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 16px 0;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+/* 4. Secondary filters row 2 - Labels + Assigned to me (GitHub only) */
+.secondary-filters-row-2 {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+/* 5. Sort section - add separator line above */
+.github-service-header > .task-sync-sort-dropdown,
+.local-tasks-header > .task-sync-sort-dropdown {
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
 }
 
 /* Filter Toggle Buttons - unified style for type and state filters */
