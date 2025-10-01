@@ -4,13 +4,18 @@
  * Provides area operations and coordinates with the event bus
  */
 
-import { App, Plugin } from "obsidian";
+import { App, Plugin, TFile, EventRef } from "obsidian";
 import { Extension, extensionRegistry, EntityType } from "../core/extension";
 import { eventBus } from "../core/events";
 import { ObsidianAreaOperations } from "./ObsidianAreaOperations";
 import { ObsidianProjectOperations } from "./ObsidianProjectOperations";
 import { ObsidianTaskOperations } from "./ObsidianTaskOperations";
 import { taskStore } from "../stores/taskStore";
+import { projectStore } from "../stores/projectStore";
+import { areaStore } from "../stores/areaStore";
+import { taskOperations } from "../entities/Tasks";
+import { projectOperations } from "../entities/Projects";
+import { areaOperations } from "../entities/Areas";
 import { derived, type Readable } from "svelte/store";
 import type { Task } from "../core/entities";
 
@@ -34,6 +39,7 @@ export class ObsidianExtension implements Extension {
   private areaOperations: ObsidianAreaOperations;
   private projectOperations: ObsidianProjectOperations;
   readonly taskOperations: ObsidianTaskOperations;
+  private vaultEventRefs: EventRef[] = [];
 
   constructor(
     private app: App,
@@ -85,6 +91,9 @@ export class ObsidianExtension implements Extension {
       // This runs after Obsidian's layout is ready and vault is fully loaded
       await this.scanAndPopulateExistingTasks();
 
+      // Set up vault event listeners for file deletions
+      this.setupVaultEventListeners();
+
       console.log("ObsidianExtension loaded successfully");
     } catch (error) {
       console.error("Failed to load ObsidianExtension:", error);
@@ -94,6 +103,10 @@ export class ObsidianExtension implements Extension {
 
   async shutdown(): Promise<void> {
     if (!this.initialized) return;
+
+    // Clean up vault event listeners
+    this.vaultEventRefs.forEach((ref) => this.app.vault.offref(ref));
+    this.vaultEventRefs = [];
 
     eventBus.trigger({
       type: "extension.unregistered",
@@ -417,6 +430,69 @@ export class ObsidianExtension implements Extension {
     } else if (event.type === "tasks.deleted") {
       // React to task deletion by deleting the corresponding Obsidian note
       await this.taskOperations.deleteNote(event.taskId);
+    }
+  }
+
+  /**
+   * Set up vault event listeners to handle file deletions
+   * When a note is deleted in Obsidian, we need to delete the corresponding entity
+   */
+  private setupVaultEventListeners(): void {
+    // Listen for file deletions in the vault
+    const deleteRef = this.app.vault.on("delete", (file) => {
+      if (!(file instanceof TFile)) return;
+
+      const filePath = file.path;
+
+      // Check if the deleted file is in one of our entity folders
+      if (filePath.startsWith(this.settings.tasksFolder + "/")) {
+        this.handleTaskFileDeletion(filePath);
+      } else if (filePath.startsWith(this.settings.projectsFolder + "/")) {
+        this.handleProjectFileDeletion(filePath);
+      } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
+        this.handleAreaFileDeletion(filePath);
+      }
+    });
+
+    this.vaultEventRefs.push(deleteRef);
+  }
+
+  /**
+   * Handle task file deletion by finding and deleting the corresponding entity
+   */
+  private handleTaskFileDeletion(filePath: string): void {
+    const task = taskStore.findByFilePath(filePath);
+    if (task) {
+      console.log(
+        `Task file deleted: ${filePath}, deleting entity: ${task.id}`
+      );
+      taskOperations.delete(task.id);
+    }
+  }
+
+  /**
+   * Handle project file deletion by finding and deleting the corresponding entity
+   */
+  private handleProjectFileDeletion(filePath: string): void {
+    const project = projectStore.findByFilePath(filePath);
+    if (project) {
+      console.log(
+        `Project file deleted: ${filePath}, deleting entity: ${project.id}`
+      );
+      projectOperations.delete(project.id);
+    }
+  }
+
+  /**
+   * Handle area file deletion by finding and deleting the corresponding entity
+   */
+  private handleAreaFileDeletion(filePath: string): void {
+    const area = areaStore.findByFilePath(filePath);
+    if (area) {
+      console.log(
+        `Area file deleted: ${filePath}, deleting entity: ${area.id}`
+      );
+      areaOperations.delete(area.id);
     }
   }
 

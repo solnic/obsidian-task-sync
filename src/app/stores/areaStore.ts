@@ -28,6 +28,9 @@ export interface AreaStore extends Readable<AreaStoreState> {
   updateArea: (area: Area) => void;
   removeArea: (areaId: string) => void;
 
+  // Query methods
+  findByFilePath: (filePath: string) => Area | undefined;
+
   // Request methods removed - operations now directly manipulate store and trigger events
 }
 
@@ -106,6 +109,16 @@ export function createAreaStore(): AreaStore {
     }));
   };
 
+  // Query methods - synchronous access to current state
+  const findByFilePath = (filePath: string): Area | undefined => {
+    let result: Area | undefined;
+    const unsubscribe = subscribe((state) => {
+      result = state.areas.find((a) => a.source?.filePath === filePath);
+    });
+    unsubscribe();
+    return result;
+  };
+
   return {
     subscribe,
     areasByExtension,
@@ -116,6 +129,7 @@ export function createAreaStore(): AreaStore {
     addArea,
     updateArea,
     removeArea,
+    findByFilePath,
   };
 }
 

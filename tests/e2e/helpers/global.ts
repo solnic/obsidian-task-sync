@@ -1930,3 +1930,83 @@ export async function selectFromDropdown(
     .locator(`[data-testid="${dropdown}-dropdown-item"]:has-text("${option}")`)
     .click();
 }
+
+/**
+ * Delete a file from the vault
+ */
+export async function deleteVaultFile(
+  page: Page,
+  filePath: string
+): Promise<void> {
+  await page.evaluate(async (filePath) => {
+    const app = (window as any).app;
+    const file = app.vault.getAbstractFileByPath(filePath);
+    if (file) {
+      await app.vault.delete(file);
+    }
+  }, filePath);
+}
+
+/**
+ * Wait for a file to be deleted
+ */
+export async function waitForFileDeletion(
+  page: Page,
+  filePath: string,
+  timeout: number = 5000
+): Promise<void> {
+  await page.waitForFunction(
+    ({ path }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      return file === null;
+    },
+    { path: filePath },
+    { timeout }
+  );
+}
+
+/**
+ * Get tasks from the tasks view
+ */
+export async function getTasksFromView(page: Page): Promise<Task[]> {
+  return page.evaluate(() => {
+    const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+    let tasks: Task[] = [];
+    const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
+      tasks = state.tasks;
+    });
+    unsubscribe();
+    return tasks;
+  });
+}
+
+/**
+ * Get projects from the projects view
+ */
+export async function getProjectsFromView(page: Page): Promise<Project[]> {
+  return page.evaluate(() => {
+    const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+    let projects: Project[] = [];
+    const unsubscribe = plugin.stores.projectStore.subscribe((state: any) => {
+      projects = state.projects;
+    });
+    unsubscribe();
+    return projects;
+  });
+}
+
+/**
+ * Get areas from the areas view
+ */
+export async function getAreasFromView(page: Page): Promise<Area[]> {
+  return page.evaluate(() => {
+    const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+    let areas: Area[] = [];
+    const unsubscribe = plugin.stores.areaStore.subscribe((state: any) => {
+      areas = state.areas;
+    });
+    unsubscribe();
+    return areas;
+  });
+}
