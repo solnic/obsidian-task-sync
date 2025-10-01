@@ -3,13 +3,13 @@
  * Provides common functionality that all entities share
  */
 
-import { Task, Project, Area } from "./entities";
+import { Task, Project, Area, Schedule } from "./entities";
 import { extensionRegistry } from "./extension";
 import { generateId } from "../utils/idGenerator";
 
 // Generic entity union type
-export type Entity = Task | Project | Area;
-export type EntityType = "task" | "project" | "area";
+export type Entity = Task | Project | Area | Schedule;
+export type EntityType = "task" | "project" | "area" | "schedule";
 
 // Abstract base class for all Entities
 export abstract class Entities {

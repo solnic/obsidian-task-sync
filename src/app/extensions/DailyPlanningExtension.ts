@@ -1,0 +1,367 @@
+/**
+ * Daily Planning Extension for TaskSync
+ * Manages Schedule entities and provides daily planning wizard functionality
+ */
+
+import { Plugin } from "obsidian";
+import {
+  Extension,
+  extensionRegistry,
+  EntityType,
+  EntityOperations,
+} from "../core/extension";
+import { eventBus, DomainEvent } from "../core/events";
+import { derived, writable, type Readable } from "svelte/store";
+import type { Task, Schedule, ScheduleCreateData } from "../core/entities";
+import { Schedules } from "../entities/Schedules";
+import { scheduleStore } from "../stores/scheduleStore";
+import type { TaskSyncSettings } from "../types/settings";
+
+export interface DailyPlanningExtensionSettings {
+  enabled: boolean;
+  autoCreateDailySchedules: boolean;
+  defaultPlanningTime: string; // e.g., "09:00"
+}
+
+export class DailyPlanningExtension implements Extension {
+  readonly id = "daily-planning";
+  readonly name = "Daily Planning";
+  readonly version = "1.0.0";
+  readonly supportedEntities: readonly EntityType[] = ["schedule"];
+
+  private initialized = false;
+  private plugin: Plugin;
+  private settings: TaskSyncSettings;
+
+  // Schedule operations
+  public schedules: EntityOperations<Schedule>;
+
+  // Internal state for daily planning
+  private planningActiveStore = writable<boolean>(false);
+  private currentScheduleStore = writable<Schedule | null>(null);
+
+  constructor(settings: TaskSyncSettings, plugin: Plugin) {
+    this.settings = settings;
+    this.plugin = plugin;
+    this.schedules = new Schedules.Operations();
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      console.log("Initializing DailyPlanningExtension...");
+
+      // Register extension
+      extensionRegistry.register(this);
+
+      // Set up event listeners for domain events
+      this.setupEventListeners();
+
+      // Trigger extension registered event
+      eventBus.trigger({
+        type: "extension.registered",
+        extension: this.id,
+        supportedEntities: [...this.supportedEntities],
+      });
+
+      this.initialized = true;
+      console.log("DailyPlanningExtension initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize DailyPlanningExtension:", error);
+      throw error;
+    }
+  }
+
+  async load(): Promise<void> {
+    if (!this.initialized) {
+      throw new Error(
+        "DailyPlanningExtension must be initialized before loading"
+      );
+    }
+
+    try {
+      console.log("Loading DailyPlanningExtension...");
+
+      // Load any persisted schedule data
+      // This would typically load from plugin storage
+      await this.loadPersistedSchedules();
+
+      // Auto-create today's schedule if enabled
+      const extensionSettings = this.getExtensionSettings();
+      if (extensionSettings.autoCreateDailySchedules) {
+        await this.ensureTodayScheduleExists();
+      }
+
+      console.log("DailyPlanningExtension loaded successfully");
+    } catch (error) {
+      console.error("Failed to load DailyPlanningExtension:", error);
+      throw error;
+    }
+  }
+
+  async shutdown(): Promise<void> {
+    if (!this.initialized) return;
+
+    // Persist any pending schedule data
+    await this.persistSchedules();
+
+    eventBus.trigger({
+      type: "extension.unregistered",
+      extension: this.id,
+    });
+
+    this.initialized = false;
+  }
+
+  // Extension interface methods
+  async onEntityCreated(event: DomainEvent): Promise<void> {
+    if (event.type === "tasks.created") {
+      // Optionally add new tasks to today's schedule
+      // This could be configurable behavior
+    }
+  }
+
+  async onEntityUpdated(event: DomainEvent): Promise<void> {
+    if (event.type === "tasks.updated") {
+      // Update any schedules that contain this task
+      await this.updateSchedulesWithTask(event.task);
+    }
+  }
+
+  async onEntityDeleted(event: DomainEvent): Promise<void> {
+    if (event.type === "tasks.deleted") {
+      // Remove task from any schedules
+      await this.removeTaskFromAllSchedules(event.taskId);
+    }
+  }
+
+  async isHealthy(): Promise<boolean> {
+    return this.initialized;
+  }
+
+  // Data access interface
+  getTasks(): Readable<readonly Task[]> {
+    // Daily Planning Extension doesn't manage tasks directly
+    // It works with schedules that contain tasks
+    return derived(scheduleStore, () => []);
+  }
+
+  async refresh(): Promise<void> {
+    await this.loadPersistedSchedules();
+  }
+
+  searchTasks(query: string, tasks: readonly Task[]): readonly Task[] {
+    // Not applicable for this extension
+    return [];
+  }
+
+  filterTasks(tasks: readonly Task[], filters: any): readonly Task[] {
+    // Not applicable for this extension
+    return [];
+  }
+
+  sortTasks(
+    tasks: readonly Task[],
+    sortFields: Array<{ key: string; direction: "asc" | "desc" }>
+  ): readonly Task[] {
+    // Not applicable for this extension
+    return tasks;
+  }
+
+  // Daily Planning specific methods
+
+  /**
+   * Get the current planning state
+   */
+  getPlanningActive(): Readable<boolean> {
+    return this.planningActiveStore;
+  }
+
+  /**
+   * Set the planning active state
+   */
+  setPlanningActive(active: boolean): void {
+    this.planningActiveStore.set(active);
+  }
+
+  /**
+   * Get the current schedule being planned
+   */
+  getCurrentSchedule(): Readable<Schedule | null> {
+    return this.currentScheduleStore;
+  }
+
+  /**
+   * Set the current schedule being planned
+   */
+  setCurrentSchedule(schedule: Schedule | null): void {
+    this.currentScheduleStore.set(schedule);
+  }
+
+  /**
+   * Create or get today's schedule
+   */
+  async ensureTodayScheduleExists(): Promise<Schedule> {
+    const queries = new Schedules.Queries();
+    let todaySchedule = await queries.getToday();
+
+    if (!todaySchedule) {
+      const scheduleData = {
+        date: new Date(),
+        tasks: [] as Task[],
+        unscheduledTasks: [] as Task[],
+        events: [] as any[],
+        dailyNoteExists: false,
+        isPlanned: false,
+      };
+      todaySchedule = await this.schedules.create(scheduleData);
+    }
+
+    return todaySchedule;
+  }
+
+  /**
+   * Create or get yesterday's schedule
+   */
+  async ensureYesterdayScheduleExists(): Promise<Schedule> {
+    const queries = new Schedules.Queries();
+    let yesterdaySchedule = await queries.getYesterday();
+
+    if (!yesterdaySchedule) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const scheduleData = {
+        date: yesterday,
+        tasks: [] as Task[],
+        unscheduledTasks: [] as Task[],
+        events: [] as any[],
+        dailyNoteExists: false,
+        isPlanned: false,
+      };
+      yesterdaySchedule = await this.schedules.create(scheduleData);
+    }
+
+    return yesterdaySchedule;
+  }
+
+  /**
+   * Start daily planning wizard
+   */
+  async startDailyPlanning(): Promise<void> {
+    this.setPlanningActive(true);
+
+    // Ensure today's schedule exists
+    const todaySchedule = await this.ensureTodayScheduleExists();
+    this.setCurrentSchedule(todaySchedule);
+
+    // Trigger planning started event
+    eventBus.trigger({
+      type: "daily-planning.started",
+      schedule: todaySchedule,
+    });
+  }
+
+  /**
+   * Complete daily planning wizard
+   */
+  async completeDailyPlanning(): Promise<void> {
+    const currentSchedule = scheduleStore.findScheduleByDate(new Date());
+    if (currentSchedule) {
+      await this.schedules.update(currentSchedule.id, {
+        isPlanned: true,
+        planningCompletedAt: new Date(),
+      });
+    }
+
+    this.setPlanningActive(false);
+    this.setCurrentSchedule(null);
+
+    // Trigger planning completed event
+    eventBus.trigger({
+      type: "daily-planning.completed",
+      schedule: currentSchedule,
+    });
+  }
+
+  /**
+   * Cancel daily planning wizard
+   */
+  async cancelDailyPlanning(): Promise<void> {
+    this.setPlanningActive(false);
+    this.setCurrentSchedule(null);
+
+    // Trigger planning cancelled event
+    eventBus.trigger({
+      type: "daily-planning.cancelled",
+    });
+  }
+
+  // Private helper methods
+
+  private setupEventListeners(): void {
+    // Listen for task events to keep schedules in sync
+    eventBus.on("tasks.created", (event) => this.onEntityCreated(event));
+    eventBus.on("tasks.updated", (event) => this.onEntityUpdated(event));
+    eventBus.on("tasks.deleted", (event) => this.onEntityDeleted(event));
+  }
+
+  private getExtensionSettings(): DailyPlanningExtensionSettings {
+    return {
+      enabled: true,
+      autoCreateDailySchedules: true,
+      defaultPlanningTime: "09:00",
+      // TODO: Load from actual settings
+    };
+  }
+
+  private async loadPersistedSchedules(): Promise<void> {
+    // TODO: Implement loading from plugin storage
+    // This would load schedule persistence data and restore schedules
+    console.log("Loading persisted schedules...");
+  }
+
+  private async persistSchedules(): Promise<void> {
+    // TODO: Implement saving to plugin storage
+    // This would save current schedule state to plugin data
+    console.log("Persisting schedules...");
+  }
+
+  private async updateSchedulesWithTask(task: Task): Promise<void> {
+    // Find schedules that contain this task and update them
+    const allSchedules = scheduleStore.getSchedules();
+    for (const schedule of allSchedules) {
+      const hasTask =
+        schedule.tasks.some((t) => t.id === task.id) ||
+        schedule.unscheduledTasks.some((t) => t.id === task.id);
+
+      if (hasTask) {
+        await this.schedules.update(schedule.id, {
+          tasks: schedule.tasks.map((t) => (t.id === task.id ? task : t)),
+          unscheduledTasks: schedule.unscheduledTasks.map((t) =>
+            t.id === task.id ? task : t
+          ),
+        });
+      }
+    }
+  }
+
+  private async removeTaskFromAllSchedules(taskId: string): Promise<void> {
+    // Remove task from all schedules
+    const allSchedules = scheduleStore.getSchedules();
+    for (const schedule of allSchedules) {
+      const hasTask =
+        schedule.tasks.some((t) => t.id === taskId) ||
+        schedule.unscheduledTasks.some((t) => t.id === taskId);
+
+      if (hasTask) {
+        await this.schedules.update(schedule.id, {
+          tasks: schedule.tasks.filter((t) => t.id !== taskId),
+          unscheduledTasks: schedule.unscheduledTasks.filter(
+            (t) => t.id !== taskId
+          ),
+        });
+      }
+    }
+  }
+}

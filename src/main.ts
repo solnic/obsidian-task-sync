@@ -11,6 +11,10 @@ import { taskSyncApp } from "./app/App";
 import { ObsidianHost } from "./app/hosts/ObsidianHost";
 import { TaskSyncSettingTab } from "./app/components/settings";
 import { DayView, DAY_VIEW_TYPE } from "./app/views/DayView";
+import {
+  DailyPlanningView,
+  DAILY_PLANNING_VIEW_TYPE,
+} from "./app/views/DailyPlanningView";
 import { taskStore, type TaskStore } from "./app/stores/taskStore";
 import { projectStore, type ProjectStore } from "./app/stores/projectStore";
 import { areaStore, type AreaStore } from "./app/stores/areaStore";
@@ -64,6 +68,11 @@ export default class TaskSyncPlugin extends Plugin {
     // Register the Day View
     this.registerView(DAY_VIEW_TYPE, (leaf) => {
       return new DayView(leaf, this.host, this.settings);
+    });
+
+    // Register the Daily Planning View
+    this.registerView(DAILY_PLANNING_VIEW_TYPE, (leaf) => {
+      return new DailyPlanningView(leaf, null, this.settings); // TODO: Add AppleCalendarService
     });
 
     // Add ribbon icon for main view
@@ -127,6 +136,15 @@ export default class TaskSyncPlugin extends Plugin {
       name: "Refresh Bases",
       callback: async () => {
         await this.refreshBases();
+      },
+    });
+
+    // Add command to start daily planning
+    this.addCommand({
+      id: "start-daily-planning",
+      name: "Start Daily Planning",
+      callback: () => {
+        this.startDailyPlanning();
       },
     });
 
@@ -207,6 +225,39 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
+  async startDailyPlanning() {
+    try {
+      // Get the daily planning extension
+      const dailyPlanningExtension =
+        this.host.getExtensionById("daily-planning");
+
+      if (!dailyPlanningExtension) {
+        new Notice("Daily Planning extension not found");
+        return;
+      }
+
+      // Check if Daily Planning view already exists
+      const existingLeaves = this.app.workspace.getLeavesOfType(
+        DAILY_PLANNING_VIEW_TYPE
+      );
+
+      if (existingLeaves.length > 0) {
+        // Activate existing view
+        this.app.workspace.revealLeaf(existingLeaves[0]);
+      } else {
+        // Create new view
+        const leaf = this.app.workspace.getLeaf("tab");
+        await leaf.setViewState({
+          type: DAILY_PLANNING_VIEW_TYPE,
+          active: true,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error starting daily planning:", error);
+      new Notice(`Failed to start daily planning: ${error.message}`);
+    }
+  }
+
   async activateView() {
     const { workspace } = this.app;
     let leaf = workspace.getLeavesOfType("task-sync-main")[0];
@@ -280,7 +331,9 @@ export default class TaskSyncPlugin extends Plugin {
       // Sync project bases (creates missing and updates existing)
       await baseManager.syncProjectBases();
 
-      new Notice(`✅ Successfully refreshed ${projects.length} project base(s)`);
+      new Notice(
+        `✅ Successfully refreshed ${projects.length} project base(s)`
+      );
       console.log("Bases refreshed successfully");
     } catch (error) {
       console.error("Failed to refresh bases:", error);

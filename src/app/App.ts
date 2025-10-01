@@ -6,6 +6,7 @@
 import { ObsidianExtension } from "./extensions/ObsidianExtension";
 import { GitHubExtension } from "./extensions/GitHubExtension";
 import { CalendarExtension } from "./extensions/CalendarExtension";
+import { DailyPlanningExtension } from "./extensions/DailyPlanningExtension";
 import { AppleCalendarService } from "./services/AppleCalendarService";
 import { Host } from "./core/host";
 import type { TaskSyncSettings } from "./types/settings";
@@ -18,6 +19,7 @@ export class TaskSyncApp {
   private obsidianExtension?: ObsidianExtension;
   public githubExtension?: GitHubExtension;
   public calendarExtension?: CalendarExtension;
+  public dailyPlanningExtension?: DailyPlanningExtension;
   private host?: Host;
   private settings: TaskSyncSettings | null = null;
 
@@ -71,6 +73,9 @@ export class TaskSyncApp {
       // Initialize Calendar extension if enabled
       await this.initializeCalendarExtension();
 
+      // Initialize Daily Planning extension
+      await this.initializeDailyPlanningExtension();
+
       this.initialized = true;
       console.log("TaskSync app initialized successfully");
     } catch (error) {
@@ -100,6 +105,10 @@ export class TaskSyncApp {
         await this.calendarExtension.load();
       }
 
+      if (this.dailyPlanningExtension) {
+        await this.dailyPlanningExtension.load();
+      }
+
       console.log("TaskSync app extensions loaded successfully");
     } catch (error) {
       console.error("Failed to load TaskSync app extensions:", error);
@@ -118,6 +127,10 @@ export class TaskSyncApp {
 
     if (this.githubExtension) {
       await this.githubExtension.shutdown();
+    }
+
+    if (this.dailyPlanningExtension) {
+      await this.dailyPlanningExtension.shutdown();
     }
 
     this.initialized = false;
@@ -326,6 +339,31 @@ export class TaskSyncApp {
     }
 
     console.log("Calendar extension initialized successfully");
+  }
+
+  /**
+   * Initialize Daily Planning extension
+   */
+  private async initializeDailyPlanningExtension(): Promise<void> {
+    const obsidianHost = this.host as any;
+    if (!obsidianHost.plugin || !this.settings) {
+      return;
+    }
+
+    console.log("Initializing Daily Planning extension...");
+    this.dailyPlanningExtension = new DailyPlanningExtension(
+      this.settings,
+      obsidianHost.plugin
+    );
+
+    await this.dailyPlanningExtension.initialize();
+
+    // If app is already loaded, load the extension too
+    if (this.initialized) {
+      await this.dailyPlanningExtension.load();
+    }
+
+    console.log("Daily Planning extension initialized successfully");
   }
 }
 

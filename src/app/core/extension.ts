@@ -3,14 +3,14 @@
  * Provides pluggable extension system for different sources (Obsidian, GitHub, etc.)
  */
 
-import { Task, Project, Area } from "./entities";
+import { Task, Project, Area, Schedule } from "./entities";
 import { DomainEvent } from "./events";
 import { eventBus } from "./events";
 import type { Readable } from "svelte/store";
 
 // Generic entity union type
-export type Entity = Task | Project | Area;
-export type EntityType = "task" | "project" | "area";
+export type Entity = Task | Project | Area | Schedule;
+export type EntityType = "task" | "project" | "area" | "schedule";
 
 // CRUD operations interface for entities
 export interface EntityOperations<T extends Entity> {
@@ -95,6 +95,7 @@ export interface Extension extends ExtensionDataAccess {
   tasks?: EntityOperations<Task>;
   projects?: EntityOperations<Project>;
   areas?: EntityOperations<Area>;
+  schedules?: EntityOperations<Schedule>;
 
   // Health check
   isHealthy(): Promise<boolean>;
