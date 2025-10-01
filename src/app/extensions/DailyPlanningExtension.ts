@@ -23,13 +23,10 @@ import { Tasks } from "../entities/Tasks";
 import { scheduleStore } from "../stores/scheduleStore";
 import { taskStore } from "../stores/taskStore";
 import type { TaskSyncSettings } from "../types/settings";
-import type { CalendarService } from "../services/CalendarService";
-import { mockCalendarService } from "../services/MockCalendarService";
+import type { CalendarExtension } from "./CalendarExtension";
 import {
   getYesterdayTasksGrouped,
   getTodayTasksGrouped,
-  getTasksForToday,
-  getTasksForYesterday,
 } from "../utils/dateFiltering";
 
 export interface DailyPlanningExtensionSettings {
@@ -51,8 +48,8 @@ export class DailyPlanningExtension implements Extension {
   // Schedule operations
   public schedules: EntityOperations<Schedule>;
 
-  // Calendar service for events
-  private calendarService: CalendarService;
+  // Calendar extension for events
+  private calendarExtension?: CalendarExtension;
 
   // Internal state for daily planning
   private planningActiveStore = writable<boolean>(false);
@@ -63,10 +60,8 @@ export class DailyPlanningExtension implements Extension {
     this.plugin = plugin;
     this.schedules = new Schedules.Operations();
 
-    // Initialize calendar service (using mock for now)
-    this.calendarService = mockCalendarService;
-    // Enable mock calendar service for development
-    (this.calendarService as any).setEnabled(true);
+    // Calendar extension will be set during initialization
+    this.calendarExtension = undefined;
   }
 
   async initialize(): Promise<void> {
@@ -105,6 +100,11 @@ export class DailyPlanningExtension implements Extension {
 
     try {
       console.log("Loading DailyPlanningExtension...");
+
+      // Try to get calendar extension from registry
+      this.calendarExtension = extensionRegistry.getById(
+        "calendar"
+      ) as CalendarExtension;
 
       // Load any persisted schedule data
       // This would typically load from plugin storage
@@ -174,22 +174,22 @@ export class DailyPlanningExtension implements Extension {
     await this.loadPersistedSchedules();
   }
 
-  searchTasks(query: string, tasks: readonly Task[]): readonly Task[] {
+  searchTasks(_query: string, _tasks: readonly Task[]): readonly Task[] {
     // Not applicable for this extension
     return [];
   }
 
-  filterTasks(tasks: readonly Task[], filters: any): readonly Task[] {
+  filterTasks(_tasks: readonly Task[], _filters: any): readonly Task[] {
     // Not applicable for this extension
     return [];
   }
 
   sortTasks(
-    tasks: readonly Task[],
-    sortFields: Array<{ key: string; direction: "asc" | "desc" }>
+    _tasks: readonly Task[],
+    _sortFields: Array<{ key: string; direction: "asc" | "desc" }>
   ): readonly Task[] {
     // Not applicable for this extension
-    return tasks;
+    return [];
   }
 
   // Daily Planning specific methods
@@ -438,12 +438,12 @@ export class DailyPlanningExtension implements Extension {
    * Get today's calendar events
    */
   async getTodayEvents(): Promise<CalendarEvent[]> {
-    if (!this.calendarService.isEnabled()) {
+    if (!this.calendarExtension) {
       return [];
     }
 
     try {
-      return await this.calendarService.getTodayEvents();
+      return await this.calendarExtension.getTodayEvents();
     } catch (error) {
       console.error("Error loading today's calendar events:", error);
       return [];
@@ -454,7 +454,7 @@ export class DailyPlanningExtension implements Extension {
    * Get calendar events for a specific date
    */
   async getEventsForDate(date: Date): Promise<CalendarEvent[]> {
-    if (!this.calendarService.isEnabled()) {
+    if (!this.calendarExtension) {
       return [];
     }
 
@@ -464,7 +464,10 @@ export class DailyPlanningExtension implements Extension {
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      return await this.calendarService.getEvents([], startOfDay, endOfDay);
+      return await this.calendarExtension.getEventsForDateRange(
+        startOfDay,
+        endOfDay
+      );
     } catch (error) {
       console.error("Error loading calendar events for date:", error);
       return [];
