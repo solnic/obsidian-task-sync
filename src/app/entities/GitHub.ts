@@ -22,21 +22,21 @@ export namespace GitHub {
     }
 
     /**
-     * Import a GitHub issue as a task
-     * Transforms GitHub issue data to Task entity with GitHub source metadata
+     * Transform a GitHub issue to a Task object (without persisting)
+     * Used for displaying GitHub issues as tasks in the UI
      */
-    async importIssue(
+    transformIssueToTask(
       issue: GitHubIssue,
-      _repository?: string
-    ): Promise<Task> {
-      const taskData: Omit<Task, "id" | "createdAt" | "updatedAt"> = {
+      repository?: string
+    ): Omit<Task, "id" | "createdAt" | "updatedAt"> {
+      return {
         title: issue.title,
         description: issue.body || "",
         category: this.extractCategoryFromLabels(issue.labels),
         status: issue.state === "open" ? "Backlog" : "Done",
         priority: this.extractPriorityFromLabels(issue.labels),
         done: issue.state === "closed",
-        project: "",
+        project: repository || "",
         areas: [],
         parentTask: "",
         doDate: undefined,
@@ -45,29 +45,38 @@ export namespace GitHub {
         source: {
           extension: "github",
           url: issue.html_url,
+          data: issue, // Store original GitHub issue data
         },
       };
+    }
+
+    /**
+     * Import a GitHub issue as a task
+     * Transforms GitHub issue data to Task entity with GitHub source metadata
+     */
+    async importIssue(issue: GitHubIssue, repository?: string): Promise<Task> {
+      const taskData = this.transformIssueToTask(issue, repository);
 
       // Use base create method which handles ID generation and event triggering
       return await this.create(taskData);
     }
 
     /**
-     * Import a GitHub pull request as a task
-     * Transforms GitHub PR data to Task entity with GitHub source metadata
+     * Transform a GitHub pull request to a Task object (without persisting)
+     * Used for displaying GitHub PRs as tasks in the UI
      */
-    async importPullRequest(
+    transformPullRequestToTask(
       pr: GitHubPullRequest,
-      _repository?: string
-    ): Promise<Task> {
-      const taskData: Omit<Task, "id" | "createdAt" | "updatedAt"> = {
+      repository?: string
+    ): Omit<Task, "id" | "createdAt" | "updatedAt"> {
+      return {
         title: pr.title,
         description: pr.body || "",
         category: this.extractCategoryFromLabels(pr.labels),
         status: pr.state === "open" ? "In Progress" : "Done",
         priority: this.extractPriorityFromLabels(pr.labels),
         done: pr.state === "closed" || pr.merged_at !== null,
-        project: "",
+        project: repository || "",
         areas: [],
         parentTask: "",
         doDate: undefined,
@@ -76,8 +85,20 @@ export namespace GitHub {
         source: {
           extension: "github",
           url: pr.html_url,
+          data: pr, // Store original GitHub PR data
         },
       };
+    }
+
+    /**
+     * Import a GitHub pull request as a task
+     * Transforms GitHub PR data to Task entity with GitHub source metadata
+     */
+    async importPullRequest(
+      pr: GitHubPullRequest,
+      repository?: string
+    ): Promise<Task> {
+      const taskData = this.transformPullRequestToTask(pr, repository);
 
       // Use base create method which handles ID generation and event triggering
       return await this.create(taskData);
@@ -90,12 +111,7 @@ export namespace GitHub {
     private extractCategoryFromLabels(
       labels: Array<{ name: string; color?: string }>
     ): string {
-      const categoryLabels = [
-        "bug",
-        "feature",
-        "enhancement",
-        "documentation",
-      ];
+      const categoryLabels = ["bug", "feature", "enhancement", "documentation"];
 
       for (const label of labels) {
         const labelName = label.name.toLowerCase();
@@ -151,4 +167,3 @@ export namespace GitHub {
 
 // Export default singleton instance
 export const githubOperations = new GitHub.Operations();
-

@@ -17,6 +17,9 @@ export const TaskSourceSchema = z.object({
   extension: z.string(),
   filePath: z.string().optional(),
   url: z.string().optional(),
+  // Raw data from external service (e.g., GitHub issue/PR, Linear issue)
+  // Used for rendering service-specific UI and tracking import status
+  data: z.any().optional(),
 });
 export type TaskSource = z.infer<typeof TaskSourceSchema>;
 

@@ -169,6 +169,76 @@ export class GitHubExtension implements Extension {
   }
 
   /**
+   * Get tasks for a specific repository (both imported and available)
+   * Returns Task objects for all issues/PRs in the repository, with imported status
+   * @param repository - Repository in format "owner/repo"
+   * @param type - Type of items to fetch ("issues" or "pull-requests")
+   */
+  async getTasksForRepository(
+    repository: string,
+    type: "issues" | "pull-requests" = "issues"
+  ): Promise<Task[]> {
+    if (!repository) {
+      return [];
+    }
+
+    try {
+      // Fetch GitHub data
+      const githubItems =
+        type === "issues"
+          ? await this.fetchIssues(repository)
+          : await this.fetchPullRequests(repository);
+
+      // Get imported tasks from store
+      let imported: Task[] = [];
+      const unsubscribe = taskStore.subscribe((state) => {
+        imported = state.tasks.filter(
+          (task) => task.source?.extension === "github"
+        );
+      });
+      unsubscribe();
+
+      // Transform GitHub items to tasks
+      const tasks: Task[] = githubItems.map((item) => {
+        // Check if this item is already imported
+        const existingTask = imported.find(
+          (task) => task.source?.url === item.html_url
+        );
+
+        if (existingTask) {
+          // Return the imported task (which has the real ID, doDate, etc.)
+          return existingTask;
+        } else {
+          // Transform to a temporary task object for display
+          const taskData =
+            type === "issues"
+              ? githubOperations.tasks.transformIssueToTask(
+                  item as any,
+                  repository
+                )
+              : githubOperations.tasks.transformPullRequestToTask(
+                  item as any,
+                  repository
+                );
+
+          // Create a temporary task with a synthetic ID
+          return {
+            ...taskData,
+            id: `github-temp-${item.id}`,
+            createdAt: new Date(item.created_at),
+            updatedAt: new Date(item.updated_at),
+          } as Task;
+        }
+      });
+
+      return tasks;
+    } catch (error) {
+      console.error(`Failed to get tasks for repository ${repository}:`, error);
+      return [];
+    }
+  }
+
+  /**
    * Refresh GitHub data by clearing caches
    */
   async refresh(): Promise<void> {

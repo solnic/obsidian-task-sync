@@ -10,14 +10,11 @@
   import FilterButton from "./FilterButton.svelte";
   import GitHubIssueItem from "./GitHubIssueItem.svelte";
   import GitHubPullRequestItem from "./GitHubPullRequestItem.svelte";
-  import { taskStore } from "../stores/taskStore";
   import type { Task } from "../core/entities";
   import type { TaskSyncSettings } from "../types/settings";
   import type { Extension } from "../core/extension";
   import type { Host } from "../core/host";
   import type {
-    GitHubIssue,
-    GitHubPullRequest,
     GitHubRepository,
     GitHubOrganization,
     GitHubLabel,
@@ -44,8 +41,7 @@
 
   // State
   let activeTab = $state<"issues" | "pull-requests">("issues");
-  let issues = $state<GitHubIssue[]>([]);
-  let pullRequests = $state<GitHubPullRequest[]>([]);
+  let tasks = $state<Task[]>([]); // All tasks (both imported and available)
   let repositories = $state<GitHubRepository[]>([]);
   let organizations = $state<GitHubOrganization[]>([]);
   let currentRepository = $state(
@@ -67,19 +63,15 @@
   let isLoading = $state(false);
   let recentlyUsedOrgs = $state<string[]>([]);
   let recentlyUsedRepos = $state<string[]>([]);
-  let hoveredIssue = $state<number | null>(null);
-  let hoveredPullRequest = $state<number | null>(null);
+  let hoveredTask = $state<string | null>(null); // Task ID instead of issue/PR number
   let currentUser = $state<{
     login: string;
     id: number;
     avatar_url: string;
   } | null>(null);
 
-  // Import tracking state
-  let importingIssues = $state<Set<number>>(new Set());
-  let importedIssues = $state<Set<number>>(new Set());
-  let importingPullRequests = $state<Set<number>>(new Set());
-  let importedPullRequests = $state<Set<number>>(new Set());
+  // Import tracking state - now just track which tasks are being imported
+  let importingTasks = $state<Set<string>>(new Set()); // Task IDs
 
   // Sorting state
   let sortFields = $state<SortField[]>([
@@ -259,7 +251,7 @@
       await loadRepositories();
 
       if (currentRepository) {
-        await loadIssues();
+        await loadTasks();
       }
     } finally {
       isLoading = false;
@@ -316,7 +308,7 @@
     }
   }
 
-  async function loadIssues(): Promise<void> {
+  async function loadTasks(): Promise<void> {
     if (!currentRepository) {
       return;
     }
@@ -324,31 +316,15 @@
     try {
       isLoading = true;
       error = null;
-      const fetchedIssues =
-        await githubExtension.fetchIssues(currentRepository);
-      issues = fetchedIssues;
+      const fetchedTasks = await githubExtension.getTasksForRepository(
+        currentRepository,
+        activeTab
+      );
+      tasks = fetchedTasks;
     } catch (err: any) {
-      console.error("Failed to load issues:", err);
+      console.error("Failed to load tasks:", err);
       error = err.message;
-      issues = [];
-    } finally {
-      isLoading = false;
-    }
-  }
-
-  async function loadPullRequests(): Promise<void> {
-    if (!currentRepository) return;
-
-    try {
-      isLoading = true;
-      error = null;
-      const fetchedPRs =
-        await githubExtension.fetchPullRequests(currentRepository);
-      pullRequests = fetchedPRs;
-    } catch (err: any) {
-      console.error("Failed to load pull requests:", err);
-      error = err.message;
-      pullRequests = [];
+      tasks = [];
     } finally {
       isLoading = false;
     }
@@ -359,23 +335,16 @@
     await loadOrganizations();
     await loadRepositories();
     if (currentRepository) {
-      if (activeTab === "issues") {
-        await loadIssues();
-      } else if (activeTab === "pull-requests") {
-        await loadPullRequests();
-      }
+      await loadTasks();
     }
   }
 
   function setActiveTab(tab: "issues" | "pull-requests"): void {
     activeTab = tab;
 
-    if (
-      tab === "pull-requests" &&
-      pullRequests.length === 0 &&
-      currentRepository
-    ) {
-      loadPullRequests();
+    // Reload tasks when switching tabs
+    if (currentRepository) {
+      loadTasks();
     }
   }
 
@@ -459,14 +428,10 @@
     }
 
     if (repository) {
-      await loadIssues();
+      await loadTasks();
       await loadLabels();
-      if (activeTab === "pull-requests") {
-        await loadPullRequests();
-      }
     } else {
-      issues = [];
-      pullRequests = [];
+      tasks = [];
       availableLabels = [];
       selectedLabels = [];
     }
@@ -546,53 +511,67 @@
     }
   }
 
-  // Computed filtered and sorted issues
-  let filteredAndSortedIssues = $derived.by(() => {
-    let filtered = issues;
+  // Computed filtered and sorted tasks
+  let filteredAndSortedTasks = $derived.by(() => {
+    let filtered = tasks;
 
-    // Filter by state
+    // Filter by state (using source.data which contains the GitHub issue/PR)
     if (currentState !== "all") {
-      filtered = filtered.filter((issue) => issue.state === currentState);
+      filtered = filtered.filter((task) => {
+        const githubData = task.source?.data;
+        return githubData && githubData.state === currentState;
+      });
     }
 
     // Filter by assignee if "assigned to me" is enabled
     if (assignedToMe && currentUser) {
-      filtered = filtered.filter(
-        (issue) => issue.assignee?.login === currentUser.login
-      );
+      filtered = filtered.filter((task) => {
+        const githubData = task.source?.data;
+        return githubData && githubData.assignee?.login === currentUser.login;
+      });
     }
 
     // Filter by labels if any are selected
     if (selectedLabels.length > 0) {
-      filtered = filtered.filter((issue) =>
-        selectedLabels.some((selectedLabel) =>
-          issue.labels.some((label) => label.name === selectedLabel)
-        )
-      );
+      filtered = filtered.filter((task) => {
+        const githubData = task.source?.data;
+        return (
+          githubData &&
+          githubData.labels &&
+          selectedLabels.some((selectedLabel) =>
+            githubData.labels.some((label: any) => label.name === selectedLabel)
+          )
+        );
+      });
     }
 
     // Filter by search query
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (issue) =>
-          issue.title.toLowerCase().includes(lowerQuery) ||
-          (issue.body && issue.body.toLowerCase().includes(lowerQuery))
-      );
+      filtered = filtered.filter((task) => {
+        const githubData = task.source?.data;
+        return (
+          task.title.toLowerCase().includes(lowerQuery) ||
+          (task.description &&
+            task.description.toLowerCase().includes(lowerQuery)) ||
+          (githubData?.body &&
+            githubData.body.toLowerCase().includes(lowerQuery))
+        );
+      });
     }
 
     // Sort
-    return sortIssues(filtered, sortFields);
+    return sortTasks(filtered, sortFields);
   });
 
-  function sortIssues(
-    issueList: GitHubIssue[],
-    sortFields: SortField[]
-  ): GitHubIssue[] {
-    return [...issueList].sort((a, b) => {
+  function sortTasks(taskList: Task[], sortFields: SortField[]): Task[] {
+    return [...taskList].sort((a, b) => {
       for (const field of sortFields) {
         let aValue: any;
         let bValue: any;
+
+        const aGithubData = a.source?.data;
+        const bGithubData = b.source?.data;
 
         switch (field.key) {
           case "title":
@@ -600,20 +579,20 @@
             bValue = b.title || "";
             break;
           case "createdAt":
-            aValue = new Date(a.created_at).getTime();
-            bValue = new Date(b.created_at).getTime();
+            aValue = a.createdAt.getTime();
+            bValue = b.createdAt.getTime();
             break;
           case "updatedAt":
-            aValue = new Date(a.updated_at).getTime();
-            bValue = new Date(b.updated_at).getTime();
+            aValue = a.updatedAt.getTime();
+            bValue = b.updatedAt.getTime();
             break;
           case "number":
-            aValue = a.number;
-            bValue = b.number;
+            aValue = aGithubData?.number || 0;
+            bValue = bGithubData?.number || 0;
             break;
           case "state":
-            aValue = a.state || "";
-            bValue = b.state || "";
+            aValue = aGithubData?.state || "";
+            bValue = bGithubData?.state || "";
             break;
           default:
             aValue = "";
@@ -640,146 +619,55 @@
     });
   }
 
-  // Computed filtered and sorted pull requests
-  let filteredAndSortedPullRequests = $derived.by(() => {
-    let filtered = pullRequests;
-
-    // Filter by state
-    if (currentState !== "all") {
-      filtered = filtered.filter((pr) => pr.state === currentState);
-    }
-
-    // Filter by assignee if "assigned to me" is enabled
-    if (assignedToMe && currentUser) {
-      filtered = filtered.filter(
-        (pr) =>
-          pr.assignee?.login === currentUser.login ||
-          pr.assignees?.some((assignee) => assignee.login === currentUser.login)
-      );
-    }
-
-    // Filter by labels if any are selected
-    if (selectedLabels.length > 0) {
-      filtered = filtered.filter((pr) =>
-        selectedLabels.some((selectedLabel) =>
-          pr.labels.some((label) => label.name === selectedLabel)
-        )
-      );
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (pr) =>
-          pr.title.toLowerCase().includes(lowerQuery) ||
-          (pr.body && pr.body.toLowerCase().includes(lowerQuery))
-      );
-    }
-
-    // Sort (reuse sortIssues function as PRs have same structure)
-    return sortIssues(filtered as any, sortFields) as any;
-  });
-
   function handleSortChange(newSortFields: SortField[]): void {
     sortFields = newSortFields;
   }
 
-  // Subscribe to task store to get current tasks
-  let tasks = $state<readonly Task[]>([]);
-  $effect(() => {
-    const unsubscribe = taskStore.subscribe((state) => {
-      tasks = state.tasks;
-    });
-    return unsubscribe;
-  });
-
-  /**
-   * Refresh import status for all issues and pull requests from task store
-   */
-  function refreshImportStatus(): void {
-    // Refresh import status for issues
-    const importedIssueNumbers = new Set<number>();
-    for (const issue of issues) {
-      const isImported = tasks.some(
-        (task) =>
-          task.source?.url === issue.html_url ||
-          (task.source?.extension === "github" && task.title === issue.title)
-      );
-      if (isImported) {
-        importedIssueNumbers.add(issue.number);
-      }
-    }
-    importedIssues = importedIssueNumbers;
-
-    // Refresh import status for pull requests
-    const importedPRNumbers = new Set<number>();
-    for (const pr of pullRequests) {
-      const isImported = tasks.some(
-        (task) =>
-          task.source?.url === pr.html_url ||
-          (task.source?.extension === "github" && task.title === pr.title)
-      );
-      if (isImported) {
-        importedPRNumbers.add(pr.number);
-      }
-    }
-    importedPullRequests = importedPRNumbers;
+  // Helper to check if a task is imported (has a real ID, not a temp one)
+  function isTaskImported(task: Task): boolean {
+    return !task.id.startsWith("github-temp-");
   }
 
-  async function importIssue(issue: GitHubIssue): Promise<void> {
+  async function importTask(task: Task): Promise<void> {
     try {
-      importingIssues.add(issue.number);
-      importingIssues = new Set(importingIssues);
+      importingTasks.add(task.id);
+      importingTasks = new Set(importingTasks);
 
-      // Import issue using GitHubExtension
-      const result = await githubExtension.importIssueAsTask(
-        issue,
-        currentRepository || ""
-      );
+      const githubData = task.source?.data;
+      if (!githubData) {
+        console.error("Task has no GitHub data");
+        return;
+      }
+
+      // Determine if it's an issue or PR and import accordingly
+      const isPR = "head" in githubData && "base" in githubData;
+      const result = isPR
+        ? await githubExtension.importPullRequestAsTask(
+            githubData,
+            currentRepository || ""
+          )
+        : await githubExtension.importIssueAsTask(
+            githubData,
+            currentRepository || ""
+          );
 
       if (result.success) {
         console.log(
-          `Successfully imported issue #${issue.number} as task ${result.taskId}`
+          `Successfully imported ${isPR ? "PR" : "issue"} #${githubData.number} as task ${result.taskId}`
         );
-        // Refresh import status after successful import
-        refreshImportStatus();
+        // Reload tasks to get the updated list with the imported task
+        await loadTasks();
       } else {
-        console.error(`Failed to import issue #${issue.number}:`, result.error);
+        console.error(
+          `Failed to import ${isPR ? "PR" : "issue"} #${githubData.number}:`,
+          result.error
+        );
       }
     } catch (error: any) {
-      console.error("Failed to import issue:", error);
+      console.error("Failed to import task:", error);
     } finally {
-      importingIssues.delete(issue.number);
-      importingIssues = new Set(importingIssues);
-    }
-  }
-
-  async function importPullRequest(pr: GitHubPullRequest): Promise<void> {
-    try {
-      importingPullRequests.add(pr.number);
-      importingPullRequests = new Set(importingPullRequests);
-
-      // Import PR using GitHubExtension
-      const result = await githubExtension.importPullRequestAsTask(
-        pr,
-        currentRepository || ""
-      );
-
-      if (result.success) {
-        console.log(
-          `Successfully imported PR #${pr.number} as task ${result.taskId}`
-        );
-        // Refresh import status after successful import
-        refreshImportStatus();
-      } else {
-        console.error(`Failed to import PR #${pr.number}:`, result.error);
-      }
-    } catch (error: any) {
-      console.error("Failed to import pull request:", error);
-    } finally {
-      importingPullRequests.delete(pr.number);
-      importingPullRequests = new Set(importingPullRequests);
+      importingTasks.delete(task.id);
+      importingTasks = new Set(importingTasks);
     }
   }
 </script>
@@ -1001,75 +889,57 @@
       <div class="task-sync-loading-indicator">
         Loading {activeTab === "issues" ? "issues" : "pull requests"}...
       </div>
-    {:else if activeTab === "issues"}
-      <div class="task-sync-task-list" data-testid="github-issues-list">
-        {#if filteredAndSortedIssues.length === 0}
-          <div class="task-sync-empty-message">No issues found.</div>
+    {:else}
+      <div
+        class="task-sync-task-list"
+        data-testid={activeTab === "issues"
+          ? "github-issues-list"
+          : "github-prs-list"}
+      >
+        {#if filteredAndSortedTasks.length === 0}
+          <div class="task-sync-empty-message">
+            No {activeTab === "issues" ? "issues" : "pull requests"} found.
+          </div>
         {:else}
-          {#each filteredAndSortedIssues as issue (issue.id)}
-            {@const isImporting = importingIssues.has(issue.number)}
-            {@const isImported = importedIssues.has(issue.number)}
-            {@const importedTask = isImported
-              ? tasks.find(
-                  (task) =>
-                    task.source?.url === issue.html_url ||
-                    (task.source?.extension === "github" &&
-                      task.title === issue.title)
-                )
-              : null}
-            {@const isScheduled = importedTask?.doDate != null}
-            {@const scheduledDate = importedTask?.doDate}
-            <GitHubIssueItem
-              {issue}
-              repository={currentRepository}
-              isHovered={hoveredIssue === issue.number}
-              {isImported}
-              {isImporting}
-              {isScheduled}
-              {scheduledDate}
-              onHover={(hovered) =>
-                (hoveredIssue = hovered ? issue.number : null)}
-              onImport={importIssue}
-              {host}
-              {settings}
-              testId="github-issue-item"
-            />
-          {/each}
-        {/if}
-      </div>
-    {:else if activeTab === "pull-requests"}
-      <div class="task-sync-task-list">
-        {#if filteredAndSortedPullRequests.length === 0}
-          <div class="task-sync-empty-message">No pull requests found.</div>
-        {:else}
-          {#each filteredAndSortedPullRequests as pr (pr.id)}
-            {@const isImporting = importingPullRequests.has(pr.number)}
-            {@const isImported = importedPullRequests.has(pr.number)}
-            {@const importedTask = isImported
-              ? tasks.find(
-                  (task) =>
-                    task.source?.url === pr.html_url ||
-                    (task.source?.extension === "github" &&
-                      task.title === pr.title)
-                )
-              : null}
-            {@const isScheduled = importedTask?.doDate != null}
-            {@const scheduledDate = importedTask?.doDate}
-            <GitHubPullRequestItem
-              pullRequest={pr}
-              repository={currentRepository}
-              isHovered={hoveredPullRequest === pr.number}
-              {isImported}
-              {isImporting}
-              {isScheduled}
-              {scheduledDate}
-              onHover={(hovered) =>
-                (hoveredPullRequest = hovered ? pr.number : null)}
-              onImport={importPullRequest}
-              {host}
-              {settings}
-              testId="pr-item"
-            />
+          {#each filteredAndSortedTasks as task (task.id)}
+            {@const isImporting = importingTasks.has(task.id)}
+            {@const isImported = isTaskImported(task)}
+            {@const isScheduled = task.doDate != null}
+            {@const scheduledDate = task.doDate}
+            {@const githubData = task.source?.data}
+            {@const isPR =
+              githubData && "head" in githubData && "base" in githubData}
+            {#if isPR}
+              <GitHubPullRequestItem
+                pullRequest={githubData}
+                repository={currentRepository}
+                isHovered={hoveredTask === task.id}
+                {isImported}
+                {isImporting}
+                {isScheduled}
+                {scheduledDate}
+                onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
+                onImport={() => importTask(task)}
+                {host}
+                {settings}
+                testId="pr-item"
+              />
+            {:else}
+              <GitHubIssueItem
+                issue={githubData}
+                repository={currentRepository}
+                isHovered={hoveredTask === task.id}
+                {isImported}
+                {isImporting}
+                {isScheduled}
+                {scheduledDate}
+                onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
+                onImport={() => importTask(task)}
+                {host}
+                {settings}
+                testId="github-issue-item"
+              />
+            {/if}
           {/each}
         {/if}
       </div>
