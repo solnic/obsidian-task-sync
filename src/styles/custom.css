@@ -2945,8 +2945,6 @@ button.tab-item.active {
   font-size: 12px;
 }
 
-/* Unified Task Service Header Styles - removed, now using simplified structure below */
-
 /* LocalTasks Unified Header - matches ContextWidget styling */
 .local-tasks-unified-header {
   display: flex;
@@ -3001,7 +2999,7 @@ button.tab-item.active {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 16px;
+  padding: 16px 0;
 }
 
 /* 2. Primary filters - Org/Repo (GitHub) or Project/Area/Source (Local) */
