@@ -10,7 +10,7 @@
     onInput: (value: string) => void;
     onRefresh?: () => void;
     disabled?: boolean;
-    service?: string;
+    service: string;
     showRefreshButton?: boolean;
   }
 
