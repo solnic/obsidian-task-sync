@@ -347,13 +347,6 @@ export async function getTaskSyncPlugin(page: Page): Promise<any> {
 }
 
 /**
- * Create a test folder structure
- */
-export async function createTestFolders(page: Page): Promise<void> {
-  console.warn("Creating test folders is no longer needed - remove call");
-}
-
-/**
  * Create a test task file using the plugin's createTask method for consistency
  */
 export async function createTestTaskFile(
