@@ -23,6 +23,7 @@ The project is in a transition phase moving from an Obsidian plugin to a Svelte 
 # 🚨 TESTING RULES - NEVER VIOLATE 🚨
 
 - `e2e` tests are the most important tests in this project as they test real interactions with the Obsidian API and the UI
+- DO NOT write unit tests for anything other than simple low-level utilities where UI is not involved, everything else MUST BE COVERED BY E2E TESTS
 
 # 🚨 UNIT TESTING RULES - NEVER VIOLATE 🚨
 
