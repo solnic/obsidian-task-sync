@@ -12,10 +12,25 @@ import {
 } from "../core/extension";
 import { eventBus, DomainEvent } from "../core/events";
 import { derived, writable, type Readable } from "svelte/store";
-import type { Task, Schedule, ScheduleCreateData } from "../core/entities";
+import type {
+  Task,
+  Schedule,
+  ScheduleCreateData,
+  CalendarEvent,
+} from "../core/entities";
 import { Schedules } from "../entities/Schedules";
+import { Tasks } from "../entities/Tasks";
 import { scheduleStore } from "../stores/scheduleStore";
+import { taskStore } from "../stores/taskStore";
 import type { TaskSyncSettings } from "../types/settings";
+import type { CalendarService } from "../services/CalendarService";
+import { mockCalendarService } from "../services/MockCalendarService";
+import {
+  getYesterdayTasksGrouped,
+  getTodayTasksGrouped,
+  getTasksForToday,
+  getTasksForYesterday,
+} from "../utils/dateFiltering";
 
 export interface DailyPlanningExtensionSettings {
   enabled: boolean;
@@ -36,6 +51,9 @@ export class DailyPlanningExtension implements Extension {
   // Schedule operations
   public schedules: EntityOperations<Schedule>;
 
+  // Calendar service for events
+  private calendarService: CalendarService;
+
   // Internal state for daily planning
   private planningActiveStore = writable<boolean>(false);
   private currentScheduleStore = writable<Schedule | null>(null);
@@ -44,6 +62,11 @@ export class DailyPlanningExtension implements Extension {
     this.settings = settings;
     this.plugin = plugin;
     this.schedules = new Schedules.Operations();
+
+    // Initialize calendar service (using mock for now)
+    this.calendarService = mockCalendarService;
+    // Enable mock calendar service for development
+    (this.calendarService as any).setEnabled(true);
   }
 
   async initialize(): Promise<void> {
@@ -295,6 +318,157 @@ export class DailyPlanningExtension implements Extension {
     eventBus.trigger({
       type: "daily-planning.cancelled",
     });
+  }
+
+  // Task movement operations for daily planning
+
+  /**
+   * Get yesterday's tasks grouped by completion status
+   */
+  async getYesterdayTasksGrouped(): Promise<{ done: Task[]; notDone: Task[] }> {
+    const taskQueries = new Tasks.Queries();
+    const allTasks = await taskQueries.getAll();
+    return getYesterdayTasksGrouped([...allTasks]);
+  }
+
+  /**
+   * Get today's tasks grouped by completion status
+   */
+  async getTodayTasksGrouped(): Promise<{ done: Task[]; notDone: Task[] }> {
+    const taskQueries = new Tasks.Queries();
+    const allTasks = await taskQueries.getAll();
+    return getTodayTasksGrouped([...allTasks]);
+  }
+
+  /**
+   * Move a task to today by setting its doDate to today
+   */
+  async moveTaskToToday(task: Task): Promise<void> {
+    const taskOperations = new Tasks.Operations();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day
+
+    await taskOperations.update({
+      ...task,
+      doDate: today,
+    });
+
+    // Add task to today's schedule
+    const todaySchedule = await this.ensureTodayScheduleExists();
+    const scheduleOperations = new Schedules.Operations();
+
+    // Check if task is already in today's schedule
+    const isAlreadyInSchedule = todaySchedule.tasks.some(
+      (t) => t.id === task.id
+    );
+    if (!isAlreadyInSchedule) {
+      await scheduleOperations.addTask(todaySchedule.id, {
+        ...task,
+        doDate: today,
+      });
+    }
+  }
+
+  /**
+   * Move all unfinished tasks from yesterday to today
+   */
+  async moveUnfinishedTasksToToday(): Promise<void> {
+    const yesterdayTasks = await this.getYesterdayTasksGrouped();
+
+    for (const task of yesterdayTasks.notDone) {
+      await this.moveTaskToToday(task);
+    }
+  }
+
+  /**
+   * Unschedule a task by removing its doDate
+   */
+  async unscheduleTask(task: Task): Promise<void> {
+    const taskOperations = new Tasks.Operations();
+
+    await taskOperations.update({
+      ...task,
+      doDate: undefined,
+    });
+
+    // Remove task from all schedules
+    await this.removeTaskFromAllSchedules(task.id);
+  }
+
+  /**
+   * Reschedule a task to a specific date
+   */
+  async rescheduleTask(task: Task, newDate: Date): Promise<void> {
+    const taskOperations = new Tasks.Operations();
+
+    await taskOperations.update({
+      ...task,
+      doDate: newDate,
+    });
+
+    // Remove from current schedules and add to new date's schedule
+    await this.removeTaskFromAllSchedules(task.id);
+
+    // Add to the schedule for the new date
+    const scheduleQueries = new Schedules.Queries();
+    let targetSchedule = await scheduleQueries.getByDate(newDate);
+
+    if (!targetSchedule) {
+      const scheduleOperations = new Schedules.Operations();
+      targetSchedule = await scheduleOperations.create({
+        date: newDate,
+        tasks: [],
+        unscheduledTasks: [],
+        events: [],
+        dailyNoteExists: false,
+        isPlanned: false,
+      });
+    }
+
+    const scheduleOperations = new Schedules.Operations();
+    await scheduleOperations.addTask(targetSchedule.id, {
+      ...task,
+      doDate: newDate,
+    });
+  }
+
+  // Calendar event operations for daily planning
+
+  /**
+   * Get today's calendar events
+   */
+  async getTodayEvents(): Promise<CalendarEvent[]> {
+    if (!this.calendarService.isEnabled()) {
+      return [];
+    }
+
+    try {
+      return await this.calendarService.getTodayEvents();
+    } catch (error) {
+      console.error("Error loading today's calendar events:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get calendar events for a specific date
+   */
+  async getEventsForDate(date: Date): Promise<CalendarEvent[]> {
+    if (!this.calendarService.isEnabled()) {
+      return [];
+    }
+
+    try {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      return await this.calendarService.getEvents([], startOfDay, endOfDay);
+    } catch (error) {
+      console.error("Error loading calendar events for date:", error);
+      return [];
+    }
   }
 
   // Private helper methods

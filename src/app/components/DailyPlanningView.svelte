@@ -1,11 +1,18 @@
 <script lang="ts">
   /**
    * Daily Planning View - Step-by-step wizard for daily planning
-   * Simplified version for initial implementation
+   * Integrated with Step components and DailyPlanningExtension
    */
 
   import { onMount, onDestroy } from "svelte";
   import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
+  import type { Task, CalendarEvent } from "../core/entities";
+
+  // Step components
+  import Step from "./daily-planning/Step.svelte";
+  import ReviewYesterdayStep from "./daily-planning/ReviewYesterdayStep.svelte";
+  import TodayAgendaStep from "./daily-planning/TodayAgendaStep.svelte";
+  import PlanSummaryStep from "./daily-planning/PlanSummaryStep.svelte";
 
   interface Props {
     dailyPlanningExtension?: DailyPlanningExtension;
@@ -18,12 +25,23 @@
   let isLoading = $state(false);
   let error = $state<string | null>(null);
 
+  // Data state
+  let yesterdayTasks = $state<{ done: Task[]; notDone: Task[] }>({
+    done: [],
+    notDone: [],
+  });
+  let todayTasks = $state<Task[]>([]);
+  let todayEvents = $state<CalendarEvent[]>([]);
+
+  // Planning state - staging changes without modifying actual tasks
+  let tasksToMoveToToday = $state<Task[]>([]);
+  let finalPlan = $state<{ tasks: Task[]; events: CalendarEvent[] }>({
+    tasks: [],
+    events: [],
+  });
+
   onMount(async () => {
-    // Set daily planning as active if extension is available
-    if (dailyPlanningExtension) {
-      dailyPlanningExtension.setPlanningActive(true);
-    }
-    isLoading = false;
+    await loadInitialData();
   });
 
   onDestroy(() => {
@@ -33,20 +51,46 @@
     }
   });
 
-  function nextStep() {
-    if (currentStep < 3) {
-      currentStep++;
-    } else if (currentStep === 3) {
-      // Confirm plan
-      confirmPlan();
+  async function loadInitialData() {
+    try {
+      isLoading = true;
+      error = null;
+
+      if (!dailyPlanningExtension) {
+        throw new Error("Daily planning extension not available");
+      }
+
+      // Set daily planning as active
+      dailyPlanningExtension.setPlanningActive(true);
+
+      // Load yesterday's tasks
+      yesterdayTasks = await dailyPlanningExtension.getYesterdayTasksGrouped();
+
+      // Load today's tasks
+      const todayTasksGrouped =
+        await dailyPlanningExtension.getTodayTasksGrouped();
+      todayTasks = [...todayTasksGrouped.done, ...todayTasksGrouped.notDone];
+
+      // Load today's calendar events
+      todayEvents = await dailyPlanningExtension.getTodayEvents();
+
+      // Initialize final plan with current today's tasks
+      finalPlan = {
+        tasks: [...todayTasks],
+        events: [...todayEvents],
+      };
+    } catch (err: any) {
+      console.error("Error loading daily planning data:", err);
+      error = err.message || "Failed to load planning data";
+    } finally {
+      isLoading = false;
     }
   }
 
-  function confirmPlan() {
-    // TODO: Implement plan confirmation logic
-    console.log("Plan confirmed!");
-    // For now, just show a success message
-    alert("Daily plan confirmed successfully!");
+  function nextStep() {
+    if (currentStep < 3) {
+      currentStep++;
+    }
   }
 
   function previousStep() {
@@ -55,9 +99,119 @@
     }
   }
 
-  function cancelDailyPlanning() {
-    // TODO: Implement cancellation logic
-    console.log("Daily planning cancelled");
+  async function cancelDailyPlanning() {
+    if (dailyPlanningExtension) {
+      await dailyPlanningExtension.cancelDailyPlanning();
+    }
+  }
+
+  async function confirmPlan() {
+    try {
+      isLoading = true;
+
+      if (!dailyPlanningExtension) {
+        throw new Error("Daily planning extension not available");
+      }
+
+      // Apply all the planned task movements
+      for (const task of tasksToMoveToToday) {
+        await dailyPlanningExtension.moveTaskToToday(task);
+      }
+
+      // Ensure today's schedule exists and update it with the final plan
+      const todaySchedule =
+        await dailyPlanningExtension.ensureTodayScheduleExists();
+
+      // Update the schedule with the final plan (tasks and events)
+      const scheduleOperations = new (
+        await import("../entities/Schedules")
+      ).Schedules.Operations();
+      await scheduleOperations.update(todaySchedule.id, {
+        tasks: finalPlan.tasks,
+        events: finalPlan.events,
+        isPlanned: true,
+        planningCompletedAt: new Date(),
+      });
+
+      // Complete the daily planning
+      await dailyPlanningExtension.completeDailyPlanning();
+
+      // Show success message and close the planning view
+      alert("Daily plan confirmed successfully!");
+
+      // Optionally close the daily planning view or navigate away
+      // This would depend on how the view is managed in the application
+    } catch (err: any) {
+      console.error("Error confirming plan:", err);
+      error = err.message || "Failed to confirm plan";
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  // Task movement handlers
+
+  async function moveUnfinishedToToday() {
+    try {
+      if (!dailyPlanningExtension) return;
+
+      // Add all unfinished tasks to the staging area
+      tasksToMoveToToday = [...tasksToMoveToToday, ...yesterdayTasks.notDone];
+
+      // Update final plan
+      finalPlan = {
+        ...finalPlan,
+        tasks: [...finalPlan.tasks, ...yesterdayTasks.notDone],
+      };
+    } catch (err: any) {
+      console.error("Error moving unfinished tasks:", err);
+      error = err.message || "Failed to move tasks";
+    }
+  }
+
+  async function moveTaskToToday(task: Task) {
+    try {
+      if (!dailyPlanningExtension) return;
+
+      // Add task to staging area if not already there
+      if (!tasksToMoveToToday.some((t) => t.id === task.id)) {
+        tasksToMoveToToday = [...tasksToMoveToToday, task];
+      }
+
+      // Update final plan
+      if (!finalPlan.tasks.some((t) => t.id === task.id)) {
+        finalPlan = {
+          ...finalPlan,
+          tasks: [...finalPlan.tasks, task],
+        };
+      }
+    } catch (err: any) {
+      console.error("Error moving task to today:", err);
+      error = err.message || "Failed to move task";
+    }
+  }
+
+  async function unscheduleTaskFromYesterday(task: Task) {
+    try {
+      if (!dailyPlanningExtension) return;
+
+      await dailyPlanningExtension.unscheduleTask(task);
+
+      // Remove from staging area if present
+      tasksToMoveToToday = tasksToMoveToToday.filter((t) => t.id !== task.id);
+
+      // Remove from final plan
+      finalPlan = {
+        ...finalPlan,
+        tasks: finalPlan.tasks.filter((t) => t.id !== task.id),
+      };
+
+      // Reload yesterday's tasks to reflect the change
+      yesterdayTasks = await dailyPlanningExtension.getYesterdayTasksGrouped();
+    } catch (err: any) {
+      console.error("Error unscheduling task:", err);
+      error = err.message || "Failed to unschedule task";
+    }
   }
 
   function getStepTitle(step: number): string {
@@ -88,195 +242,82 @@
 </script>
 
 <div class="daily-planning-view" data-testid="daily-planning-view">
-  <div class="daily-planning-header">
-    <h1>Daily Planning Wizard</h1>
-    <div class="step-indicator">
-      Step {currentStep} of 3: {getStepTitle(currentStep)}
+  <div class="daily-planning-container">
+    <div class="daily-planning-title">
+      <h1>Daily Planning Wizard</h1>
     </div>
-  </div>
 
-  <div class="daily-planning-content">
-    {#if isLoading}
-      <div class="loading-state">
-        <div class="loading-spinner"></div>
-        <p>Loading daily planning data...</p>
-      </div>
-    {:else if error}
-      <div class="error-state">
-        <p class="error-message">{error}</p>
-        <button onclick={() => (error = null)}>Dismiss</button>
-      </div>
-    {:else}
-      <div class="step-content">
-        <h2>{getStepTitle(currentStep)}</h2>
-        <p class="step-description">{getStepDescription(currentStep)}</p>
-
-        {#if currentStep === 1}
-          <div class="review-yesterday-step" data-testid="step-1-content">
-            <p>Yesterday's tasks will be displayed here.</p>
-            <!-- TODO: Implement ReviewYesterdayStep component -->
-          </div>
-        {:else if currentStep === 2}
-          <div class="today-agenda-step" data-testid="step-2-content">
-            <p>Today's agenda will be displayed here.</p>
-            <!-- TODO: Implement TodayAgendaStep component -->
-          </div>
-        {:else if currentStep === 3}
-          <div class="plan-summary-step" data-testid="step-3-content">
-            <p>Plan summary will be displayed here.</p>
-            <!-- TODO: Implement PlanSummaryStep component -->
-          </div>
-        {/if}
-      </div>
+    <!-- Step Components -->
+    {#if currentStep === 1}
+      <Step
+        title={getStepTitle(1)}
+        description={getStepDescription(1)}
+        stepNumber={1}
+        totalSteps={3}
+        {isLoading}
+        {error}
+        onNext={nextStep}
+        onPrevious={previousStep}
+        onCancel={cancelDailyPlanning}
+      >
+        <ReviewYesterdayStep
+          {yesterdayTasks}
+          {isLoading}
+          onMoveUnfinishedToToday={moveUnfinishedToToday}
+          onMoveTaskToToday={moveTaskToToday}
+          onUnscheduleTask={unscheduleTaskFromYesterday}
+        />
+      </Step>
+    {:else if currentStep === 2}
+      <Step
+        title={getStepTitle(2)}
+        description={getStepDescription(2)}
+        stepNumber={2}
+        totalSteps={3}
+        {isLoading}
+        {error}
+        onNext={nextStep}
+        onPrevious={previousStep}
+        onCancel={cancelDailyPlanning}
+      >
+        <TodayAgendaStep {todayTasks} {todayEvents} />
+      </Step>
+    {:else if currentStep === 3}
+      <Step
+        title={getStepTitle(3)}
+        description={getStepDescription(3)}
+        stepNumber={3}
+        totalSteps={3}
+        {isLoading}
+        {error}
+        nextButtonText="Confirm Plan"
+        onNext={confirmPlan}
+        onPrevious={previousStep}
+        onCancel={cancelDailyPlanning}
+      >
+        <PlanSummaryStep {finalPlan} {tasksToMoveToToday} />
+      </Step>
     {/if}
-  </div>
-
-  <div class="daily-planning-footer">
-    <div class="step-navigation">
-      <button
-        onclick={previousStep}
-        disabled={currentStep === 1}
-        class="nav-button previous"
-      >
-        Previous
-      </button>
-
-      <button onclick={cancelDailyPlanning} class="nav-button cancel">
-        Cancel
-      </button>
-
-      <button
-        onclick={nextStep}
-        class="nav-button next"
-        data-testid={currentStep === 3 ? "confirm-button" : "next-button"}
-      >
-        {currentStep === 3 ? "Confirm Plan" : "Next"}
-      </button>
-    </div>
   </div>
 </div>
 
 <style>
   .daily-planning-view {
-    display: flex;
-    flex-direction: column;
+    padding: 20px;
     height: 100%;
-    padding: 1rem;
-    background: var(--background-primary);
-  }
-
-  .daily-planning-header {
-    margin-bottom: 1.5rem;
-  }
-
-  .daily-planning-header h1 {
-    margin: 0 0 0.5rem 0;
-    color: var(--text-normal);
-    font-size: 1.5rem;
-  }
-
-  .step-indicator {
-    color: var(--text-muted);
-    font-size: 0.9rem;
-  }
-
-  .daily-planning-content {
-    flex: 1;
     overflow-y: auto;
   }
 
-  .loading-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 200px;
-    gap: 1rem;
+  .daily-planning-container {
+    max-width: 800px;
+    margin: 0 auto;
   }
 
-  .loading-spinner {
-    width: 2rem;
-    height: 2rem;
-    border: 2px solid var(--background-modifier-border);
-    border-top: 2px solid var(--interactive-accent);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg);
-    }
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-
-  .error-state {
-    padding: 1rem;
-    background: var(--background-modifier-error);
-    border-radius: 0.5rem;
+  .daily-planning-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 30px;
+    color: var(--text-normal);
     text-align: center;
-  }
-
-  .error-message {
-    color: var(--text-error);
-    margin-bottom: 1rem;
-  }
-
-  .step-content h2 {
-    margin: 0 0 0.5rem 0;
-    color: var(--text-normal);
-  }
-
-  .step-description {
-    color: var(--text-muted);
-    margin-bottom: 1.5rem;
-  }
-
-  .daily-planning-footer {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--background-modifier-border);
-  }
-
-  .step-navigation {
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .nav-button {
-    padding: 0.5rem 1rem;
-    border: 1px solid var(--background-modifier-border);
-    background: var(--background-secondary);
-    color: var(--text-normal);
-    border-radius: 0.25rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  }
-
-  .nav-button:hover:not(:disabled) {
-    background: var(--background-modifier-hover);
-  }
-
-  .nav-button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .nav-button.next {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border-color: var(--interactive-accent);
-  }
-
-  .nav-button.cancel {
-    color: var(--text-error);
-    border-color: var(--text-error);
-  }
-
-  .nav-button.cancel:hover {
-    background: var(--background-modifier-error);
   }
 </style>
