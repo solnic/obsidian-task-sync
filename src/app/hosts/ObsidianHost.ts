@@ -16,6 +16,7 @@ import { taskStore } from "../stores/taskStore";
 import { projectStore } from "../stores/projectStore";
 import { areaStore } from "../stores/areaStore";
 import { get } from "svelte/store";
+import { taskSyncApp } from "../App";
 
 /**
  * Interface for Obsidian Plugin that provides the necessary methods
@@ -301,8 +302,6 @@ export class ObsidianHost extends Host {
    * @returns The TaskSync application instance
    */
   getApp(): any {
-    // Import taskSyncApp from App.ts
-    const { taskSyncApp } = require("../App");
     return taskSyncApp;
   }
 }

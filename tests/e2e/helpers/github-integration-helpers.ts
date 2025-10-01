@@ -1,6 +1,5 @@
 import type { Page } from "playwright";
-import { type SharedTestContext } from "./shared-context";
-import { openTaskSyncSettings } from "./global";
+import { stubGitHubAPIs } from "./api-stubbing";
 
 /**
  * GitHub Integration helpers for e2e tests
@@ -426,7 +425,6 @@ export async function stubGitHubWithFixtures(
   }
 ): Promise<void> {
   // Use the simplified stubbing system that handles plugin reloads
-  const { stubGitHubAPIs } = require("./api-stubbing");
   await stubGitHubAPIs(page, fixtures);
 }
 
@@ -682,56 +680,4 @@ export async function waitForIssueImportComplete(
     issueNumber,
     { timeout }
   );
-}
-
-/**
- * Get GitHub view UI structure information
- */
-export async function getGitHubViewStructure(page: Page): Promise<{
-  exists: boolean;
-  hasHeader: boolean;
-  hasContent: boolean;
-  isVisible: boolean;
-  hasText: boolean;
-}> {
-  await debugGitHubViewState(page);
-
-  const result = await page.evaluate(() => {
-    // Look for the GitHub service component within the Tasks view
-    let viewElement = document.querySelector('[data-testid="github-service"]');
-
-    if (!viewElement) {
-      // Fallback: look for the view content inside any workspace leaf
-      const leaves = document.querySelectorAll(".workspace-leaf-content");
-      for (let i = 0; i < leaves.length; i++) {
-        const leaf = leaves[i];
-        const githubView = leaf.querySelector('[data-testid="github-service"]');
-        if (githubView) {
-          viewElement = githubView;
-          break;
-        }
-      }
-    }
-
-    if (!viewElement) {
-      return {
-        exists: false,
-        hasHeader: false,
-        hasContent: false,
-        isVisible: false,
-        hasText: false,
-      };
-    }
-
-    return {
-      exists: true,
-      hasHeader: viewElement.querySelector(".github-issues-header") !== null,
-      hasContent: viewElement.querySelector(".github-issues-content") !== null,
-      isVisible: (viewElement as HTMLElement).offsetParent !== null,
-      hasText:
-        viewElement.textContent !== null && viewElement.textContent.length > 0,
-    };
-  });
-
-  return result;
 }
