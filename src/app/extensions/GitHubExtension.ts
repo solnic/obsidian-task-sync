@@ -553,28 +553,23 @@ export class GitHubExtension implements Extension {
 
     const [owner, repo] = repository.split("/");
 
-    try {
-      const response = await this.octokit.rest.issues.listForRepo({
-        owner,
-        repo,
-        state: filters.state,
-        assignee: filters.assignee || undefined,
-        labels:
-          filters.labels.length > 0 ? filters.labels.join(",") : undefined,
-        per_page: 100,
-      });
+    const response = await this.octokit.rest.issues.listForRepo({
+      owner,
+      repo,
+      state: filters.state,
+      assignee: filters.assignee || undefined,
+      labels: filters.labels.length > 0 ? filters.labels.join(",") : undefined,
+      per_page: 100,
+    });
 
-      const issues = response.data as GitHubIssue[];
+    const issues = response.data as GitHubIssue[];
 
-      // Cache the results
-      if (this.issuesCache) {
-        await this.issuesCache.set(cacheKey, issues);
-      }
-
-      return issues;
-    } catch (error) {
-      throw error;
+    // Cache the results
+    if (this.issuesCache) {
+      await this.issuesCache.set(cacheKey, issues);
     }
+
+    return issues;
   }
 
   /**
@@ -595,45 +590,39 @@ export class GitHubExtension implements Extension {
       }
     }
 
-    try {
-      const allRepositories: GitHubRepository[] = [];
-      let page = 1;
-      let hasMore = true;
+    const allRepositories: GitHubRepository[] = [];
+    let page = 1;
+    let hasMore = true;
 
-      while (hasMore) {
-        const response = await this.octokit.rest.repos.listForAuthenticatedUser(
-          {
-            sort: "updated",
-            per_page: 100,
-            page: page,
-          }
+    while (hasMore) {
+      const response = await this.octokit.rest.repos.listForAuthenticatedUser({
+        sort: "updated",
+        per_page: 100,
+        page: page,
+      });
+
+      const repositories = response.data as GitHubRepository[];
+      allRepositories.push(...repositories);
+
+      // Check if we have more pages
+      hasMore = repositories.length === 100;
+      page++;
+
+      // Safety check to prevent infinite loops
+      if (page > 50) {
+        console.warn(
+          "GitHub API: Stopping pagination after 50 pages (5000 repos) for safety"
         );
-
-        const repositories = response.data as GitHubRepository[];
-        allRepositories.push(...repositories);
-
-        // Check if we have more pages
-        hasMore = repositories.length === 100;
-        page++;
-
-        // Safety check to prevent infinite loops
-        if (page > 50) {
-          console.warn(
-            "GitHub API: Stopping pagination after 50 pages (5000 repos) for safety"
-          );
-          break;
-        }
+        break;
       }
-
-      // Cache the results
-      if (this.repositoriesCache) {
-        await this.repositoriesCache.set(cacheKey, allRepositories);
-      }
-
-      return allRepositories;
-    } catch (error) {
-      throw error;
     }
+
+    // Cache the results
+    if (this.repositoriesCache) {
+      await this.repositoriesCache.set(cacheKey, allRepositories);
+    }
+
+    return allRepositories;
   }
 
   /**
@@ -654,22 +643,18 @@ export class GitHubExtension implements Extension {
       }
     }
 
-    try {
-      const response = await this.octokit.rest.orgs.listForAuthenticatedUser({
-        per_page: 100,
-      });
+    const response = await this.octokit.rest.orgs.listForAuthenticatedUser({
+      per_page: 100,
+    });
 
-      const organizations = response.data as GitHubOrganization[];
+    const organizations = response.data as GitHubOrganization[];
 
-      // Cache the results
-      if (this.organizationsCache) {
-        await this.organizationsCache.set(cacheKey, organizations);
-      }
-
-      return organizations;
-    } catch (error) {
-      throw error;
+    // Cache the results
+    if (this.organizationsCache) {
+      await this.organizationsCache.set(cacheKey, organizations);
     }
+
+    return organizations;
   }
 
   /**
@@ -696,24 +681,20 @@ export class GitHubExtension implements Extension {
 
     const [owner, repo] = repository.split("/");
 
-    try {
-      const response = await this.octokit.rest.issues.listLabelsForRepo({
-        owner,
-        repo,
-        per_page: 100,
-      });
+    const response = await this.octokit.rest.issues.listLabelsForRepo({
+      owner,
+      repo,
+      per_page: 100,
+    });
 
-      const labels = response.data as GitHubLabel[];
+    const labels = response.data as GitHubLabel[];
 
-      // Cache the labels
-      if (this.labelsCache) {
-        await this.labelsCache.set(cacheKey, labels);
-      }
-
-      return labels;
-    } catch (error) {
-      throw error;
+    // Cache the labels
+    if (this.labelsCache) {
+      await this.labelsCache.set(cacheKey, labels);
     }
+
+    return labels;
   }
 
   /**
@@ -728,17 +709,12 @@ export class GitHubExtension implements Extension {
       throw new Error("GitHub integration is not enabled or configured");
     }
 
-    try {
-      const response = await this.octokit.rest.users.getAuthenticated();
-      return {
-        login: response.data.login,
-        id: response.data.id,
-        avatar_url: response.data.avatar_url,
-      };
-    } catch (error) {
-      console.error("Failed to fetch current user:", error);
-      return null;
-    }
+    const response = await this.octokit.rest.users.getAuthenticated();
+    return {
+      login: response.data.login,
+      id: response.data.id,
+      avatar_url: response.data.avatar_url,
+    };
   }
 
   /**
@@ -755,18 +731,14 @@ export class GitHubExtension implements Extension {
 
     const [owner, repo] = repository.split("/");
 
-    try {
-      const response = await this.octokit.rest.pulls.list({
-        owner,
-        repo,
-        state: "open",
-        per_page: 100,
-      });
+    const response = await this.octokit.rest.pulls.list({
+      owner,
+      repo,
+      state: "open",
+      per_page: 100,
+    });
 
-      return response.data as GitHubPullRequest[];
-    } catch (error) {
-      throw error;
-    }
+    return response.data as GitHubPullRequest[];
   }
 
   /**
@@ -789,44 +761,40 @@ export class GitHubExtension implements Extension {
       }
     }
 
-    try {
-      const allRepositories: GitHubRepository[] = [];
-      let page = 1;
-      let hasMore = true;
+    const allRepositories: GitHubRepository[] = [];
+    let page = 1;
+    let hasMore = true;
 
-      while (hasMore) {
-        const response = await this.octokit.rest.repos.listForOrg({
-          org,
-          sort: "updated",
-          per_page: 100,
-          page: page,
-        });
+    while (hasMore) {
+      const response = await this.octokit.rest.repos.listForOrg({
+        org,
+        sort: "updated",
+        per_page: 100,
+        page: page,
+      });
 
-        const repositories = response.data as GitHubRepository[];
-        allRepositories.push(...repositories);
+      const repositories = response.data as GitHubRepository[];
+      allRepositories.push(...repositories);
 
-        // Check if we have more pages
-        hasMore = repositories.length === 100;
-        page++;
+      // Check if we have more pages
+      hasMore = repositories.length === 100;
+      page++;
 
-        // Safety check to prevent infinite loops
-        if (page > 50) {
-          console.warn(
-            `GitHub API: Stopping pagination after 50 pages (5000 repos) for ${org} for safety`
-          );
-          break;
-        }
+      // Safety check to prevent infinite loops
+      if (page > 50) {
+        console.warn(
+          `GitHub API: Stopping pagination after 50 pages (5000 repos) for ${org} for safety`
+        );
+        break;
       }
-
-      // Cache the results
-      if (this.repositoriesCache) {
-        await this.repositoriesCache.set(cacheKey, allRepositories);
-      }
-
-      return allRepositories;
-    } catch (error) {
-      throw error;
     }
+
+    // Cache the results
+    if (this.repositoriesCache) {
+      await this.repositoriesCache.set(cacheKey, allRepositories);
+    }
+
+    return allRepositories;
   }
 
   /**
