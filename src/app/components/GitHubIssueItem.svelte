@@ -128,17 +128,16 @@
 </script>
 
 {#snippet actionSnippet()}
-  <div class="import-actions">
-    {#if isImported}
-      <button
-        class="open-task-button"
-        title="Open task"
-        onclick={handleOpenTask}
-        data-testid="open-task-button"
-      >
-        Open
-      </button>
-    {/if}
+  {#if isImported}
+    <button
+      class="open-task-button"
+      title="Open task"
+      onclick={handleOpenTask}
+      data-testid="open-task-button"
+    >
+      Open
+    </button>
+  {:else}
     <ImportButton
       {isImported}
       {isImporting}
@@ -155,10 +154,7 @@
               : "issue-import-button"}
       onImport={handleImport}
     />
-  </div>
-{/snippet}
-
-{#snippet secondaryActionSnippet()}
+  {/if}
   <SeeOnServiceButton
     serviceName="GitHub"
     url={issue.html_url}
@@ -184,7 +180,6 @@
   {testId}
   actionContent={true}
   actions={actionSnippet}
-  secondaryActions={secondaryActionSnippet}
 />
 
 <style>
