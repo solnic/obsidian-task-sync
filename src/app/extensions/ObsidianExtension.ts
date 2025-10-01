@@ -18,11 +18,17 @@ import { projectOperations } from "../entities/Projects";
 import { areaOperations } from "../entities/Areas";
 import { derived, type Readable } from "svelte/store";
 import type { Task } from "../core/entities";
+import { BaseManager } from "../services/BaseManager";
+import type { TaskSyncSettings } from "../types/settings";
 
 export interface ObsidianExtensionSettings {
   areasFolder: string;
   projectsFolder: string;
   tasksFolder: string;
+  // Base generation settings
+  basesFolder: string;
+  projectBasesEnabled: boolean;
+  autoSyncAreaProjectBases: boolean;
 }
 
 export class ObsidianExtension implements Extension {
@@ -40,11 +46,13 @@ export class ObsidianExtension implements Extension {
   private projectOperations: ObsidianProjectOperations;
   readonly taskOperations: ObsidianTaskOperations;
   private vaultEventRefs: EventRef[] = [];
+  private baseManager: BaseManager;
 
   constructor(
     private app: App,
     private plugin: Plugin,
-    private settings: ObsidianExtensionSettings
+    private settings: ObsidianExtensionSettings,
+    private fullSettings: TaskSyncSettings
   ) {
     this.areaOperations = new ObsidianAreaOperations(app, settings.areasFolder);
     this.projectOperations = new ObsidianProjectOperations(
@@ -52,6 +60,7 @@ export class ObsidianExtension implements Extension {
       settings.projectsFolder
     );
     this.taskOperations = new ObsidianTaskOperations(app, settings.tasksFolder);
+    this.baseManager = new BaseManager(app, app.vault, fullSettings);
   }
 
   async initialize(): Promise<void> {
@@ -434,6 +443,34 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
+   * Sync project bases - create individual bases for projects
+   * Public method that can be called when settings change or manually triggered
+   */
+  async syncProjectBases(): Promise<void> {
+    try {
+      await this.baseManager.syncProjectBases();
+    } catch (error) {
+      console.error("Failed to sync project bases:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update base manager settings
+   * Should be called when settings change
+   */
+  updateBaseManagerSettings(newSettings: TaskSyncSettings): void {
+    this.baseManager.updateSettings(newSettings);
+  }
+
+  /**
+   * Get base manager instance for direct access if needed
+   */
+  getBaseManager(): BaseManager {
+    return this.baseManager;
+  }
+
+  /**
    * Set up vault event listeners to handle file deletions
    * When a note is deleted in Obsidian, we need to delete the corresponding entity
    */
@@ -496,6 +533,64 @@ export class ObsidianExtension implements Extension {
     }
   }
 
+  /**
+   * Handle project creation events for automatic base generation
+   */
+  private async onProjectCreated(event: any): Promise<void> {
+    if (
+      !this.settings.projectBasesEnabled ||
+      !this.settings.autoSyncAreaProjectBases
+    ) {
+      return;
+    }
+
+    try {
+      // Extract project info from the event
+      const project = event.project;
+      if (project && project.name && project.source?.filePath) {
+        const projectInfo = {
+          name: project.name,
+          path: project.source.filePath,
+          type: "project" as const,
+        };
+
+        console.log(`Auto-generating base for new project: ${project.name}`);
+        await this.baseManager.createOrUpdateProjectBase(projectInfo);
+      }
+    } catch (error) {
+      console.error("Failed to auto-generate project base:", error);
+    }
+  }
+
+  /**
+   * Handle project update events for automatic base regeneration
+   */
+  private async onProjectUpdated(event: any): Promise<void> {
+    if (
+      !this.settings.projectBasesEnabled ||
+      !this.settings.autoSyncAreaProjectBases
+    ) {
+      return;
+    }
+
+    try {
+      // Extract project info from the event
+      const project = event.project;
+      if (project && project.name && project.source?.filePath) {
+        const projectInfo = {
+          name: project.name,
+          path: project.source.filePath,
+          type: "project" as const,
+        };
+
+        console.log(`Auto-updating base for updated project: ${project.name}`);
+        await this.baseManager.createOrUpdateProjectBase(projectInfo);
+      }
+    } catch (error) {
+      console.error("Failed to auto-update project base:", error);
+    }
+  }
+
   private setupEventListeners(): void {
     // Subscribe to domain events to reactively manage Obsidian notes
     eventBus.on("areas.created", this.onEntityCreated.bind(this));
@@ -505,6 +600,10 @@ export class ObsidianExtension implements Extension {
     eventBus.on("projects.created", this.onEntityCreated.bind(this));
     eventBus.on("projects.updated", this.onEntityUpdated.bind(this));
     eventBus.on("projects.deleted", this.onEntityDeleted.bind(this));
+
+    // Listen for project events to automatically sync bases
+    eventBus.on("projects.created", this.onProjectCreated.bind(this));
+    eventBus.on("projects.updated", this.onProjectUpdated.bind(this));
 
     eventBus.on("tasks.created", this.onEntityCreated.bind(this));
     eventBus.on("tasks.updated", this.onEntityUpdated.bind(this));
