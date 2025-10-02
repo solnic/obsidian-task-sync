@@ -92,11 +92,17 @@ test.describe("Daily Planning Wizard", () => {
     // STEP 1: Should show yesterday's unfinished task
     await expect(page.locator('[data-testid="step-1-content"]')).toBeVisible();
 
-    // Look for the task in the not completed section
+    // Look for the task in the not completed section - use more specific locator
     await expect(
       page.locator('[data-testid="not-completed-task"]')
     ).toBeVisible();
-    await expect(page.locator("text=Yesterday Task")).toBeVisible();
+
+    // Use more specific locator within the not-completed-task element
+    await expect(
+      page
+        .locator('[data-testid="not-completed-task"] .task-title')
+        .filter({ hasText: "Yesterday Task" })
+    ).toBeVisible();
 
     // Click "Move to Today" button
     const moveToTodayButton = page.locator(
@@ -140,8 +146,12 @@ test.describe("Daily Planning Wizard", () => {
     // STEP 2: Should show today's scheduled task
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
 
-    // Look for today's task in the agenda
-    await expect(page.locator("text=Today Task")).toBeVisible();
+    // Look for today's task in the agenda - use more specific locator
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Today Task" })
+    ).toBeVisible();
   });
 
   test("should show plan summary in step 3", async ({ page }) => {
@@ -177,8 +187,12 @@ test.describe("Daily Planning Wizard", () => {
     // STEP 3: Plan Summary
     await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
 
-    // Should show the task in the plan summary
-    await expect(page.locator("text=Summary Task")).toBeVisible();
+    // Should show the task in the plan summary - use more specific locator
+    await expect(
+      page
+        .locator('[data-testid="step-3-content"] .preview-title')
+        .filter({ hasText: "Summary Task" })
+    ).toBeVisible();
 
     // Should have a confirm button
     await expect(page.locator('[data-testid="confirm-button"]')).toBeVisible();
@@ -270,12 +284,7 @@ test.describe("Daily Planning Wizard", () => {
     // STEP 1: Should show all 3 yesterday tasks
     await expect(page.locator('[data-testid="step-1-content"]')).toBeVisible();
 
-    // Wait for tasks to appear
-    await expect(
-      page.locator('[data-testid="not-completed-task"]')
-    ).toBeVisible();
-
-    // Should see all 3 tasks
+    // Wait for tasks to appear and check count
     const yesterdayTasks = page.locator('[data-testid="not-completed-task"]');
     await expect(yesterdayTasks).toHaveCount(3);
 
@@ -292,10 +301,22 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="next-button"]');
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
 
-    // Should see the moved tasks in today's agenda
-    await expect(page.locator("text=Yesterday Task 1")).toBeVisible();
-    await expect(page.locator("text=Yesterday Task 2")).toBeVisible();
-    await expect(page.locator("text=Yesterday Task 3")).toBeVisible();
+    // Should see the moved tasks in today's agenda - use more specific locators
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Yesterday Task 1" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Yesterday Task 2" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Yesterday Task 3" })
+    ).toBeVisible();
   });
 
   test("should handle task scheduling and unscheduling in step 2", async ({
@@ -328,8 +349,12 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="next-button"]');
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
 
-    // Should show the unscheduled task
-    await expect(page.locator("text=Unscheduled Task")).toBeVisible();
+    // Should show the unscheduled task - use more specific locator
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Unscheduled Task" })
+    ).toBeVisible();
 
     // Test scheduling functionality if schedule buttons are available
     const scheduleButton = page
@@ -374,12 +399,20 @@ test.describe("Daily Planning Wizard", () => {
 
     // Step 2
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
-    await expect(page.locator("text=Workflow Task")).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Workflow Task" })
+    ).toBeVisible();
     await page.click('[data-testid="next-button"]');
 
     // Step 3
     await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
-    await expect(page.locator("text=Workflow Task")).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="step-3-content"] .preview-title')
+        .filter({ hasText: "Workflow Task" })
+    ).toBeVisible();
 
     // Confirm the plan if button is available
     const confirmButton = page.locator('[data-testid="confirm-button"]');
