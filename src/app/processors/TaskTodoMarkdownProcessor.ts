@@ -22,6 +22,18 @@ import { getOptimalTextColor } from "../utils/colorUtils";
 import { get } from "svelte/store";
 import type { Task } from "../core/entities";
 
+/**
+ * Task data interface for badge creation
+ * Contains only the properties needed for rendering badges
+ */
+interface TaskBadgeData {
+  title: string;
+  category?: string;
+  priority?: string;
+  status?: string;
+  done?: boolean;
+}
+
 export class TaskTodoMarkdownProcessor {
   private app: App;
   private settings: TaskSyncSettings;
@@ -176,7 +188,7 @@ export class TaskTodoMarkdownProcessor {
   /**
    * Get task data from file path using the task store
    */
-  private async getTaskData(filePath: string): Promise<any | null> {
+  private async getTaskData(filePath: string): Promise<TaskBadgeData | null> {
     try {
       // Get current tasks from the store
       const storeState = get(taskStore);
@@ -225,7 +237,7 @@ export class TaskTodoMarkdownProcessor {
    */
   private addTaskBadges(
     todoItem: HTMLElement,
-    taskData: any,
+    taskData: TaskBadgeData,
     link: HTMLElement
   ): void {
     // Check if badges already exist to avoid duplicates
@@ -414,7 +426,10 @@ export class TaskTodoMarkdownProcessor {
   /**
    * Add task mention indicator to show this todo is synced with a task
    */
-  private addTaskMentionIndicator(todoItem: HTMLElement, taskData: any): void {
+  private addTaskMentionIndicator(
+    todoItem: HTMLElement,
+    taskData: TaskBadgeData
+  ): void {
     // Check if indicator already exists to avoid duplicates
     if (todoItem.querySelector(".task-sync-mention-indicator")) {
       return;

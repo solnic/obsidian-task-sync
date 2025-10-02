@@ -103,8 +103,8 @@ test.describe("TaskTodoMarkdownProcessor", () => {
       }
     }, testFilePath);
 
-    // Wait for the file to be rendered in reading mode
-    await page.waitForTimeout(1000);
+    // Wait for the file to be rendered in reading mode by waiting for the first badge to appear
+    await page.waitForSelector(".task-sync-todo-badges");
 
     // Check that badges are added to todo items with task links
     const todoWithBadges = page.locator(".task-sync-todo-badges");
@@ -191,7 +191,10 @@ test.describe("TaskTodoMarkdownProcessor", () => {
       }
     }, nestedTestFilePath);
 
-    await page.waitForTimeout(1000);
+    // Wait for the preview to render by waiting for nested todo badges to appear
+    await page.waitForSelector(
+      'li:has(a[href*="Nested Task Test"]) .task-sync-todo-badges'
+    );
 
     // Check that nested todo items also get badges
     const nestedTodoBadges = page.locator(
@@ -242,7 +245,8 @@ This is just a regular note with some content.
       }
     }, todoFilePath);
 
-    await page.waitForTimeout(1000);
+    // Wait for the preview to render by waiting for the heading to appear
+    await page.waitForSelector('h1:has-text("Todo Items with Regular Links")');
 
     // Verify that no badges are added for non-task links
     const badges = page.locator(".task-sync-todo-badges");
