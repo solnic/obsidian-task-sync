@@ -4,12 +4,13 @@
  * Provides area operations and coordinates with the event bus
  */
 
-import { App, Plugin, TFile, EventRef } from "obsidian";
+import { App, Plugin, MarkdownPostProcessor, TFile, EventRef } from "obsidian";
 import { Extension, extensionRegistry, EntityType } from "../core/extension";
 import { eventBus } from "../core/events";
 import { ObsidianAreaOperations } from "./ObsidianAreaOperations";
 import { ObsidianProjectOperations } from "./ObsidianProjectOperations";
 import { ObsidianTaskOperations } from "./ObsidianTaskOperations";
+import { TaskTodoMarkdownProcessor } from "../processors/TaskTodoMarkdownProcessor";
 import { taskStore } from "../stores/taskStore";
 import { projectStore } from "../stores/projectStore";
 import { areaStore } from "../stores/areaStore";
@@ -18,6 +19,7 @@ import { projectOperations } from "../entities/Projects";
 import { areaOperations } from "../entities/Areas";
 import { derived, type Readable } from "svelte/store";
 import type { Task } from "../core/entities";
+import type { TaskSyncSettings } from "../types/settings";
 
 export interface ObsidianExtensionSettings {
   areasFolder: string;
@@ -40,11 +42,14 @@ export class ObsidianExtension implements Extension {
   private projectOperations: ObsidianProjectOperations;
   readonly taskOperations: ObsidianTaskOperations;
   private vaultEventRefs: EventRef[] = [];
+  private taskTodoMarkdownProcessor?: TaskTodoMarkdownProcessor;
+  private markdownProcessor?: MarkdownPostProcessor;
 
   constructor(
     private app: App,
     private plugin: Plugin,
-    private settings: ObsidianExtensionSettings
+    private settings: ObsidianExtensionSettings,
+    private fullSettings?: TaskSyncSettings
   ) {
     this.areaOperations = new ObsidianAreaOperations(app, settings.areasFolder);
     this.projectOperations = new ObsidianProjectOperations(
@@ -52,6 +57,14 @@ export class ObsidianExtension implements Extension {
       settings.projectsFolder
     );
     this.taskOperations = new ObsidianTaskOperations(app, settings.tasksFolder);
+
+    // Initialize markdown processor if full settings are available
+    if (fullSettings) {
+      this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
+        app,
+        fullSettings
+      );
+    }
   }
 
   async initialize(): Promise<void> {
@@ -94,6 +107,9 @@ export class ObsidianExtension implements Extension {
       // Set up vault event listeners for file deletions
       this.setupVaultEventListeners();
 
+      // Register markdown processor after layout is ready
+      this.registerTaskTodoMarkdownProcessor();
+
       console.log("ObsidianExtension loaded successfully");
     } catch (error) {
       console.error("Failed to load ObsidianExtension:", error);
@@ -107,6 +123,9 @@ export class ObsidianExtension implements Extension {
     // Clean up vault event listeners
     this.vaultEventRefs.forEach((ref) => this.app.vault.offref(ref));
     this.vaultEventRefs = [];
+
+    // Unregister markdown processor
+    this.unregisterTaskTodoMarkdownProcessor();
 
     eventBus.trigger({
       type: "extension.unregistered",
@@ -509,5 +528,34 @@ export class ObsidianExtension implements Extension {
     eventBus.on("tasks.created", this.onEntityCreated.bind(this));
     eventBus.on("tasks.updated", this.onEntityUpdated.bind(this));
     eventBus.on("tasks.deleted", this.onEntityDeleted.bind(this));
+  }
+
+  /**
+   * Register the task todo markdown processor
+   */
+  private registerTaskTodoMarkdownProcessor(): void {
+    if (this.taskTodoMarkdownProcessor) {
+      this.markdownProcessor = this.plugin.registerMarkdownPostProcessor(
+        this.taskTodoMarkdownProcessor.getProcessor(),
+        100 // Sort order - run after other processors
+      );
+      console.log("Task todo markdown processor registered");
+    }
+  }
+
+  /**
+   * Cleanup the task todo markdown processor reference
+   */
+  private unregisterTaskTodoMarkdownProcessor(): void {
+    if (this.markdownProcessor) {
+      // Note: Obsidian doesn't provide a direct unregister method for post processors.
+      // The processor will remain registered until the plugin is unloaded by Obsidian,
+      // at which point Obsidian will automatically clean up all registered processors.
+      // We only clear our reference here to avoid memory leaks.
+      this.markdownProcessor = undefined;
+      console.log(
+        "Task todo markdown processor reference cleared (actual cleanup occurs on plugin unload)"
+      );
+    }
   }
 }
