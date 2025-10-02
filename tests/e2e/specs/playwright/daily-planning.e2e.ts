@@ -25,6 +25,61 @@ test.describe("Daily Planning Wizard", () => {
     });
   });
 
+  test.describe("Daily Note Feature", () => {
+    test("should create daily note when task is scheduled for today", async ({
+      page,
+    }) => {
+      // Create a test task
+      const task = await createTask(page, {
+        title: "Test Task for Daily Note",
+        category: "Feature",
+        status: "Backlog",
+      });
+
+      // Schedule the task for today by setting Do Date
+      const today = getTodayString();
+      await page.evaluate(
+        async ({ taskId, doDate }) => {
+          const app = (window as any).app;
+          const taskFile = app.vault.getAbstractFileByPath(
+            `Tasks/Test Task for Daily Note.md`
+          );
+          if (taskFile) {
+            await app.fileManager.processFrontMatter(
+              taskFile,
+              (frontmatter) => {
+                frontmatter["Do Date"] = doDate;
+              }
+            );
+          }
+        },
+        { taskId: task.id, doDate: today }
+      );
+
+      // Verify daily note was created
+      const dailyNotePath = `Daily Notes/${today}.md`;
+      const dailyNoteExists = await page.evaluate(async (path) => {
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(path);
+        return file !== null;
+      }, dailyNotePath);
+
+      expect(dailyNoteExists).toBe(true);
+
+      // Verify task link was added to daily note
+      const dailyNoteContent = await page.evaluate(async (path) => {
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(path);
+        if (file) {
+          return await app.vault.read(file);
+        }
+        return "";
+      }, dailyNotePath);
+
+      expect(dailyNoteContent).toContain("Test Task for Daily Note");
+    });
+  });
+
   test("should open daily planning wizard and display all 3 steps", async ({
     page,
   }) => {
