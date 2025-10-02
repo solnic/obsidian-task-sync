@@ -9,6 +9,7 @@
   import { validateFolderPath, validateTemplateFileName } from "../validation";
   import { FolderSuggestComponent, FileSuggestComponent } from "../suggest";
   import type TaskSyncPlugin from "../../../../main";
+  import { taskSyncApp } from "../../../App";
 
   let container: HTMLElement;
   let suggestComponents: (FolderSuggestComponent | FileSuggestComponent)[] = [];
@@ -157,7 +158,8 @@
             button.setDisabled(true);
             button.setButtonText("Creating...");
             try {
-              await plugin.noteManagers.createTemplate("Task");
+              const templateOps = taskSyncApp.getTemplateOperations();
+              await templateOps.createTemplate("task");
               button.setButtonText("✓ Created");
               setTimeout(() => {
                 button.setDisabled(false);
@@ -186,7 +188,8 @@
             button.setDisabled(true);
             button.setButtonText("Creating...");
             try {
-              await plugin.noteManagers.createTemplate("Project");
+              const templateOps = taskSyncApp.getTemplateOperations();
+              await templateOps.createTemplate("project");
               button.setButtonText("✓ Created");
               setTimeout(() => {
                 button.setDisabled(false);
@@ -215,7 +218,8 @@
             button.setDisabled(true);
             button.setButtonText("Creating...");
             try {
-              await plugin.noteManagers.createTemplate("Area");
+              const templateOps = taskSyncApp.getTemplateOperations();
+              await templateOps.createTemplate("area");
               button.setButtonText("✓ Created");
               setTimeout(() => {
                 button.setDisabled(false);

@@ -6,6 +6,7 @@
 import { App, stringifyYaml, TFile, TFolder } from "obsidian";
 import { Task } from "../core/entities";
 import { ObsidianEntityOperations } from "./ObsidianEntityOperations";
+import { projectStore } from "../stores/projectStore";
 
 export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   constructor(app: App, folder: string) {
@@ -85,13 +86,25 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     // - DUE_DATE: default null
     // - TAGS: default []
     // - REMINDERS: default []
+
+    // Convert project name to wiki link format
+    let projectValue = task.project || "";
+    if (projectValue && !projectValue.startsWith("[[")) {
+      // Look up the project to get its file path
+      const project = this.findProjectByName(projectValue);
+      if (project && project.source?.filePath) {
+        // Format as [[Projects/Foo Bar.md|Foo Bar]]
+        projectValue = `[[${project.source.filePath}|${projectValue}]]`;
+      }
+    }
+
     return {
       Title: task.title, // TITLE property (required)
       Type: "Task", // TYPE property (always "Task" for task entities)
       Category: task.category || "", // CATEGORY property (task type like "Feature", "Bug")
       Priority: task.priority || "", // PRIORITY property (empty string if not set)
       Areas: task.areas || [], // AREAS property (always array)
-      Project: task.project || "", // PROJECT property (empty string if not set)
+      Project: projectValue, // PROJECT property (wiki link format)
       Done: task.done, // DONE property (boolean)
       Status: task.status, // STATUS property
       "Parent task": task.parentTask || "", // PARENT_TASK property (note the space in name)
@@ -102,6 +115,18 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       // Note: createdAt and updatedAt are NOT frontmatter properties according to properties.ts
       // They come from file.ctime and file.mtime (frontmatter: false)
     };
+  }
+
+  /**
+   * Find a project by name from the project store
+   */
+  private findProjectByName(projectName: string): import("../core/entities").Project | null {
+    let foundProject = null;
+    const unsubscribe = projectStore.subscribe((state) => {
+      foundProject = state.projects.find((p) => p.name === projectName);
+    });
+    unsubscribe();
+    return foundProject;
   }
 
   protected getEntityType(): string {

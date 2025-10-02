@@ -3,7 +3,7 @@
  * Refactored to use ObsidianHost abstraction
  */
 
-import { Plugin, ItemView, WorkspaceLeaf } from "obsidian";
+import { Plugin, ItemView, WorkspaceLeaf, Notice } from "obsidian";
 import { mount, unmount } from "svelte";
 import App from "./app/App.svelte";
 import { TaskSyncSettings } from "./app/types/settings";
@@ -13,6 +13,7 @@ import { TaskSyncSettingTab } from "./app/components/settings";
 import { taskStore, type TaskStore } from "./app/stores/taskStore";
 import { projectStore, type ProjectStore } from "./app/stores/projectStore";
 import { areaStore, type AreaStore } from "./app/stores/areaStore";
+import type { ObsidianExtension } from "./app/extensions/ObsidianExtension";
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
@@ -100,6 +101,15 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
+    // Add command to refresh bases
+    this.addCommand({
+      id: "refresh-bases",
+      name: "Refresh Bases",
+      callback: async () => {
+        await this.refreshBases();
+      },
+    });
+
     // Load extensions and activate view when layout is ready
     this.app.workspace.onLayoutReady(async () => {
       await this.host.load();
@@ -125,6 +135,56 @@ export default class TaskSyncPlugin extends Plugin {
     await this.host.saveSettings(this.settings);
     // Notify app of settings change to reactively update extensions
     await taskSyncApp.updateSettings(this.settings);
+  }
+
+  /**
+   * Regenerate all base files
+   * Called from settings UI
+   */
+  async regenerateBases(): Promise<void> {
+    try {
+      const { BaseManager } = await import("./app/services/BaseManager");
+      const baseManager = new BaseManager(
+        this.app,
+        this.app.vault,
+        this.settings
+      );
+
+      // Sync project bases if enabled
+      if (this.settings.projectBasesEnabled) {
+        await baseManager.syncProjectBases();
+      }
+
+      console.log("Task Sync: Bases regenerated successfully");
+    } catch (error) {
+      console.error("Task Sync: Failed to regenerate bases:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync area and project bases
+   * Called from settings UI when settings change
+   */
+  async syncAreaProjectBases(): Promise<void> {
+    try {
+      const { BaseManager } = await import("./app/services/BaseManager");
+      const baseManager = new BaseManager(
+        this.app,
+        this.app.vault,
+        this.settings
+      );
+
+      // Sync project bases if enabled
+      if (this.settings.projectBasesEnabled) {
+        await baseManager.syncProjectBases();
+      }
+
+      console.log("Task Sync: Area/Project bases synced successfully");
+    } catch (error) {
+      console.error("Task Sync: Failed to sync area/project bases:", error);
+      throw error;
+    }
   }
 
   async activateView() {
@@ -154,6 +214,46 @@ export default class TaskSyncPlugin extends Plugin {
   async openCreateTaskModal() {
     const { TaskCreateModal } = await import("./app/modals/TaskCreateModal");
     new TaskCreateModal(this.app, this).open();
+  }
+
+  /**
+   * Refresh bases - adds missing bases and updates existing ones according to current settings
+   */
+  async refreshBases() {
+    try {
+      new Notice("Refreshing bases...");
+
+      // Get the ObsidianExtension from the app
+      const extension = taskSyncApp.getExtensionById("obsidian");
+      if (!extension) {
+        new Notice("❌ Failed to refresh bases: Obsidian extension not found");
+        return;
+      }
+
+      // Cast to ObsidianExtension type
+      const obsidianExtension = extension as ObsidianExtension;
+
+      // Get the BaseManager from the extension
+      const baseManager = obsidianExtension.getBaseManager();
+
+      // Get all projects
+      const projects = await baseManager.getProjects();
+      console.log(`Found ${projects.length} projects to process`);
+
+      if (projects.length === 0) {
+        new Notice("No projects found to refresh bases for");
+        return;
+      }
+
+      // Sync project bases (creates missing and updates existing)
+      await baseManager.syncProjectBases();
+
+      new Notice(`✅ Successfully refreshed ${projects.length} project base(s)`);
+      console.log("Bases refreshed successfully");
+    } catch (error) {
+      console.error("Failed to refresh bases:", error);
+      new Notice(`❌ Failed to refresh bases: ${error.message}`);
+    }
   }
 }
 
