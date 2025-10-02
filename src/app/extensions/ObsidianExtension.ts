@@ -18,9 +18,10 @@ import { taskOperations } from "../entities/Tasks";
 import { projectOperations } from "../entities/Projects";
 import { areaOperations } from "../entities/Areas";
 import { derived, type Readable } from "svelte/store";
-import type { Task } from "../core/entities";
+import type { Task, Project } from "../core/entities";
 import { BaseManager } from "../services/BaseManager";
 import type { TaskSyncSettings } from "../types/settings";
+import type { DomainEvent } from "../core/events";
 
 export interface ObsidianExtensionSettings {
   areasFolder: string;
@@ -30,6 +31,20 @@ export interface ObsidianExtensionSettings {
   basesFolder: string;
   projectBasesEnabled: boolean;
   autoSyncAreaProjectBases: boolean;
+}
+
+// Type definitions for project events
+interface ProjectCreatedEvent {
+  type: "projects.created";
+  project: Project;
+  extension?: string;
+}
+
+interface ProjectUpdatedEvent {
+  type: "projects.updated";
+  project: Project;
+  changes?: Partial<Project>;
+  extension?: string;
 }
 
 export class ObsidianExtension implements Extension {
@@ -553,7 +568,7 @@ export class ObsidianExtension implements Extension {
   /**
    * Handle project creation events for automatic base generation
    */
-  private async onProjectCreated(event: any): Promise<void> {
+  private async onProjectCreated(event: ProjectCreatedEvent): Promise<void> {
     if (
       !this.settings.projectBasesEnabled ||
       !this.settings.autoSyncAreaProjectBases
@@ -582,7 +597,7 @@ export class ObsidianExtension implements Extension {
   /**
    * Handle project update events for automatic base regeneration
    */
-  private async onProjectUpdated(event: any): Promise<void> {
+  private async onProjectUpdated(event: ProjectUpdatedEvent): Promise<void> {
     if (
       !this.settings.projectBasesEnabled ||
       !this.settings.autoSyncAreaProjectBases

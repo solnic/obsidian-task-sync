@@ -141,8 +141,8 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
  */
 export function generateProjectFrontMatter(): PropertyDefinition[] {
   return [
-    { key: "name", name: "Name", type: "string", frontmatter: true }, // Use Name instead of Title for projects
-    { key: "type", name: "Type", type: "string", frontmatter: true },
+    PROPERTY_REGISTRY.NAME, // Use Name instead of Title for projects
+    PROPERTY_REGISTRY.TYPE,
     PROPERTY_REGISTRY.AREAS,
     PROPERTY_REGISTRY.TAGS,
   ];
@@ -153,8 +153,8 @@ export function generateProjectFrontMatter(): PropertyDefinition[] {
  */
 export function generateAreaFrontMatter(): PropertyDefinition[] {
   return [
-    { key: "name", name: "Name", type: "string", frontmatter: true }, // Use Name instead of Title for areas
-    { key: "type", name: "Type", type: "string", frontmatter: true },
+    PROPERTY_REGISTRY.NAME, // Use Name instead of Title for areas
+    PROPERTY_REGISTRY.TYPE,
     PROPERTY_REGISTRY.TAGS,
   ];
 }

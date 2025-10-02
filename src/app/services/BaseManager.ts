@@ -5,7 +5,7 @@
  * Ported from old-stuff to new architecture, focusing on Project entity type
  */
 
-import { App, Vault, TFile } from "obsidian";
+import { App, Vault, TFile, TFolder } from "obsidian";
 import { TaskSyncSettings } from "../types/settings";
 import * as yaml from "js-yaml";
 import { sanitizeFileName } from "../utils/fileNameSanitizer";
@@ -42,6 +42,9 @@ export interface BaseConfig {
 }
 
 export class BaseManager {
+  // Static regex pattern for base embedding detection
+  private static readonly BASE_EMBED_PATTERN = /!\[\[.*\.base\]\]/g;
+
   constructor(
     private app: App,
     private vault: Vault,
@@ -67,7 +70,7 @@ export class BaseManager {
         this.settings.projectsFolder
       );
 
-      if (!projectsFolder || projectsFolder.children === undefined) {
+      if (!projectsFolder || !(projectsFolder instanceof TFolder)) {
         console.log(
           `Projects folder not found: ${this.settings.projectsFolder}`
         );
@@ -150,14 +153,15 @@ export class BaseManager {
       }
 
       const content = await this.vault.read(file);
-      const baseEmbedPattern = new RegExp(`!\\[\\[.*\\.base\\]\\]`, "g");
       const specificBaseEmbed = `![[${this.settings.basesFolder}/${baseFileName}]]`;
 
       // Check if any base embedding exists
-      if (baseEmbedPattern.test(content)) {
+      if (BaseManager.BASE_EMBED_PATTERN.test(content)) {
         // Replace existing base embedding with the specific one
+        // Reset lastIndex since we're reusing the static regex
+        BaseManager.BASE_EMBED_PATTERN.lastIndex = 0;
         const updatedContent = content.replace(
-          baseEmbedPattern,
+          BaseManager.BASE_EMBED_PATTERN,
           specificBaseEmbed
         );
         await this.vault.modify(file, updatedContent);
