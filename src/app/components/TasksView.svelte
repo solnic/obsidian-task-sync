@@ -11,10 +11,7 @@
   import { extensionRegistry } from "../core/extension";
   import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
   import type { Host } from "../core/host";
-  import {
-    isPlanningActive,
-    currentSchedule,
-  } from "../stores/dailyPlanningStore";
+  import { isPlanningActive } from "../stores/contextStore";
   import { untrack } from "svelte";
   import { eventBus } from "../core/events";
 
@@ -157,8 +154,6 @@
             serviceId={activeService}
             {settings}
             {host}
-            isPlanningActive={$isPlanningActive}
-            currentSchedule={$currentSchedule}
             {dailyPlanningExtension}
             {stagedTaskIds}
             onStageTask={handleStageTask}

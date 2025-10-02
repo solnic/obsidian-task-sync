@@ -15,6 +15,7 @@
   import type { Extension } from "../core/extension";
   import type { Host } from "../core/host";
   import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
+  import { isPlanningActive } from "../stores/contextStore";
 
   interface SortField {
     key: string;
@@ -49,9 +50,7 @@
     // Host for data persistence
     host: Host;
 
-    // Daily planning mode state
-    isPlanningActive?: boolean;
-    currentSchedule?: Schedule | null;
+    // Daily planning extension for planning functionality
     dailyPlanningExtension?: DailyPlanningExtension;
 
     // Unified staging state and handlers
@@ -67,8 +66,6 @@
     localTasksSettings,
     extension,
     host,
-    isPlanningActive = false,
-    currentSchedule = null,
     dailyPlanningExtension,
     stagedTaskIds = new Set(),
     onStageTask,
@@ -236,7 +233,7 @@
 
   // Planning mode functions
   function toggleTaskSelection(task: Task): void {
-    if (!isPlanningActive) return;
+    if (!$isPlanningActive) return;
 
     const taskId = task.id;
     const newSelection = new Set(selectedTasksForPlanning);
@@ -251,7 +248,7 @@
   }
 
   function addSelectedTasksToSchedule(): void {
-    if (!isPlanningActive || !dailyPlanningExtension) return;
+    if (!$isPlanningActive || !dailyPlanningExtension) return;
 
     const tasksToAdd = filteredTasks
       .filter((localTask) => selectedTasksForPlanning.has(localTask.task.id))
@@ -283,7 +280,7 @@
   data-testid="local-service"
 >
   <!-- Planning Mode Header -->
-  {#if isPlanningActive}
+  {#if $isPlanningActive}
     <div class="planning-header" data-testid="planning-header">
       <div class="planning-info">
         <h3>📅 Daily Planning Mode</h3>
@@ -440,18 +437,18 @@
               task={localTask.task}
               {localTask}
               isHovered={hoveredTask === localTask.task.id}
-              isSelected={isPlanningActive &&
+              isSelected={$isPlanningActive &&
                 selectedTasksForPlanning.has(localTask.task.id)}
               onHover={(hovered: boolean) =>
                 (hoveredTask = hovered ? localTask.task.id : null)}
               onClick={() => {
-                if (isPlanningActive) {
+                if ($isPlanningActive) {
                   toggleTaskSelection(localTask.task);
                 } else {
                   openTask(localTask.task);
                 }
               }}
-              dailyPlanningWizardMode={isPlanningActive}
+              dailyPlanningWizardMode={$isPlanningActive}
               onAddToToday={(task) => {
                 if (onStageTask) {
                   onStageTask(task);

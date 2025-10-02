@@ -3,14 +3,30 @@
  * Ported from old-stuff/components/svelte/context.ts for new architecture
  */
 
-import { writable, get, type Writable } from "svelte/store";
+import {
+  writable,
+  get,
+  derived,
+  type Writable,
+  type Readable,
+} from "svelte/store";
 import type { FileContext } from "../types/context";
+import type { Schedule } from "../core/entities";
 
 // Reactive context store for tracking current file context
 export const currentFileContext: Writable<FileContext> = writable({
   type: "none",
   dailyPlanningMode: false,
 });
+
+// Derived store for daily planning mode (reactive equivalent to isPlanningActive)
+export const isPlanningActive: Readable<boolean> = derived(
+  currentFileContext,
+  ($context) => $context.dailyPlanningMode || false
+);
+
+// Current schedule store for daily planning (temporary - should move to scheduleStore)
+export const currentSchedule: Writable<Schedule | null> = writable(null);
 
 /**
  * Get the current context store for use in Svelte components
@@ -30,6 +46,20 @@ export function setDailyPlanningMode(isActive: boolean): void {
 }
 
 /**
+ * Set planning active state (alias for setDailyPlanningMode for compatibility)
+ */
+export function setPlanningActive(active: boolean): void {
+  setDailyPlanningMode(active);
+}
+
+/**
+ * Set the current schedule for daily planning
+ */
+export function setCurrentSchedule(schedule: Schedule | null): void {
+  currentSchedule.set(schedule);
+}
+
+/**
  * Get the current daily planning mode
  */
 export function getDailyPlanningMode(): boolean {
@@ -42,7 +72,7 @@ export function getDailyPlanningMode(): boolean {
  */
 export function updateFileContext(newContext: FileContext): void {
   const currentContext = get(currentFileContext);
-  
+
   // Only update if context actually changed (preserve dailyPlanningMode)
   if (
     currentContext.type !== newContext.type ||

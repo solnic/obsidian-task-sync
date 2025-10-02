@@ -10,7 +10,7 @@
   import type { CalendarExtension } from "../extensions/CalendarExtension";
   import type { Host } from "../core/host";
   import type { TaskSyncSettings } from "../types/settings";
-  import { isPlanningActive } from "../stores/dailyPlanningStore";
+  import { isPlanningActive } from "../stores/contextStore";
 
   // Props
   interface Props {

@@ -1,11 +1,11 @@
 <script lang="ts">
   import type { TaskSyncSettings } from "../types/settings";
   import type { Extension } from "../core/extension";
-  import type { Schedule } from "../core/entities";
   import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
   import LocalTasksService from "./LocalTasksService.svelte";
   import GitHubService from "./GitHubService.svelte";
   import { Host } from "../core/host";
+  import { isPlanningActive, currentSchedule } from "../stores/contextStore";
 
   interface Props {
     // Service ID to determine which service to render
@@ -17,9 +17,7 @@
     // Host for data persistence and extension resolution
     host: Host;
 
-    // Daily planning mode state
-    isPlanningActive?: boolean;
-    currentSchedule?: Schedule | null;
+    // Daily planning extension for planning functionality
     dailyPlanningExtension?: DailyPlanningExtension;
 
     // Unified staging state and handlers
@@ -34,8 +32,6 @@
     serviceId,
     settings,
     host,
-    isPlanningActive = false,
-    currentSchedule = null,
     dailyPlanningExtension,
     stagedTaskIds = new Set(),
     onStageTask,
@@ -78,8 +74,8 @@
     }}
     {extension}
     {host}
-    {isPlanningActive}
-    {currentSchedule}
+    isPlanningActive={$isPlanningActive}
+    currentSchedule={$currentSchedule}
     {dailyPlanningExtension}
     {stagedTaskIds}
     {onStageTask}

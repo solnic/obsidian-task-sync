@@ -12,12 +12,7 @@ import {
 } from "../core/extension";
 import { eventBus, DomainEvent } from "../core/events";
 import { derived, writable, get, type Readable } from "svelte/store";
-import type {
-  Task,
-  Schedule,
-  ScheduleCreateData,
-  CalendarEvent,
-} from "../core/entities";
+import type { Task, Schedule, CalendarEvent } from "../core/entities";
 import { Schedules } from "../entities/Schedules";
 import { Tasks } from "../entities/Tasks";
 import { scheduleStore } from "../stores/scheduleStore";
@@ -28,7 +23,7 @@ import {
   setCurrentSchedule,
   isPlanningActive,
   currentSchedule,
-} from "../stores/dailyPlanningStore";
+} from "../stores/contextStore";
 import type { CalendarExtension } from "./CalendarExtension";
 import {
   getYesterdayTasksGrouped,
@@ -57,7 +52,7 @@ export class DailyPlanningExtension implements Extension {
   // Calendar extension for events
   private calendarExtension?: CalendarExtension;
 
-  // Note: Planning state is now managed by global dailyPlanningStore
+  // Note: Planning state is now managed by contextStore
 
   // Single source of truth for staging changes
   // Store task IDs, not full objects, for simplicity and performance
