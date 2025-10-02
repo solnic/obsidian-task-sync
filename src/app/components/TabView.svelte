@@ -2,17 +2,18 @@
   /**
    * TabView - Layout component for the new architecture
    * Provides unified layout with optional header and context widget support
-   * Prepared for Context system integration
+   * Now includes actual ContextWidget integration
    */
 
   import type { Snippet } from "svelte";
+  import ContextWidget from "./ContextWidget.svelte";
 
   interface Props {
     className?: string;
     testId?: string;
     showHeader?: boolean;
     headerTitle?: string;
-    // Context widget support (for future Context system integration)
+    // Context widget support
     showContextWidget?: boolean;
     serviceName?: string;
     isNonLocalService?: boolean;
@@ -38,25 +39,10 @@
   {#if showHeader || showContextWidget}
     <div class="task-sync-tab-header">
       {#if showContextWidget}
-        <!-- Context Widget (when Context system is ported) -->
-        <div
-          class="context-widget-placeholder"
-          data-testid="context-widget-placeholder"
-        >
-          <!-- TODO: Replace with actual ContextWidget when Context system is ported -->
-          <div class="context-content">
-            <div class="context-row context-row-primary">
-              {#if serviceName}
-                <span class="service-name">{serviceName}</span>
-              {/if}
-            </div>
-            <div class="context-row context-row-secondary">
-              <span class="no-context">Context system not yet ported</span>
-            </div>
-          </div>
-        </div>
+        <!-- Context Widget -->
+        <ContextWidget {serviceName} {isNonLocalService} {dayPlanningMode} />
       {:else if headerTitle}
-        <!-- Simple header title (current implementation) -->
+        <!-- Simple header title (fallback) -->
         <h2 class="tab-title">{headerTitle}</h2>
       {/if}
     </div>
@@ -86,44 +72,6 @@
     font-size: 18px;
     font-weight: 600;
     color: var(--text-normal);
-  }
-
-  /* Context Widget Placeholder Styles */
-  .context-widget-placeholder {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .context-content {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  .context-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .context-row-primary {
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .context-row-secondary {
-    font-size: 14px;
-    color: var(--text-muted);
-  }
-
-  .service-name {
-    color: var(--text-normal);
-  }
-
-  .no-context {
-    color: var(--text-muted);
-    font-style: italic;
   }
 
   .task-sync-tab-content {

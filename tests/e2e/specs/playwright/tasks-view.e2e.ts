@@ -257,28 +257,144 @@ test.describe("TasksView Component", () => {
     );
     await expect(tabHeader).toBeVisible();
 
-    // Should show context widget placeholder
+    // Should show context widget
     const contextWidget = page.locator(
-      '[data-testid="tasks-view-tab"] [data-testid="context-widget-placeholder"]'
+      '[data-testid="tasks-view-tab"] [data-testid="context-widget"]'
     );
     await expect(contextWidget).toBeVisible();
 
     // Should show service name in context widget
     const serviceName = page.locator(
-      '[data-testid="context-widget-placeholder"] .service-name'
+      '[data-testid="context-widget"] .service-name'
     );
     await expect(serviceName).toHaveText("Local Tasks");
 
-    // Should show placeholder message for context
+    // Should show "No context" when no file is open
     const noContext = page.locator(
-      '[data-testid="context-widget-placeholder"] .no-context'
+      '[data-testid="context-widget"] .no-context'
     );
-    await expect(noContext).toHaveText("Context system not yet ported");
+    await expect(noContext).toHaveText("No context");
 
-    // TODO: When Context system is ported, this test should verify:
-    // - Actual ContextWidget component is displayed
-    // - Context widget shows service name + current file context
-    // - Context updates when switching files
+    // TODO: Add more comprehensive context tests:
+    // - Test context detection when opening project/area/task files
+    // - Test context updates when switching between different file types
+    // - Test daily planning mode context changes
+  });
+
+  test("should detect and display file context when opening different file types", async ({
+    page,
+  }) => {
+    // Create test entities
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Create a project file
+      await app.vault.create(
+        "Projects/Test Project.md",
+        "# Test Project\n\nA test project file."
+      );
+
+      // Create an area file
+      await app.vault.create(
+        "Areas/Test Area.md",
+        "# Test Area\n\nA test area file."
+      );
+
+      // Create a task file
+      await app.vault.create(
+        "Tasks/Test Task.md",
+        "---\ntitle: Test Task\ncategory: Feature\n---\n\n# Test Task\n\nA test task file."
+      );
+    });
+
+    // Open Tasks view
+    await openTasksView(page);
+    await waitForLocalTasksToLoad(page);
+
+    // Initially should show "No context"
+    const contextWidget = page.locator('[data-testid="context-widget"]');
+    await expect(contextWidget).toBeVisible();
+
+    let noContext = page.locator('[data-testid="context-widget"] .no-context');
+    await expect(noContext).toHaveText("No context");
+
+    // Open project file and verify context changes
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath("Projects/Test Project.md");
+      if (file) {
+        await app.workspace.getLeaf().openFile(file);
+      }
+    });
+
+    // Wait for context to update and check project context
+    await page.waitForTimeout(500); // Give context time to update
+
+    const projectContext = page.locator(
+      '[data-testid="context-widget"] .context-type'
+    );
+    await expect(projectContext).toHaveText("Project");
+
+    const projectName = page.locator(
+      '[data-testid="context-widget"] .context-name'
+    );
+    await expect(projectName).toHaveText("Test Project");
+
+    // Open area file and verify context changes
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath("Areas/Test Area.md");
+      if (file) {
+        await app.workspace.getLeaf().openFile(file);
+      }
+    });
+
+    // Wait for context to update and check area context
+    await page.waitForTimeout(500);
+
+    const areaContext = page.locator(
+      '[data-testid="context-widget"] .context-type'
+    );
+    await expect(areaContext).toHaveText("Area");
+
+    const areaName = page.locator(
+      '[data-testid="context-widget"] .context-name'
+    );
+    await expect(areaName).toHaveText("Test Area");
+
+    // Open task file and verify context changes
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath("Tasks/Test Task.md");
+      if (file) {
+        await app.workspace.getLeaf().openFile(file);
+      }
+    });
+
+    // Wait for context to update and check task context
+    await page.waitForTimeout(500);
+
+    const taskContext = page.locator(
+      '[data-testid="context-widget"] .context-type'
+    );
+    await expect(taskContext).toHaveText("Task");
+
+    const taskName = page.locator(
+      '[data-testid="context-widget"] .context-name'
+    );
+    await expect(taskName).toHaveText("Test Task");
+
+    // Close the active file and verify context returns to "No context"
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      app.workspace.activeLeaf?.detach();
+    });
+
+    // Wait for context to update
+    await page.waitForTimeout(500);
+
+    noContext = page.locator('[data-testid="context-widget"] .no-context');
+    await expect(noContext).toHaveText("No context");
   });
 
   test("should reflect front-matter changes in real-time", async ({ page }) => {

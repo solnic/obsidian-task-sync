@@ -8,6 +8,7 @@ import { GitHubExtension } from "./extensions/GitHubExtension";
 import { CalendarExtension } from "./extensions/CalendarExtension";
 import { DailyPlanningExtension } from "./extensions/DailyPlanningExtension";
 import { DailyNoteExtension } from "./extensions/DailyNoteExtension";
+import { ContextExtension } from "./extensions/ContextExtension";
 import { AppleCalendarService } from "./services/AppleCalendarService";
 import { Host } from "./core/host";
 import type { TaskSyncSettings } from "./types/settings";
@@ -22,6 +23,7 @@ export class TaskSyncApp {
   public calendarExtension?: CalendarExtension;
   public dailyPlanningExtension?: DailyPlanningExtension;
   public dailyNoteExtension?: DailyNoteExtension;
+  public contextExtension?: ContextExtension;
   private host?: Host;
   private settings: TaskSyncSettings | null = null;
 
@@ -78,6 +80,9 @@ export class TaskSyncApp {
       // Initialize Daily Note extension
       await this.initializeDailyNoteExtension();
 
+      // Initialize Context extension
+      await this.initializeContextExtension();
+
       // Initialize Daily Planning extension
       await this.initializeDailyPlanningExtension();
 
@@ -112,6 +117,10 @@ export class TaskSyncApp {
 
       if (this.dailyNoteExtension) {
         await this.dailyNoteExtension.load();
+      }
+
+      if (this.contextExtension) {
+        await this.contextExtension.load();
       }
 
       if (this.dailyPlanningExtension) {
@@ -410,6 +419,31 @@ export class TaskSyncApp {
     }
 
     console.log("Daily Planning extension initialized successfully");
+  }
+
+  /**
+   * Initialize Context extension
+   */
+  private async initializeContextExtension(): Promise<void> {
+    if (!this.host || !this.settings) {
+      return;
+    }
+
+    console.log("Initializing Context extension...");
+    this.contextExtension = new ContextExtension(
+      (this.host as any).plugin.app,
+      this.host,
+      this.settings
+    );
+
+    await this.contextExtension.initialize();
+
+    // If app is already loaded, load the extension too
+    if (this.initialized) {
+      await this.contextExtension.load();
+    }
+
+    console.log("Context extension initialized successfully");
   }
 }
 
