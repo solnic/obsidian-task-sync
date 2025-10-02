@@ -281,7 +281,7 @@
     <div class="planning-header" data-testid="planning-header">
       <div class="planning-info">
         <h3>📅 Daily Planning Mode</h3>
-        <p>Select tasks to add to today's schedule</p>
+        <p>Hover over tasks to see "Schedule for today" button</p>
       </div>
       <div class="planning-actions">
         {#if selectedTasksForPlanning.size > 0}
@@ -443,6 +443,12 @@
                   toggleTaskSelection(localTask.task);
                 } else {
                   openTask(localTask.task);
+                }
+              }}
+              dailyPlanningWizardMode={isPlanningActive}
+              onAddToToday={async (task) => {
+                if (dailyPlanningExtension) {
+                  await dailyPlanningExtension.stageTaskForToday(task);
                 }
               }}
               {settings}

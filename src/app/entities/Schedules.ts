@@ -15,31 +15,34 @@ export namespace Schedules {
 
     async getAll(): Promise<readonly Schedule[]> {
       return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
+        let unsubscribe: (() => void) | undefined;
+        unsubscribe = store.subscribe((state) => {
           resolve(state.schedules);
-          unsubscribe();
+          if (unsubscribe) unsubscribe();
         });
       });
     }
 
     async getById(id: string): Promise<Schedule | null> {
       return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
+        let unsubscribe: (() => void) | undefined;
+        unsubscribe = store.subscribe((state) => {
           const schedule = state.schedules.find((s) => s.id === id);
           resolve(schedule || null);
-          unsubscribe();
+          if (unsubscribe) unsubscribe();
         });
       });
     }
 
     async getByExtension(extensionId: string): Promise<readonly Schedule[]> {
       return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
+        let unsubscribe: (() => void) | undefined;
+        unsubscribe = store.subscribe((state) => {
           const schedules = state.schedules.filter(
             (s) => s.source?.extension === extensionId
           );
           resolve(schedules);
-          unsubscribe();
+          if (unsubscribe) unsubscribe();
         });
       });
     }
@@ -49,13 +52,14 @@ export namespace Schedules {
      */
     async getByDate(date: Date): Promise<Schedule | null> {
       return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
+        let unsubscribe: (() => void) | undefined;
+        unsubscribe = store.subscribe((state) => {
           const dateString = date.toISOString().split("T")[0];
           const schedule = state.schedules.find(
             (s) => s.date.toISOString().split("T")[0] === dateString
           );
           resolve(schedule || null);
-          unsubscribe();
+          if (unsubscribe) unsubscribe();
         });
       });
     }
@@ -84,13 +88,14 @@ export namespace Schedules {
       endDate: Date
     ): Promise<readonly Schedule[]> {
       return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
+        let unsubscribe: (() => void) | undefined;
+        unsubscribe = store.subscribe((state) => {
           const schedules = state.schedules.filter((s) => {
             const scheduleDate = s.date;
             return scheduleDate >= startDate && scheduleDate <= endDate;
           });
           resolve(schedules);
-          unsubscribe();
+          if (unsubscribe) unsubscribe();
         });
       });
     }
@@ -154,19 +159,21 @@ export namespace Schedules {
     // EntityOperations interface methods
     async getAll(): Promise<Schedule[]> {
       return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
+        let unsubscribe: (() => void) | undefined;
+        unsubscribe = store.subscribe((state) => {
           resolve([...state.schedules]);
-          unsubscribe();
+          if (unsubscribe) unsubscribe();
         });
       });
     }
 
     async getById(id: string): Promise<Schedule | undefined> {
       return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
+        let unsubscribe: (() => void) | undefined;
+        unsubscribe = store.subscribe((state) => {
           const schedule = state.schedules.find((s) => s.id === id);
           resolve(schedule);
-          unsubscribe();
+          if (unsubscribe) unsubscribe();
         });
       });
     }

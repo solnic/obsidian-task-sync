@@ -3,7 +3,7 @@
  * Manages Schedule entities and provides daily planning wizard functionality
  */
 
-import { Plugin } from "obsidian";
+import { Plugin, TFile } from "obsidian";
 import {
   Extension,
   extensionRegistry,
@@ -295,6 +295,9 @@ export class DailyPlanningExtension implements Extension {
     // Ensure today's schedule exists
     const todaySchedule = await this.ensureTodayScheduleExists();
     this.setCurrentSchedule(todaySchedule);
+
+    // Ensure today's daily note exists and open it
+    await this.ensureAndOpenTodayDailyNote();
 
     // Trigger planning started event
     eventBus.trigger({
@@ -649,6 +652,164 @@ export class DailyPlanningExtension implements Extension {
           ),
         });
       }
+    }
+  }
+
+  /**
+   * Ensure today's daily note exists and open it
+   */
+  private async ensureAndOpenTodayDailyNote(): Promise<void> {
+    try {
+      const today = new Date();
+      const dateString = today.toISOString().split("T")[0]; // YYYY-MM-DD format
+      const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
+      const dailyNotePath = `${dailyNotesFolder}/${dateString}.md`;
+
+      // Check if the daily note already exists
+      const existingFile =
+        this.plugin.app.vault.getAbstractFileByPath(dailyNotePath);
+
+      if (!existingFile) {
+        // Ensure the daily notes folder exists
+        const folderExists =
+          this.plugin.app.vault.getAbstractFileByPath(dailyNotesFolder);
+        if (!folderExists) {
+          await this.plugin.app.vault.createFolder(dailyNotesFolder);
+        }
+
+        // Create the daily note with basic content
+        const content = this.generateDailyNoteContent(dateString);
+        await this.plugin.app.vault.create(dailyNotePath, content);
+      }
+
+      // Open the daily note
+      await this.plugin.app.workspace.openLinkText(dailyNotePath, "", false);
+    } catch (error) {
+      console.error("Failed to ensure and open today's daily note:", error);
+    }
+  }
+
+  /**
+   * Generate content for a new daily note
+   */
+  private generateDailyNoteContent(dateString: string): string {
+    return `# ${dateString}
+
+## Tasks
+<!-- Tasks scheduled for today will appear here -->
+
+## Notes
+<!-- Daily notes and reflections -->
+
+`;
+  }
+
+  /**
+   * Add tasks to today's daily note and open it
+   */
+  async addTasksToTodayDailyNote(tasks: Task[]): Promise<void> {
+    try {
+      const today = new Date();
+      const dateString = today.toISOString().split("T")[0]; // YYYY-MM-DD format
+      const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
+      const dailyNotePath = `${dailyNotesFolder}/${dateString}.md`;
+
+      // Ensure today's daily note exists
+      await this.ensureAndOpenTodayDailyNote();
+
+      // Get the daily note file
+      const dailyNoteFile =
+        this.plugin.app.vault.getAbstractFileByPath(dailyNotePath);
+      if (!dailyNoteFile || !(dailyNoteFile instanceof TFile)) {
+        console.error("Daily note file not found or invalid");
+        return;
+      }
+
+      // Read current content
+      const currentContent = await this.plugin.app.vault.read(
+        dailyNoteFile as any
+      );
+
+      // Add task links to the daily note
+      const taskLinks: string[] = [];
+      for (const task of tasks) {
+        if (task.source?.filePath) {
+          // Extract task title from file path (remove .md extension and path)
+          const taskTitle =
+            task.source.filePath.split("/").pop()?.replace(/\.md$/, "") ||
+            task.title;
+          const taskLink = `- [ ] [[${taskTitle}]]`;
+
+          // Check if task already exists to avoid duplicates
+          if (!currentContent.includes(taskLink)) {
+            taskLinks.push(taskLink);
+          }
+
+          // Set the Do Date property in the task's front-matter to today's date
+          await this.setTaskDoDate(task, today);
+        }
+      }
+
+      // Add new task links to the daily note if any
+      if (taskLinks.length > 0) {
+        const tasksSection = "\n## Tasks\n" + taskLinks.join("\n") + "\n";
+
+        // Find the Tasks section and add the links
+        let updatedContent = currentContent;
+        if (currentContent.includes("## Tasks")) {
+          // Insert after the Tasks header
+          updatedContent = currentContent.replace(
+            /## Tasks\n(<!-- Tasks scheduled for today will appear here -->\n)?/,
+            `## Tasks\n${taskLinks.join("\n")}\n`
+          );
+        } else {
+          // Add Tasks section if it doesn't exist
+          updatedContent = currentContent + tasksSection;
+        }
+
+        await this.plugin.app.vault.modify(
+          dailyNoteFile as any,
+          updatedContent
+        );
+      }
+
+      // Open and focus on today's daily note
+      await this.plugin.app.workspace.openLinkText(dailyNotePath, "", true);
+    } catch (error) {
+      console.error("Failed to add tasks to today's daily note:", error);
+    }
+  }
+
+  /**
+   * Set the Do Date property in a task's front-matter
+   */
+  private async setTaskDoDate(task: Task, date: Date): Promise<void> {
+    try {
+      if (!task.source?.filePath) return;
+
+      const taskFile = this.plugin.app.vault.getAbstractFileByPath(
+        task.source.filePath
+      );
+      if (!taskFile || !(taskFile instanceof TFile)) {
+        return;
+      }
+
+      const dateString = date.toISOString().split("T")[0]; // YYYY-MM-DD format
+
+      await this.plugin.app.fileManager.processFrontMatter(
+        taskFile as any,
+        (frontmatter) => {
+          // Only set Do Date if it's not already set or if it's different from today
+          if (
+            !frontmatter["Do Date"] ||
+            frontmatter["Do Date"] !== dateString
+          ) {
+            frontmatter["Do Date"] = dateString;
+          }
+        }
+      );
+    } catch (error) {
+      console.error("Failed to set task Do Date:", error);
     }
   }
 }

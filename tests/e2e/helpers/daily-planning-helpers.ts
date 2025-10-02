@@ -3,10 +3,10 @@
  * Provides reusable utilities for testing the Daily Planning Wizard
  */
 
-import type { Page } from "@playwright/test";
 import { expect } from "@playwright/test";
-import { executeCommand } from "./global";
+import { executeCommand, type ExtendedPage } from "./global";
 import { getTodayString, getYesterdayString } from "./date-helpers";
+import { createTask } from "./entity-helpers";
 
 /**
  * Interface for creating test tasks
@@ -24,69 +24,35 @@ export interface TestTaskProps {
 }
 
 /**
- * Create a test task file in the vault
+ * Create a test task using the proper entity creation helper
  */
 export async function createTestTask(
-  page: Page,
+  page: ExtendedPage,
   taskProps: TestTaskProps
-): Promise<string> {
-  return await page.evaluate(async (props) => {
-    const app = (window as any).app;
-    
-    // Create Tasks folder if it doesn't exist
-    const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
-    if (!tasksFolder) {
-      await app.vault.createFolder("Tasks");
-    }
+): Promise<any> {
+  // Convert TestTaskProps to the format expected by createTask
+  const task = await createTask(page, {
+    title: taskProps.title,
+    description: taskProps.description,
+    status: taskProps.status || "Not Started",
+    priority: taskProps.priority || "Medium",
+    done: taskProps.done || false,
+    dueDate: taskProps.doDate || taskProps.dueDate,
+    project: taskProps.project,
+    areas: taskProps.areas,
+  });
 
-    // Generate unique filename
-    const timestamp = Date.now();
-    const fileName = `Tasks/${props.title.replace(/[^a-zA-Z0-9]/g, '_')}_${timestamp}.md`;
-    
-    // Build frontmatter
-    const frontmatter = [
-      "---",
-      `Title: ${props.title}`,
-      "Type: Task",
-      `Status: ${props.status || "Not Started"}`,
-      `Priority: ${props.priority || "Medium"}`,
-      `Done: ${props.done || false}`,
-    ];
-
-    if (props.doDate) {
-      frontmatter.push(`Do Date: ${props.doDate}`);
-    }
-
-    if (props.dueDate) {
-      frontmatter.push(`Due Date: ${props.dueDate}`);
-    }
-
-    if (props.project) {
-      frontmatter.push(`Project: ${props.project}`);
-    }
-
-    if (props.areas && props.areas.length > 0) {
-      frontmatter.push(`Areas: [${props.areas.map(a => `"${a}"`).join(", ")}]`);
-    }
-
-    frontmatter.push("---");
-    frontmatter.push("");
-    frontmatter.push(props.description || `Test task: ${props.title}`);
-
-    const content = frontmatter.join("\n");
-    await app.vault.create(fileName, content);
-    return fileName;
-  }, taskProps);
+  return task;
 }
 
 /**
  * Create a task scheduled for yesterday
  */
 export async function createYesterdayTask(
-  page: Page,
+  page: ExtendedPage,
   title: string,
   description?: string
-): Promise<string> {
+): Promise<any> {
   return await createTestTask(page, {
     title,
     description: description || `A task scheduled for yesterday: ${title}`,
@@ -99,10 +65,10 @@ export async function createYesterdayTask(
  * Create a task scheduled for today
  */
 export async function createTodayTask(
-  page: Page,
+  page: ExtendedPage,
   title: string,
   description?: string
-): Promise<string> {
+): Promise<any> {
   return await createTestTask(page, {
     title,
     description: description || `A task scheduled for today: ${title}`,
@@ -115,10 +81,10 @@ export async function createTodayTask(
  * Create an unscheduled task
  */
 export async function createUnscheduledTask(
-  page: Page,
+  page: ExtendedPage,
   title: string,
   description?: string
-): Promise<string> {
+): Promise<any> {
   return await createTestTask(page, {
     title,
     description: description || `An unscheduled task: ${title}`,
@@ -129,33 +95,43 @@ export async function createUnscheduledTask(
 /**
  * Start the Daily Planning Wizard
  */
-export async function startDailyPlanning(page: Page): Promise<void> {
+export async function startDailyPlanning(page: ExtendedPage): Promise<void> {
   await executeCommand(page, "Task Sync: Start Daily Planning");
-  
+
   // Wait for daily planning view to open
-  await expect(page.locator('[data-testid="daily-planning-view"]')).toBeVisible({
-    timeout: 10000,
-  });
+  await expect(page.locator('[data-testid="daily-planning-view"]')).toBeVisible(
+    {
+      timeout: 10000,
+    }
+  );
 }
 
 /**
  * Navigate to a specific step in the Daily Planning Wizard
  */
-export async function navigateToStep(page: Page, stepNumber: 1 | 2 | 3): Promise<void> {
+export async function navigateToStep(
+  page: ExtendedPage,
+  stepNumber: 1 | 2 | 3
+): Promise<void> {
   // Start from step 1 and navigate forward
   for (let i = 1; i < stepNumber; i++) {
     await page.click('[data-testid="next-button"]');
     await page.waitForTimeout(500);
   }
-  
+
   // Verify we're on the correct step
-  await expect(page.locator(`[data-testid="step-${stepNumber}-content"]`)).toBeVisible();
+  await expect(
+    page.locator(`[data-testid="step-${stepNumber}-content"]`)
+  ).toBeVisible();
 }
 
 /**
  * Wait for tasks to appear in the current step
  */
-export async function waitForTasksToLoad(page: Page, timeout: number = 5000): Promise<void> {
+export async function waitForTasksToLoad(
+  page: ExtendedPage,
+  timeout: number = 5000
+): Promise<void> {
   // Wait for any task-related elements to appear
   try {
     await page.waitForSelector(
@@ -171,9 +147,13 @@ export async function waitForTasksToLoad(page: Page, timeout: number = 5000): Pr
 /**
  * Move yesterday's tasks to today (Step 1)
  */
-export async function moveYesterdayTasksToToday(page: Page): Promise<void> {
-  const moveToTodayButton = page.locator('[data-testid="move-to-today-button"]');
-  
+export async function moveYesterdayTasksToToday(
+  page: ExtendedPage
+): Promise<void> {
+  const moveToTodayButton = page.locator(
+    '[data-testid="move-to-today-button"]'
+  );
+
   if (await moveToTodayButton.isVisible()) {
     await moveToTodayButton.click();
     await page.waitForTimeout(1000);
@@ -183,9 +163,9 @@ export async function moveYesterdayTasksToToday(page: Page): Promise<void> {
 /**
  * Confirm the daily plan (Step 3)
  */
-export async function confirmDailyPlan(page: Page): Promise<void> {
+export async function confirmDailyPlan(page: ExtendedPage): Promise<void> {
   const confirmButton = page.locator('[data-testid="confirm-button"]');
-  
+
   if (await confirmButton.isVisible()) {
     await confirmButton.click();
     await page.waitForTimeout(2000);
@@ -195,14 +175,20 @@ export async function confirmDailyPlan(page: Page): Promise<void> {
 /**
  * Verify that a task appears in the current step
  */
-export async function verifyTaskVisible(page: Page, taskTitle: string): Promise<void> {
+export async function verifyTaskVisible(
+  page: ExtendedPage,
+  taskTitle: string
+): Promise<void> {
   await expect(page.locator(`text=${taskTitle}`)).toBeVisible();
 }
 
 /**
  * Verify that multiple tasks appear in the current step
  */
-export async function verifyTasksVisible(page: Page, taskTitles: string[]): Promise<void> {
+export async function verifyTasksVisible(
+  page: ExtendedPage,
+  taskTitles: string[]
+): Promise<void> {
   for (const title of taskTitles) {
     await verifyTaskVisible(page, title);
   }
@@ -212,7 +198,7 @@ export async function verifyTasksVisible(page: Page, taskTitles: string[]): Prom
  * Count the number of tasks in a specific section
  */
 export async function countTasksInSection(
-  page: Page,
+  page: ExtendedPage,
   sectionTestId: string
 ): Promise<number> {
   const tasks = page.locator(`[data-testid="${sectionTestId}"]`);
@@ -222,7 +208,9 @@ export async function countTasksInSection(
 /**
  * Setup Apple Calendar API stubs for consistent testing
  */
-export async function setupAppleCalendarStubs(page: Page): Promise<void> {
+export async function setupAppleCalendarStubs(
+  page: ExtendedPage
+): Promise<void> {
   await page.evaluate(() => {
     // Mock Apple Calendar service to return empty events
     (window as any).mockAppleCalendarService = {
@@ -237,7 +225,7 @@ export async function setupAppleCalendarStubs(page: Page): Promise<void> {
  * Complete the full Daily Planning workflow
  */
 export async function completeDailyPlanningWorkflow(
-  page: Page,
+  page: ExtendedPage,
   options: {
     moveYesterdayTasks?: boolean;
     confirmPlan?: boolean;
@@ -245,25 +233,25 @@ export async function completeDailyPlanningWorkflow(
 ): Promise<void> {
   // Start daily planning
   await startDailyPlanning(page);
-  
+
   // Step 1: Review Yesterday's Tasks
   await expect(page.locator('[data-testid="step-1-content"]')).toBeVisible();
-  
+
   if (options.moveYesterdayTasks) {
     await moveYesterdayTasksToToday(page);
   }
-  
+
   await navigateToStep(page, 2);
-  
+
   // Step 2: Today's Agenda
   await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
   await waitForTasksToLoad(page);
-  
+
   await navigateToStep(page, 3);
-  
+
   // Step 3: Plan Summary
   await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
-  
+
   if (options.confirmPlan) {
     await confirmDailyPlan(page);
   }
@@ -273,29 +261,29 @@ export async function completeDailyPlanningWorkflow(
  * Create multiple test tasks for comprehensive testing
  */
 export async function createMultipleTestTasks(
-  page: Page,
+  page: ExtendedPage,
   count: number,
   taskType: "yesterday" | "today" | "unscheduled" = "today"
-): Promise<string[]> {
-  const taskPaths: string[] = [];
-  
+): Promise<any[]> {
+  const tasks: any[] = [];
+
   for (let i = 1; i <= count; i++) {
-    let taskPath: string;
-    
+    let task: any;
+
     switch (taskType) {
       case "yesterday":
-        taskPath = await createYesterdayTask(page, `Yesterday Task ${i}`);
+        task = await createYesterdayTask(page, `Yesterday Task ${i}`);
         break;
       case "today":
-        taskPath = await createTodayTask(page, `Today Task ${i}`);
+        task = await createTodayTask(page, `Today Task ${i}`);
         break;
       case "unscheduled":
-        taskPath = await createUnscheduledTask(page, `Unscheduled Task ${i}`);
+        task = await createUnscheduledTask(page, `Unscheduled Task ${i}`);
         break;
     }
-    
-    taskPaths.push(taskPath);
+
+    tasks.push(task);
   }
-  
-  return taskPaths;
+
+  return tasks;
 }

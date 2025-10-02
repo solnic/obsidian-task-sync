@@ -47,10 +47,42 @@ export async function createTask(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Create task and get the created entity directly
-      const createdTask = await plugin.createTask(
-        Object.assign(props, { content })
-      );
+      if (!plugin) {
+        throw new Error("Task Sync plugin not found");
+      }
+
+      // Access the taskSyncApp and use the new architecture
+      const taskSyncApp = plugin.taskSyncApp;
+
+      if (!taskSyncApp || !taskSyncApp.isInitialized()) {
+        throw new Error("TaskSync app is not initialized");
+      }
+
+      // Access the global taskOperations that we exposed through the plugin
+      const taskOperations = plugin.operations.taskOperations;
+
+      if (!taskOperations) {
+        throw new Error("taskOperations not available on plugin");
+      }
+
+      // Prepare task data in the format expected by the new architecture
+      const taskData = {
+        title: props.title,
+        description: props.description || content || "",
+        category: props.category || "",
+        priority: props.priority || "",
+        areas: props.areas || [],
+        project: props.project || "",
+        done: props.done || false,
+        status: props.status || "Not Started",
+        parentTask: props.parentTask || "",
+        tags: props.tags || [],
+        doDate: props.dueDate ? new Date(props.dueDate) : undefined,
+        dueDate: props.dueDate ? new Date(props.dueDate) : undefined,
+      };
+
+      // Create task using the new architecture
+      const createdTask = await taskOperations.create(taskData);
 
       if (!createdTask) {
         throw new Error(`Failed to create task "${props.title}"`);

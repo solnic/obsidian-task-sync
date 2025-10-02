@@ -10,6 +10,7 @@ import {
   getTodayString,
   getYesterdayString,
 } from "../../helpers/date-helpers";
+import { createTask } from "../../helpers/entity-helpers";
 
 test.describe("Daily Planning Wizard", () => {
   test.beforeEach(async ({ page }) => {
@@ -40,7 +41,7 @@ test.describe("Daily Planning Wizard", () => {
     // STEP 1: Review Yesterday's Tasks
     await expect(page.locator('[data-testid="step-1-content"]')).toBeVisible();
     await expect(
-      page.locator("h2").filter({ hasText: "Review Yesterday" })
+      page.locator("h3").filter({ hasText: "Review Yesterday" })
     ).toBeVisible();
 
     // Navigate to step 2
@@ -49,7 +50,7 @@ test.describe("Daily Planning Wizard", () => {
     // STEP 2: Today's Agenda
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
     await expect(
-      page.locator("h2").filter({ hasText: "Today's Agenda" })
+      page.locator("h3").filter({ hasText: "Today's Agenda" })
     ).toBeVisible();
 
     // Navigate to step 3
@@ -58,41 +59,25 @@ test.describe("Daily Planning Wizard", () => {
     // STEP 3: Plan Summary
     await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
     await expect(
-      page.locator("h2").filter({ hasText: "Plan Summary" })
+      page.locator("h3").filter({ hasText: "Plan Summary" })
     ).toBeVisible();
   });
 
   test("should handle yesterday's unfinished tasks", async ({ page }) => {
     const yesterdayString = getYesterdayString();
 
-    // Create a task scheduled for yesterday
-    const taskPath = await page.evaluate(async (yesterdayString) => {
-      const app = (window as any).app;
+    // Create a task scheduled for yesterday using the proper helper
+    const task = await createTask(page, {
+      title: "Yesterday Task",
+      description: "A task that was scheduled for yesterday but not completed.",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      dueDate: yesterdayString,
+    });
 
-      // Create Tasks folder if it doesn't exist
-      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
-      if (!tasksFolder) {
-        await app.vault.createFolder("Tasks");
-      }
-
-      // Create task file with yesterday's date
-      const fileName = `Tasks/Yesterday Task.md`;
-      const content = `---
-Title: Yesterday Task
-Type: Task
-Status: Not Started
-Priority: Medium
-Done: false
-Do Date: ${yesterdayString}
----
-
-A task that was scheduled for yesterday but not completed.`;
-
-      await app.vault.create(fileName, content);
-      return fileName;
-    }, yesterdayString);
-
-    expect(taskPath).toBeTruthy();
+    expect(task).toBeTruthy();
+    expect(task.title).toBe("Yesterday Task");
 
     // Start daily planning
     await executeCommand(page, "Task Sync: Start Daily Planning");
@@ -126,34 +111,18 @@ A task that was scheduled for yesterday but not completed.`;
   test("should display today's scheduled tasks in step 2", async ({ page }) => {
     const todayString = getTodayString();
 
-    // Create a task scheduled for today
-    const taskPath = await page.evaluate(async (todayString) => {
-      const app = (window as any).app;
+    // Create a task scheduled for today using the proper helper
+    const task = await createTask(page, {
+      title: "Today Task",
+      description: "A task scheduled for today.",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      dueDate: todayString,
+    });
 
-      // Create Tasks folder if it doesn't exist
-      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
-      if (!tasksFolder) {
-        await app.vault.createFolder("Tasks");
-      }
-
-      // Create task file with today's date
-      const fileName = `Tasks/Today Task.md`;
-      const content = `---
-Title: Today Task
-Type: Task
-Status: Not Started
-Priority: High
-Done: false
-Do Date: ${todayString}
----
-
-A task scheduled for today.`;
-
-      await app.vault.create(fileName, content);
-      return fileName;
-    }, todayString);
-
-    expect(taskPath).toBeTruthy();
+    expect(task).toBeTruthy();
+    expect(task.title).toBe("Today Task");
 
     // Start daily planning
     await executeCommand(page, "Task Sync: Start Daily Planning");
@@ -178,34 +147,18 @@ A task scheduled for today.`;
   test("should show plan summary in step 3", async ({ page }) => {
     const todayString = getTodayString();
 
-    // Create a task for the plan summary
-    const taskPath = await page.evaluate(async (todayString) => {
-      const app = (window as any).app;
+    // Create a task for the plan summary using the proper helper
+    const task = await createTask(page, {
+      title: "Summary Task",
+      description: "A task for testing plan summary.",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      dueDate: todayString,
+    });
 
-      // Create Tasks folder if it doesn't exist
-      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
-      if (!tasksFolder) {
-        await app.vault.createFolder("Tasks");
-      }
-
-      // Create task file
-      const fileName = `Tasks/Summary Task.md`;
-      const content = `---
-Title: Summary Task
-Type: Task
-Status: Not Started
-Priority: Medium
-Done: false
-Do Date: ${todayString}
----
-
-A task for testing plan summary.`;
-
-      await app.vault.create(fileName, content);
-      return fileName;
-    }, todayString);
-
-    expect(taskPath).toBeTruthy();
+    expect(task).toBeTruthy();
+    expect(task.title).toBe("Summary Task");
 
     // Start daily planning
     await executeCommand(page, "Task Sync: Start Daily Planning");
@@ -285,40 +238,24 @@ A task for testing plan summary.`;
   }) => {
     const yesterdayString = getYesterdayString();
 
-    // Create multiple tasks scheduled for yesterday
-    const taskPaths = await page.evaluate(async (yesterdayString) => {
-      const app = (window as any).app;
+    // Create multiple tasks scheduled for yesterday using the proper helper
+    const tasks = [];
+    for (let i = 1; i <= 3; i++) {
+      const task = await createTask(page, {
+        title: `Yesterday Task ${i}`,
+        description: `Task ${i} that was scheduled for yesterday.`,
+        status: "Not Started",
+        priority: "Medium",
+        done: false,
+        dueDate: yesterdayString,
+      });
+      tasks.push(task);
+    }
 
-      // Create Tasks folder if it doesn't exist
-      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
-      if (!tasksFolder) {
-        await app.vault.createFolder("Tasks");
-      }
-
-      const paths = [];
-
-      // Create 3 yesterday tasks
-      for (let i = 1; i <= 3; i++) {
-        const fileName = `Tasks/Yesterday Task ${i}.md`;
-        const content = `---
-Title: Yesterday Task ${i}
-Type: Task
-Status: Not Started
-Priority: Medium
-Done: false
-Do Date: ${yesterdayString}
----
-
-Task ${i} that was scheduled for yesterday.`;
-
-        await app.vault.create(fileName, content);
-        paths.push(fileName);
-      }
-
-      return paths;
-    }, yesterdayString);
-
-    expect(taskPaths).toHaveLength(3);
+    expect(tasks).toHaveLength(3);
+    expect(tasks[0].title).toBe("Yesterday Task 1");
+    expect(tasks[1].title).toBe("Yesterday Task 2");
+    expect(tasks[2].title).toBe("Yesterday Task 3");
 
     // Start daily planning
     await executeCommand(page, "Task Sync: Start Daily Planning");
@@ -364,33 +301,18 @@ Task ${i} that was scheduled for yesterday.`;
   test("should handle task scheduling and unscheduling in step 2", async ({
     page,
   }) => {
-    // Create an unscheduled task
-    const taskPath = await page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Create Tasks folder if it doesn't exist
-      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
-      if (!tasksFolder) {
-        await app.vault.createFolder("Tasks");
-      }
-
-      // Create unscheduled task
-      const fileName = `Tasks/Unscheduled Task.md`;
-      const content = `---
-Title: Unscheduled Task
-Type: Task
-Status: Not Started
-Priority: Medium
-Done: false
----
-
-A task that needs to be scheduled.`;
-
-      await app.vault.create(fileName, content);
-      return fileName;
+    // Create an unscheduled task using the proper helper
+    const task = await createTask(page, {
+      title: "Unscheduled Task",
+      description: "A task that needs to be scheduled.",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      // No dueDate - this makes it unscheduled
     });
 
-    expect(taskPath).toBeTruthy();
+    expect(task).toBeTruthy();
+    expect(task.title).toBe("Unscheduled Task");
 
     // Start daily planning
     await executeCommand(page, "Task Sync: Start Daily Planning");
@@ -422,34 +344,18 @@ A task that needs to be scheduled.`;
   test("should complete full workflow and confirm plan", async ({ page }) => {
     const todayString = getTodayString();
 
-    // Create a task for the complete workflow
-    const taskPath = await page.evaluate(async (todayString) => {
-      const app = (window as any).app;
+    // Create a task for the complete workflow using the proper helper
+    const task = await createTask(page, {
+      title: "Workflow Task",
+      description: "A task for testing the complete daily planning workflow.",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      dueDate: todayString,
+    });
 
-      // Create Tasks folder if it doesn't exist
-      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
-      if (!tasksFolder) {
-        await app.vault.createFolder("Tasks");
-      }
-
-      // Create task file
-      const fileName = `Tasks/Workflow Task.md`;
-      const content = `---
-Title: Workflow Task
-Type: Task
-Status: Not Started
-Priority: High
-Done: false
-Do Date: ${todayString}
----
-
-A task for testing the complete daily planning workflow.`;
-
-      await app.vault.create(fileName, content);
-      return fileName;
-    }, todayString);
-
-    expect(taskPath).toBeTruthy();
+    expect(task).toBeTruthy();
+    expect(task.title).toBe("Workflow Task");
 
     // Start daily planning
     await executeCommand(page, "Task Sync: Start Daily Planning");

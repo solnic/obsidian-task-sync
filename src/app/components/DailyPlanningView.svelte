@@ -138,14 +138,17 @@
         planningCompletedAt: new Date(),
       });
 
+      // Add tasks to today's daily note and open it
+      await dailyPlanningExtension.addTasksToTodayDailyNote(finalPlan.tasks);
+
       // Complete the daily planning
       await dailyPlanningExtension.completeDailyPlanning();
 
-      // Show success message and close the planning view
+      // Show success message
       alert("Daily plan confirmed successfully!");
 
-      // Optionally close the daily planning view or navigate away
-      // This would depend on how the view is managed in the application
+      // Close the daily planning view
+      // TODO: Implement proper view closing mechanism
     } catch (err: any) {
       console.error("Error confirming plan:", err);
       error = err.message || "Failed to confirm plan";

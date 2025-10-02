@@ -16,7 +16,7 @@ import { areaStore } from "./stores/areaStore";
 
 export class TaskSyncApp {
   private initialized = false;
-  private obsidianExtension?: ObsidianExtension;
+  public obsidianExtension?: ObsidianExtension;
   public githubExtension?: GitHubExtension;
   public calendarExtension?: CalendarExtension;
   public dailyPlanningExtension?: DailyPlanningExtension;
@@ -153,6 +153,24 @@ export class TaskSyncApp {
   }
 
   /**
+   * Get extension by ID for testing and external access
+   */
+  getExtensionById(id: string): any {
+    switch (id) {
+      case "obsidian":
+        return this.obsidianExtension;
+      case "github":
+        return this.githubExtension;
+      case "calendar":
+        return this.calendarExtension;
+      case "daily-planning":
+        return this.dailyPlanningExtension;
+      default:
+        return null;
+    }
+  }
+
+  /**
    * Update settings and reactively initialize/shutdown extensions
    */
   async updateSettings(newSettings: TaskSyncSettings): Promise<void> {
@@ -282,19 +300,6 @@ export class TaskSyncApp {
     }
 
     console.log("GitHub extension initialized successfully");
-  }
-
-  /**
-   * Get extension by ID
-   */
-  getExtensionById(extensionId: string) {
-    if (extensionId === "obsidian") {
-      return this.obsidianExtension;
-    }
-    if (extensionId === "github") {
-      return this.githubExtension;
-    }
-    return null;
   }
 
   /**
