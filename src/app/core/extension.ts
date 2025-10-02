@@ -112,22 +112,10 @@ export class ExtensionRegistry {
       );
     }
     this.extensions.set(extension.id, extension);
-
-    // Emit event for reactive components
-    eventBus.trigger({
-      type: "extension.registered",
-      extensionId: extension.id,
-    });
   }
 
   unregister(id: string): void {
     this.extensions.delete(id);
-
-    // Emit event for reactive components
-    eventBus.trigger({
-      type: "extension.unregistered",
-      extensionId: id,
-    });
   }
 
   getById(id: string): Extension | undefined {

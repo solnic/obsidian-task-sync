@@ -23,6 +23,12 @@ import { Tasks } from "../entities/Tasks";
 import { scheduleStore } from "../stores/scheduleStore";
 import { taskStore } from "../stores/taskStore";
 import type { TaskSyncSettings } from "../types/settings";
+import {
+  setPlanningActive,
+  setCurrentSchedule,
+  isPlanningActive,
+  currentSchedule,
+} from "../stores/dailyPlanningStore";
 import type { CalendarExtension } from "./CalendarExtension";
 import {
   getYesterdayTasksGrouped,
@@ -51,9 +57,7 @@ export class DailyPlanningExtension implements Extension {
   // Calendar extension for events
   private calendarExtension?: CalendarExtension;
 
-  // Internal state for daily planning
-  private planningActiveStore = writable<boolean>(false);
-  private currentScheduleStore = writable<Schedule | null>(null);
+  // Note: Planning state is now managed by global dailyPlanningStore
 
   // Staging state for planning changes
   private stagedTasksStore = writable<Task[]>([]);
@@ -202,21 +206,21 @@ export class DailyPlanningExtension implements Extension {
    * Get the current planning state
    */
   getPlanningActive(): Readable<boolean> {
-    return this.planningActiveStore;
+    return isPlanningActive;
   }
 
   /**
    * Set the planning active state
    */
   setPlanningActive(active: boolean): void {
-    this.planningActiveStore.set(active);
+    setPlanningActive(active);
   }
 
   /**
    * Get the current schedule being planned
    */
   getCurrentSchedule(): Readable<Schedule | null> {
-    return this.currentScheduleStore;
+    return currentSchedule;
   }
 
   /**
@@ -237,7 +241,7 @@ export class DailyPlanningExtension implements Extension {
    * Set the current schedule being planned
    */
   setCurrentSchedule(schedule: Schedule | null): void {
-    this.currentScheduleStore.set(schedule);
+    setCurrentSchedule(schedule);
   }
 
   /**
@@ -475,7 +479,7 @@ export class DailyPlanningExtension implements Extension {
    */
   async moveTaskToToday(task: Task): Promise<void> {
     // If planning is active, stage the task instead of applying immediately
-    if (get(this.planningActiveStore)) {
+    if (get(isPlanningActive)) {
       this.stageTaskForToday(task);
     } else {
       await this.moveTaskToTodayImmediate(task);

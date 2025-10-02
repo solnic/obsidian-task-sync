@@ -12,7 +12,10 @@
   import type { Host } from "../core/host";
   import type { TaskSyncSettings } from "../types/settings";
   import type { Task, Schedule } from "../core/entities";
-  import { eventBus } from "../core/events";
+  import {
+    isPlanningActive,
+    currentSchedule,
+  } from "../stores/dailyPlanningStore";
 
   // Props
   interface Props {
@@ -22,64 +25,23 @@
 
   let { host, settings }: Props = $props();
 
-  // Reactive state that updates when extensions are registered/unregistered
-  let extensionsVersion = $state(0);
+  // Get extensions from host - simple, direct lookup
+  let calendarExtension = $derived(
+    host.getExtensionById("calendar") as CalendarExtension | undefined
+  );
 
-  // Get extensions from host reactively
-  let calendarExtension = $derived.by(() => {
-    // Access extensionsVersion to make this reactive
-    extensionsVersion;
-    return host.getExtensionById("calendar") as CalendarExtension | undefined;
-  });
-
-  let dailyPlanningExtension = $derived.by(() => {
-    // Access extensionsVersion to make this reactive
-    extensionsVersion;
-    return host.getExtensionById("daily-planning") as
+  let dailyPlanningExtension = $derived(
+    host.getExtensionById("daily-planning") as
       | DailyPlanningExtension
-      | undefined;
-  });
-
-  // Listen to extension lifecycle events to trigger reactivity
-  $effect(() => {
-    const unsubscribeRegistered = eventBus.on("extension.registered", () => {
-      extensionsVersion++;
-    });
-
-    const unsubscribeUnregistered = eventBus.on(
-      "extension.unregistered",
-      () => {
-        extensionsVersion++;
-      }
-    );
-
-    return () => {
-      unsubscribeRegistered();
-      unsubscribeUnregistered();
-    };
-  });
+      | undefined
+  );
 
   // Subscribe to daily planning state changes
   $effect(() => {
     if (dailyPlanningExtension) {
-      const planningActiveStore = dailyPlanningExtension.getPlanningActive();
-      const currentScheduleStore = dailyPlanningExtension.getCurrentSchedule();
       const stagedTasksStore = dailyPlanningExtension.getStagedTasks();
       const stagedUnscheduledTasksStore =
         dailyPlanningExtension.getStagedUnscheduledTasks();
-
-      const unsubscribePlanning = planningActiveStore.subscribe((active) => {
-        isPlanningActive = active;
-      });
-
-      const unsubscribeSchedule = currentScheduleStore.subscribe((schedule) => {
-        currentSchedule = schedule;
-        if (schedule) {
-          plannedTasks = schedule.tasks || [];
-        } else {
-          plannedTasks = [];
-        }
-      });
 
       const unsubscribeStaged = stagedTasksStore.subscribe((tasks) => {
         stagedTasks = tasks;
@@ -91,8 +53,6 @@
         });
 
       return () => {
-        unsubscribePlanning();
-        unsubscribeSchedule();
         unsubscribeStaged();
         unsubscribeStagedUnscheduled();
       };
@@ -120,10 +80,11 @@
     )
   );
 
-  // Daily planning state
-  let isPlanningActive = $state(false);
-  let currentSchedule = $state<Schedule | null>(null);
-  let plannedTasks = $state<Task[]>([]);
+  // Daily planning state - get planned tasks from current schedule
+  let plannedTasks = $derived.by(() => {
+    const schedule = $currentSchedule;
+    return schedule ? schedule.tasks || [] : [];
+  });
   let stagedTasks = $state<Task[]>([]);
   let stagedUnscheduledTasks = $state<Task[]>([]);
 
@@ -422,7 +383,7 @@
 <div class="task-planning-view" data-testid="task-planning-view">
   <TabView className="day-view-tab" testId="day-view-tab">
     <!-- Daily Planning Header -->
-    {#if isPlanningActive}
+    {#if $isPlanningActive}
       <div class="planning-header" data-testid="planning-header">
         <div class="planning-info">
           <h3>📅 Daily Planning Mode - Day View</h3>

@@ -9,9 +9,12 @@
   import type { TaskSyncSettings } from "../types/settings";
   import { setIcon } from "obsidian";
   import { extensionRegistry } from "../core/extension";
-  import { eventBus } from "../core/events";
   import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
   import type { Host } from "../core/host";
+  import {
+    isPlanningActive,
+    currentSchedule,
+  } from "../stores/dailyPlanningStore";
 
   interface Props {
     // Settings for configuration
@@ -29,65 +32,12 @@
   // State - simplified to only support local tasks initially
   let activeService = $state<string>("local");
 
-  // Reactive state that updates when extensions are registered/unregistered
-  let extensionsVersion = $state(0);
-
-  // Get daily planning extension and track its planning state
-  let dailyPlanningExtension = $derived.by(() => {
-    // Access extensionsVersion to make this reactive
-    extensionsVersion;
-    return host.getExtensionById("daily-planning") as
+  // Get daily planning extension - simple, direct lookup
+  let dailyPlanningExtension = $derived(
+    host.getExtensionById("daily-planning") as
       | DailyPlanningExtension
-      | undefined;
-  });
-
-  // Track planning active state reactively
-  let isPlanningActive = $state(false);
-  let currentSchedule = $state(null);
-
-  // Subscribe to daily planning state changes
-  $effect(() => {
-    if (dailyPlanningExtension) {
-      const planningActiveStore = dailyPlanningExtension.getPlanningActive();
-      const currentScheduleStore = dailyPlanningExtension.getCurrentSchedule();
-
-      const unsubscribePlanning = planningActiveStore.subscribe((active) => {
-        isPlanningActive = active;
-      });
-
-      const unsubscribeSchedule = currentScheduleStore.subscribe((schedule) => {
-        currentSchedule = schedule;
-      });
-
-      return () => {
-        unsubscribePlanning();
-        unsubscribeSchedule();
-      };
-    }
-
-    return () => {
-      // No cleanup needed if extension not available
-    };
-  });
-
-  // Listen to extension lifecycle events to trigger reactivity
-  $effect(() => {
-    const unsubscribeRegistered = eventBus.on("extension.registered", () => {
-      extensionsVersion++;
-    });
-
-    const unsubscribeUnregistered = eventBus.on(
-      "extension.unregistered",
-      () => {
-        extensionsVersion++;
-      }
-    );
-
-    return () => {
-      unsubscribeRegistered();
-      unsubscribeUnregistered();
-    };
-  });
+      | undefined
+  );
 
   // Staged tasks state - managed at TasksView level for all services
   let stagedTaskIds = $state<Set<string>>(new Set());
@@ -114,11 +64,8 @@
     }
   }
 
-  // Available services - reactively built from registered extensions
+  // Available services - built from registered extensions
   let services = $derived.by(() => {
-    // Access extensionsVersion to make this reactive
-    extensionsVersion;
-
     const allServices = [];
 
     // Always include local tasks (obsidian extension)
@@ -182,8 +129,8 @@
             serviceId={activeService}
             {settings}
             {host}
-            {isPlanningActive}
-            {currentSchedule}
+            isPlanningActive={$isPlanningActive}
+            currentSchedule={$currentSchedule}
             {dailyPlanningExtension}
             {stagedTaskIds}
             onStageTask={handleStageTask}
