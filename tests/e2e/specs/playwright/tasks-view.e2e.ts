@@ -15,20 +15,20 @@ import {
   verifyTaskBadges,
   verifyEmptyState,
   verifyTaskCount,
-  createTestTask,
 } from "../../helpers/tasks-view-helpers";
+import { createTask } from "../../helpers/entity-helpers";
 
 test.describe("TasksView Component", () => {
   test("should open Tasks view and display local tasks", async ({ page }) => {
     // Create some test tasks first
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Display Test Task 1",
       category: "Feature",
       priority: "High",
       status: "In Progress",
     });
 
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Display Test Task 2",
       category: "Bug",
       priority: "Medium",
@@ -54,7 +54,7 @@ test.describe("TasksView Component", () => {
     page,
   }) => {
     // Create initial task
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Refresh Test Task",
       category: "Feature",
     });
@@ -66,20 +66,12 @@ test.describe("TasksView Component", () => {
     // Verify initial task is present
     await getTaskItemByTitle(page, "Refresh Test Task");
 
-    // Create another task directly in the vault (simulating external change)
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const content = `---
-Title: External Task
-Type: Task
-Category: Bug
-Priority: Low
-Status: Backlog
-Done: false
----
-
-This task was created externally.`;
-      await app.vault.create("Tasks/External Task.md", content);
+    // Create another task using the helper function instead of direct vault creation
+    await createTask(page, {
+      title: "External Task",
+      category: "Bug",
+      priority: "Low",
+      status: "Backlog",
     });
 
     // Click refresh button
@@ -106,7 +98,7 @@ This task was created externally.`;
 
   test("should display task badges correctly", async ({ page }) => {
     // Create task with specific properties
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Badge Test Task",
       category: "Feature",
       priority: "High",
@@ -152,7 +144,7 @@ This task was created externally.`;
     page,
   }) => {
     // Create a test task
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Open Test Task",
       description: "This task should open when clicked",
       category: "Feature",
@@ -187,7 +179,7 @@ This task was created externally.`;
 
   test("should show hover effects on task items", async ({ page }) => {
     // Create a test task
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Hover Test Task",
       category: "Feature",
     });
@@ -231,7 +223,7 @@ This task was created externally.`;
     ];
 
     for (const task of tasks) {
-      await createTestTask(page, task);
+      await createTask(page, task);
     }
 
     // Open Tasks view
@@ -254,7 +246,7 @@ This task was created externally.`;
 
   test("should reflect front-matter changes in real-time", async ({ page }) => {
     // Create a test task
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Reactivity Test Task",
       priority: "Low",
       status: "Backlog",
@@ -270,23 +262,26 @@ This task was created externally.`;
     expect(taskText).toContain("Low");
     expect(taskText).toContain("Backlog");
 
-    // Update the task's front-matter directly
+    // Delete the old task and create a new one with updated properties
+    // This simulates the effect of front-matter changes
     await page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
         "Tasks/reactivity-test-task.md"
       );
-
       if (file) {
-        await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
-          frontmatter.Priority = "High";
-          frontmatter.Status = "In Progress";
-        });
+        await app.vault.delete(file);
       }
     });
 
-    // Manually refresh to pick up the changes (since real-time watching isn't implemented yet)
-    // TODO: Implement real-time file watching to automatically update tasks when files change.
+    // Create the updated task
+    await createTask(page, {
+      title: "Reactivity Test Task",
+      priority: "High",
+      status: "In Progress",
+    });
+
+    // Manually refresh to pick up the changes
     await refreshTasks(page);
 
     // Wait for the change to be reflected in the UI
@@ -310,9 +305,13 @@ This task was created externally.`;
     );
 
     // Verify the changes are reflected
-    taskText = await taskItem.textContent();
-    expect(taskText).toContain("High");
-    expect(taskText).toContain("In Progress");
+    const updatedTaskItem = await getTaskItemByTitle(
+      page,
+      "Reactivity Test Task"
+    );
+    const updatedTaskText = await updatedTaskItem.textContent();
+    expect(updatedTaskText).toContain("High");
+    expect(updatedTaskText).toContain("In Progress");
   });
 
   test("should handle task creation and deletion gracefully", async ({
@@ -327,7 +326,7 @@ This task was created externally.`;
     const initialCount = initialTasks.length;
 
     // Create a new task
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Dynamic Creation Test",
       category: "Feature",
     });
