@@ -514,8 +514,29 @@ export class ObsidianExtension implements Extension {
   /**
    * Set up vault event listeners to handle file deletions
    * When a note is deleted in Obsidian, we need to delete the corresponding entity
+   * Set up vault event listeners to handle file changes and deletions
+   * When a note is modified or deleted in Obsidian, we need to update or delete the corresponding entity
    */
   private setupVaultEventListeners(): void {
+    // Listen for metadata changes (front-matter updates)
+    const metadataChangeRef = this.app.metadataCache.on(
+      "changed",
+      (file, _data, cache) => {
+        if (!(file instanceof TFile)) return;
+
+        const filePath = file.path;
+
+        // Check if the changed file is in one of our entity folders
+        if (filePath.startsWith(this.settings.tasksFolder + "/")) {
+          this.handleTaskFileChange(file, cache);
+        } else if (filePath.startsWith(this.settings.projectsFolder + "/")) {
+          this.handleProjectFileChange(file, cache);
+        } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
+          this.handleAreaFileChange(file, cache);
+        }
+      }
+    );
+
     // Listen for file deletions in the vault
     const deleteRef = this.app.vault.on("delete", (file) => {
       if (!(file instanceof TFile)) return;
@@ -532,6 +553,7 @@ export class ObsidianExtension implements Extension {
       }
     });
 
+    this.vaultEventRefs.push(metadataChangeRef);
     this.vaultEventRefs.push(deleteRef);
   }
 
@@ -603,6 +625,21 @@ export class ObsidianExtension implements Extension {
     }
   }
 
+  /*
+   * Handle task file change by reloading the task from the file
+   */
+  private async handleTaskFileChange(file: TFile, cache: any): Promise<void> {
+    try {
+      // Rescan the file to update the task in the store
+      await this.taskOperations.rescanFile(file, cache);
+    } catch (error) {
+      console.error(
+        `Failed to handle task file change for ${file.path}:`,
+        error
+      );
+    }
+  }
+
   /**
    * Handle project update events for automatic base regeneration
    */
@@ -630,6 +667,29 @@ export class ObsidianExtension implements Extension {
     } catch (error) {
       console.error("Failed to auto-update project base:", error);
     }
+  }
+
+  /**
+   * Handle project file change by reloading the project from the file
+   * TODO: Implement project rescanning once project scanning is implemented
+   */
+  private async handleProjectFileChange(
+    file: TFile,
+    cache: any
+  ): Promise<void> {
+    console.log(
+      `Project file changed: ${file.path} (rescanning not yet implemented)`
+    );
+  }
+
+  /**
+   * Handle area file change by reloading the area from the file
+   * TODO: Implement area rescanning once area scanning is implemented
+   */
+  private async handleAreaFileChange(file: TFile, cache: any): Promise<void> {
+    console.log(
+      `Area file changed: ${file.path} (rescanning not yet implemented)`
+    );
   }
 
   private setupEventListeners(): void {

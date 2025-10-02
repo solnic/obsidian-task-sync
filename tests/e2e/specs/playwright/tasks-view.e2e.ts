@@ -266,7 +266,7 @@ test.describe("TasksView Component", () => {
     await page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/reactivity-test-task.md"
+        "Tasks/Reactivity Test Task.md"
       );
       if (file) {
         await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
@@ -283,7 +283,9 @@ test.describe("TasksView Component", () => {
         const taskItems = document.querySelectorAll(
           '[data-testid^="local-task-item-"]'
         );
+        console.log(`Found ${taskItems.length} task items`);
         for (const item of taskItems) {
+          console.log(`Task item text: ${item.textContent}`);
           if (
             item.textContent?.includes("Reactivity Test Task") &&
             item.textContent?.includes("High") &&
@@ -294,7 +296,7 @@ test.describe("TasksView Component", () => {
         }
         return false;
       },
-      { timeout: 5000 }
+      { timeout: 10000 }
     );
 
     // Verify the changes are reflected

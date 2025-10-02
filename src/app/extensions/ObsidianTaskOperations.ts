@@ -7,6 +7,7 @@ import { App, stringifyYaml, TFile, TFolder } from "obsidian";
 import { Task } from "../core/entities";
 import { ObsidianEntityOperations } from "./ObsidianEntityOperations";
 import { projectStore } from "../stores/projectStore";
+import { taskStore } from "../stores/taskStore";
 
 export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   constructor(app: App, folder: string) {
@@ -59,6 +60,21 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
     console.log(`Scan complete. Found ${tasks.length} valid tasks`);
     return tasks;
+  }
+
+  /**
+   * Rescan a single task file and update it in the store
+   * This is used when a file's front-matter changes
+   * @param file - The file to rescan
+   * @param cache - Optional metadata cache from the changed event
+   */
+  async rescanFile(file: TFile, cache?: any): Promise<void> {
+    // Use the cache parameter directly from the 'changed' event
+    // This contains the updated frontmatter data
+    const taskData = await this.parseFileToTaskData(file, cache);
+    if (taskData) {
+      taskStore.upsertTask(taskData);
+    }
   }
 
   // Implement abstract method to get entity display name for file naming
@@ -120,7 +136,9 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   /**
    * Find a project by name from the project store
    */
-  private findProjectByName(projectName: string): import("../core/entities").Project | null {
+  private findProjectByName(
+    projectName: string
+  ): import("../core/entities").Project | null {
     let foundProject = null;
     const unsubscribe = projectStore.subscribe((state) => {
       foundProject = state.projects.find((p) => p.name === projectName);
@@ -137,13 +155,17 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
    * Parse a task file and convert it to task data (without ID)
    * Based on the old TaskFileManager.loadEntity logic but simplified for new architecture
    * @param file - The Obsidian file to parse
+   * @param cache - Optional metadata cache from the changed event
    * @returns Task data without ID, including naturalKey for store upsert
    */
   private async parseFileToTaskData(
-    file: TFile
+    file: TFile,
+    cache?: any
   ): Promise<(Omit<Task, "id"> & { naturalKey: string }) | null> {
-    // Wait for metadata cache to be ready - this prevents null frontmatter crashes
-    const frontMatter = await this.waitForMetadataCache(file);
+    // If cache is provided (from changed event), use it directly
+    // Otherwise wait for metadata cache to be ready
+    const frontMatter =
+      cache?.frontmatter || (await this.waitForMetadataCache(file));
 
     if (frontMatter?.Type !== "Task" || !frontMatter?.Title) {
       return null; // Not a task file
