@@ -260,6 +260,19 @@ export class TaskSyncApp {
 
     console.log("GitHub extension initialized successfully");
   }
+
+  /**
+   * Get extension by ID
+   */
+  getExtensionById(extensionId: string) {
+    if (extensionId === "obsidian") {
+      return this.obsidianExtension;
+    }
+    if (extensionId === "github") {
+      return this.githubExtension;
+    }
+    return null;
+  }
 }
 
 export const taskSyncApp = new TaskSyncApp();
