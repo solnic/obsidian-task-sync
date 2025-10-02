@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import type { CalendarEvent } from "../types/calendar";
+  import type { Task } from "../core/entities";
   import moment from "moment";
 
   interface Props {
     events?: CalendarEvent[];
+    tasks?: Task[];
     selectedDate?: Date;
   }
 
@@ -14,8 +16,11 @@
     return new Date(today.getFullYear(), today.getMonth(), today.getDate());
   }
 
-  let { events = [], selectedDate = $bindable(getTodayAtMidnight()) }: Props =
-    $props();
+  let {
+    events = [],
+    tasks = [],
+    selectedDate = $bindable(getTodayAtMidnight()),
+  }: Props = $props();
 
   // Zoom management
   let zoomLevel = $state(1); // Default zoom level
@@ -198,6 +203,39 @@
     </button>
   </div>
 
+  <!-- Planned Tasks Section (shown when tasks are available) -->
+  {#if tasks && tasks.length > 0}
+    <div
+      class="obsidian-day-view__tasks-section"
+      data-testid="obsidian-day-view-tasks"
+    >
+      <div class="obsidian-day-view__tasks-header">
+        <h4>📋 Planned Tasks ({tasks.length})</h4>
+      </div>
+      <div class="obsidian-day-view__tasks-list">
+        {#each tasks as task (task.id)}
+          <div
+            class="obsidian-day-view__task"
+            data-testid="obsidian-day-view-task"
+          >
+            <div class="obsidian-day-view__task-content">
+              <span class="obsidian-day-view__task-title">{task.title}</span>
+              {#if task.doDate}
+                <span class="obsidian-day-view__task-time">
+                  {new Date(task.doDate).toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </span>
+              {/if}
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
   <!-- Time slots container -->
   <div
     class="obsidian-day-view__content"
@@ -289,3 +327,65 @@
     </div>
   </div>
 </div>
+
+<style>
+  .obsidian-day-view__tasks-section {
+    background: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding: 16px;
+    margin-bottom: 8px;
+  }
+
+  .obsidian-day-view__tasks-header h4 {
+    margin: 0 0 12px 0;
+    color: var(--text-normal);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .obsidian-day-view__tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .obsidian-day-view__task {
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    padding: 12px;
+    transition: background-color 0.2s ease;
+  }
+
+  .obsidian-day-view__task:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  .obsidian-day-view__task-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .obsidian-day-view__task-title {
+    color: var(--text-normal);
+    font-weight: 500;
+    flex: 1;
+  }
+
+  .obsidian-day-view__task-time {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 400;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    .obsidian-day-view__task-content {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+    }
+  }
+</style>

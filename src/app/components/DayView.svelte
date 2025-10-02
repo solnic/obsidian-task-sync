@@ -8,8 +8,10 @@
 
   import type { Calendar, CalendarEvent } from "../types/calendar";
   import type { CalendarExtension } from "../extensions/CalendarExtension";
+  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
   import type { Host } from "../core/host";
   import type { TaskSyncSettings } from "../types/settings";
+  import type { Task, Schedule } from "../core/entities";
 
   // Props
   interface Props {
@@ -19,11 +21,45 @@
 
   let { host, settings }: Props = $props();
 
-  // Get calendar extension from host
+  // Get extensions from host
   let calendarExtension: CalendarExtension | undefined = $state();
+  let dailyPlanningExtension: DailyPlanningExtension | undefined = $state();
 
   onMount(() => {
     calendarExtension = host.getExtensionById("calendar") as CalendarExtension;
+    dailyPlanningExtension = host.getExtensionById(
+      "daily-planning"
+    ) as DailyPlanningExtension;
+  });
+
+  // Subscribe to daily planning state changes
+  $effect(() => {
+    if (dailyPlanningExtension) {
+      const planningActiveStore = dailyPlanningExtension.getPlanningActive();
+      const currentScheduleStore = dailyPlanningExtension.getCurrentSchedule();
+
+      const unsubscribePlanning = planningActiveStore.subscribe((active) => {
+        isPlanningActive = active;
+      });
+
+      const unsubscribeSchedule = currentScheduleStore.subscribe((schedule) => {
+        currentSchedule = schedule;
+        if (schedule) {
+          plannedTasks = schedule.tasks || [];
+        } else {
+          plannedTasks = [];
+        }
+      });
+
+      return () => {
+        unsubscribePlanning();
+        unsubscribeSchedule();
+      };
+    }
+
+    return () => {
+      // No cleanup needed if extension not available
+    };
   });
 
   // State
@@ -42,6 +78,11 @@
       new Date().getDate()
     )
   );
+
+  // Daily planning state
+  let isPlanningActive = $state(false);
+  let currentSchedule = $state<Schedule | null>(null);
+  let plannedTasks = $state<Task[]>([]);
 
   // Load available calendars
   async function loadCalendars() {
@@ -327,6 +368,34 @@
 
 <div class="task-planning-view" data-testid="task-planning-view">
   <TabView className="day-view-tab" testId="day-view-tab">
+    <!-- Daily Planning Header -->
+    {#if isPlanningActive}
+      <div class="planning-header" data-testid="planning-header">
+        <div class="planning-info">
+          <h3>📅 Daily Planning Mode - Day View</h3>
+          <p>
+            {#if plannedTasks.length > 0}
+              {plannedTasks.length} task{plannedTasks.length === 1 ? "" : "s"} planned
+              for today
+            {:else}
+              No tasks planned for today yet
+            {/if}
+          </p>
+        </div>
+        <div class="planning-actions">
+          {#if plannedTasks.length > 0}
+            <span class="planning-hint"
+              >Tasks are shown alongside calendar events below</span
+            >
+          {:else}
+            <span class="planning-hint"
+              >Use the Tasks tab to add tasks to today's schedule</span
+            >
+          {/if}
+        </div>
+      </div>
+    {/if}
+
     <!-- Header Section with Filters -->
     <div class="task-planning-header">
       <!-- Filter Section -->
@@ -400,7 +469,11 @@
     <!-- Content Section -->
     <div class="task-sync-task-list-container">
       <div class="calendar-wrapper">
-        <ObsidianDayView events={filteredEvents} bind:selectedDate />
+        <ObsidianDayView
+          events={filteredEvents}
+          tasks={plannedTasks}
+          bind:selectedDate
+        />
       </div>
     </div>
   </TabView>
@@ -444,5 +517,56 @@
   .task-sync-task-list-container {
     flex: 1;
     overflow: hidden;
+  }
+
+  .planning-header {
+    background: var(--background-secondary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 8px;
+    padding: 16px;
+    margin: 16px;
+    margin-bottom: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .planning-info h3 {
+    margin: 0 0 4px 0;
+    color: var(--text-normal);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .planning-info p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  .planning-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .planning-hint {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-style: italic;
+  }
+
+  @media (max-width: 768px) {
+    .planning-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .planning-actions {
+      width: 100%;
+      justify-content: flex-start;
+    }
   }
 </style>
