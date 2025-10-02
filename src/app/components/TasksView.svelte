@@ -15,6 +15,7 @@
     isPlanningActive,
     currentSchedule,
   } from "../stores/dailyPlanningStore";
+  import { untrack } from "svelte";
 
   interface Props {
     // Settings for configuration
@@ -42,17 +43,22 @@
   // Staged tasks state - managed at TasksView level for all services
   let stagedTaskIds = $state<Set<string>>(new Set());
 
-  // Subscribe to staged tasks from daily planning extension
+  // Subscribe to staged changes from daily planning extension
+  // Use untrack to prevent infinite loops when updating state
   $effect(() => {
     if (!dailyPlanningExtension) {
       stagedTaskIds = new Set();
       return;
     }
 
-    const stagedTasksStore = dailyPlanningExtension.getStagedTasks();
-    const unsubscribe = stagedTasksStore.subscribe((staged) => {
-      stagedTaskIds = new Set(staged.map((task) => task.id));
-    });
+    const unsubscribe = dailyPlanningExtension
+      .getStagedChanges()
+      .subscribe((changes) => {
+        // Use untrack to prevent this state update from triggering the effect again
+        untrack(() => {
+          stagedTaskIds = changes.toSchedule;
+        });
+      });
 
     return unsubscribe;
   });
@@ -60,7 +66,7 @@
   // Unified task staging handler for all services
   function handleStageTask(task: any): void {
     if (dailyPlanningExtension) {
-      dailyPlanningExtension.stageTaskForToday(task);
+      dailyPlanningExtension.scheduleTaskForToday(task.id);
     }
   }
 

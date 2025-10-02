@@ -4,7 +4,7 @@
    * Integrated with Step components and DailyPlanningExtension
    */
 
-  import { onMount, onDestroy } from "svelte";
+  import { onMount, onDestroy, untrack } from "svelte";
   import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
   import type { Task, CalendarEvent } from "../core/entities";
 
@@ -36,17 +36,73 @@
 
   // Planning state - staging changes without modifying actual tasks
   let tasksToMoveToToday = $state<Task[]>([]);
-  let stagedTasks = $state<Task[]>([]);
 
-  // Computed state for step 2 - combines existing today tasks with staged tasks and yesterday tasks moved to today
+  // Staged changes from extension
+  let stagedChanges = $state<{
+    toSchedule: Set<string>;
+    toUnschedule: Set<string>;
+  }>({
+    toSchedule: new Set(),
+    toUnschedule: new Set(),
+  });
+
+  // Subscribe to staged changes from daily planning extension
+  // Use untrack to prevent infinite loops when updating state
+  $effect(() => {
+    if (!dailyPlanningExtension) {
+      stagedChanges = { toSchedule: new Set(), toUnschedule: new Set() };
+      return;
+    }
+
+    const unsubscribe = dailyPlanningExtension
+      .getStagedChanges()
+      .subscribe((changes) => {
+        // Use untrack to prevent this state update from triggering the effect again
+        untrack(() => {
+          stagedChanges = changes;
+        });
+      });
+
+    return unsubscribe;
+  });
+
+  // Derive display lists from staged changes
+  let displayLists = $derived.by(() => {
+    // Tasks that are scheduled for today (not staged for unscheduling)
+    const todayVisible = todayTasks.filter(
+      (t) => !stagedChanges.toUnschedule.has(t.id)
+    );
+
+    // Tasks from unscheduled list that are staged for scheduling
+    const stagingTasks = unscheduledTasks.filter((t) =>
+      stagedChanges.toSchedule.has(t.id)
+    );
+
+    // Tasks from unscheduled list that are NOT staged
+    const unscheduledVisible = unscheduledTasks.filter(
+      (t) => !stagedChanges.toSchedule.has(t.id)
+    );
+
+    return {
+      today: todayVisible,
+      staging: stagingTasks,
+      unscheduled: unscheduledVisible,
+    };
+  });
+
+  // Computed state for step 2 - combines today tasks, staging tasks, and yesterday tasks
   let allTodayTasksForStep2 = $derived([
-    ...todayTasks,
+    ...displayLists.today,
+    ...displayLists.staging,
     ...tasksToMoveToToday,
-    ...stagedTasks,
   ]);
-  let finalPlan = $state<{ tasks: Task[]; events: CalendarEvent[] }>({
-    tasks: [],
-    events: [],
+
+  // Use $derived to compute final plan
+  let finalPlan = $derived.by(() => {
+    return {
+      tasks: allTodayTasksForStep2,
+      events: todayEvents,
+    };
   });
 
   onMount(async () => {
@@ -57,48 +113,6 @@
     // Set daily planning as inactive
     if (dailyPlanningExtension) {
       dailyPlanningExtension.setPlanningActive(false);
-    }
-  });
-
-  // Subscribe to staged tasks from daily planning extension
-  $effect(() => {
-    if (!dailyPlanningExtension) {
-      stagedTasks = [];
-      return;
-    }
-
-    const stagedTasksStore = dailyPlanningExtension.getStagedTasks();
-    const unsubscribe = stagedTasksStore.subscribe((staged) => {
-      stagedTasks = [...staged];
-    });
-
-    return unsubscribe;
-  });
-
-  // Update final plan when staged tasks change
-  $effect(() => {
-    if (
-      finalPlan.tasks.length > 0 ||
-      stagedTasks.length > 0 ||
-      tasksToMoveToToday.length > 0
-    ) {
-      // Combine all tasks: original today tasks + staged tasks + yesterday tasks moved to today
-      const allTasks = [
-        ...todayTasks,
-        ...stagedTasks.filter(
-          (task) => !todayTasks.some((t) => t.id === task.id)
-        ),
-        ...tasksToMoveToToday.filter(
-          (task) =>
-            !todayTasks.some((t) => t.id === task.id) &&
-            !stagedTasks.some((t) => t.id === task.id)
-        ),
-      ];
-
-      finalPlan = {
-        ...finalPlan,
-        tasks: allTasks,
-      };
     }
   });
 
@@ -128,11 +142,8 @@
       // Load unscheduled tasks
       unscheduledTasks = await dailyPlanningExtension.getUnscheduledTasks();
 
-      // Initialize final plan with current today's tasks
-      finalPlan = {
-        tasks: [...todayTasks],
-        events: [...todayEvents],
-      };
+      // finalPlan is now a $derived value, so it will automatically update
+      // when todayTasks and todayEvents are set
     } catch (err: any) {
       console.error("Error loading daily planning data:", err);
       error = err.message || "Failed to load planning data";
@@ -220,11 +231,7 @@
       // Add all unfinished tasks to the staging area
       tasksToMoveToToday = [...tasksToMoveToToday, ...yesterdayTasks.notDone];
 
-      // Update final plan
-      finalPlan = {
-        ...finalPlan,
-        tasks: [...finalPlan.tasks, ...yesterdayTasks.notDone],
-      };
+      // finalPlan will automatically update via $derived when tasksToMoveToToday changes
     } catch (err: any) {
       console.error("Error moving unfinished tasks:", err);
       error = err.message || "Failed to move tasks";
@@ -240,13 +247,7 @@
         tasksToMoveToToday = [...tasksToMoveToToday, task];
       }
 
-      // Update final plan
-      if (!finalPlan.tasks.some((t) => t.id === task.id)) {
-        finalPlan = {
-          ...finalPlan,
-          tasks: [...finalPlan.tasks, task],
-        };
-      }
+      // finalPlan will automatically update via $derived when tasksToMoveToToday changes
     } catch (err: any) {
       console.error("Error moving task to today:", err);
       error = err.message || "Failed to move task";
@@ -262,11 +263,7 @@
       // Remove from staging area if present
       tasksToMoveToToday = tasksToMoveToToday.filter((t) => t.id !== task.id);
 
-      // Remove from final plan
-      finalPlan = {
-        ...finalPlan,
-        tasks: finalPlan.tasks.filter((t) => t.id !== task.id),
-      };
+      // finalPlan will automatically update via $derived when tasksToMoveToToday changes
 
       // Reload yesterday's tasks to reflect the change
       yesterdayTasks = await dailyPlanningExtension.getYesterdayTasksGrouped();
@@ -283,7 +280,7 @@
       }
 
       // Stage the task for today
-      dailyPlanningExtension.stageTaskForToday(task);
+      dailyPlanningExtension.scheduleTaskForToday(task.id);
     } catch (err: any) {
       console.error("Error rescheduling task for today:", err);
       error = err.message || "Failed to reschedule task";
@@ -297,7 +294,7 @@
       }
 
       // Stage the task for unscheduling
-      dailyPlanningExtension.stageTaskForUnscheduling(task);
+      dailyPlanningExtension.unscheduleTaskFromToday(task.id);
     } catch (err: any) {
       console.error("Error unscheduling task from today:", err);
       error = err.message || "Failed to unschedule task";

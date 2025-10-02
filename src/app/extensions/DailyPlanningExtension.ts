@@ -59,9 +59,15 @@ export class DailyPlanningExtension implements Extension {
 
   // Note: Planning state is now managed by global dailyPlanningStore
 
-  // Staging state for planning changes
-  private stagedTasksStore = writable<Task[]>([]);
-  private stagedUnscheduledTasksStore = writable<Task[]>([]);
+  // Single source of truth for staging changes
+  // Store task IDs, not full objects, for simplicity and performance
+  private stagedChanges = writable<{
+    toSchedule: Set<string>; // Task IDs to schedule for today
+    toUnschedule: Set<string>; // Task IDs to remove from today
+  }>({
+    toSchedule: new Set(),
+    toUnschedule: new Set(),
+  });
 
   constructor(settings: TaskSyncSettings, plugin: Plugin) {
     this.settings = settings;
@@ -224,17 +230,21 @@ export class DailyPlanningExtension implements Extension {
   }
 
   /**
-   * Get staged tasks for planning
+   * Get staged changes for planning (read-only)
    */
-  getStagedTasks(): Readable<Task[]> {
-    return this.stagedTasksStore;
+  getStagedChanges(): Readable<{
+    toSchedule: Set<string>;
+    toUnschedule: Set<string>;
+  }> {
+    return this.stagedChanges;
   }
 
   /**
-   * Get staged unscheduled tasks for planning
+   * Check if a task is staged for scheduling
    */
-  getStagedUnscheduledTasks(): Readable<Task[]> {
-    return this.stagedUnscheduledTasksStore;
+  isTaskStaged(taskId: string): boolean {
+    const state = get(this.stagedChanges);
+    return state.toSchedule.has(taskId);
   }
 
   /**
@@ -366,64 +376,57 @@ export class DailyPlanningExtension implements Extension {
   }
 
   /**
-   * Stage a task to be moved to today (doesn't immediately apply changes)
+   * Schedule a task for today (staging - doesn't immediately apply)
    */
-  stageTaskForToday(task: Task): void {
-    this.stagedTasksStore.update((tasks) => {
-      // Add task if not already staged
-      if (!tasks.some((t) => t.id === task.id)) {
-        return [...tasks, task];
-      }
-      return tasks;
-    });
-
-    // Remove from unscheduled if it was there
-    this.stagedUnscheduledTasksStore.update((tasks) =>
-      tasks.filter((t) => t.id !== task.id)
-    );
+  scheduleTaskForToday(taskId: string): void {
+    this.stagedChanges.update((state) => ({
+      toSchedule: new Set([...state.toSchedule, taskId]),
+      toUnschedule: new Set(
+        [...state.toUnschedule].filter((id) => id !== taskId)
+      ),
+    }));
   }
 
   /**
-   * Stage a task to be unscheduled (doesn't immediately apply changes)
+   * Unschedule a task from today (staging - doesn't immediately apply)
    */
-  stageTaskForUnscheduling(task: Task): void {
-    this.stagedUnscheduledTasksStore.update((tasks) => {
-      // Add task if not already staged for unscheduling
-      if (!tasks.some((t) => t.id === task.id)) {
-        return [...tasks, task];
-      }
-      return tasks;
-    });
-
-    // Remove from scheduled if it was there
-    this.stagedTasksStore.update((tasks) =>
-      tasks.filter((t) => t.id !== task.id)
-    );
+  unscheduleTaskFromToday(taskId: string): void {
+    this.stagedChanges.update((state) => ({
+      toSchedule: new Set([...state.toSchedule].filter((id) => id !== taskId)),
+      toUnschedule: new Set([...state.toUnschedule, taskId]),
+    }));
   }
 
   /**
    * Clear all staging changes
    */
   clearStaging(): void {
-    this.stagedTasksStore.set([]);
-    this.stagedUnscheduledTasksStore.set([]);
+    this.stagedChanges.set({
+      toSchedule: new Set(),
+      toUnschedule: new Set(),
+    });
   }
 
   /**
    * Apply all staged changes (move tasks to today, unschedule tasks)
    */
   async applyStaging(): Promise<void> {
-    const stagedTasks = get(this.stagedTasksStore);
-    const stagedUnscheduledTasks = get(this.stagedUnscheduledTasksStore);
+    const state = get(this.stagedChanges);
 
     // Apply scheduled tasks
-    for (const task of stagedTasks) {
-      await this.moveTaskToTodayImmediate(task);
+    for (const taskId of state.toSchedule) {
+      const task = taskStore.findById(taskId);
+      if (task) {
+        await this.moveTaskToTodayImmediate(task);
+      }
     }
 
     // Apply unscheduled tasks
-    for (const task of stagedUnscheduledTasks) {
-      await this.unscheduleTaskImmediate(task);
+    for (const taskId of state.toUnschedule) {
+      const task = taskStore.findById(taskId);
+      if (task) {
+        await this.unscheduleTaskImmediate(task);
+      }
     }
 
     // Clear staging after applying
@@ -480,7 +483,7 @@ export class DailyPlanningExtension implements Extension {
   async moveTaskToToday(task: Task): Promise<void> {
     // If planning is active, stage the task instead of applying immediately
     if (get(isPlanningActive)) {
-      this.stageTaskForToday(task);
+      this.scheduleTaskForToday(task.id);
     } else {
       await this.moveTaskToTodayImmediate(task);
     }
