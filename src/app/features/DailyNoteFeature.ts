@@ -36,7 +36,7 @@ export class DailyNoteFeature {
   }
 
   /**
-   * Set up event listeners for schedule and task events
+   * Set up event listeners for schedule events only
    */
   private setupEventListeners(): void {
     this.unsubscribeFunctions.push(
@@ -44,9 +44,6 @@ export class DailyNoteFeature {
     );
     this.unsubscribeFunctions.push(
       eventBus.on("schedules.updated", this.handleScheduleUpdated.bind(this))
-    );
-    this.unsubscribeFunctions.push(
-      eventBus.on("tasks.updated", this.handleTaskUpdated.bind(this))
     );
   }
 
@@ -65,15 +62,6 @@ export class DailyNoteFeature {
   private async handleScheduleUpdated(event: DomainEvent): Promise<void> {
     if (event.type === "schedules.updated") {
       await this.updateDailyNoteFromSchedule(event.schedule);
-    }
-  }
-
-  /**
-   * Handle task updated event
-   */
-  private async handleTaskUpdated(event: DomainEvent): Promise<void> {
-    if (event.type === "tasks.updated") {
-      await this.handleTaskDoDateUpdate(event.task);
     }
   }
 
@@ -250,24 +238,6 @@ export class DailyNoteFeature {
         dailyNotePath: "",
         error: error.message,
       };
-    }
-  }
-
-  /**
-   * Handle task Do Date update
-   */
-  private async handleTaskDoDateUpdate(task: Task): Promise<void> {
-    try {
-      // Check if the task has a Do Date set to today
-      const today = this.getDateString(new Date());
-      const taskDoDate = task.doDate ? this.getDateString(task.doDate) : null;
-
-      if (taskDoDate === today && task.source?.filePath) {
-        await this.addTaskToToday(task.source.filePath);
-        console.log(`Added task ${task.title} to today's daily note`);
-      }
-    } catch (error) {
-      console.error("Failed to handle task Do Date update:", error);
     }
   }
 
