@@ -262,29 +262,22 @@ test.describe("TasksView Component", () => {
     expect(taskText).toContain("Low");
     expect(taskText).toContain("Backlog");
 
-    // Delete the old task and create a new one with updated properties
-    // This simulates the effect of front-matter changes
+    // Update the task's front-matter directly using processFrontMatter
     await page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
         "Tasks/reactivity-test-task.md"
       );
       if (file) {
-        await app.vault.delete(file);
+        await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
+          frontmatter.Priority = "High";
+          frontmatter.Status = "In Progress";
+        });
       }
     });
 
-    // Create the updated task
-    await createTask(page, {
-      title: "Reactivity Test Task",
-      priority: "High",
-      status: "In Progress",
-    });
-
-    // Manually refresh to pick up the changes
-    await refreshTasks(page);
-
-    // Wait for the change to be reflected in the UI
+    // Wait for the change to be reflected in the UI automatically
+    // The system should detect the front-matter change and update the store
     await page.waitForFunction(
       () => {
         const taskItems = document.querySelectorAll(
