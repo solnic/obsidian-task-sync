@@ -3,7 +3,7 @@
  * Maintains reactive state for tasks from multiple extensions
  */
 
-import { writable, derived, type Readable } from "svelte/store";
+import { writable, derived, get, type Readable } from "svelte/store";
 import { Task } from "../core/entities";
 import { generateId } from "../utils/idGenerator";
 
@@ -23,7 +23,6 @@ export interface TaskStore extends Readable<TaskStoreState> {
   // Actions
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  cleanup: () => void;
 
   // Direct store manipulation methods (for core operations)
   addTask: (task: Task) => void;
@@ -48,12 +47,6 @@ export function createTaskStore(): TaskStore {
   };
 
   const { subscribe, update } = writable(initialState);
-
-  // Store cleanup functions for event subscriptions
-  const unsubscribeFunctions: (() => void)[] = [];
-
-  // Store should NOT listen to domain events - that creates circular dependencies
-  // Domain events are for extensions to react to, not for updating the store
 
   // Derived stores for common queries
   const tasksByExtension = derived({ subscribe }, ($store) => {
@@ -90,10 +83,6 @@ export function createTaskStore(): TaskStore {
 
   const setError = (error: string | null) => {
     update((state) => ({ ...state, error }));
-  };
-
-  const cleanup = () => {
-    unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
   };
 
   // Direct store manipulation methods (for core operations)
@@ -171,30 +160,17 @@ export function createTaskStore(): TaskStore {
 
   // Query methods - synchronous access to current state
   const findBySourceUrl = (url: string): Task | undefined => {
-    let result: Task | undefined;
-    const unsubscribe = subscribe((state) => {
-      result = state.tasks.find((t) => t.source?.url === url);
-    });
-    unsubscribe();
-    return result;
+    return get({ subscribe }).tasks.find((t) => t.source?.url === url);
   };
 
   const findById = (id: string): Task | undefined => {
-    let result: Task | undefined;
-    const unsubscribe = subscribe((state) => {
-      result = state.tasks.find((t) => t.id === id);
-    });
-    unsubscribe();
-    return result;
+    return get({ subscribe }).tasks.find((t) => t.id === id);
   };
 
   const findByFilePath = (filePath: string): Task | undefined => {
-    let result: Task | undefined;
-    const unsubscribe = subscribe((state) => {
-      result = state.tasks.find((t) => t.source?.filePath === filePath);
-    });
-    unsubscribe();
-    return result;
+    return get({ subscribe }).tasks.find(
+      (t) => t.source?.filePath === filePath
+    );
   };
 
   return {
@@ -204,7 +180,6 @@ export function createTaskStore(): TaskStore {
     importedTasks,
     setLoading,
     setError,
-    cleanup,
     addTask,
     updateTask,
     removeTask,

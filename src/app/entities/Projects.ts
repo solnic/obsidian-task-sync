@@ -3,6 +3,7 @@
  * Implements the abstract base pattern for project management
  */
 
+import { get } from "svelte/store";
 import { Project } from "../core/entities";
 import {
   Entities,
@@ -19,74 +20,38 @@ export class Projects extends Entities {
     public entityType = "project" as const;
 
     async getAll(): Promise<readonly Project[]> {
-      return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
-          resolve(state.projects);
-          unsubscribe();
-        });
-      });
+      return get(store).projects;
     }
 
     async getById(id: string): Promise<Project | null> {
-      return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
-          const project = state.projects.find((p) => p.id === id);
-          resolve(project || null);
-          unsubscribe();
-        });
-      });
+      const project = get(store).projects.find((p) => p.id === id);
+      return project || null;
     }
 
     async getByExtension(extensionId: string): Promise<readonly Project[]> {
-      return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
-          const projects = state.projects.filter(
-            (p) => p.source?.extension === extensionId
-          );
-          resolve(projects);
-          unsubscribe();
-        });
-      });
+      return get(store).projects.filter(
+        (p) => p.source?.extension === extensionId
+      );
     }
 
     // Project-specific query methods
     async search(query: string): Promise<readonly Project[]> {
       const searchTerm = query.toLowerCase();
-      return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
-          const projects = state.projects.filter(
-            (p) =>
-              p.name.toLowerCase().includes(searchTerm) ||
-              p.description?.toLowerCase().includes(searchTerm) ||
-              p.tags.some((tag) => tag.toLowerCase().includes(searchTerm)) ||
-              p.areas.some((area) => area.toLowerCase().includes(searchTerm))
-          );
-          resolve(projects);
-          unsubscribe();
-        });
-      });
+      return get(store).projects.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchTerm) ||
+          p.description?.toLowerCase().includes(searchTerm) ||
+          p.tags.some((tag) => tag.toLowerCase().includes(searchTerm)) ||
+          p.areas.some((area) => area.toLowerCase().includes(searchTerm))
+      );
     }
 
     async getByArea(areaId: string): Promise<readonly Project[]> {
-      return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
-          const projects = state.projects.filter((p) =>
-            p.areas.includes(areaId)
-          );
-          resolve(projects);
-          unsubscribe();
-        });
-      });
+      return get(store).projects.filter((p) => p.areas.includes(areaId));
     }
 
     async getByTag(tag: string): Promise<readonly Project[]> {
-      return new Promise((resolve) => {
-        const unsubscribe = store.subscribe((state) => {
-          const projects = state.projects.filter((p) => p.tags.includes(tag));
-          resolve(projects);
-          unsubscribe();
-        });
-      });
+      return get(store).projects.filter((p) => p.tags.includes(tag));
     }
   };
 
@@ -96,6 +61,7 @@ export class Projects extends Entities {
     async create(
       projectData: Omit<Project, "id" | "createdAt" | "updatedAt">
     ): Promise<Project> {
+      // buildEntity now handles schema validation and date coercion
       const project = this.buildEntity(projectData) as Project;
 
       store.addProject(project);
@@ -106,7 +72,10 @@ export class Projects extends Entities {
     }
 
     async update(project: Project): Promise<Project> {
-      const updatedProject: Project = { ...project, updatedAt: this.timestamp() };
+      const updatedProject: Project = {
+        ...project,
+        updatedAt: this.timestamp(),
+      };
 
       store.updateProject(updatedProject);
 

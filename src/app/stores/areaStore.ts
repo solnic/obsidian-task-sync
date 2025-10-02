@@ -3,7 +3,7 @@
  * Maintains reactive state and triggers events - no extension knowledge
  */
 
-import { writable, derived, type Readable } from "svelte/store";
+import { writable, derived, get, type Readable } from "svelte/store";
 import { Area } from "../core/entities";
 
 interface AreaStoreState {
@@ -21,7 +21,6 @@ export interface AreaStore extends Readable<AreaStoreState> {
   // Actions
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  cleanup: () => void;
 
   // Direct store manipulation methods (for core operations)
   addArea: (area: Area) => void;
@@ -43,14 +42,6 @@ export function createAreaStore(): AreaStore {
   };
 
   const { subscribe, update } = writable(initialState);
-
-  // Store cleanup functions for event subscriptions
-  const unsubscribeFunctions: (() => void)[] = [];
-
-  // Store should NOT listen to domain events - that creates circular dependencies
-  // Domain events are for extensions to react to, not for updating the store
-
-  // Removed areas.loaded event listener - stores should not listen to events
 
   // Derived stores for common queries
   const areasByExtension = derived({ subscribe }, ($store) => {
@@ -77,12 +68,6 @@ export function createAreaStore(): AreaStore {
   const setError = (error: string | null) => {
     update((state) => ({ ...state, error }));
   };
-
-  const cleanup = () => {
-    unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
-  };
-
-  // Request methods removed - operations now directly manipulate store and trigger events
 
   // Direct store manipulation methods (for core operations)
   const addArea = (area: Area): void => {
@@ -111,12 +96,9 @@ export function createAreaStore(): AreaStore {
 
   // Query methods - synchronous access to current state
   const findByFilePath = (filePath: string): Area | undefined => {
-    let result: Area | undefined;
-    const unsubscribe = subscribe((state) => {
-      result = state.areas.find((a) => a.source?.filePath === filePath);
-    });
-    unsubscribe();
-    return result;
+    return get({ subscribe }).areas.find(
+      (a) => a.source?.filePath === filePath
+    );
   };
 
   return {
@@ -125,7 +107,6 @@ export function createAreaStore(): AreaStore {
     importedAreas,
     setLoading,
     setError,
-    cleanup,
     addArea,
     updateArea,
     removeArea,
