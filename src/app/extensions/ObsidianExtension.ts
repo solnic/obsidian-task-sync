@@ -17,11 +17,10 @@ import { areaStore } from "../stores/areaStore";
 import { taskOperations } from "../entities/Tasks";
 import { projectOperations } from "../entities/Projects";
 import { areaOperations } from "../entities/Areas";
-import { derived, type Readable } from "svelte/store";
 import type { Task, Project } from "../core/entities";
-import { BaseManager } from "../services/BaseManager";
 import type { TaskSyncSettings } from "../types/settings";
-import type { DomainEvent } from "../core/events";
+import { BaseManager } from "../services/BaseManager";
+import { derived, get, type Readable } from "svelte/store";
 
 export interface ObsidianExtensionSettings {
   areasFolder: string;
@@ -183,14 +182,8 @@ export class ObsidianExtension implements Extension {
       console.log("Refreshing Obsidian tasks...");
 
       // Get current tasks to identify which ones to remove (no longer exist in files)
-      const currentState = await new Promise((resolve) => {
-        const unsubscribe = taskStore.subscribe((state) => {
-          resolve(state);
-          unsubscribe();
-        });
-      });
-
-      const currentTasks = (currentState as any).tasks;
+      const currentState = get(taskStore);
+      const currentTasks = currentState.tasks;
 
       // Scan existing task files
       const freshTasksData = await this.taskOperations.scanExistingTasks();

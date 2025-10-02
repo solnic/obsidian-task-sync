@@ -8,7 +8,7 @@ import { requestUrl, Plugin } from "obsidian";
 import { Extension, extensionRegistry, EntityType } from "../core/extension";
 import { eventBus } from "../core/events";
 import { taskStore } from "../stores/taskStore";
-import { derived, type Readable } from "svelte/store";
+import { derived, get, type Readable } from "svelte/store";
 import type { Task } from "../core/entities";
 import { SchemaCache } from "../cache/SchemaCache";
 import {
@@ -146,13 +146,9 @@ export class GitHubExtension implements Extension {
           : await this.fetchPullRequests(repository);
 
       // Get imported tasks from store
-      let imported: Task[] = [];
-      const unsubscribe = taskStore.subscribe((state) => {
-        imported = state.tasks.filter(
-          (task) => task.source?.extension === "github"
-        );
-      });
-      unsubscribe();
+      const imported = get(taskStore).tasks.filter(
+        (task) => task.source?.extension === "github"
+      );
 
       // Transform GitHub items to tasks
       const tasks: Task[] = githubItems.map((item) => {
