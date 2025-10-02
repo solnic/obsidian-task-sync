@@ -55,16 +55,13 @@
       return;
     }
 
-    const unsubscribe = dailyPlanningExtension
-      .getStagedChanges()
-      .subscribe((changes) => {
-        // Use untrack to prevent this state update from triggering the effect again
-        untrack(() => {
-          stagedChanges = changes;
-        });
+    // Subscribe and return cleanup function directly
+    return dailyPlanningExtension.getStagedChanges().subscribe((changes) => {
+      // Use untrack to prevent this state update from triggering the effect again
+      untrack(() => {
+        stagedChanges = changes;
       });
-
-    return unsubscribe;
+    });
   });
 
   // Derive display lists from staged changes

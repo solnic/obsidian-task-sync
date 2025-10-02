@@ -218,6 +218,13 @@ export class DailyPlanningExtension implements Extension {
   }
 
   /**
+   * Check if planning is currently active (synchronous)
+   */
+  isPlanningActive(): boolean {
+    return get(isPlanningActive);
+  }
+
+  /**
    * Set the planning active state
    */
   setPlanningActive(active: boolean): void {

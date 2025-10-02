@@ -68,15 +68,7 @@ export class DailyPlanningView extends ItemView {
   async onClose(): Promise<void> {
     // Cancel daily planning if it's still active
     if (this.dailyPlanningExtension) {
-      const planningActive = await new Promise<boolean>((resolve) => {
-        const unsubscribe =
-          this.dailyPlanningExtension!.getPlanningActive().subscribe(
-            (active) => {
-              resolve(active);
-              unsubscribe();
-            }
-          );
-      });
+      const planningActive = this.dailyPlanningExtension.isPlanningActive();
 
       if (planningActive) {
         await this.dailyPlanningExtension.cancelDailyPlanning();
