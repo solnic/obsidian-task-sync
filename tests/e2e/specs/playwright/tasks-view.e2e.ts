@@ -244,6 +244,43 @@ test.describe("TasksView Component", () => {
     await verifyTaskCount(page, tasks.length);
   });
 
+  test("should show context header with service name and file context", async ({
+    page,
+  }) => {
+    // Open Tasks view
+    await openTasksView(page);
+    await waitForLocalTasksToLoad(page);
+
+    // Verify that TabView header is displayed
+    const tabHeader = page.locator(
+      '[data-testid="tasks-view-tab"] .task-sync-tab-header'
+    );
+    await expect(tabHeader).toBeVisible();
+
+    // Should show context widget placeholder
+    const contextWidget = page.locator(
+      '[data-testid="tasks-view-tab"] [data-testid="context-widget-placeholder"]'
+    );
+    await expect(contextWidget).toBeVisible();
+
+    // Should show service name in context widget
+    const serviceName = page.locator(
+      '[data-testid="context-widget-placeholder"] .service-name'
+    );
+    await expect(serviceName).toHaveText("Local Tasks");
+
+    // Should show placeholder message for context
+    const noContext = page.locator(
+      '[data-testid="context-widget-placeholder"] .no-context'
+    );
+    await expect(noContext).toHaveText("Context system not yet ported");
+
+    // TODO: When Context system is ported, this test should verify:
+    // - Actual ContextWidget component is displayed
+    // - Context widget shows service name + current file context
+    // - Context updates when switching files
+  });
+
   test("should reflect front-matter changes in real-time", async ({ page }) => {
     // Create a test task
     await createTask(page, {

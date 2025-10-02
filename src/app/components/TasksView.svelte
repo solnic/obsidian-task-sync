@@ -146,8 +146,10 @@
       <TabView
         className="tasks-view-tab"
         testId="tasks-view-tab"
-        showHeader={true}
-        headerTitle={services.find((s: any) => s.id === activeService).name}
+        showContextWidget={true}
+        serviceName={services.find((s: any) => s.id === activeService)?.name}
+        isNonLocalService={activeService !== "local"}
+        dayPlanningMode={$isPlanningActive}
       >
         <!-- Service Content -->
         <div class="service-content" data-testid="service-content">
