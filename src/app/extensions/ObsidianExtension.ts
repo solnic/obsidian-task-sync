@@ -217,7 +217,12 @@ export class ObsidianExtension implements Extension {
 
       // Upsert fresh tasks - store will handle ID generation/preservation
       for (const taskData of freshTasksData) {
-        taskStore.upsertTask(taskData);
+        try {
+          taskStore.upsertTask(taskData);
+        } catch (error) {
+          console.error(`Failed to upsert task ${taskData.title}:`, error);
+          // Continue with other tasks instead of crashing
+        }
       }
 
       taskStore.setLoading(false);
@@ -402,7 +407,12 @@ export class ObsidianExtension implements Extension {
       // Populate the canonical task store using upsert logic
       // Store will handle ID generation for new tasks
       for (const taskData of existingTasksData) {
-        taskStore.upsertTask(taskData);
+        try {
+          taskStore.upsertTask(taskData);
+        } catch (error) {
+          console.error(`Failed to upsert task ${taskData.title}:`, error);
+          // Continue with other tasks instead of crashing
+        }
       }
 
       console.log("Successfully populated task store with existing tasks");
