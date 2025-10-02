@@ -43,8 +43,11 @@
     settings,
   }: Props = $props();
 
-  // Track daily planning state - a task is scheduled if it has a doDate
-  let isScheduled = $derived(task.doDate != null);
+  // Track daily planning state - a task is scheduled if it has a doDate OR is staged
+  let isScheduled = $derived(task.doDate != null || isStaged);
+
+  // Compute the scheduled date - use doDate if available, otherwise today if staged
+  let scheduledDate = $derived(task.doDate || (isStaged ? new Date() : null));
 
   // Local tasks are never imported, so isImported is always false.
   // This prop is required by TaskItem for consistent styling logic.
@@ -167,7 +170,7 @@
   {isImported}
   {isSelected}
   {isScheduled}
-  scheduledDate={task.doDate}
+  {scheduledDate}
   {onHover}
   {settings}
   actionContent={true}
