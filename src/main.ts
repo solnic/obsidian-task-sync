@@ -19,9 +19,9 @@ import { taskStore, type TaskStore } from "./app/stores/taskStore";
 import { projectStore, type ProjectStore } from "./app/stores/projectStore";
 import { areaStore, type AreaStore } from "./app/stores/areaStore";
 import type { ObsidianExtension } from "./app/extensions/ObsidianExtension";
-import { taskOperations } from "./app/entities/Tasks";
 import { areaOperations } from "./app/entities/Areas";
 import { projectOperations } from "./app/entities/Projects";
+import { obsidianOperations } from "./app/entities/Obsidian";
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
@@ -48,7 +48,7 @@ export default class TaskSyncPlugin extends Plugin {
   // Expose operations for testing
   public get operations() {
     return {
-      taskOperations,
+      taskOperations: obsidianOperations.tasks,
       areaOperations,
       projectOperations,
     };
