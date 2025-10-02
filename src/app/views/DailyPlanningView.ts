@@ -7,27 +7,17 @@
 import { ItemView, WorkspaceLeaf } from "obsidian";
 import DailyPlanningViewSvelte from "../components/DailyPlanningView.svelte";
 import { mount, unmount } from "svelte";
-import { AppleCalendarService } from "../services/AppleCalendarService";
 import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
-import type { TaskSyncSettings } from "../types/settings";
 import { extensionRegistry } from "../core/extension";
 
 export const DAILY_PLANNING_VIEW_TYPE = "daily-planning";
 
 export class DailyPlanningView extends ItemView {
   private svelteComponent: any = null;
-  private appleCalendarService: AppleCalendarService;
   private dailyPlanningExtension: DailyPlanningExtension | null = null;
-  private settings: TaskSyncSettings;
 
-  constructor(
-    leaf: WorkspaceLeaf,
-    appleCalendarService: AppleCalendarService,
-    settings: TaskSyncSettings
-  ) {
+  constructor(leaf: WorkspaceLeaf) {
     super(leaf);
-    this.appleCalendarService = appleCalendarService;
-    this.settings = settings;
   }
 
   getViewType(): string {
@@ -62,10 +52,17 @@ export class DailyPlanningView extends ItemView {
     this.svelteComponent = mount(DailyPlanningViewSvelte, {
       target: this.containerEl,
       props: {
-        appleCalendarService: this.appleCalendarService,
         dailyPlanningExtension: this.dailyPlanningExtension,
+        onClose: () => this.closeView(),
       },
     });
+  }
+
+  /**
+   * Close the daily planning view
+   */
+  private closeView(): void {
+    this.app.workspace.detachLeavesOfType(DAILY_PLANNING_VIEW_TYPE);
   }
 
   async onClose(): Promise<void> {

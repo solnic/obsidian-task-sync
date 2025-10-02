@@ -84,7 +84,7 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Register the Daily Planning View
     this.registerView(DAILY_PLANNING_VIEW_TYPE, (leaf) => {
-      return new DailyPlanningView(leaf, null, this.settings); // TODO: Add AppleCalendarService
+      return new DailyPlanningView(leaf);
     });
 
     // Add ribbon icon for main view

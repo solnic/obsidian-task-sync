@@ -503,4 +503,42 @@ test.describe("Daily Planning Wizard", () => {
 
     expect(task1File).toContain(`Do Date: ${todayString}`);
   });
+
+  test("should close wizard when cancel button is clicked", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create a task for the daily plan
+    const task = await createTask(page, {
+      title: "Cancel Test Task",
+      description: "Task for testing cancel functionality.",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task).toBeTruthy();
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Click cancel button
+    const cancelButton = page.locator('[data-testid="cancel-button"]');
+    await cancelButton.click();
+    await page.waitForTimeout(1000);
+
+    // Verify wizard is closed
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible();
+  });
 });

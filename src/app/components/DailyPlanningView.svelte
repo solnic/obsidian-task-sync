@@ -16,9 +16,10 @@
 
   interface Props {
     dailyPlanningExtension?: DailyPlanningExtension;
+    onClose?: () => void;
   }
 
-  let { dailyPlanningExtension }: Props = $props();
+  let { dailyPlanningExtension, onClose }: Props = $props();
 
   // Wizard state
   let currentStep = $state(1);
@@ -169,6 +170,11 @@
       // Clear any staged changes
       dailyPlanningExtension.clearStaging();
       await dailyPlanningExtension.cancelDailyPlanning();
+    }
+
+    // Close the view
+    if (onClose) {
+      onClose();
     }
   }
 
