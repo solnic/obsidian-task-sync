@@ -114,29 +114,7 @@ export class TaskTodoMarkdownProcessor {
     return checkbox !== null;
   }
 
-  /**
-   * Check if a todo item is a task mention (contains task link)
-   */
-  private isTaskMention(item: HTMLElement): boolean {
-    if (!this.isTaskListItem(item)) {
-      return false;
-    }
 
-    // Check if it contains a wiki link to a task
-    const links = item.querySelectorAll("a");
-    for (let i = 0; i < links.length; i++) {
-      const link = links[i];
-      const href = link.getAttribute("href");
-      if (href) {
-        const filePath = this.extractFilePathFromHref(href);
-        if (filePath && filePath.startsWith(this.settings.tasksFolder + "/")) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
 
   /**
    * Extract file path from href attribute
@@ -179,8 +157,8 @@ export class TaskTodoMarkdownProcessor {
     // Add badges to the todo item
     this.addTaskBadges(todoItem, taskData, link);
 
-    // Add task mention indicator if this is a task mention
-    if (this.isTaskMention(todoItem)) {
+    // Add task mention indicator if this is a task list item (has checkbox)
+    if (this.isTaskListItem(todoItem)) {
       this.addTaskMentionIndicator(todoItem, taskData);
     }
   }
@@ -204,10 +182,11 @@ export class TaskTodoMarkdownProcessor {
 
         // Check if filePath is just the note name (wiki link format)
         // Extract filename from task's full path and compare
-        const taskFileName = taskFilePath
-          .split("/")
-          .pop()
-          ?.replace(/\.md$/, "");
+        const pathParts = taskFilePath.split("/");
+        const taskFileNameWithExt = pathParts[pathParts.length - 1];
+        if (!taskFileNameWithExt) return false;
+
+        const taskFileName = taskFileNameWithExt.replace(/\.md$/, "");
         const linkFileName = filePath.replace(/\.md$/, "");
 
         return taskFileName === linkFileName;
@@ -440,13 +419,25 @@ export class TaskTodoMarkdownProcessor {
     indicator.className = "task-sync-mention-indicator";
     indicator.title = "This todo is synced with a task note";
 
-    // Add sync icon (using a simple symbol for now)
+    // Add sync icon using SVG for consistent cross-platform rendering
     const icon = document.createElement("span");
     icon.className = "task-sync-mention-icon";
-    icon.textContent = "🔗"; // Link symbol to indicate sync
-    icon.style.fontSize = "0.8em";
     icon.style.marginLeft = "4px";
     icon.style.opacity = "0.7";
+    icon.style.display = "inline-block";
+    icon.style.verticalAlign = "middle";
+
+    // Use inline SVG for link icon to ensure consistent rendering
+    icon.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none"
+        xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
+        <path d="M6.5 9.5L9.5 6.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M4.5 11.5C3.11929 11.5 2 10.3807 2 9C2 7.61929 3.11929 6.5 4.5 6.5H6.5"
+          stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M11.5 4.5C12.8807 4.5 14 5.61929 14 7C14 8.38071 12.8807 9.5 11.5 9.5H9.5"
+          stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    `;
 
     // Add completion state indicator
     if (taskData.done) {

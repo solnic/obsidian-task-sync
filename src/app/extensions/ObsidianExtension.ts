@@ -544,14 +544,18 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
-   * Unregister the task todo markdown processor
+   * Cleanup the task todo markdown processor reference
    */
   private unregisterTaskTodoMarkdownProcessor(): void {
     if (this.markdownProcessor) {
-      // Note: Obsidian doesn't provide a direct unregister method for post processors
-      // The processor will be automatically cleaned up when the plugin unloads
+      // Note: Obsidian doesn't provide a direct unregister method for post processors.
+      // The processor will remain registered until the plugin is unloaded by Obsidian,
+      // at which point Obsidian will automatically clean up all registered processors.
+      // We only clear our reference here to avoid memory leaks.
       this.markdownProcessor = undefined;
-      console.log("Task todo markdown processor unregistered");
+      console.log(
+        "Task todo markdown processor reference cleared (actual cleanup occurs on plugin unload)"
+      );
     }
   }
 }
