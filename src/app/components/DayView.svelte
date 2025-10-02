@@ -12,6 +12,7 @@
   import type { Host } from "../core/host";
   import type { TaskSyncSettings } from "../types/settings";
   import type { Task, Schedule } from "../core/entities";
+  import { eventBus } from "../core/events";
 
   // Props
   interface Props {
@@ -21,15 +22,41 @@
 
   let { host, settings }: Props = $props();
 
-  // Get extensions from host
-  let calendarExtension: CalendarExtension | undefined = $state();
-  let dailyPlanningExtension: DailyPlanningExtension | undefined = $state();
+  // Reactive state that updates when extensions are registered/unregistered
+  let extensionsVersion = $state(0);
 
-  onMount(() => {
-    calendarExtension = host.getExtensionById("calendar") as CalendarExtension;
-    dailyPlanningExtension = host.getExtensionById(
-      "daily-planning"
-    ) as DailyPlanningExtension;
+  // Get extensions from host reactively
+  let calendarExtension = $derived.by(() => {
+    // Access extensionsVersion to make this reactive
+    extensionsVersion;
+    return host.getExtensionById("calendar") as CalendarExtension | undefined;
+  });
+
+  let dailyPlanningExtension = $derived.by(() => {
+    // Access extensionsVersion to make this reactive
+    extensionsVersion;
+    return host.getExtensionById("daily-planning") as
+      | DailyPlanningExtension
+      | undefined;
+  });
+
+  // Listen to extension lifecycle events to trigger reactivity
+  $effect(() => {
+    const unsubscribeRegistered = eventBus.on("extension.registered", () => {
+      extensionsVersion++;
+    });
+
+    const unsubscribeUnregistered = eventBus.on(
+      "extension.unregistered",
+      () => {
+        extensionsVersion++;
+      }
+    );
+
+    return () => {
+      unsubscribeRegistered();
+      unsubscribeUnregistered();
+    };
   });
 
   // Subscribe to daily planning state changes

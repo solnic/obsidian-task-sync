@@ -4,12 +4,18 @@
  */
 
 import { test, expect } from "@playwright/test";
-import { executeCommand, openView, switchToTaskService } from "../../helpers/global";
+import {
+  executeCommand,
+  openView,
+  switchToTaskService,
+} from "../../helpers/global";
 import { createTask } from "../../helpers/entity-helpers";
 import { startDailyPlanning } from "../../helpers/daily-planning-helpers";
 
 test.describe("Schedule for Today Button", () => {
-  test("should stage task when clicking 'Schedule for today' button in Tasks tab", async ({ page }) => {
+  test("should stage task when clicking 'Schedule for today' button in Tasks tab", async ({
+    page,
+  }) => {
     // Create a test task
     const task = await createTask(page, {
       title: "Test Task for Scheduling",
@@ -31,16 +37,16 @@ test.describe("Schedule for Today Button", () => {
     await switchToTaskService(page, "local");
 
     // Wait for the task to appear
-    await expect(page.locator('[data-testid^="local-task-item-"]')).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(page.locator('[data-testid^="local-task-item-"]')).toBeVisible(
+      {
+        timeout: 5000,
+      }
+    );
 
     // Find our specific task
-    const taskItem = page
-      .locator('[data-testid^="local-task-item-"]')
-      .filter({
-        hasText: "Test Task for Scheduling",
-      });
+    const taskItem = page.locator('[data-testid^="local-task-item-"]').filter({
+      hasText: "Test Task for Scheduling",
+    });
 
     // Verify the task is visible first
     await expect(taskItem).toBeVisible();
@@ -76,16 +82,16 @@ test.describe("Schedule for Today Button", () => {
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
 
     // Verify the task appears in the staged tasks section
-    const stagedTask = page
-      .locator('[data-testid="staged-task"]')
-      .filter({
-        hasText: "Test Task for Scheduling",
-      });
+    const stagedTask = page.locator('[data-testid="staged-task"]').filter({
+      hasText: "Test Task for Scheduling",
+    });
 
     await expect(stagedTask).toBeVisible({ timeout: 5000 });
   });
 
-  test("should show visual feedback when task is already staged", async ({ page }) => {
+  test("should show visual feedback when task is already staged", async ({
+    page,
+  }) => {
     // Create a test task
     const task = await createTask(page, {
       title: "Already Staged Task",
@@ -104,11 +110,9 @@ test.describe("Schedule for Today Button", () => {
     await switchToTaskService(page, "local");
 
     // Find the task
-    const taskItem = page
-      .locator('[data-testid^="local-task-item-"]')
-      .filter({
-        hasText: "Already Staged Task",
-      });
+    const taskItem = page.locator('[data-testid^="local-task-item-"]').filter({
+      hasText: "Already Staged Task",
+    });
 
     await expect(taskItem).toBeVisible();
 
@@ -136,13 +140,71 @@ test.describe("Schedule for Today Button", () => {
     await page.click('[data-testid="next-button"]');
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
 
-    const stagedTasks = page
-      .locator('[data-testid="staged-task"]')
-      .filter({
-        hasText: "Already Staged Task",
-      });
+    const stagedTasks = page.locator('[data-testid="staged-task"]').filter({
+      hasText: "Already Staged Task",
+    });
 
     // Should only have one instance, not duplicates
     await expect(stagedTasks).toHaveCount(1);
+  });
+
+  test("should reflect planning mode in both Tasks and Daily View tabs", async ({
+    page,
+  }) => {
+    // Initially, both views should not be in planning mode
+    await openView(page, "tasks");
+    await expect(
+      page.locator('[data-testid="planning-header"]')
+    ).not.toBeVisible();
+
+    await openView(page, "daily");
+    await expect(
+      page.locator('[data-testid="planning-header"]')
+    ).not.toBeVisible();
+
+    // Start daily planning
+    await startDailyPlanning(page);
+
+    // Verify Daily Planning view is open and in planning mode
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible();
+
+    // Switch to Tasks view - should now show planning mode
+    await openView(page, "tasks");
+    await expect(page.locator('[data-testid="planning-header"]')).toBeVisible();
+    await expect(page.locator('[data-testid="planning-header"]')).toContainText(
+      "📅 Daily Planning Mode"
+    );
+
+    // Switch to Daily View - should also show planning mode
+    await openView(page, "daily");
+    await expect(page.locator('[data-testid="planning-header"]')).toBeVisible();
+    await expect(page.locator('[data-testid="planning-header"]')).toContainText(
+      "📅 Daily Planning Mode - Day View"
+    );
+
+    // Complete daily planning
+    await openView(page, "daily-planning");
+    await page.click('[data-testid="next-button"]'); // Go to step 2
+    await page.click('[data-testid="next-button"]'); // Go to step 3
+    const confirmButton = page.locator('[data-testid="confirm-button"]');
+    if (await confirmButton.isVisible()) {
+      await confirmButton.click();
+    }
+
+    // Wait for planning to complete
+    await page.waitForTimeout(1000);
+
+    // Verify both views are no longer in planning mode
+    await openView(page, "tasks");
+    await expect(
+      page.locator('[data-testid="planning-header"]')
+    ).not.toBeVisible();
+
+    await openView(page, "daily");
+    await expect(
+      page.locator('[data-testid="planning-header"]')
+    ).not.toBeVisible();
   });
 });

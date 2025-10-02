@@ -33,9 +33,13 @@
   let extensionsVersion = $state(0);
 
   // Get daily planning extension and track its planning state
-  let dailyPlanningExtension = $derived<DailyPlanningExtension | undefined>(
-    host.getExtensionById("daily-planning") as DailyPlanningExtension
-  );
+  let dailyPlanningExtension = $derived.by(() => {
+    // Access extensionsVersion to make this reactive
+    extensionsVersion;
+    return host.getExtensionById("daily-planning") as
+      | DailyPlanningExtension
+      | undefined;
+  });
 
   // Track planning active state reactively
   let isPlanningActive = $state(false);
