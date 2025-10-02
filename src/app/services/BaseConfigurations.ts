@@ -51,11 +51,11 @@ export const FILTER_PRESETS = {
   /**
    * Filter for tasks in a specific project
    */
-  PROJECT_TASKS: (settings: TaskSyncSettings, projectName: string) =>
+  PROJECT_TASKS: (settings: TaskSyncSettings, projectName: string, projectPath?: string) =>
     FilterBuilder.and(
       FilterBuilder.inFolder(settings.tasksFolder),
       FilterBuilder.notDone(),
-      FilterBuilder.inProject(projectName),
+      FilterBuilder.inProject(projectName, projectPath),
       FilterBuilder.noParentTask()
     ),
 
@@ -307,7 +307,8 @@ export function generateProjectBase(
         name: "Tasks",
         filters: FILTER_PRESETS.PROJECT_TASKS(
           settings,
-          project.name
+          project.name,
+          project.path
         ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.PROJECT),
@@ -324,7 +325,7 @@ export function generateProjectBase(
         name: pluralize(taskType.name),
         filters: FilterBuilder.and(
           FilterBuilder.inFolder(settings.tasksFolder),
-          FilterBuilder.inProject(project.name),
+          FilterBuilder.inProject(project.name, project.path),
           FilterBuilder.ofCategory(taskType.name)
         ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),

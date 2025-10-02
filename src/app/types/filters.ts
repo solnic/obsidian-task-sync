@@ -166,7 +166,7 @@ export class FilterBuilder {
    * Create a filter for items without parent tasks
    */
   static noParentTask(): PropertyFilter {
-    return new PropertyFilter("Parent Task", "isEmpty");
+    return new PropertyFilter("Parent Task", "==", null);
   }
 
   /**
@@ -178,9 +178,16 @@ export class FilterBuilder {
 
   /**
    * Create a filter for items in a specific project
+   * @param projectName - The display name of the project
+   * @param projectPath - The full path to the project file (e.g., "Projects/Foo Bar.md")
    */
-  static inProject(projectName: string): PropertyFilter {
-    return new PropertyFilter("Project", "==", projectName);
+  static inProject(projectName: string, projectPath?: string): PropertyFilter {
+    // Use wiki link format: [[Projects/Foo Bar.md|Foo Bar]]
+    const wikiLink = projectPath
+      ? `[[${projectPath}|${projectName}]]`
+      : `[[${projectName}]]`;
+
+    return new PropertyFilter("Project", "==", wikiLink);
   }
 
   /**
