@@ -8,6 +8,7 @@ import { Task } from "../core/entities";
 import { ObsidianEntityOperations } from "./ObsidianEntityOperations";
 import { projectStore } from "../stores/projectStore";
 import { taskStore } from "../stores/taskStore";
+import { getDateString } from "../utils/dateFiltering";
 
 export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   constructor(app: App, folder: string) {
@@ -124,8 +125,8 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       Done: task.done, // DONE property (boolean)
       Status: task.status, // STATUS property
       "Parent task": task.parentTask || "", // PARENT_TASK property (note the space in name)
-      "Do Date": task.doDate?.toISOString().split("T")[0] || null, // DO_DATE property
-      "Due Date": task.dueDate?.toISOString().split("T")[0] || null, // DUE_DATE property
+      "Do Date": task.doDate ? getDateString(task.doDate) : null, // DO_DATE property (local timezone)
+      "Due Date": task.dueDate ? getDateString(task.dueDate) : null, // DUE_DATE property (local timezone)
       tags: task.tags || [], // TAGS property (lowercase, always array)
       Reminders: [], // REMINDERS property (not yet implemented, default empty array)
       // Note: createdAt and updatedAt are NOT frontmatter properties according to properties.ts

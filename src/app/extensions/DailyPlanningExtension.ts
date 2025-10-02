@@ -28,6 +28,7 @@ import type { CalendarExtension } from "./CalendarExtension";
 import {
   getYesterdayTasksGrouped,
   getTodayTasksGrouped,
+  getDateString,
 } from "../utils/dateFiltering";
 
 export interface DailyPlanningExtensionSettings {
@@ -688,7 +689,7 @@ export class DailyPlanningExtension implements Extension {
   private async ensureAndOpenTodayDailyNote(): Promise<void> {
     try {
       const today = new Date();
-      const dateString = today.toISOString().split("T")[0]; // YYYY-MM-DD format
+      const dateString = getDateString(today); // YYYY-MM-DD format in local timezone
       const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
       const dailyNotePath = `${dailyNotesFolder}/${dateString}.md`;
 
@@ -821,7 +822,7 @@ export class DailyPlanningExtension implements Extension {
         return;
       }
 
-      const dateString = date.toISOString().split("T")[0]; // YYYY-MM-DD format
+      const dateString = getDateString(date); // YYYY-MM-DD format in local timezone
 
       await this.plugin.app.fileManager.processFrontMatter(
         taskFile as any,

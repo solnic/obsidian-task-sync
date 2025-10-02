@@ -3,8 +3,18 @@
  */
 
 import { describe, test, expect } from "vitest";
-import { TaskSchema, ProjectSchema, AreaSchema, CalendarEventSchema, ScheduleSchema } from "../../src/app/core/entities";
-import { coerceToDate, requiredDateSchema, optionalDateSchema } from "../../src/app/utils/dateCoercion";
+import {
+  TaskSchema,
+  ProjectSchema,
+  AreaSchema,
+  CalendarEventSchema,
+  ScheduleSchema,
+} from "../../src/app/core/entities";
+import {
+  coerceToDate,
+  requiredDateSchema,
+  optionalDateSchema,
+} from "../../src/app/utils/dateCoercion";
 
 describe("dateCoercion", () => {
   describe("coerceToDate", () => {
@@ -21,10 +31,17 @@ describe("dateCoercion", () => {
       expect(result?.getDate()).toBe(15);
     });
 
-    test("should handle ISO date strings", () => {
+    test("should handle ISO date strings in local timezone", () => {
       const result = coerceToDate("2024-01-15");
       expect(result).toBeInstanceOf(Date);
       expect(result?.getFullYear()).toBe(2024);
+      expect(result?.getMonth()).toBe(0); // January is 0
+      expect(result?.getDate()).toBe(15);
+      // Verify it's in local timezone (not UTC)
+      // The date should be at midnight local time, not UTC
+      expect(result?.getHours()).toBe(0);
+      expect(result?.getMinutes()).toBe(0);
+      expect(result?.getSeconds()).toBe(0);
     });
 
     test("should handle null and undefined", () => {
@@ -91,7 +108,7 @@ describe("dateCoercion", () => {
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T12:00:00Z",
         areas: [],
-        tags: []
+        tags: [],
       };
 
       const result = TaskSchema.parse(taskData);
@@ -112,7 +129,7 @@ describe("dateCoercion", () => {
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T12:00:00Z",
         areas: [],
-        tags: []
+        tags: [],
       };
 
       const result = TaskSchema.parse(taskData);
@@ -131,7 +148,7 @@ describe("dateCoercion", () => {
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T12:00:00Z",
         areas: [],
-        tags: []
+        tags: [],
       };
 
       const result = ProjectSchema.parse(projectData);
@@ -147,7 +164,7 @@ describe("dateCoercion", () => {
         name: "Test Area",
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T12:00:00Z",
-        tags: []
+        tags: [],
       };
 
       const result = AreaSchema.parse(areaData);
@@ -167,8 +184,8 @@ describe("dateCoercion", () => {
         calendar: {
           id: "cal-1",
           name: "Test Calendar",
-          visible: true
-        }
+          visible: true,
+        },
       };
 
       const result = CalendarEventSchema.parse(eventData);
@@ -189,7 +206,7 @@ describe("dateCoercion", () => {
         events: [],
         isPlanned: false,
         dailyNoteExists: false,
-        planningCompletedAt: "2024-01-15T18:00:00Z"
+        planningCompletedAt: "2024-01-15T18:00:00Z",
       };
 
       const result = ScheduleSchema.parse(scheduleData);

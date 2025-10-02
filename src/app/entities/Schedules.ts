@@ -7,6 +7,7 @@ import { get } from "svelte/store";
 import { Schedule } from "../core/entities";
 import { scheduleStore as store } from "../stores/scheduleStore";
 import { eventBus } from "../core/events";
+import { getDateString } from "../utils/dateFiltering";
 import { generateId } from "../utils/idGenerator";
 import { EntityOperations } from "../core/extension";
 
@@ -33,9 +34,9 @@ export namespace Schedules {
      * Get schedule by date
      */
     async getByDate(date: Date): Promise<Schedule | null> {
-      const dateString = date.toISOString().split("T")[0];
+      const dateString = getDateString(date); // Use local timezone
       const schedule = get(store).schedules.find(
-        (s) => s.date.toISOString().split("T")[0] === dateString
+        (s) => getDateString(s.date) === dateString
       );
       return schedule || null;
     }
