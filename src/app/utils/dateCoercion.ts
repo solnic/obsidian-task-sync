@@ -7,6 +7,12 @@ import moment from "moment";
 import { z } from "zod";
 
 /**
+ * Regular expression pattern for ISO date format (YYYY-MM-DD)
+ * Used to identify date strings that should be parsed in local timezone
+ */
+const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
  * Coerce a value to a Date object with proper timezone handling
  * Handles strings, Date objects, and null/undefined values
  *
@@ -23,7 +29,7 @@ export function coerceToDate(val: unknown): Date | null {
   if (typeof val === "string" && val.trim() !== "") {
     // Special handling for YYYY-MM-DD format to use local timezone
     // This prevents date shifting when the user's timezone is not UTC
-    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    if (ISO_DATE_PATTERN.test(val)) {
       const [year, month, day] = val.split("-").map(Number);
       const date = new Date(year, month - 1, day); // month is 0-indexed
       return isNaN(date.getTime()) ? null : date;
