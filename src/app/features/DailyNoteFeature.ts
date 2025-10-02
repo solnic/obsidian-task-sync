@@ -1,0 +1,306 @@
+/**
+ * Daily Note Feature
+ * Manages daily note operations including creation and task linking
+ * Integrated as a feature of the ObsidianExtension
+ */
+
+import { App, Plugin, TFile } from "obsidian";
+import { eventBus, type DomainEvent } from "../core/events";
+import type { Schedule, Task } from "../core/entities";
+
+export interface DailyNoteFeatureSettings {
+  dailyNotesFolder: string;
+}
+
+export interface DailyNoteResult {
+  path: string;
+  created: boolean;
+  file?: TFile;
+}
+
+export interface AddTaskResult {
+  success: boolean;
+  dailyNotePath: string;
+  error?: string;
+}
+
+export class DailyNoteFeature {
+  private unsubscribeFunctions: (() => void)[] = [];
+
+  constructor(
+    private app: App,
+    private plugin: Plugin,
+    private settings: DailyNoteFeatureSettings
+  ) {
+    this.setupEventListeners();
+  }
+
+  /**
+   * Set up event listeners for schedule and task events
+   */
+  private setupEventListeners(): void {
+    this.unsubscribeFunctions.push(
+      eventBus.on("schedules.created", this.handleScheduleCreated.bind(this))
+    );
+    this.unsubscribeFunctions.push(
+      eventBus.on("schedules.updated", this.handleScheduleUpdated.bind(this))
+    );
+    this.unsubscribeFunctions.push(
+      eventBus.on("tasks.updated", this.handleTaskUpdated.bind(this))
+    );
+  }
+
+  /**
+   * Handle schedule created event
+   */
+  private async handleScheduleCreated(event: DomainEvent): Promise<void> {
+    if (event.type === "schedules.created") {
+      await this.updateDailyNoteFromSchedule(event.schedule);
+    }
+  }
+
+  /**
+   * Handle schedule updated event
+   */
+  private async handleScheduleUpdated(event: DomainEvent): Promise<void> {
+    if (event.type === "schedules.updated") {
+      await this.updateDailyNoteFromSchedule(event.schedule);
+    }
+  }
+
+  /**
+   * Handle task updated event
+   */
+  private async handleTaskUpdated(event: DomainEvent): Promise<void> {
+    if (event.type === "tasks.updated") {
+      await this.handleTaskDoDateUpdate(event.task);
+    }
+  }
+
+  /**
+   * Get date string in YYYY-MM-DD format
+   */
+  private getDateString(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * Generate content for a new daily note
+   */
+  private generateDailyNoteContent(): string {
+    const today = new Date();
+    const dateString = this.getDateString(today);
+
+    return `# ${dateString}
+
+## Today's Tasks
+
+## Notes
+
+## Reflections
+`;
+  }
+
+  /**
+   * Get the path for today's daily note
+   */
+  async getTodayDailyNotePath(): Promise<string> {
+    const today = new Date();
+    const dateString = this.getDateString(today);
+    const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
+
+    // First, check if a daily note exists in the configured folder
+    const expectedPath = `${dailyNotesFolder}/${dateString}.md`;
+    const expectedFile = this.app.vault.getAbstractFileByPath(expectedPath);
+
+    if (expectedFile instanceof TFile) {
+      return expectedPath;
+    }
+
+    // Second, try to find an existing daily note with today's date anywhere in the vault
+    const allFiles = this.app.vault.getMarkdownFiles();
+    const existingDailyNotes = allFiles.filter((file) => {
+      const fileName = file.name.replace(/\.md$/, "");
+      return fileName === dateString;
+    });
+
+    if (existingDailyNotes.length > 0) {
+      // If multiple daily notes exist, prefer the one in the configured folder
+      const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
+      const preferredNote = existingDailyNotes.find((file) =>
+        file.path.startsWith(dailyNotesFolder + "/")
+      );
+
+      const selectedNote = preferredNote || existingDailyNotes[0];
+      return selectedNote.path;
+    }
+
+    // If no existing daily note found, return the expected path for creation
+    return expectedPath;
+  }
+
+  /**
+   * Ensure today's daily note exists, creating it if necessary
+   */
+  async ensureTodayDailyNote(): Promise<DailyNoteResult> {
+    const dailyNotePath = await this.getTodayDailyNotePath();
+
+    // Check if the daily note already exists
+    const existingFile = this.app.vault.getAbstractFileByPath(dailyNotePath);
+
+    if (existingFile instanceof TFile) {
+      return {
+        path: dailyNotePath,
+        created: false,
+        file: existingFile,
+      };
+    }
+
+    // Ensure the daily notes folder exists
+    const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
+    const folderExists = this.app.vault.getAbstractFileByPath(dailyNotesFolder);
+
+    if (!folderExists) {
+      await this.app.vault.createFolder(dailyNotesFolder);
+    }
+
+    // Create the daily note
+    const content = this.generateDailyNoteContent();
+    const file = await this.app.vault.create(dailyNotePath, content);
+
+    return {
+      path: dailyNotePath,
+      created: true,
+      file: file,
+    };
+  }
+
+  /**
+   * Add a task link to today's daily note and set the Do Date property
+   */
+  async addTaskToToday(taskPath: string): Promise<AddTaskResult> {
+    try {
+      // Ensure today's daily note exists
+      const dailyNoteResult = await this.ensureTodayDailyNote();
+
+      // Get the task file to extract the title
+      const taskFile = this.app.vault.getAbstractFileByPath(taskPath);
+      if (!taskFile || !(taskFile instanceof TFile)) {
+        return {
+          success: false,
+          dailyNotePath: dailyNoteResult.path,
+          error: "Task file not found",
+        };
+      }
+
+      // Read the task file to get the title from front-matter
+      const taskContent = await this.app.vault.read(taskFile);
+      const frontMatterMatch = taskContent.match(/^---\n([\s\S]*?)\n---/);
+      let taskTitle = taskFile.basename; // fallback to filename
+
+      if (frontMatterMatch) {
+        const frontMatter = frontMatterMatch[1];
+        const titleMatch = frontMatter.match(/^Title:\s*(.+)$/m);
+        if (titleMatch) {
+          taskTitle = titleMatch[1].trim();
+        }
+      }
+
+      // Read the daily note content
+      const dailyNoteContent = await this.app.vault.read(dailyNoteResult.file!);
+
+      // Check if the task is already linked in the daily note
+      const taskLink = `[[${taskFile.path}|${taskTitle}]]`;
+      if (!dailyNoteContent.includes(taskLink)) {
+        // Add the task link under "Today's Tasks" section
+        const todaysTasksRegex = /## Today's Tasks\n/;
+        if (todaysTasksRegex.test(dailyNoteContent)) {
+          const updatedContent = dailyNoteContent.replace(
+            todaysTasksRegex,
+            `## Today's Tasks\n- ${taskLink}\n`
+          );
+          await this.app.vault.modify(dailyNoteResult.file!, updatedContent);
+        } else {
+          // If no "Today's Tasks" section, append at the end
+          const updatedContent = dailyNoteContent + `\n- ${taskLink}\n`;
+          await this.app.vault.modify(dailyNoteResult.file!, updatedContent);
+        }
+      }
+
+      // Set the Do Date property in the task's front-matter to today's date
+      const today = this.getDateString(new Date()); // YYYY-MM-DD format
+
+      await this.app.fileManager.processFrontMatter(taskFile, (frontmatter) => {
+        // Only set Do Date if it's not already set or if it's different from today
+        if (!frontmatter["Do Date"] || frontmatter["Do Date"] !== today) {
+          frontmatter["Do Date"] = today;
+        }
+      });
+
+      return {
+        success: true,
+        dailyNotePath: dailyNoteResult.path,
+      };
+    } catch (error: any) {
+      return {
+        success: false,
+        dailyNotePath: "",
+        error: error.message,
+      };
+    }
+  }
+
+  /**
+   * Handle task Do Date update
+   */
+  private async handleTaskDoDateUpdate(task: Task): Promise<void> {
+    try {
+      // Check if the task has a Do Date set to today
+      const today = this.getDateString(new Date());
+      const taskDoDate = task.doDate ? this.getDateString(task.doDate) : null;
+
+      if (taskDoDate === today && task.source?.filePath) {
+        await this.addTaskToToday(task.source.filePath);
+        console.log(`Added task ${task.title} to today's daily note`);
+      }
+    } catch (error) {
+      console.error("Failed to handle task Do Date update:", error);
+    }
+  }
+
+  /**
+   * Update daily note from schedule
+   */
+  private async updateDailyNoteFromSchedule(schedule: Schedule): Promise<void> {
+    try {
+      // Only update daily note if schedule is planned
+      if (!schedule.isPlanned) {
+        return;
+      }
+
+      // Add all tasks from the schedule to today's daily note
+      for (const task of schedule.tasks) {
+        if (task.source?.filePath) {
+          await this.addTaskToToday(task.source.filePath);
+        }
+      }
+
+      console.log(
+        `Updated daily note with ${schedule.tasks.length} tasks from schedule`
+      );
+    } catch (error) {
+      console.error("Failed to update daily note from schedule:", error);
+    }
+  }
+
+  /**
+   * Cleanup method to remove event listeners
+   */
+  cleanup(): void {
+    this.unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
+    this.unsubscribeFunctions = [];
+  }
+}

@@ -20,6 +20,7 @@ import { areaOperations } from "../entities/Areas";
 import type { Task, Project } from "../core/entities";
 import type { TaskSyncSettings } from "../types/settings";
 import { BaseManager } from "../services/BaseManager";
+import { DailyNoteFeature } from "../features/DailyNoteFeature";
 import { derived, get, type Readable } from "svelte/store";
 
 export interface ObsidianExtensionSettings {
@@ -64,6 +65,7 @@ export class ObsidianExtension implements Extension {
   private taskTodoMarkdownProcessor?: TaskTodoMarkdownProcessor;
   private markdownProcessor?: MarkdownPostProcessor;
   private baseManager: BaseManager;
+  private dailyNoteFeature: DailyNoteFeature;
 
   constructor(
     private app: App,
@@ -86,6 +88,11 @@ export class ObsidianExtension implements Extension {
 
     // Initialize base manager
     this.baseManager = new BaseManager(app, app.vault, fullSettings);
+
+    // Initialize daily note feature
+    this.dailyNoteFeature = new DailyNoteFeature(app, plugin, {
+      dailyNotesFolder: fullSettings.dailyNotesFolder || "Daily Notes",
+    });
   }
 
   async initialize(): Promise<void> {
@@ -155,6 +162,9 @@ export class ObsidianExtension implements Extension {
     // Unregister markdown processor
     this.unregisterTaskTodoMarkdownProcessor();
 
+    // Cleanup daily note feature
+    this.dailyNoteFeature.cleanup();
+
     eventBus.trigger({
       type: "extension.unregistered",
       extension: this.id,
@@ -165,6 +175,22 @@ export class ObsidianExtension implements Extension {
 
   async isHealthy(): Promise<boolean> {
     return this.app.vault !== null && this.initialized;
+  }
+
+  /**
+   * Add a task to today's daily note
+   * Exposed method for other parts of the application to use
+   */
+  async addTaskToTodayDailyNote(taskPath: string) {
+    return await this.dailyNoteFeature.addTaskToToday(taskPath);
+  }
+
+  /**
+   * Ensure today's daily note exists
+   * Exposed method for other parts of the application to use
+   */
+  async ensureTodayDailyNote() {
+    return await this.dailyNoteFeature.ensureTodayDailyNote();
   }
 
   /**
