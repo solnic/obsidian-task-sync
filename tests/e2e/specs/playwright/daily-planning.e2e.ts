@@ -26,7 +26,7 @@ test.describe("Daily Planning Wizard", () => {
   });
 
   test.describe("Daily Note Feature", () => {
-    test("should create daily note when task is scheduled for today", async ({
+    test("should NOT create daily note when task Do Date is set (only Daily Planning wizard should)", async ({
       page,
     }) => {
       // Create a test task
@@ -36,7 +36,7 @@ test.describe("Daily Planning Wizard", () => {
         status: "Backlog",
       });
 
-      // Schedule the task for today by setting Do Date
+      // Set the task's Do Date to today (this should NOT trigger daily note creation)
       const today = getTodayString();
       await page.evaluate(
         async ({ taskId, doDate }) => {
@@ -56,7 +56,10 @@ test.describe("Daily Planning Wizard", () => {
         { taskId: task.id, doDate: today }
       );
 
-      // Verify daily note was created
+      // Wait a moment for any potential events to process
+      await page.waitForTimeout(1000);
+
+      // Verify daily note was NOT created (only Daily Planning wizard should create daily notes)
       const dailyNotePath = `Daily Notes/${today}.md`;
       const dailyNoteExists = await page.evaluate(async (path) => {
         const app = (window as any).app;
@@ -64,19 +67,7 @@ test.describe("Daily Planning Wizard", () => {
         return file !== null;
       }, dailyNotePath);
 
-      expect(dailyNoteExists).toBe(true);
-
-      // Verify task link was added to daily note
-      const dailyNoteContent = await page.evaluate(async (path) => {
-        const app = (window as any).app;
-        const file = app.vault.getAbstractFileByPath(path);
-        if (file) {
-          return await app.vault.read(file);
-        }
-        return "";
-      }, dailyNotePath);
-
-      expect(dailyNoteContent).toContain("Test Task for Daily Note");
+      expect(dailyNoteExists).toBe(false);
     });
   });
 

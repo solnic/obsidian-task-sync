@@ -6,7 +6,6 @@
 import { writable, derived, get, type Readable } from "svelte/store";
 import { Task } from "../core/entities";
 import { generateId } from "../utils/idGenerator";
-import { eventBus } from "../core/events";
 
 interface TaskStoreState {
   tasks: readonly Task[];
@@ -159,20 +158,8 @@ export function createTaskStore(): TaskStore {
       }
     });
 
-    // Emit appropriate event after store update
-    if (isUpdate) {
-      eventBus.trigger({
-        type: "tasks.updated",
-        task: resultTask!,
-        extension: "obsidian",
-      });
-    } else {
-      eventBus.trigger({
-        type: "tasks.created",
-        task: resultTask!,
-        extension: "obsidian",
-      });
-    }
+    // Note: Events should be emitted from higher-level operations (like task creation/editing)
+    // not from routine file scanning operations that use upsertTask
 
     return resultTask!;
   };
