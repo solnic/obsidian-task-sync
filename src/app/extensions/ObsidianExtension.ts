@@ -131,6 +131,13 @@ export class ObsidianExtension implements Extension {
       // Register markdown processor after layout is ready
       this.registerTaskTodoMarkdownProcessor();
 
+      // Trigger extension loaded event
+      eventBus.trigger({
+        type: "extension.loaded",
+        extension: this.id,
+        supportedEntities: [...this.supportedEntities],
+      });
+
       console.log("ObsidianExtension loaded successfully");
     } catch (error) {
       console.error("Failed to load ObsidianExtension:", error);

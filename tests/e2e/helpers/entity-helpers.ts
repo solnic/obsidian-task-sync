@@ -39,6 +39,7 @@ export async function createTask(
     parentTask?: string;
     tags?: string[];
     dueDate?: string;
+    doDate?: string;
   }
 ): Promise<any> {
   return await page.evaluate(

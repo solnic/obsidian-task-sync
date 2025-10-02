@@ -16,6 +16,7 @@
     currentSchedule,
   } from "../stores/dailyPlanningStore";
   import { untrack } from "svelte";
+  import { eventBus } from "../core/events";
 
   interface Props {
     // Settings for configuration
@@ -70,8 +71,27 @@
     }
   }
 
+  // Track extension loading state to trigger service list updates
+  let extensionLoadCounter = $state(0);
+
+  // Listen to extension.loaded events to update services list
+  $effect(() => {
+    const unsubscribe = eventBus.on("extension.loaded", () => {
+      // Increment counter to trigger services re-computation
+      untrack(() => {
+        extensionLoadCounter++;
+      });
+    });
+
+    return unsubscribe;
+  });
+
   // Available services - built from registered extensions
+  // Depends on extensionLoadCounter to re-compute when extensions are loaded
   let services = $derived.by(() => {
+    // Access extensionLoadCounter to make this reactive to extension loading
+    extensionLoadCounter;
+
     const allServices = [];
 
     // Always include local tasks (obsidian extension)

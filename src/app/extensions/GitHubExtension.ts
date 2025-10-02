@@ -92,6 +92,13 @@ export class GitHubExtension implements Extension {
       // Preload caches from persistent storage
       await this.preloadCaches();
 
+      // Trigger extension loaded event
+      eventBus.trigger({
+        type: "extension.loaded",
+        extension: this.id,
+        supportedEntities: this.supportedEntities,
+      });
+
       console.log("GitHubExtension loaded successfully");
     } catch (error) {
       console.error("Failed to load GitHubExtension:", error);

@@ -130,6 +130,13 @@ export class DailyPlanningExtension implements Extension {
         await this.ensureTodayScheduleExists();
       }
 
+      // Trigger extension loaded event
+      eventBus.trigger({
+        type: "extension.loaded",
+        extension: this.id,
+        supportedEntities: [...this.supportedEntities],
+      });
+
       console.log("DailyPlanningExtension loaded successfully");
     } catch (error) {
       console.error("Failed to load DailyPlanningExtension:", error);

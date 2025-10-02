@@ -9,9 +9,16 @@ import { Extension, extensionRegistry, EntityType } from "../core/extension";
 import { eventBus } from "../core/events";
 import { derived, writable, type Readable } from "svelte/store";
 import type { Task } from "../core/entities";
-import { CalendarService, calendarServiceRegistry } from "../services/CalendarService";
+import {
+  CalendarService,
+  calendarServiceRegistry,
+} from "../services/CalendarService";
 import { calendarOperations } from "../entities/Calendar";
-import type { Calendar, CalendarEvent, CalendarEventFetchOptions } from "../types/calendar";
+import type {
+  Calendar,
+  CalendarEvent,
+  CalendarEventFetchOptions,
+} from "../types/calendar";
 import type { TaskSyncSettings } from "../types/settings";
 
 export class CalendarExtension implements Extension {
@@ -74,6 +81,13 @@ export class CalendarExtension implements Extension {
       // Load initial calendar data if any services are enabled
       await this.refreshCalendarData();
 
+      // Trigger extension loaded event
+      eventBus.trigger({
+        type: "extension.loaded",
+        extension: this.id,
+        supportedEntities: this.supportedEntities,
+      });
+
       console.log("CalendarExtension loaded successfully");
     } catch (error) {
       console.error("Failed to load CalendarExtension:", error);
@@ -118,7 +132,7 @@ export class CalendarExtension implements Extension {
     this.calendarServices.push(service);
     calendarOperations.addCalendarService(service);
     calendarServiceRegistry.register(service);
-    
+
     console.log(`Registered calendar service: ${service.serviceName}`);
   }
 
@@ -127,11 +141,11 @@ export class CalendarExtension implements Extension {
    */
   unregisterCalendarService(serviceName: string): void {
     this.calendarServices = this.calendarServices.filter(
-      service => service.serviceName !== serviceName
+      (service) => service.serviceName !== serviceName
     );
     calendarOperations.removeCalendarService(serviceName);
     calendarServiceRegistry.unregister(serviceName);
-    
+
     console.log(`Unregistered calendar service: ${serviceName}`);
   }
 
@@ -146,8 +160,8 @@ export class CalendarExtension implements Extension {
    * Get enabled calendar services
    */
   getEnabledCalendarServices(): CalendarService[] {
-    return this.calendarServices.filter(service => 
-      service.isEnabled() && service.isPlatformSupported()
+    return this.calendarServices.filter(
+      (service) => service.isEnabled() && service.isPlatformSupported()
     );
   }
 
@@ -230,7 +244,9 @@ export class CalendarExtension implements Extension {
       return await calendarOperations.getAllEvents(startDate, endDate, options);
     } catch (error) {
       console.error("Failed to get events for date range:", error);
-      this.errorStore.set(error instanceof Error ? error.message : "Unknown error");
+      this.errorStore.set(
+        error instanceof Error ? error.message : "Unknown error"
+      );
       return [];
     }
   }
@@ -243,7 +259,9 @@ export class CalendarExtension implements Extension {
       return await calendarOperations.getTodayEvents(calendarIds);
     } catch (error) {
       console.error("Failed to get today's events:", error);
-      this.errorStore.set(error instanceof Error ? error.message : "Unknown error");
+      this.errorStore.set(
+        error instanceof Error ? error.message : "Unknown error"
+      );
       return [];
     }
   }
@@ -273,10 +291,14 @@ export class CalendarExtension implements Extension {
       const calendars = await calendarOperations.getAllCalendars();
       this.calendarsStore.set(calendars);
 
-      console.log(`Loaded ${calendars.length} calendars from calendar services`);
+      console.log(
+        `Loaded ${calendars.length} calendars from calendar services`
+      );
     } catch (error) {
       console.error("Failed to refresh calendar data:", error);
-      this.errorStore.set(error instanceof Error ? error.message : "Unknown error");
+      this.errorStore.set(
+        error instanceof Error ? error.message : "Unknown error"
+      );
     } finally {
       this.loadingStore.set(false);
     }

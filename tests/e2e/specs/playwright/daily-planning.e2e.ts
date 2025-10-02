@@ -67,13 +67,14 @@ test.describe("Daily Planning Wizard", () => {
     const yesterdayString = getYesterdayString();
 
     // Create a task scheduled for yesterday using the proper helper
+    // Note: Daily planning uses doDate, not dueDate
     const task = await createTask(page, {
       title: "Yesterday Task",
       description: "A task that was scheduled for yesterday but not completed.",
       status: "Not Started",
       priority: "Medium",
       done: false,
-      dueDate: yesterdayString,
+      doDate: yesterdayString,
     });
 
     expect(task).toBeTruthy();
@@ -118,13 +119,14 @@ test.describe("Daily Planning Wizard", () => {
     const todayString = getTodayString();
 
     // Create a task scheduled for today using the proper helper
+    // Note: Daily planning uses doDate, not dueDate
     const task = await createTask(page, {
       title: "Today Task",
       description: "A task scheduled for today.",
       status: "Not Started",
       priority: "High",
       done: false,
-      dueDate: todayString,
+      doDate: todayString,
     });
 
     expect(task).toBeTruthy();
@@ -158,13 +160,14 @@ test.describe("Daily Planning Wizard", () => {
     const todayString = getTodayString();
 
     // Create a task for the plan summary using the proper helper
+    // Note: Daily planning uses doDate, not dueDate
     const task = await createTask(page, {
       title: "Summary Task",
       description: "A task for testing plan summary.",
       status: "Not Started",
       priority: "Medium",
       done: false,
-      dueDate: todayString,
+      doDate: todayString,
     });
 
     expect(task).toBeTruthy();
@@ -253,6 +256,7 @@ test.describe("Daily Planning Wizard", () => {
     const yesterdayString = getYesterdayString();
 
     // Create multiple tasks scheduled for yesterday using the proper helper
+    // Note: Daily planning uses doDate, not dueDate
     const tasks = [];
     for (let i = 1; i <= 3; i++) {
       const task = await createTask(page, {
@@ -261,7 +265,7 @@ test.describe("Daily Planning Wizard", () => {
         status: "Not Started",
         priority: "Medium",
         done: false,
-        dueDate: yesterdayString,
+        doDate: yesterdayString,
       });
       tasks.push(task);
     }
@@ -370,13 +374,14 @@ test.describe("Daily Planning Wizard", () => {
     const todayString = getTodayString();
 
     // Create a task for the complete workflow using the proper helper
+    // Note: Daily planning uses doDate, not dueDate
     const task = await createTask(page, {
       title: "Workflow Task",
       description: "A task for testing the complete daily planning workflow.",
       status: "Not Started",
       priority: "High",
       done: false,
-      dueDate: todayString,
+      doDate: todayString,
     });
 
     expect(task).toBeTruthy();
