@@ -604,9 +604,6 @@ export class AppleCalendarService implements CalendarService {
           return;
         }
 
-        // Keep iCal data logging for debugging
-        console.log(`🔍 AppleCalendarService: Raw iCal data:`, icalData);
-
         // Parse the iCal data
         const event = this.parseICalEvent(
           icalData,
