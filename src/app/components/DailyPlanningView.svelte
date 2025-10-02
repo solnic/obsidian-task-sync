@@ -36,9 +36,14 @@
 
   // Planning state - staging changes without modifying actual tasks
   let tasksToMoveToToday = $state<Task[]>([]);
+  let stagedTasks = $state<Task[]>([]);
 
-  // Computed state for step 2 - combines existing today tasks with staged tasks
-  let allTodayTasksForStep2 = $derived([...todayTasks, ...tasksToMoveToToday]);
+  // Computed state for step 2 - combines existing today tasks with staged tasks and yesterday tasks moved to today
+  let allTodayTasksForStep2 = $derived([
+    ...todayTasks,
+    ...tasksToMoveToToday,
+    ...stagedTasks,
+  ]);
   let finalPlan = $state<{ tasks: Task[]; events: CalendarEvent[] }>({
     tasks: [],
     events: [],
@@ -52,6 +57,48 @@
     // Set daily planning as inactive
     if (dailyPlanningExtension) {
       dailyPlanningExtension.setPlanningActive(false);
+    }
+  });
+
+  // Subscribe to staged tasks from daily planning extension
+  $effect(() => {
+    if (!dailyPlanningExtension) {
+      stagedTasks = [];
+      return;
+    }
+
+    const stagedTasksStore = dailyPlanningExtension.getStagedTasks();
+    const unsubscribe = stagedTasksStore.subscribe((staged) => {
+      stagedTasks = [...staged];
+    });
+
+    return unsubscribe;
+  });
+
+  // Update final plan when staged tasks change
+  $effect(() => {
+    if (
+      finalPlan.tasks.length > 0 ||
+      stagedTasks.length > 0 ||
+      tasksToMoveToToday.length > 0
+    ) {
+      // Combine all tasks: original today tasks + staged tasks + yesterday tasks moved to today
+      const allTasks = [
+        ...todayTasks,
+        ...stagedTasks.filter(
+          (task) => !todayTasks.some((t) => t.id === task.id)
+        ),
+        ...tasksToMoveToToday.filter(
+          (task) =>
+            !todayTasks.some((t) => t.id === task.id) &&
+            !stagedTasks.some((t) => t.id === task.id)
+        ),
+      ];
+
+      finalPlan = {
+        ...finalPlan,
+        tasks: allTasks,
+      };
     }
   });
 
@@ -229,6 +276,34 @@
     }
   }
 
+  async function rescheduleTaskForToday(task: Task, _date: Date) {
+    try {
+      if (!dailyPlanningExtension) {
+        throw new Error("Daily planning extension not available");
+      }
+
+      // Stage the task for today
+      dailyPlanningExtension.stageTaskForToday(task);
+    } catch (err: any) {
+      console.error("Error rescheduling task for today:", err);
+      error = err.message || "Failed to reschedule task";
+    }
+  }
+
+  async function unscheduleTaskFromToday(task: Task) {
+    try {
+      if (!dailyPlanningExtension) {
+        throw new Error("Daily planning extension not available");
+      }
+
+      // Stage the task for unscheduling
+      dailyPlanningExtension.stageTaskForUnscheduling(task);
+    } catch (err: any) {
+      console.error("Error unscheduling task from today:", err);
+      error = err.message || "Failed to unschedule task";
+    }
+  }
+
   function getStepTitle(step: number): string {
     switch (step) {
       case 1:
@@ -299,6 +374,8 @@
           todayTasks={allTodayTasksForStep2}
           {todayEvents}
           {unscheduledTasks}
+          onRescheduleTask={rescheduleTaskForToday}
+          onUnscheduleTask={unscheduleTaskFromToday}
         />
       </Step>
     {:else if currentStep === 3}
