@@ -279,41 +279,6 @@
   class="task-sync-service-container local-service"
   data-testid="local-service"
 >
-  <!-- Planning Mode Header -->
-  {#if $isPlanningActive}
-    <div class="planning-header" data-testid="planning-header">
-      <div class="planning-info">
-        <h3>📅 Daily Planning Mode</h3>
-        <p>Hover over tasks to see "Schedule for today" button</p>
-      </div>
-      <div class="planning-actions">
-        {#if selectedTasksForPlanning.size > 0}
-          <button
-            class="planning-btn add-selected"
-            onclick={addSelectedTasksToSchedule}
-            data-testid="add-selected-tasks"
-          >
-            Add {selectedTasksForPlanning.size} task{selectedTasksForPlanning.size ===
-            1
-              ? ""
-              : "s"} to schedule
-          </button>
-          <button
-            class="planning-btn clear-selection"
-            onclick={clearSelection}
-            data-testid="clear-selection"
-          >
-            Clear selection
-          </button>
-        {:else}
-          <span class="planning-hint"
-            >Click tasks to select them for scheduling</span
-          >
-        {/if}
-      </div>
-    </div>
-  {/if}
-
   <!-- Header Section -->
   <header>
     <!-- 1. Search with refresh group -->
@@ -468,74 +433,4 @@
 </div>
 
 <style>
-  .planning-header {
-    background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .planning-info h3 {
-    margin: 0 0 4px 0;
-    color: var(--text-normal);
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .planning-info p {
-    margin: 0;
-    color: var(--text-muted);
-    font-size: 14px;
-  }
-
-  .planning-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .planning-btn {
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    transition: opacity 0.2s ease;
-  }
-
-  .planning-btn:hover {
-    opacity: 0.8;
-  }
-
-  .planning-btn.clear-selection {
-    background: var(--background-modifier-border);
-    color: var(--text-normal);
-  }
-
-  .planning-hint {
-    color: var(--text-muted);
-    font-size: 14px;
-    font-style: italic;
-  }
-
-  @media (max-width: 768px) {
-    .planning-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 12px;
-    }
-
-    .planning-actions {
-      width: 100%;
-      justify-content: flex-start;
-    }
-  }
 </style>
