@@ -85,6 +85,31 @@
     };
   });
 
+  // Staged tasks state - managed at TasksView level for all services
+  let stagedTaskIds = $state<Set<string>>(new Set());
+
+  // Subscribe to staged tasks from daily planning extension
+  $effect(() => {
+    if (!dailyPlanningExtension) {
+      stagedTaskIds = new Set();
+      return;
+    }
+
+    const stagedTasksStore = dailyPlanningExtension.getStagedTasks();
+    const unsubscribe = stagedTasksStore.subscribe((staged) => {
+      stagedTaskIds = new Set(staged.map((task) => task.id));
+    });
+
+    return unsubscribe;
+  });
+
+  // Unified task staging handler for all services
+  function handleStageTask(task: any): void {
+    if (dailyPlanningExtension) {
+      dailyPlanningExtension.stageTaskForToday(task);
+    }
+  }
+
   // Available services - reactively built from registered extensions
   let services = $derived.by(() => {
     // Access extensionsVersion to make this reactive
@@ -156,6 +181,8 @@
             {isPlanningActive}
             {currentSchedule}
             {dailyPlanningExtension}
+            {stagedTaskIds}
+            onStageTask={handleStageTask}
             testId="{activeService}-service"
           />
         </div>

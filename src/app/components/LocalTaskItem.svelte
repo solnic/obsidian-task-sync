@@ -22,6 +22,7 @@
     dailyPlanningWizardMode?: boolean;
     onAddToToday?: (task: Task) => void;
     isInToday?: boolean;
+    isStaged?: boolean;
     testId?: string;
     settings?: TaskSyncSettings;
   }
@@ -37,6 +38,7 @@
     dailyPlanningWizardMode = false,
     onAddToToday,
     isInToday = false,
+    isStaged = false,
     testId,
     settings,
   }: Props = $props();
@@ -131,7 +133,7 @@
         title="Schedule for today"
         testId="schedule-for-today-button"
         onImport={handleAddToToday}
-        isImported={false}
+        isImported={isStaged}
       />
     {:else if dayPlanningMode}
       <ImportButton

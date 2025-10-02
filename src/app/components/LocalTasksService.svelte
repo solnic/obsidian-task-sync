@@ -54,6 +54,10 @@
     currentSchedule?: Schedule | null;
     dailyPlanningExtension?: DailyPlanningExtension;
 
+    // Unified staging state and handlers
+    stagedTaskIds?: Set<string>;
+    onStageTask?: (task: any) => void;
+
     // Test attributes
     testId?: string;
   }
@@ -66,6 +70,8 @@
     isPlanningActive = false,
     currentSchedule = null,
     dailyPlanningExtension,
+    stagedTaskIds = new Set(),
+    onStageTask,
     testId,
   }: Props = $props();
 
@@ -446,11 +452,12 @@
                 }
               }}
               dailyPlanningWizardMode={isPlanningActive}
-              onAddToToday={async (task) => {
-                if (dailyPlanningExtension) {
-                  await dailyPlanningExtension.stageTaskForToday(task);
+              onAddToToday={(task) => {
+                if (onStageTask) {
+                  onStageTask(task);
                 }
               }}
+              isStaged={stagedTaskIds.has(localTask.task.id)}
               {settings}
               testId="local-task-item-{localTask.task.title
                 .replace(/\s+/g, '-')

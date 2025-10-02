@@ -22,6 +22,10 @@
     currentSchedule?: Schedule | null;
     dailyPlanningExtension?: DailyPlanningExtension;
 
+    // Unified staging state and handlers
+    stagedTaskIds?: Set<string>;
+    onStageTask?: (task: any) => void;
+
     // Test attributes
     testId?: string;
   }
@@ -33,6 +37,8 @@
     isPlanningActive = false,
     currentSchedule = null,
     dailyPlanningExtension,
+    stagedTaskIds = new Set(),
+    onStageTask,
     testId,
   }: Props = $props();
 
@@ -75,6 +81,8 @@
     {isPlanningActive}
     {currentSchedule}
     {dailyPlanningExtension}
+    {stagedTaskIds}
+    {onStageTask}
     testId={testId || `${serviceId}-service`}
   />
 {:else}
