@@ -17,6 +17,7 @@ import {
   verifyTaskCount,
 } from "../../helpers/tasks-view-helpers";
 import { createTask } from "../../helpers/entity-helpers";
+import { executeCommand } from "../../helpers/global";
 
 test.describe("TasksView Component", () => {
   test("should open Tasks view and display local tasks", async ({ page }) => {
@@ -279,6 +280,59 @@ test.describe("TasksView Component", () => {
     // - Test context detection when opening project/area/task files
     // - Test context updates when switching between different file types
     // - Test daily planning mode context changes
+  });
+
+  test("should show Schedule for today button when daily planning is active", async ({
+    page,
+  }) => {
+    // Create a task to test with
+    await createTask(page, {
+      title: "Task for Daily Planning",
+      description: "A task to test daily planning mode",
+      done: false,
+    });
+
+    // Open Tasks view
+    await openTasksView(page);
+    await waitForLocalTasksToLoad(page);
+
+    // Initially, should not show planning header
+    const planningHeader = page.locator('[data-testid="planning-header"]');
+    await expect(planningHeader).not.toBeVisible();
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Go back to tasks view
+    await page.click('[data-testid="tasks-tab"]');
+    await page.waitForTimeout(1000);
+
+    // Should now show planning header
+    await expect(planningHeader).toBeVisible();
+    await expect(planningHeader.locator("h3")).toHaveText(
+      "📅 Daily Planning Mode"
+    );
+
+    // Find a task item and hover to reveal schedule button
+    const taskItem = page.locator('[data-testid="task-item"]').first();
+    await expect(taskItem).toBeVisible();
+
+    await taskItem.hover();
+    await page.waitForTimeout(500);
+
+    // Should show "Schedule for today" button
+    const scheduleButton = page.locator(
+      '[data-testid="schedule-for-today-button"]'
+    );
+    await expect(scheduleButton).toBeVisible();
+    await expect(scheduleButton).toHaveText("Schedule for today");
   });
 
   test("should detect and display file context when opening different file types", async ({

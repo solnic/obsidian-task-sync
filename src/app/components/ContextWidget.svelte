@@ -23,17 +23,8 @@
   // Get the reactive context store
   const contextStore = getContextStore();
 
-  // Reactive context value
-  let context = $state<FileContext>({ type: "none" });
-
-  // Subscribe to context changes
-  $effect(() => {
-    const unsubscribe = contextStore.subscribe((value) => {
-      context = value;
-    });
-
-    return unsubscribe;
-  });
+  // Reactive context value - directly from store using $ prefix
+  let context = $derived($contextStore || { type: "none" as const });
 
   // Computed properties for display
   let actionType = $derived.by(() => {
