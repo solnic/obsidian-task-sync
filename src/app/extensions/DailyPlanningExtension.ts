@@ -11,7 +11,7 @@ import {
   EntityOperations,
 } from "../core/extension";
 import { eventBus, DomainEvent } from "../core/events";
-import { derived, writable, type Readable } from "svelte/store";
+import { derived, writable, get, type Readable } from "svelte/store";
 import type {
   Task,
   Schedule,
@@ -54,6 +54,10 @@ export class DailyPlanningExtension implements Extension {
   // Internal state for daily planning
   private planningActiveStore = writable<boolean>(false);
   private currentScheduleStore = writable<Schedule | null>(null);
+
+  // Staging state for planning changes
+  private stagedTasksStore = writable<Task[]>([]);
+  private stagedUnscheduledTasksStore = writable<Task[]>([]);
 
   constructor(settings: TaskSyncSettings, plugin: Plugin) {
     this.settings = settings;
@@ -216,6 +220,20 @@ export class DailyPlanningExtension implements Extension {
   }
 
   /**
+   * Get staged tasks for planning
+   */
+  getStagedTasks(): Readable<Task[]> {
+    return this.stagedTasksStore;
+  }
+
+  /**
+   * Get staged unscheduled tasks for planning
+   */
+  getStagedUnscheduledTasks(): Readable<Task[]> {
+    return this.stagedUnscheduledTasksStore;
+  }
+
+  /**
    * Set the current schedule being planned
    */
   setCurrentSchedule(schedule: Schedule | null): void {
@@ -341,9 +359,74 @@ export class DailyPlanningExtension implements Extension {
   }
 
   /**
-   * Move a task to today by setting its doDate to today
+   * Stage a task to be moved to today (doesn't immediately apply changes)
    */
-  async moveTaskToToday(task: Task): Promise<void> {
+  stageTaskForToday(task: Task): void {
+    this.stagedTasksStore.update((tasks) => {
+      // Add task if not already staged
+      if (!tasks.some((t) => t.id === task.id)) {
+        return [...tasks, task];
+      }
+      return tasks;
+    });
+
+    // Remove from unscheduled if it was there
+    this.stagedUnscheduledTasksStore.update((tasks) =>
+      tasks.filter((t) => t.id !== task.id)
+    );
+  }
+
+  /**
+   * Stage a task to be unscheduled (doesn't immediately apply changes)
+   */
+  stageTaskForUnscheduling(task: Task): void {
+    this.stagedUnscheduledTasksStore.update((tasks) => {
+      // Add task if not already staged for unscheduling
+      if (!tasks.some((t) => t.id === task.id)) {
+        return [...tasks, task];
+      }
+      return tasks;
+    });
+
+    // Remove from scheduled if it was there
+    this.stagedTasksStore.update((tasks) =>
+      tasks.filter((t) => t.id !== task.id)
+    );
+  }
+
+  /**
+   * Clear all staging changes
+   */
+  clearStaging(): void {
+    this.stagedTasksStore.set([]);
+    this.stagedUnscheduledTasksStore.set([]);
+  }
+
+  /**
+   * Apply all staged changes (move tasks to today, unschedule tasks)
+   */
+  async applyStaging(): Promise<void> {
+    const stagedTasks = get(this.stagedTasksStore);
+    const stagedUnscheduledTasks = get(this.stagedUnscheduledTasksStore);
+
+    // Apply scheduled tasks
+    for (const task of stagedTasks) {
+      await this.moveTaskToTodayImmediate(task);
+    }
+
+    // Apply unscheduled tasks
+    for (const task of stagedUnscheduledTasks) {
+      await this.unscheduleTaskImmediate(task);
+    }
+
+    // Clear staging after applying
+    this.clearStaging();
+  }
+
+  /**
+   * Move a task to today immediately (used internally and for applying staging)
+   */
+  async moveTaskToTodayImmediate(task: Task): Promise<void> {
     const taskOperations = new Tasks.Operations();
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set to start of day
@@ -366,6 +449,33 @@ export class DailyPlanningExtension implements Extension {
         ...task,
         doDate: today,
       });
+    }
+  }
+
+  /**
+   * Unschedule a task immediately (used internally and for applying staging)
+   */
+  async unscheduleTaskImmediate(task: Task): Promise<void> {
+    const taskOperations = new Tasks.Operations();
+
+    await taskOperations.update({
+      ...task,
+      doDate: null,
+    });
+
+    // Remove task from all schedules
+    await this.removeTaskFromAllSchedules(task.id);
+  }
+
+  /**
+   * Move a task to today by setting its doDate to today (for backward compatibility)
+   */
+  async moveTaskToToday(task: Task): Promise<void> {
+    // If planning is active, stage the task instead of applying immediately
+    if (get(this.planningActiveStore)) {
+      this.stageTaskForToday(task);
+    } else {
+      await this.moveTaskToTodayImmediate(task);
     }
   }
 

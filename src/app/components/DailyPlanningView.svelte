@@ -101,6 +101,8 @@
 
   async function cancelDailyPlanning() {
     if (dailyPlanningExtension) {
+      // Clear any staged changes
+      dailyPlanningExtension.clearStaging();
       await dailyPlanningExtension.cancelDailyPlanning();
     }
   }
@@ -113,9 +115,12 @@
         throw new Error("Daily planning extension not available");
       }
 
-      // Apply all the planned task movements
+      // Apply all staged changes (this will move tasks and update schedules)
+      await dailyPlanningExtension.applyStaging();
+
+      // Apply all the planned task movements from the wizard
       for (const task of tasksToMoveToToday) {
-        await dailyPlanningExtension.moveTaskToToday(task);
+        await dailyPlanningExtension.moveTaskToTodayImmediate(task);
       }
 
       // Ensure today's schedule exists and update it with the final plan

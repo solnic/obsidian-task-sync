@@ -37,6 +37,9 @@
     if (dailyPlanningExtension) {
       const planningActiveStore = dailyPlanningExtension.getPlanningActive();
       const currentScheduleStore = dailyPlanningExtension.getCurrentSchedule();
+      const stagedTasksStore = dailyPlanningExtension.getStagedTasks();
+      const stagedUnscheduledTasksStore =
+        dailyPlanningExtension.getStagedUnscheduledTasks();
 
       const unsubscribePlanning = planningActiveStore.subscribe((active) => {
         isPlanningActive = active;
@@ -51,9 +54,20 @@
         }
       });
 
+      const unsubscribeStaged = stagedTasksStore.subscribe((tasks) => {
+        stagedTasks = tasks;
+      });
+
+      const unsubscribeStagedUnscheduled =
+        stagedUnscheduledTasksStore.subscribe((tasks) => {
+          stagedUnscheduledTasks = tasks;
+        });
+
       return () => {
         unsubscribePlanning();
         unsubscribeSchedule();
+        unsubscribeStaged();
+        unsubscribeStagedUnscheduled();
       };
     }
 
@@ -83,6 +97,18 @@
   let isPlanningActive = $state(false);
   let currentSchedule = $state<Schedule | null>(null);
   let plannedTasks = $state<Task[]>([]);
+  let stagedTasks = $state<Task[]>([]);
+  let stagedUnscheduledTasks = $state<Task[]>([]);
+
+  // Combined tasks to display (planned tasks + staged tasks - staged unscheduled tasks)
+  let allTasksToDisplay = $derived.by(() => {
+    const allTasks = [...plannedTasks, ...stagedTasks];
+    // Remove tasks that are staged for unscheduling
+    const stagedUnscheduledIds = new Set(
+      stagedUnscheduledTasks.map((t) => t.id)
+    );
+    return allTasks.filter((task) => !stagedUnscheduledIds.has(task.id));
+  });
 
   // Load available calendars
   async function loadCalendars() {
@@ -374,19 +400,29 @@
         <div class="planning-info">
           <h3>📅 Daily Planning Mode - Day View</h3>
           <p>
-            {#if plannedTasks.length > 0}
-              {plannedTasks.length} task{plannedTasks.length === 1 ? "" : "s"} planned
-              for today
+            {#if allTasksToDisplay.length > 0}
+              {allTasksToDisplay.length} task{allTasksToDisplay.length === 1
+                ? ""
+                : "s"} planned for today
+              {#if stagedTasks.length > 0}
+                ({stagedTasks.length} staged)
+              {/if}
+              {#if stagedUnscheduledTasks.length > 0}
+                ({stagedUnscheduledTasks.length} to unschedule)
+              {/if}
             {:else}
               No tasks planned for today yet
             {/if}
           </p>
         </div>
         <div class="planning-actions">
-          {#if plannedTasks.length > 0}
-            <span class="planning-hint"
-              >Tasks are shown alongside calendar events below</span
-            >
+          {#if allTasksToDisplay.length > 0}
+            <span class="planning-hint">
+              Tasks are shown alongside calendar events below
+              {#if stagedTasks.length > 0 || stagedUnscheduledTasks.length > 0}
+                • Changes will be applied when planning is completed
+              {/if}
+            </span>
           {:else}
             <span class="planning-hint"
               >Use the Tasks tab to add tasks to today's schedule</span
@@ -471,7 +507,7 @@
       <div class="calendar-wrapper">
         <ObsidianDayView
           events={filteredEvents}
-          tasks={plannedTasks}
+          tasks={allTasksToDisplay}
           bind:selectedDate
         />
       </div>
