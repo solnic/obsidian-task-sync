@@ -8,14 +8,9 @@
 
   import type { Calendar, CalendarEvent } from "../types/calendar";
   import type { CalendarExtension } from "../extensions/CalendarExtension";
-  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
   import type { Host } from "../core/host";
   import type { TaskSyncSettings } from "../types/settings";
-  import type { Task, Schedule } from "../core/entities";
-  import {
-    isPlanningActive,
-    currentSchedule,
-  } from "../stores/dailyPlanningStore";
+  import { isPlanningActive } from "../stores/dailyPlanningStore";
 
   // Props
   interface Props {
@@ -30,38 +25,7 @@
     host.getExtensionById("calendar") as CalendarExtension | undefined
   );
 
-  let dailyPlanningExtension = $derived(
-    host.getExtensionById("daily-planning") as
-      | DailyPlanningExtension
-      | undefined
-  );
-
-  // Subscribe to daily planning state changes
-  $effect(() => {
-    if (dailyPlanningExtension) {
-      const stagedTasksStore = dailyPlanningExtension.getStagedTasks();
-      const stagedUnscheduledTasksStore =
-        dailyPlanningExtension.getStagedUnscheduledTasks();
-
-      const unsubscribeStaged = stagedTasksStore.subscribe((tasks) => {
-        stagedTasks = tasks;
-      });
-
-      const unsubscribeStagedUnscheduled =
-        stagedUnscheduledTasksStore.subscribe((tasks) => {
-          stagedUnscheduledTasks = tasks;
-        });
-
-      return () => {
-        unsubscribeStaged();
-        unsubscribeStagedUnscheduled();
-      };
-    }
-
-    return () => {
-      // No cleanup needed if extension not available
-    };
-  });
+  // Day View should NOT subscribe to staged tasks - those belong in Daily Planning wizard only
 
   // State
   let isLoading = $state(false);
@@ -80,23 +44,8 @@
     )
   );
 
-  // Daily planning state - get planned tasks from current schedule
-  let plannedTasks = $derived.by(() => {
-    const schedule = $currentSchedule;
-    return schedule ? schedule.tasks || [] : [];
-  });
-  let stagedTasks = $state<Task[]>([]);
-  let stagedUnscheduledTasks = $state<Task[]>([]);
-
-  // Combined tasks to display (planned tasks + staged tasks - staged unscheduled tasks)
-  let allTasksToDisplay = $derived.by(() => {
-    const allTasks = [...plannedTasks, ...stagedTasks];
-    // Remove tasks that are staged for unscheduling
-    const stagedUnscheduledIds = new Set(
-      stagedUnscheduledTasks.map((t) => t.id)
-    );
-    return allTasks.filter((task) => !stagedUnscheduledIds.has(task.id));
-  });
+  // Day View should NOT display any tasks - only calendar events
+  // Tasks are handled by the Daily Planning wizard
 
   // Load available calendars
   async function loadCalendars() {
@@ -388,34 +337,14 @@
         <div class="planning-info">
           <h3>📅 Daily Planning Mode - Day View</h3>
           <p>
-            {#if allTasksToDisplay.length > 0}
-              {allTasksToDisplay.length} task{allTasksToDisplay.length === 1
-                ? ""
-                : "s"} planned for today
-              {#if stagedTasks.length > 0}
-                ({stagedTasks.length} staged)
-              {/if}
-              {#if stagedUnscheduledTasks.length > 0}
-                ({stagedUnscheduledTasks.length} to unschedule)
-              {/if}
-            {:else}
-              No tasks planned for today yet
-            {/if}
+            Day View shows calendar events only. Use the Daily Planning wizard
+            to manage tasks.
           </p>
         </div>
         <div class="planning-actions">
-          {#if allTasksToDisplay.length > 0}
-            <span class="planning-hint">
-              Tasks are shown alongside calendar events below
-              {#if stagedTasks.length > 0 || stagedUnscheduledTasks.length > 0}
-                • Changes will be applied when planning is completed
-              {/if}
-            </span>
-          {:else}
-            <span class="planning-hint"
-              >Use the Tasks tab to add tasks to today's schedule</span
-            >
-          {/if}
+          <span class="planning-hint"
+            >Tasks are managed in the Daily Planning wizard, not in Day View</span
+          >
         </div>
       </div>
     {/if}
@@ -493,11 +422,7 @@
     <!-- Content Section -->
     <div class="task-sync-task-list-container">
       <div class="calendar-wrapper">
-        <ObsidianDayView
-          events={filteredEvents}
-          tasks={allTasksToDisplay}
-          bind:selectedDate
-        />
+        <ObsidianDayView events={filteredEvents} tasks={[]} bind:selectedDate />
       </div>
     </div>
   </TabView>

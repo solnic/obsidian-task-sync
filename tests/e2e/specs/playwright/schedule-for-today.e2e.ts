@@ -207,4 +207,68 @@ test.describe("Schedule for Today Button", () => {
       page.locator('[data-testid="planning-header"]')
     ).not.toBeVisible();
   });
+
+  test("should NOT show staged tasks in Day View - only in Daily Planning wizard", async ({
+    page,
+  }) => {
+    // Create a test task
+    const task = await createTask(page, {
+      title: "Task Should Not Appear in Day View",
+      description:
+        "This task should only appear in Daily Planning wizard, not Day View",
+      status: "Not Started",
+      done: false,
+    });
+
+    expect(task).toBeTruthy();
+
+    // Start daily planning
+    await startDailyPlanning(page);
+
+    // Open Tasks view and stage a task
+    await openView(page, "tasks");
+    await switchToTaskService(page, "local");
+
+    const taskItem = page.locator('[data-testid^="local-task-item-"]').filter({
+      hasText: "Task Should Not Appear in Day View",
+    });
+
+    await expect(taskItem).toBeVisible();
+    await taskItem.hover();
+
+    const scheduleButton = taskItem.locator(
+      '[data-testid="schedule-for-today-button"]'
+    );
+    await expect(scheduleButton).toBeVisible();
+    await scheduleButton.click();
+    await page.waitForTimeout(500);
+
+    // Verify task is staged
+    await expect(scheduleButton).toContainText("✓ Scheduled for today");
+
+    // Switch to Day View - staged task should NOT appear here
+    await openView(page, "daily");
+
+    // Day View should show planning header but NO staged tasks
+    await expect(page.locator('[data-testid="planning-header"]')).toBeVisible();
+    await expect(page.locator('[data-testid="planning-header"]')).toContainText(
+      "📅 Daily Planning Mode - Day View"
+    );
+
+    // The staged task should NOT appear in Day View
+    const dayViewTaskList = page.locator('[data-testid="task-planning-view"]');
+    await expect(dayViewTaskList).not.toContainText(
+      "Task Should Not Appear in Day View"
+    );
+
+    // But the task SHOULD appear in Daily Planning wizard step 2
+    await openView(page, "daily-planning");
+    await page.click('[data-testid="next-button"]'); // Go to step 2
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    const stagedTask = page.locator('[data-testid="staged-task"]').filter({
+      hasText: "Task Should Not Appear in Day View",
+    });
+    await expect(stagedTask).toBeVisible();
+  });
 });
