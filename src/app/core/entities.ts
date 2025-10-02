@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { DEFAULT_TASK_STATUS } from "../constants/defaults";
+import { requiredDateSchema, optionalDateSchema } from "../utils/dateCoercion";
 
 // Core domain entities - completely source agnostic
 export const TaskStatusSchema = z
@@ -42,12 +43,12 @@ export const TaskSchema = z.object({
   tags: z.array(z.string()).default([]),
 
   // Scheduling
-  doDate: z.date().optional(),
-  dueDate: z.date().optional(),
+  doDate: optionalDateSchema,
+  dueDate: optionalDateSchema,
 
   // System properties
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: requiredDateSchema,
+  updatedAt: requiredDateSchema,
 
   // Source tracking (which extension owns this task)
   source: TaskSourceSchema.optional(),
@@ -61,8 +62,8 @@ export const ProjectSchema = z.object({
   description: z.string().optional(),
   areas: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: requiredDateSchema,
+  updatedAt: requiredDateSchema,
   source: TaskSourceSchema.optional(),
 });
 
@@ -73,8 +74,8 @@ export const AreaSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   tags: z.array(z.string()).default([]),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: requiredDateSchema,
+  updatedAt: requiredDateSchema,
   source: TaskSourceSchema.optional(),
 });
 
@@ -86,8 +87,8 @@ export const CalendarEventSchema = z.object({
   title: z.string(),
   description: z.string().optional(),
   location: z.string().optional(),
-  startDate: z.date(),
-  endDate: z.date(),
+  startDate: requiredDateSchema,
+  endDate: requiredDateSchema,
   allDay: z.boolean(),
   calendar: z.object({
     id: z.string(),
@@ -109,9 +110,9 @@ export const ScheduleSchema = z.object({
   id: z.string(),
 
   // Schedule metadata
-  date: z.date(), // The date this schedule is for
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  date: requiredDateSchema, // The date this schedule is for
+  createdAt: requiredDateSchema,
+  updatedAt: requiredDateSchema,
 
   // Tasks included in this schedule
   tasks: z.array(TaskSchema).default([]),
@@ -128,7 +129,7 @@ export const ScheduleSchema = z.object({
 
   // Planning state
   isPlanned: z.boolean().default(false),
-  planningCompletedAt: z.date().optional(),
+  planningCompletedAt: optionalDateSchema,
 
   // Source tracking (which extension owns this schedule)
   source: TaskSourceSchema.optional(),
@@ -138,7 +139,7 @@ export type Schedule = Readonly<z.infer<typeof ScheduleSchema>>;
 
 // Schedule creation data interface
 export const ScheduleCreateDataSchema = z.object({
-  date: z.date(),
+  date: requiredDateSchema,
   dailyNotePath: z.string().optional(),
   tasks: z.array(TaskSchema).optional(),
   events: z.array(CalendarEventSchema).optional(),
@@ -168,7 +169,7 @@ export type SchedulePersistenceItem = z.infer<
 // Schedule persistence data interface
 export const SchedulePersistenceDataSchema = z.object({
   schedules: z.array(SchedulePersistenceItemSchema),
-  lastSync: z.date(),
+  lastSync: requiredDateSchema,
 });
 
 export type SchedulePersistenceData = z.infer<

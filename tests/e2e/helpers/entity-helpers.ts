@@ -27,7 +27,7 @@ export async function updateEntity(
  */
 export async function createTask(
   page: ExtendedPage,
-  props: {
+  taskData: {
     title: string;
     description?: string;
     category?: string;
@@ -39,59 +39,21 @@ export async function createTask(
     parentTask?: string;
     tags?: string[];
     dueDate?: string;
-  },
-  content: string = ""
+  }
 ): Promise<any> {
   return await page.evaluate(
-    async ({ props, content }) => {
+    async ({ taskData }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (!plugin) {
-        throw new Error("Task Sync plugin not found");
-      }
-
-      // Access the taskSyncApp and use the new architecture
-      const taskSyncApp = plugin.taskSyncApp;
-
-      if (!taskSyncApp || !taskSyncApp.isInitialized()) {
-        throw new Error("TaskSync app is not initialized");
-      }
-
-      // Access the Obsidian-specific taskOperations that we exposed through the plugin
-      // This is now obsidianOperations.tasks which properly sets source.filePath
       const taskOperations = plugin.operations.taskOperations;
-
-      if (!taskOperations) {
-        throw new Error("taskOperations not available on plugin");
-      }
-
-      // Prepare task data in the format expected by the new architecture
-      const taskData = {
-        title: props.title,
-        description: props.description || content || "",
-        category: props.category || "",
-        priority: props.priority || "",
-        areas: props.areas || [],
-        project: props.project || "",
-        done: props.done || false,
-        status: props.status || "Not Started",
-        parentTask: props.parentTask || "",
-        tags: props.tags || [],
-        doDate: props.dueDate ? new Date(props.dueDate) : undefined,
-        dueDate: props.dueDate ? new Date(props.dueDate) : undefined,
-      };
-
-      // Create task using the Obsidian-specific operations that set source.filePath
       const createdTask = await taskOperations.create(taskData);
 
-      if (!createdTask) {
-        throw new Error(`Failed to create task "${props.title}"`);
-      }
+      console.debug("Task created:", createdTask);
 
       return createdTask;
     },
-    { props, content }
+    { taskData }
   );
 }
 
