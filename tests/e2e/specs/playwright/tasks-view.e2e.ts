@@ -162,7 +162,7 @@ test.describe("TasksView Component", () => {
       () => {
         const app = (window as any).app;
         const activeFile = app.workspace.getActiveFile();
-        return activeFile && activeFile.name === "open-test-task.md";
+        return activeFile && activeFile.name === "Open Test Task.md";
       },
       { timeout: 5000 }
     );
@@ -171,7 +171,7 @@ test.describe("TasksView Component", () => {
     const hasActiveFile = await page.evaluate(() => {
       const app = (window as any).app;
       const activeFile = app.workspace.getActiveFile();
-      return activeFile && activeFile.name === "open-test-task.md";
+      return activeFile && activeFile.name === "Open Test Task.md";
     });
 
     expect(hasActiveFile).toBe(true);
@@ -350,7 +350,7 @@ test.describe("TasksView Component", () => {
     await page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/dynamic-creation-test.md"
+        "Tasks/Dynamic Creation Test.md"
       );
       if (file) {
         await app.vault.delete(file);

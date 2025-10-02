@@ -58,7 +58,8 @@ export async function createTask(
         throw new Error("TaskSync app is not initialized");
       }
 
-      // Access the global taskOperations that we exposed through the plugin
+      // Access the Obsidian-specific taskOperations that we exposed through the plugin
+      // This is now obsidianOperations.tasks which properly sets source.filePath
       const taskOperations = plugin.operations.taskOperations;
 
       if (!taskOperations) {
@@ -81,7 +82,7 @@ export async function createTask(
         dueDate: props.dueDate ? new Date(props.dueDate) : undefined,
       };
 
-      // Create task using the new architecture
+      // Create task using the Obsidian-specific operations that set source.filePath
       const createdTask = await taskOperations.create(taskData);
 
       if (!createdTask) {
