@@ -738,7 +738,7 @@ export class DailyPlanningExtension implements Extension {
   async addTasksToTodayDailyNote(tasks: Task[]): Promise<void> {
     try {
       const today = new Date();
-      const dateString = today.toISOString().split("T")[0]; // YYYY-MM-DD format
+      const dateString = getDateString(today); // YYYY-MM-DD format in local timezone
       const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
       const dailyNotePath = `${dailyNotesFolder}/${dateString}.md`;
 
