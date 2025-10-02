@@ -564,6 +564,17 @@ export class DailyPlanningExtension implements Extension {
   }
 
   /**
+   * Get unscheduled tasks (tasks without a doDate)
+   */
+  async getUnscheduledTasks(): Promise<Task[]> {
+    const taskQueries = new Tasks.Queries();
+    const allTasks = await taskQueries.getAll();
+
+    // Filter tasks that don't have a doDate set
+    return allTasks.filter((task) => !task.doDate || task.doDate === null);
+  }
+
+  /**
    * Get calendar events for a specific date
    */
   async getEventsForDate(date: Date): Promise<CalendarEvent[]> {

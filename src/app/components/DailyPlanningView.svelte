@@ -32,9 +32,13 @@
   });
   let todayTasks = $state<Task[]>([]);
   let todayEvents = $state<CalendarEvent[]>([]);
+  let unscheduledTasks = $state<Task[]>([]);
 
   // Planning state - staging changes without modifying actual tasks
   let tasksToMoveToToday = $state<Task[]>([]);
+
+  // Computed state for step 2 - combines existing today tasks with staged tasks
+  let allTodayTasksForStep2 = $derived([...todayTasks, ...tasksToMoveToToday]);
   let finalPlan = $state<{ tasks: Task[]; events: CalendarEvent[] }>({
     tasks: [],
     events: [],
@@ -73,6 +77,9 @@
 
       // Load today's calendar events
       todayEvents = await dailyPlanningExtension.getTodayEvents();
+
+      // Load unscheduled tasks
+      unscheduledTasks = await dailyPlanningExtension.getUnscheduledTasks();
 
       // Initialize final plan with current today's tasks
       finalPlan = {
@@ -288,7 +295,11 @@
         onPrevious={previousStep}
         onCancel={cancelDailyPlanning}
       >
-        <TodayAgendaStep {todayTasks} {todayEvents} />
+        <TodayAgendaStep
+          todayTasks={allTodayTasksForStep2}
+          {todayEvents}
+          {unscheduledTasks}
+        />
       </Step>
     {:else if currentStep === 3}
       <Step

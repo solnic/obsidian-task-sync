@@ -184,10 +184,9 @@ export class ObsidianExtension implements Extension {
 
       // Get current tasks to identify which ones to remove (no longer exist in files)
       const currentState = await new Promise((resolve) => {
-        let unsubscribe: (() => void) | undefined;
-        unsubscribe = taskStore.subscribe((state) => {
+        const unsubscribe = taskStore.subscribe((state) => {
           resolve(state);
-          if (unsubscribe) unsubscribe();
+          unsubscribe();
         });
       });
 
