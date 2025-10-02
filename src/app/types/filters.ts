@@ -1,6 +1,13 @@
 /**
  * Filter system for Obsidian Bases generation
  * Provides a declarative way to build complex filter conditions
+ *
+ * Obsidian Bases uses expression-based filters, not object-based filters.
+ * Filters are JavaScript-like expressions such as:
+ * - file.inFolder("Tasks")
+ * - note["Done"] == false
+ * - note["Priority"] == "High"
+ * - !note.hasProperty("Parent Task") || note["Parent Task"] == null
  */
 
 // ============================================================================
@@ -13,6 +20,7 @@ export interface FilterCondition {
 
 /**
  * Property-based filter (e.g., Done == false, Priority == "High")
+ * Generates expression strings like: note["Property"] == value
  */
 export class PropertyFilter implements FilterCondition {
   constructor(
@@ -30,23 +38,41 @@ export class PropertyFilter implements FilterCondition {
     private value?: any
   ) {}
 
-  toFilterObject(): any {
+  toFilterObject(): string {
+    const propRef = `note["${this.property}"]`;
+
     if (this.operator === "isEmpty") {
-      return { property: this.property, operator: "isEmpty" };
+      // Check if property doesn't exist or is null/empty
+      return `!note.hasProperty("${this.property}") || ${propRef} == null`;
     }
     if (this.operator === "isNotEmpty") {
-      return { property: this.property, operator: "isNotEmpty" };
+      return `note.hasProperty("${this.property}") && ${propRef} != null`;
     }
-    return {
-      property: this.property,
-      operator: this.operator,
-      value: this.value,
-    };
+    if (this.operator === "contains") {
+      // For array properties, use .contains()
+      return `${propRef}.contains(${this.formatValue(this.value)})`;
+    }
+
+    return `${propRef} ${this.operator} ${this.formatValue(this.value)}`;
+  }
+
+  private formatValue(value: any): string {
+    if (typeof value === "string") {
+      return `"${value}"`;
+    }
+    if (typeof value === "boolean" || typeof value === "number") {
+      return String(value);
+    }
+    if (value === null || value === undefined) {
+      return "null";
+    }
+    return JSON.stringify(value);
   }
 }
 
 /**
  * File system-based filter (e.g., folder == "Tasks", name contains "project")
+ * Generates expression strings like: file.inFolder("Tasks")
  */
 export class FileSystemFilter implements FilterCondition {
   constructor(
@@ -55,26 +81,37 @@ export class FileSystemFilter implements FilterCondition {
     private value: string
   ) {}
 
-  toFilterObject(): any {
-    return {
-      file: {
-        [this.target]: {
-          operator: this.operator,
-          value: this.value,
-        },
-      },
-    };
+  toFilterObject(): string {
+    // Use Obsidian's built-in file functions when available
+    if (this.target === "folder" && this.operator === "==") {
+      return `file.inFolder("${this.value}")`;
+    }
+
+    // For other cases, use direct property access
+    const propRef = `file.${this.target}`;
+
+    if (this.operator === "contains") {
+      return `${propRef}.contains("${this.value}")`;
+    }
+    if (this.operator === "startsWith") {
+      return `${propRef}.startsWith("${this.value}")`;
+    }
+    if (this.operator === "endsWith") {
+      return `${propRef}.endsWith("${this.value}")`;
+    }
+
+    return `${propRef} ${this.operator} "${this.value}"`;
   }
 }
 
 /**
- * Custom filter with raw filter object
+ * Custom filter with raw expression string
  */
 export class CustomFilter implements FilterCondition {
-  constructor(private filterObject: any) {}
+  constructor(private expression: string) {}
 
-  toFilterObject(): any {
-    return this.filterObject;
+  toFilterObject(): string {
+    return this.expression;
   }
 }
 
@@ -115,63 +152,63 @@ export class FilterBuilder {
    * Create a filter for non-done items
    */
   static notDone(): PropertyFilter {
-    return new PropertyFilter("DONE", "==", false);
+    return new PropertyFilter("Done", "==", false);
   }
 
   /**
    * Create a filter for done items
    */
   static done(): PropertyFilter {
-    return new PropertyFilter("DONE", "==", true);
+    return new PropertyFilter("Done", "==", true);
   }
 
   /**
    * Create a filter for items without parent tasks
    */
   static noParentTask(): PropertyFilter {
-    return new PropertyFilter("PARENT_TASK", "isEmpty");
+    return new PropertyFilter("Parent Task", "isEmpty");
   }
 
   /**
    * Create a filter for items with a specific parent task
    */
   static childrenOf(parentTaskName: string): PropertyFilter {
-    return new PropertyFilter("PARENT_TASK", "==", parentTaskName);
+    return new PropertyFilter("Parent Task", "==", parentTaskName);
   }
 
   /**
    * Create a filter for items in a specific project
    */
   static inProject(projectName: string): PropertyFilter {
-    return new PropertyFilter("PROJECT", "==", projectName);
+    return new PropertyFilter("Project", "==", projectName);
   }
 
   /**
    * Create a filter for items in a specific area
    */
   static inArea(areaName: string): PropertyFilter {
-    return new PropertyFilter("AREAS", "contains", areaName);
+    return new PropertyFilter("Areas", "contains", areaName);
   }
 
   /**
    * Create a filter for items of a specific category
    */
   static ofCategory(categoryName: string): PropertyFilter {
-    return new PropertyFilter("CATEGORY", "==", categoryName);
+    return new PropertyFilter("Category", "==", categoryName);
   }
 
   /**
    * Create a filter for items with a specific priority
    */
   static withPriority(priorityName: string): PropertyFilter {
-    return new PropertyFilter("PRIORITY", "==", priorityName);
+    return new PropertyFilter("Priority", "==", priorityName);
   }
 
   /**
    * Create a filter for items with a specific status
    */
   static withStatus(statusName: string): PropertyFilter {
-    return new PropertyFilter("STATUS", "==", statusName);
+    return new PropertyFilter("Status", "==", statusName);
   }
 
   /**
@@ -196,9 +233,9 @@ export class FilterBuilder {
   }
 
   /**
-   * Create a custom filter from raw object
+   * Create a custom filter from raw expression string
    */
-  static custom(filterObject: any): CustomFilter {
-    return new CustomFilter(filterObject);
+  static custom(expression: string): CustomFilter {
+    return new CustomFilter(expression);
   }
 }

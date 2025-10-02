@@ -137,6 +137,56 @@ export default class TaskSyncPlugin extends Plugin {
     await taskSyncApp.updateSettings(this.settings);
   }
 
+  /**
+   * Regenerate all base files
+   * Called from settings UI
+   */
+  async regenerateBases(): Promise<void> {
+    try {
+      const { BaseManager } = await import("./app/services/BaseManager");
+      const baseManager = new BaseManager(
+        this.app,
+        this.app.vault,
+        this.settings
+      );
+
+      // Sync project bases if enabled
+      if (this.settings.projectBasesEnabled) {
+        await baseManager.syncProjectBases();
+      }
+
+      console.log("Task Sync: Bases regenerated successfully");
+    } catch (error) {
+      console.error("Task Sync: Failed to regenerate bases:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync area and project bases
+   * Called from settings UI when settings change
+   */
+  async syncAreaProjectBases(): Promise<void> {
+    try {
+      const { BaseManager } = await import("./app/services/BaseManager");
+      const baseManager = new BaseManager(
+        this.app,
+        this.app.vault,
+        this.settings
+      );
+
+      // Sync project bases if enabled
+      if (this.settings.projectBasesEnabled) {
+        await baseManager.syncProjectBases();
+      }
+
+      console.log("Task Sync: Area/Project bases synced successfully");
+    } catch (error) {
+      console.error("Task Sync: Failed to sync area/project bases:", error);
+      throw error;
+    }
+  }
+
   async activateView() {
     const { workspace } = this.app;
     let leaf = workspace.getLeavesOfType("task-sync-main")[0];
