@@ -6,6 +6,7 @@
 import { writable, derived, get, type Readable } from "svelte/store";
 import { Task } from "../core/entities";
 import { generateId } from "../utils/idGenerator";
+import { eventBus } from "../core/events";
 
 interface TaskStoreState {
   tasks: readonly Task[];
@@ -115,6 +116,7 @@ export function createTaskStore(): TaskStore {
     taskData: Omit<Task, "id"> & { naturalKey: string }
   ): Task => {
     let resultTask: Task;
+    let isUpdate = false;
 
     update((state) => {
       // Find existing task by natural key (source.filePath for Obsidian = file path)
@@ -124,6 +126,7 @@ export function createTaskStore(): TaskStore {
 
       if (existingTask) {
         // Update existing task, preserving ID and created timestamp
+        isUpdate = true;
         resultTask = {
           ...taskData,
           id: existingTask.id,
@@ -140,6 +143,7 @@ export function createTaskStore(): TaskStore {
         };
       } else {
         // Create new task with generated ID
+        isUpdate = false;
         resultTask = {
           ...taskData,
           id: generateId(),
@@ -154,6 +158,21 @@ export function createTaskStore(): TaskStore {
         };
       }
     });
+
+    // Emit appropriate event after store update
+    if (isUpdate) {
+      eventBus.trigger({
+        type: "tasks.updated",
+        task: resultTask!,
+        extension: "obsidian",
+      });
+    } else {
+      eventBus.trigger({
+        type: "tasks.created",
+        task: resultTask!,
+        extension: "obsidian",
+      });
+    }
 
     return resultTask!;
   };
