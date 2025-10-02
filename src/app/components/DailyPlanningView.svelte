@@ -204,7 +204,8 @@
       });
 
       // Add tasks to today's daily note and open it
-      await dailyPlanningExtension.addTasksToTodayDailyNote(finalPlan.tasks);
+      // TODO: This should be handled by DailyNoteExtension listening to schedules.updated event
+      // await dailyPlanningExtension.addTasksToTodayDailyNote(finalPlan.tasks);
 
       // Complete the daily planning
       await dailyPlanningExtension.completeDailyPlanning();

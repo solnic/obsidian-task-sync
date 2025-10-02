@@ -7,6 +7,7 @@ import { ObsidianExtension } from "./extensions/ObsidianExtension";
 import { GitHubExtension } from "./extensions/GitHubExtension";
 import { CalendarExtension } from "./extensions/CalendarExtension";
 import { DailyPlanningExtension } from "./extensions/DailyPlanningExtension";
+import { DailyNoteExtension } from "./extensions/DailyNoteExtension";
 import { AppleCalendarService } from "./services/AppleCalendarService";
 import { Host } from "./core/host";
 import type { TaskSyncSettings } from "./types/settings";
@@ -20,6 +21,7 @@ export class TaskSyncApp {
   public githubExtension?: GitHubExtension;
   public calendarExtension?: CalendarExtension;
   public dailyPlanningExtension?: DailyPlanningExtension;
+  public dailyNoteExtension?: DailyNoteExtension;
   private host?: Host;
   private settings: TaskSyncSettings | null = null;
 
@@ -73,6 +75,9 @@ export class TaskSyncApp {
       // Initialize Calendar extension if enabled
       await this.initializeCalendarExtension();
 
+      // Initialize Daily Note extension
+      await this.initializeDailyNoteExtension();
+
       // Initialize Daily Planning extension
       await this.initializeDailyPlanningExtension();
 
@@ -105,6 +110,10 @@ export class TaskSyncApp {
         await this.calendarExtension.load();
       }
 
+      if (this.dailyNoteExtension) {
+        await this.dailyNoteExtension.load();
+      }
+
       if (this.dailyPlanningExtension) {
         await this.dailyPlanningExtension.load();
       }
@@ -127,6 +136,10 @@ export class TaskSyncApp {
 
     if (this.githubExtension) {
       await this.githubExtension.shutdown();
+    }
+
+    if (this.dailyNoteExtension) {
+      await this.dailyNoteExtension.shutdown();
     }
 
     if (this.dailyPlanningExtension) {
@@ -344,6 +357,34 @@ export class TaskSyncApp {
     }
 
     console.log("Calendar extension initialized successfully");
+  }
+
+  /**
+   * Initialize Daily Note extension
+   */
+  private async initializeDailyNoteExtension(): Promise<void> {
+    const obsidianHost = this.host as any;
+    if (!obsidianHost.plugin || !this.settings) {
+      return;
+    }
+
+    console.log("Initializing Daily Note extension...");
+    this.dailyNoteExtension = new DailyNoteExtension(
+      obsidianHost.plugin.app,
+      obsidianHost.plugin,
+      {
+        dailyNotesFolder: this.settings.dailyNotesFolder || "Daily Notes",
+      }
+    );
+
+    await this.dailyNoteExtension.initialize();
+
+    // If app is already loaded, load the extension too
+    if (this.initialized) {
+      await this.dailyNoteExtension.load();
+    }
+
+    console.log("Daily Note extension initialized successfully");
   }
 
   /**

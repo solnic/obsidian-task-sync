@@ -426,4 +426,81 @@ test.describe("Daily Planning Wizard", () => {
       await page.waitForTimeout(2000);
     }
   });
+
+  test("should update daily note when confirming schedule", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create tasks for the daily plan
+    const task1 = await createTask(page, {
+      title: "Daily Note Task 1",
+      description: "First task to add to daily note.",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Daily Note Task 2",
+      description: "Second task to add to daily note.",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Navigate through all steps
+    await page.click('[data-testid="next-button"]'); // Step 1 -> Step 2
+    await page.click('[data-testid="next-button"]'); // Step 2 -> Step 3
+
+    // Confirm the plan
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
+    const confirmButton = page.locator('[data-testid="confirm-button"]');
+    await confirmButton.click();
+    await page.waitForTimeout(2000);
+
+    // Verify daily note was created and contains task links
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // Get the daily note content
+    const dailyNoteContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    // Verify daily note exists
+    expect(dailyNoteContent).toBeTruthy();
+
+    // Verify daily note contains task links
+    expect(dailyNoteContent).toContain("## Tasks");
+    expect(dailyNoteContent).toContain("[[Daily Note Task 1]]");
+    expect(dailyNoteContent).toContain("[[Daily Note Task 2]]");
+
+    // Verify tasks have Do Date set to today
+    const task1File = await page.evaluate(async (title) => {
+      const files = (window as any).app.vault.getMarkdownFiles();
+      const taskFile = files.find((f: any) => f.basename === title);
+      if (!taskFile) return null;
+      const content = await (window as any).app.vault.read(taskFile);
+      return content;
+    }, "Daily Note Task 1");
+
+    expect(task1File).toContain(`Do Date: ${todayString}`);
+  });
 });
