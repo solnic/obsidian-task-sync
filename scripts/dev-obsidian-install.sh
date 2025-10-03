@@ -111,6 +111,23 @@ install_plugin() {
     return 0
 }
 
+# Function to copy files only (for watch mode)
+copy_plugin_files() {
+    # Create plugin directory
+    mkdir -p "$PLUGIN_DIR"
+
+    # Copy plugin files
+    echo "📋 Copying plugin files..."
+    cp main.js "$PLUGIN_DIR/" 2>/dev/null || echo "⚠️ main.js not found"
+    cp manifest.json "$PLUGIN_DIR/" 2>/dev/null || echo "⚠️ manifest.json not found"
+    cp styles.css "$PLUGIN_DIR/" 2>/dev/null || echo "⚠️ styles.css not found"
+
+    echo "✅ Plugin files copied!"
+    echo "📍 Plugin location: $PLUGIN_DIR"
+
+    return 0
+}
+
 # Function to enable plugin in Obsidian
 enable_plugin() {
     local community_plugins_file="$VAULT_PATH/.obsidian/community-plugins.json"
@@ -174,31 +191,65 @@ if [ "$WATCH_MODE" = true ]; then
     echo "⏹️  Press Ctrl+C to stop watching"
     echo ""
 
-    # Use npm's built-in watch functionality with a custom script
-    # We'll use nodemon or a simple file watcher
-    if command -v nodemon &> /dev/null; then
-        echo "📡 Using nodemon for file watching..."
-        nodemon --watch src --ext ts,js,json,css --exec "bash -c 'echo \"🔄 Files changed, rebuilding...\" && install_plugin'" --quiet
-    elif command -v fswatch &> /dev/null; then
-        echo "📡 Using fswatch for file watching..."
-        fswatch -o src/ | while read f; do
-            echo "🔄 Files changed, rebuilding..."
-            install_plugin
+    # Start esbuild in watch mode in the background
+    echo "🚀 Starting esbuild watch mode..."
+    npm run dev &
+    ESBUILD_PID=$!
+
+    # Give esbuild a moment to start
+    sleep 2
+
+    # Function to cleanup on exit
+    cleanup() {
+        echo ""
+        echo "🛑 Stopping watch mode..."
+        kill $ESBUILD_PID 2>/dev/null || true
+        exit 0
+    }
+
+    # Set up signal handlers
+    trap cleanup SIGINT SIGTERM
+
+    # Watch for changes to built files and copy them
+    if command -v fswatch &> /dev/null; then
+        echo "📡 Using fswatch to monitor built files..."
+        # Use fswatch to monitor the built files
+        # -o: print only file counts, -1: exit after first event batch
+        fswatch -o main.js styles.css manifest.json 2>/dev/null | while read f; do
+            echo "🔄 Built files changed, copying to plugin directory..."
+            copy_plugin_files
         done
     else
-        echo "📡 Using simple polling watch..."
-        # Simple polling-based watch
-        LAST_CHANGE=$(find src -type f -name "*.ts" -o -name "*.js" -o -name "*.json" -o -name "*.css" | xargs stat -c %Y 2>/dev/null | sort -n | tail -1)
+        echo "📡 Using simple polling to monitor built files..."
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            echo "💡 For better performance on macOS, install fswatch: brew install fswatch"
+        fi
+        # Simple polling-based watch for built files
+        # Cross-platform stat command (Linux uses -c %Y, macOS uses -f %m)
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            STAT_CMD="stat -f %m"
+        else
+            STAT_CMD="stat -c %Y"
+        fi
+
+        LAST_MAIN_CHANGE=$($STAT_CMD main.js 2>/dev/null || echo "0")
+        LAST_STYLES_CHANGE=$($STAT_CMD styles.css 2>/dev/null || echo "0")
+        LAST_MANIFEST_CHANGE=$($STAT_CMD manifest.json 2>/dev/null || echo "0")
 
         while true; do
-            sleep 2
-            CURRENT_CHANGE=$(find src -type f -name "*.ts" -o -name "*.js" -o -name "*.json" -o -name "*.css" | xargs stat -c %Y 2>/dev/null | sort -n | tail -1)
+            sleep 1
+            CURRENT_MAIN_CHANGE=$($STAT_CMD main.js 2>/dev/null || echo "0")
+            CURRENT_STYLES_CHANGE=$($STAT_CMD styles.css 2>/dev/null || echo "0")
+            CURRENT_MANIFEST_CHANGE=$($STAT_CMD manifest.json 2>/dev/null || echo "0")
 
-            if [ "$CURRENT_CHANGE" != "$LAST_CHANGE" ]; then
-                echo "🔄 Files changed, rebuilding..."
-                if install_plugin; then
-                    LAST_CHANGE=$CURRENT_CHANGE
-                fi
+            if [ "$CURRENT_MAIN_CHANGE" != "$LAST_MAIN_CHANGE" ] || \
+               [ "$CURRENT_STYLES_CHANGE" != "$LAST_STYLES_CHANGE" ] || \
+               [ "$CURRENT_MANIFEST_CHANGE" != "$LAST_MANIFEST_CHANGE" ]; then
+                echo "🔄 Built files changed, copying to plugin directory..."
+                copy_plugin_files
+                LAST_MAIN_CHANGE=$CURRENT_MAIN_CHANGE
+                LAST_STYLES_CHANGE=$CURRENT_STYLES_CHANGE
+                LAST_MANIFEST_CHANGE=$CURRENT_MANIFEST_CHANGE
             fi
         done
     fi

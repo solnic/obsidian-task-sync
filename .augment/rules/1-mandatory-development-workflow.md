@@ -4,19 +4,6 @@ type: "always_apply"
 
 # 🚨 MANDATORY WORKFLOW - NEVER VIOLATE 🚨
 
-## CRITICAL FIRST RESPONSE TO ANY REQUEST
-**Your IMMEDIATE first action for ANY development request:**
-
-```
-I need to check current branch and break this down into individual tasks.
-
-[Check current branch - only create topic branch if on main/master]
-[Create individual tasks in Augment's task system - do NOT list them in text]
-[Start working on FIRST task only]
-```
-
-**NEVER create text task lists. NEVER work on multiple things at once.**
-
 ## STEP-BY-STEP MANDATORY WORKFLOW
 
 ### STEP 1: IMMEDIATE SETUP (BEFORE ANYTHING ELSE)
@@ -28,6 +15,8 @@ I need to check current branch and break this down into individual tasks.
 ```
 
 ### STEP 2: FOR EACH INDIVIDUAL TASK
+
+### WHEN FIXING A BUG OR IMPLEMENTING A NEW FEATURE
 ```
 1. Examine existing test patterns for this specific task
 2. Write ONE failing test following existing patterns
@@ -40,6 +29,13 @@ I need to check current branch and break this down into individual tasks.
 9. Squash the two commits into one final commit
 10. Mark task complete in task system
 11. Move to next task
+```
+
+### WHEN PERFORMING A REFACTORING
+```
+1. Perform refactoring
+2. Run all tests
+3. Commit changes IF tests are passing
 ```
 
 ### STEP 3: COMMIT DISCIPLINE FOR EACH TASK

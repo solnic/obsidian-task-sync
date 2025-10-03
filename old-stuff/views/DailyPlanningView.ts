@@ -1,0 +1,94 @@
+/**
+ * Daily Planning View Component
+ * Custom ItemView wrapper for the Svelte DailyPlanningView component
+ */
+
+import { ItemView, WorkspaceLeaf } from "obsidian";
+import DailyPlanningViewSvelte from "../components/svelte/DailyPlanningView.svelte";
+import { mount, unmount } from "svelte";
+import { AppleCalendarService } from "../services/AppleCalendarService";
+import { DailyNoteService } from "../services/DailyNoteService";
+import { TaskSyncSettings } from "../main-old";
+import { setDailyPlanningMode } from "../components/svelte/context";
+
+export const DAILY_PLANNING_VIEW_TYPE = "daily-planning";
+
+export class DailyPlanningView extends ItemView {
+  private svelteComponent: any = null;
+  private appleCalendarService: AppleCalendarService;
+  private dailyNoteService: DailyNoteService;
+  private settings: {
+    appleCalendarIntegration: TaskSyncSettings["integrations"]["appleCalendar"];
+  };
+
+  constructor(
+    leaf: WorkspaceLeaf,
+    appleCalendarService: AppleCalendarService,
+    dailyNoteService: DailyNoteService,
+    settings: {
+      appleCalendarIntegration: TaskSyncSettings["integrations"]["appleCalendar"];
+    }
+  ) {
+    super(leaf);
+    this.appleCalendarService = appleCalendarService;
+    this.dailyNoteService = dailyNoteService;
+    this.settings = settings;
+  }
+
+  getViewType(): string {
+    return DAILY_PLANNING_VIEW_TYPE;
+  }
+
+  getDisplayText(): string {
+    return "Daily Planning";
+  }
+
+  getIcon(): string {
+    return "calendar-days";
+  }
+
+  async onOpen(): Promise<void> {
+    this.containerEl.empty();
+    this.containerEl.addClass("daily-planning-view");
+    this.containerEl.setAttribute("data-type", DAILY_PLANNING_VIEW_TYPE);
+
+    // Set daily planning mode to true in the context store
+    setDailyPlanningMode(true);
+
+    // Mount Svelte 5 component
+    this.svelteComponent = mount(DailyPlanningViewSvelte, {
+      target: this.containerEl,
+      props: {
+        appleCalendarService: this.appleCalendarService,
+        dailyNoteService: this.dailyNoteService,
+      },
+      context: new Map([
+        [
+          "task-sync-plugin",
+          {
+            plugin: (window as any).app?.plugins?.plugins?.[
+              "obsidian-task-sync"
+            ],
+          },
+        ],
+      ]),
+    });
+  }
+
+  async onClose(): Promise<void> {
+    // Only set daily planning mode to false if no other Daily Planning views are open
+    const dailyPlanningLeaves = this.app.workspace.getLeavesOfType(
+      DAILY_PLANNING_VIEW_TYPE
+    );
+    if (dailyPlanningLeaves.length <= 1) {
+      // This is the last (or only) Daily Planning view being closed
+      setDailyPlanningMode(false);
+    }
+
+    // Unmount Svelte 5 component
+    if (this.svelteComponent) {
+      unmount(this.svelteComponent);
+      this.svelteComponent = null;
+    }
+  }
+}

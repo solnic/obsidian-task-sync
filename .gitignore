@@ -4,16 +4,14 @@ styles.css
 
 .obsidian-unpacked/
 
-e2e/test-environments/*
-e2e/debug/*
+tests/e2e/debug/*
+tests/e2e/results.json
+tests/e2e/test-environments/*
 
 tests/vault/Test/articles
 tests/vault/Test/.obsidian/workspace.json
 tests/vault/Test/.obsidian/plugins/ghost-sync/data.json
 
-e2e-test-results.json
-dev-test-vault/
-test-results/
 .last-run.json
 playwright-report/
 coverage/

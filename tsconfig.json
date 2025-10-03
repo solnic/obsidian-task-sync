@@ -21,12 +21,13 @@
     ]
   },
   "include": [
-    "**/*.ts"
+    "src/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "tmp/**/*",
-    "e2e/**/*",
-    "tests/**/*"
+    "tests/e2e/**/*",
+    "tests/**/*",
+    "old-stuff/**/*"
   ]
 }

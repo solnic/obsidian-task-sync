@@ -1,5 +1,4 @@
 import { defineConfig, devices } from "@playwright/test";
-import * as path from "path";
 import * as os from "os";
 
 /**
@@ -11,14 +10,14 @@ const isCI = process.env.CI === "true";
 
 export default defineConfig({
   // Test directory
-  testDir: "./e2e/specs/playwright",
+  testDir: "./tests/e2e/specs/playwright",
 
   // Test file patterns
   testMatch: "**/*.e2e.ts",
 
   // Global setup and teardown
-  globalSetup: require.resolve("./e2e/global-setup.ts"),
-  globalTeardown: require.resolve("./e2e/global-teardown.ts"),
+  globalSetup: require.resolve("./tests/e2e/global-setup.ts"),
+  globalTeardown: require.resolve("./tests/e2e/global-teardown.ts"),
 
   // Timeout configuration
   timeout: isCI ? 30000 : 10000,
@@ -35,7 +34,7 @@ export default defineConfig({
   // Reporter configuration
   reporter: [
     ["list"],
-    ["json", { outputFile: "e2e-test-results.json" }],
+    ["json", { outputFile: "./tests/e2e/results.json" }],
     ["html", { open: "never" }],
   ],
 
@@ -64,7 +63,7 @@ export default defineConfig({
   // Global helpers are imported directly in test files
 
   // Output directory for test artifacts
-  outputDir: "./e2e/debug/test-results",
+  outputDir: "./tests/e2e/debug/test-results",
 
   // Projects configuration (we only need one for Electron)
   projects: [

@@ -815,7 +815,7 @@ Provides consistent styling for all UI components
 
 .task-sync-tab-content {
   flex: 1;
-  padding: 12px;
+  padding: 8px 12px 12px 8px;
 }
 
 /* Info Box Styles */
@@ -988,7 +988,8 @@ Provides consistent styling for all UI components
   flex-wrap: wrap;
 }
 
-.task-sync-filter-group {
+/* This is for old-style filter groups, NOT the new filter section */
+.task-sync-filters .task-sync-filter-group {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -2018,8 +2019,6 @@ Provides consistent styling for all UI components
   background: var(--background-primary);
 }
 
-
-
 /* Main content */
 .task-sync-main-content {
   flex: 1;
@@ -2384,11 +2383,11 @@ Provides consistent styling for all UI components
 .task-sync-task-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .task-sync-task-list-item {
-  padding: 12px;
+  padding: 10px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   background: var(--background-primary);
@@ -2396,11 +2395,17 @@ Provides consistent styling for all UI components
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  margin-bottom: 6px;
+}
+
+.task-sync-task-list-item:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-primary-alt);
 }
 
 .task-sync-task-list-item.hovered {
-  background: var(--background-modifier-hover);
-  border-color: var(--background-modifier-border-hover);
+  border-color: var(--interactive-accent);
+  background: var(--background-primary-alt);
 }
 
 .task-sync-task-list-item.imported {
@@ -2610,28 +2615,48 @@ Provides consistent styling for all UI components
 /* Combined scheduled and imported - gradient border with radius */
 .task-sync-task-list-item.scheduled-and-imported {
   border: 1px solid transparent !important;
-  background:
-    linear-gradient(var(--background-primary), var(--background-primary)) padding-box,
-    linear-gradient(to top, var(--interactive-accent) 0%, var(--color-blue) 100%) border-box !important;
+  background: linear-gradient(
+        var(--background-primary),
+        var(--background-primary)
+      )
+      padding-box,
+    linear-gradient(
+        to top,
+        var(--interactive-accent) 0%,
+        var(--color-blue) 100%
+      )
+      border-box !important;
   border-radius: 6px !important;
 }
 
 /* Ensure hover state also uses proper background for gradient border */
 .task-sync-task-list-item.scheduled-and-imported:hover {
-  background:
-    linear-gradient(var(--background-primary-alt), var(--background-primary-alt)) padding-box,
-    linear-gradient(to top, var(--interactive-accent) 0%, var(--color-blue) 100%) border-box !important;
+  background: linear-gradient(
+        var(--background-primary-alt),
+        var(--background-primary-alt)
+      )
+      padding-box,
+    linear-gradient(
+        to top,
+        var(--interactive-accent) 0%,
+        var(--color-blue) 100%
+      )
+      border-box !important;
 }
 
 /* Add left border emphasis for gradient case */
 .task-sync-task-list-item.scheduled-and-imported::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
   width: 3px;
   height: 100%;
-  background: linear-gradient(to top, var(--interactive-accent) 0%, var(--color-blue) 100%);
+  background: linear-gradient(
+    to top,
+    var(--interactive-accent) 0%,
+    var(--color-blue) 100%
+  );
   border-radius: 6px 0 0 6px;
   z-index: 1;
 }
@@ -2659,8 +2684,6 @@ Provides consistent styling for all UI components
   outline-offset: 2px;
 }
 
-
-
 .add-to-today-button,
 .open-task-button {
   padding: 8px 16px;
@@ -2678,18 +2701,6 @@ Provides consistent styling for all UI components
 .open-task-button:hover {
   background: var(--interactive-accent-hover);
   border-color: var(--interactive-accent-hover);
-}
-
-/* Service Switcher Styles */
-.service-switcher-vertical {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 8px;
-  background: var(--background-secondary);
-  border-left: 1px solid var(--background-modifier-border);
-  width: 48px;
-  flex-shrink: 0;
 }
 
 .service-button-vertical {
@@ -2777,7 +2788,7 @@ Provides consistent styling for all UI components
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 8px;
+  padding: 0 0 0 12px;
   background: var(--background-secondary);
   border-left: 1px solid var(--background-modifier-border);
   width: 48px;
@@ -2821,11 +2832,6 @@ Provides consistent styling for all UI components
   flex-shrink: 0;
 }
 
-.service-icon[data-icon="github"]::before {
-  content: "🐙";
-  font-size: 16px;
-}
-
 /* Service Content */
 .service-content {
   flex: 1;
@@ -2836,7 +2842,8 @@ Provides consistent styling for all UI components
   padding: 0;
 }
 
-.github-service {
+/* Generic service container for all service views */
+.task-sync-service-container {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -2844,30 +2851,6 @@ Provides consistent styling for all UI components
   padding: 0;
   overflow: hidden;
 }
-
-.local-tasks-service {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  max-height: 100%;
-  padding: 0;
-  overflow: hidden;
-}
-
-/* GitHub Issues View Styles */
-
-.github-issues-view {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 0;
-  min-height: 0; /* Allow flex child to shrink */
-  overflow: hidden; /* Prevent content from overflowing */
-}
-
-
-
-
 
 .task-sync-tab-header {
   display: flex;
@@ -2962,14 +2945,6 @@ button.tab-item.active {
   font-size: 12px;
 }
 
-/* Unified Task Service Header Styles */
-.local-tasks-header,
-.apple-reminders-header,
-.github-service-header,
-.task-service-header {
-  margin-bottom: 1rem;
-}
-
 /* LocalTasks Unified Header - matches ContextWidget styling */
 .local-tasks-unified-header {
   display: flex;
@@ -3019,62 +2994,44 @@ button.tab-item.active {
   padding-bottom: 8px;
 }
 
-.search-and-filters {
+/* Service headers - add spacing between groups */
+.task-sync-service-container header {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.task-sync-filter-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
   padding: 16px 0;
 }
 
-/* Filter rows */
-.task-sync-filter-row {
+/* 2. Primary filters - Org/Repo (GitHub) or Project/Area/Source (Local) */
+.primary-filters {
   display: flex;
-  gap: 16px;
-  align-items: center;
-  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.task-sync-filter-row--primary {
-  /* Toggle buttons row */
-  gap: 16px;
-}
-
-.task-sync-filter-row--secondary {
-  /* Dropdown filters row */
-  gap: 16px;
-}
-
-/* Filter groups */
-.task-sync-filter-group {
-  display: flex;
-}
-
-.task-sync-filter-group--type,
-.task-sync-filter-group--state {
-  /* Toggle button groups */
-  flex-shrink: 0;
-}
-
-.task-sync-filter-group--org,
-.task-sync-filter-group--repo,
-.task-sync-filter-group--dropdown {
-  /* Dropdown filter groups */
+.primary-filters > * {
   flex: 1;
-  min-width: 200px;
+  min-width: 0; /* Allow flex items to shrink below content size */
 }
 
-/* Local tasks filters - simple horizontal layout */
-.task-sync-local-filters {
+/* 3. Secondary filters row 1 - Issues/PRs + Open/Closed (GitHub) or Show completed (Local) */
+.secondary-filters-row-1 {
   display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-  padding: 16px 0;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+/* 4. Secondary filters row 2 - Labels + Assigned to me (GitHub only) */
+.secondary-filters-row-2 {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+/* 5. Sort section - add separator line above */
+.github-service-header > .task-sync-sort-dropdown,
+.local-tasks-header > .task-sync-sort-dropdown {
+  padding-top: 12px;
+  border-top: 1px solid var(--background-modifier-border);
 }
 
 /* Filter Toggle Buttons - unified style for type and state filters */
@@ -3326,10 +3283,7 @@ button.tab-item.active {
   font-weight: 500;
 }
 
-
-
 @keyframes pulse {
-
   0%,
   100% {
     opacity: 1;
