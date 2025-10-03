@@ -101,10 +101,15 @@
     ...tasksToMoveToToday,
   ]);
 
-  // Use $derived to compute final plan
+  // Use $derived to compute final plan (excludes tasks staged for unscheduling)
   let finalPlan = $derived.by(() => {
+    // Filter out tasks that are staged for unscheduling
+    const finalTasks = allTodayTasksForStep2.filter(
+      (task) => !stagedChanges.toUnschedule.has(task.id)
+    );
+
     return {
-      tasks: allTodayTasksForStep2,
+      tasks: finalTasks,
       events: todayEvents,
     };
   });
@@ -208,6 +213,7 @@
         await dailyPlanningExtension.ensureTodayScheduleExists();
 
       // Update the schedule with the final plan (tasks and events)
+      // This will trigger the DailyNoteFeature to automatically update the daily note
       const scheduleOperations = new (
         await import("../entities/Schedules")
       ).Schedules.Operations();

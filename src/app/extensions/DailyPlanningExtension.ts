@@ -3,7 +3,7 @@
  * Manages Schedule entities and provides daily planning wizard functionality
  */
 
-import { Plugin, TFile } from "obsidian";
+import { TFile } from "obsidian";
 import {
   Extension,
   extensionRegistry,
