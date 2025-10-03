@@ -30,6 +30,8 @@ import {
   getTodayTasksGrouped,
   getDateString,
 } from "../utils/dateFiltering";
+import { ObsidianHost } from "../hosts/ObsidianHost";
+import { obsidianOperations } from "../entities/Obsidian";
 
 export interface DailyPlanningExtensionSettings {
   enabled: boolean;
@@ -44,8 +46,9 @@ export class DailyPlanningExtension implements Extension {
   readonly supportedEntities: readonly EntityType[] = ["schedule"];
 
   private initialized = false;
-  private plugin: Plugin;
   private settings: TaskSyncSettings;
+
+  public host: ObsidianHost;
 
   // Schedule operations
   public schedules: EntityOperations<Schedule>;
@@ -65,9 +68,9 @@ export class DailyPlanningExtension implements Extension {
     toUnschedule: new Set(),
   });
 
-  constructor(settings: TaskSyncSettings, plugin: Plugin) {
+  constructor(settings: TaskSyncSettings, host: ObsidianHost) {
     this.settings = settings;
-    this.plugin = plugin;
+    this.host = host;
     this.schedules = new Schedules.Operations();
 
     // Calendar extension will be set during initialization
@@ -116,10 +119,6 @@ export class DailyPlanningExtension implements Extension {
         "calendar"
       ) as CalendarExtension;
 
-      // Load any persisted schedule data
-      // This would typically load from plugin storage
-      await this.loadPersistedSchedules();
-
       // Auto-create today's schedule if enabled
       const extensionSettings = this.getExtensionSettings();
       if (extensionSettings.autoCreateDailySchedules) {
@@ -138,6 +137,10 @@ export class DailyPlanningExtension implements Extension {
       console.error("Failed to load DailyPlanningExtension:", error);
       throw error;
     }
+  }
+
+  async refresh(): Promise<void> {
+    // No-op for this extension
   }
 
   async shutdown(): Promise<void> {
@@ -185,10 +188,6 @@ export class DailyPlanningExtension implements Extension {
     // Daily Planning Extension doesn't manage tasks directly
     // It works with schedules that contain tasks
     return derived(scheduleStore, () => []);
-  }
-
-  async refresh(): Promise<void> {
-    await this.loadPersistedSchedules();
   }
 
   searchTasks(_query: string, _tasks: readonly Task[]): readonly Task[] {
@@ -633,12 +632,6 @@ export class DailyPlanningExtension implements Extension {
     };
   }
 
-  private async loadPersistedSchedules(): Promise<void> {
-    // TODO: Implement loading from plugin storage
-    // This would load schedule persistence data and restore schedules
-    console.log("Loading persisted schedules...");
-  }
-
   private async persistSchedules(): Promise<void> {
     // TODO: Implement saving to plugin storage
     // This would save current schedule state to plugin data
@@ -695,26 +688,37 @@ export class DailyPlanningExtension implements Extension {
 
       // Check if the daily note already exists
       const existingFile =
-        this.plugin.app.vault.getAbstractFileByPath(dailyNotePath);
+        this.host.plugin.app.vault.getAbstractFileByPath(dailyNotePath);
 
       if (!existingFile) {
         // Ensure the daily notes folder exists
         const folderExists =
-          this.plugin.app.vault.getAbstractFileByPath(dailyNotesFolder);
+          this.host.plugin.app.vault.getAbstractFileByPath(dailyNotesFolder);
         if (!folderExists) {
-          await this.plugin.app.vault.createFolder(dailyNotesFolder);
+          await this.host.plugin.app.vault.createFolder(dailyNotesFolder);
         }
 
         // Create the daily note with basic content
         const content = this.generateDailyNoteContent(dateString);
-        await this.plugin.app.vault.create(dailyNotePath, content);
+        await this.host.plugin.app.vault.create(dailyNotePath, content);
       }
 
       // Open the daily note
-      await this.plugin.app.workspace.openLinkText(dailyNotePath, "", false);
+      await this.host.plugin.app.workspace.openLinkText(
+        dailyNotePath,
+        "",
+        false
+      );
     } catch (error) {
       console.error("Failed to ensure and open today's daily note:", error);
     }
+  }
+
+  /**
+   * Open today's daily note (public method for external use)
+   */
+  async openTodayDailyNote(): Promise<void> {
+    await this.ensureAndOpenTodayDailyNote();
   }
 
   /**
@@ -747,14 +751,14 @@ export class DailyPlanningExtension implements Extension {
 
       // Get the daily note file
       const dailyNoteFile =
-        this.plugin.app.vault.getAbstractFileByPath(dailyNotePath);
+        this.host.plugin.app.vault.getAbstractFileByPath(dailyNotePath);
       if (!dailyNoteFile || !(dailyNoteFile instanceof TFile)) {
         console.error("Daily note file not found or invalid");
         return;
       }
 
       // Read current content
-      const currentContent = await this.plugin.app.vault.read(
+      const currentContent = await this.host.plugin.app.vault.read(
         dailyNoteFile as any
       );
 
@@ -795,14 +799,18 @@ export class DailyPlanningExtension implements Extension {
           updatedContent = currentContent + tasksSection;
         }
 
-        await this.plugin.app.vault.modify(
+        await this.host.plugin.app.vault.modify(
           dailyNoteFile as any,
           updatedContent
         );
       }
 
       // Open and focus on today's daily note
-      await this.plugin.app.workspace.openLinkText(dailyNotePath, "", true);
+      await this.host.plugin.app.workspace.openLinkText(
+        dailyNotePath,
+        "",
+        true
+      );
     } catch (error) {
       console.error("Failed to add tasks to today's daily note:", error);
     }
@@ -811,33 +819,7 @@ export class DailyPlanningExtension implements Extension {
   /**
    * Set the Do Date property in a task's front-matter
    */
-  private async setTaskDoDate(task: Task, date: Date): Promise<void> {
-    try {
-      if (!task.source?.filePath) return;
-
-      const taskFile = this.plugin.app.vault.getAbstractFileByPath(
-        task.source.filePath
-      );
-      if (!taskFile || !(taskFile instanceof TFile)) {
-        return;
-      }
-
-      const dateString = getDateString(date); // YYYY-MM-DD format in local timezone
-
-      await this.plugin.app.fileManager.processFrontMatter(
-        taskFile as any,
-        (frontmatter) => {
-          // Only set Do Date if it's not already set or if it's different from today
-          if (
-            !frontmatter["Do Date"] ||
-            frontmatter["Do Date"] !== dateString
-          ) {
-            frontmatter["Do Date"] = dateString;
-          }
-        }
-      );
-    } catch (error) {
-      console.error("Failed to set task Do Date:", error);
-    }
+  private async setTaskDoDate(task: Task, date: Date): Promise<Task> {
+    return await obsidianOperations.tasks.update({ ...task, doDate: date });
   }
 }

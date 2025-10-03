@@ -84,6 +84,15 @@ export abstract class Host {
   abstract openFile(entity: Area | Project | Task): Promise<void>;
 
   /**
+   * Show a notice to the user.
+   * For ObsidianHost, this uses Obsidian's Notice API.
+   *
+   * @param message - The message to display
+   * @param duration - Duration in milliseconds (default: 5000)
+   */
+  abstract showNotice(message: string, duration?: number): void;
+
+  /**
    * Lifecycle callback that runs when TaskSync initializes in the host environment.
    * This is where the host can perform any necessary setup operations.
    *

@@ -367,7 +367,7 @@ export class TaskSyncApp {
     console.log("Initializing Daily Planning extension...");
     this.dailyPlanningExtension = new DailyPlanningExtension(
       this.settings,
-      obsidianHost.plugin
+      obsidianHost
     );
 
     await this.dailyPlanningExtension.initialize();

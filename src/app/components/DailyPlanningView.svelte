@@ -189,11 +189,17 @@
         throw new Error("Daily planning extension not available");
       }
 
-      // Apply all staged changes (this will move tasks and update schedules)
+      // Apply all staged changes first (this will schedule/unschedule tasks)
       await dailyPlanningExtension.applyStaging();
 
+      // Filter tasksToMoveToToday to exclude tasks that were staged for unscheduling
+      // This prevents re-scheduling tasks that the user explicitly unscheduled
+      const tasksToActuallyMove = tasksToMoveToToday.filter(
+        (task) => !stagedChanges.toUnschedule.has(task.id)
+      );
+
       // Apply all the planned task movements from the wizard
-      for (const task of tasksToMoveToToday) {
+      for (const task of tasksToActuallyMove) {
         await dailyPlanningExtension.moveTaskToTodayImmediate(task);
       }
 
@@ -215,11 +221,21 @@
       // Complete the daily planning
       await dailyPlanningExtension.completeDailyPlanning();
 
-      // Show success message
-      alert("Daily plan confirmed successfully!");
+      // Get the host to show notice and open daily note
+      const host = dailyPlanningExtension.host;
+
+      // Show success notice
+      host.showNotice(
+        "Daily plan confirmed successfully! Opening today's note..."
+      );
+
+      // Open today's daily note
+      await dailyPlanningExtension.openTodayDailyNote();
 
       // Close the daily planning view
-      // TODO: Implement proper view closing mechanism
+      if (onClose) {
+        onClose();
+      }
     } catch (err: any) {
       console.error("Error confirming plan:", err);
       error = err.message || "Failed to confirm plan";

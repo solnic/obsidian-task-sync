@@ -44,14 +44,16 @@ export class ObsidianExtension implements Extension {
   ];
 
   private initialized = false;
-  private areaOperations: ObsidianAreaOperations;
-  private projectOperations: ObsidianProjectOperations;
-  readonly taskOperations: ObsidianTaskOperations;
   private vaultEventRefs: EventRef[] = [];
-  private taskTodoMarkdownProcessor?: TaskTodoMarkdownProcessor;
-  private markdownProcessor?: MarkdownPostProcessor;
   private baseManager: ObsidianBaseManager;
   private dailyNoteFeature: DailyNoteFeature;
+
+  private taskTodoMarkdownProcessor?: TaskTodoMarkdownProcessor;
+  private markdownProcessor?: MarkdownPostProcessor;
+
+  readonly areaOperations: ObsidianAreaOperations;
+  readonly projectOperations: ObsidianProjectOperations;
+  readonly taskOperations: ObsidianTaskOperations;
 
   constructor(
     private app: App,

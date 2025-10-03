@@ -8,6 +8,7 @@
  */
 
 import { Host } from "../core/host";
+import { Notice } from "obsidian";
 import { TaskSyncSettings, DEFAULT_SETTINGS } from "../types/settings";
 import { Area, Project, Task } from "../core/entities";
 import { Extension, extensionRegistry } from "../core/extension";
@@ -44,8 +45,9 @@ interface ObsidianPlugin {
  * note system.
  */
 export class ObsidianHost extends Host {
-  constructor(private plugin: ObsidianPlugin) {
+  constructor(readonly plugin: ObsidianPlugin) {
     super();
+    this.plugin = plugin;
   }
 
   /**
@@ -200,6 +202,16 @@ export class ObsidianHost extends Host {
     }
 
     await this.openFileByPath(entity.source.filePath);
+  }
+
+  /**
+   * Show a notice to the user.
+   *
+   * @param message - The message to display
+   * @param duration - Duration in milliseconds (default: 5000)
+   */
+  showNotice(message: string, duration: number = 5000): void {
+    new Notice(message, duration);
   }
 
   /**
