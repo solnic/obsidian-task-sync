@@ -6,9 +6,16 @@
 import { App } from "obsidian";
 import { Project } from "../core/entities";
 import { ObsidianEntityOperations } from "./ObsidianEntityOperations";
+import { BaseManager } from "../services/BaseManager";
+import type { TaskSyncSettings } from "../types/settings";
 
 export class ObsidianProjectOperations extends ObsidianEntityOperations<Project> {
-  constructor(app: App, folder: string) {
+  constructor(
+    app: App,
+    folder: string,
+    private baseManager?: BaseManager,
+    private settings?: TaskSyncSettings
+  ) {
     super(app, folder);
   }
 
@@ -30,5 +37,68 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
 
   protected getEntityType(): string {
     return "Project";
+  }
+
+  /**
+   * Override createNote to include base generation
+   * This makes base generation synchronous with note creation, improving performance
+   */
+  async createNote(project: Project): Promise<void> {
+    // First create the note using parent implementation
+    await super.createNote(project);
+
+    // Then generate the base file if enabled
+    await this.generateBaseForProject(project);
+  }
+
+  /**
+   * Override updateNote to include base regeneration
+   * This ensures bases stay in sync when projects are updated
+   */
+  async updateNote(project: Project): Promise<void> {
+    // First update the note using parent implementation
+    await super.updateNote(project);
+
+    // Then regenerate the base file if enabled
+    await this.generateBaseForProject(project);
+  }
+
+  /**
+   * Generate base file for a project
+   * Only generates if base manager is available, bases are enabled, and auto-sync is on
+   */
+  private async generateBaseForProject(project: Project): Promise<void> {
+    // Check if base generation is enabled and configured
+    if (
+      !this.baseManager ||
+      !this.settings?.projectBasesEnabled ||
+      !this.settings?.autoSyncAreaProjectBases
+    ) {
+      return;
+    }
+
+    // Check if project has the required filePath
+    if (!project.source?.filePath) {
+      console.warn(
+        `Cannot generate base for project "${project.name}": missing filePath`
+      );
+      return;
+    }
+
+    try {
+      const projectInfo = {
+        name: project.name,
+        path: project.source.filePath,
+        type: "project" as const,
+      };
+
+      console.log(`Generating base for project: ${project.name}`);
+      await this.baseManager.createOrUpdateProjectBase(projectInfo);
+    } catch (error) {
+      console.error(
+        `Failed to generate base for project "${project.name}":`,
+        error
+      );
+    }
   }
 }

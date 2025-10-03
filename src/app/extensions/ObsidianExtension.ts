@@ -33,20 +33,6 @@ export interface ObsidianExtensionSettings {
   autoSyncAreaProjectBases: boolean;
 }
 
-// Type definitions for project events
-interface ProjectCreatedEvent {
-  type: "projects.created";
-  project: Project;
-  extension?: string;
-}
-
-interface ProjectUpdatedEvent {
-  type: "projects.updated";
-  project: Project;
-  changes?: Partial<Project>;
-  extension?: string;
-}
-
 export class ObsidianExtension implements Extension {
   readonly id = "obsidian";
   readonly name = "Obsidian Vault";
@@ -73,11 +59,19 @@ export class ObsidianExtension implements Extension {
     private settings: ObsidianExtensionSettings,
     private fullSettings: TaskSyncSettings
   ) {
+    // Initialize base manager first so it can be passed to operations
+    this.baseManager = new BaseManager(app, app.vault, fullSettings);
+
     this.areaOperations = new ObsidianAreaOperations(app, settings.areasFolder);
+
+    // Pass base manager and settings to project operations for inline base generation
     this.projectOperations = new ObsidianProjectOperations(
       app,
-      settings.projectsFolder
+      settings.projectsFolder,
+      this.baseManager,
+      fullSettings
     );
+
     this.taskOperations = new ObsidianTaskOperations(app, settings.tasksFolder);
 
     // Initialize markdown processor
@@ -85,9 +79,6 @@ export class ObsidianExtension implements Extension {
       app,
       fullSettings
     );
-
-    // Initialize base manager
-    this.baseManager = new BaseManager(app, app.vault, fullSettings);
 
     // Initialize daily note feature
     this.dailyNoteFeature = new DailyNoteFeature(app, plugin, {
@@ -622,35 +613,6 @@ export class ObsidianExtension implements Extension {
     }
   }
 
-  /**
-   * Handle project creation events for automatic base generation
-   */
-  private async onProjectCreated(event: ProjectCreatedEvent): Promise<void> {
-    if (
-      !this.settings.projectBasesEnabled ||
-      !this.settings.autoSyncAreaProjectBases
-    ) {
-      return;
-    }
-
-    try {
-      // Extract project info from the event
-      const project = event.project;
-      if (project && project.name && project.source?.filePath) {
-        const projectInfo = {
-          name: project.name,
-          path: project.source.filePath,
-          type: "project" as const,
-        };
-
-        console.log(`Auto-generating base for new project: ${project.name}`);
-        await this.baseManager.createOrUpdateProjectBase(projectInfo);
-      }
-    } catch (error) {
-      console.error("Failed to auto-generate project base:", error);
-    }
-  }
-
   /*
    * Handle task file change by reloading the task from the file
    */
@@ -663,35 +625,6 @@ export class ObsidianExtension implements Extension {
         `Failed to handle task file change for ${file.path}:`,
         error
       );
-    }
-  }
-
-  /**
-   * Handle project update events for automatic base regeneration
-   */
-  private async onProjectUpdated(event: ProjectUpdatedEvent): Promise<void> {
-    if (
-      !this.settings.projectBasesEnabled ||
-      !this.settings.autoSyncAreaProjectBases
-    ) {
-      return;
-    }
-
-    try {
-      // Extract project info from the event
-      const project = event.project;
-      if (project && project.name && project.source?.filePath) {
-        const projectInfo = {
-          name: project.name,
-          path: project.source.filePath,
-          type: "project" as const,
-        };
-
-        console.log(`Auto-updating base for updated project: ${project.name}`);
-        await this.baseManager.createOrUpdateProjectBase(projectInfo);
-      }
-    } catch (error) {
-      console.error("Failed to auto-update project base:", error);
     }
   }
 
@@ -728,9 +661,8 @@ export class ObsidianExtension implements Extension {
     eventBus.on("projects.updated", this.onEntityUpdated.bind(this));
     eventBus.on("projects.deleted", this.onEntityDeleted.bind(this));
 
-    // Listen for project events to automatically sync bases
-    eventBus.on("projects.created", this.onProjectCreated.bind(this));
-    eventBus.on("projects.updated", this.onProjectUpdated.bind(this));
+    // Note: Base generation for projects is now handled directly in ObsidianProjectOperations.createNote()
+    // instead of as a side-effect of domain events, making it faster and more synchronous
 
     eventBus.on("tasks.created", this.onEntityCreated.bind(this));
     eventBus.on("tasks.updated", this.onEntityUpdated.bind(this));
