@@ -127,12 +127,6 @@ test.describe("TaskTodoMarkdownProcessor", () => {
     );
     const regularItemBadges = regularListItem.locator(".task-sync-todo-badges");
     await expect(regularItemBadges.first()).toBeVisible();
-
-    // The core functionality (badges) is working correctly
-    // Task mention indicators are a secondary feature that may need additional work
-    console.log(
-      `Successfully added ${badgeCount} badges to todo items with task links`
-    );
   });
 
   test("should handle nested todo items with task links", async ({ page }) => {
