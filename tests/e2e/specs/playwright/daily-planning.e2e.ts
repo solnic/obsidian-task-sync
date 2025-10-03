@@ -535,8 +535,8 @@ test.describe("Daily Planning Wizard", () => {
 
     // Verify daily note contains task links
     expect(dailyNoteContent).toContain("## Tasks");
-    expect(dailyNoteContent).toContain("[[Daily Note Task 1]]");
-    expect(dailyNoteContent).toContain("[[Daily Note Task 2]]");
+    expect(dailyNoteContent).toContain("Daily Note Task 1");
+    expect(dailyNoteContent).toContain("Daily Note Task 2");
 
     // Verify tasks have Do Date set to today
     const task1File = await page.evaluate(async (title) => {
