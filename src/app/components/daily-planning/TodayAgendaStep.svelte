@@ -12,6 +12,7 @@
     todayEvents: CalendarEvent[];
     scheduledTasks?: Task[];
     unscheduledTasks?: Task[];
+    stagedForUnscheduling?: Task[];
     onUnscheduleTask?: (task: Task) => Promise<void>;
     onRescheduleTask?: (task: Task, newDate: Date) => Promise<void>;
   }
@@ -21,6 +22,7 @@
     todayEvents,
     scheduledTasks = [],
     unscheduledTasks = [],
+    stagedForUnscheduling = [],
     onUnscheduleTask,
     onRescheduleTask,
   }: Props = $props();
@@ -145,13 +147,43 @@
     </div>
   {/if}
 
-  <!-- Staged for Unscheduling -->
+  <!-- Unscheduled Tasks (available to schedule) -->
   {#if unscheduledTasks.length > 0}
     <div class="agenda-section">
-      <h5>📋 Staged for unscheduling ({unscheduledTasks.length})</h5>
+      <h5>📋 Unscheduled tasks ({unscheduledTasks.length})</h5>
       <div class="task-list">
         {#each unscheduledTasks as task}
           <div class="task-item unscheduled" data-testid="unscheduled-task">
+            <div class="task-content">
+              <span class="task-title">{task.title}</span>
+            </div>
+            <div class="task-meta">
+              <div class="task-actions">
+                <button
+                  class="action-btn schedule"
+                  onclick={() => handleRescheduleFromUnscheduled(task)}
+                  data-testid="schedule-task-button"
+                >
+                  Schedule for today
+                </button>
+              </div>
+            </div>
+          </div>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
+  <!-- Staged for Unscheduling -->
+  {#if stagedForUnscheduling.length > 0}
+    <div class="agenda-section">
+      <h5>📋 Staged for unscheduling ({stagedForUnscheduling.length})</h5>
+      <div class="task-list">
+        {#each stagedForUnscheduling as task}
+          <div
+            class="task-item unscheduled"
+            data-testid="staged-unscheduled-task"
+          >
             <div class="task-content">
               <span class="task-title">{task.title}</span>
             </div>

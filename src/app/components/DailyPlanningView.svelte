@@ -394,7 +394,8 @@
         <TodayAgendaStep
           todayTasks={allTodayTasksForStep2}
           {todayEvents}
-          unscheduledTasks={displayLists.stagedForUnscheduling}
+          unscheduledTasks={displayLists.unscheduled}
+          stagedForUnscheduling={displayLists.stagedForUnscheduling}
           onRescheduleTask={rescheduleTaskForToday}
           onUnscheduleTask={unscheduleTaskFromToday}
         />
