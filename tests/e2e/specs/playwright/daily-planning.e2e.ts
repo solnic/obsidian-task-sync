@@ -322,18 +322,20 @@ test.describe("Daily Planning Wizard", () => {
   test("should handle task scheduling and unscheduling in step 2", async ({
     page,
   }) => {
-    // Create an unscheduled task using the proper helper
+    const todayString = getTodayString();
+
+    // Create a task scheduled for today that we can unschedule in step 2
     const task = await createTask(page, {
-      title: "Unscheduled Task",
-      description: "A task that needs to be scheduled.",
+      title: "Task to Unschedule",
+      description: "A task that will be unscheduled in step 2.",
       status: "Not Started",
       priority: "Medium",
       done: false,
-      // No dueDate - this makes it unscheduled
+      doDate: todayString, // Schedule it for today first
     });
 
     expect(task).toBeTruthy();
-    expect(task.title).toBe("Unscheduled Task");
+    expect(task.title).toBe("Task to Unschedule");
 
     // Start daily planning
     await executeCommand(page, "Task Sync: Start Daily Planning");
@@ -349,20 +351,38 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="next-button"]');
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
 
-    // Should show the unscheduled task - use more specific locator
+    // Should show the scheduled task in today's tasks
     await expect(
       page
         .locator('[data-testid="step-2-content"] .task-title')
-        .filter({ hasText: "Unscheduled Task" })
+        .filter({ hasText: "Task to Unschedule" })
     ).toBeVisible();
 
-    // Test scheduling functionality if schedule buttons are available
-    const scheduleButton = page
-      .locator('[data-testid="schedule-task-button"]')
+    // Test unscheduling functionality - click unschedule button
+    const unscheduleButton = page
+      .locator('[data-testid="unschedule-planning-button"]')
       .first();
-    if (await scheduleButton.isVisible()) {
-      await scheduleButton.click();
+    if (await unscheduleButton.isVisible()) {
+      await unscheduleButton.click();
       await page.waitForTimeout(500);
+
+      // After unscheduling, the task should appear in the staged for unscheduling section
+      await expect(
+        page
+          .locator(
+            '[data-testid="step-2-content"] [data-testid="unscheduled-task"] .task-title'
+          )
+          .filter({ hasText: "Task to Unschedule" })
+      ).toBeVisible();
+
+      // Test re-scheduling functionality
+      const rescheduleButton = page
+        .locator('[data-testid="schedule-task-button"]')
+        .first();
+      if (await rescheduleButton.isVisible()) {
+        await rescheduleButton.click();
+        await page.waitForTimeout(500);
+      }
     }
   });
 
