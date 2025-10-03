@@ -81,8 +81,14 @@
       (t) => !stagedChanges.toSchedule.has(t.id)
     );
 
-    // Tasks that are staged for unscheduling (for Step 2 unscheduled list)
-    const stagedForUnscheduling = todayTasks.filter((t) =>
+    // Tasks that are staged for unscheduling (from both today and yesterday)
+    // This includes tasks from Step 1 (yesterday) and Step 2 (today)
+    const allTasks = [
+      ...todayTasks,
+      ...yesterdayTasks.done,
+      ...yesterdayTasks.notDone,
+    ];
+    const stagedForUnscheduling = allTasks.filter((t) =>
       stagedChanges.toUnschedule.has(t.id)
     );
 
@@ -286,15 +292,13 @@
     try {
       if (!dailyPlanningExtension) return;
 
-      await dailyPlanningExtension.unscheduleTask(task);
+      // Stage the task for unscheduling (don't apply immediately!)
+      dailyPlanningExtension.unscheduleTaskFromToday(task.id);
 
       // Remove from staging area if present
       tasksToMoveToToday = tasksToMoveToToday.filter((t) => t.id !== task.id);
 
       // finalPlan will automatically update via $derived when tasksToMoveToToday changes
-
-      // Reload yesterday's tasks to reflect the change
-      yesterdayTasks = await dailyPlanningExtension.getYesterdayTasksGrouped();
     } catch (err: any) {
       console.error("Error unscheduling task:", err);
       error = err.message || "Failed to unschedule task";
