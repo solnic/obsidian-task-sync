@@ -217,18 +217,18 @@
   <!-- Scheduled badge - shows at top with full width -->
   {#if isScheduled && scheduledDate}
     {@const friendlyDate = moment(scheduledDate).calendar(null, {
-      sameDay: "[Today at] LT",
-      nextDay: "[Tomorrow at] LT",
-      nextWeek: "dddd [at] LT",
-      lastDay: "[Yesterday at] LT",
-      lastWeek: "[Last] dddd [at] LT",
-      sameElse: "MMM D [at] LT",
+      sameDay: "[today]",
+      nextDay: "[tomorrow]",
+      nextWeek: "dddd",
+      lastDay: "[yesterday]",
+      lastWeek: "[last] dddd",
+      sameElse: "MMMM Do",
     })}
     <div
       class="scheduled-badge"
-      title="This item is scheduled for {moment(scheduledDate).format('LLLL')}"
+      title="This item is scheduled for {moment(scheduledDate).format('LL')}"
     >
-      ✓ scheduled {friendlyDate}
+      ✓ Scheduled for {friendlyDate}
     </div>
   {/if}
 

@@ -413,6 +413,7 @@
                   openTask(localTask.task);
                 }
               }}
+              onOpen={() => openTask(localTask.task)}
               dailyPlanningWizardMode={$isPlanningActive}
               onAddToToday={(task) => {
                 if (onStageTask) {

@@ -18,6 +18,7 @@
     isSelected?: boolean;
     onHover?: (hovered: boolean) => void;
     onClick?: () => void;
+    onOpen?: () => void; // Separate handler for Open button
     dayPlanningMode?: boolean;
     dailyPlanningWizardMode?: boolean;
     onAddToToday?: (task: Task) => void;
@@ -34,6 +35,7 @@
     isSelected = false,
     onHover,
     onClick,
+    onOpen,
     dayPlanningMode = false,
     dailyPlanningWizardMode = false,
     onAddToToday,
@@ -113,7 +115,12 @@
   }
 
   function handleOpenTask() {
-    onClick?.();
+    // Use onOpen if provided (for explicit Open button), otherwise fall back to onClick
+    if (onOpen) {
+      onOpen();
+    } else {
+      onClick?.();
+    }
   }
 </script>
 

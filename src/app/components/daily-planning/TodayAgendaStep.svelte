@@ -36,6 +36,9 @@
   }
 
   async function handleRescheduleFromUnscheduled(task: Task) {
+    // This removes the task from the unscheduled staging by calling the parent's handler
+    // which will call dailyPlanningExtension.scheduleTaskForToday(task.id)
+    // That method removes the task from toUnschedule set and adds it to toSchedule set
     if (onRescheduleTask) {
       const today = new Date();
       await onRescheduleTask(task, today);
@@ -142,10 +145,10 @@
     </div>
   {/if}
 
-  <!-- Unscheduled Tasks -->
+  <!-- Staged for Unscheduling -->
   {#if unscheduledTasks.length > 0}
     <div class="agenda-section">
-      <h5>📋 Unscheduled ({unscheduledTasks.length})</h5>
+      <h5>📋 Staged for unscheduling ({unscheduledTasks.length})</h5>
       <div class="task-list">
         {#each unscheduledTasks as task}
           <div class="task-item unscheduled" data-testid="unscheduled-task">
@@ -159,7 +162,7 @@
                   onclick={() => handleRescheduleFromUnscheduled(task)}
                   data-testid="schedule-task-button"
                 >
-                  Schedule for today
+                  Re-schedule for today
                 </button>
               </div>
             </div>

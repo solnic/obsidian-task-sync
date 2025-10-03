@@ -81,10 +81,16 @@
       (t) => !stagedChanges.toSchedule.has(t.id)
     );
 
+    // Tasks that are staged for unscheduling (for Step 2 unscheduled list)
+    const stagedForUnscheduling = todayTasks.filter((t) =>
+      stagedChanges.toUnschedule.has(t.id)
+    );
+
     return {
       today: todayVisible,
       staging: stagingTasks,
       unscheduled: unscheduledVisible,
+      stagedForUnscheduling,
     };
   });
 
@@ -349,6 +355,8 @@
       >
         <ReviewYesterdayStep
           {yesterdayTasks}
+          scheduledTasks={tasksToMoveToToday}
+          unscheduledTasks={displayLists.stagedForUnscheduling}
           {isLoading}
           onMoveUnfinishedToToday={moveUnfinishedToToday}
           onMoveTaskToToday={moveTaskToToday}
@@ -370,7 +378,7 @@
         <TodayAgendaStep
           todayTasks={allTodayTasksForStep2}
           {todayEvents}
-          {unscheduledTasks}
+          unscheduledTasks={displayLists.stagedForUnscheduling}
           onRescheduleTask={rescheduleTaskForToday}
           onUnscheduleTask={unscheduleTaskFromToday}
         />
