@@ -19,7 +19,7 @@ import { projectOperations } from "../entities/Projects";
 import { areaOperations } from "../entities/Areas";
 import type { Task, Project } from "../core/entities";
 import type { TaskSyncSettings } from "../types/settings";
-import { BaseManager } from "../services/BaseManager";
+import { ObsidianBaseManager } from "./obsidian/BaseManager";
 import { DailyNoteFeature } from "../features/DailyNoteFeature";
 import { derived, get, type Readable } from "svelte/store";
 
@@ -50,7 +50,7 @@ export class ObsidianExtension implements Extension {
   private vaultEventRefs: EventRef[] = [];
   private taskTodoMarkdownProcessor?: TaskTodoMarkdownProcessor;
   private markdownProcessor?: MarkdownPostProcessor;
-  private baseManager: BaseManager;
+  private baseManager: ObsidianBaseManager;
   private dailyNoteFeature: DailyNoteFeature;
 
   constructor(
@@ -60,7 +60,7 @@ export class ObsidianExtension implements Extension {
     private fullSettings: TaskSyncSettings
   ) {
     // Initialize base manager first so it can be passed to operations
-    this.baseManager = new BaseManager(app, app.vault, fullSettings);
+    this.baseManager = new ObsidianBaseManager(app, app.vault, fullSettings);
 
     this.areaOperations = new ObsidianAreaOperations(app, settings.areasFolder);
 
@@ -524,7 +524,7 @@ export class ObsidianExtension implements Extension {
   /**
    * Get base manager instance for direct access if needed
    */
-  getBaseManager(): BaseManager {
+  getBaseManager(): ObsidianBaseManager {
     return this.baseManager;
   }
 

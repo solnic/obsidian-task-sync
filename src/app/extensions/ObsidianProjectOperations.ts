@@ -6,14 +6,15 @@
 import { App } from "obsidian";
 import { Project } from "../core/entities";
 import { ObsidianEntityOperations } from "./ObsidianEntityOperations";
-import { BaseManager } from "../services/BaseManager";
+import { ObsidianBaseManager } from "./obsidian/BaseManager";
 import type { TaskSyncSettings } from "../types/settings";
+import { PROPERTY_REGISTRY } from "./obsidian/PropertyRegistry";
 
 export class ObsidianProjectOperations extends ObsidianEntityOperations<Project> {
   constructor(
     app: App,
     folder: string,
-    private baseManager?: BaseManager,
+    private baseManager?: ObsidianBaseManager,
     private settings?: TaskSyncSettings
   ) {
     super(app, folder);
@@ -27,11 +28,12 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
   // Implement abstract methods for project-specific behavior
   protected generateFrontMatter(project: Project): Record<string, any> {
     return {
-      Name: project.name,
-      Type: "Project",
-      Areas:
+      [PROPERTY_REGISTRY.NAME.name]: project.name, // Use property name from registry
+      [PROPERTY_REGISTRY.TYPE.name]: "Project", // Always "Project" for project entities
+      [PROPERTY_REGISTRY.AREAS.name]:
         project.areas && project.areas.length > 0 ? project.areas : undefined,
-      tags: project.tags && project.tags.length > 0 ? project.tags : undefined,
+      [PROPERTY_REGISTRY.TAGS.name]:
+        project.tags && project.tags.length > 0 ? project.tags : undefined,
     };
   }
 

@@ -6,6 +6,7 @@
 import { App } from "obsidian";
 import { Area } from "../core/entities";
 import { ObsidianEntityOperations } from "./ObsidianEntityOperations";
+import { PROPERTY_REGISTRY } from "./obsidian/PropertyRegistry";
 
 export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
   constructor(app: App, folder: string) {
@@ -20,9 +21,9 @@ export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
   // Implement abstract methods for area-specific behavior
   protected generateFrontMatter(area: Area): Record<string, any> {
     return {
-      Name: area.name,
-      Type: "Area",
-      tags: area.tags && area.tags.length > 0 ? area.tags : undefined,
+      [PROPERTY_REGISTRY.NAME.name]: area.name, // Use property name from registry
+      [PROPERTY_REGISTRY.TYPE.name]: "Area", // Always "Area" for area entities
+      [PROPERTY_REGISTRY.TAGS.name]: area.tags && area.tags.length > 0 ? area.tags : undefined,
     };
   }
 

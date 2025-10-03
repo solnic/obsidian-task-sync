@@ -193,8 +193,8 @@ export default class TaskSyncPlugin extends Plugin {
    */
   async regenerateBases(): Promise<void> {
     try {
-      const { BaseManager } = await import("./app/services/BaseManager");
-      const baseManager = new BaseManager(
+      const { ObsidianBaseManager } = await import("./app/extensions/obsidian/BaseManager");
+      const baseManager = new ObsidianBaseManager(
         this.app,
         this.app.vault,
         this.settings
@@ -218,8 +218,8 @@ export default class TaskSyncPlugin extends Plugin {
    */
   async syncAreaProjectBases(): Promise<void> {
     try {
-      const { BaseManager } = await import("./app/services/BaseManager");
-      const baseManager = new BaseManager(
+      const { ObsidianBaseManager } = await import("./app/extensions/obsidian/BaseManager");
+      const baseManager = new ObsidianBaseManager(
         this.app,
         this.app.vault,
         this.settings

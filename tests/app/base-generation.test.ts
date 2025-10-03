@@ -7,7 +7,7 @@ import { describe, it, expect } from "vitest";
 import {
   generateProjectBase,
   ProjectAreaInfo,
-} from "../../src/app/services/BaseConfigurations";
+} from "../../src/app/extensions/obsidian/BaseConfigurations";
 import { DEFAULT_SETTINGS } from "../../src/app/types/settings";
 
 describe("Base Generation", () => {
