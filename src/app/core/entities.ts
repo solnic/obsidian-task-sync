@@ -31,7 +31,8 @@ export const TaskSchema = z.object({
   // Core task properties
   title: z.string(),
   description: z.string().optional(),
-  status: TaskStatusSchema.default(DEFAULT_TASK_STATUS),
+  // Status can be empty string on input - will be resolved to default by buildEntity
+  status: z.string().default(DEFAULT_TASK_STATUS),
   done: z.boolean().default(false),
 
   // Organization

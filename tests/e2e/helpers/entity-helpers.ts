@@ -4,6 +4,7 @@
  */
 
 import type { ExtendedPage } from "./global";
+import { waitForFileCreation } from "./global";
 
 export async function updateEntity(
   page: ExtendedPage,
@@ -50,11 +51,23 @@ export async function createTask(
       const taskOperations = plugin.operations.taskOperations;
       const createdTask = await taskOperations.create(taskData);
 
-      console.debug("Task created:", createdTask);
-
       return createdTask;
     },
     { taskData }
+  );
+}
+
+export async function getTaskByTitle(page: ExtendedPage, title: string) {
+  return await page.evaluate(
+    async ({ title }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const task = await plugin.stores.taskStore.findByTitle(title);
+
+      return task;
+    },
+    { title }
   );
 }
 
@@ -69,26 +82,23 @@ export async function createArea(
     description?: string;
   }
 ): Promise<any> {
-  return await page.evaluate(
+  const createdArea = await page.evaluate(
     async ({ props }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      if (!plugin) {
-        throw new Error("Task Sync plugin not found");
-      }
-
-      // Create area and get the created entity directly
-      const createdArea = await plugin.createArea(props);
-
-      if (!createdArea) {
-        throw new Error(`Failed to create area "${props.name}"`);
-      }
+      const areaOperations = plugin.operations.areaOperations;
+      const createdArea = await areaOperations.create(props);
 
       return createdArea;
     },
     { props }
   );
+
+  // Wait for the file to be created
+  await waitForFileCreation(page, `Areas/${props.name}.md`);
+
+  return createdArea;
 }
 
 /**
@@ -103,7 +113,7 @@ export async function createProject(
     areas?: string[];
   }
 ): Promise<any> {
-  return await page.evaluate(
+  const createdProject = await page.evaluate(
     async ({ props }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -112,8 +122,8 @@ export async function createProject(
         throw new Error("Task Sync plugin not found");
       }
 
-      // Create project and get the created entity directly
-      const createdProject = await plugin.createProject(props);
+      const projectOperations = plugin.operations.projectOperations;
+      const createdProject = await projectOperations.create(props);
 
       if (!createdProject) {
         throw new Error(`Failed to create project "${props.name}"`);
@@ -123,4 +133,9 @@ export async function createProject(
     },
     { props }
   );
+
+  // Wait for the file to be created
+  await waitForFileCreation(page, `Projects/${props.name}.md`);
+
+  return createdProject;
 }

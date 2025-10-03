@@ -160,6 +160,24 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
+    // Add command to promote todo to task
+    this.addCommand({
+      id: "promote-todo-to-task",
+      name: "Promote Todo to Task",
+      callback: async () => {
+        await this.promoteTodoToTask();
+      },
+    });
+
+    // Add command to revert promoted todo
+    this.addCommand({
+      id: "revert-promoted-todo",
+      name: "Revert Promoted Todo",
+      callback: async () => {
+        await this.revertPromotedTodo();
+      },
+    });
+
     // Load extensions and activate view when layout is ready
     this.app.workspace.onLayoutReady(async () => {
       await this.host.load();
@@ -193,7 +211,9 @@ export default class TaskSyncPlugin extends Plugin {
    */
   async regenerateBases(): Promise<void> {
     try {
-      const { ObsidianBaseManager } = await import("./app/extensions/obsidian/BaseManager");
+      const { ObsidianBaseManager } = await import(
+        "./app/extensions/obsidian/BaseManager"
+      );
       const baseManager = new ObsidianBaseManager(
         this.app,
         this.app.vault,
@@ -218,7 +238,9 @@ export default class TaskSyncPlugin extends Plugin {
    */
   async syncAreaProjectBases(): Promise<void> {
     try {
-      const { ObsidianBaseManager } = await import("./app/extensions/obsidian/BaseManager");
+      const { ObsidianBaseManager } = await import(
+        "./app/extensions/obsidian/BaseManager"
+      );
       const baseManager = new ObsidianBaseManager(
         this.app,
         this.app.vault,
@@ -267,6 +289,50 @@ export default class TaskSyncPlugin extends Plugin {
     } catch (error: any) {
       console.error("Error starting daily planning:", error);
       new Notice(`Failed to start daily planning: ${error.message}`);
+    }
+  }
+
+  async promoteTodoToTask() {
+    try {
+      // Get the Obsidian extension
+      const obsidianExtension = this.host.getExtensionById(
+        "obsidian"
+      ) as ObsidianExtension;
+
+      if (!obsidianExtension) {
+        new Notice("Obsidian extension not found");
+        return;
+      }
+
+      // Call the todo promotion operation
+      const result =
+        await obsidianExtension.todoPromotionOperations.promoteTodoToTask();
+      new Notice(result.message);
+    } catch (error) {
+      console.error("Failed to promote todo to task:", error);
+      new Notice(`Error promoting todo: ${error.message}`);
+    }
+  }
+
+  async revertPromotedTodo() {
+    try {
+      // Get the Obsidian extension
+      const obsidianExtension = this.host.getExtensionById(
+        "obsidian"
+      ) as ObsidianExtension;
+
+      if (!obsidianExtension) {
+        new Notice("Obsidian extension not found");
+        return;
+      }
+
+      // Call the todo revert operation
+      const result =
+        await obsidianExtension.todoPromotionOperations.revertPromotedTodo();
+      new Notice(result.message);
+    } catch (error) {
+      console.error("Failed to revert promoted todo:", error);
+      new Notice(`Error reverting todo: ${error.message}`);
     }
   }
 

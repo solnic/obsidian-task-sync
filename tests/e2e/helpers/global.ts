@@ -816,8 +816,26 @@ export async function expectNotice(
 
 /**
  * Helper to open a file and wait for it to load properly
+ * This helper waits for the vault cache to recognize the file before attempting to open it
  */
-export async function openFile(page: ExtendedPage, filePath: string) {
+export async function openFile(
+  page: ExtendedPage,
+  filePath: string,
+  timeout: number = 5000
+) {
+  // First, wait for the file to be recognized by the vault cache
+  // This prevents race conditions where the file exists on disk but vault.getAbstractFileByPath() returns null
+  await page.waitForFunction(
+    async ({ path }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      return file !== null;
+    },
+    { path: filePath },
+    { timeout }
+  );
+
+  // Now open the file
   await page.evaluate(async (path) => {
     const app = (window as any).app;
     const file = app.vault.getAbstractFileByPath(path);
@@ -1887,36 +1905,6 @@ export async function switchToTaskService(page: Page, service: string) {
     service,
     { timeout: 5000 }
   );
-}
-
-export async function getTaskByTitle(page: Page, title: string): Promise<Task> {
-  return await page.evaluate(async (title) => {
-    const app = (window as any).app;
-    const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-    return plugin.stores.taskStore.getTaskByTitle(title);
-  }, title);
-}
-
-export async function getProjectByName(
-  page: Page,
-  name: string
-): Promise<Project> {
-  return await page.evaluate(async (name) => {
-    const app = (window as any).app;
-    const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-    return plugin.stores.projectStore.getProjectByName(name);
-  }, name);
-}
-
-export async function getAreaByName(page: Page, name: string): Promise<Area> {
-  return await page.evaluate(async (name) => {
-    const app = (window as any).app;
-    const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-    return plugin.stores.areaStore.getAreaByName(name);
-  }, name);
 }
 
 export async function selectFromDropdown(

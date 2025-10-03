@@ -36,6 +36,7 @@ export interface TaskStore extends Readable<TaskStoreState> {
   findBySourceUrl: (url: string) => Task | undefined;
   findById: (id: string) => Task | undefined;
   findByFilePath: (filePath: string) => Task | undefined;
+  findByTitle: (title: string) => Task | undefined;
 }
 
 export function createTaskStore(): TaskStore {
@@ -179,6 +180,10 @@ export function createTaskStore(): TaskStore {
     );
   };
 
+  const findByTitle = (title: string): Task | undefined => {
+    return get({ subscribe }).tasks.find((t) => t.title === title);
+  };
+
   return {
     subscribe,
     tasksByExtension,
@@ -193,6 +198,7 @@ export function createTaskStore(): TaskStore {
     findBySourceUrl,
     findById,
     findByFilePath,
+    findByTitle,
   };
 }
 

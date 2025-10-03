@@ -16,6 +16,8 @@ import { projectStore } from "../stores/projectStore";
 import { areaStore } from "../stores/areaStore";
 import { taskOperations } from "../entities/Tasks";
 import { projectOperations } from "../entities/Projects";
+import { Obsidian } from "../entities/Obsidian";
+import { ContextService } from "../services/ContextService";
 import { areaOperations } from "../entities/Areas";
 import type { Task, Project } from "../core/entities";
 import type { TaskSyncSettings } from "../types/settings";
@@ -54,6 +56,7 @@ export class ObsidianExtension implements Extension {
   readonly areaOperations: ObsidianAreaOperations;
   readonly projectOperations: ObsidianProjectOperations;
   readonly taskOperations: ObsidianTaskOperations;
+  readonly todoPromotionOperations: Obsidian.TodoPromotionOperations;
 
   constructor(
     private app: App,
@@ -75,6 +78,17 @@ export class ObsidianExtension implements Extension {
     );
 
     this.taskOperations = new ObsidianTaskOperations(app, settings.tasksFolder);
+
+    // Initialize context service for todo promotion
+    const contextService = new ContextService(app, fullSettings);
+
+    // Initialize todo promotion operations
+    this.todoPromotionOperations = new Obsidian.TodoPromotionOperations(
+      app,
+      fullSettings,
+      contextService,
+      new Obsidian.TaskOperations(settings.tasksFolder, fullSettings)
+    );
 
     // Initialize markdown processor
     this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
@@ -415,65 +429,43 @@ export class ObsidianExtension implements Extension {
    * during initialization and populate the canonical store using upsert logic
    */
   private async scanAndPopulateExistingTasks(): Promise<void> {
-    try {
-      console.log("Scanning existing tasks from Obsidian vault...");
+    const existingTasksData = await this.taskOperations.scanExistingTasks();
 
-      // Scan existing task files using the task operations (returns data without IDs)
-      const existingTasksData = await this.taskOperations.scanExistingTasks();
-
-      console.log(`Found ${existingTasksData.length} existing tasks`);
-
-      // Populate the canonical task store using upsert logic
-      // Store will handle ID generation for new tasks
-      for (const taskData of existingTasksData) {
-        try {
-          taskStore.upsertTask(taskData);
-        } catch (error) {
-          console.error(`Failed to upsert task ${taskData.title}:`, error);
-          // Continue with other tasks instead of crashing
-        }
+    for (const taskData of existingTasksData) {
+      try {
+        taskStore.upsertTask(taskData);
+      } catch (error) {
+        console.error(`Failed to upsert task ${taskData.title}:`, error);
       }
-
-      console.log("Successfully populated task store with existing tasks");
-    } catch (error) {
-      console.error("Failed to scan and populate existing tasks:", error);
-      // Don't throw - this shouldn't prevent extension initialization
     }
   }
 
   // Event handler methods required by Extension interface
   async onEntityCreated(event: any): Promise<void> {
     if (event.type === "areas.created") {
-      // React to area creation by creating the corresponding Obsidian note
       await this.areaOperations.createNote(event.area);
     } else if (event.type === "projects.created") {
-      // React to project creation by creating the corresponding Obsidian note
       await this.projectOperations.createNote(event.project);
     } else if (event.type === "tasks.created") {
-      // React to task creation by creating the corresponding Obsidian note
-      await this.taskOperations.createNote(event.task);
+      const task = event.task;
 
-      // After creating the note, update the task's source to include the filePath
-      // This allows tasks from other extensions (e.g., GitHub) to have both their
-      // original source (extension: "github", url: "...") AND the Obsidian filePath
-      const fileName = this.sanitizeFileName(event.task.title);
-      const filePath = `${this.settings.tasksFolder}/${fileName}.md`;
+      // Create the note file and get the file path
+      const filePath = await this.taskOperations.createNote(task);
 
-      const updatedTask = {
-        ...event.task,
+      // Update the task's source to include the file path
+      // This prevents duplicate tasks when the file change event fires
+      const updatedTask: Task = {
+        ...task,
         source: {
-          ...event.task.source,
-          filePath,
+          extension: "obsidian",
+          ...task.source,
+          filePath: filePath,
         },
       };
 
+      // Update the task in the store without triggering another event
       taskStore.updateTask(updatedTask);
     }
-  }
-
-  private sanitizeFileName(name: string): string {
-    // Basic sanitization - remove invalid characters
-    return name.replace(/[<>:"/\\|?*]/g, "").trim();
   }
 
   async onEntityUpdated(event: any): Promise<void> {
@@ -507,12 +499,7 @@ export class ObsidianExtension implements Extension {
    * Public method that can be called when settings change or manually triggered
    */
   async syncProjectBases(): Promise<void> {
-    try {
-      await this.baseManager.syncProjectBases();
-    } catch (error) {
-      console.error("Failed to sync project bases:", error);
-      throw error;
-    }
+    await this.baseManager.syncProjectBases();
   }
 
   /**
@@ -545,7 +532,6 @@ export class ObsidianExtension implements Extension {
 
         const filePath = file.path;
 
-        // Check if the changed file is in one of our entity folders
         if (filePath.startsWith(this.settings.tasksFolder + "/")) {
           this.handleTaskFileChange(file, cache);
         } else if (filePath.startsWith(this.settings.projectsFolder + "/")) {
@@ -553,6 +539,8 @@ export class ObsidianExtension implements Extension {
         } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
           this.handleAreaFileChange(file, cache);
         }
+
+        this.handlePotentialTodoCheckboxChange(file);
       }
     );
 
@@ -619,14 +607,72 @@ export class ObsidianExtension implements Extension {
    * Handle task file change by reloading the task from the file
    */
   private async handleTaskFileChange(file: TFile, cache: any): Promise<void> {
+    await this.taskOperations.rescanFile(file, cache);
+  }
+
+  /**
+   * Handle potential todo checkbox changes in non-entity files
+   * This detects when a promoted todo checkbox is clicked and syncs with the task file
+   */
+  private async handlePotentialTodoCheckboxChange(file: TFile): Promise<void> {
     try {
-      // Rescan the file to update the task in the store
-      await this.taskOperations.rescanFile(file, cache);
+      // Read the file content to check for promoted todos (wiki links with checkboxes)
+      const content = await this.app.vault.read(file);
+      const lines = content.split("\n");
+
+      // Look for lines that match the pattern: - [x] [[Task Name]] or - [ ] [[Task Name]]
+      const promotedTodoRegex = /^(\s*)([-*])\s*\[([xX\s])\]\s*\[\[(.+)\]\]$/;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const match = line.match(promotedTodoRegex);
+
+        if (match) {
+          const [, , , checkboxState, taskTitle] = match;
+          const isCompleted = checkboxState.toLowerCase() === "x";
+
+          // Find the corresponding task file
+          const taskFilePath = `${this.settings.tasksFolder}/${taskTitle}.md`;
+          const taskFile = this.app.vault.getAbstractFileByPath(taskFilePath);
+
+          if (taskFile instanceof TFile) {
+            await this.syncTaskCompletionFromTodo(taskFile, isCompleted);
+          }
+        }
+      }
     } catch (error) {
-      console.error(
-        `Failed to handle task file change for ${file.path}:`,
-        error
-      );
+      // Silently fail - this is a background sync operation
+    }
+  }
+
+  /**
+   * Sync task completion status based on promoted todo checkbox state
+   * Uses entity operations to update the task, which triggers the tasks.updated
+   * handler to update front-matter using Obsidian's processFrontMatter API
+   */
+  private async syncTaskCompletionFromTodo(
+    taskFile: TFile,
+    isCompleted: boolean
+  ): Promise<void> {
+    try {
+      // Find the task by file path
+      const task = taskStore.findByFilePath(taskFile.path);
+
+      if (!task) {
+        return;
+      }
+
+      // Only update if the status has changed
+      if (task.done !== isCompleted) {
+        // Update the task using entity operations
+        // This will trigger tasks.updated event which will update the file
+        await taskOperations.update({
+          ...task,
+          done: isCompleted,
+        });
+      }
+    } catch (error) {
+      // Silently fail - this is a background sync operation
     }
   }
 
