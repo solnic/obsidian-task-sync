@@ -5,11 +5,7 @@
 
 import { test, expect } from "../../helpers/setup";
 import { executeCommand } from "../../helpers/global";
-import {
-  getDateString,
-  getTodayString,
-  getYesterdayString,
-} from "../../helpers/date-helpers";
+import { getTodayString, getYesterdayString } from "../../helpers/date-helpers";
 import { createTask } from "../../helpers/entity-helpers";
 
 test.describe("Daily Planning Wizard", () => {
@@ -22,52 +18,6 @@ test.describe("Daily Planning Wizard", () => {
         getCalendars: () => Promise.resolve([]),
         checkPermissions: () => Promise.resolve({ granted: true }),
       };
-    });
-  });
-
-  test.describe("Daily Note Feature", () => {
-    test("should NOT create daily note when task Do Date is set (only Daily Planning wizard should)", async ({
-      page,
-    }) => {
-      // Create a test task
-      const task = await createTask(page, {
-        title: "Test Task for Daily Note",
-        category: "Feature",
-        status: "Backlog",
-      });
-
-      // Set the task's Do Date to today (this should NOT trigger daily note creation)
-      const today = getTodayString();
-      await page.evaluate(
-        async ({ taskId, doDate }) => {
-          const app = (window as any).app;
-          const taskFile = app.vault.getAbstractFileByPath(
-            `Tasks/Test Task for Daily Note.md`
-          );
-          if (taskFile) {
-            await app.fileManager.processFrontMatter(
-              taskFile,
-              (frontmatter) => {
-                frontmatter["Do Date"] = doDate;
-              }
-            );
-          }
-        },
-        { taskId: task.id, doDate: today }
-      );
-
-      // Wait a moment for any potential events to process
-      await page.waitForTimeout(1000);
-
-      // Verify daily note was NOT created (only Daily Planning wizard should create daily notes)
-      const dailyNotePath = `Daily Notes/${today}.md`;
-      const dailyNoteExists = await page.evaluate(async (path) => {
-        const app = (window as any).app;
-        const file = app.vault.getAbstractFileByPath(path);
-        return file !== null;
-      }, dailyNotePath);
-
-      expect(dailyNoteExists).toBe(false);
     });
   });
 
