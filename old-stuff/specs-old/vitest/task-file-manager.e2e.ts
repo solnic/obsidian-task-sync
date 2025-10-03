@@ -78,7 +78,7 @@ describe("TaskFileManager Service", () => {
         "Tasks/Test Task for Update.md",
         {
           Priority: "Critical",
-          "Do Date": "2024-01-15T00:00:00.000Z", // Date gets converted to ISO string
+          "Do Date": "2024-01-15", // Date stored as plain date string (YYYY-MM-DD)
         }
       );
     });
@@ -400,7 +400,7 @@ This is the main content of the task.
     await verifyTaskProperties(context.page, taskPath, {
       Title: "Task with Do Date",
       Priority: "Medium",
-      "Do Date": "2024-01-15T00:00:00.000Z",
+      "Do Date": "2024-01-15",
       Done: false,
       Status: "Backlog",
     });

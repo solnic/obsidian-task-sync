@@ -184,14 +184,23 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     }
 
     // Helper function to parse date strings
+    // Uses the same logic as coerceToDate to ensure consistency
     const parseDate = (dateValue: any): Date | undefined => {
       if (!dateValue || dateValue === "") {
         return undefined;
       }
       if (dateValue instanceof Date) {
-        return dateValue;
+        return isNaN(dateValue.getTime()) ? undefined : dateValue;
       }
-      if (typeof dateValue === "string") {
+      if (typeof dateValue === "string" && dateValue.trim() !== "") {
+        // Special handling for YYYY-MM-DD format to use local timezone
+        // This prevents date shifting when the user's timezone is not UTC
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+          const [year, month, day] = dateValue.split("-").map(Number);
+          const date = new Date(year, month - 1, day); // month is 0-indexed
+          return isNaN(date.getTime()) ? undefined : date;
+        }
+        // For other formats, use standard Date parsing
         const date = new Date(dateValue);
         return isNaN(date.getTime()) ? undefined : date;
       }
