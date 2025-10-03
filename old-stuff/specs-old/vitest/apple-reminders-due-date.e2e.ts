@@ -78,12 +78,12 @@ describe("Apple Reminders Due Date Support", () => {
     });
 
     // Verify the task was created with the due date
-    // Due dates are stored as ISO strings, so we need to expect the full ISO format
+    // Due dates are stored as plain date strings (YYYY-MM-DD) without time
     await assertTaskProperty(
       context.page,
       task.filePath,
       "Due Date",
-      "2024-01-15T00:00:00.000Z"
+      "2024-01-15"
     );
     await assertTaskProperty(context.page, task.filePath, "Title", taskTitle);
     await assertTaskProperty(context.page, task.filePath, "Priority", "Medium");
@@ -135,11 +135,11 @@ describe("Apple Reminders Due Date Support", () => {
   });
 
   test("should format due dates correctly in front-matter", async () => {
-    // Test various date formats - dates are stored as ISO strings
+    // Test various date formats - dates are stored as plain date strings (YYYY-MM-DD)
     const testCases = [
-      { input: "2024-01-15", expected: "2024-01-15T00:00:00.000Z" },
-      { input: "2024-12-31", expected: "2024-12-31T00:00:00.000Z" },
-      { input: "2024-02-29", expected: "2024-02-29T00:00:00.000Z" }, // Leap year
+      { input: "2024-01-15", expected: "2024-01-15" },
+      { input: "2024-12-31", expected: "2024-12-31" },
+      { input: "2024-02-29", expected: "2024-02-29" }, // Leap year
     ];
 
     for (const testCase of testCases) {
