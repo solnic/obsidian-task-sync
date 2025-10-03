@@ -61,6 +61,11 @@ export type CoreDomainEvent =
       extension?: string;
       supportedEntities: readonly EntityType[];
     }
+  | {
+      type: "extension.loaded";
+      extension?: string;
+      supportedEntities: readonly EntityType[];
+    }
   | { type: "extension.unregistered"; extension?: string }
   | {
       type: "extension.sync.started";

@@ -3,13 +3,22 @@
  * Provides common functionality that all entities share
  */
 
-import { Task, Project, Area } from "./entities";
+import {
+  Task,
+  Project,
+  Area,
+  Schedule,
+  TaskSchema,
+  ProjectSchema,
+  AreaSchema,
+  ScheduleSchema,
+} from "./entities";
 import { extensionRegistry } from "./extension";
 import { generateId } from "../utils/idGenerator";
 
 // Generic entity union type
-export type Entity = Task | Project | Area;
-export type EntityType = "task" | "project" | "area";
+export type Entity = Task | Project | Area | Schedule;
+export type EntityType = "task" | "project" | "area" | "schedule";
 
 // Abstract base class for all Entities
 export abstract class Entities {
@@ -58,12 +67,29 @@ export abstract class EntitiesOperations {
   ) {
     const now = this.timestamp();
 
-    return {
+    // Build the raw entity with ID and timestamps
+    const rawEntity = {
       id: generateId(),
       createdAt: now,
       updatedAt: now,
       ...entityData,
-    } as Entity;
+    };
+
+    // Validate and coerce through the appropriate schema based on entity type
+    // This ensures dates are properly coerced from strings to Date objects
+    switch (this.entityType) {
+      case "task":
+        return TaskSchema.parse(rawEntity) as Entity;
+      case "project":
+        return ProjectSchema.parse(rawEntity) as Entity;
+      case "area":
+        return AreaSchema.parse(rawEntity) as Entity;
+      case "schedule":
+        return ScheduleSchema.parse(rawEntity) as Entity;
+      default:
+        // Fallback for unknown entity types (shouldn't happen)
+        return rawEntity as Entity;
+    }
   }
 
   public timestamp() {

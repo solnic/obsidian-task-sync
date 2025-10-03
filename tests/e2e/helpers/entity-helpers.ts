@@ -27,7 +27,7 @@ export async function updateEntity(
  */
 export async function createTask(
   page: ExtendedPage,
-  props: {
+  taskData: {
     title: string;
     description?: string;
     category?: string;
@@ -39,26 +39,22 @@ export async function createTask(
     parentTask?: string;
     tags?: string[];
     dueDate?: string;
-  },
-  content: string = ""
+    doDate?: string;
+  }
 ): Promise<any> {
   return await page.evaluate(
-    async ({ props, content }) => {
+    async ({ taskData }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Create task and get the created entity directly
-      const createdTask = await plugin.createTask(
-        Object.assign(props, { content })
-      );
+      const taskOperations = plugin.operations.taskOperations;
+      const createdTask = await taskOperations.create(taskData);
 
-      if (!createdTask) {
-        throw new Error(`Failed to create task "${props.title}"`);
-      }
+      console.debug("Task created:", createdTask);
 
       return createdTask;
     },
-    { props, content }
+    { taskData }
   );
 }
 

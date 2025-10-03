@@ -1,16 +1,23 @@
 <script lang="ts">
   /**
-   * TabView - Simplified layout component for the new architecture
-   * Provides unified layout with optional header and standardized content container
+   * TabView - Layout component for the new architecture
+   * Provides unified layout with optional header and context widget support
+   * Now includes actual ContextWidget integration
    */
 
   import type { Snippet } from "svelte";
+  import ContextWidget from "./ContextWidget.svelte";
 
   interface Props {
     className?: string;
     testId?: string;
     showHeader?: boolean;
     headerTitle?: string;
+    // Context widget support
+    showContextWidget?: boolean;
+    serviceName?: string;
+    isNonLocalService?: boolean;
+    dayPlanningMode?: boolean;
     children: Snippet;
   }
 
@@ -19,15 +26,23 @@
     testId,
     showHeader = false,
     headerTitle,
+    showContextWidget = false,
+    serviceName,
+    isNonLocalService = false,
+    dayPlanningMode = false,
     children,
   }: Props = $props();
 </script>
 
 <div class="task-sync-tab-view {className}" data-testid={testId}>
-  <!-- Optional Header -->
-  {#if showHeader}
+  <!-- Header with Context Widget Support -->
+  {#if showHeader || showContextWidget}
     <div class="task-sync-tab-header">
-      {#if headerTitle}
+      {#if showContextWidget}
+        <!-- Context Widget -->
+        <ContextWidget {serviceName} {isNonLocalService} {dayPlanningMode} />
+      {:else if headerTitle}
+        <!-- Simple header title (fallback) -->
         <h2 class="tab-title">{headerTitle}</h2>
       {/if}
     </div>

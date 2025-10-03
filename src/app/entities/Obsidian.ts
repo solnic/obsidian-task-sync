@@ -19,16 +19,6 @@ export interface ObsidianConfig {
 }
 
 /**
- * Helper to get entity name for file path generation
- */
-function getEntityName(entity: Task | Project | Area): string {
-  if ("title" in entity) {
-    return entity.title; // Task
-  }
-  return entity.name; // Project or Area
-}
-
-/**
  * Obsidian namespace containing extension-specific operations
  */
 export namespace Obsidian {
@@ -122,4 +112,3 @@ export namespace Obsidian {
 
 // Export default singleton instance with default folder names
 export const obsidianOperations = new Obsidian.Operations();
-

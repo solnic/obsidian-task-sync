@@ -5,6 +5,7 @@
 
 import { z } from "zod";
 import { DEFAULT_TASK_STATUS } from "../constants/defaults";
+import { requiredDateSchema, optionalDateSchema } from "../utils/dateCoercion";
 
 // Core domain entities - completely source agnostic
 export const TaskStatusSchema = z
@@ -42,12 +43,12 @@ export const TaskSchema = z.object({
   tags: z.array(z.string()).default([]),
 
   // Scheduling
-  doDate: z.date().optional(),
-  dueDate: z.date().optional(),
+  doDate: optionalDateSchema,
+  dueDate: optionalDateSchema,
 
   // System properties
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: requiredDateSchema,
+  updatedAt: requiredDateSchema,
 
   // Source tracking (which extension owns this task)
   source: TaskSourceSchema.optional(),
@@ -61,8 +62,8 @@ export const ProjectSchema = z.object({
   description: z.string().optional(),
   areas: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: requiredDateSchema,
+  updatedAt: requiredDateSchema,
   source: TaskSourceSchema.optional(),
 });
 
@@ -73,9 +74,104 @@ export const AreaSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   tags: z.array(z.string()).default([]),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: requiredDateSchema,
+  updatedAt: requiredDateSchema,
   source: TaskSourceSchema.optional(),
 });
 
 export type Area = Readonly<z.infer<typeof AreaSchema>>;
+
+// Calendar Event schema for Schedule entity
+export const CalendarEventSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  location: z.string().optional(),
+  startDate: requiredDateSchema,
+  endDate: requiredDateSchema,
+  allDay: z.boolean(),
+  calendar: z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    color: z.string().optional(),
+    visible: z.boolean(),
+    metadata: z.record(z.string(), z.any()).optional(),
+  }),
+  url: z.string().optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+});
+
+export type CalendarEvent = z.infer<typeof CalendarEventSchema>;
+
+// Schedule entity schema
+export const ScheduleSchema = z.object({
+  // Core identity
+  id: z.string(),
+
+  // Schedule metadata
+  date: requiredDateSchema, // The date this schedule is for
+  createdAt: requiredDateSchema,
+  updatedAt: requiredDateSchema,
+
+  // Tasks included in this schedule
+  tasks: z.array(TaskSchema).default([]),
+
+  // Unscheduled tasks (for daily planning)
+  unscheduledTasks: z.array(TaskSchema).default([]),
+
+  // Calendar events for this schedule
+  events: z.array(CalendarEventSchema).default([]),
+
+  // Daily note information (for DailySchedule)
+  dailyNotePath: z.string().optional(),
+  dailyNoteExists: z.boolean().default(false),
+
+  // Planning state
+  isPlanned: z.boolean().default(false),
+  planningCompletedAt: optionalDateSchema,
+
+  // Source tracking (which extension owns this schedule)
+  source: TaskSourceSchema.optional(),
+});
+
+export type Schedule = Readonly<z.infer<typeof ScheduleSchema>>;
+
+// Schedule creation data interface
+export const ScheduleCreateDataSchema = z.object({
+  date: requiredDateSchema,
+  dailyNotePath: z.string().optional(),
+  tasks: z.array(TaskSchema).optional(),
+  events: z.array(CalendarEventSchema).optional(),
+});
+
+export type ScheduleCreateData = z.infer<typeof ScheduleCreateDataSchema>;
+
+// Schedule persistence item with task IDs instead of full task objects
+export const SchedulePersistenceItemSchema = z.object({
+  id: z.string(),
+  date: z.string(), // ISO date string
+  dailyNotePath: z.string().optional(),
+  dailyNoteExists: z.boolean(),
+  isPlanned: z.boolean(),
+  planningCompletedAt: z.string().optional(), // ISO date string
+  createdAt: z.string(), // ISO date string
+  updatedAt: z.string(), // ISO date string
+  taskIds: z.array(z.string()), // Array of task IDs instead of full task objects
+  unscheduledTaskIds: z.array(z.string()), // Array of unscheduled task IDs
+  events: z.array(CalendarEventSchema), // Events are still stored as full objects
+});
+
+export type SchedulePersistenceItem = z.infer<
+  typeof SchedulePersistenceItemSchema
+>;
+
+// Schedule persistence data interface
+export const SchedulePersistenceDataSchema = z.object({
+  schedules: z.array(SchedulePersistenceItemSchema),
+  lastSync: requiredDateSchema,
+});
+
+export type SchedulePersistenceData = z.infer<
+  typeof SchedulePersistenceDataSchema
+>;

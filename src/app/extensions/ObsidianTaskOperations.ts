@@ -7,6 +7,9 @@ import { App, stringifyYaml, TFile, TFolder } from "obsidian";
 import { Task } from "../core/entities";
 import { ObsidianEntityOperations } from "./ObsidianEntityOperations";
 import { projectStore } from "../stores/projectStore";
+import { taskStore } from "../stores/taskStore";
+import { getDateString } from "../utils/dateFiltering";
+import { PROPERTY_REGISTRY } from "./obsidian/PropertyRegistry";
 
 export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   constructor(app: App, folder: string) {
@@ -61,6 +64,21 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     return tasks;
   }
 
+  /**
+   * Rescan a single task file and update it in the store
+   * This is used when a file's front-matter changes
+   * @param file - The file to rescan
+   * @param cache - Optional metadata cache from the changed event
+   */
+  async rescanFile(file: TFile, cache?: any): Promise<void> {
+    // Use the cache parameter directly from the 'changed' event
+    // This contains the updated frontmatter data
+    const taskData = await this.parseFileToTaskData(file, cache);
+    if (taskData) {
+      taskStore.upsertTask(taskData);
+    }
+  }
+
   // Implement abstract method to get entity display name for file naming
   protected getEntityDisplayName(task: Task): string {
     return task.title;
@@ -68,24 +86,9 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
   // Implement abstract methods for task-specific behavior
   protected generateFrontMatter(task: Task): Record<string, any> {
-    // Based on properties.ts from old-stuff, ALL frontmatter properties must be defined
-    // even if they have null/empty defaults. This ensures consistent front-matter structure
-    // and prevents validation errors when creating LocalTask objects.
-    //
-    // Property defaults from PROPERTY_REGISTRY in old-stuff/types/properties.ts:
-    // - TITLE: no default (required)
-    // - TYPE: default "Task" (entity type, always "Task" for tasks)
-    // - CATEGORY: no default (task category like "Feature", "Bug", etc.)
-    // - PRIORITY: default null
-    // - AREAS: default []
-    // - PROJECT: no default (empty string)
-    // - DONE: default false
-    // - STATUS: default "Backlog"
-    // - PARENT_TASK: no default (empty string)
-    // - DO_DATE: default null
-    // - DUE_DATE: default null
-    // - TAGS: default []
-    // - REMINDERS: default []
+    // Use the Obsidian property registry to ensure consistent front-matter structure
+    // ALL frontmatter properties must be defined even if they have null/empty defaults
+    // to prevent validation errors when creating LocalTask objects.
 
     // Convert project name to wiki link format
     let projectValue = task.project || "";
@@ -99,20 +102,20 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     }
 
     return {
-      Title: task.title, // TITLE property (required)
-      Type: "Task", // TYPE property (always "Task" for task entities)
-      Category: task.category || "", // CATEGORY property (task type like "Feature", "Bug")
-      Priority: task.priority || "", // PRIORITY property (empty string if not set)
-      Areas: task.areas || [], // AREAS property (always array)
-      Project: projectValue, // PROJECT property (wiki link format)
-      Done: task.done, // DONE property (boolean)
-      Status: task.status, // STATUS property
-      "Parent task": task.parentTask || "", // PARENT_TASK property (note the space in name)
-      "Do Date": task.doDate?.toISOString().split("T")[0] || null, // DO_DATE property
-      "Due Date": task.dueDate?.toISOString().split("T")[0] || null, // DUE_DATE property
-      tags: task.tags || [], // TAGS property (lowercase, always array)
-      Reminders: [], // REMINDERS property (not yet implemented, default empty array)
-      // Note: createdAt and updatedAt are NOT frontmatter properties according to properties.ts
+      [PROPERTY_REGISTRY.TITLE.name]: task.title, // Use property name from registry
+      [PROPERTY_REGISTRY.TYPE.name]: "Task", // Always "Task" for task entities
+      [PROPERTY_REGISTRY.CATEGORY.name]: task.category || "", // Task category
+      [PROPERTY_REGISTRY.PRIORITY.name]: task.priority || "", // Priority
+      [PROPERTY_REGISTRY.AREAS.name]: task.areas || [], // Areas array
+      [PROPERTY_REGISTRY.PROJECT.name]: projectValue, // Project in wiki link format
+      [PROPERTY_REGISTRY.DONE.name]: task.done, // Done boolean
+      [PROPERTY_REGISTRY.STATUS.name]: task.status, // Status
+      [PROPERTY_REGISTRY.PARENT_TASK.name]: task.parentTask || "", // Parent task
+      [PROPERTY_REGISTRY.DO_DATE.name]: task.doDate ? getDateString(task.doDate) : null, // Do Date
+      [PROPERTY_REGISTRY.DUE_DATE.name]: task.dueDate ? getDateString(task.dueDate) : null, // Due Date
+      [PROPERTY_REGISTRY.TAGS.name]: task.tags || [], // Tags array
+      [PROPERTY_REGISTRY.REMINDERS.name]: [], // Reminders (not yet implemented)
+      // Note: createdAt and updatedAt are NOT frontmatter properties according to registry
       // They come from file.ctime and file.mtime (frontmatter: false)
     };
   }
@@ -120,7 +123,9 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   /**
    * Find a project by name from the project store
    */
-  private findProjectByName(projectName: string): import("../core/entities").Project | null {
+  private findProjectByName(
+    projectName: string
+  ): import("../core/entities").Project | null {
     let foundProject = null;
     const unsubscribe = projectStore.subscribe((state) => {
       foundProject = state.projects.find((p) => p.name === projectName);
@@ -137,13 +142,17 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
    * Parse a task file and convert it to task data (without ID)
    * Based on the old TaskFileManager.loadEntity logic but simplified for new architecture
    * @param file - The Obsidian file to parse
+   * @param cache - Optional metadata cache from the changed event
    * @returns Task data without ID, including naturalKey for store upsert
    */
   private async parseFileToTaskData(
-    file: TFile
+    file: TFile,
+    cache?: any
   ): Promise<(Omit<Task, "id"> & { naturalKey: string }) | null> {
-    const fileCache = this.app.metadataCache.getFileCache(file);
-    const frontMatter = fileCache.frontmatter;
+    // If cache is provided (from changed event), use it directly
+    // Otherwise wait for metadata cache to be ready
+    const frontMatter =
+      cache?.frontmatter || (await this.waitForMetadataCache(file));
 
     if (frontMatter?.Type !== "Task" || !frontMatter?.Title) {
       return null; // Not a task file
@@ -215,5 +224,74 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     };
 
     return taskData;
+  }
+
+  /**
+   * Wait for metadata cache to have front-matter for the given file
+   * Uses event-driven approach with fallback polling for better performance
+   * Based on the old FileManager.waitForMetadataCache implementation
+   */
+  private async waitForMetadataCache(file: TFile): Promise<any> {
+    // Helper function to check if frontmatter is complete (has non-null values)
+    const isCompleteFrontmatter = (frontmatter: any): boolean => {
+      if (!frontmatter || Object.keys(frontmatter).length === 0) {
+        return false;
+      }
+      // Check if essential properties have non-null values
+      // For tasks, we expect at least Title and Type to have values
+      if (frontmatter.Type === "Task") {
+        return frontmatter.Title !== null && frontmatter.Title !== undefined;
+      }
+      // For other entity types, just check that we have some non-null values
+      return Object.values(frontmatter).some(
+        (value) => value !== null && value !== undefined
+      );
+    };
+
+    // First check if metadata is already available and complete
+    const existingCache = this.app.metadataCache.getFileCache(file);
+    if (
+      existingCache?.frontmatter &&
+      isCompleteFrontmatter(existingCache.frontmatter)
+    ) {
+      return existingCache.frontmatter;
+    }
+
+    // Use event-driven approach with timeout
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.app.metadataCache.off("changed", onMetadataChanged);
+        reject(new Error(`Metadata cache timeout for file: ${file.path}`));
+      }, 5000); // 5 second timeout
+
+      const onMetadataChanged = (
+        changedFile: TFile,
+        _data: string,
+        cache: any
+      ) => {
+        if (
+          changedFile.path === file.path &&
+          cache?.frontmatter &&
+          isCompleteFrontmatter(cache.frontmatter)
+        ) {
+          clearTimeout(timeout);
+          this.app.metadataCache.off("changed", onMetadataChanged);
+          resolve(cache.frontmatter);
+        }
+      };
+
+      // Listen for metadata changes
+      this.app.metadataCache.on("changed", onMetadataChanged);
+
+      // Fallback: check again after a short delay in case the event was missed
+      setTimeout(() => {
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (cache?.frontmatter && isCompleteFrontmatter(cache.frontmatter)) {
+          clearTimeout(timeout);
+          this.app.metadataCache.off("changed", onMetadataChanged);
+          resolve(cache.frontmatter);
+        }
+      }, 100);
+    });
   }
 }

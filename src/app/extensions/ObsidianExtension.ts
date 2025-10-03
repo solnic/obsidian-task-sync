@@ -17,11 +17,11 @@ import { areaStore } from "../stores/areaStore";
 import { taskOperations } from "../entities/Tasks";
 import { projectOperations } from "../entities/Projects";
 import { areaOperations } from "../entities/Areas";
-import { derived, type Readable } from "svelte/store";
 import type { Task, Project } from "../core/entities";
-import { BaseManager } from "../services/BaseManager";
 import type { TaskSyncSettings } from "../types/settings";
-import type { DomainEvent } from "../core/events";
+import { ObsidianBaseManager } from "./obsidian/BaseManager";
+import { DailyNoteFeature } from "../features/DailyNoteFeature";
+import { derived, get, type Readable } from "svelte/store";
 
 export interface ObsidianExtensionSettings {
   areasFolder: string;
@@ -31,20 +31,6 @@ export interface ObsidianExtensionSettings {
   basesFolder: string;
   projectBasesEnabled: boolean;
   autoSyncAreaProjectBases: boolean;
-}
-
-// Type definitions for project events
-interface ProjectCreatedEvent {
-  type: "projects.created";
-  project: Project;
-  extension?: string;
-}
-
-interface ProjectUpdatedEvent {
-  type: "projects.updated";
-  project: Project;
-  changes?: Partial<Project>;
-  extension?: string;
 }
 
 export class ObsidianExtension implements Extension {
@@ -64,7 +50,8 @@ export class ObsidianExtension implements Extension {
   private vaultEventRefs: EventRef[] = [];
   private taskTodoMarkdownProcessor?: TaskTodoMarkdownProcessor;
   private markdownProcessor?: MarkdownPostProcessor;
-  private baseManager: BaseManager;
+  private baseManager: ObsidianBaseManager;
+  private dailyNoteFeature: DailyNoteFeature;
 
   constructor(
     private app: App,
@@ -72,11 +59,19 @@ export class ObsidianExtension implements Extension {
     private settings: ObsidianExtensionSettings,
     private fullSettings: TaskSyncSettings
   ) {
+    // Initialize base manager first so it can be passed to operations
+    this.baseManager = new ObsidianBaseManager(app, app.vault, fullSettings);
+
     this.areaOperations = new ObsidianAreaOperations(app, settings.areasFolder);
+
+    // Pass base manager and settings to project operations for inline base generation
     this.projectOperations = new ObsidianProjectOperations(
       app,
-      settings.projectsFolder
+      settings.projectsFolder,
+      this.baseManager,
+      fullSettings
     );
+
     this.taskOperations = new ObsidianTaskOperations(app, settings.tasksFolder);
 
     // Initialize markdown processor
@@ -85,8 +80,10 @@ export class ObsidianExtension implements Extension {
       fullSettings
     );
 
-    // Initialize base manager
-    this.baseManager = new BaseManager(app, app.vault, fullSettings);
+    // Initialize daily note feature
+    this.dailyNoteFeature = new DailyNoteFeature(app, plugin, {
+      dailyNotesFolder: fullSettings.dailyNotesFolder || "Daily Notes",
+    });
   }
 
   async initialize(): Promise<void> {
@@ -132,6 +129,13 @@ export class ObsidianExtension implements Extension {
       // Register markdown processor after layout is ready
       this.registerTaskTodoMarkdownProcessor();
 
+      // Trigger extension loaded event
+      eventBus.trigger({
+        type: "extension.loaded",
+        extension: this.id,
+        supportedEntities: [...this.supportedEntities],
+      });
+
       console.log("ObsidianExtension loaded successfully");
     } catch (error) {
       console.error("Failed to load ObsidianExtension:", error);
@@ -149,6 +153,9 @@ export class ObsidianExtension implements Extension {
     // Unregister markdown processor
     this.unregisterTaskTodoMarkdownProcessor();
 
+    // Cleanup daily note feature
+    this.dailyNoteFeature.cleanup();
+
     eventBus.trigger({
       type: "extension.unregistered",
       extension: this.id,
@@ -159,6 +166,22 @@ export class ObsidianExtension implements Extension {
 
   async isHealthy(): Promise<boolean> {
     return this.app.vault !== null && this.initialized;
+  }
+
+  /**
+   * Add a task to today's daily note
+   * Exposed method for other parts of the application to use
+   */
+  async addTaskToTodayDailyNote(taskPath: string) {
+    return await this.dailyNoteFeature.addTaskToToday(taskPath);
+  }
+
+  /**
+   * Ensure today's daily note exists
+   * Exposed method for other parts of the application to use
+   */
+  async ensureTodayDailyNote() {
+    return await this.dailyNoteFeature.ensureTodayDailyNote();
   }
 
   /**
@@ -183,15 +206,8 @@ export class ObsidianExtension implements Extension {
       console.log("Refreshing Obsidian tasks...");
 
       // Get current tasks to identify which ones to remove (no longer exist in files)
-      const currentState = await new Promise((resolve) => {
-        let unsubscribe: (() => void) | undefined;
-        unsubscribe = taskStore.subscribe((state) => {
-          resolve(state);
-          if (unsubscribe) unsubscribe();
-        });
-      });
-
-      const currentTasks = (currentState as any).tasks;
+      const currentState = get(taskStore);
+      const currentTasks = currentState.tasks;
 
       // Scan existing task files
       const freshTasksData = await this.taskOperations.scanExistingTasks();
@@ -218,7 +234,12 @@ export class ObsidianExtension implements Extension {
 
       // Upsert fresh tasks - store will handle ID generation/preservation
       for (const taskData of freshTasksData) {
-        taskStore.upsertTask(taskData);
+        try {
+          taskStore.upsertTask(taskData);
+        } catch (error) {
+          console.error(`Failed to upsert task ${taskData.title}:`, error);
+          // Continue with other tasks instead of crashing
+        }
       }
 
       taskStore.setLoading(false);
@@ -403,7 +424,12 @@ export class ObsidianExtension implements Extension {
       // Populate the canonical task store using upsert logic
       // Store will handle ID generation for new tasks
       for (const taskData of existingTasksData) {
-        taskStore.upsertTask(taskData);
+        try {
+          taskStore.upsertTask(taskData);
+        } catch (error) {
+          console.error(`Failed to upsert task ${taskData.title}:`, error);
+          // Continue with other tasks instead of crashing
+        }
       }
 
       console.log("Successfully populated task store with existing tasks");
@@ -498,15 +524,36 @@ export class ObsidianExtension implements Extension {
   /**
    * Get base manager instance for direct access if needed
    */
-  getBaseManager(): BaseManager {
+  getBaseManager(): ObsidianBaseManager {
     return this.baseManager;
   }
 
   /**
    * Set up vault event listeners to handle file deletions
    * When a note is deleted in Obsidian, we need to delete the corresponding entity
+   * Set up vault event listeners to handle file changes and deletions
+   * When a note is modified or deleted in Obsidian, we need to update or delete the corresponding entity
    */
   private setupVaultEventListeners(): void {
+    // Listen for metadata changes (front-matter updates)
+    const metadataChangeRef = this.app.metadataCache.on(
+      "changed",
+      (file, _data, cache) => {
+        if (!(file instanceof TFile)) return;
+
+        const filePath = file.path;
+
+        // Check if the changed file is in one of our entity folders
+        if (filePath.startsWith(this.settings.tasksFolder + "/")) {
+          this.handleTaskFileChange(file, cache);
+        } else if (filePath.startsWith(this.settings.projectsFolder + "/")) {
+          this.handleProjectFileChange(file, cache);
+        } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
+          this.handleAreaFileChange(file, cache);
+        }
+      }
+    );
+
     // Listen for file deletions in the vault
     const deleteRef = this.app.vault.on("delete", (file) => {
       if (!(file instanceof TFile)) return;
@@ -523,6 +570,7 @@ export class ObsidianExtension implements Extension {
       }
     });
 
+    this.vaultEventRefs.push(metadataChangeRef);
     this.vaultEventRefs.push(deleteRef);
   }
 
@@ -565,62 +613,42 @@ export class ObsidianExtension implements Extension {
     }
   }
 
-  /**
-   * Handle project creation events for automatic base generation
+  /*
+   * Handle task file change by reloading the task from the file
    */
-  private async onProjectCreated(event: ProjectCreatedEvent): Promise<void> {
-    if (
-      !this.settings.projectBasesEnabled ||
-      !this.settings.autoSyncAreaProjectBases
-    ) {
-      return;
-    }
-
+  private async handleTaskFileChange(file: TFile, cache: any): Promise<void> {
     try {
-      // Extract project info from the event
-      const project = event.project;
-      if (project && project.name && project.source?.filePath) {
-        const projectInfo = {
-          name: project.name,
-          path: project.source.filePath,
-          type: "project" as const,
-        };
-
-        console.log(`Auto-generating base for new project: ${project.name}`);
-        await this.baseManager.createOrUpdateProjectBase(projectInfo);
-      }
+      // Rescan the file to update the task in the store
+      await this.taskOperations.rescanFile(file, cache);
     } catch (error) {
-      console.error("Failed to auto-generate project base:", error);
+      console.error(
+        `Failed to handle task file change for ${file.path}:`,
+        error
+      );
     }
   }
 
   /**
-   * Handle project update events for automatic base regeneration
+   * Handle project file change by reloading the project from the file
+   * TODO: Implement project rescanning once project scanning is implemented
    */
-  private async onProjectUpdated(event: ProjectUpdatedEvent): Promise<void> {
-    if (
-      !this.settings.projectBasesEnabled ||
-      !this.settings.autoSyncAreaProjectBases
-    ) {
-      return;
-    }
+  private async handleProjectFileChange(
+    file: TFile,
+    cache: any
+  ): Promise<void> {
+    console.log(
+      `Project file changed: ${file.path} (rescanning not yet implemented)`
+    );
+  }
 
-    try {
-      // Extract project info from the event
-      const project = event.project;
-      if (project && project.name && project.source?.filePath) {
-        const projectInfo = {
-          name: project.name,
-          path: project.source.filePath,
-          type: "project" as const,
-        };
-
-        console.log(`Auto-updating base for updated project: ${project.name}`);
-        await this.baseManager.createOrUpdateProjectBase(projectInfo);
-      }
-    } catch (error) {
-      console.error("Failed to auto-update project base:", error);
-    }
+  /**
+   * Handle area file change by reloading the area from the file
+   * TODO: Implement area rescanning once area scanning is implemented
+   */
+  private async handleAreaFileChange(file: TFile, cache: any): Promise<void> {
+    console.log(
+      `Area file changed: ${file.path} (rescanning not yet implemented)`
+    );
   }
 
   private setupEventListeners(): void {
@@ -633,9 +661,8 @@ export class ObsidianExtension implements Extension {
     eventBus.on("projects.updated", this.onEntityUpdated.bind(this));
     eventBus.on("projects.deleted", this.onEntityDeleted.bind(this));
 
-    // Listen for project events to automatically sync bases
-    eventBus.on("projects.created", this.onProjectCreated.bind(this));
-    eventBus.on("projects.updated", this.onProjectUpdated.bind(this));
+    // Note: Base generation for projects is now handled directly in ObsidianProjectOperations.createNote()
+    // instead of as a side-effect of domain events, making it faster and more synchronous
 
     eventBus.on("tasks.created", this.onEntityCreated.bind(this));
     eventBus.on("tasks.updated", this.onEntityUpdated.bind(this));

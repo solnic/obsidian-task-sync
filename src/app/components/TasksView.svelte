@@ -9,14 +9,18 @@
   import type { TaskSyncSettings } from "../types/settings";
   import { setIcon } from "obsidian";
   import { extensionRegistry } from "../core/extension";
+  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
+  import type { Host } from "../core/host";
+  import { isPlanningActive } from "../stores/contextStore";
+  import { untrack } from "svelte";
   import { eventBus } from "../core/events";
 
   interface Props {
     // Settings for configuration
     settings?: TaskSyncSettings;
 
-    // Host for data persistence
-    host?: any;
+    // Host for data persistence and extension resolution
+    host: Host;
 
     // Test attributes
     testId?: string;
@@ -27,32 +31,63 @@
   // State - simplified to only support local tasks initially
   let activeService = $state<string>("local");
 
-  // Reactive state that updates when extensions are registered/unregistered
-  let extensionsVersion = $state(0);
+  // Get daily planning extension - simple, direct lookup
+  let dailyPlanningExtension = $derived(
+    host.getExtensionById("daily-planning") as
+      | DailyPlanningExtension
+      | undefined
+  );
 
-  // Listen to extension lifecycle events to trigger reactivity
+  // Staged tasks state - managed at TasksView level for all services
+  let stagedTaskIds = $state<Set<string>>(new Set());
+
+  // Subscribe to staged changes from daily planning extension
+  // Use untrack to prevent infinite loops when updating state
   $effect(() => {
-    const unsubscribeRegistered = eventBus.on("extension.registered", () => {
-      extensionsVersion++;
-    });
+    if (!dailyPlanningExtension) {
+      stagedTaskIds = new Set();
+      return;
+    }
 
-    const unsubscribeUnregistered = eventBus.on(
-      "extension.unregistered",
-      () => {
-        extensionsVersion++;
-      }
-    );
+    const unsubscribe = dailyPlanningExtension
+      .getStagedChanges()
+      .subscribe((changes) => {
+        // Use untrack to prevent this state update from triggering the effect again
+        untrack(() => {
+          stagedTaskIds = changes.toSchedule;
+        });
+      });
 
-    return () => {
-      unsubscribeRegistered();
-      unsubscribeUnregistered();
-    };
+    return unsubscribe;
   });
 
-  // Available services - reactively built from registered extensions
+  // Unified task staging handler for all services
+  function handleStageTask(task: any): void {
+    if (dailyPlanningExtension) {
+      dailyPlanningExtension.scheduleTaskForToday(task.id);
+    }
+  }
+
+  // Track extension loading state to trigger service list updates
+  let extensionLoadCounter = $state(0);
+
+  // Listen to extension.loaded events to update services list
+  $effect(() => {
+    const unsubscribe = eventBus.on("extension.loaded", () => {
+      // Increment counter to trigger services re-computation
+      untrack(() => {
+        extensionLoadCounter++;
+      });
+    });
+
+    return unsubscribe;
+  });
+
+  // Available services - built from registered extensions
+  // Depends on extensionLoadCounter to re-compute when extensions are loaded
   let services = $derived.by(() => {
-    // Access extensionsVersion to make this reactive
-    extensionsVersion;
+    // Access extensionLoadCounter to make this reactive to extension loading
+    extensionLoadCounter;
 
     const allServices = [];
 
@@ -108,8 +143,10 @@
       <TabView
         className="tasks-view-tab"
         testId="tasks-view-tab"
-        showHeader={true}
-        headerTitle={services.find((s: any) => s.id === activeService).name}
+        showContextWidget={true}
+        serviceName={services.find((s: any) => s.id === activeService)?.name}
+        isNonLocalService={activeService !== "local"}
+        dayPlanningMode={$isPlanningActive}
       >
         <!-- Service Content -->
         <div class="service-content" data-testid="service-content">
@@ -117,6 +154,9 @@
             serviceId={activeService}
             {settings}
             {host}
+            {dailyPlanningExtension}
+            {stagedTaskIds}
+            onStageTask={handleStageTask}
             testId="{activeService}-service"
           />
         </div>

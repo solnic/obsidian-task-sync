@@ -11,9 +11,11 @@
   import { getFilterOptions } from "../utils/contextFiltering";
   import type { TaskSyncSettings } from "../types/settings";
   import { createLocalTask, type LocalTask } from "../types/LocalTask";
-  import type { Task } from "../core/entities";
+  import type { Task, Schedule } from "../core/entities";
   import type { Extension } from "../core/extension";
   import type { Host } from "../core/host";
+  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
+  import { isPlanningActive } from "../stores/contextStore";
 
   interface SortField {
     key: string;
@@ -48,12 +50,27 @@
     // Host for data persistence
     host: Host;
 
+    // Daily planning extension for planning functionality
+    dailyPlanningExtension?: DailyPlanningExtension;
+
+    // Unified staging state and handlers
+    stagedTaskIds?: Set<string>;
+    onStageTask?: (task: any) => void;
+
     // Test attributes
     testId?: string;
   }
 
-  let { settings, localTasksSettings, extension, host, testId }: Props =
-    $props();
+  let {
+    settings,
+    localTasksSettings,
+    extension,
+    host,
+    dailyPlanningExtension,
+    stagedTaskIds = new Set(),
+    onStageTask,
+    testId,
+  }: Props = $props();
 
   // State
   let tasks = $state<Task[]>([]);
@@ -61,6 +78,10 @@
   let error = $state<string | null>(null);
   let isLoading = $state(false);
   let hoveredTask = $state<string | null>(null);
+
+  // Planning mode state
+  let selectedTasksForPlanning = $state<Set<string>>(new Set());
+  let stagedTasks = $state<Task[]>([]);
 
   // Additional filter state - initialized from provided settings
   let selectedProject = $state<string | null>(
@@ -209,6 +230,49 @@
   function handleSortChange(newSortFields: SortField[]): void {
     sortFields = newSortFields;
   }
+
+  // Planning mode functions
+  function toggleTaskSelection(task: Task): void {
+    if (!$isPlanningActive) return;
+
+    const taskId = task.id;
+    const newSelection = new Set(selectedTasksForPlanning);
+
+    if (newSelection.has(taskId)) {
+      newSelection.delete(taskId);
+    } else {
+      newSelection.add(taskId);
+    }
+
+    selectedTasksForPlanning = newSelection;
+  }
+
+  function addSelectedTasksToSchedule(): void {
+    if (!$isPlanningActive || !dailyPlanningExtension) return;
+
+    const tasksToAdd = filteredTasks
+      .filter((localTask) => selectedTasksForPlanning.has(localTask.task.id))
+      .map((localTask) => localTask.task);
+
+    // Add tasks to staging area
+    stagedTasks = [...stagedTasks, ...tasksToAdd];
+
+    // Move tasks to today's schedule via the daily planning extension
+    tasksToAdd.forEach(async (task) => {
+      try {
+        await dailyPlanningExtension.moveTaskToToday(task);
+      } catch (error) {
+        console.error("Failed to add task to schedule:", error);
+      }
+    });
+
+    // Clear selection
+    selectedTasksForPlanning = new Set();
+  }
+
+  function clearSelection(): void {
+    selectedTasksForPlanning = new Set();
+  }
 </script>
 
 <div
@@ -338,9 +402,24 @@
               task={localTask.task}
               {localTask}
               isHovered={hoveredTask === localTask.task.id}
+              isSelected={$isPlanningActive &&
+                selectedTasksForPlanning.has(localTask.task.id)}
               onHover={(hovered: boolean) =>
                 (hoveredTask = hovered ? localTask.task.id : null)}
-              onClick={() => openTask(localTask.task)}
+              onClick={() => {
+                if ($isPlanningActive) {
+                  toggleTaskSelection(localTask.task);
+                } else {
+                  openTask(localTask.task);
+                }
+              }}
+              dailyPlanningWizardMode={$isPlanningActive}
+              onAddToToday={(task) => {
+                if (onStageTask) {
+                  onStageTask(task);
+                }
+              }}
+              isStaged={stagedTaskIds.has(localTask.task.id)}
               {settings}
               testId="local-task-item-{localTask.task.title
                 .replace(/\s+/g, '-')
@@ -352,3 +431,6 @@
     {/if}
   </div>
 </div>
+
+<style>
+</style>

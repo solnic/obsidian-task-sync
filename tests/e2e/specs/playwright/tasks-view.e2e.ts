@@ -15,20 +15,20 @@ import {
   verifyTaskBadges,
   verifyEmptyState,
   verifyTaskCount,
-  createTestTask,
 } from "../../helpers/tasks-view-helpers";
+import { createTask } from "../../helpers/entity-helpers";
 
 test.describe("TasksView Component", () => {
   test("should open Tasks view and display local tasks", async ({ page }) => {
     // Create some test tasks first
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Display Test Task 1",
       category: "Feature",
       priority: "High",
       status: "In Progress",
     });
 
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Display Test Task 2",
       category: "Bug",
       priority: "Medium",
@@ -54,7 +54,7 @@ test.describe("TasksView Component", () => {
     page,
   }) => {
     // Create initial task
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Refresh Test Task",
       category: "Feature",
     });
@@ -66,20 +66,12 @@ test.describe("TasksView Component", () => {
     // Verify initial task is present
     await getTaskItemByTitle(page, "Refresh Test Task");
 
-    // Create another task directly in the vault (simulating external change)
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const content = `---
-Title: External Task
-Type: Task
-Category: Bug
-Priority: Low
-Status: Backlog
-Done: false
----
-
-This task was created externally.`;
-      await app.vault.create("Tasks/External Task.md", content);
+    // Create another task using the helper function instead of direct vault creation
+    await createTask(page, {
+      title: "External Task",
+      category: "Bug",
+      priority: "Low",
+      status: "Backlog",
     });
 
     // Click refresh button
@@ -106,7 +98,7 @@ This task was created externally.`;
 
   test("should display task badges correctly", async ({ page }) => {
     // Create task with specific properties
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Badge Test Task",
       category: "Feature",
       priority: "High",
@@ -152,7 +144,7 @@ This task was created externally.`;
     page,
   }) => {
     // Create a test task
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Open Test Task",
       description: "This task should open when clicked",
       category: "Feature",
@@ -170,7 +162,7 @@ This task was created externally.`;
       () => {
         const app = (window as any).app;
         const activeFile = app.workspace.getActiveFile();
-        return activeFile && activeFile.name === "open-test-task.md";
+        return activeFile && activeFile.name === "Open Test Task.md";
       },
       { timeout: 5000 }
     );
@@ -179,7 +171,7 @@ This task was created externally.`;
     const hasActiveFile = await page.evaluate(() => {
       const app = (window as any).app;
       const activeFile = app.workspace.getActiveFile();
-      return activeFile && activeFile.name === "open-test-task.md";
+      return activeFile && activeFile.name === "Open Test Task.md";
     });
 
     expect(hasActiveFile).toBe(true);
@@ -187,7 +179,7 @@ This task was created externally.`;
 
   test("should show hover effects on task items", async ({ page }) => {
     // Create a test task
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Hover Test Task",
       category: "Feature",
     });
@@ -231,7 +223,7 @@ This task was created externally.`;
     ];
 
     for (const task of tasks) {
-      await createTestTask(page, task);
+      await createTask(page, task);
     }
 
     // Open Tasks view
@@ -252,9 +244,165 @@ This task was created externally.`;
     await verifyTaskCount(page, tasks.length);
   });
 
+  test("should show context header with service name and file context", async ({
+    page,
+  }) => {
+    // Open Tasks view
+    await openTasksView(page);
+    await waitForLocalTasksToLoad(page);
+
+    // Verify that TabView header is displayed
+    const tabHeader = page.locator(
+      '[data-testid="tasks-view-tab"] .task-sync-tab-header'
+    );
+    await expect(tabHeader).toBeVisible();
+
+    // Should show context widget
+    const contextWidget = page.locator(
+      '[data-testid="tasks-view-tab"] [data-testid="context-widget"]'
+    );
+    await expect(contextWidget).toBeVisible();
+
+    // Should show service name in context widget
+    const serviceName = page.locator(
+      '[data-testid="context-widget"] .service-name'
+    );
+    await expect(serviceName).toHaveText("Local Tasks");
+
+    // Should show "No context" when no file is open
+    const noContext = page.locator(
+      '[data-testid="context-widget"] .no-context'
+    );
+    await expect(noContext).toHaveText("No context");
+
+    // TODO: Add more comprehensive context tests:
+    // - Test context detection when opening project/area/task files
+    // - Test context updates when switching between different file types
+    // - Test daily planning mode context changes
+  });
+
+  // TODO: Add test for "Schedule for today" button when daily planning is active
+  // Currently disabled due to test instability - needs investigation
+
+  test("should detect and display file context when opening different file types", async ({
+    page,
+  }) => {
+    // Create test entities
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Create a project file
+      await app.vault.create(
+        "Projects/Test Project.md",
+        "# Test Project\n\nA test project file."
+      );
+
+      // Create an area file
+      await app.vault.create(
+        "Areas/Test Area.md",
+        "# Test Area\n\nA test area file."
+      );
+
+      // Create a task file
+      await app.vault.create(
+        "Tasks/Test Task.md",
+        "---\ntitle: Test Task\ncategory: Feature\n---\n\n# Test Task\n\nA test task file."
+      );
+    });
+
+    // Open Tasks view
+    await openTasksView(page);
+    await waitForLocalTasksToLoad(page);
+
+    // Initially should show "No context"
+    const contextWidget = page.locator('[data-testid="context-widget"]');
+    await expect(contextWidget).toBeVisible();
+
+    let noContext = page.locator('[data-testid="context-widget"] .no-context');
+    await expect(noContext).toHaveText("No context");
+
+    // Open project file and verify context changes
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath("Projects/Test Project.md");
+      if (file) {
+        await app.workspace.getLeaf().openFile(file);
+      }
+    });
+
+    // Wait for context to update and check project context
+    await page.waitForTimeout(500); // Give context time to update
+
+    const projectContext = page.locator(
+      '[data-testid="context-widget"] .context-type'
+    );
+    await expect(projectContext).toHaveText("Project");
+
+    const projectName = page.locator(
+      '[data-testid="context-widget"] .context-name'
+    );
+    await expect(projectName).toHaveText("Test Project");
+
+    // Open area file and verify context changes
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath("Areas/Test Area.md");
+      if (file) {
+        await app.workspace.getLeaf().openFile(file);
+      }
+    });
+
+    // Wait for context to update and check area context
+    await page.waitForTimeout(500);
+
+    const areaContext = page.locator(
+      '[data-testid="context-widget"] .context-type'
+    );
+    await expect(areaContext).toHaveText("Area");
+
+    const areaName = page.locator(
+      '[data-testid="context-widget"] .context-name'
+    );
+    await expect(areaName).toHaveText("Test Area");
+
+    // Open task file and verify context changes
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath("Tasks/Test Task.md");
+      if (file) {
+        await app.workspace.getLeaf().openFile(file);
+      }
+    });
+
+    // Wait for context to update and check task context
+    await page.waitForTimeout(500);
+
+    const taskContext = page.locator(
+      '[data-testid="context-widget"] .context-type'
+    );
+    await expect(taskContext).toHaveText("Task");
+
+    const taskName = page.locator(
+      '[data-testid="context-widget"] .context-name'
+    );
+    await expect(taskName).toHaveText("Test Task");
+
+    // Close the active file and verify context returns to "No context"
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      app.workspace.activeLeaf?.detach();
+    });
+
+    // Wait for context to update
+    await page.waitForTimeout(500);
+
+    noContext = page.locator('[data-testid="context-widget"] .no-context');
+    await expect(noContext).toHaveText("No context");
+  });
+
   test("should reflect front-matter changes in real-time", async ({ page }) => {
     // Create a test task
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Reactivity Test Task",
       priority: "Low",
       status: "Backlog",
@@ -270,13 +418,12 @@ This task was created externally.`;
     expect(taskText).toContain("Low");
     expect(taskText).toContain("Backlog");
 
-    // Update the task's front-matter directly
+    // Update the task's front-matter directly using processFrontMatter
     await page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/reactivity-test-task.md"
+        "Tasks/Reactivity Test Task.md"
       );
-
       if (file) {
         await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
           frontmatter.Priority = "High";
@@ -285,17 +432,16 @@ This task was created externally.`;
       }
     });
 
-    // Manually refresh to pick up the changes (since real-time watching isn't implemented yet)
-    // TODO: Implement real-time file watching to automatically update tasks when files change.
-    await refreshTasks(page);
-
-    // Wait for the change to be reflected in the UI
+    // Wait for the change to be reflected in the UI automatically
+    // The system should detect the front-matter change and update the store
     await page.waitForFunction(
       () => {
         const taskItems = document.querySelectorAll(
           '[data-testid^="local-task-item-"]'
         );
+        console.log(`Found ${taskItems.length} task items`);
         for (const item of taskItems) {
+          console.log(`Task item text: ${item.textContent}`);
           if (
             item.textContent?.includes("Reactivity Test Task") &&
             item.textContent?.includes("High") &&
@@ -306,13 +452,17 @@ This task was created externally.`;
         }
         return false;
       },
-      { timeout: 5000 }
+      { timeout: 10000 }
     );
 
     // Verify the changes are reflected
-    taskText = await taskItem.textContent();
-    expect(taskText).toContain("High");
-    expect(taskText).toContain("In Progress");
+    const updatedTaskItem = await getTaskItemByTitle(
+      page,
+      "Reactivity Test Task"
+    );
+    const updatedTaskText = await updatedTaskItem.textContent();
+    expect(updatedTaskText).toContain("High");
+    expect(updatedTaskText).toContain("In Progress");
   });
 
   test("should handle task creation and deletion gracefully", async ({
@@ -327,7 +477,7 @@ This task was created externally.`;
     const initialCount = initialTasks.length;
 
     // Create a new task
-    await createTestTask(page, {
+    await createTask(page, {
       title: "Dynamic Creation Test",
       category: "Feature",
     });
@@ -351,7 +501,7 @@ This task was created externally.`;
     await page.evaluate(async () => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(
-        "Tasks/dynamic-creation-test.md"
+        "Tasks/Dynamic Creation Test.md"
       );
       if (file) {
         await app.vault.delete(file);

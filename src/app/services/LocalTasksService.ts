@@ -3,6 +3,7 @@
  * Handles local task operations with extension delegation
  */
 
+import { get } from "svelte/store";
 import { Task } from "../core/entities";
 import { taskStore } from "../stores/taskStore";
 
@@ -42,15 +43,8 @@ export class LocalTasksService {
       console.log("Refreshing local tasks via extension...");
 
       // Get current tasks to identify which ones to remove (no longer exist in files)
-      const currentState = await new Promise((resolve) => {
-        let unsubscribe: (() => void) | undefined;
-        unsubscribe = taskStore.subscribe((state) => {
-          resolve(state);
-          if (unsubscribe) unsubscribe();
-        });
-      });
-
-      const currentTasks = (currentState as any).tasks;
+      const currentState = get(taskStore);
+      const currentTasks = currentState.tasks;
 
       // Delegate to extension to get fresh task data (without IDs)
       const freshTasksData = await this.extension.scanExistingTasks();
@@ -94,26 +88,15 @@ export class LocalTasksService {
    * Get all local tasks from the store
    */
   async getAllTasks(): Promise<readonly Task[]> {
-    return new Promise((resolve) => {
-      const unsubscribe = taskStore.subscribe((state) => {
-        resolve(state.tasks);
-        unsubscribe();
-      });
-    });
+    return get(taskStore).tasks;
   }
 
   /**
    * Get tasks by extension ID
    */
   async getTasksByExtension(extensionId: string): Promise<readonly Task[]> {
-    return new Promise((resolve) => {
-      const unsubscribe = taskStore.subscribe((state) => {
-        const tasks = state.tasks.filter(
-          (t) => t.source?.extension === extensionId
-        );
-        resolve(tasks);
-        unsubscribe();
-      });
-    });
+    return get(taskStore).tasks.filter(
+      (t) => t.source?.extension === extensionId
+    );
   }
 }

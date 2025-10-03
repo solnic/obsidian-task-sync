@@ -15,12 +15,14 @@
     task: Task;
     localTask: LocalTask;
     isHovered?: boolean;
+    isSelected?: boolean;
     onHover?: (hovered: boolean) => void;
     onClick?: () => void;
     dayPlanningMode?: boolean;
     dailyPlanningWizardMode?: boolean;
     onAddToToday?: (task: Task) => void;
     isInToday?: boolean;
+    isStaged?: boolean;
     testId?: string;
     settings?: TaskSyncSettings;
   }
@@ -29,18 +31,23 @@
     task,
     localTask,
     isHovered = false,
+    isSelected = false,
     onHover,
     onClick,
     dayPlanningMode = false,
     dailyPlanningWizardMode = false,
     onAddToToday,
     isInToday = false,
+    isStaged = false,
     testId,
     settings,
   }: Props = $props();
 
-  // Track daily planning state - a task is scheduled if it has a doDate
-  let isScheduled = $derived(task.doDate != null);
+  // Track daily planning state - a task is scheduled if it has a doDate OR is staged
+  let isScheduled = $derived(task.doDate != null || isStaged);
+
+  // Compute the scheduled date - use doDate if available, otherwise today if staged
+  let scheduledDate = $derived(task.doDate || (isStaged ? new Date() : null));
 
   // Local tasks are never imported, so isImported is always false.
   // This prop is required by TaskItem for consistent styling logic.
@@ -129,7 +136,7 @@
         title="Schedule for today"
         testId="schedule-for-today-button"
         onImport={handleAddToToday}
-        isImported={false}
+        isImported={isStaged}
       />
     {:else if dayPlanningMode}
       <ImportButton
@@ -161,8 +168,9 @@
   updatedAt={localTask.sortable.updatedAt}
   {isHovered}
   {isImported}
+  {isSelected}
   {isScheduled}
-  scheduledDate={task.doDate}
+  {scheduledDate}
   {onHover}
   {settings}
   actionContent={true}

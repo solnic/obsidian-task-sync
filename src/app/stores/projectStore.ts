@@ -3,7 +3,7 @@
  * Maintains reactive state for projects from multiple extensions
  */
 
-import { writable, derived, type Readable } from "svelte/store";
+import { writable, derived, get, type Readable } from "svelte/store";
 import { Project } from "../core/entities";
 
 interface ProjectStoreState {
@@ -21,7 +21,6 @@ export interface ProjectStore extends Readable<ProjectStoreState> {
   // Actions
   setLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
-  cleanup: () => void;
 
   // Direct store manipulation methods (for core operations)
   addProject: (project: Project) => void;
@@ -41,12 +40,6 @@ export function createProjectStore(): ProjectStore {
   };
 
   const { subscribe, update } = writable(initialState);
-
-  // Store cleanup functions for event subscriptions
-  const unsubscribeFunctions: (() => void)[] = [];
-
-  // Store should NOT listen to domain events - that creates circular dependencies
-  // Domain events are for extensions to react to, not for updating the store
 
   // Derived stores for common queries
   const projectsByExtension = derived({ subscribe }, ($store) => {
@@ -72,10 +65,6 @@ export function createProjectStore(): ProjectStore {
 
   const setError = (error: string | null) => {
     update((state) => ({ ...state, error }));
-  };
-
-  const cleanup = () => {
-    unsubscribeFunctions.forEach((unsubscribe) => unsubscribe());
   };
 
   // Direct store manipulation methods (for core operations)
@@ -105,12 +94,9 @@ export function createProjectStore(): ProjectStore {
 
   // Query methods - synchronous access to current state
   const findByFilePath = (filePath: string): Project | undefined => {
-    let result: Project | undefined;
-    const unsubscribe = subscribe((state) => {
-      result = state.projects.find((p) => p.source?.filePath === filePath);
-    });
-    unsubscribe();
-    return result;
+    return get({ subscribe }).projects.find(
+      (p) => p.source?.filePath === filePath
+    );
   };
 
   return {
@@ -119,7 +105,6 @@ export function createProjectStore(): ProjectStore {
     importedProjects,
     setLoading,
     setError,
-    cleanup,
     addProject,
     updateProject,
     removeProject,

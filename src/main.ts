@@ -10,10 +10,18 @@ import { TaskSyncSettings } from "./app/types/settings";
 import { taskSyncApp } from "./app/App";
 import { ObsidianHost } from "./app/hosts/ObsidianHost";
 import { TaskSyncSettingTab } from "./app/components/settings";
+import { DayView, DAY_VIEW_TYPE } from "./app/views/DayView";
+import {
+  DailyPlanningView,
+  DAILY_PLANNING_VIEW_TYPE,
+} from "./app/views/DailyPlanningView";
 import { taskStore, type TaskStore } from "./app/stores/taskStore";
 import { projectStore, type ProjectStore } from "./app/stores/projectStore";
 import { areaStore, type AreaStore } from "./app/stores/areaStore";
 import type { ObsidianExtension } from "./app/extensions/ObsidianExtension";
+import { areaOperations } from "./app/entities/Areas";
+import { projectOperations } from "./app/entities/Projects";
+import { obsidianOperations } from "./app/entities/Obsidian";
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
@@ -35,6 +43,15 @@ export default class TaskSyncPlugin extends Plugin {
   // Expose taskSyncApp for testing
   public get taskSyncApp() {
     return taskSyncApp;
+  }
+
+  // Expose operations for testing
+  public get operations() {
+    return {
+      taskOperations: obsidianOperations.tasks,
+      areaOperations,
+      projectOperations,
+    };
   }
 
   async onload() {
@@ -60,9 +77,24 @@ export default class TaskSyncPlugin extends Plugin {
       return new TaskSyncView(leaf, this);
     });
 
-    // Add ribbon icon
+    // Register the Day View
+    this.registerView(DAY_VIEW_TYPE, (leaf) => {
+      return new DayView(leaf, this.host, this.settings);
+    });
+
+    // Register the Daily Planning View
+    this.registerView(DAILY_PLANNING_VIEW_TYPE, (leaf) => {
+      return new DailyPlanningView(leaf);
+    });
+
+    // Add ribbon icon for main view
     this.addRibbonIcon("checkbox", "Task Sync", () => {
       this.activateView();
+    });
+
+    // Add ribbon icon for Day View
+    this.addRibbonIcon("calendar", "Day View", () => {
+      this.activateDayView();
     });
 
     // Add command to open main view
@@ -71,6 +103,15 @@ export default class TaskSyncPlugin extends Plugin {
       name: "Open Main View",
       callback: () => {
         this.activateView();
+      },
+    });
+
+    // Add command to open Day View
+    this.addCommand({
+      id: "open-day-view",
+      name: "Open Day View",
+      callback: () => {
+        this.activateDayView();
       },
     });
 
@@ -110,6 +151,15 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
+    // Add command to start daily planning
+    this.addCommand({
+      id: "start-daily-planning",
+      name: "Start Daily Planning",
+      callback: () => {
+        this.startDailyPlanning();
+      },
+    });
+
     // Load extensions and activate view when layout is ready
     this.app.workspace.onLayoutReady(async () => {
       await this.host.load();
@@ -143,8 +193,8 @@ export default class TaskSyncPlugin extends Plugin {
    */
   async regenerateBases(): Promise<void> {
     try {
-      const { BaseManager } = await import("./app/services/BaseManager");
-      const baseManager = new BaseManager(
+      const { ObsidianBaseManager } = await import("./app/extensions/obsidian/BaseManager");
+      const baseManager = new ObsidianBaseManager(
         this.app,
         this.app.vault,
         this.settings
@@ -168,8 +218,8 @@ export default class TaskSyncPlugin extends Plugin {
    */
   async syncAreaProjectBases(): Promise<void> {
     try {
-      const { BaseManager } = await import("./app/services/BaseManager");
-      const baseManager = new BaseManager(
+      const { ObsidianBaseManager } = await import("./app/extensions/obsidian/BaseManager");
+      const baseManager = new ObsidianBaseManager(
         this.app,
         this.app.vault,
         this.settings
@@ -187,6 +237,39 @@ export default class TaskSyncPlugin extends Plugin {
     }
   }
 
+  async startDailyPlanning() {
+    try {
+      // Get the daily planning extension
+      const dailyPlanningExtension =
+        this.host.getExtensionById("daily-planning");
+
+      if (!dailyPlanningExtension) {
+        new Notice("Daily Planning extension not found");
+        return;
+      }
+
+      // Check if Daily Planning view already exists
+      const existingLeaves = this.app.workspace.getLeavesOfType(
+        DAILY_PLANNING_VIEW_TYPE
+      );
+
+      if (existingLeaves.length > 0) {
+        // Activate existing view
+        this.app.workspace.revealLeaf(existingLeaves[0]);
+      } else {
+        // Create new view
+        const leaf = this.app.workspace.getLeaf("tab");
+        await leaf.setViewState({
+          type: DAILY_PLANNING_VIEW_TYPE,
+          active: true,
+        });
+      }
+    } catch (error: any) {
+      console.error("Error starting daily planning:", error);
+      new Notice(`Failed to start daily planning: ${error.message}`);
+    }
+  }
+
   async activateView() {
     const { workspace } = this.app;
     let leaf = workspace.getLeavesOfType("task-sync-main")[0];
@@ -194,6 +277,18 @@ export default class TaskSyncPlugin extends Plugin {
     if (!leaf) {
       leaf = workspace.getRightLeaf(false);
       await leaf.setViewState({ type: "task-sync-main", active: true });
+    }
+
+    workspace.revealLeaf(leaf);
+  }
+
+  async activateDayView() {
+    const { workspace } = this.app;
+    let leaf = workspace.getLeavesOfType(DAY_VIEW_TYPE)[0];
+
+    if (!leaf) {
+      leaf = workspace.getRightLeaf(false);
+      await leaf.setViewState({ type: DAY_VIEW_TYPE, active: true });
     }
 
     workspace.revealLeaf(leaf);
@@ -248,7 +343,9 @@ export default class TaskSyncPlugin extends Plugin {
       // Sync project bases (creates missing and updates existing)
       await baseManager.syncProjectBases();
 
-      new Notice(`✅ Successfully refreshed ${projects.length} project base(s)`);
+      new Notice(
+        `✅ Successfully refreshed ${projects.length} project base(s)`
+      );
       console.log("Bases refreshed successfully");
     } catch (error) {
       console.error("Failed to refresh bases:", error);

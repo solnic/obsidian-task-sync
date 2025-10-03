@@ -5,6 +5,10 @@
 
 import { ObsidianExtension } from "./extensions/ObsidianExtension";
 import { GitHubExtension } from "./extensions/GitHubExtension";
+import { CalendarExtension } from "./extensions/CalendarExtension";
+import { DailyPlanningExtension } from "./extensions/DailyPlanningExtension";
+import { ContextExtension } from "./extensions/ContextExtension";
+import { AppleCalendarService } from "./services/AppleCalendarService";
 import { Host } from "./core/host";
 import type { TaskSyncSettings } from "./types/settings";
 import { taskStore } from "./stores/taskStore";
@@ -13,8 +17,11 @@ import { areaStore } from "./stores/areaStore";
 
 export class TaskSyncApp {
   private initialized = false;
-  private obsidianExtension?: ObsidianExtension;
+  public obsidianExtension?: ObsidianExtension;
   public githubExtension?: GitHubExtension;
+  public calendarExtension?: CalendarExtension;
+  public dailyPlanningExtension?: DailyPlanningExtension;
+  public contextExtension?: ContextExtension;
   private host?: Host;
   private settings: TaskSyncSettings | null = null;
 
@@ -65,6 +72,15 @@ export class TaskSyncApp {
       // Initialize GitHub extension if enabled
       await this.initializeGitHubExtension();
 
+      // Initialize Calendar extension if enabled
+      await this.initializeCalendarExtension();
+
+      // Initialize Context extension
+      await this.initializeContextExtension();
+
+      // Initialize Daily Planning extension
+      await this.initializeDailyPlanningExtension();
+
       this.initialized = true;
       console.log("TaskSync app initialized successfully");
     } catch (error) {
@@ -90,6 +106,18 @@ export class TaskSyncApp {
         await this.githubExtension.load();
       }
 
+      if (this.calendarExtension) {
+        await this.calendarExtension.load();
+      }
+
+      if (this.contextExtension) {
+        await this.contextExtension.load();
+      }
+
+      if (this.dailyPlanningExtension) {
+        await this.dailyPlanningExtension.load();
+      }
+
       console.log("TaskSync app extensions loaded successfully");
     } catch (error) {
       console.error("Failed to load TaskSync app extensions:", error);
@@ -110,6 +138,10 @@ export class TaskSyncApp {
       await this.githubExtension.shutdown();
     }
 
+    if (this.dailyPlanningExtension) {
+      await this.dailyPlanningExtension.shutdown();
+    }
+
     this.initialized = false;
     console.log("TaskSync app shutdown complete");
   }
@@ -127,6 +159,24 @@ export class TaskSyncApp {
       throw new Error("ObsidianExtension not initialized");
     }
     await this.obsidianExtension.syncProjectBases();
+  }
+
+  /**
+   * Get extension by ID for testing and external access
+   */
+  getExtensionById(id: string): any {
+    switch (id) {
+      case "obsidian":
+        return this.obsidianExtension;
+      case "github":
+        return this.githubExtension;
+      case "calendar":
+        return this.calendarExtension;
+      case "daily-planning":
+        return this.dailyPlanningExtension;
+      default:
+        return null;
+    }
   }
 
   /**
@@ -262,16 +312,97 @@ export class TaskSyncApp {
   }
 
   /**
-   * Get extension by ID
+   * Initialize Calendar extension if enabled in settings
    */
-  getExtensionById(extensionId: string) {
-    if (extensionId === "obsidian") {
-      return this.obsidianExtension;
+  private async initializeCalendarExtension(): Promise<void> {
+    if (!this.settings?.integrations?.appleCalendar?.enabled) {
+      return;
     }
-    if (extensionId === "github") {
-      return this.githubExtension;
+
+    const obsidianHost = this.host as any;
+    if (!obsidianHost.plugin) {
+      return;
     }
-    return null;
+
+    // Don't reinitialize if already initialized
+    if (this.calendarExtension) {
+      console.log("Calendar extension already initialized");
+      return;
+    }
+
+    console.log("Initializing Calendar extension...");
+    this.calendarExtension = new CalendarExtension(
+      this.settings,
+      obsidianHost.plugin
+    );
+
+    await this.calendarExtension.initialize();
+
+    // Create and register Apple Calendar service
+    const appleCalendarService = new AppleCalendarService(
+      this.settings,
+      obsidianHost.plugin
+    );
+
+    await appleCalendarService.initialize();
+    this.calendarExtension.registerCalendarService(appleCalendarService);
+
+    // If app is already loaded, load the extension too
+    if (this.initialized) {
+      await this.calendarExtension.load();
+    }
+
+    console.log("Calendar extension initialized successfully");
+  }
+
+  /**
+   * Initialize Daily Planning extension
+   */
+  private async initializeDailyPlanningExtension(): Promise<void> {
+    const obsidianHost = this.host as any;
+    if (!obsidianHost.plugin || !this.settings) {
+      return;
+    }
+
+    console.log("Initializing Daily Planning extension...");
+    this.dailyPlanningExtension = new DailyPlanningExtension(
+      this.settings,
+      obsidianHost.plugin
+    );
+
+    await this.dailyPlanningExtension.initialize();
+
+    // If app is already loaded, load the extension too
+    if (this.initialized) {
+      await this.dailyPlanningExtension.load();
+    }
+
+    console.log("Daily Planning extension initialized successfully");
+  }
+
+  /**
+   * Initialize Context extension
+   */
+  private async initializeContextExtension(): Promise<void> {
+    if (!this.host || !this.settings) {
+      return;
+    }
+
+    console.log("Initializing Context extension...");
+    this.contextExtension = new ContextExtension(
+      (this.host as any).plugin.app,
+      this.host,
+      this.settings
+    );
+
+    await this.contextExtension.initialize();
+
+    // If app is already loaded, load the extension too
+    if (this.initialized) {
+      await this.contextExtension.load();
+    }
+
+    console.log("Context extension initialized successfully");
   }
 }
 
