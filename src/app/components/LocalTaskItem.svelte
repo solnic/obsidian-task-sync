@@ -103,8 +103,8 @@
       }
     }
 
-    if (task.source?.filePath) {
-      badges.push({ type: "Source", text: task.source.filePath });
+    if (task.source?.extension) {
+      badges.push({ type: "Source", text: task.source.extension });
     }
 
     return badges;
