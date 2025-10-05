@@ -32,11 +32,7 @@ export default defineConfig({
   workers: isCI ? 6 : Math.max(2, Math.floor(os.cpus().length * 0.75)),
 
   // Reporter configuration
-  reporter: [
-    ["list"],
-    ["json", { outputFile: "./tests/e2e/results.json" }],
-    ["html", { open: "never" }],
-  ],
+  reporter: [["list"], ["json", { outputFile: "./tests/e2e/results.json" }]],
 
   // Global test configuration
   use: {
