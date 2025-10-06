@@ -144,16 +144,67 @@ export const SORT_CONFIGS = {
 // FILTER PRESETS
 // ============================================================================
 
+/**
+ * Common filter combinations that can be reused across different base types
+ */
 export const FILTER_PRESETS = {
-  AREA_TASKS: (settings: TaskSyncSettings, areaName: string) =>
+  /**
+   * Base filter for all task-related views
+   */
+  TASKS_BASE: (settings: TaskSyncSettings) =>
     FilterBuilder.and(
       FilterBuilder.inFolder(settings.tasksFolder),
-      FilterBuilder.inArea(areaName)
+      FilterBuilder.notDone()
     ),
+
+  /**
+   * Filter for top-level tasks (no parent)
+   */
+  TOP_LEVEL_TASKS: (settings: TaskSyncSettings) =>
+    FilterBuilder.and(
+      FilterBuilder.inFolder(settings.tasksFolder),
+      FilterBuilder.notDone(),
+      FilterBuilder.noParentTask()
+    ),
+
+  /**
+   * Filter for tasks in a specific project
+   */
   PROJECT_TASKS: (settings: TaskSyncSettings, projectName: string) =>
     FilterBuilder.and(
       FilterBuilder.inFolder(settings.tasksFolder),
-      FilterBuilder.inProject(projectName)
+      FilterBuilder.notDone(),
+      FilterBuilder.inProject(projectName),
+      FilterBuilder.noParentTask()
+    ),
+
+  /**
+   * Filter for tasks in a specific area
+   */
+  AREA_TASKS: (settings: TaskSyncSettings, areaName: string) =>
+    FilterBuilder.and(
+      FilterBuilder.inFolder(settings.tasksFolder),
+      FilterBuilder.notDone(),
+      FilterBuilder.inArea(areaName),
+      FilterBuilder.noParentTask()
+    ),
+
+  /**
+   * Filter for child tasks of a parent
+   */
+  CHILD_TASKS: (settings: TaskSyncSettings, parentTaskName: string) =>
+    FilterBuilder.and(
+      FilterBuilder.inFolder(settings.tasksFolder),
+      FilterBuilder.childrenOf(parentTaskName)
+    ),
+
+  /**
+   * Filter for all tasks related to a parent (parent + children)
+   */
+  RELATED_TASKS: (_settings: TaskSyncSettings, parentTaskName: string) =>
+    FilterBuilder.or(
+      FilterBuilder.fileName(parentTaskName),
+      FilterBuilder.childrenOf(parentTaskName)
     ),
 } as const;
 
@@ -220,10 +271,14 @@ function generatePropertiesSection(
 
   // Add metadata properties with displayName
   if (propertyKeys.includes("CREATED_AT")) {
-    properties["file.ctime"] = { displayName: PROPERTY_REGISTRY.CREATED_AT.name };
+    properties["file.ctime"] = {
+      displayName: PROPERTY_REGISTRY.CREATED_AT.name,
+    };
   }
   if (propertyKeys.includes("UPDATED_AT")) {
-    properties["file.mtime"] = { displayName: PROPERTY_REGISTRY.UPDATED_AT.name };
+    properties["file.mtime"] = {
+      displayName: PROPERTY_REGISTRY.UPDATED_AT.name,
+    };
   }
 
   return properties;
@@ -283,9 +338,11 @@ export function generateProjectBase(
           name: `${pluralize(taskType.name)} • ${priority.name} priority`,
           filters: FilterBuilder.and(
             FilterBuilder.inFolder(settings.tasksFolder),
+            FilterBuilder.notDone(),
             FilterBuilder.inProject(project.name),
             FilterBuilder.ofCategory(taskType.name),
-            FilterBuilder.withPriority(priority.name)
+            FilterBuilder.withPriority(priority.name),
+            FilterBuilder.noParentTask()
           ).toFilterObject(),
           order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
           sort: resolveSortConfig(SORT_CONFIGS.PROJECT),
