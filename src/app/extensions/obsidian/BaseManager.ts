@@ -9,6 +9,8 @@ import { TaskSyncSettings } from "../../types/settings";
 import * as yaml from "js-yaml";
 import { sanitizeFileName } from "../../utils/fileNameSanitizer";
 import {
+  generateTasksBase as generateTasksBaseConfig,
+  generateAreaBase as generateAreaBaseConfig,
   generateProjectBase as generateProjectBaseConfig,
   ProjectAreaInfo,
 } from "./BaseConfigurations";
@@ -51,6 +53,22 @@ export class ObsidianBaseManager {
    */
   updateSettings(newSettings: TaskSyncSettings): void {
     this.settings = newSettings;
+  }
+
+  /**
+   * Generate the main Tasks.base file with all task properties and default views
+   */
+  async generateTasksBase(
+    projectsAndAreas: ProjectAreaInfo[]
+  ): Promise<string> {
+    return generateTasksBaseConfig(this.settings, projectsAndAreas);
+  }
+
+  /**
+   * Generate the Area base file content
+   */
+  async generateAreaBase(area: ProjectAreaInfo): Promise<string> {
+    return generateAreaBaseConfig(this.settings, area);
   }
 
   /**
@@ -150,12 +168,59 @@ export class ObsidianBaseManager {
           projects.push({
             name: projectName,
             path: child.path,
+            type: "project",
           });
         }
       }
     }
 
     return projects;
+  }
+
+  /**
+   * Get all areas from the vault
+   */
+  async getAreas(): Promise<ProjectAreaInfo[]> {
+    const areas: ProjectAreaInfo[] = [];
+    const areasFolder = this.vault.getAbstractFileByPath(
+      this.settings.areasFolder
+    );
+
+    if (areasFolder instanceof TFolder) {
+      for (const child of areasFolder.children) {
+        if (child instanceof TFile && child.extension === "md") {
+          const areaName = child.basename;
+          areas.push({
+            name: areaName,
+            path: child.path,
+            type: "area",
+          });
+        }
+      }
+    }
+
+    return areas;
+  }
+
+  /**
+   * Get all projects and areas for base view generation
+   */
+  async getProjectsAndAreas(): Promise<ProjectAreaInfo[]> {
+    const projects = await this.getProjects();
+    const areas = await this.getAreas();
+    return [...projects, ...areas];
+  }
+
+  /**
+   * Create or update the Tasks.base file
+   */
+  async createOrUpdateTasksBase(
+    projectsAndAreas: ProjectAreaInfo[]
+  ): Promise<void> {
+    const baseFilePath = `${this.settings.basesFolder}/${this.settings.tasksBaseFile}`;
+    const content = await this.generateTasksBase(projectsAndAreas);
+
+    await this.createOrUpdateBaseFile(baseFilePath, content, "Tasks");
   }
 
   /**
@@ -199,6 +264,31 @@ export class ObsidianBaseManager {
   }
 
   /**
+   * Sync area bases - create individual bases for areas
+   */
+  async syncAreaBases(): Promise<void> {
+    if (!this.settings.areaBasesEnabled) {
+      console.log("Area bases disabled, skipping sync");
+      return;
+    }
+
+    console.log("ObsidianBaseManager: Starting area bases sync");
+
+    const areas = await this.getAreas();
+    console.log(
+      `ObsidianBaseManager: Found ${areas.length} areas to create bases for:`,
+      areas.map((a) => a.name)
+    );
+
+    for (const area of areas) {
+      console.log(`ObsidianBaseManager: Creating area base for: ${area.name}`);
+      await this.createOrUpdateAreaBase(area);
+    }
+
+    console.log("Area bases synced successfully");
+  }
+
+  /**
    * Sync project bases - create individual bases for projects
    */
   async syncProjectBases(): Promise<void> {
@@ -223,6 +313,37 @@ export class ObsidianBaseManager {
     }
 
     console.log("Project bases synced successfully");
+  }
+
+  /**
+   * Sync both area and project bases
+   */
+  async syncAreaProjectBases(): Promise<void> {
+    if (this.settings.areaBasesEnabled) {
+      await this.syncAreaBases();
+    }
+    if (this.settings.projectBasesEnabled) {
+      await this.syncProjectBases();
+    }
+  }
+
+  /**
+   * Create or update an individual area base file
+   */
+  async createOrUpdateAreaBase(area: ProjectAreaInfo): Promise<void> {
+    const sanitizedName = sanitizeFileName(area.name);
+    const baseFileName = `${sanitizedName}.base`;
+    const baseFilePath = `${this.settings.basesFolder}/${baseFileName}`;
+    const content = await this.generateAreaBase(area);
+
+    try {
+      await this.createOrUpdateBaseFile(baseFilePath, content, "area");
+      // Update the area file to embed the specific base
+      await this.ensureSpecificBaseEmbedding(area.path, baseFileName);
+    } catch (error) {
+      console.error(`Failed to create/update area base file: ${error}`);
+      throw error;
+    }
   }
 
   /**
