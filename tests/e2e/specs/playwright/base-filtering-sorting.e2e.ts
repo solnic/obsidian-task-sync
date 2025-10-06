@@ -90,7 +90,7 @@ test.describe("Base Filtering and Sorting", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncAreaBases();
@@ -150,7 +150,7 @@ test.describe("Base Filtering and Sorting", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncProjectBases();
@@ -200,7 +200,7 @@ test.describe("Base Filtering and Sorting", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncProjectBases();
@@ -244,7 +244,7 @@ test.describe("Base Filtering and Sorting", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncAreaBases();
@@ -288,7 +288,7 @@ test.describe("Base Filtering and Sorting", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncProjectBases();
@@ -341,7 +341,7 @@ test.describe("Base Filtering and Sorting", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncAreaBases();

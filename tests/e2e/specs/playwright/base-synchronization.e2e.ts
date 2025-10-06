@@ -30,7 +30,7 @@ test.describe("Base Synchronization", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncAreaBases();
@@ -53,7 +53,7 @@ test.describe("Base Synchronization", () => {
         plugin.settings.taskTypes.push({ name: "Epic", color: "orange" });
         await plugin.saveSettings();
         // Trigger sync
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncAreaBases();
@@ -91,7 +91,7 @@ test.describe("Base Synchronization", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncProjectBases();
@@ -120,7 +120,7 @@ test.describe("Base Synchronization", () => {
         }
         await plugin.saveSettings();
         // Trigger sync
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncProjectBases();
@@ -171,7 +171,7 @@ test.describe("Base Synchronization", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncAreaProjectBases();
@@ -215,7 +215,7 @@ test.describe("Base Synchronization", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncAreaProjectBases();
@@ -254,7 +254,7 @@ test.describe("Base Synchronization", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncAreaProjectBases();
@@ -292,7 +292,7 @@ test.describe("Base Synchronization", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncProjectBases();
@@ -320,7 +320,7 @@ test.describe("Base Synchronization", () => {
           { name: "Review", color: "pink" }
         );
         await plugin.saveSettings();
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           await baseManager.syncProjectBases();

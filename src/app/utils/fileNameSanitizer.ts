@@ -6,6 +6,7 @@
 /**
  * Sanitize a string to be safe for use as a file name
  * Removes or replaces characters that are not allowed in file names
+ * Preserves spaces and other valid characters
  */
 export function sanitizeFileName(fileName: string): string {
   if (!fileName) {
@@ -18,8 +19,8 @@ export function sanitizeFileName(fileName: string): string {
     .replace(/[/\\]/g, "-")
     // Replace other problematic characters
     .replace(/[<>:"|?*]/g, "-")
-    // Replace multiple consecutive spaces or dashes with single dash
-    .replace(/[\s-]+/g, "-")
+    // Replace multiple consecutive dashes with single dash
+    .replace(/-+/g, "-")
     // Remove leading/trailing spaces and dashes
     .replace(/^[-\s]+|[-\s]+$/g, "");
 
