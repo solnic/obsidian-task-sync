@@ -22,25 +22,28 @@ import { TaskTodoMarkdownProcessor } from "../processors/TaskTodoMarkdownProcess
 import { taskStore } from "../stores/taskStore";
 import { projectStore } from "../stores/projectStore";
 import { areaStore } from "../stores/areaStore";
-import { taskOperations } from "../entities/Tasks";
-import { projectOperations } from "../entities/Projects";
 import { Obsidian } from "../entities/Obsidian";
 import { ContextService } from "../services/ContextService";
-import { areaOperations } from "../entities/Areas";
+import { Tasks } from "../entities/Tasks";
+import { Projects } from "../entities/Projects";
+import { Areas } from "../entities/Areas";
 import type { Task, Project } from "../core/entities";
 import type { TaskSyncSettings } from "../types/settings";
 import { ObsidianBaseManager } from "./obsidian/BaseManager";
 import { DailyNoteFeature } from "../features/DailyNoteFeature";
 import { derived, get, type Readable } from "svelte/store";
 
-export interface ObsidianExtensionSettings {
-  areasFolder: string;
-  projectsFolder: string;
-  tasksFolder: string;
-  // Base generation settings
-  basesFolder: string;
-  projectBasesEnabled: boolean;
-  autoSyncAreaProjectBases: boolean;
+/**
+ * Obsidian Extension Settings
+ * Contains Obsidian-specific settings that are not part of the general TaskSyncSettings
+ *
+ * Note: Base-related settings are Obsidian-specific because they use Obsidian's database feature.
+ * These settings control how Obsidian Bases are generated and managed for areas, projects, and tasks.
+ */
+export interface ObsidianExtensionSettings extends TaskSyncSettings {
+  // All Obsidian-specific settings are currently in TaskSyncSettings for convenience
+  // In the future, Obsidian-only settings (like Base configuration) should be moved here
+  // to better separate concerns between general task sync and Obsidian-specific features
 }
 
 export class ObsidianExtension implements Extension {
@@ -69,37 +72,35 @@ export class ObsidianExtension implements Extension {
   constructor(
     private app: App,
     private plugin: Plugin,
-    private settings: ObsidianExtensionSettings,
-    private fullSettings: TaskSyncSettings
+    private settings: ObsidianExtensionSettings
   ) {
     // Initialize base manager first so it can be passed to operations
-    this.baseManager = new ObsidianBaseManager(app, app.vault, fullSettings);
+    this.baseManager = new ObsidianBaseManager(app, app.vault, settings);
 
-    this.areaOperations = new ObsidianAreaOperations(app, settings.areasFolder);
+    this.areaOperations = new ObsidianAreaOperations(app, settings);
 
     // Pass base manager and settings to project operations for inline base generation
     this.projectOperations = new ObsidianProjectOperations(
       app,
-      settings.projectsFolder,
-      this.baseManager,
-      fullSettings
+      settings,
+      this.baseManager
     );
 
     this.taskOperations = new ObsidianTaskOperations(
       app,
-      settings.tasksFolder,
+      settings,
       this.wikiLinkOperations
     );
 
     // Initialize context service for todo promotion
-    const contextService = new ContextService(app, fullSettings);
+    const contextService = new ContextService(app, settings);
 
     // Initialize todo promotion operations
     this.todoPromotionOperations = new Obsidian.TodoPromotionOperations(
       app,
-      fullSettings,
+      settings,
       contextService,
-      new Obsidian.TaskOperations(settings.tasksFolder, fullSettings)
+      new Obsidian.TaskOperations(settings)
     );
 
     // Note: TaskTodoMarkdownProcessor will be initialized in the initialize() method
@@ -107,7 +108,7 @@ export class ObsidianExtension implements Extension {
 
     // Initialize daily note feature
     this.dailyNoteFeature = new DailyNoteFeature(app, plugin, {
-      dailyNotesFolder: fullSettings.dailyNotesFolder || "Daily Notes",
+      dailyNotesFolder: settings.dailyNotesFolder || "Daily Notes",
     });
   }
 
@@ -131,7 +132,7 @@ export class ObsidianExtension implements Extension {
       // Initialize markdown processor now that wikiLinkOperations is available
       this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
         this.app,
-        this.fullSettings,
+        this.settings,
         this.wikiLinkOperations
       );
 
@@ -745,7 +746,9 @@ export class ObsidianExtension implements Extension {
       console.log(
         `Task file deleted: ${filePath}, deleting entity: ${task.id}`
       );
-      taskOperations.delete(task.id);
+      // Use Tasks.Operations directly since we need to trigger domain events
+      const taskOps = new Tasks.Operations(this.settings);
+      taskOps.delete(task.id);
     }
   }
 
@@ -758,7 +761,8 @@ export class ObsidianExtension implements Extension {
       console.log(
         `Project file deleted: ${filePath}, deleting entity: ${project.id}`
       );
-      projectOperations.delete(project.id);
+      const projectOps = new Projects.Operations(this.settings);
+      projectOps.delete(project.id);
     }
   }
 
@@ -771,7 +775,8 @@ export class ObsidianExtension implements Extension {
       console.log(
         `Area file deleted: ${filePath}, deleting entity: ${area.id}`
       );
-      areaOperations.delete(area.id);
+      const areaOps = new Areas.Operations(this.settings);
+      areaOps.delete(area.id);
     }
   }
 
@@ -838,7 +843,8 @@ export class ObsidianExtension implements Extension {
       if (task.done !== isCompleted) {
         // Update the task using entity operations
         // This will trigger tasks.updated event which will update the file
-        await taskOperations.update({
+        const taskOps = new Tasks.Operations(this.settings);
+        await taskOps.update({
           ...task,
           done: isCompleted,
         });

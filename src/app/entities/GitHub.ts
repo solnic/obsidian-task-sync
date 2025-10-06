@@ -6,6 +6,7 @@
 import { Task } from "../core/entities";
 import { Tasks } from "./Tasks";
 import type { GitHubIssue, GitHubPullRequest } from "../cache/schemas/github";
+import type { TaskSyncSettings } from "../types/settings";
 
 /**
  * GitHub namespace containing extension-specific operations
@@ -16,8 +17,8 @@ export namespace GitHub {
    * Handles importing GitHub issues and PRs as tasks
    */
   export class TaskOperations extends Tasks.Operations {
-    constructor() {
-      super();
+    constructor(settings: TaskSyncSettings) {
+      super(settings);
     }
 
     /**
@@ -158,11 +159,10 @@ export namespace GitHub {
   export class Operations {
     public readonly tasks: TaskOperations;
 
-    constructor() {
-      this.tasks = new TaskOperations();
+    constructor(settings: TaskSyncSettings) {
+      this.tasks = new TaskOperations(settings);
     }
   }
 }
 
-// Export default singleton instance
-export const githubOperations = new GitHub.Operations();
+// Singleton operations removed - operations should be instantiated with settings

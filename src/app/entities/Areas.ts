@@ -101,5 +101,5 @@ export class Areas extends Entities {
   };
 }
 
-export const areaQueries = new Areas.Queries();
-export const areaOperations = new Areas.Operations();
+// Singleton operations removed - operations must be instantiated with settings
+// Use Areas.Operations and Areas.Queries classes directly

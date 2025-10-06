@@ -13,11 +13,10 @@ import { PROPERTY_REGISTRY } from "./obsidian/PropertyRegistry";
 export class ObsidianProjectOperations extends ObsidianEntityOperations<Project> {
   constructor(
     app: App,
-    folder: string,
-    private baseManager?: ObsidianBaseManager,
-    private settings?: TaskSyncSettings
+    private settings: TaskSyncSettings,
+    private baseManager?: ObsidianBaseManager
   ) {
-    super(app, folder);
+    super(app, settings.projectsFolder);
   }
 
   // Implement abstract method to get entity display name for file naming

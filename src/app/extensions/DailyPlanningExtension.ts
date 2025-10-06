@@ -31,7 +31,7 @@ import {
   getDateString,
 } from "../utils/dateFiltering";
 import { ObsidianHost } from "../hosts/ObsidianHost";
-import { obsidianOperations } from "../entities/Obsidian";
+import type { ObsidianExtension } from "./ObsidianExtension";
 
 export interface DailyPlanningExtensionSettings {
   enabled: boolean;
@@ -53,6 +53,9 @@ export class DailyPlanningExtension implements Extension {
   // Schedule operations
   public schedules: EntityOperations<Schedule>;
 
+  // Task operations
+  private taskOperations: InstanceType<typeof Tasks.Operations>;
+
   // Calendar extension for events
   private calendarExtension?: CalendarExtension;
 
@@ -72,6 +75,7 @@ export class DailyPlanningExtension implements Extension {
     this.settings = settings;
     this.host = host;
     this.schedules = new Schedules.Operations();
+    this.taskOperations = new Tasks.Operations(settings);
 
     // Calendar extension will be set during initialization
     this.calendarExtension = undefined;
@@ -446,11 +450,10 @@ export class DailyPlanningExtension implements Extension {
    * Move a task to today immediately (used internally and for applying staging)
    */
   async moveTaskToTodayImmediate(task: Task): Promise<void> {
-    const taskOperations = new Tasks.Operations();
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set to start of day
 
-    await taskOperations.update({
+    await this.taskOperations.update({
       ...task,
       doDate: today,
     });
@@ -475,9 +478,7 @@ export class DailyPlanningExtension implements Extension {
    * Unschedule a task immediately (used internally and for applying staging)
    */
   async unscheduleTaskImmediate(task: Task): Promise<void> {
-    const taskOperations = new Tasks.Operations();
-
-    await taskOperations.update({
+    await this.taskOperations.update({
       ...task,
       doDate: null,
     });
@@ -513,9 +514,7 @@ export class DailyPlanningExtension implements Extension {
    * Unschedule a task by removing its doDate
    */
   async unscheduleTask(task: Task): Promise<void> {
-    const taskOperations = new Tasks.Operations();
-
-    await taskOperations.update({
+    await this.taskOperations.update({
       ...task,
       doDate: undefined,
     });
@@ -528,9 +527,7 @@ export class DailyPlanningExtension implements Extension {
    * Reschedule a task to a specific date
    */
   async rescheduleTask(task: Task, newDate: Date): Promise<void> {
-    const taskOperations = new Tasks.Operations();
-
-    await taskOperations.update({
+    await this.taskOperations.update({
       ...task,
       doDate: newDate,
     });
@@ -820,6 +817,9 @@ export class DailyPlanningExtension implements Extension {
    * Set the Do Date property in a task's front-matter
    */
   private async setTaskDoDate(task: Task, date: Date): Promise<Task> {
-    return await obsidianOperations.tasks.update({ ...task, doDate: date });
+    return await this.taskOperations.update({
+      ...task,
+      doDate: date,
+    });
   }
 }

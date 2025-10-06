@@ -132,6 +132,5 @@ export class Projects extends Entities {
   };
 }
 
-// Export instances for easy use
-export const projectQueries = new Projects.Queries();
-export const projectOperations = new Projects.Operations();
+// Singleton operations removed - operations must be instantiated with settings
+// Use Projects.Operations and Projects.Queries classes directly

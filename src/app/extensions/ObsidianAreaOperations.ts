@@ -7,10 +7,11 @@ import { App } from "obsidian";
 import { Area } from "../core/entities";
 import { ObsidianEntityOperations } from "./ObsidianEntityOperations";
 import { PROPERTY_REGISTRY } from "./obsidian/PropertyRegistry";
+import type { TaskSyncSettings } from "../types/settings";
 
 export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
-  constructor(app: App, folder: string) {
-    super(app, folder);
+  constructor(app: App, settings: TaskSyncSettings) {
+    super(app, settings.areasFolder);
   }
 
   // Implement abstract method to get entity display name for file naming
@@ -23,7 +24,8 @@ export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
     return {
       [PROPERTY_REGISTRY.NAME.name]: area.name, // Use property name from registry
       [PROPERTY_REGISTRY.TYPE.name]: "Area", // Always "Area" for area entities
-      [PROPERTY_REGISTRY.TAGS.name]: area.tags && area.tags.length > 0 ? area.tags : undefined,
+      [PROPERTY_REGISTRY.TAGS.name]:
+        area.tags && area.tags.length > 0 ? area.tags : undefined,
     };
   }
 

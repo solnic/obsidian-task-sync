@@ -15,6 +15,7 @@ import {
 } from "./entities";
 import { extensionRegistry } from "./extension";
 import { generateId } from "../utils/idGenerator";
+import type { TaskSyncSettings } from "../types/settings";
 
 // Generic entity union type
 export type Entity = Task | Project | Area | Schedule;
@@ -54,6 +55,10 @@ export abstract class EntitiesQueries {
 // Abstract base class for Operations (functions with side-effects)
 export abstract class EntitiesOperations {
   public abstract entityType: EntityType;
+
+  constructor(public settings: TaskSyncSettings) {
+    this.settings = settings;
+  }
 
   // Common operation methods that all entities support
   abstract create(

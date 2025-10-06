@@ -14,14 +14,7 @@ import { ContextService } from "../services/ContextService";
 import type { TaskSyncSettings } from "../types/settings";
 import type { FileContext } from "../types/context";
 
-/**
- * Configuration for Obsidian entity operations
- */
-export interface ObsidianConfig {
-  tasksFolder?: string;
-  projectsFolder?: string;
-  areasFolder?: string;
-}
+// ObsidianConfig interface removed - operations now get folder paths from settings
 
 /**
  * Represents a todo item extracted from a note using Obsidian's ListItemCache
@@ -70,13 +63,6 @@ export namespace Obsidian {
    * Overrides buildEntity to automatically set source.filePath and determine status from done field
    */
   export class TaskOperations extends Tasks.Operations {
-    constructor(
-      private tasksFolder: string = "Tasks",
-      private settings?: TaskSyncSettings
-    ) {
-      super();
-    }
-
     public buildEntity(
       taskData: Omit<Task, "id" | "createdAt" | "updatedAt">
     ): Task {
@@ -94,7 +80,7 @@ export namespace Obsidian {
       }
 
       // Use tasksFolder from settings if available, otherwise use constructor parameter
-      const folder = this.settings?.tasksFolder || this.tasksFolder;
+      const folder = this.settings.tasksFolder;
 
       const result = {
         ...baseEntity,
@@ -154,10 +140,6 @@ export namespace Obsidian {
    * Overrides buildEntity to automatically set source.filePath
    */
   export class ProjectOperations extends Projects.Operations {
-    constructor(private folder: string = "Projects") {
-      super();
-    }
-
     public buildEntity(
       projectData: Omit<Project, "id" | "createdAt" | "updatedAt">
     ): Project {
@@ -167,7 +149,7 @@ export namespace Obsidian {
         ...baseEntity,
         source: {
           extension: "obsidian",
-          filePath: `${this.folder}/${projectData.name}.md`,
+          filePath: `${this.settings.projectsFolder}/${projectData.name}.md`,
         },
       };
     }
@@ -178,10 +160,6 @@ export namespace Obsidian {
    * Overrides buildEntity to automatically set source.filePath
    */
   export class AreaOperations extends Areas.Operations {
-    constructor(private folder: string = "Areas") {
-      super();
-    }
-
     public buildEntity(
       areaData: Omit<Area, "id" | "createdAt" | "updatedAt">
     ): Area {
@@ -191,7 +169,7 @@ export namespace Obsidian {
         ...baseEntity,
         source: {
           extension: "obsidian",
-          filePath: `${this.folder}/${areaData.name}.md`,
+          filePath: `${this.settings.areasFolder}/${areaData.name}.md`,
         },
       };
     }
@@ -599,27 +577,21 @@ export namespace Obsidian {
     public readonly todoPromotion: TodoPromotionOperations;
 
     constructor(
-      config: ObsidianConfig = {},
-      app?: App,
-      settings?: TaskSyncSettings,
-      contextService?: ContextService
+      app: App,
+      settings: TaskSyncSettings,
+      contextService: ContextService
     ) {
-      this.tasks = new TaskOperations(config.tasksFolder, settings);
-      this.projects = new ProjectOperations(config.projectsFolder);
-      this.areas = new AreaOperations(config.areasFolder);
-
-      // Only create TodoPromotionOperations if all dependencies are provided
-      if (app && settings && contextService) {
-        this.todoPromotion = new TodoPromotionOperations(
-          app,
-          settings,
-          contextService,
-          this.tasks
-        );
-      }
+      this.tasks = new TaskOperations(settings);
+      this.projects = new ProjectOperations(settings);
+      this.areas = new AreaOperations(settings);
+      this.todoPromotion = new TodoPromotionOperations(
+        app,
+        settings,
+        contextService,
+        this.tasks
+      );
     }
   }
 }
 
-// Export default singleton instance with default folder names
-export const obsidianOperations = new Obsidian.Operations();
+// Singleton operations removed - operations should be accessed through ObsidianExtension instance

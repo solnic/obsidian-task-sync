@@ -142,6 +142,3 @@ export class Tasks extends Entities {
     }
   };
 }
-
-export const taskQueries = new Tasks.Queries();
-export const taskOperations = new Tasks.Operations();

@@ -1,15 +1,16 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
-  import { obsidianOperations } from "../entities/Obsidian";
   import type { Project } from "../core/entities";
+  import type { ProjectOperations } from "../interfaces/operations";
 
   interface Props {
+    projectOperations: ProjectOperations;
     onsubmit?: (data: any) => void;
     oncancel: () => void;
   }
 
-  let { onsubmit, oncancel }: Props = $props();
+  let { projectOperations, onsubmit, oncancel }: Props = $props();
 
   // Form data
   let formData = $state({
@@ -56,14 +57,13 @@
         tags: [],
       };
 
-      // Create project using Obsidian-specific operations
+      // Create project using provided project operations
       // This will automatically set source.filePath based on the project name
-      const createdProject =
-        await obsidianOperations.projects.create(projectData);
+      const createdProject = await projectOperations.create(projectData);
 
       new Notice(`Project "${createdProject.name}" created successfully`);
 
-      // Call onsubmit if provided
+      // Call onsubmit if provided, which will handle closing the modal
       if (onsubmit) {
         onsubmit({
           name: formData.name.trim(),
@@ -71,7 +71,7 @@
           areas: areas,
         });
       } else {
-        // Close modal directly if no handler
+        // Only close directly if no onsubmit handler
         oncancel();
       }
     } catch (error) {

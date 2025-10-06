@@ -49,20 +49,9 @@ export class TaskSyncApp {
       // TODO: This will need to be refactored when we make the app truly host-agnostic
       const obsidianHost = host as any; // Cast to access underlying plugin
       if (obsidianHost.plugin && obsidianHost.plugin.app) {
-        const extensionSettings = {
-          areasFolder: this.settings.areasFolder || "Areas",
-          projectsFolder: this.settings.projectsFolder || "Projects",
-          tasksFolder: this.settings.tasksFolder || "Tasks",
-          basesFolder: this.settings.basesFolder || "Bases",
-          projectBasesEnabled: this.settings.projectBasesEnabled || false,
-          autoSyncAreaProjectBases:
-            this.settings.autoSyncAreaProjectBases || false,
-        };
-
         this.obsidianExtension = new ObsidianExtension(
           obsidianHost.plugin.app,
           obsidianHost.plugin,
-          extensionSettings,
           this.settings
         );
 
@@ -297,7 +286,7 @@ export class TaskSyncApp {
 
     console.log("Initializing GitHub extension...");
     this.githubExtension = new GitHubExtension(
-      this.settings.integrations.github,
+      this.settings,
       obsidianHost.plugin
     );
 

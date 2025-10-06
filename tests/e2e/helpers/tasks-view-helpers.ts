@@ -229,18 +229,28 @@ export async function closeSortDropdown(page: Page): Promise<void> {
 
 /**
  * Get task item by title
+ * Uses exact title matching on the .task-sync-item-title element to avoid partial matches
  */
 export async function getTaskItemByTitle(
   page: Page,
   title: string
 ): Promise<any> {
+  // Wait for task items to be present
+  await page.waitForSelector('[data-testid^="local-task-item-"]', {
+    timeout: 5000,
+  });
+
   const taskItems = await page
     .locator('[data-testid^="local-task-item-"]')
     .all();
 
   for (const item of taskItems) {
-    const text = await item.textContent();
-    if (text && text.includes(title)) {
+    // Look for the title element specifically and check for exact match
+    const titleElement = item.locator(".task-sync-item-title");
+    const titleText = await titleElement.textContent();
+
+    // Use exact match (trim whitespace for comparison)
+    if (titleText && titleText.trim() === title.trim()) {
       return item;
     }
   }
