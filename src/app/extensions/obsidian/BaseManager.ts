@@ -240,6 +240,19 @@ export class ObsidianBaseManager {
       const content = await this.vault.read(file);
       const specificBaseEmbed = `![[${this.settings.basesFolder}/${baseFileName}]]`;
 
+      // Check if {{tasks}} placeholder exists and replace it
+      if (content.includes("{{tasks}}")) {
+        const updatedContent = content.replace(
+          /\{\{tasks\}\}/g,
+          specificBaseEmbed
+        );
+        await this.vault.modify(file, updatedContent);
+        console.log(
+          `Replaced {{tasks}} placeholder with base embedding in: ${filePath}`
+        );
+        return;
+      }
+
       // Check if any base embedding exists
       if (ObsidianBaseManager.BASE_EMBED_PATTERN.test(content)) {
         // Replace existing base embedding with the specific one

@@ -37,7 +37,7 @@ test.describe("Base Generation", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           const projectsAndAreas = await baseManager.getProjectsAndAreas();
@@ -115,7 +115,7 @@ test.describe("Base Generation", () => {
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
         if (plugin) {
-          const extension = plugin.extensionManager.getExtension("obsidian");
+          const extension = plugin.host.getExtensionById("obsidian");
           if (extension) {
             const baseManager = extension.getBaseManager();
             const projects = await baseManager.getProjects();
@@ -197,7 +197,7 @@ test.describe("Base Generation", () => {
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
         if (plugin) {
-          const extension = plugin.extensionManager.getExtension("obsidian");
+          const extension = plugin.host.getExtensionById("obsidian");
           if (extension) {
             const baseManager = extension.getBaseManager();
             const areas = await baseManager.getAreas();
@@ -287,7 +287,7 @@ Mobile app development project.
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const extension = plugin.extensionManager.getExtension("obsidian");
+        const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
           const projects = await baseManager.getProjects();
