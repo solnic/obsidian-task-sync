@@ -230,6 +230,18 @@ test.describe("TasksView Component", () => {
     await openTasksView(page);
     await waitForLocalTasksToLoad(page);
 
+    // Wait for all tasks to be rendered in the UI
+    await page.waitForFunction(
+      (expectedCount) => {
+        const taskItems = document.querySelectorAll(
+          '[data-testid^="local-task-item-"]'
+        );
+        return taskItems.length >= expectedCount;
+      },
+      tasks.length,
+      { timeout: 5000 }
+    );
+
     // Verify all tasks are displayed with correct properties
     for (const task of tasks) {
       const taskItem = await getTaskItemByTitle(page, task.title);

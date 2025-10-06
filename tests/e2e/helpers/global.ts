@@ -902,12 +902,13 @@ export async function getFrontMatter(
   page: ExtendedPage,
   filePath: string
 ): Promise<Record<string, any>> {
-  // First wait for the frontmatter to be available
-  await page.waitForFunction(
+  // Use waitForFunction to both wait AND retrieve the frontmatter in a single atomic operation
+  // This eliminates the race condition between waiting and retrieving
+  const frontmatter = await page.waitForFunction(
     async ({ filePath }) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(filePath);
-      if (!file) return false;
+      if (!file) return null;
 
       // Try multiple strategies to get the frontmatter
       let cache = app.metadataCache.getFileCache(file);
@@ -945,30 +946,25 @@ export async function getFrontMatter(
         }
       }
 
-      // Return true if frontmatter is available
-      return cache && cache.frontmatter;
+      // Return the frontmatter if available, null otherwise
+      // waitForFunction will keep retrying until we return a truthy value
+      return cache && cache.frontmatter ? cache.frontmatter : null;
     },
     { filePath },
     { timeout: 15000 } // Increased timeout for aggressive retries
   );
 
-  // Then get the actual frontmatter using evaluate (not waitForFunction)
-  return await page.evaluate(
-    async ({ filePath }) => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(filePath);
-      const cache = app.metadataCache.getFileCache(file);
+  // The JSHandle returned by waitForFunction contains the frontmatter
+  // We need to extract the actual value
+  const result = await frontmatter.jsonValue();
 
-      if (!cache || !cache.frontmatter) {
-        throw new Error(
-          `Frontmatter not available for file: ${filePath} after successful wait`
-        );
-      }
+  if (!result) {
+    throw new Error(
+      `Frontmatter not available for file: ${filePath} after timeout`
+    );
+  }
 
-      return cache.frontmatter;
-    },
-    { filePath }
-  );
+  return result;
 }
 
 /**
