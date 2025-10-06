@@ -6,7 +6,6 @@
   import TaskItem from "./TaskItem.svelte";
   import ImportButton from "./ImportButton.svelte";
   import SeeOnServiceButton from "./SeeOnServiceButton.svelte";
-  import { extractDisplayValue } from "../utils/linkUtils";
   import type { Task } from "../core/entities";
   import type { LocalTask } from "../types/LocalTask";
   import type { TaskSyncSettings } from "../types/settings";
@@ -82,21 +81,16 @@
     const badges = [];
 
     if (task.project) {
-      // Extract display value from project (handles wiki links properly)
+      // Project should already be cleaned by ObsidianExtension
       const cleanProject =
-        typeof task.project === "string"
-          ? extractDisplayValue(task.project) ||
-            task.project.replace(/^\[\[|\]\]$/g, "")
-          : task.project;
+        typeof task.project === "string" ? task.project.trim() : task.project;
       badges.push({ type: "Project", text: cleanProject });
     }
 
     if (task.areas && Array.isArray(task.areas) && task.areas.length > 0) {
       const cleanAreas = task.areas.map((area: any) => {
-        // Extract display value from areas (handles wiki links properly)
-        return typeof area === "string"
-          ? extractDisplayValue(area) || area.replace(/^\[\[|\]\]$/g, "")
-          : area;
+        // Areas should already be cleaned by ObsidianExtension
+        return typeof area === "string" ? area.trim() : area;
       });
       if (cleanAreas.length > 0) {
         badges.push({ type: "Area", text: cleanAreas.join(", ") });

@@ -12,8 +12,11 @@ import { getDateString } from "../utils/dateFiltering";
 import { PROPERTY_REGISTRY } from "./obsidian/PropertyRegistry";
 
 export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
-  constructor(app: App, folder: string) {
+  private wikiLinkOperations: any;
+
+  constructor(app: App, folder: string, wikiLinkOperations?: any) {
     super(app, folder);
+    this.wikiLinkOperations = wikiLinkOperations;
   }
 
   /**
@@ -111,8 +114,12 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       [PROPERTY_REGISTRY.DONE.name]: task.done, // Done boolean
       [PROPERTY_REGISTRY.STATUS.name]: task.status, // Status
       [PROPERTY_REGISTRY.PARENT_TASK.name]: task.parentTask || "", // Parent task
-      [PROPERTY_REGISTRY.DO_DATE.name]: task.doDate ? getDateString(task.doDate) : null, // Do Date
-      [PROPERTY_REGISTRY.DUE_DATE.name]: task.dueDate ? getDateString(task.dueDate) : null, // Due Date
+      [PROPERTY_REGISTRY.DO_DATE.name]: task.doDate
+        ? getDateString(task.doDate)
+        : null, // Do Date
+      [PROPERTY_REGISTRY.DUE_DATE.name]: task.dueDate
+        ? getDateString(task.dueDate)
+        : null, // Due Date
       [PROPERTY_REGISTRY.TAGS.name]: task.tags || [], // Tags array
       [PROPERTY_REGISTRY.REMINDERS.name]: [], // Reminders (not yet implemented)
       // Note: createdAt and updatedAt are NOT frontmatter properties according to registry
@@ -158,15 +165,31 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       return null; // Not a task file
     }
 
-    // Helper function to clean link formatting from strings
+    // Helper function to clean link formatting from strings using Obsidian's native APIs
     const cleanLinkFormat = (value: any): any => {
       if (typeof value === "string") {
+        // Use wiki link operations if available, otherwise fallback to simple bracket removal
+        if (this.wikiLinkOperations?.parseWikiLink) {
+          try {
+            const parsed = this.wikiLinkOperations.parseWikiLink(value);
+            if (parsed) {
+              // Return display text if available, otherwise extract filename from path
+              return (
+                parsed.displayText || parsed.path.split("/").pop() || value
+              );
+            }
+          } catch (error) {
+            console.warn(
+              "Failed to parse wiki link with native API, falling back to simple removal:",
+              error
+            );
+          }
+        }
+        // Fallback: simple bracket removal
         return value.replace(/^\[\[|\]\]$/g, "");
       }
       if (Array.isArray(value)) {
-        return value.map((item) =>
-          typeof item === "string" ? item.replace(/^\[\[|\]\]$/g, "") : item
-        );
+        return value.map((item) => cleanLinkFormat(item));
       }
       return value;
     };

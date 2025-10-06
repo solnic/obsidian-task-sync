@@ -4,7 +4,15 @@
  * Provides area operations and coordinates with the event bus
  */
 
-import { App, Plugin, MarkdownPostProcessor, TFile, EventRef } from "obsidian";
+import {
+  App,
+  Plugin,
+  MarkdownPostProcessor,
+  TFile,
+  EventRef,
+  parseLinktext,
+  getLinkpath,
+} from "obsidian";
 import { Extension, extensionRegistry, EntityType } from "../core/extension";
 import { eventBus } from "../core/events";
 import { ObsidianAreaOperations } from "./ObsidianAreaOperations";
@@ -77,7 +85,11 @@ export class ObsidianExtension implements Extension {
       fullSettings
     );
 
-    this.taskOperations = new ObsidianTaskOperations(app, settings.tasksFolder);
+    this.taskOperations = new ObsidianTaskOperations(
+      app,
+      settings.tasksFolder,
+      this.wikiLinkOperations
+    );
 
     // Initialize context service for todo promotion
     const contextService = new ContextService(app, fullSettings);
@@ -90,11 +102,8 @@ export class ObsidianExtension implements Extension {
       new Obsidian.TaskOperations(settings.tasksFolder, fullSettings)
     );
 
-    // Initialize markdown processor
-    this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
-      app,
-      fullSettings
-    );
+    // Note: TaskTodoMarkdownProcessor will be initialized in the initialize() method
+    // after wikiLinkOperations is available
 
     // Initialize daily note feature
     this.dailyNoteFeature = new DailyNoteFeature(app, plugin, {
@@ -118,6 +127,13 @@ export class ObsidianExtension implements Extension {
 
       // Set up event listeners for domain events
       this.setupEventListeners();
+
+      // Initialize markdown processor now that wikiLinkOperations is available
+      this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
+        this.app,
+        this.fullSettings,
+        this.wikiLinkOperations
+      );
 
       this.initialized = true;
       console.log("ObsidianExtension initialized successfully");
@@ -199,6 +215,162 @@ export class ObsidianExtension implements Extension {
   async ensureTodayDailyNote() {
     return await this.dailyNoteFeature.ensureTodayDailyNote();
   }
+
+  /**
+   * Wiki Link Operations
+   * Provides abstraction over Obsidian's first-class wiki link APIs
+   */
+  readonly wikiLinkOperations = {
+    /**
+     * Parse a wiki link text into its components
+     * @param linktext - Wiki link content without [[ ]] brackets
+     * @returns Object with path and subpath components
+     */
+    parseLinktext: (linktext: string) => {
+      return parseLinktext(linktext);
+    },
+
+    /**
+     * Convert linktext to a linkpath (file path)
+     * @param linktext - Wiki link content without [[ ]] brackets
+     * @returns The file path that the link points to
+     */
+    getLinkpath: (linktext: string) => {
+      return getLinkpath(linktext);
+    },
+
+    /**
+     * Resolve a link path to an actual file in the vault
+     * @param linkpath - The path part of a wiki link
+     * @param sourcePath - The path of the file containing the link (for relative resolution)
+     * @returns The resolved TFile or null if not found
+     */
+    resolveFile: (linkpath: string, sourcePath: string): TFile | null => {
+      return this.app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
+    },
+
+    /**
+     * Generate a markdown link using Obsidian's preferences
+     * @param file - The file to link to
+     * @param sourcePath - The path of the file containing the link
+     * @param subpath - Optional subpath (heading/block)
+     * @param alias - Optional display text
+     * @returns Generated markdown link
+     */
+    generateMarkdownLink: (
+      file: TFile,
+      sourcePath: string,
+      subpath?: string,
+      alias?: string
+    ): string => {
+      return this.app.fileManager.generateMarkdownLink(
+        file,
+        sourcePath,
+        subpath,
+        alias
+      );
+    },
+
+    /**
+     * Generate linktext for a file using Obsidian's preferences
+     * @param file - The file to generate linktext for
+     * @param sourcePath - The source file path for relative links
+     * @param omitMdExtension - Whether to omit .md extension
+     * @returns Generated linktext
+     */
+    fileToLinktext: (
+      file: TFile,
+      sourcePath: string,
+      omitMdExtension?: boolean
+    ): string => {
+      return this.app.metadataCache.fileToLinktext(
+        file,
+        sourcePath,
+        omitMdExtension
+      );
+    },
+
+    /**
+     * Extract file path from an Obsidian internal link href
+     * @param href - The href attribute from a rendered wiki link
+     * @returns The file path or null if not an internal link
+     */
+    extractFilePathFromHref: (href: string): string | null => {
+      // Handle internal links (wiki links)
+      if (href.startsWith("app://obsidian.md/")) {
+        // Extract the file path from the URL
+        const url = new URL(href);
+        return decodeURIComponent(url.pathname.substring(1));
+      }
+
+      // Handle relative paths
+      if (!href.startsWith("http")) {
+        return href;
+      }
+
+      return null;
+    },
+
+    /**
+     * Parse a full wiki link (with brackets) into its components
+     * @param wikiLink - Full wiki link like [[path|display]] or [[path]]
+     * @returns Object with path, subpath, and display text
+     */
+    parseWikiLink: (wikiLink: string) => {
+      // Remove the [[ ]] brackets
+      const match = wikiLink.match(/^\[\[([^\]]+)\]\]$/);
+      if (!match) {
+        return null;
+      }
+
+      const linkContent = match[1];
+
+      // Check for display text after |
+      const pipeIndex = linkContent.indexOf("|");
+      if (pipeIndex !== -1) {
+        const path = linkContent.substring(0, pipeIndex).trim();
+        const displayText = linkContent.substring(pipeIndex + 1).trim();
+        const parsed = parseLinktext(path);
+        return {
+          path: parsed.path,
+          subpath: parsed.subpath,
+          displayText,
+          fullPath: path,
+        };
+      }
+
+      // No display text
+      const parsed = parseLinktext(linkContent);
+      return {
+        path: parsed.path,
+        subpath: parsed.subpath,
+        displayText: null,
+        fullPath: linkContent,
+      };
+    },
+
+    /**
+     * Create a wiki link with proper formatting
+     * @param path - File path
+     * @param displayText - Optional display text
+     * @param subpath - Optional subpath (heading/block)
+     * @returns Formatted wiki link
+     */
+    createWikiLink: (
+      path: string,
+      displayText?: string,
+      subpath?: string
+    ): string => {
+      let linkContent = path;
+      if (subpath) {
+        linkContent += subpath;
+      }
+      if (displayText) {
+        linkContent += `|${displayText}`;
+      }
+      return `[[${linkContent}]]`;
+    },
+  };
 
   /**
    * Get observable tasks for this extension
