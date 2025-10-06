@@ -31,7 +31,7 @@ import {
   getDateString,
 } from "../utils/dateFiltering";
 import { ObsidianHost } from "../hosts/ObsidianHost";
-import { obsidianOperations } from "../entities/Obsidian";
+import type { ObsidianExtension } from "./ObsidianExtension";
 
 export interface DailyPlanningExtensionSettings {
   enabled: boolean;
@@ -446,7 +446,7 @@ export class DailyPlanningExtension implements Extension {
    * Move a task to today immediately (used internally and for applying staging)
    */
   async moveTaskToTodayImmediate(task: Task): Promise<void> {
-    const taskOperations = new Tasks.Operations();
+    const taskOperations = new Tasks.Operations(this.settings);
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Set to start of day
 
@@ -475,7 +475,7 @@ export class DailyPlanningExtension implements Extension {
    * Unschedule a task immediately (used internally and for applying staging)
    */
   async unscheduleTaskImmediate(task: Task): Promise<void> {
-    const taskOperations = new Tasks.Operations();
+    const taskOperations = new Tasks.Operations(this.settings);
 
     await taskOperations.update({
       ...task,
@@ -513,7 +513,7 @@ export class DailyPlanningExtension implements Extension {
    * Unschedule a task by removing its doDate
    */
   async unscheduleTask(task: Task): Promise<void> {
-    const taskOperations = new Tasks.Operations();
+    const taskOperations = new Tasks.Operations(this.settings);
 
     await taskOperations.update({
       ...task,
@@ -528,7 +528,7 @@ export class DailyPlanningExtension implements Extension {
    * Reschedule a task to a specific date
    */
   async rescheduleTask(task: Task, newDate: Date): Promise<void> {
-    const taskOperations = new Tasks.Operations();
+    const taskOperations = new Tasks.Operations(this.settings);
 
     await taskOperations.update({
       ...task,
@@ -820,6 +820,10 @@ export class DailyPlanningExtension implements Extension {
    * Set the Do Date property in a task's front-matter
    */
   private async setTaskDoDate(task: Task, date: Date): Promise<Task> {
-    return await obsidianOperations.tasks.update({ ...task, doDate: date });
+    const taskOperations = new Tasks.Operations(this.settings);
+    return await taskOperations.update({
+      ...task,
+      doDate: date,
+    });
   }
 }

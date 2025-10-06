@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
-  import { obsidianOperations } from "../entities/Obsidian";
   import type { Task } from "../core/entities";
   import {
     createTypeBadge,
@@ -9,6 +8,7 @@
     createStatusBadge,
   } from "../utils/badges";
   import type { TaskSyncSettings } from "../types/settings";
+  import { Obsidian } from "../entities/Obsidian";
   import Dropdown from "./Dropdown.svelte";
   import Autocomplete from "./Autocomplete.svelte";
 
@@ -20,6 +20,7 @@
   interface Props {
     obsidianApp: any;
     settings: TaskSyncSettings;
+    taskOperations: InstanceType<typeof Obsidian.TaskOperations>;
     context?: FileContext;
     onsubmit?: (task: Task) => void;
     oncancel?: () => void;
@@ -28,6 +29,7 @@
   let {
     obsidianApp,
     settings,
+    taskOperations,
     context = { type: "none" },
     onsubmit,
     oncancel,
@@ -261,18 +263,18 @@
         tags: formData.tags,
       };
 
-      // Create task using Obsidian-specific operations
+      // Create task using provided task operations
       // This will automatically set source.filePath based on the task title
-      const createdTask = await obsidianOperations.tasks.create(taskData);
+      const createdTask = await taskOperations.create(taskData);
 
       new Notice(`Task "${createdTask.title}" created successfully`);
 
-      // Call onsubmit if provided
+      // Call onsubmit if provided, which will handle closing the modal
       if (onsubmit) {
         onsubmit(createdTask);
       } else {
-        // Close modal directly if no handler
-        oncancel();
+        // Only close directly if no onsubmit handler
+        oncancel?.();
       }
     } catch (error) {
       console.error("Failed to create task:", error);

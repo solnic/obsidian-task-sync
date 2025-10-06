@@ -26,8 +26,11 @@ import {
   type GitHubOrganizationList,
   type GitHubPullRequest,
 } from "../cache/schemas/github";
-import { githubOperations } from "../entities/GitHub";
-import type { GitHubIntegrationSettings } from "../types/settings";
+import { GitHub } from "../entities/GitHub";
+import type {
+  GitHubIntegrationSettings,
+  TaskSyncSettings,
+} from "../types/settings";
 
 export class GitHubExtension implements Extension {
   readonly id = "github";
@@ -38,7 +41,8 @@ export class GitHubExtension implements Extension {
   private initialized = false;
   private octokit: Octokit | undefined;
   private plugin: Plugin;
-  private settings: GitHubIntegrationSettings;
+  private settings: TaskSyncSettings;
+  private githubOperations: GitHub.Operations;
 
   // Cache instances
   private issuesCache?: SchemaCache<GitHubIssueList>;
@@ -46,9 +50,10 @@ export class GitHubExtension implements Extension {
   private repositoriesCache?: SchemaCache<GitHubRepositoryList>;
   private organizationsCache?: SchemaCache<GitHubOrganizationList>;
 
-  constructor(settings: GitHubIntegrationSettings, plugin: Plugin) {
+  constructor(settings: TaskSyncSettings, plugin: Plugin) {
     this.settings = settings;
     this.plugin = plugin;
+    this.githubOperations = new GitHub.Operations(settings);
   }
 
   async initialize(): Promise<void> {
@@ -171,11 +176,11 @@ export class GitHubExtension implements Extension {
           // Transform to a temporary task object for display
           const taskData =
             type === "issues"
-              ? githubOperations.tasks.transformIssueToTask(
+              ? this.githubOperations.tasks.transformIssueToTask(
                   item as any,
                   repository
                 )
-              : githubOperations.tasks.transformPullRequestToTask(
+              : this.githubOperations.tasks.transformPullRequestToTask(
                   item as any,
                   repository
                 );
@@ -347,9 +352,10 @@ export class GitHubExtension implements Extension {
    * Initialize Octokit client if integration is enabled and token is provided
    */
   private initializeOctokit(): void {
-    const trimmedToken = this.settings.personalAccessToken?.trim();
+    const githubSettings = this.settings.integrations.github;
+    const trimmedToken = githubSettings.personalAccessToken?.trim();
 
-    if (this.settings.enabled && trimmedToken) {
+    if (githubSettings.enabled && trimmedToken) {
       this.octokit = new Octokit({
         auth: trimmedToken,
         userAgent: "obsidian-task-sync",
@@ -480,7 +486,7 @@ export class GitHubExtension implements Extension {
    * Check if GitHub integration is enabled
    */
   isEnabled(): boolean {
-    return this.settings.enabled && !!this.octokit;
+    return this.settings.integrations.github.enabled && !!this.octokit;
   }
 
   /**
@@ -495,7 +501,7 @@ export class GitHubExtension implements Extension {
       throw new Error("Invalid repository format. Expected: owner/repo");
     }
 
-    const filters = this.settings.issueFilters;
+    const filters = this.settings.integrations.github.issueFilters;
     const cacheKey = this.generateCacheKey("issues", repository, {
       state: filters.state,
       assignee: filters.assignee,
@@ -813,7 +819,7 @@ export class GitHubExtension implements Extension {
     repository?: string
   ): Promise<{ success: boolean; taskId?: string; error?: string }> {
     return this.importGitHubItem(issue, repository, "issue", (item, repo) =>
-      githubOperations.tasks.importIssue(item, repo)
+      this.githubOperations.tasks.importIssue(item, repo)
     );
   }
 
@@ -826,7 +832,7 @@ export class GitHubExtension implements Extension {
     repository?: string
   ): Promise<{ success: boolean; taskId?: string; error?: string }> {
     return this.importGitHubItem(pr, repository, "PR", (item, repo) =>
-      githubOperations.tasks.importPullRequest(item, repo)
+      this.githubOperations.tasks.importPullRequest(item, repo)
     );
   }
 }

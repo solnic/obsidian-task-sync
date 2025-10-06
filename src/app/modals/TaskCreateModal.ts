@@ -7,6 +7,7 @@ import { App, Modal } from "obsidian";
 import { mount, unmount } from "svelte";
 import TaskCreateModalSvelte from "../components/TaskCreateModal.svelte";
 import type TaskSyncPlugin from "../../main";
+import { Obsidian } from "../entities/Obsidian";
 
 export class TaskCreateModal extends Modal {
   private component: any = null;
@@ -22,11 +23,15 @@ export class TaskCreateModal extends Modal {
     contentEl.empty();
 
     try {
+      // Use Obsidian.TaskOperations which sets source.filePath correctly
+      const taskOperations = new Obsidian.TaskOperations(this.plugin.settings);
+
       this.component = mount(TaskCreateModalSvelte, {
         target: contentEl,
         props: {
           obsidianApp: this.app,
           settings: this.plugin.settings,
+          taskOperations: taskOperations,
           onsubmit: (taskData: any) => {
             console.log("Task created:", taskData);
             this.close();

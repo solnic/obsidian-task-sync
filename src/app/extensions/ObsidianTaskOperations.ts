@@ -10,12 +10,13 @@ import { projectStore } from "../stores/projectStore";
 import { taskStore } from "../stores/taskStore";
 import { getDateString } from "../utils/dateFiltering";
 import { PROPERTY_REGISTRY } from "./obsidian/PropertyRegistry";
+import type { TaskSyncSettings } from "../types/settings";
 
 export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   private wikiLinkOperations: any;
 
-  constructor(app: App, folder: string, wikiLinkOperations?: any) {
-    super(app, folder);
+  constructor(app: App, settings: TaskSyncSettings, wikiLinkOperations?: any) {
+    super(app, settings.tasksFolder);
     this.wikiLinkOperations = wikiLinkOperations;
   }
 
