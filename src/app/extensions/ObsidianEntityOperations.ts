@@ -40,65 +40,60 @@ export abstract class ObsidianEntityOperations<
   protected abstract getEntityDisplayName(entity: T): string;
 
   // Common note management methods for reactive updates (called by ObsidianExtension)
-  async createNote(entity: T): Promise<void> {
-    try {
-      // Use polymorphic approach to get entity display name
-      const entityName = this.getEntityDisplayName(entity);
-      const fileName = this.sanitizeFileName(entityName);
-      const filePath = `${this.folder}/${fileName}.md`;
+  async createNote(entity: T): Promise<string> {
+    // Use polymorphic approach to get entity display name
+    const entityName = this.getEntityDisplayName(entity);
+    const fileName = this.sanitizeFileName(entityName);
+    const filePath = `${this.folder}/${fileName}.md`;
 
-      // Generate entity-specific front-matter
-      const frontMatter = this.generateFrontMatter(entity);
+    // Generate entity-specific front-matter
+    const frontMatter = this.generateFrontMatter(entity);
 
-      // Remove undefined values safely
-      const cleanedFrontMatter = Object.fromEntries(
-        Object.entries(frontMatter).filter(([_, value]) => value !== undefined)
-      );
+    // Remove undefined values safely
+    const cleanedFrontMatter = Object.fromEntries(
+      Object.entries(frontMatter).filter(([_, value]) => value !== undefined)
+    );
 
-      const frontMatterYaml = stringifyYaml(cleanedFrontMatter);
-      const content = `---\n${frontMatterYaml}---\n\n${
-        entity.description || ""
-      }`;
+    const frontMatterYaml = stringifyYaml(cleanedFrontMatter);
+    const content = `---\n${frontMatterYaml}---\n\n${entity.description || ""}`;
 
-      const existingFile = this.app.vault.getAbstractFileByPath(filePath);
-      if (existingFile) {
-        await this.app.vault.modify(existingFile as any, content);
-      } else {
-        await this.app.vault.create(filePath, content);
+    const existingFile = this.app.vault.getAbstractFileByPath(filePath);
 
-        // Trigger event with both entity and filePath
-        // The entity retains its original source (e.g., github), and filePath is added separately
-        this.trigger("notes.created", {
-          entityId: entity.id,
-          filePath,
-        });
-      }
-    } catch (error) {
-      console.error(
-        `Failed to create ${this.getEntityType().toLowerCase()} note:`,
-        error
-      );
+    if (existingFile) {
+      await this.app.vault.modify(existingFile as any, content);
+
+      this.trigger("notes.updated", {
+        entityId: entity.id,
+        filePath,
+      });
+    } else {
+      await this.app.vault.create(filePath, content);
+
+      this.trigger("notes.created", {
+        entityId: entity.id,
+        filePath,
+      });
     }
+
+    return filePath;
   }
 
   async updateNote(entity: T): Promise<void> {
-    // For now, just recreate the note with updated content
     await this.createNote(entity);
   }
 
   async deleteNote(entityId: string): Promise<void> {
-    try {
-      // For now, we can't easily map from ID to file without additional tracking
-      // This would need to be improved in a real implementation
-      console.log(
-        `Would delete ${this.getEntityType().toLowerCase()} note for ID: ${entityId}`
-      );
-    } catch (error) {
-      console.error(
-        `Failed to delete ${this.getEntityType().toLowerCase()} note:`,
-        error
-      );
+    const entity = await this.getById(entityId);
+
+    const filePath = entity.source.filePath as string;
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+
+    if (!file) {
+      console.warn(`File not found for deletion: ${filePath}`);
+      return;
     }
+
+    await this.app.vault.delete(file);
   }
 
   // Protected helper methods available to subclasses (overridable)

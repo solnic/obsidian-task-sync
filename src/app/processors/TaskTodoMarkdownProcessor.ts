@@ -38,10 +38,12 @@ export class TaskTodoMarkdownProcessor {
   private app: App;
   private settings: TaskSyncSettings;
   private processor: MarkdownPostProcessor;
+  private wikiLinkOperations: any; // Will be typed properly when we import ObsidianExtension
 
-  constructor(app: App, settings: TaskSyncSettings) {
+  constructor(app: App, settings: TaskSyncSettings, wikiLinkOperations?: any) {
     this.app = app;
     this.settings = settings;
+    this.wikiLinkOperations = wikiLinkOperations;
 
     // Create the processor function
     this.processor = this.createProcessor();
@@ -114,12 +116,11 @@ export class TaskTodoMarkdownProcessor {
     return checkbox !== null;
   }
 
-
-
   /**
-   * Extract file path from href attribute
+   * Fallback method for extracting file path from href when wiki link operations are not available
+   * @deprecated Use wikiLinkOperations.extractFilePathFromHref instead
    */
-  private extractFilePathFromHref(href: string): string | null {
+  private fallbackExtractFilePathFromHref(href: string): string | null {
     // Handle internal links (wiki links)
     if (href.startsWith("app://obsidian.md/")) {
       // Extract the file path from the URL
@@ -146,8 +147,10 @@ export class TaskTodoMarkdownProcessor {
     const href = link.getAttribute("href");
     if (!href) return;
 
-    // Extract the file path from the href
-    const filePath = this.extractFilePathFromHref(href);
+    // Extract the file path from the href using the wiki link operations
+    const filePath =
+      this.wikiLinkOperations?.extractFilePathFromHref?.(href) ??
+      this.fallbackExtractFilePathFromHref(href);
     if (!filePath) return;
 
     // Check if this file is a task note managed by our plugin

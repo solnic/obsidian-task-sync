@@ -5,7 +5,6 @@
  */
 
 import type { Task } from "../core/entities";
-import { extractDisplayValue } from "../utils/linkUtils";
 import { z } from "zod";
 
 export interface LocalTask {
@@ -123,9 +122,9 @@ function extractProjectDisplayValue(value: any): string {
     return "";
   }
 
-  // Handle valid string values (including wiki links)
+  // Handle valid string values (should be plain strings, not wiki links)
   if (typeof value === "string") {
-    return extractDisplayValue(value) || "";
+    return value.trim() || "";
   }
 
   // Handle objects that might have a name property (from malformed front-matter)
@@ -169,7 +168,7 @@ function extractAreasDisplayValue(areas: any): string {
       }
 
       if (typeof area === "string") {
-        const displayValue = extractDisplayValue(area);
+        const displayValue = area.trim();
         if (displayValue) {
           return displayValue;
         }

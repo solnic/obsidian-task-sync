@@ -4,7 +4,15 @@
  * Provides area operations and coordinates with the event bus
  */
 
-import { App, Plugin, MarkdownPostProcessor, TFile, EventRef } from "obsidian";
+import {
+  App,
+  Plugin,
+  MarkdownPostProcessor,
+  TFile,
+  EventRef,
+  parseLinktext,
+  getLinkpath,
+} from "obsidian";
 import { Extension, extensionRegistry, EntityType } from "../core/extension";
 import { eventBus } from "../core/events";
 import { ObsidianAreaOperations } from "./ObsidianAreaOperations";
@@ -16,6 +24,8 @@ import { projectStore } from "../stores/projectStore";
 import { areaStore } from "../stores/areaStore";
 import { taskOperations } from "../entities/Tasks";
 import { projectOperations } from "../entities/Projects";
+import { Obsidian } from "../entities/Obsidian";
+import { ContextService } from "../services/ContextService";
 import { areaOperations } from "../entities/Areas";
 import type { Task, Project } from "../core/entities";
 import type { TaskSyncSettings } from "../types/settings";
@@ -54,6 +64,7 @@ export class ObsidianExtension implements Extension {
   readonly areaOperations: ObsidianAreaOperations;
   readonly projectOperations: ObsidianProjectOperations;
   readonly taskOperations: ObsidianTaskOperations;
+  readonly todoPromotionOperations: Obsidian.TodoPromotionOperations;
 
   constructor(
     private app: App,
@@ -74,13 +85,25 @@ export class ObsidianExtension implements Extension {
       fullSettings
     );
 
-    this.taskOperations = new ObsidianTaskOperations(app, settings.tasksFolder);
-
-    // Initialize markdown processor
-    this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
+    this.taskOperations = new ObsidianTaskOperations(
       app,
-      fullSettings
+      settings.tasksFolder,
+      this.wikiLinkOperations
     );
+
+    // Initialize context service for todo promotion
+    const contextService = new ContextService(app, fullSettings);
+
+    // Initialize todo promotion operations
+    this.todoPromotionOperations = new Obsidian.TodoPromotionOperations(
+      app,
+      fullSettings,
+      contextService,
+      new Obsidian.TaskOperations(settings.tasksFolder, fullSettings)
+    );
+
+    // Note: TaskTodoMarkdownProcessor will be initialized in the initialize() method
+    // after wikiLinkOperations is available
 
     // Initialize daily note feature
     this.dailyNoteFeature = new DailyNoteFeature(app, plugin, {
@@ -104,6 +127,13 @@ export class ObsidianExtension implements Extension {
 
       // Set up event listeners for domain events
       this.setupEventListeners();
+
+      // Initialize markdown processor now that wikiLinkOperations is available
+      this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
+        this.app,
+        this.fullSettings,
+        this.wikiLinkOperations
+      );
 
       this.initialized = true;
       console.log("ObsidianExtension initialized successfully");
@@ -185,6 +215,162 @@ export class ObsidianExtension implements Extension {
   async ensureTodayDailyNote() {
     return await this.dailyNoteFeature.ensureTodayDailyNote();
   }
+
+  /**
+   * Wiki Link Operations
+   * Provides abstraction over Obsidian's first-class wiki link APIs
+   */
+  readonly wikiLinkOperations = {
+    /**
+     * Parse a wiki link text into its components
+     * @param linktext - Wiki link content without [[ ]] brackets
+     * @returns Object with path and subpath components
+     */
+    parseLinktext: (linktext: string) => {
+      return parseLinktext(linktext);
+    },
+
+    /**
+     * Convert linktext to a linkpath (file path)
+     * @param linktext - Wiki link content without [[ ]] brackets
+     * @returns The file path that the link points to
+     */
+    getLinkpath: (linktext: string) => {
+      return getLinkpath(linktext);
+    },
+
+    /**
+     * Resolve a link path to an actual file in the vault
+     * @param linkpath - The path part of a wiki link
+     * @param sourcePath - The path of the file containing the link (for relative resolution)
+     * @returns The resolved TFile or null if not found
+     */
+    resolveFile: (linkpath: string, sourcePath: string): TFile | null => {
+      return this.app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);
+    },
+
+    /**
+     * Generate a markdown link using Obsidian's preferences
+     * @param file - The file to link to
+     * @param sourcePath - The path of the file containing the link
+     * @param subpath - Optional subpath (heading/block)
+     * @param alias - Optional display text
+     * @returns Generated markdown link
+     */
+    generateMarkdownLink: (
+      file: TFile,
+      sourcePath: string,
+      subpath?: string,
+      alias?: string
+    ): string => {
+      return this.app.fileManager.generateMarkdownLink(
+        file,
+        sourcePath,
+        subpath,
+        alias
+      );
+    },
+
+    /**
+     * Generate linktext for a file using Obsidian's preferences
+     * @param file - The file to generate linktext for
+     * @param sourcePath - The source file path for relative links
+     * @param omitMdExtension - Whether to omit .md extension
+     * @returns Generated linktext
+     */
+    fileToLinktext: (
+      file: TFile,
+      sourcePath: string,
+      omitMdExtension?: boolean
+    ): string => {
+      return this.app.metadataCache.fileToLinktext(
+        file,
+        sourcePath,
+        omitMdExtension
+      );
+    },
+
+    /**
+     * Extract file path from an Obsidian internal link href
+     * @param href - The href attribute from a rendered wiki link
+     * @returns The file path or null if not an internal link
+     */
+    extractFilePathFromHref: (href: string): string | null => {
+      // Handle internal links (wiki links)
+      if (href.startsWith("app://obsidian.md/")) {
+        // Extract the file path from the URL
+        const url = new URL(href);
+        return decodeURIComponent(url.pathname.substring(1));
+      }
+
+      // Handle relative paths
+      if (!href.startsWith("http")) {
+        return href;
+      }
+
+      return null;
+    },
+
+    /**
+     * Parse a full wiki link (with brackets) into its components
+     * @param wikiLink - Full wiki link like [[path|display]] or [[path]]
+     * @returns Object with path, subpath, and display text
+     */
+    parseWikiLink: (wikiLink: string) => {
+      // Remove the [[ ]] brackets
+      const match = wikiLink.match(/^\[\[([^\]]+)\]\]$/);
+      if (!match) {
+        return null;
+      }
+
+      const linkContent = match[1];
+
+      // Check for display text after |
+      const pipeIndex = linkContent.indexOf("|");
+      if (pipeIndex !== -1) {
+        const path = linkContent.substring(0, pipeIndex).trim();
+        const displayText = linkContent.substring(pipeIndex + 1).trim();
+        const parsed = parseLinktext(path);
+        return {
+          path: parsed.path,
+          subpath: parsed.subpath,
+          displayText,
+          fullPath: path,
+        };
+      }
+
+      // No display text
+      const parsed = parseLinktext(linkContent);
+      return {
+        path: parsed.path,
+        subpath: parsed.subpath,
+        displayText: null,
+        fullPath: linkContent,
+      };
+    },
+
+    /**
+     * Create a wiki link with proper formatting
+     * @param path - File path
+     * @param displayText - Optional display text
+     * @param subpath - Optional subpath (heading/block)
+     * @returns Formatted wiki link
+     */
+    createWikiLink: (
+      path: string,
+      displayText?: string,
+      subpath?: string
+    ): string => {
+      let linkContent = path;
+      if (subpath) {
+        linkContent += subpath;
+      }
+      if (displayText) {
+        linkContent += `|${displayText}`;
+      }
+      return `[[${linkContent}]]`;
+    },
+  };
 
   /**
    * Get observable tasks for this extension
@@ -415,65 +601,43 @@ export class ObsidianExtension implements Extension {
    * during initialization and populate the canonical store using upsert logic
    */
   private async scanAndPopulateExistingTasks(): Promise<void> {
-    try {
-      console.log("Scanning existing tasks from Obsidian vault...");
+    const existingTasksData = await this.taskOperations.scanExistingTasks();
 
-      // Scan existing task files using the task operations (returns data without IDs)
-      const existingTasksData = await this.taskOperations.scanExistingTasks();
-
-      console.log(`Found ${existingTasksData.length} existing tasks`);
-
-      // Populate the canonical task store using upsert logic
-      // Store will handle ID generation for new tasks
-      for (const taskData of existingTasksData) {
-        try {
-          taskStore.upsertTask(taskData);
-        } catch (error) {
-          console.error(`Failed to upsert task ${taskData.title}:`, error);
-          // Continue with other tasks instead of crashing
-        }
+    for (const taskData of existingTasksData) {
+      try {
+        taskStore.upsertTask(taskData);
+      } catch (error) {
+        console.error(`Failed to upsert task ${taskData.title}:`, error);
       }
-
-      console.log("Successfully populated task store with existing tasks");
-    } catch (error) {
-      console.error("Failed to scan and populate existing tasks:", error);
-      // Don't throw - this shouldn't prevent extension initialization
     }
   }
 
   // Event handler methods required by Extension interface
   async onEntityCreated(event: any): Promise<void> {
     if (event.type === "areas.created") {
-      // React to area creation by creating the corresponding Obsidian note
       await this.areaOperations.createNote(event.area);
     } else if (event.type === "projects.created") {
-      // React to project creation by creating the corresponding Obsidian note
       await this.projectOperations.createNote(event.project);
     } else if (event.type === "tasks.created") {
-      // React to task creation by creating the corresponding Obsidian note
-      await this.taskOperations.createNote(event.task);
+      const task = event.task;
 
-      // After creating the note, update the task's source to include the filePath
-      // This allows tasks from other extensions (e.g., GitHub) to have both their
-      // original source (extension: "github", url: "...") AND the Obsidian filePath
-      const fileName = this.sanitizeFileName(event.task.title);
-      const filePath = `${this.settings.tasksFolder}/${fileName}.md`;
+      // Create the note file and get the file path
+      const filePath = await this.taskOperations.createNote(task);
 
-      const updatedTask = {
-        ...event.task,
+      // Update the task's source to include the file path
+      // This prevents duplicate tasks when the file change event fires
+      const updatedTask: Task = {
+        ...task,
         source: {
-          ...event.task.source,
-          filePath,
+          extension: "obsidian",
+          ...task.source,
+          filePath: filePath,
         },
       };
 
+      // Update the task in the store without triggering another event
       taskStore.updateTask(updatedTask);
     }
-  }
-
-  private sanitizeFileName(name: string): string {
-    // Basic sanitization - remove invalid characters
-    return name.replace(/[<>:"/\\|?*]/g, "").trim();
   }
 
   async onEntityUpdated(event: any): Promise<void> {
@@ -507,12 +671,7 @@ export class ObsidianExtension implements Extension {
    * Public method that can be called when settings change or manually triggered
    */
   async syncProjectBases(): Promise<void> {
-    try {
-      await this.baseManager.syncProjectBases();
-    } catch (error) {
-      console.error("Failed to sync project bases:", error);
-      throw error;
-    }
+    await this.baseManager.syncProjectBases();
   }
 
   /**
@@ -545,7 +704,6 @@ export class ObsidianExtension implements Extension {
 
         const filePath = file.path;
 
-        // Check if the changed file is in one of our entity folders
         if (filePath.startsWith(this.settings.tasksFolder + "/")) {
           this.handleTaskFileChange(file, cache);
         } else if (filePath.startsWith(this.settings.projectsFolder + "/")) {
@@ -553,6 +711,8 @@ export class ObsidianExtension implements Extension {
         } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
           this.handleAreaFileChange(file, cache);
         }
+
+        this.handlePotentialTodoCheckboxChange(file);
       }
     );
 
@@ -619,14 +779,72 @@ export class ObsidianExtension implements Extension {
    * Handle task file change by reloading the task from the file
    */
   private async handleTaskFileChange(file: TFile, cache: any): Promise<void> {
+    await this.taskOperations.rescanFile(file, cache);
+  }
+
+  /**
+   * Handle potential todo checkbox changes in non-entity files
+   * This detects when a promoted todo checkbox is clicked and syncs with the task file
+   */
+  private async handlePotentialTodoCheckboxChange(file: TFile): Promise<void> {
     try {
-      // Rescan the file to update the task in the store
-      await this.taskOperations.rescanFile(file, cache);
+      // Read the file content to check for promoted todos (wiki links with checkboxes)
+      const content = await this.app.vault.read(file);
+      const lines = content.split("\n");
+
+      // Look for lines that match the pattern: - [x] [[Task Name]] or - [ ] [[Task Name]]
+      const promotedTodoRegex = /^(\s*)([-*])\s*\[([xX\s])\]\s*\[\[(.+)\]\]$/;
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const match = line.match(promotedTodoRegex);
+
+        if (match) {
+          const [, , , checkboxState, taskTitle] = match;
+          const isCompleted = checkboxState.toLowerCase() === "x";
+
+          // Find the corresponding task file
+          const taskFilePath = `${this.settings.tasksFolder}/${taskTitle}.md`;
+          const taskFile = this.app.vault.getAbstractFileByPath(taskFilePath);
+
+          if (taskFile instanceof TFile) {
+            await this.syncTaskCompletionFromTodo(taskFile, isCompleted);
+          }
+        }
+      }
     } catch (error) {
-      console.error(
-        `Failed to handle task file change for ${file.path}:`,
-        error
-      );
+      // Silently fail - this is a background sync operation
+    }
+  }
+
+  /**
+   * Sync task completion status based on promoted todo checkbox state
+   * Uses entity operations to update the task, which triggers the tasks.updated
+   * handler to update front-matter using Obsidian's processFrontMatter API
+   */
+  private async syncTaskCompletionFromTodo(
+    taskFile: TFile,
+    isCompleted: boolean
+  ): Promise<void> {
+    try {
+      // Find the task by file path
+      const task = taskStore.findByFilePath(taskFile.path);
+
+      if (!task) {
+        return;
+      }
+
+      // Only update if the status has changed
+      if (task.done !== isCompleted) {
+        // Update the task using entity operations
+        // This will trigger tasks.updated event which will update the file
+        await taskOperations.update({
+          ...task,
+          done: isCompleted,
+        });
+      }
+    } catch (error) {
+      // Silently fail - this is a background sync operation
     }
   }
 

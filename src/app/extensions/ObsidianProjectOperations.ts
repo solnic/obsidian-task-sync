@@ -45,12 +45,14 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
    * Override createNote to include base generation
    * This makes base generation synchronous with note creation, improving performance
    */
-  async createNote(project: Project): Promise<void> {
+  async createNote(project: Project): Promise<string> {
     // First create the note using parent implementation
-    await super.createNote(project);
+    const filePath = await super.createNote(project);
 
     // Then generate the base file if enabled
     await this.generateBaseForProject(project);
+
+    return filePath;
   }
 
   /**
