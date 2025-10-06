@@ -98,6 +98,13 @@ export const VIEW_ORDERS = {
     PROPERTY_REGISTRY.CREATED_AT.name,
     PROPERTY_REGISTRY.UPDATED_AT.name,
   ],
+  TASKS_TYPE: [
+    "formula.Title",
+    PROPERTY_REGISTRY.PROJECT.name,
+    PROPERTY_REGISTRY.DONE.name,
+    PROPERTY_REGISTRY.CREATED_AT.name,
+    PROPERTY_REGISTRY.UPDATED_AT.name,
+  ],
   AREA_MAIN: [
     "formula.Title",
     PROPERTY_REGISTRY.PRIORITY.name,
@@ -215,6 +222,7 @@ export const FILTER_PRESETS = {
 export interface ProjectAreaInfo {
   name: string;
   path: string;
+  type: "project" | "area";
 }
 
 // ============================================================================
@@ -302,6 +310,189 @@ function pluralize(word: string): string {
 // ============================================================================
 
 /**
+ * Generate Tasks base configuration
+ */
+export function generateTasksBase(
+  settings: TaskSyncSettings,
+  projectsAndAreas: ProjectAreaInfo[]
+): string {
+  // Build dynamic filters based on available projects and areas
+  const baseFilters: FilterCondition[] = [
+    FilterBuilder.inFolder(settings.tasksFolder),
+    FilterBuilder.noParentTask(),
+  ];
+
+  // Add area/project filters if we have any
+  if (projectsAndAreas.length > 0) {
+    const areas = projectsAndAreas.filter((p) => p.type === "area");
+    const projects = projectsAndAreas.filter((p) => p.type === "project");
+
+    if (areas.length > 0 && projects.length > 0) {
+      // If we have both areas and projects, create an OR filter
+      baseFilters.push(
+        FilterBuilder.or(
+          ...areas.map((area) => FilterBuilder.inArea(area.name)),
+          ...projects.map((project) => FilterBuilder.inProject(project.name))
+        )
+      );
+    } else if (areas.length > 0) {
+      // Only areas available
+      if (areas.length === 1) {
+        baseFilters.push(FilterBuilder.inArea(areas[0].name));
+      } else {
+        baseFilters.push(
+          FilterBuilder.or(
+            ...areas.map((area) => FilterBuilder.inArea(area.name))
+          )
+        );
+      }
+    } else if (projects.length > 0) {
+      // Only projects available
+      if (projects.length === 1) {
+        baseFilters.push(FilterBuilder.inProject(projects[0].name));
+      } else {
+        baseFilters.push(
+          FilterBuilder.or(
+            ...projects.map((project) => FilterBuilder.inProject(project.name))
+          )
+        );
+      }
+    }
+  }
+
+  const config = {
+    formulas: {
+      Title: "link(file.name, Title)",
+    },
+    properties: generatePropertiesSection(PROPERTY_SETS.TASKS_BASE),
+    views: [
+      // Main Tasks view
+      {
+        type: "table",
+        name: "Tasks",
+        filters: FilterBuilder.and(...baseFilters).toFilterObject(),
+        order: resolveViewOrder(VIEW_ORDERS.TASKS_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.TASK),
+        columnSize: {
+          "formula.Title": 382,
+          [PROPERTY_REGISTRY.TAGS.name]: 134,
+          [PROPERTY_REGISTRY.UPDATED_AT.name]: 165,
+          [PROPERTY_REGISTRY.CREATED_AT.name]: 183,
+        },
+      },
+      // All task types views
+      ...settings.taskTypes.map((taskType) => ({
+        type: "table" as const,
+        name: `All ${pluralize(taskType.name)}`,
+        filters: FilterBuilder.and(
+          FilterBuilder.inFolder(settings.tasksFolder),
+          FilterBuilder.notDone(),
+          FilterBuilder.ofCategory(taskType.name),
+          FilterBuilder.noParentTask()
+        ).toFilterObject(),
+        order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
+        sort: resolveSortConfig(SORT_CONFIGS.TASK),
+      })),
+      // Priority-based views for each type
+      ...settings.taskTypes.flatMap((taskType) =>
+        settings.taskPriorities.map((priority) => ({
+          type: "table" as const,
+          name: `${pluralize(taskType.name)} • ${priority.name} priority`,
+          filters: FilterBuilder.and(
+            FilterBuilder.inFolder(settings.tasksFolder),
+            FilterBuilder.notDone(),
+            FilterBuilder.ofCategory(taskType.name),
+            FilterBuilder.withPriority(priority.name),
+            FilterBuilder.noParentTask()
+          ).toFilterObject(),
+          order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
+          sort: resolveSortConfig(SORT_CONFIGS.TASK),
+        }))
+      ),
+    ],
+  };
+
+  return yaml.dump(config, {
+    indent: 2,
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false,
+  });
+}
+
+/**
+ * Generate Area base configuration
+ */
+export function generateAreaBase(
+  settings: TaskSyncSettings,
+  area: ProjectAreaInfo
+): string {
+  const config = {
+    formulas: {
+      Title: "link(file.name, Title)",
+    },
+    properties: generatePropertiesSection(PROPERTY_SETS.AREA_BASE),
+    views: [
+      // Main Tasks view
+      {
+        type: "table",
+        name: "Tasks",
+        filters: FILTER_PRESETS.AREA_TASKS(
+          settings,
+          area.name
+        ).toFilterObject(),
+        order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.AREA),
+        columnSize: {
+          "formula.Title": 382,
+          [PROPERTY_REGISTRY.TAGS.name]: 134,
+          [PROPERTY_REGISTRY.UPDATED_AT.name]: 165,
+          [PROPERTY_REGISTRY.CREATED_AT.name]: 183,
+        },
+      },
+      // All task types views
+      ...settings.taskTypes.map((taskType) => ({
+        type: "table" as const,
+        name: `All ${pluralize(taskType.name)}`,
+        filters: FilterBuilder.and(
+          FilterBuilder.inFolder(settings.tasksFolder),
+          FilterBuilder.notDone(),
+          FilterBuilder.inArea(area.name),
+          FilterBuilder.ofCategory(taskType.name),
+          FilterBuilder.noParentTask()
+        ).toFilterObject(),
+        order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.AREA),
+      })),
+      // Priority-based views for each type
+      ...settings.taskTypes.flatMap((taskType) =>
+        settings.taskPriorities.map((priority) => ({
+          type: "table" as const,
+          name: `${pluralize(taskType.name)} • ${priority.name} priority`,
+          filters: FilterBuilder.and(
+            FilterBuilder.inFolder(settings.tasksFolder),
+            FilterBuilder.notDone(),
+            FilterBuilder.inArea(area.name),
+            FilterBuilder.ofCategory(taskType.name),
+            FilterBuilder.withPriority(priority.name),
+            FilterBuilder.noParentTask()
+          ).toFilterObject(),
+          order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
+          sort: resolveSortConfig(SORT_CONFIGS.AREA),
+        }))
+      ),
+    ],
+  };
+
+  return yaml.dump(config, {
+    indent: 2,
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false,
+  });
+}
+
+/**
  * Generate Project base configuration
  */
 export function generateProjectBase(
@@ -331,6 +522,20 @@ export function generateProjectBase(
           [PROPERTY_REGISTRY.CREATED_AT.name]: 183,
         },
       },
+      // All task types views
+      ...settings.taskTypes.map((taskType) => ({
+        type: "table" as const,
+        name: `All ${pluralize(taskType.name)}`,
+        filters: FilterBuilder.and(
+          FilterBuilder.inFolder(settings.tasksFolder),
+          FilterBuilder.notDone(),
+          FilterBuilder.inProject(project.name),
+          FilterBuilder.ofCategory(taskType.name),
+          FilterBuilder.noParentTask()
+        ).toFilterObject(),
+        order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
+        sort: resolveSortConfig(SORT_CONFIGS.PROJECT),
+      })),
       // Priority-based views for each type
       ...settings.taskTypes.flatMap((taskType) =>
         settings.taskPriorities.map((priority) => ({
