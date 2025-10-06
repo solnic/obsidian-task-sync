@@ -2,10 +2,10 @@
   import { onMount } from "svelte";
   import { Notice } from "obsidian";
   import type { Project } from "../core/entities";
-  import { Obsidian } from "../entities/Obsidian";
+  import type { ProjectOperations } from "../interfaces/operations";
 
   interface Props {
-    projectOperations: InstanceType<typeof Obsidian.ProjectOperations>;
+    projectOperations: ProjectOperations;
     onsubmit?: (data: any) => void;
     oncancel: () => void;
   }

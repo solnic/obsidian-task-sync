@@ -8,7 +8,7 @@
     createStatusBadge,
   } from "../utils/badges";
   import type { TaskSyncSettings } from "../types/settings";
-  import { Obsidian } from "../entities/Obsidian";
+  import type { TaskOperations } from "../interfaces/operations";
   import Dropdown from "./Dropdown.svelte";
   import Autocomplete from "./Autocomplete.svelte";
 
@@ -20,7 +20,7 @@
   interface Props {
     obsidianApp: any;
     settings: TaskSyncSettings;
-    taskOperations: InstanceType<typeof Obsidian.TaskOperations>;
+    taskOperations: TaskOperations;
     context?: FileContext;
     onsubmit?: (task: Task) => void;
     oncancel?: () => void;

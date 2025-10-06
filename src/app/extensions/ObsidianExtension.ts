@@ -33,9 +33,17 @@ import { ObsidianBaseManager } from "./obsidian/BaseManager";
 import { DailyNoteFeature } from "../features/DailyNoteFeature";
 import { derived, get, type Readable } from "svelte/store";
 
+/**
+ * Obsidian Extension Settings
+ * Contains Obsidian-specific settings that are not part of the general TaskSyncSettings
+ *
+ * Note: Base-related settings are Obsidian-specific because they use Obsidian's database feature.
+ * These settings control how Obsidian Bases are generated and managed for areas, projects, and tasks.
+ */
 export interface ObsidianExtensionSettings extends TaskSyncSettings {
-  // All settings are inherited from TaskSyncSettings
-  // No additional properties needed as all required settings are already in TaskSyncSettings
+  // All Obsidian-specific settings are currently in TaskSyncSettings for convenience
+  // In the future, Obsidian-only settings (like Base configuration) should be moved here
+  // to better separate concerns between general task sync and Obsidian-specific features
 }
 
 export class ObsidianExtension implements Extension {
