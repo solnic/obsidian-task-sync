@@ -72,6 +72,30 @@ export async function getTaskByTitle(page: ExtendedPage, title: string) {
 }
 
 /**
+ * Wait for a task to be removed from the store
+ * This is useful for testing revert operations where we expect the task to be deleted
+ */
+export async function waitForTaskToBeRemoved(
+  page: ExtendedPage,
+  title: string,
+  timeout: number = 5000
+) {
+  await page.waitForFunction(
+    async ({ title }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const task = await plugin.stores.taskStore.findByTitle(title);
+
+      // Return true when task is undefined (removed)
+      return task === undefined;
+    },
+    { title },
+    { timeout }
+  );
+}
+
+/**
  * Create an area using the plugin's createArea API
  * Returns the created entity directly from the plugin
  */

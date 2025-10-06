@@ -909,21 +909,62 @@ export async function getFrontMatter(
       const file = app.vault.getAbstractFileByPath(filePath);
       if (!file) return false;
 
-      const cache = app.metadataCache.getFileCache(file);
-      if (!cache || !cache.frontmatter) return false;
+      // Try multiple strategies to get the frontmatter
+      let cache = app.metadataCache.getFileCache(file);
 
-      return true; // Return true to indicate condition is met
+      if (!cache || !cache.frontmatter) {
+        // Strategy 1: Force cache refresh by reading the file
+        try {
+          await app.vault.read(file);
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          cache = app.metadataCache.getFileCache(file);
+        } catch (e) {
+          // Ignore read errors
+        }
+      }
+
+      if (!cache || !cache.frontmatter) {
+        // Strategy 2: Trigger cache update manually
+        try {
+          app.metadataCache.trigger("changed", file);
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          cache = app.metadataCache.getFileCache(file);
+        } catch (e) {
+          // Ignore trigger errors
+        }
+      }
+
+      if (!cache || !cache.frontmatter) {
+        // Strategy 3: Force a complete cache rebuild for this file
+        try {
+          app.metadataCache.getFileCache(file, true); // Force rebuild
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          cache = app.metadataCache.getFileCache(file);
+        } catch (e) {
+          // Ignore rebuild errors
+        }
+      }
+
+      // Return true if frontmatter is available
+      return cache && cache.frontmatter;
     },
     { filePath },
-    { timeout: 5000 }
+    { timeout: 15000 } // Increased timeout for aggressive retries
   );
 
-  // Then get the actual frontmatter
+  // Then get the actual frontmatter using evaluate (not waitForFunction)
   return await page.evaluate(
     async ({ filePath }) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(filePath);
       const cache = app.metadataCache.getFileCache(file);
+
+      if (!cache || !cache.frontmatter) {
+        throw new Error(
+          `Frontmatter not available for file: ${filePath} after successful wait`
+        );
+      }
+
       return cache.frontmatter;
     },
     { filePath }

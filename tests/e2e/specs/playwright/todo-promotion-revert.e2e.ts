@@ -10,7 +10,11 @@ import {
   openFile,
   waitForFileContentToContain,
 } from "../../helpers/global";
-import { createArea, getTaskByTitle } from "../../helpers/entity-helpers";
+import {
+  createArea,
+  getTaskByTitle,
+  waitForTaskToBeRemoved,
+} from "../../helpers/entity-helpers";
 
 test.describe("Todo Promotion Reverting", () => {
   test("should revert promoted todo under cursor", async ({ page }) => {
@@ -53,6 +57,9 @@ test.describe("Todo Promotion Reverting", () => {
       "Areas/Revert Test.md",
       "- [ ] Second todo item"
     );
+
+    // Wait for the task to be removed from the store
+    await waitForTaskToBeRemoved(page, "Second todo item");
 
     expect(await getTaskByTitle(page, "Second todo item")).toBeUndefined();
   });
@@ -103,6 +110,9 @@ test.describe("Todo Promotion Reverting", () => {
       "Areas/Revert Test.md",
       "- [x] Second todo item"
     );
+
+    // Wait for the task to be removed from the store
+    await waitForTaskToBeRemoved(page, "Second todo item");
 
     expect(await getTaskByTitle(page, "Second todo item")).toBeUndefined();
   });
