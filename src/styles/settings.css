@@ -169,3 +169,111 @@
 .suggestion-item.is-selected {
   background: var(--background-modifier-hover);
 }
+
+/* TypeNote Settings Styles */
+.properties-editor-container {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  background: var(--background-secondary);
+}
+
+.template-editor-container {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  background: var(--background-secondary);
+}
+
+.properties-list {
+  margin-top: 0.5rem;
+}
+
+.properties-list .setting-item {
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+  padding: 0.75rem 0;
+}
+
+.properties-list .setting-item:last-child {
+  border-bottom: none;
+}
+
+.template-variables {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--background-primary);
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.template-variables ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.template-variables li {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.template-variables code {
+  background: var(--background-modifier-accent);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  font-family: var(--font-monospace);
+  font-size: 0.85rem;
+}
+
+/* Note type list styles */
+.note-type-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  background: var(--background-primary);
+}
+
+.note-type-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.note-type-info {
+  flex: 1;
+}
+
+.note-type-name {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.note-type-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.note-type-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Form improvements */
+.setting-item .setting-item-control textarea {
+  min-height: 200px;
+  font-family: var(--font-monospace);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.setting-item .setting-item-control input[type="text"] {
+  min-width: 200px;
+}
+
+.setting-item .setting-item-control select {
+  min-width: 120px;
+}

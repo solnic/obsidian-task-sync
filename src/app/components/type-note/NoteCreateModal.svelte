@@ -8,18 +8,18 @@
   interface Props {
     typeRegistry: TypeRegistry;
     selectedNoteType?: NoteType;
-    onsubmit?: (data: { noteType: NoteType; properties: Record<string, any>; title: string; description: string }) => void;
+    onsubmit?: (data: {
+      noteType: NoteType;
+      properties: Record<string, any>;
+      title: string;
+      description: string;
+    }) => void;
     oncancel?: () => void;
     onchangenotetype?: () => void;
   }
 
-  let {
-    typeRegistry,
-    selectedNoteType,
-    onsubmit,
-    oncancel,
-    onchangenotetype,
-  }: Props = $props();
+  let { selectedNoteType, onsubmit, oncancel, onchangenotetype }: Props =
+    $props();
 
   // Form state
   let titleValue = $state("");
@@ -30,8 +30,12 @@
   let showOptionalProperties = $state(false);
 
   // Computed values
-  $: hasValidationErrors = Object.values(propertyValidation).some(result => !result.valid);
-  $: canSubmit = selectedNoteType && titleValue.trim() && !hasValidationErrors;
+  const hasValidationErrors = $derived(
+    Object.values(propertyValidation).some((result) => !result.valid)
+  );
+  const canSubmit = $derived(
+    selectedNoteType && titleValue.trim() && !hasValidationErrors
+  );
 
   onMount(() => {
     // Initialize property values with defaults if note type is already selected
@@ -44,7 +48,7 @@
     if (!selectedNoteType) return;
 
     const newValues: Record<string, any> = {};
-    for (const [key, prop] of Object.entries(selectedNoteType.properties)) {
+    for (const [, prop] of Object.entries(selectedNoteType.properties)) {
       if (prop.defaultValue !== undefined) {
         newValues[prop.frontMatterKey] = prop.defaultValue;
       }
@@ -56,7 +60,9 @@
     propertyValues = values;
   }
 
-  function handlePropertyValidationChange(validation: Record<string, ValidationResult>) {
+  function handlePropertyValidationChange(
+    validation: Record<string, ValidationResult>
+  ) {
     propertyValidation = validation;
   }
 
@@ -98,9 +104,90 @@
   });
 </script>
 
+{#snippet formContentSnippet()}
+  {#if !selectedNoteType}
+    <!-- No note type selected -->
+    <div class="note-type-required">
+      <p>Please select a note type first.</p>
+      <button
+        type="button"
+        class="select-note-type-button"
+        onclick={handleChangeNoteType}
+      >
+        Select Note Type
+      </button>
+    </div>
+  {:else}
+    <!-- Note type info -->
+    <div class="note-type-info">
+      <div class="note-type-header">
+        <h3>{selectedNoteType.name}</h3>
+        <button
+          type="button"
+          class="change-note-type-button"
+          onclick={handleChangeNoteType}
+          title="Change note type"
+        >
+          Change
+        </button>
+      </div>
+      {#if selectedNoteType.metadata?.description}
+        <p class="note-type-description">
+          {selectedNoteType.metadata.description}
+        </p>
+      {/if}
+    </div>
+
+    <!-- Property form -->
+    {#if Object.keys(selectedNoteType.properties).length > 0}
+      <div class="properties-section">
+        <PropertyFormBuilder
+          properties={selectedNoteType.properties}
+          bind:values={propertyValues}
+          onvalueschange={handlePropertyValuesChange}
+          onvalidationchange={handlePropertyValidationChange}
+          {showOptionalProperties}
+        />
+      </div>
+    {/if}
+  {/if}
+{/snippet}
+
+{#snippet extraPropertiesSnippet()}
+  {#if selectedNoteType && Object.keys(selectedNoteType.properties).length > 0}
+    <!-- Toggle optional properties -->
+    <div class="optional-properties-toggle">
+      <label class="toggle-container">
+        <input
+          type="checkbox"
+          bind:checked={showOptionalProperties}
+          onchange={toggleOptionalProperties}
+        />
+        <span class="toggle-label">Show optional properties</span>
+      </label>
+    </div>
+
+    <!-- Validation summary -->
+    {#if hasValidationErrors}
+      <div class="validation-summary">
+        <h4>Please fix the following errors:</h4>
+        <ul>
+          {#each Object.entries(propertyValidation) as [key, result]}
+            {#if !result.valid}
+              {@const property = selectedNoteType.properties[key]}
+              <li>{property?.name || key}: {result.errors[0]?.message}</li>
+            {/if}
+          {/each}
+        </ul>
+      </div>
+    {/if}
+  {/if}
+{/snippet}
+
 <BaseFormModal
   title="Create {selectedNoteType?.name || 'Note'}"
-  description="Fill in the details to create a new {selectedNoteType?.name?.toLowerCase() || 'note'} with the defined structure and properties."
+  description="Fill in the details to create a new {selectedNoteType?.name?.toLowerCase() ||
+    'note'} with the defined structure and properties."
   titlePlaceholder="{selectedNoteType?.name || 'Note'} title"
   descriptionPlaceholder="Add description..."
   bind:titleValue
@@ -112,85 +199,9 @@
   submitDisabled={!canSubmit}
   showPrimaryProperties={true}
   showExtraProperties={true}
->
-  <svelte:fragment slot="form-content">
-    {#if !selectedNoteType}
-      <!-- No note type selected -->
-      <div class="note-type-required">
-        <p>Please select a note type first.</p>
-        <button
-          type="button"
-          class="select-note-type-button"
-          onclick={handleChangeNoteType}
-        >
-          Select Note Type
-        </button>
-      </div>
-    {:else}
-      <!-- Note type info -->
-      <div class="note-type-info">
-        <div class="note-type-header">
-          <h3>{selectedNoteType.name}</h3>
-          <button
-            type="button"
-            class="change-note-type-button"
-            onclick={handleChangeNoteType}
-            title="Change note type"
-          >
-            Change
-          </button>
-        </div>
-        {#if selectedNoteType.metadata?.description}
-          <p class="note-type-description">{selectedNoteType.metadata.description}</p>
-        {/if}
-      </div>
-
-      <!-- Property form -->
-      {#if Object.keys(selectedNoteType.properties).length > 0}
-        <div class="properties-section">
-          <PropertyFormBuilder
-            properties={selectedNoteType.properties}
-            bind:values={propertyValues}
-            onvalueschange={handlePropertyValuesChange}
-            onvalidationchange={handlePropertyValidationChange}
-            {showOptionalProperties}
-          />
-        </div>
-      {/if}
-    {/if}
-  </svelte:fragment>
-
-  <svelte:fragment slot="extra-properties">
-    {#if selectedNoteType && Object.keys(selectedNoteType.properties).length > 0}
-      <!-- Toggle optional properties -->
-      <div class="optional-properties-toggle">
-        <label class="toggle-container">
-          <input
-            type="checkbox"
-            bind:checked={showOptionalProperties}
-            onchange={toggleOptionalProperties}
-          />
-          <span class="toggle-label">Show optional properties</span>
-        </label>
-      </div>
-
-      <!-- Validation summary -->
-      {#if hasValidationErrors}
-        <div class="validation-summary">
-          <h4>Please fix the following errors:</h4>
-          <ul>
-            {#each Object.entries(propertyValidation) as [key, result]}
-              {#if !result.valid}
-                {@const property = selectedNoteType.properties[key]}
-                <li>{property?.name || key}: {result.errors[0]?.message}</li>
-              {/if}
-            {/each}
-          </ul>
-        </div>
-      {/if}
-    {/if}
-  </svelte:fragment>
-</BaseFormModal>
+  formContent={formContentSnippet}
+  extraProperties={extraPropertiesSnippet}
+></BaseFormModal>
 
 <style>
   .note-type-required {

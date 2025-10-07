@@ -40,16 +40,16 @@
     try {
       // Get all note type metadata (lightweight)
       noteTypes = typeRegistry.getAllMetadata({ includeDeprecated: false });
-      
+
       // Extract categories
       const categorySet = new Set<string>();
-      noteTypes.forEach(nt => {
+      noteTypes.forEach((nt) => {
         if (nt.category) {
           categorySet.add(nt.category);
         }
       });
       categories = ["all", ...Array.from(categorySet).sort()];
-      
+
       // Initial filter
       filterNoteTypes();
     } catch (error) {
@@ -64,16 +64,17 @@
 
     // Filter by category
     if (selectedCategory !== "all") {
-      filtered = filtered.filter(nt => nt.category === selectedCategory);
+      filtered = filtered.filter((nt) => nt.category === selectedCategory);
     }
 
     // Filter by search query
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(nt => 
-        nt.name.toLowerCase().includes(query) ||
-        nt.description?.toLowerCase().includes(query) ||
-        nt.tags?.some(tag => tag.toLowerCase().includes(query))
+      filtered = filtered.filter(
+        (nt) =>
+          nt.name.toLowerCase().includes(query) ||
+          nt.description?.toLowerCase().includes(query) ||
+          nt.tags?.some((tag) => tag.toLowerCase().includes(query))
       );
     }
 
@@ -116,6 +117,91 @@
   });
 </script>
 
+{#snippet contentSnippet({ firstInput })}
+  <!-- Search and filters -->
+  <div class="note-type-filters">
+    <!-- Search input -->
+    <div class="search-section">
+      <input
+        bind:this={searchInput}
+        bind:value={searchQuery}
+        type="text"
+        placeholder="Search note types..."
+        class="search-input"
+        data-testid="search-input"
+        oninput={handleSearchInput}
+      />
+    </div>
+
+    <!-- Category filter -->
+    {#if categories.length > 1}
+      <div class="category-section">
+        <div class="category-buttons">
+          {#each categories as category}
+            <button
+              type="button"
+              class="category-button"
+              class:active={selectedCategory === category}
+              onclick={() => handleCategoryChange(category)}
+              data-testid="category-{category}"
+            >
+              {category === "all" ? "All" : category}
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/if}
+  </div>
+
+  <!-- Note type list -->
+  <div class="note-type-list">
+    {#if filteredNoteTypes.length === 0}
+      <div class="empty-state">
+        <p>No note types found</p>
+        {#if searchQuery}
+          <p class="empty-hint">Try adjusting your search or category filter</p>
+        {:else}
+          <p class="empty-hint">No note types are registered</p>
+        {/if}
+      </div>
+    {:else}
+      {#each filteredNoteTypes as noteTypeMetadata}
+        <button
+          type="button"
+          class="note-type-item"
+          class:selected={selectedNoteType?.id === noteTypeMetadata.id}
+          onclick={() => handleNoteTypeSelect(noteTypeMetadata.id)}
+          data-testid="note-type-{noteTypeMetadata.id}"
+        >
+          <div class="note-type-header">
+            <h3 class="note-type-name">{noteTypeMetadata.name}</h3>
+            <span class="note-type-version">v{noteTypeMetadata.version}</span>
+          </div>
+
+          {#if noteTypeMetadata.description}
+            <p class="note-type-description">{noteTypeMetadata.description}</p>
+          {/if}
+
+          <div class="note-type-meta">
+            {#if noteTypeMetadata.category}
+              <span class="note-type-category">{noteTypeMetadata.category}</span
+              >
+            {/if}
+
+            {#if noteTypeMetadata.tags && noteTypeMetadata.tags.length > 0}
+              <div class="note-type-tags">
+                {#each noteTypeMetadata.tags as tag}
+                  <span class="note-type-tag">{tag}</span>
+                {/each}
+              </div>
+            {/if}
+          </div>
+        </button>
+      {/each}
+    {/if}
+  </div>
+{/snippet}
+
 <BaseModal
   {title}
   {description}
@@ -123,91 +209,8 @@
   oncancel={handleCancel}
   submitLabel="Create Note"
   submitDisabled={!selectedNoteType}
->
-  <svelte:fragment slot="content">
-    <!-- Search and filters -->
-    <div class="note-type-filters">
-      <!-- Search input -->
-      <div class="search-section">
-        <input
-          bind:this={searchInput}
-          bind:value={searchQuery}
-          type="text"
-          placeholder="Search note types..."
-          class="search-input"
-          data-testid="search-input"
-          oninput={handleSearchInput}
-        />
-      </div>
-
-      <!-- Category filter -->
-      {#if categories.length > 1}
-        <div class="category-section">
-          <div class="category-buttons">
-            {#each categories as category}
-              <button
-                type="button"
-                class="category-button"
-                class:active={selectedCategory === category}
-                onclick={() => handleCategoryChange(category)}
-                data-testid="category-{category}"
-              >
-                {category === "all" ? "All" : category}
-              </button>
-            {/each}
-          </div>
-        </div>
-      {/if}
-    </div>
-
-    <!-- Note type list -->
-    <div class="note-type-list">
-      {#if filteredNoteTypes.length === 0}
-        <div class="empty-state">
-          <p>No note types found</p>
-          {#if searchQuery}
-            <p class="empty-hint">Try adjusting your search or category filter</p>
-          {:else}
-            <p class="empty-hint">No note types are registered</p>
-          {/if}
-        </div>
-      {:else}
-        {#each filteredNoteTypes as noteTypeMetadata}
-          <button
-            type="button"
-            class="note-type-item"
-            class:selected={selectedNoteType?.id === noteTypeMetadata.id}
-            onclick={() => handleNoteTypeSelect(noteTypeMetadata.id)}
-            data-testid="note-type-{noteTypeMetadata.id}"
-          >
-            <div class="note-type-header">
-              <h3 class="note-type-name">{noteTypeMetadata.name}</h3>
-              <span class="note-type-version">v{noteTypeMetadata.version}</span>
-            </div>
-            
-            {#if noteTypeMetadata.description}
-              <p class="note-type-description">{noteTypeMetadata.description}</p>
-            {/if}
-            
-            <div class="note-type-meta">
-              {#if noteTypeMetadata.category}
-                <span class="note-type-category">{noteTypeMetadata.category}</span>
-              {/if}
-              
-              {#if noteTypeMetadata.tags && noteTypeMetadata.tags.length > 0}
-                <div class="note-type-tags">
-                  {#each noteTypeMetadata.tags as tag}
-                    <span class="note-type-tag">{tag}</span>
-                  {/each}
-                </div>
-              {/if}
-            </div>
-          </button>
-        {/each}
-      {/if}
-    </div>
-  </svelte:fragment>
-</BaseModal>
+  content={contentSnippet}
+></BaseModal>
 
 <style>
   .note-type-filters {

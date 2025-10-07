@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import type { Snippet } from "svelte";
 
   interface Props {
     title?: string;
@@ -11,6 +12,8 @@
     submitDisabled?: boolean;
     showHeader?: boolean;
     showFooter?: boolean;
+    content?: Snippet<[{ firstInput: HTMLElement | undefined }]>;
+    properties?: Snippet;
   }
 
   let {
@@ -23,10 +26,12 @@
     submitDisabled = false,
     showHeader = true,
     showFooter = true,
+    content,
+    properties,
   }: Props = $props();
 
   // UI references for focus management
-  let firstInput: HTMLElement;
+  let firstInput: HTMLElement | undefined = $state();
 
   onMount(() => {
     // Focus first input if available
@@ -72,11 +77,15 @@
 
   <!-- Main content area -->
   <div class="task-sync-main-content">
-    <slot name="content" {firstInput} />
+    {#if content}
+      {@render content({ firstInput })}
+    {/if}
   </div>
 
   <!-- Properties toolbar (optional) -->
-  <slot name="properties" />
+  {#if properties}
+    {@render properties()}
+  {/if}
 
   <!-- Footer with action buttons -->
   {#if showFooter}

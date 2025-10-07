@@ -25,7 +25,11 @@ import { Projects } from "./app/entities/Projects";
 // Singleton operations removed - use operations from ObsidianExtension instance
 
 // TypeNote imports
-import { TypeNote } from "./app/core/type-note";
+import {
+  TypeNote,
+  TypeCache,
+  type CachePersistenceAdapter,
+} from "./app/core/type-note";
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
@@ -73,9 +77,8 @@ export default class TaskSyncPlugin extends Plugin {
     // Initialize the TaskSync app with Host abstraction
     await taskSyncApp.initialize(this.host);
 
-    // Initialize TypeNote API
-    this.typeNote = new TypeNote(this.app);
-    await this.typeNote.initialize();
+    // Initialize TypeNote API with persistence
+    this.typeNote = await this.createTypeNoteWithPersistence();
 
     // Call host onload to set up event handlers
     await this.host.onload();
@@ -200,10 +203,121 @@ export default class TaskSyncPlugin extends Plugin {
     console.log("TaskSync plugin loaded successfully");
   }
 
+  /**
+   * Create TypeNote instance with proper persistence adapter
+   */
+  private async createTypeNoteWithPersistence(): Promise<TypeNote> {
+    // Create persistence adapter that uses plugin storage
+    const persistenceAdapter: CachePersistenceAdapter = {
+      load: async () => {
+        try {
+          const data = await this.loadData();
+          return data?.noteTypes || {};
+        } catch (error) {
+          console.warn("Failed to load note types from storage:", error);
+          return {};
+        }
+      },
+      save: async (data) => {
+        try {
+          const existingData = (await this.loadData()) || {};
+          existingData.noteTypes = data;
+          await this.saveData(existingData);
+        } catch (error) {
+          console.error("Failed to save note types to storage:", error);
+          throw error;
+        }
+      },
+      clear: async () => {
+        try {
+          const existingData = (await this.loadData()) || {};
+          delete existingData.noteTypes;
+          await this.saveData(existingData);
+        } catch (error) {
+          console.error("Failed to clear note types from storage:", error);
+          throw error;
+        }
+      },
+    };
+
+    // Create TypeCache with persistence
+    const typeCache = new TypeCache(persistenceAdapter);
+
+    // Create TypeNote instance
+    const typeNote = new TypeNote(this.app);
+
+    // Connect the cache to the registry
+    await this.connectCacheToRegistry(typeNote, typeCache);
+
+    // Initialize TypeNote
+    await typeNote.initialize();
+
+    return typeNote;
+  }
+
+  /**
+   * Connect TypeCache to TypeRegistry for persistence
+   */
+  private async connectCacheToRegistry(
+    typeNote: TypeNote,
+    typeCache: TypeCache
+  ): Promise<void> {
+    // Load existing note types from cache
+    await typeCache.warmUp();
+    const existingKeys = await typeCache.keys();
+
+    // Load all existing note types into registry
+    for (const key of existingKeys) {
+      const noteType = await typeCache.get(key);
+      if (noteType) {
+        typeNote.registry.register(noteType, {
+          allowOverwrite: true,
+          validate: false,
+        });
+      }
+    }
+
+    // Override registry methods to use cache for persistence
+    const originalRegister = typeNote.registry.register.bind(typeNote.registry);
+    const originalUnregister = typeNote.registry.unregister.bind(
+      typeNote.registry
+    );
+
+    typeNote.registry.register = (noteType, options = {}) => {
+      const result = originalRegister(noteType, options);
+      if (result.valid) {
+        // Save to cache asynchronously
+        typeCache.set(noteType.id, noteType).catch((error) => {
+          console.error(`Failed to persist note type ${noteType.id}:`, error);
+        });
+      }
+      return result;
+    };
+
+    typeNote.registry.unregister = (noteTypeId) => {
+      const result = originalUnregister(noteTypeId);
+      if (result) {
+        // Remove from cache asynchronously
+        typeCache.delete(noteTypeId).catch((error) => {
+          console.error(
+            `Failed to remove note type ${noteTypeId} from persistence:`,
+            error
+          );
+        });
+      }
+      return result;
+    };
+  }
+
   async onunload() {
     console.log("TaskSync plugin unloading...");
     await this.host.onunload();
     await taskSyncApp.shutdown();
+
+    // Cleanup TypeNote
+    if (this.typeNote) {
+      await this.typeNote.cleanup();
+    }
   }
 
   async loadSettings() {

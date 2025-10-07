@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
+  import type { Snippet } from "svelte";
   import BaseModal from "./BaseModal.svelte";
 
   interface Props {
@@ -23,6 +24,9 @@
     submitDisabled?: boolean;
     titleError?: boolean;
     descriptionError?: boolean;
+    formContent?: Snippet;
+    primaryProperties?: Snippet;
+    extraProperties?: Snippet;
   }
 
   let {
@@ -46,6 +50,9 @@
     submitDisabled = false,
     titleError = $bindable(false),
     descriptionError = $bindable(false),
+    formContent,
+    primaryProperties,
+    extraProperties,
   }: Props = $props();
 
   // UI state
@@ -93,6 +100,121 @@
   }
 </script>
 
+{#snippet contentSnippet({ firstInput })}
+  {#if showTitleDescription}
+    <!-- Title input -->
+    {#if titleLabel}
+      <div class="task-sync-field">
+        <label for="form-title" class="task-sync-field-label">
+          {titleLabel}{titleRequired ? " *" : ""}
+        </label>
+        <input
+          bind:this={titleInput}
+          bind:value={titleValue}
+          id="form-title"
+          type="text"
+          placeholder={titlePlaceholder}
+          class="task-sync-input"
+          class:task-sync-required-field={titleRequired}
+          class:task-sync-input-error={titleError}
+          data-testid="title-input"
+          oninput={handleTitleInput}
+        />
+      </div>
+    {:else}
+      <!-- Linear-style title input (like TaskCreateModal) -->
+      <input
+        bind:this={titleInput}
+        bind:value={titleValue}
+        type="text"
+        placeholder={titlePlaceholder}
+        class="task-sync-title-input"
+        class:task-sync-input-error={titleError}
+        data-testid="title-input"
+        oninput={handleTitleInput}
+      />
+    {/if}
+
+    <!-- Description textarea -->
+    {#if descriptionLabel}
+      <div class="task-sync-field">
+        <label for="form-description" class="task-sync-field-label">
+          {descriptionLabel}{descriptionRequired ? " *" : ""}
+        </label>
+        <textarea
+          bind:this={descriptionTextarea}
+          bind:value={descriptionValue}
+          id="form-description"
+          placeholder={descriptionPlaceholder}
+          class="task-sync-textarea"
+          class:task-sync-input-error={descriptionError}
+          data-testid="description-input"
+          rows="3"
+          oninput={handleDescriptionInput}
+        ></textarea>
+      </div>
+    {:else}
+      <!-- Linear-style description textarea (like TaskCreateModal) -->
+      <textarea
+        bind:this={descriptionTextarea}
+        bind:value={descriptionValue}
+        placeholder={descriptionPlaceholder}
+        class="task-sync-description-input"
+        class:task-sync-input-error={descriptionError}
+        data-testid="description-input"
+        rows="8"
+        oninput={handleDescriptionInput}
+      ></textarea>
+    {/if}
+  {/if}
+
+  <!-- Additional form content -->
+  {#if formContent}
+    {@render formContent()}
+  {/if}
+{/snippet}
+
+{#snippet propertiesSnippet()}
+  {#if showPrimaryProperties || showExtraProperties}
+    <!-- Properties toolbar -->
+    <div class="task-sync-properties-toolbar">
+      {#if showPrimaryProperties}
+        <!-- Main property controls row -->
+        <div class="task-sync-property-controls">
+          <!-- Primary property buttons -->
+          {#if primaryProperties}
+            {@render primaryProperties()}
+          {/if}
+
+          {#if showExtraProperties}
+            <!-- More options button -->
+            <button
+              type="button"
+              onclick={toggleExtraFields}
+              class="task-sync-property-button task-sync-more-button"
+              data-testid="more-options-button"
+              title="More options"
+            >
+              <span class="task-sync-more-dots">⋯</span>
+            </button>
+          {/if}
+        </div>
+      {/if}
+
+      {#if showExtraProperties}
+        <!-- Extra fields (collapsible) -->
+        {#if showExtraFields}
+          <div class="task-sync-extra-fields">
+            {#if extraProperties}
+              {@render extraProperties()}
+            {/if}
+          </div>
+        {/if}
+      {/if}
+    </div>
+  {/if}
+{/snippet}
+
 <BaseModal
   {title}
   {description}
@@ -101,116 +223,9 @@
   {submitLabel}
   {cancelLabel}
   {submitDisabled}
->
-  <svelte:fragment slot="content" let:firstInput>
-    {#if showTitleDescription}
-      <!-- Title input -->
-      {#if titleLabel}
-        <div class="task-sync-field">
-          <label for="form-title" class="task-sync-field-label">
-            {titleLabel}{titleRequired ? " *" : ""}
-          </label>
-          <input
-            bind:this={titleInput}
-            bind:value={titleValue}
-            id="form-title"
-            type="text"
-            placeholder={titlePlaceholder}
-            class="task-sync-input"
-            class:task-sync-required-field={titleRequired}
-            class:task-sync-input-error={titleError}
-            data-testid="title-input"
-            oninput={handleTitleInput}
-          />
-        </div>
-      {:else}
-        <!-- Linear-style title input (like TaskCreateModal) -->
-        <input
-          bind:this={titleInput}
-          bind:value={titleValue}
-          type="text"
-          placeholder={titlePlaceholder}
-          class="task-sync-title-input"
-          class:task-sync-input-error={titleError}
-          data-testid="title-input"
-          oninput={handleTitleInput}
-        />
-      {/if}
-
-      <!-- Description textarea -->
-      {#if descriptionLabel}
-        <div class="task-sync-field">
-          <label for="form-description" class="task-sync-field-label">
-            {descriptionLabel}{descriptionRequired ? " *" : ""}
-          </label>
-          <textarea
-            bind:this={descriptionTextarea}
-            bind:value={descriptionValue}
-            id="form-description"
-            placeholder={descriptionPlaceholder}
-            class="task-sync-textarea"
-            class:task-sync-input-error={descriptionError}
-            data-testid="description-input"
-            rows="3"
-            oninput={handleDescriptionInput}
-          ></textarea>
-        </div>
-      {:else}
-        <!-- Linear-style description textarea (like TaskCreateModal) -->
-        <textarea
-          bind:this={descriptionTextarea}
-          bind:value={descriptionValue}
-          placeholder={descriptionPlaceholder}
-          class="task-sync-description-input"
-          class:task-sync-input-error={descriptionError}
-          data-testid="description-input"
-          rows="8"
-          oninput={handleDescriptionInput}
-        ></textarea>
-      {/if}
-    {/if}
-
-    <!-- Additional form content -->
-    <slot name="form-content" />
-  </svelte:fragment>
-
-  <svelte:fragment slot="properties">
-    {#if showPrimaryProperties || showExtraProperties}
-      <!-- Properties toolbar -->
-      <div class="task-sync-properties-toolbar">
-        {#if showPrimaryProperties}
-          <!-- Main property controls row -->
-          <div class="task-sync-property-controls">
-            <!-- Primary property buttons -->
-            <slot name="primary-properties" />
-
-            {#if showExtraProperties}
-              <!-- More options button -->
-              <button
-                type="button"
-                onclick={toggleExtraFields}
-                class="task-sync-property-button task-sync-more-button"
-                data-testid="more-options-button"
-                title="More options"
-              >
-                <span class="task-sync-more-dots">⋯</span>
-              </button>
-            {/if}
-          </div>
-        {/if}
-
-        {#if showExtraProperties}
-          <!-- Extra fields (collapsible) -->
-          {#if showExtraFields}
-            <div class="task-sync-extra-fields">
-              <slot name="extra-properties" />
-            </div>
-          {/if}
-        {/if}
-      </div>
-    {/if}
-  </svelte:fragment>
-</BaseModal>
+  content={contentSnippet}
+  properties={propertiesSnippet}
+></BaseModal>
 
 <style>
   .task-sync-field {

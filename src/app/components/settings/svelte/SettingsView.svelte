@@ -21,7 +21,7 @@
     { id: "general", title: "General" },
     { id: "templates", title: "Templates" },
     { id: "bases", title: "Bases" },
-    { id: "type-note", title: "Note Types" },
+    { id: "type-note", title: "TypeNote" },
     { id: "task-properties", title: "Task Properties" },
     { id: "task-categories", title: "Task Categories" },
     { id: "task-priorities", title: "Task Priorities" },
