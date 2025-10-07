@@ -7,7 +7,11 @@ import type { App, TFile } from "obsidian";
 import type { NoteType, ValidationResult } from "./types";
 import type { TypeRegistry } from "./registry";
 import { PropertyProcessor } from "./property-processor";
-import { createValidResult, createInvalidResult, createValidationError } from "./validation";
+import {
+  createValidResult,
+  createInvalidResult,
+  createValidationError,
+} from "./validation";
 import * as yaml from "js-yaml";
 
 /**
@@ -16,19 +20,19 @@ import * as yaml from "js-yaml";
 export interface FrontMatterModificationOptions {
   /** Whether to validate properties before modification */
   validateProperties?: boolean;
-  
+
   /** Whether to preserve unknown properties */
   preserveUnknownProperties?: boolean;
-  
+
   /** Whether to apply property transformations */
   applyTransformations?: boolean;
-  
+
   /** Whether to use default values for missing required properties */
   useDefaults?: boolean;
-  
+
   /** Whether to update modification timestamp */
   updateModTime?: boolean;
-  
+
   /** Custom properties to preserve (in addition to note type properties) */
   preserveProperties?: string[];
 }
@@ -39,19 +43,19 @@ export interface FrontMatterModificationOptions {
 export interface FrontMatterModificationResult {
   /** Whether modification was successful */
   success: boolean;
-  
+
   /** Modified properties */
   modifiedProperties?: Record<string, any>;
-  
+
   /** Properties that were preserved */
   preservedProperties?: Record<string, any>;
-  
+
   /** Properties that were removed */
   removedProperties?: string[];
-  
+
   /** Validation errors */
   errors?: string[];
-  
+
   /** Warnings */
   warnings?: string[];
 }
@@ -62,13 +66,13 @@ export interface FrontMatterModificationResult {
 export interface FrontMatterBackup {
   /** File path */
   filePath: string;
-  
+
   /** Original front-matter */
   originalFrontMatter: Record<string, any>;
-  
+
   /** Backup timestamp */
   timestamp: Date;
-  
+
   /** Note type ID at time of backup */
   noteTypeId?: string;
 }
@@ -120,7 +124,8 @@ export class FrontMatterProcessor {
       await this.createBackup(file, noteTypeId);
 
       // Get current front-matter
-      const currentFrontMatter = this.app.metadataCache.getFileCache(file)?.frontmatter || {};
+      const currentFrontMatter =
+        this.app.metadataCache.getFileCache(file)?.frontmatter || {};
 
       // Validate new properties if requested
       if (validateProperties) {
@@ -134,11 +139,11 @@ export class FrontMatterProcessor {
           }
         );
 
-        if (!validationResult.success) {
+        if (!validationResult.valid) {
           return {
             success: false,
-            errors: validationResult.errors.map(e => e.message),
-            warnings: validationResult.warnings.map(w => w.message),
+            errors: validationResult.errors.map((e) => e.message),
+            warnings: validationResult.warnings.map((w) => w.message),
           };
         }
       }
@@ -154,12 +159,15 @@ export class FrontMatterProcessor {
         if (preserveUnknownProperties) {
           // Get all note type property keys
           const noteTypePropertyKeys = new Set(
-            Object.values(noteType.properties).map(p => p.frontMatterKey)
+            Object.values(noteType.properties).map((p) => p.frontMatterKey)
           );
-          
+
           // Preserve properties not defined in note type
           for (const [key, value] of Object.entries(frontMatter)) {
-            if (!noteTypePropertyKeys.has(key) && !properties.hasOwnProperty(key)) {
+            if (
+              !noteTypePropertyKeys.has(key) &&
+              !properties.hasOwnProperty(key)
+            ) {
               preservedProperties[key] = value;
             }
           }
@@ -167,7 +175,10 @@ export class FrontMatterProcessor {
 
         // Preserve explicitly requested properties
         for (const key of preserveProperties) {
-          if (frontMatter.hasOwnProperty(key) && !properties.hasOwnProperty(key)) {
+          if (
+            frontMatter.hasOwnProperty(key) &&
+            !properties.hasOwnProperty(key)
+          ) {
             preservedProperties[key] = frontMatter[key];
           }
         }
@@ -199,7 +210,6 @@ export class FrontMatterProcessor {
         preservedProperties,
         removedProperties,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -218,7 +228,12 @@ export class FrontMatterProcessor {
     value: any,
     options: FrontMatterModificationOptions = {}
   ): Promise<FrontMatterModificationResult> {
-    return this.modifyFrontMatter(file, noteTypeId, { [propertyKey]: value }, options);
+    return this.modifyFrontMatter(
+      file,
+      noteTypeId,
+      { [propertyKey]: value },
+      options
+    );
   }
 
   /**
@@ -255,7 +270,6 @@ export class FrontMatterProcessor {
         success: true,
         removedProperties,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -268,8 +282,9 @@ export class FrontMatterProcessor {
    * Create a backup of current front-matter
    */
   async createBackup(file: TFile, noteTypeId?: string): Promise<void> {
-    const currentFrontMatter = this.app.metadataCache.getFileCache(file)?.frontmatter || {};
-    
+    const currentFrontMatter =
+      this.app.metadataCache.getFileCache(file)?.frontmatter || {};
+
     const backup: FrontMatterBackup = {
       filePath: file.path,
       originalFrontMatter: { ...currentFrontMatter },
@@ -280,12 +295,12 @@ export class FrontMatterProcessor {
     // Store backup
     const fileBackups = this.backups.get(file.path) || [];
     fileBackups.push(backup);
-    
+
     // Keep only last 10 backups per file
     if (fileBackups.length > 10) {
       fileBackups.shift();
     }
-    
+
     this.backups.set(file.path, fileBackups);
   }
 
@@ -309,7 +324,9 @@ export class FrontMatterProcessor {
       if (!backup) {
         return {
           success: false,
-          errors: [`Backup index ${backupIndex} not found for file: ${file.path}`],
+          errors: [
+            `Backup index ${backupIndex} not found for file: ${file.path}`,
+          ],
         };
       }
 
@@ -328,7 +345,6 @@ export class FrontMatterProcessor {
         success: true,
         modifiedProperties: backup.originalFrontMatter,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -369,16 +385,21 @@ export class FrontMatterProcessor {
       const noteType = this.registry.get(noteTypeId);
       if (!noteType) {
         return createInvalidResult([
-          createValidationError(`Note type "${noteTypeId}" not found`, "NOTE_TYPE_NOT_FOUND"),
+          createValidationError(
+            `Note type "${noteTypeId}" not found`,
+            "NOTE_TYPE_NOT_FOUND"
+          ),
         ]);
       }
 
-      const frontMatter = this.app.metadataCache.getFileCache(file)?.frontmatter || {};
-      
-      const result = this.propertyProcessor.process(noteType, frontMatter);
-      
-      return result.success ? createValidResult(result.properties) : createInvalidResult(result.errors);
+      const frontMatter =
+        this.app.metadataCache.getFileCache(file)?.frontmatter || {};
 
+      const result = this.propertyProcessor.process(noteType, frontMatter);
+
+      return result.valid
+        ? createValidResult(result.properties)
+        : createInvalidResult(result.errors);
     } catch (error) {
       return createInvalidResult([
         createValidationError(

@@ -6,6 +6,9 @@
 import type { SemanticVersion } from "./types";
 import { VersionComparison } from "./types";
 
+// Re-export VersionComparison for external use
+export { VersionComparison };
+
 /**
  * Parsed semantic version
  */
@@ -224,7 +227,10 @@ export function satisfiesRange(
   // Caret range (^) - compatible versions
   if (range.startsWith("^")) {
     const targetVersion = range.slice(1);
-    return isCompatible(version, targetVersion) && !isLessThan(version, targetVersion);
+    return (
+      isCompatible(version, targetVersion) &&
+      !isLessThan(version, targetVersion)
+    );
   }
 
   // Tilde range (~) - same minor version
@@ -264,4 +270,3 @@ export function formatVersion(version: SemanticVersion): string {
 
   return formatted;
 }
-

@@ -124,7 +124,6 @@ interface PropertyDefinition {
 - [ ] Create property definition interface with schema builder
 - [ ] Add template editor with syntax highlighting
 - [ ] Implement version management UI with migration tools
-- [ ] Create note type import/export functionality
 
 ---
 
@@ -136,6 +135,7 @@ interface PropertyDefinition {
 - [ ] Add batch migration with progress tracking
 - [ ] Implement rollback capabilities for failed migrations
 - [ ] Create migration testing and validation tools
+- [ ] Create note type import/export functionality
 
 ### 5.2 Integration Enhancements
 - [ ] Add support for conditional properties based on other property values

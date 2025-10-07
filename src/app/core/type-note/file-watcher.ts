@@ -3,8 +3,8 @@
  * Detects external changes to typed notes and triggers re-validation
  */
 
-import type { App, TFile, Vault, MetadataCache } from "obsidian";
-import { Component } from "obsidian";
+import type { App, Vault, MetadataCache, TAbstractFile } from "obsidian";
+import { Component, TFile } from "obsidian";
 import type { NoteType, ValidationResult } from "./types";
 import type { TypeRegistry } from "./registry";
 import { NoteProcessor } from "./note-processor";
@@ -22,22 +22,22 @@ export type FileChangeType = "created" | "modified" | "deleted" | "renamed";
 export interface FileChangeEvent {
   /** Type of change */
   type: FileChangeType;
-  
+
   /** File that changed */
   file: TFile;
-  
+
   /** Old path (for rename events) */
   oldPath?: string;
-  
+
   /** Timestamp of change */
   timestamp: Date;
-  
+
   /** Whether this is a typed note */
   isTypedNote: boolean;
-  
+
   /** Note type if this is a typed note */
   noteType?: NoteType;
-  
+
   /** Validation result if this is a typed note */
   validationResult?: ValidationResult;
 }
@@ -48,16 +48,16 @@ export interface FileChangeEvent {
 export interface FileWatcherOptions {
   /** Whether to watch all files or only typed notes */
   watchTypedNotesOnly?: boolean;
-  
+
   /** Whether to auto-validate on changes */
   autoValidate?: boolean;
-  
+
   /** Debounce delay in milliseconds */
   debounceDelay?: number;
-  
+
   /** File patterns to ignore */
   ignorePatterns?: RegExp[];
-  
+
   /** Whether to watch metadata changes */
   watchMetadata?: boolean;
 }
@@ -65,7 +65,9 @@ export interface FileWatcherOptions {
 /**
  * File watcher event handler
  */
-export type FileWatcherEventHandler = (event: FileChangeEvent) => void | Promise<void>;
+export type FileWatcherEventHandler = (
+  event: FileChangeEvent
+) => void | Promise<void>;
 
 /**
  * FileWatcher monitors file system changes and validates typed notes
@@ -80,19 +82,27 @@ export class FileWatcher extends Component {
   private eventHandlers: Set<FileWatcherEventHandler> = new Set();
   private debounceTimers: Map<string, NodeJS.Timeout> = new Map();
 
-  constructor(app: App, registry: TypeRegistry, options: FileWatcherOptions = {}) {
+  constructor(
+    app: App,
+    registry: TypeRegistry,
+    options: FileWatcherOptions = {}
+  ) {
     super();
-    
+
     this.app = app;
     this.vault = app.vault;
     this.metadataCache = app.metadataCache;
     this.registry = registry;
-    
+
     // Initialize note processor
     const propertyProcessor = new PropertyProcessor();
     const templateEngine = new TemplateEngine();
-    this.noteProcessor = new NoteProcessor(propertyProcessor, templateEngine, registry);
-    
+    this.noteProcessor = new NoteProcessor(
+      propertyProcessor,
+      templateEngine,
+      registry
+    );
+
     // Set default options
     this.options = {
       watchTypedNotesOnly: false,
@@ -110,25 +120,43 @@ export class FileWatcher extends Component {
   onload(): void {
     // Register vault event handlers
     this.registerEvent(
-      this.vault.on("create", (file) => this.handleFileCreate(file))
+      this.vault.on("create", (file) => {
+        if (file instanceof TFile) {
+          this.handleFileCreate(file);
+        }
+      })
     );
-    
+
     this.registerEvent(
-      this.vault.on("modify", (file) => this.handleFileModify(file))
+      this.vault.on("modify", (file) => {
+        if (file instanceof TFile) {
+          this.handleFileModify(file);
+        }
+      })
     );
-    
+
     this.registerEvent(
-      this.vault.on("delete", (file) => this.handleFileDelete(file))
+      this.vault.on("delete", (file) => {
+        if (file instanceof TFile) {
+          this.handleFileDelete(file);
+        }
+      })
     );
-    
+
     this.registerEvent(
-      this.vault.on("rename", (file, oldPath) => this.handleFileRename(file, oldPath))
+      this.vault.on("rename", (file, oldPath) => {
+        if (file instanceof TFile) {
+          this.handleFileRename(file, oldPath);
+        }
+      })
     );
 
     // Register metadata cache events if watching metadata
     if (this.options.watchMetadata) {
       this.registerEvent(
-        this.metadataCache.on("changed", (file) => this.handleMetadataChange(file))
+        this.metadataCache.on("changed", (file) =>
+          this.handleMetadataChange(file)
+        )
       );
     }
   }
@@ -142,7 +170,7 @@ export class FileWatcher extends Component {
       clearTimeout(timer);
     }
     this.debounceTimers.clear();
-    
+
     // Event handlers are automatically unregistered by Component.onunload()
   }
 
@@ -247,7 +275,7 @@ export class FileWatcher extends Component {
       try {
         const content = await this.vault.read(file);
         const result = this.noteProcessor.processNote(content, file.path);
-        
+
         if (result.valid && result.noteType) {
           event.isTypedNote = true;
           event.noteType = result.noteType;
@@ -335,7 +363,7 @@ export class FileWatcher extends Component {
     try {
       const content = await this.vault.read(file);
       const result = this.noteProcessor.processNote(content, file.path);
-      
+
       return {
         valid: result.valid,
         errors: result.errors,
@@ -378,8 +406,8 @@ export class FileWatcher extends Component {
     invalidTypedNotes: number;
   }> {
     const allFiles = this.vault.getMarkdownFiles();
-    const watchedFiles = allFiles.filter(file => this.shouldWatchFile(file));
-    
+    const watchedFiles = allFiles.filter((file) => this.shouldWatchFile(file));
+
     let typedNotes = 0;
     let validTypedNotes = 0;
     let invalidTypedNotes = 0;

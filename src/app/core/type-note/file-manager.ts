@@ -3,14 +3,18 @@
  * Handles typed note creation, updates, and file operations with proper validation
  */
 
-import type { App, Vault, TFile, TFolder } from "obsidian";
-import { normalizePath } from "obsidian";
+import type { App, Vault } from "obsidian";
+import { normalizePath, TFile, TFolder } from "obsidian";
 import type { NoteType, ValidationResult } from "./types";
 import type { TypeRegistry } from "./registry";
 import { NoteProcessor } from "./note-processor";
 import { TemplateManager, type TemplatePreferences } from "./template-manager";
 import { PropertyProcessor } from "./property-processor";
-import { createValidResult, createInvalidResult, createValidationError } from "./validation";
+import {
+  createValidResult,
+  createInvalidResult,
+  createValidationError,
+} from "./validation";
 import * as yaml from "js-yaml";
 
 /**
@@ -19,19 +23,19 @@ import * as yaml from "js-yaml";
 export interface FileCreationOptions {
   /** Target folder for the file */
   folder?: string;
-  
+
   /** Custom file name (will be sanitized) */
   fileName?: string;
-  
+
   /** Properties to pre-fill */
   properties?: Record<string, any>;
-  
+
   /** Whether to validate properties before creation */
   validateProperties?: boolean;
-  
+
   /** Whether to overwrite existing files */
   overwrite?: boolean;
-  
+
   /** Custom content (if not using template) */
   content?: string;
 }
@@ -42,16 +46,16 @@ export interface FileCreationOptions {
 export interface FileCreationResult {
   /** Whether creation was successful */
   success: boolean;
-  
+
   /** Path of the created file */
   filePath?: string;
-  
+
   /** The created TFile instance */
   file?: TFile;
-  
+
   /** Validation errors */
   errors?: string[];
-  
+
   /** Warnings */
   warnings?: string[];
 }
@@ -62,13 +66,13 @@ export interface FileCreationResult {
 export interface FileUpdateOptions {
   /** Properties to update */
   properties?: Record<string, any>;
-  
+
   /** Whether to validate properties before update */
   validateProperties?: boolean;
-  
+
   /** Whether to preserve existing content */
   preserveContent?: boolean;
-  
+
   /** Whether to update modification time */
   updateModTime?: boolean;
 }
@@ -79,13 +83,13 @@ export interface FileUpdateOptions {
 export interface FileUpdateResult {
   /** Whether update was successful */
   success: boolean;
-  
+
   /** Updated properties */
   updatedProperties?: Record<string, any>;
-  
+
   /** Validation errors */
   errors?: string[];
-  
+
   /** Warnings */
   warnings?: string[];
 }
@@ -96,16 +100,16 @@ export interface FileUpdateResult {
 export interface FileValidationResult {
   /** Whether file is valid */
   valid: boolean;
-  
+
   /** Detected note type */
   noteType?: NoteType;
-  
+
   /** Validated properties */
   properties?: Record<string, any>;
-  
+
   /** Validation errors */
   errors?: string[];
-  
+
   /** Warnings */
   warnings?: string[];
 }
@@ -135,7 +139,11 @@ export class FileManager {
       undefined, // TemplateEngine will be created by NoteProcessor
       registry
     );
-    this.templateManager = new TemplateManager(app, registry, templatePreferences);
+    this.templateManager = new TemplateManager(
+      app,
+      registry,
+      templatePreferences
+    );
   }
 
   /**
@@ -165,7 +173,8 @@ export class FileManager {
       }
 
       // Generate file name if not provided
-      const finalFileName = fileName || this.generateFileName(noteType, properties);
+      const finalFileName =
+        fileName || this.generateFileName(noteType, properties);
       const sanitizedFileName = this.sanitizeFileName(finalFileName);
       const filePath = normalizePath(`${folder}/${sanitizedFileName}.md`);
 
@@ -184,10 +193,13 @@ export class FileManager {
         fileContent = content;
       } else {
         // Use template to generate content
-        const templateResult = await this.templateManager.applyTemplate(noteTypeId, {
-          properties,
-          validateProperties,
-        });
+        const templateResult = await this.templateManager.applyTemplate(
+          noteTypeId,
+          {
+            properties,
+            validateProperties,
+          }
+        );
 
         if (!templateResult.success) {
           return {
@@ -214,7 +226,6 @@ export class FileManager {
         filePath,
         file,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -251,11 +262,18 @@ export class FileManager {
       const currentContent = await this.vault.read(file);
 
       // Process current note to get note type and existing properties
-      const noteResult = this.noteProcessor.processNote(currentContent, filePath);
+      const noteResult = this.noteProcessor.processNote(
+        currentContent,
+        filePath
+      );
       if (!noteResult.valid || !noteResult.noteType) {
         return {
           success: false,
-          errors: [`Could not process note: ${noteResult.errors.map(e => e.message).join(", ")}`],
+          errors: [
+            `Could not process note: ${noteResult.errors
+              .map((e) => e.message)
+              .join(", ")}`,
+          ],
         };
       }
 
@@ -267,11 +285,11 @@ export class FileManager {
           { validateRequired: false } // Don't require all properties for updates
         );
 
-        if (!propertyResult.success) {
+        if (!propertyResult.valid) {
           return {
             success: false,
-            errors: propertyResult.errors.map(e => e.message),
-            warnings: propertyResult.warnings.map(w => w.message),
+            errors: propertyResult.errors.map((e) => e.message),
+            warnings: propertyResult.warnings.map((w) => w.message),
           };
         }
       }
@@ -279,7 +297,7 @@ export class FileManager {
       // Update front-matter using Obsidian's processFrontMatter
       await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
         Object.assign(frontMatter, properties);
-        
+
         if (updateModTime) {
           frontMatter.updatedAt = new Date().toISOString();
         }
@@ -289,7 +307,6 @@ export class FileManager {
         success: true,
         updatedProperties: properties,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -320,10 +337,9 @@ export class FileManager {
         valid: result.valid,
         noteType: result.noteType || undefined,
         properties: result.properties,
-        errors: result.errors.map(e => e.message),
-        warnings: result.warnings.map(w => w.message),
+        errors: result.errors.map((e) => e.message),
+        warnings: result.warnings.map((w) => w.message),
       };
-
     } catch (error) {
       return {
         valid: false,
@@ -351,15 +367,22 @@ export class FileManager {
   /**
    * Generate a file name from note type and properties
    */
-  private generateFileName(noteType: NoteType, properties: Record<string, any>): string {
+  private generateFileName(
+    noteType: NoteType,
+    properties: Record<string, any>
+  ): string {
     // Try to use a title or name property
-    const titleProperty = properties.title || properties.name || properties.displayName;
+    const titleProperty =
+      properties.title || properties.name || properties.displayName;
     if (titleProperty && typeof titleProperty === "string") {
       return titleProperty;
     }
 
     // Fall back to note type name with timestamp
-    const timestamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, "-");
+    const timestamp = new Date()
+      .toISOString()
+      .slice(0, 16)
+      .replace(/[T:]/g, "-");
     return `${noteType.name}-${timestamp}`;
   }
 
@@ -381,7 +404,7 @@ export class FileManager {
   async ensureFolder(folderPath: string): Promise<void> {
     const normalizedPath = normalizePath(folderPath);
     const folder = this.vault.getAbstractFileByPath(normalizedPath);
-    
+
     if (!folder) {
       await this.vault.createFolder(normalizedPath);
     } else if (!(folder instanceof TFolder)) {

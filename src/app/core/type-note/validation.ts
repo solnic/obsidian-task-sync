@@ -12,6 +12,9 @@ import type {
   NoteType,
 } from "./types";
 
+// Re-export ValidationResult for external use
+export type { ValidationResult };
+
 /**
  * Create a successful validation result
  */
@@ -127,7 +130,9 @@ export function validateProperty(
     // Unknown error
     return createInvalidResult([
       createValidationError(
-        `Validation failed: ${error instanceof Error ? error.message : String(error)}`,
+        `Validation failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
         "VALIDATION_ERROR",
         { propertyKey: propertyDef.key }
       ),
@@ -222,10 +227,7 @@ export function validateNoteType(noteType: NoteType): ValidationResult {
   // Validate ID
   if (!noteType.id || noteType.id.trim() === "") {
     errors.push(
-      createValidationError(
-        "Note type ID is required",
-        "INVALID_NOTE_TYPE_ID"
-      )
+      createValidationError("Note type ID is required", "INVALID_NOTE_TYPE_ID")
     );
   }
 
@@ -284,7 +286,10 @@ export function validateNoteType(noteType: NoteType): ValidationResult {
       );
     }
 
-    if (!propertyDef.frontMatterKey || propertyDef.frontMatterKey.trim() === "") {
+    if (
+      !propertyDef.frontMatterKey ||
+      propertyDef.frontMatterKey.trim() === ""
+    ) {
       errors.push(
         createValidationError(
           `Property '${key}' has invalid front-matter key`,
@@ -376,4 +381,3 @@ export function mergeValidationResults(
     warnings: allWarnings,
   };
 }
-
