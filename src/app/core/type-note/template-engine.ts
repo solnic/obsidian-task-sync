@@ -1,8 +1,10 @@
 /**
  * TemplateEngine - Template Processing Engine
  * Handles template processing, variable replacement, validation, and inheritance
+ * Uses Handlebars for powerful template rendering with conditionals, loops, and helpers
  */
 
+import Handlebars from "handlebars";
 import type {
   Template,
   TemplateVariable,
@@ -68,23 +70,101 @@ export interface InheritanceResult {
 
 /**
  * TemplateEngine processes templates with variable replacement and validation
+ * Uses Handlebars for template rendering
  */
 export class TemplateEngine {
   private templates: Map<string, Template> = new Map();
+  private handlebars: typeof Handlebars;
   private defaultVariablePattern = /\{\{(\w+)\}\}/g;
+
+  constructor() {
+    // Create a new Handlebars instance for isolation
+    this.handlebars = Handlebars.create();
+
+    // Register default helpers
+    this.registerDefaultHelpers();
+  }
+
+  /**
+   * Register default Handlebars helpers
+   */
+  private registerDefaultHelpers(): void {
+    // Date formatting helper
+    this.handlebars.registerHelper(
+      "formatDate",
+      (date: any, format?: string) => {
+        if (!date) return "";
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return String(date);
+
+        // Simple date formatting (can be enhanced with moment.js or similar)
+        const fmt = format || "YYYY-MM-DD";
+        return fmt
+          .replace("YYYY", d.getFullYear().toString())
+          .replace("MM", String(d.getMonth() + 1).padStart(2, "0"))
+          .replace("DD", String(d.getDate()).padStart(2, "0"));
+      }
+    );
+
+    // Conditional helper for existence check
+    this.handlebars.registerHelper(
+      "ifExists",
+      function (value: any, options: any) {
+        return value !== null && value !== undefined && value !== ""
+          ? options.fn(this)
+          : options.inverse(this);
+      }
+    );
+
+    // Join array helper
+    this.handlebars.registerHelper("join", (array: any[], separator = ", ") => {
+      if (!Array.isArray(array)) return "";
+      return array.join(separator);
+    });
+
+    // Default value helper
+    this.handlebars.registerHelper(
+      "default",
+      (value: any, defaultValue: any) => {
+        return value !== null && value !== undefined && value !== ""
+          ? value
+          : defaultValue;
+      }
+    );
+  }
+
+  /**
+   * Register a custom Handlebars helper
+   */
+  registerHelper(name: string, helper: Handlebars.HelperDelegate): void {
+    this.handlebars.registerHelper(name, helper);
+  }
+
+  /**
+   * Unregister a custom Handlebars helper
+   */
+  unregisterHelper(name: string): void {
+    this.handlebars.unregisterHelper(name);
+  }
 
   /**
    * Register a template for inheritance
    */
   registerTemplate(id: string, template: Template): void {
     this.templates.set(id, template);
+    // Also register as a Handlebars partial for template inheritance
+    this.handlebars.registerPartial(id, template.content);
   }
 
   /**
    * Unregister a template
    */
   unregisterTemplate(id: string): boolean {
-    return this.templates.delete(id);
+    const deleted = this.templates.delete(id);
+    if (deleted) {
+      this.handlebars.unregisterPartial(id);
+    }
+    return deleted;
   }
 
   /**
@@ -95,7 +175,7 @@ export class TemplateEngine {
   }
 
   /**
-   * Process a template with the given context
+   * Process a template with the given context using Handlebars
    */
   process(
     template: Template,
@@ -106,7 +186,6 @@ export class TemplateEngine {
       validateVariables = true,
       allowUndefinedVariables = false,
       escapeHtml = false,
-      variablePattern = this.defaultVariablePattern,
     } = options;
 
     const errors = [];
@@ -132,86 +211,89 @@ export class TemplateEngine {
     // Merge template variables with context variables
     const mergedVariables = this.mergeVariables(template, context);
 
-    // Process template content
-    let processedContent = template.content;
-    const usedVariables = new Set<string>();
-
-    // Replace variables
-    processedContent = processedContent.replace(
-      variablePattern,
-      (match, variableName) => {
-        usedVariables.add(variableName);
-
-        // Check if variable exists in merged variables
-        if (!(variableName in mergedVariables)) {
-          if (!allowUndefinedVariables) {
-            errors.push(
-              createValidationError(
-                `Undefined variable '${variableName}' in template`,
-                "UNDEFINED_VARIABLE",
-                { propertyKey: variableName }
-              )
-            );
-            return match; // Keep original placeholder
-          }
-          warnings.push(
-            createValidationWarning(
-              `Variable '${variableName}' is undefined, using empty string`,
-              "UNDEFINED_VARIABLE",
-              {
-                propertyKey: variableName,
-                suggestion: "Provide a value for this variable",
-              }
+    // Apply transformations to variables
+    const transformedVariables: Record<string, any> = {};
+    for (const [varName, value] of Object.entries(mergedVariables)) {
+      const templateVar = template.variables[varName];
+      if (templateVar?.transform) {
+        try {
+          transformedVariables[varName] = templateVar.transform(value);
+        } catch (error) {
+          errors.push(
+            createValidationError(
+              `Error transforming variable '${varName}': ${error}`,
+              "TRANSFORMATION_ERROR",
+              { propertyKey: varName }
             )
           );
-          return "";
+          // Don't continue if transformation fails
+          return {
+            valid: false,
+            errors,
+            warnings,
+            content: "",
+          };
         }
-
-        let value = mergedVariables[variableName];
-
-        // Apply transformation if defined
-        const templateVar = template.variables[variableName];
-        if (templateVar?.transform) {
-          try {
-            value = templateVar.transform(value);
-          } catch (error) {
-            errors.push(
-              createValidationError(
-                `Error transforming variable '${variableName}': ${error}`,
-                "TRANSFORMATION_ERROR",
-                { propertyKey: variableName }
-              )
-            );
-            return match;
-          }
-        }
-
-        // Convert to string
-        const stringValue =
-          value === null || value === undefined ? "" : String(value);
-
-        // Escape HTML if requested
-        return escapeHtml ? this.escapeHtml(stringValue) : stringValue;
-      }
-    );
-
-    // Check for unused variables
-    for (const varName in template.variables) {
-      if (!usedVariables.has(varName)) {
-        warnings.push(
-          createValidationWarning(
-            `Variable '${varName}' is defined but not used in template`,
-            "UNUSED_VARIABLE",
-            {
-              propertyKey: varName,
-              suggestion:
-                "Remove unused variable or add it to template content",
-            }
-          )
-        );
+      } else {
+        transformedVariables[varName] = value;
       }
     }
 
+    // Compile and render template with Handlebars
+    let processedContent: string;
+    try {
+      const compiledTemplate = this.handlebars.compile(template.content, {
+        noEscape: !escapeHtml,
+        strict: false, // Always use non-strict mode, we handle undefined variables ourselves
+      });
+
+      processedContent = compiledTemplate(transformedVariables);
+    } catch (error) {
+      // Check if it's an undefined variable error
+      const errorMsg = String(error);
+      if (errorMsg.includes("not defined") || errorMsg.includes("undefined")) {
+        errors.push(
+          createValidationError(
+            `Undefined variable in template: ${errorMsg}`,
+            "UNDEFINED_VARIABLE",
+            { error: errorMsg }
+          )
+        );
+      } else {
+        errors.push(
+          createValidationError(
+            `Template processing error: ${error}`,
+            "TEMPLATE_PROCESSING_ERROR",
+            { error: errorMsg }
+          )
+        );
+      }
+      return {
+        valid: false,
+        errors,
+        warnings,
+        content: "",
+      };
+    }
+
+    // Check for undefined variables in the output if not allowed
+    if (!allowUndefinedVariables) {
+      // Extract all variables from template
+      const templateVars = this.extractVariables(template.content);
+      for (const varName of templateVars) {
+        if (!(varName in transformedVariables)) {
+          errors.push(
+            createValidationError(
+              `Undefined variable '${varName}' in template`,
+              "UNDEFINED_VARIABLE",
+              { propertyKey: varName }
+            )
+          );
+        }
+      }
+    }
+
+    // If we have errors, return failure
     if (errors.length > 0) {
       return {
         valid: false,
@@ -221,6 +303,7 @@ export class TemplateEngine {
       };
     }
 
+    // Return successful result
     return {
       valid: true,
       errors: [],

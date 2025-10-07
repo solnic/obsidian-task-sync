@@ -62,7 +62,6 @@ interface PropertyDefinition {
 ### 2.1 Property Processing
 - [ ] Implement `PropertyProcessor` for front-matter validation
 - [ ] Create transformation pipeline for property values
-- [ ] Add support for nested property schemas
 - [ ] Implement conditional property validation
 - [ ] Create property dependency resolution system
 
