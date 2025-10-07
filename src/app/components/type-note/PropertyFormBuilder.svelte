@@ -2,7 +2,10 @@
   import { onMount } from "svelte";
   import { z } from "zod";
   import { FieldGroup } from "../base";
-  import type { PropertyDefinition, ValidationResult } from "../../core/type-note/types";
+  import type {
+    PropertyDefinition,
+    ValidationResult,
+  } from "../../core/type-note/types";
   import { validateProperty } from "../../core/type-note/validation";
 
   interface Props {
@@ -26,21 +29,23 @@
   let propertyErrors: Record<string, string> = $state({});
 
   // Sort properties by order and required status
-  $: sortedProperties = Object.entries(properties)
-    .filter(([_, prop]) => showOptionalProperties || prop.required)
-    .sort(([_, a], [__, b]) => {
-      // Required properties first
-      if (a.required && !b.required) return -1;
-      if (!a.required && b.required) return 1;
-      
-      // Then by order
-      const orderA = a.order ?? 999;
-      const orderB = b.order ?? 999;
-      if (orderA !== orderB) return orderA - orderB;
-      
-      // Finally by name
-      return a.name.localeCompare(b.name);
-    });
+  const sortedProperties = $derived(
+    Object.entries(properties)
+      .filter(([_, prop]) => showOptionalProperties || prop.required)
+      .sort(([_, a], [__, b]) => {
+        // Required properties first
+        if (a.required && !b.required) return -1;
+        if (!a.required && b.required) return 1;
+
+        // Then by order
+        const orderA = a.order ?? 999;
+        const orderB = b.order ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+
+        // Finally by name
+        return a.name.localeCompare(b.name);
+      })
+  );
 
   onMount(() => {
     // Initialize values with defaults
@@ -54,7 +59,10 @@
     let hasChanges = false;
 
     for (const [key, prop] of Object.entries(properties)) {
-      if (values[prop.frontMatterKey] === undefined && prop.defaultValue !== undefined) {
+      if (
+        values[prop.frontMatterKey] === undefined &&
+        prop.defaultValue !== undefined
+      ) {
         newValues[prop.frontMatterKey] = prop.defaultValue;
         hasChanges = true;
       }
@@ -73,9 +81,9 @@
     for (const [key, prop] of Object.entries(properties)) {
       const value = values[prop.frontMatterKey];
       const result = validateProperty(prop, value);
-      
+
       newValidationResults[key] = result;
-      
+
       if (!result.valid && result.errors.length > 0) {
         newPropertyErrors[key] = result.errors[0].message;
       } else {
@@ -88,21 +96,25 @@
     onvalidationchange?.(validationResults);
   }
 
-  function handleValueChange(propertyKey: string, frontMatterKey: string, value: any) {
+  function handleValueChange(
+    propertyKey: string,
+    frontMatterKey: string,
+    value: any
+  ) {
     values = { ...values, [frontMatterKey]: value };
     onvalueschange?.(values);
-    
+
     // Validate this property
     const prop = properties[propertyKey];
     const result = validateProperty(prop, value);
     validationResults[propertyKey] = result;
-    
+
     if (!result.valid && result.errors.length > 0) {
       propertyErrors[propertyKey] = result.errors[0].message;
     } else {
       delete propertyErrors[propertyKey];
     }
-    
+
     onvalidationchange?.(validationResults);
   }
 
@@ -115,8 +127,9 @@
     if (schema instanceof z.ZodEnum) return "enum";
     if (schema instanceof z.ZodArray) return "array";
     if (schema instanceof z.ZodOptional) return getSchemaType(schema.unwrap());
-    if (schema instanceof z.ZodDefault) return getSchemaType(schema.removeDefault());
-    
+    if (schema instanceof z.ZodDefault)
+      return getSchemaType(schema.removeDefault());
+
     return "string"; // fallback
   }
 
@@ -131,14 +144,14 @@
     if (schema instanceof z.ZodDefault) {
       return getEnumOptions(schema.removeDefault());
     }
-    
+
     return [];
   }
 
   function formatDate(date: Date | string | undefined): string {
     if (!date) return "";
     if (typeof date === "string") return date;
-    return date.toISOString().split('T')[0]; // YYYY-MM-DD format
+    return date.toISOString().split("T")[0]; // YYYY-MM-DD format
   }
 
   function parseDate(dateString: string): Date | undefined {
@@ -170,43 +183,61 @@
             id="prop-{propertyKey}"
             type="checkbox"
             checked={currentValue || false}
-            onchange={(e) => handleValueChange(propertyKey, property.frontMatterKey, e.target.checked)}
+            onchange={(e) =>
+              handleValueChange(
+                propertyKey,
+                property.frontMatterKey,
+                e.target.checked
+              )}
             data-testid="property-{propertyKey}"
           />
           <span class="checkbox-label">{property.name}</span>
         </label>
-
       {:else if schemaType === "number"}
         <!-- Number input -->
         <input
           id="prop-{propertyKey}"
           type="number"
           value={currentValue || ""}
-          oninput={(e) => handleValueChange(propertyKey, property.frontMatterKey, parseFloat(e.target.value) || undefined)}
-          placeholder={property.description || `Enter ${property.name.toLowerCase()}...`}
+          oninput={(e) =>
+            handleValueChange(
+              propertyKey,
+              property.frontMatterKey,
+              parseFloat(e.target.value) || undefined
+            )}
+          placeholder={property.description ||
+            `Enter ${property.name.toLowerCase()}...`}
           class="property-input"
           class:error={hasError}
           data-testid="property-{propertyKey}"
         />
-
       {:else if schemaType === "date"}
         <!-- Date input -->
         <input
           id="prop-{propertyKey}"
           type="date"
           value={formatDate(currentValue)}
-          onchange={(e) => handleValueChange(propertyKey, property.frontMatterKey, parseDate(e.target.value))}
+          onchange={(e) =>
+            handleValueChange(
+              propertyKey,
+              property.frontMatterKey,
+              parseDate(e.target.value)
+            )}
           class="property-input"
           class:error={hasError}
           data-testid="property-{propertyKey}"
         />
-
       {:else if schemaType === "enum" && enumOptions.length > 0}
         <!-- Select dropdown for enum properties -->
         <select
           id="prop-{propertyKey}"
           value={currentValue || ""}
-          onchange={(e) => handleValueChange(propertyKey, property.frontMatterKey, e.target.value || undefined)}
+          onchange={(e) =>
+            handleValueChange(
+              propertyKey,
+              property.frontMatterKey,
+              e.target.value || undefined
+            )}
           class="property-select"
           class:error={hasError}
           data-testid="property-{propertyKey}"
@@ -218,34 +249,41 @@
             <option value={option}>{option}</option>
           {/each}
         </select>
-
       {:else if schemaType === "array"}
         <!-- Textarea for array properties (comma-separated) -->
         <textarea
           id="prop-{propertyKey}"
-          value={Array.isArray(currentValue) ? currentValue.join(", ") : (currentValue || "")}
+          value={Array.isArray(currentValue)
+            ? currentValue.join(", ")
+            : currentValue || ""}
           oninput={(e) => {
             const arrayValue = e.target.value
               .split(",")
-              .map(item => item.trim())
-              .filter(item => item);
+              .map((item) => item.trim())
+              .filter((item) => item);
             handleValueChange(propertyKey, property.frontMatterKey, arrayValue);
           }}
-          placeholder={property.description || `Enter ${property.name.toLowerCase()} (comma-separated)...`}
+          placeholder={property.description ||
+            `Enter ${property.name.toLowerCase()} (comma-separated)...`}
           class="property-textarea"
           class:error={hasError}
           rows="3"
           data-testid="property-{propertyKey}"
         ></textarea>
-
       {:else}
         <!-- Text input for string and other properties -->
         <input
           id="prop-{propertyKey}"
           type="text"
           value={currentValue || ""}
-          oninput={(e) => handleValueChange(propertyKey, property.frontMatterKey, e.target.value || undefined)}
-          placeholder={property.description || `Enter ${property.name.toLowerCase()}...`}
+          oninput={(e) =>
+            handleValueChange(
+              propertyKey,
+              property.frontMatterKey,
+              e.target.value || undefined
+            )}
+          placeholder={property.description ||
+            `Enter ${property.name.toLowerCase()}...`}
           class="property-input"
           class:error={hasError}
           data-testid="property-{propertyKey}"

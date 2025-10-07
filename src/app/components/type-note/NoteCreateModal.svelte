@@ -1,35 +1,40 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { BaseFormModal } from "../base";
   import PropertyFormBuilder from "./PropertyFormBuilder.svelte";
   import type { NoteType, ValidationResult } from "../../core/type-note/types";
   import type { TypeRegistry } from "../../core/type-note/registry";
 
   interface Props {
     typeRegistry: TypeRegistry;
-    selectedNoteType?: NoteType;
     onsubmit?: (data: {
       noteType: NoteType;
       properties: Record<string, any>;
       title: string;
-      description: string;
     }) => void;
     oncancel?: () => void;
-    onchangenotetype?: () => void;
   }
 
-  let { selectedNoteType, onsubmit, oncancel, onchangenotetype }: Props =
-    $props();
+  let { typeRegistry, onsubmit, oncancel }: Props = $props();
+
+  // Get all available note types
+  const noteTypes = typeRegistry.getAll();
 
   // Form state
+  let selectedNoteTypeId = $state(
+    noteTypes.length === 1 ? noteTypes[0].id : ""
+  );
   let titleValue = $state("");
-  let descriptionValue = $state("");
   let propertyValues: Record<string, any> = $state({});
   let propertyValidation: Record<string, ValidationResult> = $state({});
   let titleError = $state(false);
-  let showOptionalProperties = $state(false);
 
-  // Computed values
+  // Input elements
+  let titleInput: HTMLInputElement;
+
+  // Computed
+  const selectedNoteType = $derived(
+    noteTypes.find((nt) => nt.id === selectedNoteTypeId) || null
+  );
   const hasValidationErrors = $derived(
     Object.values(propertyValidation).some((result) => !result.valid)
   );
@@ -38,23 +43,9 @@
   );
 
   onMount(() => {
-    // Initialize property values with defaults if note type is already selected
-    if (selectedNoteType) {
-      initializePropertyValues();
-    }
+    // Focus title input
+    titleInput?.focus();
   });
-
-  function initializePropertyValues() {
-    if (!selectedNoteType) return;
-
-    const newValues: Record<string, any> = {};
-    for (const [, prop] of Object.entries(selectedNoteType.properties)) {
-      if (prop.defaultValue !== undefined) {
-        newValues[prop.frontMatterKey] = prop.defaultValue;
-      }
-    }
-    propertyValues = newValues;
-  }
 
   function handlePropertyValuesChange(values: Record<string, any>) {
     propertyValues = values;
@@ -84,235 +75,196 @@
       noteType: selectedNoteType,
       properties: propertyValues,
       title: titleValue.trim(),
-      description: descriptionValue.trim(),
     });
   }
 
-  function handleChangeNoteType() {
-    onchangenotetype?.();
+  function handleCancel() {
+    oncancel?.();
   }
 
-  function toggleOptionalProperties() {
-    showOptionalProperties = !showOptionalProperties;
-  }
-
-  // Reset form when note type changes
-  $effect(() => {
-    if (selectedNoteType) {
-      initializePropertyValues();
+  function handleTitleInput() {
+    if (titleError && titleValue.trim()) {
+      titleError = false;
     }
-  });
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter" && !hasValidationErrors && canSubmit) {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }
+
+  function handleNoteTypeChange(e: Event) {
+    const target = e.target as HTMLSelectElement;
+    selectedNoteTypeId = target.value;
+    // Reset property values when note type changes
+    propertyValues = {};
+  }
 </script>
 
-{#snippet formContentSnippet()}
-  {#if !selectedNoteType}
-    <!-- No note type selected -->
-    <div class="note-type-required">
-      <p>Please select a note type first.</p>
-      <button
-        type="button"
-        class="select-note-type-button"
-        onclick={handleChangeNoteType}
-      >
-        Select Note Type
-      </button>
-    </div>
-  {:else}
-    <!-- Note type info -->
-    <div class="note-type-info">
-      <div class="note-type-header">
-        <h3>{selectedNoteType.name}</h3>
-        <button
-          type="button"
-          class="change-note-type-button"
-          onclick={handleChangeNoteType}
-          title="Change note type"
+<!-- Modal container -->
+<div class="task-sync-modal-container note-create-modal">
+  <!-- Header -->
+  <div class="task-sync-modal-header">
+    <h2>Create {selectedNoteType?.name || "Note"}</h2>
+    {#if selectedNoteType?.metadata?.description}
+      <p class="task-sync-modal-description">
+        {selectedNoteType.metadata.description}
+      </p>
+    {/if}
+  </div>
+
+  <!-- Main content -->
+  <div class="task-sync-main-content">
+    <!-- Note type selector (if multiple types) -->
+    {#if noteTypes.length > 1}
+      <div class="task-sync-field">
+        <label for="note-type-select" class="task-sync-field-label">
+          Note Type *
+        </label>
+        <select
+          id="note-type-select"
+          bind:value={selectedNoteTypeId}
+          onchange={handleNoteTypeChange}
+          class="task-sync-select"
+          data-testid="note-type-select"
         >
-          Change
-        </button>
+          <option value="">Select a note type...</option>
+          {#each noteTypes as noteType}
+            <option value={noteType.id}>{noteType.name}</option>
+          {/each}
+        </select>
       </div>
-      {#if selectedNoteType.metadata?.description}
-        <p class="note-type-description">
-          {selectedNoteType.metadata.description}
-        </p>
+    {/if}
+
+    <!-- Title input -->
+    <div class="task-sync-field">
+      <label for="note-title" class="task-sync-field-label"> Title * </label>
+      <input
+        bind:this={titleInput}
+        bind:value={titleValue}
+        id="note-title"
+        type="text"
+        placeholder="{selectedNoteType?.name || 'Note'} title"
+        class="task-sync-input"
+        class:task-sync-input-error={titleError}
+        data-testid="title-input"
+        oninput={handleTitleInput}
+        onkeydown={handleKeydown}
+      />
+      {#if titleError}
+        <span class="task-sync-error-message">Title is required</span>
       {/if}
     </div>
 
-    <!-- Property form -->
-    {#if Object.keys(selectedNoteType.properties).length > 0}
+    <!-- Property form builder -->
+    {#if selectedNoteType && Object.keys(selectedNoteType.properties).length > 0}
       <div class="properties-section">
         <PropertyFormBuilder
           properties={selectedNoteType.properties}
-          bind:values={propertyValues}
+          values={propertyValues}
           onvalueschange={handlePropertyValuesChange}
           onvalidationchange={handlePropertyValidationChange}
-          {showOptionalProperties}
+          showOptionalProperties={true}
         />
       </div>
     {/if}
-  {/if}
-{/snippet}
 
-{#snippet extraPropertiesSnippet()}
-  {#if selectedNoteType && Object.keys(selectedNoteType.properties).length > 0}
-    <!-- Toggle optional properties -->
-    <div class="optional-properties-toggle">
-      <label class="toggle-container">
-        <input
-          type="checkbox"
-          bind:checked={showOptionalProperties}
-          onchange={toggleOptionalProperties}
-        />
-        <span class="toggle-label">Show optional properties</span>
-      </label>
-    </div>
-
-    <!-- Validation summary -->
+    <!-- Validation errors -->
     {#if hasValidationErrors}
       <div class="validation-summary">
-        <h4>Please fix the following errors:</h4>
-        <ul>
+        <p class="validation-title">Please fix the following errors:</p>
+        <ul class="validation-errors">
           {#each Object.entries(propertyValidation) as [key, result]}
             {#if !result.valid}
-              {@const property = selectedNoteType.properties[key]}
+              {@const property = selectedNoteType?.properties[key]}
               <li>{property?.name || key}: {result.errors[0]?.message}</li>
             {/if}
           {/each}
         </ul>
       </div>
     {/if}
-  {/if}
-{/snippet}
+  </div>
 
-<BaseFormModal
-  title="Create {selectedNoteType?.name || 'Note'}"
-  description="Fill in the details to create a new {selectedNoteType?.name?.toLowerCase() ||
-    'note'} with the defined structure and properties."
-  titlePlaceholder="{selectedNoteType?.name || 'Note'} title"
-  descriptionPlaceholder="Add description..."
-  bind:titleValue
-  bind:descriptionValue
-  bind:titleError
-  onsubmit={handleSubmit}
-  {oncancel}
-  submitLabel="Create {selectedNoteType?.name || 'Note'}"
-  submitDisabled={!canSubmit}
-  showPrimaryProperties={true}
-  showExtraProperties={true}
-  formContent={formContentSnippet}
-  extraProperties={extraPropertiesSnippet}
-></BaseFormModal>
+  <!-- Footer -->
+  <div class="task-sync-modal-footer">
+    <div class="task-sync-footer-actions">
+      <button
+        type="button"
+        class="task-sync-cancel-button"
+        data-testid="cancel-button"
+        onclick={handleCancel}
+      >
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="task-sync-create-button mod-cta"
+        data-testid="submit-button"
+        onclick={handleSubmit}
+        disabled={!canSubmit}
+      >
+        Create {selectedNoteType?.name || "Note"}
+      </button>
+    </div>
+  </div>
+</div>
 
 <style>
-  .note-type-required {
-    text-align: center;
-    padding: 2rem;
-    color: var(--text-muted);
-  }
-
-  .select-note-type-button {
-    padding: 0.75rem 1.5rem;
-    border: 1px solid var(--interactive-accent);
-    border-radius: 6px;
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    cursor: pointer;
-    font-size: 0.9rem;
-    margin-top: 1rem;
-  }
-
-  .select-note-type-button:hover {
-    background: var(--interactive-accent-hover);
-  }
-
-  .note-type-info {
-    padding: 1rem;
-    background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 6px;
-    margin-bottom: 1.5rem;
-  }
-
-  .note-type-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-  }
-
-  .note-type-header h3 {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-  }
-
-  .change-note-type-button {
-    padding: 0.25rem 0.75rem;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
-    background: var(--background-primary);
-    color: var(--text-normal);
-    cursor: pointer;
-    font-size: 0.8rem;
-  }
-
-  .change-note-type-button:hover {
-    background: var(--background-modifier-hover);
-  }
-
-  .note-type-description {
-    margin: 0;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    line-height: 1.4;
+  .note-create-modal {
+    min-width: 500px;
   }
 
   .properties-section {
-    margin-bottom: 1rem;
-  }
-
-  .optional-properties-toggle {
-    margin-bottom: 1rem;
-  }
-
-  .toggle-container {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-  }
-
-  .toggle-container input[type="checkbox"] {
-    width: auto;
-    margin: 0;
-  }
-
-  .toggle-label {
-    font-size: 0.9rem;
-    color: var(--text-normal);
+    margin-top: 1rem;
   }
 
   .validation-summary {
+    margin-top: 1rem;
     padding: 1rem;
     background: var(--background-modifier-error);
     border: 1px solid var(--background-modifier-error-hover);
     border-radius: 6px;
-    color: var(--text-error);
   }
 
-  .validation-summary h4 {
+  .validation-title {
     margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
     font-weight: 600;
+    color: var(--text-error);
   }
 
-  .validation-summary ul {
+  .validation-errors {
     margin: 0;
     padding-left: 1.5rem;
   }
 
-  .validation-summary li {
+  .validation-errors li {
     font-size: 0.85rem;
+    color: var(--text-error);
     margin-bottom: 0.25rem;
+  }
+
+  .task-sync-select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 0.9rem;
+  }
+
+  .task-sync-select:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+  }
+
+  .task-sync-error-message {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.85rem;
+    color: var(--text-error);
   }
 </style>

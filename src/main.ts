@@ -156,6 +156,15 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
+    // Add command to create note
+    this.addCommand({
+      id: "create-note",
+      name: "Create Note",
+      callback: () => {
+        this.openCreateNoteModal();
+      },
+    });
+
     // Add command to refresh bases
     this.addCommand({
       id: "refresh-bases",
@@ -500,6 +509,11 @@ export default class TaskSyncPlugin extends Plugin {
   async openCreateTaskModal() {
     const { TaskCreateModal } = await import("./app/modals/TaskCreateModal");
     new TaskCreateModal(this.app, this).open();
+  }
+
+  async openCreateNoteModal() {
+    const { NoteCreateModal } = await import("./app/modals/NoteCreateModal");
+    new NoteCreateModal(this.app, this).open();
   }
 
   /**
