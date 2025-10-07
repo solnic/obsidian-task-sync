@@ -279,3 +279,167 @@ test.describe("TypeNote Settings - Property Management", () => {
     await expect(firstPropertyName).toContainText("Priority");
   });
 });
+
+test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
+  test("should create a new note type and verify it appears in the list", async ({
+    page,
+  }) => {
+    await openTaskSyncSettings(page);
+
+    // Navigate to Note Types section
+    const noteTypesSection = page.locator(
+      '[data-testid="settings-section-type-note"]'
+    );
+    await noteTypesSection.click();
+
+    // Scroll down to make the create button visible
+    const createButton = page.locator(
+      '[data-testid="create-note-type-button"]'
+    );
+    await createButton.scrollIntoViewIfNeeded();
+    await createButton.click();
+
+    // Wait for the note type editor to be visible
+    await page
+      .locator('[data-testid="note-type-id-input"]')
+      .waitFor({ state: "visible" });
+
+    // Fill in basic note type info
+    await page
+      .locator('[data-testid="note-type-name-input"]')
+      .fill("Meeting Note");
+    await page
+      .locator('[data-testid="note-type-id-input"]')
+      .fill("meeting-note");
+
+    // Scroll down to make the Properties section visible
+    const propertiesHeading = page
+      .locator("h4")
+      .filter({ hasText: "Properties" });
+    await propertiesHeading.scrollIntoViewIfNeeded();
+
+    // Configure the first property
+    const firstPropertyInput = page
+      .locator('[data-testid^="property-name-input-"]')
+      .first();
+    await expect(firstPropertyInput).toBeVisible();
+    await firstPropertyInput.fill("Attendees");
+
+    // Get the property key
+    const propertyKey = await firstPropertyInput.getAttribute("data-testid");
+    const key = propertyKey?.replace("property-name-input-", "") || "";
+
+    // Set property type to string (default)
+    const propertyDropdown = page.locator(
+      `[data-testid="property-type-dropdown-${key}"]`
+    );
+    await expect(propertyDropdown).toBeVisible();
+    await propertyDropdown.selectOption("string");
+
+    // Scroll to save button
+    const saveButton = page
+      .locator("button")
+      .filter({ hasText: "Create Note Type" });
+    await saveButton.scrollIntoViewIfNeeded();
+    await saveButton.click();
+
+    // Wait for the success notice
+    await page.waitForTimeout(500);
+
+    // Verify we're back at the list view and the note type appears
+    const noteTypeItem = page
+      .locator(".setting-item-name")
+      .filter({ hasText: "Meeting Note" });
+    await expect(noteTypeItem).toBeVisible();
+  });
+
+  test("should edit an existing note type and verify changes are persisted", async ({
+    page,
+  }) => {
+    // First create a note type
+    await openTaskSyncSettings(page);
+
+    const noteTypesSection = page.locator(
+      '[data-testid="settings-section-type-note"]'
+    );
+    await noteTypesSection.click();
+
+    const createButton = page.locator(
+      '[data-testid="create-note-type-button"]'
+    );
+    await createButton.scrollIntoViewIfNeeded();
+    await createButton.click();
+
+    await page
+      .locator('[data-testid="note-type-id-input"]')
+      .waitFor({ state: "visible" });
+
+    await page
+      .locator('[data-testid="note-type-name-input"]')
+      .fill("Project Plan");
+    await page
+      .locator('[data-testid="note-type-id-input"]')
+      .fill("project-plan");
+
+    const propertiesHeading = page
+      .locator("h4")
+      .filter({ hasText: "Properties" });
+    await propertiesHeading.scrollIntoViewIfNeeded();
+
+    const firstPropertyInput = page
+      .locator('[data-testid^="property-name-input-"]')
+      .first();
+    await firstPropertyInput.fill("Status");
+
+    const saveButton = page
+      .locator("button")
+      .filter({ hasText: "Create Note Type" });
+    await saveButton.scrollIntoViewIfNeeded();
+    await saveButton.click();
+
+    await page.waitForTimeout(500);
+
+    // Now edit the note type
+    const noteTypeItem = page
+      .locator(".setting-item")
+      .filter({ hasText: "Project Plan" });
+    await expect(noteTypeItem).toBeVisible();
+
+    // Find and click the edit button
+    const editButton = noteTypeItem.locator("button").first();
+    await editButton.click();
+
+    // Wait for editor to appear
+    await page
+      .locator('[data-testid="note-type-id-input"]')
+      .waitFor({ state: "visible" });
+
+    // Verify existing values are loaded
+    await expect(
+      page.locator('[data-testid="note-type-name-input"]')
+    ).toHaveValue("Project Plan");
+    await expect(
+      page.locator('[data-testid="note-type-id-input"]')
+    ).toHaveValue("project-plan");
+
+    // Update the name
+    await page
+      .locator('[data-testid="note-type-name-input"]')
+      .fill("Project Plan Updated");
+
+    // Save changes
+    const updateSaveButton = page
+      .locator("button")
+      .filter({ hasText: "Save Changes" });
+    await updateSaveButton.scrollIntoViewIfNeeded();
+    await updateSaveButton.click();
+
+    await page.waitForTimeout(500);
+
+    // Verify the updated name appears in the list
+    const updatedNoteTypeItem = page
+      .locator(".setting-item-name")
+      .filter({ hasText: "Project Plan Updated" });
+    await expect(updatedNoteTypeItem).toBeVisible();
+  });
+});
