@@ -3,6 +3,58 @@ Task Sync Plugin Styles
 Provides consistent styling for all UI components
 */
 
+/* Property Form Components Styles */
+.property-input,
+.property-select,
+.property-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.property-input:focus,
+.property-select:focus,
+.property-textarea:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 0 2px var(--interactive-accent-hover);
+}
+
+.property-input.error,
+.property-select.error,
+.property-textarea.error {
+  border-color: var(--text-error);
+  box-shadow: 0 0 0 2px var(--text-error-hover);
+}
+
+.property-textarea {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox-container input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+.checkbox-label {
+  font-size: 0.9rem;
+  color: var(--text-normal);
+  user-select: none;
+}
+
 /* Event Details Modal Styles */
 .event-details-container {
   padding: 16px 0;
