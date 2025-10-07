@@ -98,7 +98,6 @@ export const VIEW_ORDERS = {
   PROJECT_MAIN: [
     "DONE",
     "TITLE",
-    "AREAS",
     "CATEGORY",
     "CREATED_AT",
     "UPDATED_AT",
@@ -127,7 +126,6 @@ export const SORT_CONFIGS = {
   ],
   PROJECT: [
     { property: "DONE", direction: "ASC" as const },
-    { property: "AREAS", direction: "ASC" as const },
     { property: "CATEGORY", direction: "ASC" as const },
     { property: "UPDATED_AT", direction: "DESC" as const },
     { property: "CREATED_AT", direction: "DESC" as const },
@@ -382,10 +380,8 @@ export function generateTasksBase(
           name: `${pluralize(taskType.name)} • ${priority.name} priority`,
           filters: FilterBuilder.and(
             FilterBuilder.inFolder(settings.tasksFolder),
-            FilterBuilder.notDone(),
             FilterBuilder.ofCategory(taskType.name),
-            FilterBuilder.withPriority(priority.name),
-            FilterBuilder.noParentTask()
+            FilterBuilder.withPriority(priority.name)
           ).toFilterObject(),
           order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
           sort: resolveSortConfig(SORT_CONFIGS.TASK),
