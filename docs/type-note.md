@@ -84,15 +84,15 @@ interface PropertyDefinition {
 ## Phase 3: Obsidian Integration Layer (Week 3-4)
 
 ### 3.1 Property System Integration
-- [ ] Implement `ObsidianPropertyManager` using Obsidian's property API
-- [ ] Create property type mapping between TypeNote and Obsidian
-- [ ] Add support for Obsidian's built-in property types (date, number, text, etc.)
+- [x] Implement `ObsidianPropertyManager` using Obsidian's property API
+- [x] Create property type mapping between TypeNote and Obsidian
+- [x] Add support for Obsidian's built-in property types (date, number, text, etc.)
 
 ### 3.2 Bases Integration
-- [ ] Implement `BasesIntegration` for automatic base creation from note types
-- [ ] Create property reuse system leveraging Obsidian Bases
-- [ ] Add automatic view generation based on note type properties
-- [ ] Implement filtering and sorting based on typed properties
+- [x] Implement `BasesIntegration` for automatic base creation from note types
+- [x] Create property reuse system leveraging Obsidian Bases
+- [x] Add automatic view generation based on note type properties
+- [x] Implement filtering and sorting based on typed properties
 
 ### 3.3 Template Integration
 - [ ] Implement `TemplateManager` with core Templates and Templater support
