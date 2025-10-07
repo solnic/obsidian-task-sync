@@ -868,6 +868,7 @@
                 {isImporting}
                 {isScheduled}
                 {scheduledDate}
+                dailyPlanningWizardMode={$isPlanningActive}
                 onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
                 onImport={() => importTask(task)}
                 {host}
@@ -883,6 +884,7 @@
                 {isImporting}
                 {isScheduled}
                 {scheduledDate}
+                dailyPlanningWizardMode={$isPlanningActive}
                 onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
                 onImport={() => importTask(task)}
                 {host}
