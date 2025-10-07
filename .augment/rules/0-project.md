@@ -11,6 +11,14 @@ Status: UNRELEASED
 
 The project is in a transition phase moving from an Obsidian plugin to a Svelte app that has Obsidian support as an extension. Previous code was moved to `old-stuff` and should be used as a reference when re-introducing functionality within the new architecture.
 
+# COMMANDS FOR RUNNING TESTS
+
+- `npm test` to run all tests
+- `npm run test:e2e` to run all `e2e` tests
+- `npm run test:e2e:failed` to run e2e tests that previously failed
+- `npm run test:e2e -- -g "pattern"` to run all `e2e` tests matching pattern
+
+
 # 🚨 IMPORTANT INFORMATION ABOUT E2E TESTS 🚨
 
 - The project is in transition phase from `vitest` with `playwright` to just `playwright` - all new e2e tests from now on must be implemented in `playwright` only
