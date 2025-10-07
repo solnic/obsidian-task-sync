@@ -128,3 +128,12 @@ export {
   type ProcessOptions,
   type InheritanceResult,
 } from "./template-engine";
+
+// Export property processor
+export {
+  PropertyProcessor,
+  type PropertyProcessingOptions,
+  type PropertyProcessingResult,
+  type PropertyDependency,
+  type ConditionalValidation,
+} from "./property-processor";
