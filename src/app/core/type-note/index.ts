@@ -10,6 +10,7 @@
  *
  * Phase 1.1: Core Types and Interfaces ✅
  * Phase 1.2: Note Type Registry ✅
+ * Phase 1.3: Template System Foundation ✅
  */
 
 // Export all types
@@ -119,3 +120,11 @@ export {
   type SerializedPropertyDefinition,
   type SerializedTemplate,
 } from "./registry";
+
+// Export template engine
+export {
+  TemplateEngine,
+  TemplateEngineError,
+  type ProcessOptions,
+  type InheritanceResult,
+} from "./template-engine";
