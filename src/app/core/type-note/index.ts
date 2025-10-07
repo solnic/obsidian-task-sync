@@ -155,6 +155,9 @@ export {
   TYPE_NOTE_TO_OBSIDIAN_TYPE_MAP,
 } from "./obsidian-property-manager";
 
+// Export main TypeNote API
+export { TypeNote } from "./TypeNote";
+
 // Export type cache
 export {
   TypeCache,

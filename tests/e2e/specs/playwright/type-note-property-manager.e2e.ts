@@ -32,14 +32,16 @@ test.describe("TypeNote ObsidianPropertyManager", () => {
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-        // Access ObsidianPropertyManager (this will fail until we implement it)
-        const propertyManager = plugin.obsidianPropertyManager;
-        if (!propertyManager) {
-          throw new Error("ObsidianPropertyManager not available");
+        // Access TypeNote API
+        const typeNote = plugin.typeNote;
+        if (!typeNote) {
+          throw new Error("TypeNote not available");
         }
 
         // Test type mapping
-        return propertyManager.mapTypeNoteTypeToObsidian(typeNoteType);
+        return typeNote.obsidianPropertyManager.mapTypeNoteTypeToObsidian(
+          typeNoteType
+        );
       }, testCase.typeNoteType);
 
       expect(mappedType).toBe(testCase.expectedObsidianType);
@@ -72,14 +74,14 @@ This is a test article to verify property type reading.
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Access ObsidianPropertyManager (this will fail until we implement it)
-      const propertyManager = plugin.obsidianPropertyManager;
-      if (!propertyManager) {
-        throw new Error("ObsidianPropertyManager not available");
+      // Access TypeNote API
+      const typeNote = plugin.typeNote;
+      if (!typeNote) {
+        throw new Error("TypeNote not available");
       }
 
       // Get all property types from Obsidian
-      return propertyManager.getAllObsidianPropertyTypes();
+      return typeNote.obsidianPropertyManager.getAllObsidianPropertyTypes();
     });
 
     // Verify that we can read property types
@@ -107,14 +109,14 @@ This is a test article to verify property type reading.
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-        // Access ObsidianPropertyManager (this will fail until we implement it)
-        const propertyManager = plugin.obsidianPropertyManager;
-        if (!propertyManager) {
-          throw new Error("ObsidianPropertyManager not available");
+        // Access TypeNote API
+        const typeNote = plugin.typeNote;
+        if (!typeNote) {
+          throw new Error("TypeNote not available");
         }
 
         // Test property validation
-        return propertyManager.validatePropertyValue(
+        return typeNote.obsidianPropertyManager.validatePropertyValue(
           data.propertyName,
           data.value
         );
