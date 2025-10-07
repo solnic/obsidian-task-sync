@@ -146,3 +146,12 @@ export {
   type FrontMatterExtractionResult,
   type NoteTypeDetectionResult,
 } from "./note-processor";
+
+// Export type cache
+export {
+  TypeCache,
+  type TypeCacheOptions,
+  type TypeCacheEntry,
+  type TypeCacheStatistics,
+  type CachePersistenceAdapter,
+} from "./type-cache";
