@@ -10,6 +10,12 @@
     NoteType,
     PropertyDefinition,
   } from "../../../core/type-note/types";
+  import {
+    stringSchema,
+    numberSchema,
+    booleanSchema,
+    dateSchema,
+  } from "../../../core/type-note/schemas";
 
   let container: HTMLElement;
 
@@ -21,6 +27,33 @@
   }
 
   let { settings = $bindable(), saveSettings, plugin }: Props = $props();
+
+  // Helper function to create Zod schemas from string types
+  function createSchemaFromType(schemaType: string) {
+    switch (schemaType) {
+      case "string":
+        return stringSchema;
+      case "number":
+        return numberSchema;
+      case "boolean":
+        return booleanSchema;
+      case "date":
+        return dateSchema;
+      default:
+        return stringSchema;
+    }
+  }
+
+  // Helper function to get string type from Zod schema
+  function getSchemaTypeFromSchema(schema: any): string {
+    // This is a simple heuristic - in a real implementation you might want
+    // to store the schema type separately or use a more robust detection
+    if (schema === stringSchema) return "string";
+    if (schema === numberSchema) return "number";
+    if (schema === booleanSchema) return "boolean";
+    if (schema === dateSchema) return "date";
+    return "string"; // default fallback
+  }
 
   onMount(() => {
     recreateSection();
@@ -90,22 +123,9 @@
 
       // Create a more descriptive name that includes the property name
       const propertyDisplayName = property.name || "New Property";
-      const propertyTypeLabel =
-        property.schemaType === "string"
-          ? "Text"
-          : property.schemaType === "number"
-            ? "Number"
-            : property.schemaType === "boolean"
-              ? "Boolean"
-              : property.schemaType === "date"
-                ? "Date"
-                : "Text";
 
       propertySetting
         .setName(propertyDisplayName)
-        .setDesc(
-          `Type: ${propertyTypeLabel} | Required: ${property.required ? "Yes" : "No"}`
-        )
         .addText((text) => {
           text
             .setPlaceholder("Property name")
@@ -116,6 +136,12 @@
               // Update the setting name to reflect the change
               propertySetting.setName(value || "New Property");
             });
+
+          // Add data-testid for e2e testing
+          text.inputEl.setAttribute(
+            "data-testid",
+            `property-name-input-${key}`
+          );
         })
         .addDropdown((dropdown) => {
           dropdown
@@ -125,46 +151,56 @@
             .addOption("date", "Date")
             .setValue(property.schemaType || "string")
             .onChange((value) => {
-              // Directly modify the property
-              property.schemaType = value;
-              // Update the description to reflect the change
-              const typeLabel =
-                value === "string"
-                  ? "Text"
-                  : value === "number"
-                    ? "Number"
-                    : value === "boolean"
-                      ? "Boolean"
-                      : value === "date"
-                        ? "Date"
-                        : "Text";
-              propertySetting.setDesc(
-                `Type: ${typeLabel} | Required: ${property.required ? "Yes" : "No"}`
-              );
+              try {
+                // Directly modify the property
+                property.schemaType = value;
+                console.log(
+                  "Property schemaType changed to:",
+                  value,
+                  "for property:",
+                  property
+                );
+                // Description removed - input values show the configuration
+              } catch (error) {
+                console.error("Error in dropdown onChange:", error);
+                new Notice(`Error changing property type: ${error.message}`);
+              }
             });
+
+          // Add data-testid for e2e testing
+          dropdown.selectEl.setAttribute(
+            "data-testid",
+            `property-type-dropdown-${key}`
+          );
         })
         .addToggle((toggle) => {
           toggle
             .setValue(property.required || false)
             .setTooltip("Toggle to mark this property as required")
             .onChange((value) => {
-              // Directly modify the property
-              property.required = value;
-              // Update the description to reflect the change
-              const typeLabel =
-                property.schemaType === "string"
-                  ? "Text"
-                  : property.schemaType === "number"
-                    ? "Number"
-                    : property.schemaType === "boolean"
-                      ? "Boolean"
-                      : property.schemaType === "date"
-                        ? "Date"
-                        : "Text";
-              propertySetting.setDesc(
-                `Type: ${typeLabel} | Required: ${value ? "Yes" : "No"}`
-              );
+              try {
+                // Directly modify the property
+                property.required = value;
+                console.log(
+                  "Property required changed to:",
+                  value,
+                  "for property:",
+                  property
+                );
+                // Description removed - input values show the configuration
+              } catch (error) {
+                console.error("Error in toggle onChange:", error);
+                new Notice(
+                  `Error changing property required status: ${error.message}`
+                );
+              }
             });
+
+          // Add data-testid for e2e testing
+          toggle.toggleEl.setAttribute(
+            "data-testid",
+            `property-required-toggle-${key}`
+          );
 
           // Add a label next to the toggle for clarity
           const toggleContainer = toggle.toggleEl.parentElement;
@@ -189,6 +225,12 @@
               container.empty();
               createPropertySettings(container, properties);
             });
+
+          // Add data-testid for e2e testing
+          button.buttonEl.setAttribute(
+            "data-testid",
+            `property-delete-button-${key}`
+          );
         });
     });
   }
@@ -337,12 +379,25 @@
         .setButtonText("Create New Note Type")
         .setCta()
         .onClick(() => {
-          // Create a new empty note type for editing
+          // Create a new note type with a default property for editing
+          const defaultPropertyKey = `property_${Date.now()}`;
           const newNoteType = {
             id: "",
             name: "",
             version: "1.0.0",
-            properties: {},
+            properties: {
+              [defaultPropertyKey]: {
+                key: defaultPropertyKey,
+                name: "New Property",
+                schemaType: "string",
+                frontMatterKey: defaultPropertyKey,
+                required: false,
+                defaultValue: "",
+                description: "",
+                visible: true,
+                order: 0,
+              },
+            },
             template: {
               version: "1.0.0",
               content: `# {{title}}\n\n{{description}}\n\n## Properties\n\n`,
@@ -355,11 +410,13 @@
           };
           showNoteTypeEditor(newNoteType, true);
         });
+      // Add data-testid for e2e tests
+      button.buttonEl.setAttribute("data-testid", "create-note-type-button");
     });
   }
 
   function showNoteTypeEditor(
-    noteType: NoteType,
+    noteType: any, // Allow any type since we handle both NoteType and UI format
     isNew: boolean = false
   ): void {
     // Clear container and show editor
@@ -386,7 +443,32 @@
     let editName = noteType.name;
     let editVersion = noteType.version;
     let editDescription = noteType.metadata?.description || "";
-    let editProperties = { ...noteType.properties };
+
+    // Convert properties to UI format (with schemaType instead of schema)
+    let editProperties: Record<string, any> = {};
+    Object.entries(noteType.properties || {}).forEach(
+      ([key, prop]: [string, any]) => {
+        if (prop.schemaType) {
+          // Already in UI format
+          editProperties[key] = { ...prop };
+        } else if (prop.schema) {
+          // Convert from NoteType format to UI format
+          editProperties[key] = {
+            ...prop,
+            schemaType: getSchemaTypeFromSchema(prop.schema),
+          };
+          // Remove the schema field since UI uses schemaType
+          delete editProperties[key].schema;
+        } else {
+          // Fallback for malformed properties
+          editProperties[key] = {
+            ...prop,
+            schemaType: "string",
+          };
+        }
+      }
+    );
+
     let editTemplate = { ...noteType.template };
 
     // Basic info section
@@ -410,6 +492,8 @@
               .replace(/[^a-z0-9-]/g, "");
           }
         });
+      // Add data-testid for e2e tests
+      text.inputEl.setAttribute("data-testid", "note-type-name-input");
     });
 
     // ID setting
@@ -424,6 +508,8 @@
         .onChange((value) => {
           editId = value;
         });
+      // Add data-testid for e2e tests
+      text.inputEl.setAttribute("data-testid", "note-type-id-input");
     });
 
     // Version setting
@@ -493,22 +579,36 @@
             return;
           }
 
-          // Create/update the note type
-          const updatedNoteType: NoteType = {
+          // Convert schemaType strings to proper schema objects
+          const processedProperties: Record<string, PropertyDefinition> = {};
+          Object.entries(editProperties).forEach(
+            ([key, property]: [string, any]) => {
+              const { schemaType, ...propertyWithoutSchemaType } = property;
+              processedProperties[key] = {
+                ...propertyWithoutSchemaType,
+                schema: createSchemaFromType(schemaType || "string"),
+              };
+            }
+          );
+
+          // Create the note type object
+          const noteTypeToSave = {
             id: editId,
             name: editName,
             version: editVersion,
-            properties: editProperties,
+            properties: processedProperties,
             template: editTemplate,
             metadata: {
-              ...noteType.metadata,
-              description: editDescription || undefined,
+              description: editDescription,
+              createdAt: isNew
+                ? new Date()
+                : noteType.metadata?.createdAt || new Date(),
               updatedAt: new Date(),
-              ...(isNew ? { createdAt: new Date() } : {}),
             },
           };
 
-          const result = plugin.typeNote.registry.register(updatedNoteType, {
+          // Register the note type
+          const result = plugin.typeNote.registry.register(noteTypeToSave, {
             allowOverwrite: !isNew,
             validate: true,
           });
@@ -519,9 +619,7 @@
                 ? "Note type created successfully"
                 : "Note type updated successfully"
             );
-
-            // No cleanup needed for native Obsidian Settings components
-
+            // Return to the list view
             container.empty();
             recreateSection();
           } else {

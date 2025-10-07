@@ -13,7 +13,7 @@ test.describe("TypeNote Modal System", () => {
 
       // Navigate to Note Types section
       const noteTypesSection = page.locator(
-        '[data-testid="settings-section-note-types"]'
+        '[data-testid="settings-section-type-note"]'
       );
       await noteTypesSection.click();
 
@@ -62,7 +62,7 @@ test.describe("TypeNote Modal System", () => {
       await openTaskSyncSettings(page);
 
       const noteTypesSection = page.locator(
-        '[data-testid="settings-section-note-types"]'
+        '[data-testid="settings-section-type-note"]'
       );
       await noteTypesSection.click();
 
@@ -110,7 +110,7 @@ test.describe("TypeNote Modal System", () => {
       await openTaskSyncSettings(page);
 
       const noteTypesSection = page.locator(
-        '[data-testid="settings-section-note-types"]'
+        '[data-testid="settings-section-type-note"]'
       );
       await noteTypesSection.click();
 
@@ -153,7 +153,7 @@ test.describe("TypeNote Modal System", () => {
       await openTaskSyncSettings(page);
 
       const noteTypesSection = page.locator(
-        '[data-testid="settings-section-note-types"]'
+        '[data-testid="settings-section-type-note"]'
       );
       await noteTypesSection.click();
 
@@ -184,7 +184,7 @@ test.describe("TypeNote Modal System", () => {
       await openTaskSyncSettings(page);
 
       const noteTypesSection = page.locator(
-        '[data-testid="settings-section-note-types"]'
+        '[data-testid="settings-section-type-note"]'
       );
       await noteTypesSection.click();
 
@@ -226,7 +226,7 @@ test.describe("TypeNote Modal System", () => {
       await openTaskSyncSettings(page);
 
       const noteTypesSection = page.locator(
-        '[data-testid="settings-section-note-types"]'
+        '[data-testid="settings-section-type-note"]'
       );
       await noteTypesSection.click();
 
