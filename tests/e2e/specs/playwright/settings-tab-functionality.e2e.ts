@@ -15,6 +15,8 @@ import {
   getPluginSettingValue,
 } from "../../helpers/global";
 
+test.describe.configure({ mode: "parallel" });
+
 test.describe("Settings Tab Functionality", () => {
   test("should open settings tab and display all sections", async ({
     page,

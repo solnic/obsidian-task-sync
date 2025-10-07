@@ -20,6 +20,7 @@
     GitHubLabel,
   } from "../cache/schemas/github";
   import type { GitHubExtension } from "../extensions/GitHubExtension";
+  import { isPlanningActive } from "../stores/contextStore";
 
   interface SortField {
     key: string;
