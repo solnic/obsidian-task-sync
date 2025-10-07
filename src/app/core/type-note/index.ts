@@ -8,7 +8,8 @@
  * - Comprehensive validation with detailed error reporting
  * - Semantic version comparison utilities
  *
- * Phase 1.1: Core Types and Interfaces
+ * Phase 1.1: Core Types and Interfaces ✅
+ * Phase 1.2: Note Type Registry ✅
  */
 
 // Export all types
@@ -108,4 +109,13 @@ export {
   noteTypeMetadataSchema,
   templateMetadataSchema,
 } from "./schemas";
-
+// Export registry
+export {
+  TypeRegistry,
+  RegistryError,
+  type RegisterOptions,
+  type RetrieveOptions,
+  type SerializedNoteType,
+  type SerializedPropertyDefinition,
+  type SerializedTemplate,
+} from "./registry";
