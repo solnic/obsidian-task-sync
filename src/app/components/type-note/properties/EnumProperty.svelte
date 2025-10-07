@@ -4,8 +4,10 @@
 -->
 <script lang="ts">
   import { FieldGroup } from "../../base";
-  import type { PropertyDefinition, ValidationResult } from "../../../core/type-note/types";
-  import { z } from "zod";
+  import type {
+    PropertyDefinition,
+    ValidationResult,
+  } from "../../../core/type-note/types";
 
   interface Props {
     property: PropertyDefinition;
@@ -25,25 +27,17 @@
     touched = false,
   }: Props = $props();
 
-  const hasError = $derived(touched && validationResult && !validationResult.valid && validationResult.errors.length > 0);
-  const errorMessage = $derived(hasError ? validationResult!.errors[0].message : undefined);
+  const hasError = $derived(
+    touched &&
+      validationResult &&
+      !validationResult.valid &&
+      validationResult.errors.length > 0
+  );
+  const errorMessage = $derived(
+    hasError ? validationResult!.errors[0].message : undefined
+  );
 
-  function getEnumOptions(schema: z.ZodType<any>): string[] {
-    // Extract enum options from Zod schema
-    if (schema instanceof z.ZodEnum) {
-      return schema.options;
-    }
-    if (schema instanceof z.ZodOptional) {
-      return getEnumOptions(schema.unwrap());
-    }
-    if (schema instanceof z.ZodDefault) {
-      return getEnumOptions(schema.removeDefault());
-    }
-
-    return [];
-  }
-
-  const enumOptions = $derived(getEnumOptions(property.schema));
+  const enumOptions = $derived(property.options || []);
 
   function handleChange(event: Event) {
     const target = event.target as HTMLSelectElement;

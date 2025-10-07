@@ -6,6 +6,7 @@
 import type {
   NoteType,
   NoteTypeMetadata,
+  PropertyType,
   SemanticVersion,
   ValidationResult,
 } from "./types";
@@ -78,6 +79,7 @@ export interface SerializedNoteType {
 export interface SerializedPropertyDefinition {
   key: string;
   name: string;
+  type: PropertyType; // Property type for UI rendering
   schemaType: string; // Type identifier for schema reconstruction
   frontMatterKey: string;
   required: boolean;
@@ -85,6 +87,7 @@ export interface SerializedPropertyDefinition {
   description?: string;
   visible?: boolean;
   order?: number;
+  options?: string[]; // Options for enum properties
 }
 
 /**
@@ -402,6 +405,7 @@ export class TypeRegistry {
       serializedProperties[key] = {
         key: prop.key,
         name: prop.name,
+        type: prop.type,
         schemaType: this.getSchemaType(prop.schema),
         frontMatterKey: prop.frontMatterKey,
         required: prop.required,
@@ -409,6 +413,7 @@ export class TypeRegistry {
         description: prop.description,
         visible: prop.visible,
         order: prop.order,
+        options: prop.options,
       };
     }
 

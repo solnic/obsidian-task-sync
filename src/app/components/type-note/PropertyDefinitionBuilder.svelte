@@ -1,7 +1,10 @@
 <script lang="ts">
   import { z } from "zod";
   import { FieldGroup } from "../base";
-  import type { PropertyDefinition } from "../../core/type-note/types";
+  import type {
+    PropertyDefinition,
+    PropertyType,
+  } from "../../core/type-note/types";
   import {
     stringSchema,
     numberSchema,
@@ -102,6 +105,7 @@
     const propertyDef: PropertyDefinition = {
       key: newProperty.key,
       name: newProperty.name,
+      type: newProperty.schemaType as PropertyType,
       schema,
       frontMatterKey: newProperty.frontMatterKey || newProperty.key,
       required: newProperty.required,
@@ -109,6 +113,15 @@
       visible: newProperty.visible,
       order: newProperty.order,
     };
+
+    // Add options for enum properties
+    if (newProperty.schemaType === "enum") {
+      const options = newProperty.enumOptions
+        .split(",")
+        .map((opt) => opt.trim())
+        .filter((opt) => opt);
+      propertyDef.options = options;
+    }
 
     if (newProperty.defaultValue) {
       try {

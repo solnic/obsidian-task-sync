@@ -11,6 +11,18 @@ import { z } from "zod";
 export type SemanticVersion = string;
 
 /**
+ * Property type enumeration
+ * Defines the supported property types in TypeNote
+ */
+export type PropertyType =
+  | "string"
+  | "number"
+  | "boolean"
+  | "date"
+  | "enum"
+  | "array";
+
+/**
  * Property definition with Zod schema and transformation rules
  * Defines how a single property should be validated and processed
  */
@@ -20,6 +32,9 @@ export interface PropertyDefinition {
 
   /** Human-readable name */
   name: string;
+
+  /** Property type for UI rendering and validation */
+  type: PropertyType;
 
   /** Zod schema for validation and type coercion */
   schema: z.ZodType<any>;
@@ -44,6 +59,9 @@ export interface PropertyDefinition {
 
   /** Display order in forms/UI (lower numbers first) */
   order?: number;
+
+  /** Options for enum properties */
+  options?: string[];
 }
 
 /**
@@ -157,7 +175,9 @@ export interface NoteType {
   };
 
   /** Optional validation rules that span multiple properties */
-  crossPropertyValidation?: (properties: Record<string, any>) => ValidationResult;
+  crossPropertyValidation?: (
+    properties: Record<string, any>
+  ) => ValidationResult;
 }
 
 /**
@@ -310,4 +330,3 @@ export interface TemplateProcessingResult {
   /** Processing warnings (if any) */
   warnings: ValidationWarning[];
 }
-

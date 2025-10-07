@@ -9,7 +9,10 @@ import {
   RegistryError,
 } from "../../../src/app/core/type-note/registry";
 import type { NoteType } from "../../../src/app/core/type-note/types";
-import { stringSchema, dateSchema } from "../../../src/app/core/type-note/schemas";
+import {
+  stringSchema,
+  dateSchema,
+} from "../../../src/app/core/type-note/schemas";
 
 describe("TypeRegistry", () => {
   let registry: TypeRegistry;
@@ -26,6 +29,7 @@ describe("TypeRegistry", () => {
       title: {
         key: "title",
         name: "Title",
+        type: "string",
         schema: stringSchema,
         frontMatterKey: "title",
         required: true,
@@ -33,6 +37,7 @@ describe("TypeRegistry", () => {
       dueDate: {
         key: "dueDate",
         name: "Due Date",
+        type: "date",
         schema: dateSchema,
         frontMatterKey: "due_date",
         required: false,
@@ -331,9 +336,9 @@ describe("TypeRegistry", () => {
       const result = registry.validateNoteType(noteType);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.code === "INVALID_NOTE_TYPE_NAME")).toBe(
-        true
-      );
+      expect(
+        result.errors.some((e) => e.code === "INVALID_NOTE_TYPE_NAME")
+      ).toBe(true);
     });
   });
 
@@ -389,4 +394,3 @@ describe("TypeRegistry", () => {
     });
   });
 });
-

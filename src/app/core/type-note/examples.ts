@@ -25,6 +25,7 @@ export const articleNoteType: NoteType = {
     title: {
       key: "title",
       name: "Title",
+      type: "string",
       schema: stringSchema,
       frontMatterKey: "title",
       required: true,
@@ -35,6 +36,7 @@ export const articleNoteType: NoteType = {
     author: {
       key: "author",
       name: "Author",
+      type: "string",
       schema: stringSchema,
       frontMatterKey: "author",
       required: true,
@@ -45,6 +47,7 @@ export const articleNoteType: NoteType = {
     publishDate: {
       key: "publishDate",
       name: "Publish Date",
+      type: "date",
       schema: dateSchema,
       frontMatterKey: "publish_date",
       required: false,
@@ -56,6 +59,7 @@ export const articleNoteType: NoteType = {
     tags: {
       key: "tags",
       name: "Tags",
+      type: "array",
       schema: tagsSchema,
       frontMatterKey: "tags",
       required: false,
@@ -67,6 +71,7 @@ export const articleNoteType: NoteType = {
     excerpt: {
       key: "excerpt",
       name: "Excerpt",
+      type: "string",
       schema: optionalStringSchema,
       frontMatterKey: "excerpt",
       required: false,
@@ -79,7 +84,7 @@ export const articleNoteType: NoteType = {
     version: "1.0.0",
     content: `# {{title}}
 
-**Author:** {{author}}  
+**Author:** {{author}}
 **Published:** {{publishDate}}
 
 {{excerpt}}
@@ -143,6 +148,7 @@ export const meetingNoteType: NoteType = {
     title: {
       key: "title",
       name: "Meeting Title",
+      type: "string",
       schema: stringSchema,
       frontMatterKey: "title",
       required: true,
@@ -150,6 +156,7 @@ export const meetingNoteType: NoteType = {
     date: {
       key: "date",
       name: "Meeting Date",
+      type: "date",
       schema: dateSchema,
       frontMatterKey: "date",
       required: true,
@@ -158,6 +165,7 @@ export const meetingNoteType: NoteType = {
     attendees: {
       key: "attendees",
       name: "Attendees",
+      type: "array",
       schema: z.array(z.string()).default([]),
       frontMatterKey: "attendees",
       required: false,
@@ -166,6 +174,7 @@ export const meetingNoteType: NoteType = {
     location: {
       key: "location",
       name: "Location",
+      type: "string",
       schema: optionalStringSchema,
       frontMatterKey: "location",
       required: false,
@@ -173,18 +182,25 @@ export const meetingNoteType: NoteType = {
     status: {
       key: "status",
       name: "Status",
-      schema: enumSchema(["Scheduled", "In Progress", "Completed", "Cancelled"]),
+      type: "enum",
+      schema: enumSchema([
+        "Scheduled",
+        "In Progress",
+        "Completed",
+        "Cancelled",
+      ]),
       frontMatterKey: "status",
       required: true,
       defaultValue: "Scheduled",
+      options: ["Scheduled", "In Progress", "Completed", "Cancelled"],
     },
   },
   template: {
     version: "1.0.0",
     content: `# {{title}}
 
-**Date:** {{date}}  
-**Location:** {{location}}  
+**Date:** {{date}}
+**Location:** {{location}}
 **Status:** {{status}}
 
 ## Attendees
@@ -193,15 +209,15 @@ export const meetingNoteType: NoteType = {
 
 ## Agenda
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## Notes
 
 ## Action Items
 
-- [ ] 
+- [ ]
 
 ## Decisions
 
@@ -252,6 +268,7 @@ export const bookReviewNoteType: NoteType = {
     title: {
       key: "title",
       name: "Book Title",
+      type: "string",
       schema: stringSchema,
       frontMatterKey: "title",
       required: true,
@@ -259,6 +276,7 @@ export const bookReviewNoteType: NoteType = {
     author: {
       key: "author",
       name: "Author",
+      type: "string",
       schema: stringSchema,
       frontMatterKey: "author",
       required: true,
@@ -266,6 +284,7 @@ export const bookReviewNoteType: NoteType = {
     rating: {
       key: "rating",
       name: "Rating",
+      type: "number",
       schema: z.number().min(1).max(5),
       frontMatterKey: "rating",
       required: false,
@@ -274,6 +293,7 @@ export const bookReviewNoteType: NoteType = {
     dateRead: {
       key: "dateRead",
       name: "Date Read",
+      type: "date",
       schema: dateSchema,
       frontMatterKey: "date_read",
       required: false,
@@ -281,6 +301,7 @@ export const bookReviewNoteType: NoteType = {
     genre: {
       key: "genre",
       name: "Genre",
+      type: "enum",
       schema: enumSchema([
         "Fiction",
         "Non-Fiction",
@@ -293,10 +314,21 @@ export const bookReviewNoteType: NoteType = {
       ]),
       frontMatterKey: "genre",
       required: false,
+      options: [
+        "Fiction",
+        "Non-Fiction",
+        "Science Fiction",
+        "Fantasy",
+        "Mystery",
+        "Biography",
+        "History",
+        "Other",
+      ],
     },
     tags: {
       key: "tags",
       name: "Tags",
+      type: "array",
       schema: tagsSchema,
       frontMatterKey: "tags",
       required: false,
@@ -307,26 +339,26 @@ export const bookReviewNoteType: NoteType = {
     version: "1.0.0",
     content: `# {{title}}
 
-**Author:** {{author}}  
-**Genre:** {{genre}}  
-**Rating:** {{rating}}/5 ⭐  
+**Author:** {{author}}
+**Genre:** {{genre}}
+**Rating:** {{rating}}/5 ⭐
 **Date Read:** {{dateRead}}
 
 ## Summary
 
 ## Key Takeaways
 
-- 
+-
 
 ## Favorite Quotes
 
-> 
+>
 
 ## My Thoughts
 
 ## Recommendation
 
-Would I recommend this book? 
+Would I recommend this book?
 
 `,
     variables: {
@@ -412,4 +444,3 @@ export function exampleValidateNoteType() {
 
   return result;
 }
-

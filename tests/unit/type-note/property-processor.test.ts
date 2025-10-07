@@ -33,6 +33,7 @@ describe("PropertyProcessor", () => {
       title: {
         key: "title",
         name: "Title",
+        type: "string",
         schema: stringSchema,
         frontMatterKey: "title",
         required: true,
@@ -40,6 +41,7 @@ describe("PropertyProcessor", () => {
       description: {
         key: "description",
         name: "Description",
+        type: "string",
         schema: optionalStringSchema,
         frontMatterKey: "description",
         required: false,
@@ -48,6 +50,7 @@ describe("PropertyProcessor", () => {
       priority: {
         key: "priority",
         name: "Priority",
+        type: "number",
         schema: numberSchema,
         frontMatterKey: "priority",
         required: false,
@@ -57,6 +60,7 @@ describe("PropertyProcessor", () => {
       dueDate: {
         key: "dueDate",
         name: "Due Date",
+        type: "date",
         schema: dateSchema,
         frontMatterKey: "due_date",
         required: false,
@@ -244,9 +248,9 @@ describe("PropertyProcessor", () => {
       const result = processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.code === "DEPENDENCY_VALIDATION_ERROR")).toBe(
-        true
-      );
+      expect(
+        result.errors.some((e) => e.code === "DEPENDENCY_VALIDATION_ERROR")
+      ).toBe(true);
     });
 
     test("passes when dependency is satisfied", () => {
@@ -372,7 +376,8 @@ describe("PropertyProcessor", () => {
       };
 
       processor.registerConditionalValidation(validation);
-      const unregistered = processor.unregisterConditionalValidations("description");
+      const unregistered =
+        processor.unregisterConditionalValidations("description");
 
       expect(unregistered).toBe(true);
     });
@@ -432,4 +437,3 @@ describe("PropertyProcessor", () => {
     });
   });
 });
-

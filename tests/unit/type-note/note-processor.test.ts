@@ -36,6 +36,7 @@ describe("NoteProcessor", () => {
       title: {
         key: "title",
         name: "Title",
+        type: "string",
         schema: stringSchema,
         frontMatterKey: "title",
         required: true,
@@ -43,6 +44,7 @@ describe("NoteProcessor", () => {
       description: {
         key: "description",
         name: "Description",
+        type: "string",
         schema: optionalStringSchema,
         frontMatterKey: "description",
         required: false,
@@ -51,6 +53,7 @@ describe("NoteProcessor", () => {
       priority: {
         key: "priority",
         name: "Priority",
+        type: "number",
         schema: numberSchema,
         frontMatterKey: "priority",
         required: false,
@@ -61,9 +64,9 @@ describe("NoteProcessor", () => {
       version: "1.0.0",
       content: "# {{title}}\n\n{{description}}\n\nPriority: {{priority}}",
       variables: {
-        title: { type: "string", required: true },
-        description: { type: "string", required: false },
-        priority: { type: "number", required: false },
+        title: { name: "title", defaultValue: "Untitled" },
+        description: { name: "description", defaultValue: "No description" },
+        priority: { name: "priority", defaultValue: 3 },
       },
     },
   });

@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import { z } from "zod";
   import {
     StringProperty,
     NumberProperty,
@@ -106,31 +105,14 @@
 
     onvalidationchange?.(validationResults);
   }
-
-  function getSchemaType(schema: z.ZodType<any>): string {
-    // Extract the underlying type from Zod schema
-    if (schema instanceof z.ZodString) return "string";
-    if (schema instanceof z.ZodNumber) return "number";
-    if (schema instanceof z.ZodBoolean) return "boolean";
-    if (schema instanceof z.ZodDate) return "date";
-    if (schema instanceof z.ZodEnum) return "enum";
-    if (schema instanceof z.ZodArray) return "array";
-    if (schema instanceof z.ZodOptional) return getSchemaType(schema.unwrap());
-    if (schema instanceof z.ZodDefault)
-      return getSchemaType(schema.removeDefault());
-
-    return "string"; // fallback
-  }
 </script>
 
 <div class="property-form-builder">
   {#each sortedProperties as [propertyKey, property]}
-    {@const schemaType = getSchemaType(property.schema)}
-    {@const currentValue = values[property.frontMatterKey]}
     {@const validationResult = validationResults[propertyKey]}
     {@const touched = touchedFields[propertyKey]}
 
-    {#if schemaType === "boolean"}
+    {#if property.type === "boolean"}
       <BooleanProperty
         {property}
         {propertyKey}
@@ -140,7 +122,7 @@
         {validationResult}
         {touched}
       />
-    {:else if schemaType === "number"}
+    {:else if property.type === "number"}
       <NumberProperty
         {property}
         {propertyKey}
@@ -150,7 +132,7 @@
         {validationResult}
         {touched}
       />
-    {:else if schemaType === "date"}
+    {:else if property.type === "date"}
       <DateProperty
         {property}
         {propertyKey}
@@ -160,7 +142,7 @@
         {validationResult}
         {touched}
       />
-    {:else if schemaType === "enum"}
+    {:else if property.type === "enum"}
       <EnumProperty
         {property}
         {propertyKey}
@@ -170,7 +152,7 @@
         {validationResult}
         {touched}
       />
-    {:else if schemaType === "array"}
+    {:else if property.type === "array"}
       <ArrayProperty
         {property}
         {propertyKey}
