@@ -33,7 +33,6 @@ export default defineConfig({
   },
 
   // Test execution configuration
-  fullyParallel: true,
   forbidOnly: !!isCI,
   retries: isCI ? 2 : 0,
   workers: isCI ? 6 : Math.max(2, Math.floor(os.cpus().length * 0.75)),
