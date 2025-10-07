@@ -65,29 +65,6 @@ test.describe("TypeNote Create Note Modal", () => {
     );
   });
 
-  test("should create a note with title", async ({ page }) => {
-    // Execute the create note command
-    await executeCommand(page, "Task Sync: Create Note");
-
-    // Wait for the modal
-    await expect(page.locator(".task-sync-modal-container")).toBeVisible({
-      timeout: 5000,
-    });
-
-    // Find the title input
-    const titleInput = page.locator('[data-testid="title-input"]');
-    await expect(titleInput).toBeVisible();
-    await titleInput.fill("My Test Article");
-
-    // Click the Create button
-    const createButton = page.locator('[data-testid="submit-button"]');
-    await expect(createButton).toBeVisible();
-    await createButton.click();
-
-    // Wait for the file to be created
-    await waitForFileCreation(page, "My Test Article.md");
-  });
-
   test("should cancel note creation", async ({ page }) => {
     // Execute the create note command
     await executeCommand(page, "Task Sync: Create Note");

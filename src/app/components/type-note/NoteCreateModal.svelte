@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { onMount } from "svelte";
   import PropertyFormBuilder from "./PropertyFormBuilder.svelte";
   import type { NoteType, ValidationResult } from "../../core/type-note/types";
   import type { TypeRegistry } from "../../core/type-note/registry";
@@ -23,13 +22,8 @@
   let selectedNoteTypeId = $state(
     noteTypes.length === 1 ? noteTypes[0].id : ""
   );
-  let titleValue = $state("");
   let propertyValues: Record<string, any> = $state({});
   let propertyValidation: Record<string, ValidationResult> = $state({});
-  let titleError = $state(false);
-
-  // Input elements
-  let titleInput: HTMLInputElement;
 
   // Computed
   const selectedNoteType = $derived(
@@ -38,14 +32,15 @@
   const hasValidationErrors = $derived(
     Object.values(propertyValidation).some((result) => !result.valid)
   );
-  const canSubmit = $derived(
-    selectedNoteType && titleValue.trim() && !hasValidationErrors
+
+  // Check if we have a title property value (required for file name)
+  const hasTitle = $derived(
+    propertyValues.title && String(propertyValues.title).trim().length > 0
   );
 
-  onMount(() => {
-    // Focus title input
-    titleInput?.focus();
-  });
+  const canSubmit = $derived(
+    selectedNoteType && hasTitle && !hasValidationErrors
+  );
 
   function handlePropertyValuesChange(values: Record<string, any>) {
     propertyValues = values;
@@ -60,39 +55,26 @@
   function handleSubmit() {
     if (!selectedNoteType) return;
 
-    // Validate title
-    if (!titleValue.trim()) {
-      titleError = true;
+    // Check for validation errors
+    if (hasValidationErrors) {
       return;
     }
 
-    // Check for validation errors
-    if (hasValidationErrors) {
+    // Get title from property values
+    const title = String(propertyValues.title || "").trim();
+    if (!title) {
       return;
     }
 
     onsubmit?.({
       noteType: selectedNoteType,
       properties: propertyValues,
-      title: titleValue.trim(),
+      title: title,
     });
   }
 
   function handleCancel() {
     oncancel?.();
-  }
-
-  function handleTitleInput() {
-    if (titleError && titleValue.trim()) {
-      titleError = false;
-    }
-  }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "Enter" && !hasValidationErrors && canSubmit) {
-      e.preventDefault();
-      handleSubmit();
-    }
   }
 
   function handleNoteTypeChange(e: Event) {
@@ -138,37 +120,24 @@
       </div>
     {/if}
 
-    <!-- Title input -->
-    <div class="task-sync-field">
-      <label for="note-title" class="task-sync-field-label"> Title * </label>
-      <input
-        bind:this={titleInput}
-        bind:value={titleValue}
-        id="note-title"
-        type="text"
-        placeholder="{selectedNoteType?.name || 'Note'} title"
-        class="task-sync-input"
-        class:task-sync-input-error={titleError}
-        data-testid="title-input"
-        oninput={handleTitleInput}
-        onkeydown={handleKeydown}
-      />
-      {#if titleError}
-        <span class="task-sync-error-message">Title is required</span>
+    <!-- Property form builder - renders ALL properties including title -->
+    {#if selectedNoteType}
+      {#if Object.keys(selectedNoteType.properties).length > 0}
+        <div class="properties-section">
+          <PropertyFormBuilder
+            properties={selectedNoteType.properties}
+            values={propertyValues}
+            onvalueschange={handlePropertyValuesChange}
+            onvalidationchange={handlePropertyValidationChange}
+            showOptionalProperties={true}
+          />
+        </div>
+      {:else}
+        <p class="no-properties-message">
+          This note type has no properties defined. Add properties in settings
+          to customize the form.
+        </p>
       {/if}
-    </div>
-
-    <!-- Property form builder -->
-    {#if selectedNoteType && Object.keys(selectedNoteType.properties).length > 0}
-      <div class="properties-section">
-        <PropertyFormBuilder
-          properties={selectedNoteType.properties}
-          values={propertyValues}
-          onvalueschange={handlePropertyValuesChange}
-          onvalidationchange={handlePropertyValidationChange}
-          showOptionalProperties={true}
-        />
-      </div>
     {/if}
 
     <!-- Validation errors -->
@@ -261,10 +230,10 @@
     border-color: var(--interactive-accent);
   }
 
-  .task-sync-error-message {
-    display: block;
-    margin-top: 0.25rem;
-    font-size: 0.85rem;
-    color: var(--text-error);
+  .no-properties-message {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+    font-style: italic;
   }
 </style>
