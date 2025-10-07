@@ -147,6 +147,14 @@ export {
   type NoteTypeDetectionResult,
 } from "./note-processor";
 
+// Export Obsidian property manager
+export {
+  ObsidianPropertyManager,
+  type ObsidianPropertyType,
+  type PropertyTypeInfo,
+  TYPE_NOTE_TO_OBSIDIAN_TYPE_MAP,
+} from "./obsidian-property-manager";
+
 // Export type cache
 export {
   TypeCache,

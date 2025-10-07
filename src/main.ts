@@ -24,9 +24,23 @@ import { Areas } from "./app/entities/Areas";
 import { Projects } from "./app/entities/Projects";
 // Singleton operations removed - use operations from ObsidianExtension instance
 
+// TypeNote imports
+import {
+  TypeRegistry,
+  NoteProcessor,
+  ObsidianPropertyManager,
+  PropertyProcessor,
+  TemplateEngine,
+} from "./app/core/type-note";
+
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
   public host: ObsidianHost;
+
+  // TypeNote components
+  public typeNoteRegistry: TypeRegistry;
+  public typeNoteProcessor: NoteProcessor;
+  public obsidianPropertyManager: ObsidianPropertyManager;
 
   // Expose stores for testing (like in the old implementation)
   public get stores(): {
@@ -66,6 +80,17 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize the TaskSync app with Host abstraction
     await taskSyncApp.initialize(this.host);
+
+    // Initialize TypeNote components
+    this.typeNoteRegistry = new TypeRegistry();
+    const propertyProcessor = new PropertyProcessor();
+    const templateEngine = new TemplateEngine();
+    this.typeNoteProcessor = new NoteProcessor(
+      propertyProcessor,
+      templateEngine,
+      this.typeNoteRegistry
+    );
+    this.obsidianPropertyManager = new ObsidianPropertyManager(this.app);
 
     // Call host onload to set up event handlers
     await this.host.onload();
