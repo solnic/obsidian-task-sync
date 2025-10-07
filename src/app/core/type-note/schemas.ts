@@ -33,7 +33,9 @@ export const optionalNumberSchema = z.number().optional();
 /**
  * Schema for positive number properties
  */
-export const positiveNumberSchema = z.number().positive("Value must be positive");
+export const positiveNumberSchema = z
+  .number()
+  .positive("Value must be positive");
 
 /**
  * Schema for non-negative number properties
@@ -91,7 +93,10 @@ export const emailSchema = z.string().email("Invalid email address");
 /**
  * Schema for optional email addresses
  */
-export const optionalEmailSchema = z.string().email("Invalid email address").optional();
+export const optionalEmailSchema = z
+  .string()
+  .email("Invalid email address")
+  .optional();
 
 /**
  * Schema for URLs
@@ -260,17 +265,20 @@ export function transformSchema<TInput, TOutput>(
 /**
  * Create a schema for a union of types
  */
-export function unionSchema<T extends z.ZodTypeAny[]>(...schemas: T) {
+export function unionSchema(...schemas: z.ZodTypeAny[]) {
+  if (schemas.length < 2) {
+    throw new Error("Union schema requires at least 2 schemas");
+  }
   return z.union(schemas as [z.ZodTypeAny, z.ZodTypeAny, ...z.ZodTypeAny[]]);
 }
 
 /**
  * Create a schema for an intersection of types
  */
-export function intersectionSchema<T extends z.ZodTypeAny, U extends z.ZodTypeAny>(
-  schema1: T,
-  schema2: U
-) {
+export function intersectionSchema<
+  T extends z.ZodTypeAny,
+  U extends z.ZodTypeAny
+>(schema1: T, schema2: U) {
   return z.intersection(schema1, schema2);
 }
 
@@ -288,7 +296,7 @@ export function withDefault<T extends z.ZodTypeAny>(
   schema: T,
   defaultValue: z.infer<T>
 ) {
-  return schema.default(defaultValue);
+  return schema.default(defaultValue as any);
 }
 
 /**
@@ -324,4 +332,3 @@ export const templateMetadataSchema = z.object({
   updatedAt: optionalDateSchema,
   tags: optionalTagsSchema,
 });
-

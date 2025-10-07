@@ -284,7 +284,7 @@ export class PropertyProcessor {
       return createValidResult(validatedValue);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const errors = (error.errors || []).map((err) =>
+        const errors = (error.issues || []).map((err: any) =>
           createValidationError(err.message, "SCHEMA_VALIDATION_ERROR", {
             propertyKey: propertyDef.key,
             path: err.path,
@@ -350,9 +350,13 @@ export class PropertyProcessor {
       }
     }
 
-    return errors.length > 0
-      ? createInvalidResult(errors, warnings)
-      : createValidResult({}, warnings);
+    if (errors.length > 0) {
+      return createInvalidResult(errors, warnings);
+    }
+
+    const result = createValidResult({});
+    result.warnings = warnings;
+    return result;
   }
 
   /**
@@ -384,8 +388,12 @@ export class PropertyProcessor {
       }
     }
 
-    return errors.length > 0
-      ? createInvalidResult(errors, warnings)
-      : createValidResult({}, warnings);
+    if (errors.length > 0) {
+      return createInvalidResult(errors, warnings);
+    }
+
+    const result = createValidResult({});
+    result.warnings = warnings;
+    return result;
   }
 }

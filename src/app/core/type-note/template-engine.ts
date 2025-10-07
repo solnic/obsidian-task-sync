@@ -255,16 +255,14 @@ export class TemplateEngine {
         errors.push(
           createValidationError(
             `Undefined variable in template: ${errorMsg}`,
-            "UNDEFINED_VARIABLE",
-            { error: errorMsg }
+            "UNDEFINED_VARIABLE"
           )
         );
       } else {
         errors.push(
           createValidationError(
             `Template processing error: ${error}`,
-            "TEMPLATE_PROCESSING_ERROR",
-            { error: errorMsg }
+            "TEMPLATE_PROCESSING_ERROR"
           )
         );
       }
