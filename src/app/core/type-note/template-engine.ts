@@ -199,7 +199,7 @@ export class TemplateEngine {
       );
       if (!validationResult.valid) {
         return {
-          valid: false,
+          success: false,
           errors: validationResult.errors,
           warnings: validationResult.warnings,
           content: "",
@@ -228,7 +228,7 @@ export class TemplateEngine {
           );
           // Don't continue if transformation fails
           return {
-            valid: false,
+            success: false,
             errors,
             warnings,
             content: "",
@@ -269,7 +269,7 @@ export class TemplateEngine {
         );
       }
       return {
-        valid: false,
+        success: false,
         errors,
         warnings,
         content: "",
@@ -296,7 +296,7 @@ export class TemplateEngine {
     // If we have errors, return failure
     if (errors.length > 0) {
       return {
-        valid: false,
+        success: false,
         errors,
         warnings,
         content: processedContent,
@@ -305,7 +305,7 @@ export class TemplateEngine {
 
     // Return successful result
     return {
-      valid: true,
+      success: true,
       errors: [],
       warnings,
       content: processedContent,

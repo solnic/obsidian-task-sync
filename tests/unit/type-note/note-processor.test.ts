@@ -10,6 +10,7 @@ import {
   type FrontMatterExtractionResult,
   type NoteTypeDetectionResult,
 } from "../../../src/app/core/type-note/note-processor";
+import type { TemplateProcessingResult } from "../../../src/app/core/type-note/types";
 import type { NoteType } from "../../../src/app/core/type-note/types";
 import {
   stringSchema,
@@ -94,8 +95,12 @@ This is the content of the note.`;
         description: "A test task",
         priority: 5,
       });
-      expect(result.content).toBe("# Test Task\n\nThis is the content of the note.");
-      expect(result.rawFrontMatter).toBe("title: Test Task\ndescription: A test task\npriority: 5");
+      expect(result.content).toBe(
+        "# Test Task\n\nThis is the content of the note."
+      );
+      expect(result.rawFrontMatter).toBe(
+        "title: Test Task\ndescription: A test task\npriority: 5"
+      );
     });
 
     test("handles note without front-matter", () => {
@@ -152,7 +157,10 @@ priority: 5
         title: "Test Task",
       };
 
-      const result = processor.detectNoteType(frontMatter, "tasks/test-task.md");
+      const result = processor.detectNoteType(
+        frontMatter,
+        "tasks/test-task.md"
+      );
 
       expect(result.valid).toBe(true);
       expect(result.noteType?.id).toBe("task");
@@ -199,7 +207,9 @@ This is the content of the note.`;
         description: "A test task",
         priority: 5,
       });
-      expect(result.content).toBe("# Test Task\n\nThis is the content of the note.");
+      expect(result.content).toBe(
+        "# Test Task\n\nThis is the content of the note."
+      );
     });
 
     test("fails when note type cannot be detected", () => {
@@ -232,7 +242,7 @@ priority: 5
 
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors.some(e => e.propertyKey === "title")).toBe(true);
+      expect(result.errors.some((e) => e.propertyKey === "title")).toBe(true);
     });
   });
 
@@ -247,7 +257,7 @@ priority: 5
 
       const result = processor.processTemplate(noteType, properties);
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.content).toBe("# Test Task\n\nA test task\n\nPriority: 5");
     });
 
@@ -261,7 +271,7 @@ priority: 5
 
       const result = processor.processTemplate(noteType, properties);
 
-      expect(result.valid).toBe(false);
+      expect(result.success).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
     });
   });

@@ -66,7 +66,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.process(template, context);
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.content).toBe("# Test Title\n\nTest Description");
     });
 
@@ -85,7 +85,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.process(template, context);
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.content).toBe("# Custom Title\n\n");
     });
 
@@ -100,7 +100,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.process(template, context);
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.content).toContain("Date:");
     });
 
@@ -112,7 +112,7 @@ describe("TemplateEngine", () => {
         allowUndefinedVariables: false,
       });
 
-      expect(result.valid).toBe(false);
+      expect(result.success).toBe(false);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].code).toBe("UNDEFINED_VARIABLE");
     });
@@ -125,7 +125,7 @@ describe("TemplateEngine", () => {
         allowUndefinedVariables: true,
       });
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.content).toBe("# Test Title\n\n");
       // Should have 2 warnings: one for undefined variable, one for unused "description" variable
       expect(result.warnings).toHaveLength(2);
@@ -139,7 +139,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.process(template, context, { escapeHtml: true });
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.content).not.toContain("<script>");
       expect(result.content).toContain("&lt;script&gt;");
     });
@@ -155,7 +155,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.process(template, context);
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.warnings.some((w) => w.code === "UNUSED_VARIABLE")).toBe(
         true
       );
@@ -174,7 +174,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.process(template, context);
 
-      expect(result.valid).toBe(false);
+      expect(result.success).toBe(false);
       expect(result.errors[0].code).toBe("TRANSFORMATION_ERROR");
     });
 
@@ -187,7 +187,7 @@ describe("TemplateEngine", () => {
         allowUndefinedVariables: true,
       });
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
     });
   });
 
@@ -198,7 +198,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.validateVariables(template, variables);
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     test("reports missing variables without defaults", () => {
@@ -212,7 +212,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.validateVariables(template, variables);
 
-      expect(result.valid).toBe(false);
+      expect(result.success).toBe(false);
       expect(result.errors[0].code).toBe("MISSING_VARIABLE");
     });
 
@@ -223,7 +223,7 @@ describe("TemplateEngine", () => {
       const result = engine.validateVariables(template, variables);
 
       // Should be valid because all variables have defaults
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.errors).toHaveLength(0);
     });
   });
@@ -264,7 +264,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.validateTemplate(template);
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
     });
 
     test("rejects template without version", () => {
@@ -272,7 +272,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.validateTemplate(template);
 
-      expect(result.valid).toBe(false);
+      expect(result.success).toBe(false);
       expect(result.errors[0].code).toBe("MISSING_TEMPLATE_VERSION");
     });
 
@@ -281,7 +281,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.validateTemplate(template);
 
-      expect(result.valid).toBe(false);
+      expect(result.success).toBe(false);
       expect(result.errors[0].code).toBe("MISSING_TEMPLATE_CONTENT");
     });
 
@@ -290,7 +290,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.validateTemplate(template);
 
-      expect(result.valid).toBe(false);
+      expect(result.success).toBe(false);
       expect(result.errors[0].code).toBe("UNDEFINED_TEMPLATE_VARIABLE");
     });
   });
@@ -419,7 +419,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.migrateTemplate(template, "1.0.0", "1.0.0");
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.data.content).toBe(template.content);
     });
 
@@ -428,7 +428,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.migrateTemplate(template, "2.0.0", "1.0.0");
 
-      expect(result.valid).toBe(false);
+      expect(result.success).toBe(false);
       expect(result.errors[0].code).toBe("INVALID_MIGRATION_DIRECTION");
     });
 
@@ -442,7 +442,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.migrateTemplate(template, "1.0.0", "2.0.0");
 
-      expect(result.valid).toBe(true);
+      expect(result.success).toBe(true);
       expect(result.data.content).toContain("{{newTitle}}");
     });
 
@@ -456,7 +456,7 @@ describe("TemplateEngine", () => {
 
       const result = engine.migrateTemplate(template, "1.0.0", "2.0.0");
 
-      expect(result.valid).toBe(false);
+      expect(result.success).toBe(false);
       expect(result.errors[0].code).toBe("MIGRATION_ERROR");
     });
   });

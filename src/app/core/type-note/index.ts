@@ -137,3 +137,12 @@ export {
   type PropertyDependency,
   type ConditionalValidation,
 } from "./property-processor";
+
+// Export note processor
+export {
+  NoteProcessor,
+  type NoteProcessingOptions,
+  type NoteProcessingResult,
+  type FrontMatterExtractionResult,
+  type NoteTypeDetectionResult,
+} from "./note-processor";
