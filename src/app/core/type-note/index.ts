@@ -155,6 +155,18 @@ export {
   TYPE_NOTE_TO_OBSIDIAN_TYPE_MAP,
 } from "./obsidian-property-manager";
 
+// Export bases integration
+export {
+  BasesIntegration,
+  type BasePropertyType,
+  type BaseProperty,
+  type BaseView,
+  type BaseConfig,
+  type BaseCreationOptions,
+  type BaseCreationResult,
+  TYPE_NOTE_TO_BASE_TYPE_MAP,
+} from "./bases-integration";
+
 // Export main TypeNote API
 export { TypeNote } from "./TypeNote";
 

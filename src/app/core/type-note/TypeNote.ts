@@ -9,6 +9,7 @@ import { NoteProcessor } from "./note-processor";
 import { ObsidianPropertyManager } from "./obsidian-property-manager";
 import { PropertyProcessor } from "./property-processor";
 import { TemplateEngine } from "./template-engine";
+import { BasesIntegration } from "./bases-integration";
 
 /**
  * TypeNote main class that encapsulates all TypeNote functionality
@@ -20,22 +21,24 @@ export class TypeNote {
   public readonly templateEngine: TemplateEngine;
   public readonly noteProcessor: NoteProcessor;
   public readonly obsidianPropertyManager: ObsidianPropertyManager;
+  public readonly basesIntegration: BasesIntegration;
 
   constructor(app: App) {
     // Initialize core components
     this.registry = new TypeRegistry();
     this.propertyProcessor = new PropertyProcessor();
     this.templateEngine = new TemplateEngine();
-    
+
     // Initialize composite components that depend on core components
     this.noteProcessor = new NoteProcessor(
       this.propertyProcessor,
       this.templateEngine,
       this.registry
     );
-    
+
     // Initialize Obsidian-specific components
     this.obsidianPropertyManager = new ObsidianPropertyManager(app);
+    this.basesIntegration = new BasesIntegration(app, this.registry);
   }
 
   /**
