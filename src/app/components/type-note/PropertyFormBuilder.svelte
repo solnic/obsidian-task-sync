@@ -27,6 +27,7 @@
   // Internal state
   let validationResults: Record<string, ValidationResult> = $state({});
   let propertyErrors: Record<string, string> = $state({});
+  let touchedFields: Record<string, boolean> = $state({});
 
   // Sort properties by order and required status
   const sortedProperties = $derived(
@@ -50,8 +51,7 @@
   onMount(() => {
     // Initialize values with defaults
     initializeValues();
-    // Initial validation
-    validateAllProperties();
+    // Don't validate on mount - only validate after user interaction
   });
 
   function initializeValues() {
@@ -84,10 +84,9 @@
 
       newValidationResults[key] = result;
 
-      if (!result.valid && result.errors.length > 0) {
+      // Only show errors for touched fields
+      if (touchedFields[key] && !result.valid && result.errors.length > 0) {
         newPropertyErrors[key] = result.errors[0].message;
-      } else {
-        delete newPropertyErrors[key];
       }
     }
 
@@ -101,6 +100,9 @@
     frontMatterKey: string,
     value: any
   ) {
+    // Mark field as touched
+    touchedFields[propertyKey] = true;
+
     values = { ...values, [frontMatterKey]: value };
     onvalueschange?.(values);
 
@@ -109,6 +111,7 @@
     const result = validateProperty(prop, value);
     validationResults[propertyKey] = result;
 
+    // Only show error if field has been touched
     if (!result.valid && result.errors.length > 0) {
       propertyErrors[propertyKey] = result.errors[0].message;
     } else {

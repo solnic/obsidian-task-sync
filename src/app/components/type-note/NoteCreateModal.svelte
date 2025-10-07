@@ -139,21 +139,6 @@
         </p>
       {/if}
     {/if}
-
-    <!-- Validation errors -->
-    {#if hasValidationErrors}
-      <div class="validation-summary">
-        <p class="validation-title">Please fix the following errors:</p>
-        <ul class="validation-errors">
-          {#each Object.entries(propertyValidation) as [key, result]}
-            {#if !result.valid}
-              {@const property = selectedNoteType?.properties[key]}
-              <li>{property?.name || key}: {result.errors[0]?.message}</li>
-            {/if}
-          {/each}
-        </ul>
-      </div>
-    {/if}
   </div>
 
   <!-- Footer -->
@@ -187,32 +172,6 @@
 
   .properties-section {
     margin-top: 1rem;
-  }
-
-  .validation-summary {
-    margin-top: 1rem;
-    padding: 1rem;
-    background: var(--background-modifier-error);
-    border: 1px solid var(--background-modifier-error-hover);
-    border-radius: 6px;
-  }
-
-  .validation-title {
-    margin: 0 0 0.5rem 0;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text-error);
-  }
-
-  .validation-errors {
-    margin: 0;
-    padding-left: 1.5rem;
-  }
-
-  .validation-errors li {
-    font-size: 0.85rem;
-    color: var(--text-error);
-    margin-bottom: 0.25rem;
   }
 
   .task-sync-select {
