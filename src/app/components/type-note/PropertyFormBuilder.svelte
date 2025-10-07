@@ -173,7 +173,7 @@
     {@const errorMessage = propertyErrors[propertyKey]}
 
     <FieldGroup
-      label={property.name}
+      label={schemaType === "boolean" ? "" : property.name}
       required={property.required}
       description={hasError ? errorMessage : property.description}
       error={hasError}
@@ -185,6 +185,7 @@
           <input
             id="prop-{propertyKey}"
             type="checkbox"
+            class="task-list-item-checkbox"
             checked={currentValue || false}
             onchange={(e) =>
               handleValueChange(
@@ -194,7 +195,9 @@
               )}
             data-testid="property-{propertyKey}"
           />
-          <span class="checkbox-label">{property.name}</span>
+          <span class="checkbox-label"
+            >{property.name}{property.required ? " *" : ""}</span
+          >
         </label>
       {:else if schemaType === "number"}
         <!-- Number input -->
