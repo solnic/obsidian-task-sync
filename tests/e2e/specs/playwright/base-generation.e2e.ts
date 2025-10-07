@@ -89,10 +89,16 @@ test.describe("Base Generation", () => {
     expect(baseContent).toContain('note["Done"] == false');
     expect(baseContent).toContain('note["Parent Task"] == null');
 
-    // Verify sorting configuration
+    // Verify sorting configuration (comprehensive default sort)
     expect(baseContent).toContain("sort:");
-    expect(baseContent).toContain("property: Priority");
-    expect(baseContent).toContain("direction: asc");
+    expect(baseContent).toContain("property: Done");
+    expect(baseContent).toContain("property: Project");
+    expect(baseContent).toContain("property: Category");
+    expect(baseContent).toContain("property: file.mtime");
+    expect(baseContent).toContain("property: file.ctime");
+    expect(baseContent).toContain("property: formula.Title");
+    expect(baseContent).toContain("direction: ASC");
+    expect(baseContent).toContain("direction: DESC");
   });
 
   test("should generate individual project base with correct structure", async ({

@@ -165,20 +165,44 @@ test.describe("Base Filtering and Sorting", () => {
     const baseContent = await readVaultFile(page, "Bases/Sorting Test.base");
     expect(baseContent).toBeTruthy();
 
-    // Verify sorting configuration exists
+    // Verify sorting configuration exists with comprehensive default sort
     expect(baseContent).toContain("sort:");
 
-    // Verify Priority is sorted ascending
-    const prioritySortMatch = baseContent!.match(
-      /property: Priority[\s\S]*?direction: asc/
+    // Verify Done is sorted ascending (first sort field)
+    const doneSortMatch = baseContent!.match(
+      /property: Done[\s\S]*?direction: ASC/
     );
-    expect(prioritySortMatch).toBeTruthy();
+    expect(doneSortMatch).toBeTruthy();
 
-    // Verify Created At is sorted descending
-    const createdAtSortMatch = baseContent!.match(
-      /property: Created At[\s\S]*?direction: desc/
+    // Verify Areas is sorted ascending
+    const areasSortMatch = baseContent!.match(
+      /property: Areas[\s\S]*?direction: ASC/
     );
-    expect(createdAtSortMatch).toBeTruthy();
+    expect(areasSortMatch).toBeTruthy();
+
+    // Verify Category is sorted ascending
+    const categorySortMatch = baseContent!.match(
+      /property: Category[\s\S]*?direction: ASC/
+    );
+    expect(categorySortMatch).toBeTruthy();
+
+    // Verify file.mtime (Updated At) is sorted descending
+    const mtimeSortMatch = baseContent!.match(
+      /property: file\.mtime[\s\S]*?direction: DESC/
+    );
+    expect(mtimeSortMatch).toBeTruthy();
+
+    // Verify file.ctime (Created At) is sorted descending
+    const ctimeSortMatch = baseContent!.match(
+      /property: file\.ctime[\s\S]*?direction: DESC/
+    );
+    expect(ctimeSortMatch).toBeTruthy();
+
+    // Verify formula.Title is sorted ascending (last sort field)
+    const titleSortMatch = baseContent!.match(
+      /property: formula\.Title[\s\S]*?direction: ASC/
+    );
+    expect(titleSortMatch).toBeTruthy();
   });
 
   test("should have project-specific filtering in project bases", async ({

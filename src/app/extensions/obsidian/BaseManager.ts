@@ -157,21 +157,26 @@ export class ObsidianBaseManager {
    */
   async getProjects(): Promise<ProjectAreaInfo[]> {
     const projects: ProjectAreaInfo[] = [];
-    const projectsFolder = this.vault.getAbstractFileByPath(
-      this.settings.projectsFolder
-    );
+    const projectsFolder = this.settings.projectsFolder;
 
-    if (projectsFolder instanceof TFolder) {
-      for (const child of projectsFolder.children) {
-        if (child instanceof TFile && child.extension === "md") {
-          const projectName = child.basename;
+    try {
+      // Use vault.adapter.list() to get fresh file list from filesystem
+      const folderContents = await this.vault.adapter.list(projectsFolder);
+
+      for (const filePath of folderContents.files) {
+        if (filePath.endsWith(".md")) {
+          const fileName = filePath.split("/").pop() || "";
+          const projectName = fileName.replace(".md", "");
           projects.push({
             name: projectName,
-            path: child.path,
+            path: filePath,
             type: "project",
           });
         }
       }
+    } catch (error) {
+      // Folder doesn't exist or can't be read
+      console.log(`Projects folder not found or empty: ${projectsFolder}`);
     }
 
     return projects;
@@ -182,21 +187,26 @@ export class ObsidianBaseManager {
    */
   async getAreas(): Promise<ProjectAreaInfo[]> {
     const areas: ProjectAreaInfo[] = [];
-    const areasFolder = this.vault.getAbstractFileByPath(
-      this.settings.areasFolder
-    );
+    const areasFolder = this.settings.areasFolder;
 
-    if (areasFolder instanceof TFolder) {
-      for (const child of areasFolder.children) {
-        if (child instanceof TFile && child.extension === "md") {
-          const areaName = child.basename;
+    try {
+      // Use vault.adapter.list() to get fresh file list from filesystem
+      const folderContents = await this.vault.adapter.list(areasFolder);
+
+      for (const filePath of folderContents.files) {
+        if (filePath.endsWith(".md")) {
+          const fileName = filePath.split("/").pop() || "";
+          const areaName = fileName.replace(".md", "");
           areas.push({
             name: areaName,
-            path: child.path,
+            path: filePath,
             type: "area",
           });
         }
       }
+    } catch (error) {
+      // Folder doesn't exist or can't be read
+      console.log(`Areas folder not found or empty: ${areasFolder}`);
     }
 
     return areas;

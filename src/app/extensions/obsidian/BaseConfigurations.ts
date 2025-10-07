@@ -5,16 +5,10 @@
  */
 
 import * as yaml from "js-yaml";
+import { pluralize } from "inflection";
 import { TaskSyncSettings } from "../../types/settings";
 import { PROPERTY_REGISTRY } from "./PropertyRegistry";
-import {
-  FilterCondition,
-  PropertyFilter,
-  FileSystemFilter,
-  CustomFilter,
-  CompositeFilter,
-  FilterBuilder,
-} from "../../types/filters";
+import { FilterCondition, FilterBuilder } from "../../types/filters";
 
 // ============================================================================
 // PROPERTY SETS - Define which properties are used in each base type
@@ -80,70 +74,64 @@ export const PROPERTY_SETS = {
 } as const;
 
 // ============================================================================
-// VIEW ORDERS - Define column orders for different base types
+// VIEW ORDERS - Define column orders using property KEYS
 // ============================================================================
 
 export const VIEW_ORDERS = {
   TASKS_MAIN: [
-    "formula.Title",
-    PROPERTY_REGISTRY.CATEGORY.name,
-    PROPERTY_REGISTRY.PRIORITY.name,
-    PROPERTY_REGISTRY.AREAS.name,
-    PROPERTY_REGISTRY.PROJECT.name,
-    PROPERTY_REGISTRY.DONE.name,
-    PROPERTY_REGISTRY.STATUS.name,
-    PROPERTY_REGISTRY.DO_DATE.name,
-    PROPERTY_REGISTRY.DUE_DATE.name,
-    PROPERTY_REGISTRY.TAGS.name,
-    PROPERTY_REGISTRY.CREATED_AT.name,
-    PROPERTY_REGISTRY.UPDATED_AT.name,
-  ],
-  TASKS_TYPE: [
-    "formula.Title",
-    PROPERTY_REGISTRY.PROJECT.name,
-    PROPERTY_REGISTRY.DONE.name,
-    PROPERTY_REGISTRY.CREATED_AT.name,
-    PROPERTY_REGISTRY.UPDATED_AT.name,
-  ],
+    "DONE",
+    "TITLE",
+    "PROJECT",
+    "CATEGORY",
+    "CREATED_AT",
+    "UPDATED_AT",
+  ] as const,
+  TASKS_TYPE: ["DONE", "TITLE", "PROJECT", "CREATED_AT", "UPDATED_AT"] as const,
   AREA_MAIN: [
-    "formula.Title",
-    PROPERTY_REGISTRY.PRIORITY.name,
-    PROPERTY_REGISTRY.PROJECTS.name,
-    PROPERTY_REGISTRY.DONE.name,
-    PROPERTY_REGISTRY.STATUS.name,
-    PROPERTY_REGISTRY.TAGS.name,
-    PROPERTY_REGISTRY.CREATED_AT.name,
-    PROPERTY_REGISTRY.UPDATED_AT.name,
-  ],
+    "DONE",
+    "TITLE",
+    "PROJECTS",
+    "CATEGORY",
+    "CREATED_AT",
+    "UPDATED_AT",
+  ] as const,
   PROJECT_MAIN: [
-    "formula.Title",
-    PROPERTY_REGISTRY.PRIORITY.name,
-    PROPERTY_REGISTRY.AREAS.name,
-    PROPERTY_REGISTRY.DONE.name,
-    PROPERTY_REGISTRY.STATUS.name,
-    PROPERTY_REGISTRY.TAGS.name,
-    PROPERTY_REGISTRY.CREATED_AT.name,
-    PROPERTY_REGISTRY.UPDATED_AT.name,
-  ],
+    "DONE",
+    "TITLE",
+    "AREAS",
+    "CATEGORY",
+    "CREATED_AT",
+    "UPDATED_AT",
+  ] as const,
 } as const;
 
 // ============================================================================
-// SORT CONFIGURATIONS
+// SORT CONFIGURATIONS - Using property KEYS
 // ============================================================================
 
 export const SORT_CONFIGS = {
   TASK: [
-    { property: PROPERTY_REGISTRY.PRIORITY.name, direction: "asc" },
-    { property: PROPERTY_REGISTRY.DO_DATE.name, direction: "asc" },
-    { property: PROPERTY_REGISTRY.CREATED_AT.name, direction: "desc" },
+    { property: "DONE", direction: "ASC" as const },
+    { property: "PROJECT", direction: "ASC" as const },
+    { property: "CATEGORY", direction: "ASC" as const },
+    { property: "UPDATED_AT", direction: "DESC" as const },
+    { property: "CREATED_AT", direction: "DESC" as const },
+    { property: "TITLE", direction: "ASC" as const },
   ],
   AREA: [
-    { property: PROPERTY_REGISTRY.PRIORITY.name, direction: "asc" },
-    { property: PROPERTY_REGISTRY.CREATED_AT.name, direction: "desc" },
+    { property: "DONE", direction: "ASC" as const },
+    { property: "CATEGORY", direction: "ASC" as const },
+    { property: "UPDATED_AT", direction: "DESC" as const },
+    { property: "CREATED_AT", direction: "DESC" as const },
+    { property: "TITLE", direction: "ASC" as const },
   ],
   PROJECT: [
-    { property: PROPERTY_REGISTRY.PRIORITY.name, direction: "asc" },
-    { property: PROPERTY_REGISTRY.CREATED_AT.name, direction: "desc" },
+    { property: "DONE", direction: "ASC" as const },
+    { property: "AREAS", direction: "ASC" as const },
+    { property: "CATEGORY", direction: "ASC" as const },
+    { property: "UPDATED_AT", direction: "DESC" as const },
+    { property: "CREATED_AT", direction: "DESC" as const },
+    { property: "TITLE", direction: "ASC" as const },
   ],
 } as const;
 
@@ -230,27 +218,34 @@ export interface ProjectAreaInfo {
 // ============================================================================
 
 /**
- * Resolve view order by replacing property names with their display names
+ * Resolve property key to its source value for use in views
  */
-function resolveViewOrder(order: readonly string[]): string[] {
-  return order.map((item) => {
-    // If it's already a formula or file property, return as-is
-    if (item.startsWith("formula.") || item.startsWith("file.")) {
-      return item;
-    }
-    // Otherwise, it should be a property name from the registry
-    return item;
-  });
+function resolvePropertySource(propertyKey: string): string {
+  const prop = PROPERTY_REGISTRY[propertyKey as keyof typeof PROPERTY_REGISTRY];
+  if (!prop) return propertyKey;
+
+  // For properties with source, use the source value
+  if (prop.source) return prop.source;
+
+  // For properties without source, use the property name directly
+  return prop.name;
 }
 
 /**
- * Resolve sort configuration by ensuring property names are correct
+ * Resolve view order from property keys to source values
+ */
+function resolveViewOrder(propertyKeys: readonly string[]): string[] {
+  return propertyKeys.map(resolvePropertySource);
+}
+
+/**
+ * Resolve sort configuration from property keys to source values
  */
 function resolveSortConfig(
-  config: readonly { property: string; direction: string }[]
-): { property: string; direction: string }[] {
-  return config.map((sort) => ({
-    property: sort.property,
+  sortConfig: readonly { property: string; direction: "ASC" | "DESC" }[]
+): Array<{ property: string; direction: "ASC" | "DESC" }> {
+  return sortConfig.map((sort) => ({
+    property: resolvePropertySource(sort.property),
     direction: sort.direction,
   }));
 }
@@ -290,19 +285,6 @@ function generatePropertiesSection(
   }
 
   return properties;
-}
-
-/**
- * Simple pluralization helper
- */
-function pluralize(word: string): string {
-  if (word.endsWith("y")) {
-    return word.slice(0, -1) + "ies";
-  }
-  if (word.endsWith("s") || word.endsWith("sh") || word.endsWith("ch")) {
-    return word + "es";
-  }
-  return word + "s";
 }
 
 // ============================================================================
@@ -375,9 +357,9 @@ export function generateTasksBase(
         sort: resolveSortConfig(SORT_CONFIGS.TASK),
         columnSize: {
           "formula.Title": 382,
-          [PROPERTY_REGISTRY.TAGS.name]: 134,
-          [PROPERTY_REGISTRY.UPDATED_AT.name]: 165,
-          [PROPERTY_REGISTRY.CREATED_AT.name]: 183,
+          "note.tags": 134,
+          "file.mtime": 165,
+          "file.ctime": 183,
         },
       },
       // All task types views
@@ -445,9 +427,9 @@ export function generateAreaBase(
         sort: resolveSortConfig(SORT_CONFIGS.AREA),
         columnSize: {
           "formula.Title": 382,
-          [PROPERTY_REGISTRY.TAGS.name]: 134,
-          [PROPERTY_REGISTRY.UPDATED_AT.name]: 165,
-          [PROPERTY_REGISTRY.CREATED_AT.name]: 183,
+          "note.tags": 134,
+          "file.mtime": 165,
+          "file.ctime": 183,
         },
       },
       // All task types views
@@ -517,9 +499,9 @@ export function generateProjectBase(
         sort: resolveSortConfig(SORT_CONFIGS.PROJECT),
         columnSize: {
           "formula.Title": 382,
-          [PROPERTY_REGISTRY.TAGS.name]: 134,
-          [PROPERTY_REGISTRY.UPDATED_AT.name]: 165,
-          [PROPERTY_REGISTRY.CREATED_AT.name]: 183,
+          "note.tags": 134,
+          "file.mtime": 165,
+          "file.ctime": 183,
         },
       },
       // All task types views
