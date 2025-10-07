@@ -95,22 +95,22 @@ interface PropertyDefinition {
 - [x] Implement filtering and sorting based on typed properties
 
 ### 3.3 Template Integration
-- [ ] Implement `TemplateManager` with core Templates and Templater support
-- [ ] Create template detection and preference system (favor Templater when available)
-- [ ] Add template folder management and organization
-- [ ] Implement template application with property pre-filling
-- [ ] Create template update notifications and migration prompts
+- [x] Implement `TemplateManager` with core Templates and Templater support
+- [x] Create template detection and preference system (favor Templater when available)
+- [x] Add template folder management and organization
+- [x] Implement template application with property pre-filling
+- [x] Create template update notifications and migration prompts
 
 ---
 
 ## Phase 4: File Management and UI (Week 4-5)
 
 ### 4.1 File Operations
-- [ ] Implement `FileManager` for typed note creation and updates
-- [ ] Create safe front-matter modification using `processFrontMatter`
-- [ ] Add file watching for external changes to typed notes
-- [ ] Implement bulk operations for note type migrations
-- [ ] Create backup and rollback mechanisms for template updates
+- [x] Implement `FileManager` for typed note creation and updates
+- [x] Create safe front-matter modification using `processFrontMatter`
+- [x] Add file watching for external changes to typed notes
+- [x] Implement bulk operations for note type migrations
+- [x] Create backup and rollback mechanisms for template updates
 
 ### 4.2 Creation Modals and UI
 - [ ] Implement `NoteTypeModal` for selecting note types during creation

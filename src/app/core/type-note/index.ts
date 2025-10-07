@@ -129,6 +129,65 @@ export {
   type InheritanceResult,
 } from "./template-engine";
 
+// Export template manager
+export {
+  TemplateManager,
+  type TemplateProvider,
+  type TemplateDetectionResult,
+  type TemplateApplicationOptions,
+  type TemplateApplicationResult,
+  type TemplatePreferences,
+} from "./template-manager";
+
+// Export file manager
+export {
+  FileManager,
+  type FileCreationOptions,
+  type FileCreationResult,
+  type FileUpdateOptions,
+  type FileUpdateResult,
+  type FileValidationResult,
+} from "./file-manager";
+
+// Export front-matter processor
+export {
+  FrontMatterProcessor,
+  type FrontMatterModificationOptions,
+  type FrontMatterModificationResult,
+  type FrontMatterBackup,
+} from "./front-matter-processor";
+
+// Export file watcher
+export {
+  FileWatcher,
+  type FileChangeType,
+  type FileChangeEvent,
+  type FileWatcherOptions,
+  type FileWatcherEventHandler,
+} from "./file-watcher";
+
+// Export bulk operations
+export {
+  BulkOperations,
+  type MigrationOperationType,
+  type MigrationOperation,
+  type MigrationPlan,
+  type BulkOperationOptions,
+  type BulkOperationResult,
+  type FileMigrationResult,
+} from "./bulk-operations";
+
+// Export backup manager
+export {
+  BackupManager,
+  type BackupType,
+  type BackupEntry,
+  type BackupOptions,
+  type RestoreOptions,
+  type BackupResult,
+  type RestoreResult,
+} from "./backup-manager";
+
 // Export property processor
 export {
   PropertyProcessor,
