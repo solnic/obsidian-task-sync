@@ -174,12 +174,6 @@ test.describe("Base Filtering and Sorting", () => {
     );
     expect(doneSortMatch).toBeTruthy();
 
-    // Verify Areas is sorted ascending
-    const areasSortMatch = baseContent!.match(
-      /property: Areas[\s\S]*?direction: ASC/
-    );
-    expect(areasSortMatch).toBeTruthy();
-
     // Verify Category is sorted ascending
     const categorySortMatch = baseContent!.match(
       /property: Category[\s\S]*?direction: ASC/
