@@ -221,9 +221,13 @@ export default class TaskSyncPlugin extends Plugin {
         this.settings
       );
 
-      // Sync project bases if enabled
-      if (this.settings.projectBasesEnabled) {
-        await baseManager.syncProjectBases();
+      // Generate the main Tasks.base file
+      const projectsAndAreas = await baseManager.getProjectsAndAreas();
+      await baseManager.createOrUpdateTasksBase(projectsAndAreas);
+
+      // Generate individual area and project bases if enabled
+      if (this.settings.areaBasesEnabled || this.settings.projectBasesEnabled) {
+        await baseManager.syncAreaProjectBases();
       }
 
       console.log("Task Sync: Bases regenerated successfully");
@@ -398,21 +402,16 @@ export default class TaskSyncPlugin extends Plugin {
       // Get the BaseManager from the extension
       const baseManager = obsidianExtension.getBaseManager();
 
-      // Get all projects
-      const projects = await baseManager.getProjects();
-      console.log(`Found ${projects.length} projects to process`);
+      // Generate the main Tasks.base file
+      const projectsAndAreas = await baseManager.getProjectsAndAreas();
+      await baseManager.createOrUpdateTasksBase(projectsAndAreas);
 
-      if (projects.length === 0) {
-        new Notice("No projects found to refresh bases for");
-        return;
+      // Generate individual area and project bases if enabled
+      if (this.settings.areaBasesEnabled || this.settings.projectBasesEnabled) {
+        await baseManager.syncAreaProjectBases();
       }
 
-      // Sync project bases (creates missing and updates existing)
-      await baseManager.syncProjectBases();
-
-      new Notice(
-        `✅ Successfully refreshed ${projects.length} project base(s)`
-      );
+      new Notice("✅ Successfully refreshed bases");
       console.log("Bases refreshed successfully");
     } catch (error) {
       console.error("Failed to refresh bases:", error);
