@@ -50,10 +50,10 @@
 
   // UI state
   let showExtraFields = $state(false);
-  
-  // UI references
-  let titleInput: HTMLInputElement;
-  let descriptionTextarea: HTMLTextAreaElement;
+
+  // UI references - use $state for DOM element references in Svelte 5
+  let titleInput = $state<HTMLInputElement | undefined>(undefined);
+  let descriptionTextarea = $state<HTMLTextAreaElement | undefined>(undefined);
 
   onMount(() => {
     // Focus title input if available

@@ -119,11 +119,11 @@ interface PropertyDefinition {
 - [ ] Implement validation feedback in real-time
 - [ ] Create note type selection with search and filtering
 
-### 4.3 Management Interface
-- [ ] Implement `TypeDefinitionModal` for creating/editing note types
-- [ ] Create property definition interface with schema builder
-- [ ] Add template editor with syntax highlighting
-- [ ] Implement version management UI with migration tools
+### 4.3 Management Interface in Settings Tab
+- [x] Implement `TypeNoteSettings` section for creating/editing note types
+- [x] Create property definition interface with schema builder
+- [x] Add template editor with syntax highlighting
+- [x] Implement version management UI with migration tools
 
 ---
 

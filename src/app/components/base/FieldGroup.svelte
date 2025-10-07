@@ -1,10 +1,13 @@
 <script lang="ts">
+  import type { Snippet } from "svelte";
+
   interface Props {
     label?: string;
     required?: boolean;
     description?: string;
     error?: boolean;
     htmlFor?: string;
+    children?: Snippet;
   }
 
   let {
@@ -13,6 +16,7 @@
     description = "",
     error = false,
     htmlFor = "",
+    children,
   }: Props = $props();
 </script>
 
@@ -22,9 +26,11 @@
       {label}{required ? " *" : ""}
     </label>
   {/if}
-  
-  <slot />
-  
+
+  {#if children}
+    {@render children()}
+  {/if}
+
   {#if description}
     <div class="task-sync-field-description" class:error>
       {description}

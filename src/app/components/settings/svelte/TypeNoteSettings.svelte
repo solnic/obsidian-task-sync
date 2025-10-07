@@ -4,11 +4,16 @@
     TaskSyncSettings,
     SettingsSection,
   } from "../../../types/settings";
-  import type { TypeRegistry } from "../../../core/type-note/registry";
-  import type {
-    NoteType,
-    NoteTypeMetadata,
-  } from "../../../core/type-note/types";
+  import type { NoteType } from "../../../core/type-note/types";
+  import PropertyDefinitionBuilder from "../../type-note/PropertyDefinitionBuilder.svelte";
+  import TemplateEditor from "../../type-note/TemplateEditor.svelte";
+  import { FieldGroup } from "../../base";
+  import {
+    nextMajor,
+    nextMinor,
+    nextPatch,
+    isValidVersion,
+  } from "../../../core/type-note/version";
 
   interface Props {
     settings: TaskSyncSettings;
@@ -17,126 +22,202 @@
     plugin: any;
   }
 
-  let {
-    settings = $bindable(),
-    saveSettings,
-    section,
-    plugin,
-  }: Props = $props();
+  let { settings = $bindable(), saveSettings, plugin }: Props = $props();
 
   // State
-  let noteTypes: NoteTypeMetadata[] = $state([]);
-  let selectedNoteType: NoteType | null = $state(null);
-  let showCreateForm = $state(false);
-  let showEditForm = $state(false);
-  let typeRegistry: TypeRegistry | null = $state(null);
+  let noteTypes = $state<NoteType[]>([]);
+  let showEditor = $state(false);
+  let editingNoteType = $state<NoteType | null>(null);
+  let isNewNoteType = $state(false);
+
+  // Form state for editing
+  let formId = $state("");
+  let formName = $state("");
+  let formVersion = $state("1.0.0");
+  let formDescription = $state("");
+  let formCategory = $state("");
+  let formIcon = $state("");
+  let formColor = $state("");
+  let formProperties = $state<Record<string, any>>({});
+  let formTemplate = $state<any>({
+    version: "1.0.0",
+    content: "",
+    variables: {},
+  });
 
   onMount(() => {
-    initializeTypeRegistry();
     loadNoteTypes();
   });
 
-  function initializeTypeRegistry() {
-    // TODO: Get TypeRegistry from plugin or create one
-    // For now, we'll create a placeholder
-    console.log("TypeNote settings initialized");
-  }
-
   function loadNoteTypes() {
-    try {
-      if (typeRegistry) {
-        noteTypes = typeRegistry.getAllMetadata({ includeDeprecated: false });
-      } else {
-        noteTypes = [];
-      }
-    } catch (error) {
-      console.error("Failed to load note types:", error);
+    if (!plugin?.typeNote?.registry) {
       noteTypes = [];
+      return;
     }
+    noteTypes = plugin.typeNote.registry.getAll();
   }
 
   function handleCreateNoteType() {
-    showCreateForm = true;
-    showEditForm = false;
-    selectedNoteType = null;
+    isNewNoteType = true;
+    editingNoteType = null;
+    resetForm();
+    showEditor = true;
   }
 
-  function handleEditNoteType(noteTypeId: string) {
-    try {
-      if (typeRegistry) {
-        selectedNoteType = typeRegistry.get(noteTypeId);
-        showEditForm = true;
-        showCreateForm = false;
-      }
-    } catch (error) {
-      console.error("Failed to get note type for editing:", error);
-    }
+  function handleEditNoteType(noteType: NoteType) {
+    isNewNoteType = false;
+    editingNoteType = noteType;
+    loadFormFromNoteType(noteType);
+    showEditor = true;
   }
 
-  function handleDeleteNoteType(noteTypeId: string) {
+  function handleDeleteNoteType(noteType: NoteType) {
     if (
       confirm(
-        "Are you sure you want to delete this note type? This action cannot be undone."
+        `Are you sure you want to delete the "${noteType.name}" note type?`
       )
     ) {
-      try {
-        if (typeRegistry) {
-          typeRegistry.unregister(noteTypeId);
-          loadNoteTypes();
-        }
-      } catch (error) {
-        console.error("Failed to delete note type:", error);
-      }
+      plugin.typeNote.registry.unregister(noteType.id);
+      loadNoteTypes();
     }
   }
 
-  function handleCancelForm() {
-    showCreateForm = false;
-    showEditForm = false;
-    selectedNoteType = null;
+  function resetForm() {
+    formId = "";
+    formName = "";
+    formVersion = "1.0.0";
+    formDescription = "";
+    formCategory = "";
+    formIcon = "";
+    formColor = "";
+    formProperties = {};
+    formTemplate = {
+      version: "1.0.0",
+      content: "",
+      variables: {},
+    };
   }
 
-  function handleSaveNoteType(noteType: NoteType) {
-    try {
-      if (typeRegistry) {
-        const result = typeRegistry.register(noteType, {
-          allowOverwrite: showEditForm,
-        });
-        if (result.valid) {
-          loadNoteTypes();
-          handleCancelForm();
-        } else {
-          console.error("Failed to save note type:", result.errors);
-        }
-      }
-    } catch (error) {
-      console.error("Failed to save note type:", error);
+  function loadFormFromNoteType(noteType: NoteType) {
+    formId = noteType.id;
+    formName = noteType.name;
+    formVersion = noteType.version;
+    formDescription = noteType.metadata?.description || "";
+    formCategory = noteType.metadata?.category || "";
+    formIcon = noteType.metadata?.icon || "";
+    formColor = noteType.metadata?.color || "";
+    formProperties = { ...noteType.properties };
+    formTemplate = { ...noteType.template };
+  }
+
+  function handleSaveNoteType() {
+    if (!formId || !formName) {
+      alert("Note type ID and name are required");
+      return;
+    }
+
+    const noteType: NoteType = {
+      id: formId,
+      name: formName,
+      version: formVersion,
+      properties: formProperties,
+      template: formTemplate,
+      metadata: {
+        description: formDescription || undefined,
+        category: formCategory || undefined,
+        icon: formIcon || undefined,
+        color: formColor || undefined,
+        updatedAt: new Date(),
+        ...(isNewNoteType ? { createdAt: new Date() } : {}),
+      },
+    };
+
+    const result = plugin.typeNote.registry.register(noteType, {
+      allowOverwrite: !isNewNoteType,
+      validate: true,
+    });
+
+    if (!result.valid) {
+      alert(
+        `Failed to save note type: ${result.errors.map((e) => e.message).join(", ")}`
+      );
+      return;
+    }
+
+    showEditor = false;
+    loadNoteTypes();
+  }
+
+  function handleCancelEdit() {
+    showEditor = false;
+    editingNoteType = null;
+  }
+
+  function handlePropertiesChange(properties: Record<string, any>) {
+    formProperties = properties;
+  }
+
+  function handleTemplateChange(template: any) {
+    formTemplate = template;
+  }
+
+  function handleIdInput() {
+    // Auto-generate ID from name if empty
+    if (!formId && formName) {
+      formId = formName
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
     }
   }
 
-  function formatVersion(version: string): string {
-    return `v${version}`;
+  function handleIncrementMajor() {
+    const next = nextMajor(formVersion);
+    if (next) {
+      formVersion = next;
+    }
   }
+
+  function handleIncrementMinor() {
+    const next = nextMinor(formVersion);
+    if (next) {
+      formVersion = next;
+    }
+  }
+
+  function handleIncrementPatch() {
+    const next = nextPatch(formVersion);
+    if (next) {
+      formVersion = next;
+    }
+  }
+
+  // Get version history for the current note type
+  let versionHistory = $derived(
+    editingNoteType
+      ? plugin?.typeNote?.registry?.getVersionHistory(editingNoteType.id) || []
+      : []
+  );
+
+  // Check if version is valid
+  let isVersionValid = $derived(isValidVersion(formVersion));
 </script>
 
 <div class="type-note-settings">
-  <div class="settings-header">
-    <p class="settings-description">
-      Manage note types for structured note creation. Note types define the
-      properties, validation rules, and templates for different kinds of notes.
-    </p>
+  <div class="setting-item-description">
+    Manage note types for structured note creation. Note types define the
+    properties, validation rules, and templates for different kinds of notes.
   </div>
 
-  {#if !showCreateForm && !showEditForm}
-    <!-- Note types list -->
-    <div class="note-types-section">
-      <div class="section-header">
-        <h3>Registered Note Types</h3>
+  {#if !showEditor}
+    <!-- List of note types -->
+    <div class="note-types-list">
+      <div class="list-header">
+        <h3>Note Types</h3>
         <button
           type="button"
           class="create-button"
           onclick={handleCreateNoteType}
-          data-testid="create-note-type-button"
         >
           Create Note Type
         </button>
@@ -144,65 +225,53 @@
 
       {#if noteTypes.length === 0}
         <div class="empty-state">
-          <p>No note types registered</p>
+          <p>No note types registered yet</p>
           <p class="empty-hint">
-            Create your first note type to start using structured notes with
-            validation and templates.
+            Create your first note type to get started with structured notes.
           </p>
         </div>
       {:else}
-        <div class="note-types-list">
+        <div class="note-type-items">
           {#each noteTypes as noteType}
-            <div class="note-type-item" data-testid="note-type-{noteType.id}">
+            <div class="note-type-item">
               <div class="note-type-header">
                 <div class="note-type-info">
-                  <h4 class="note-type-name">{noteType.name}</h4>
-                  <span class="note-type-version"
-                    >{formatVersion(noteType.version)}</span
-                  >
-                  {#if noteType.category}
-                    <span class="note-type-category">{noteType.category}</span>
+                  {#if noteType.metadata?.icon}
+                    <span class="note-type-icon">{noteType.metadata.icon}</span>
                   {/if}
+                  <div>
+                    <h4 class="note-type-name">{noteType.name}</h4>
+                    <span class="note-type-id">{noteType.id}</span>
+                    <span class="note-type-version">v{noteType.version}</span>
+                  </div>
                 </div>
                 <div class="note-type-actions">
                   <button
                     type="button"
                     class="edit-button"
-                    onclick={() => handleEditNoteType(noteType.id)}
-                    data-testid="edit-note-type-{noteType.id}"
+                    onclick={() => handleEditNoteType(noteType)}
                   >
                     Edit
                   </button>
                   <button
                     type="button"
                     class="delete-button"
-                    onclick={() => handleDeleteNoteType(noteType.id)}
-                    data-testid="delete-note-type-{noteType.id}"
+                    onclick={() => handleDeleteNoteType(noteType)}
                   >
                     Delete
                   </button>
                 </div>
               </div>
-
-              {#if noteType.description}
-                <p class="note-type-description">{noteType.description}</p>
+              {#if noteType.metadata?.description}
+                <p class="note-type-description">
+                  {noteType.metadata.description}
+                </p>
               {/if}
-
               <div class="note-type-meta">
-                <span class="meta-item">
-                  Version: {formatVersion(noteType.version)}
-                </span>
-                {#if noteType.category}
-                  <span class="meta-item">
-                    Category: {noteType.category}
-                  </span>
-                {/if}
-                {#if noteType.tags && noteType.tags.length > 0}
-                  <div class="note-type-tags">
-                    {#each noteType.tags as tag}
-                      <span class="tag">{tag}</span>
-                    {/each}
-                  </div>
+                <span>{Object.keys(noteType.properties).length} properties</span
+                >
+                {#if noteType.metadata?.category}
+                  <span>Category: {noteType.metadata.category}</span>
                 {/if}
               </div>
             </div>
@@ -211,131 +280,166 @@
       {/if}
     </div>
   {:else}
-    <!-- Create/Edit form -->
-    <div class="note-type-form">
-      <div class="form-header">
-        <h3>{showCreateForm ? "Create" : "Edit"} Note Type</h3>
-        <button
-          type="button"
-          class="cancel-button"
-          onclick={handleCancelForm}
-          data-testid="cancel-form-button"
-        >
-          Cancel
-        </button>
-      </div>
-
-      <!-- Note Type Definition Form -->
-      <div class="note-type-definition-form">
-        <!-- Basic Information -->
-        <div class="form-section">
-          <h4>Basic Information</h4>
-          <div class="form-grid">
-            <div class="form-field">
-              <label for="note-type-id">ID *</label>
-              <input
-                id="note-type-id"
-                type="text"
-                placeholder="e.g., article, meeting, task"
-                class="form-input"
-                data-testid="note-type-id-input"
-              />
-            </div>
-            <div class="form-field">
-              <label for="note-type-name">Name *</label>
-              <input
-                id="note-type-name"
-                type="text"
-                placeholder="e.g., Article, Meeting Notes, Task"
-                class="form-input"
-                data-testid="note-type-name-input"
-              />
-            </div>
-            <div class="form-field">
-              <label for="note-type-version">Version</label>
-              <input
-                id="note-type-version"
-                type="text"
-                value="1.0.0"
-                class="form-input"
-                data-testid="note-type-version-input"
-              />
-            </div>
-            <div class="form-field">
-              <label for="note-type-category">Category</label>
-              <input
-                id="note-type-category"
-                type="text"
-                placeholder="e.g., Documentation, Planning"
-                class="form-input"
-                data-testid="note-type-category-input"
-              />
-            </div>
-          </div>
-          <div class="form-field">
-            <label for="note-type-description">Description</label>
-            <textarea
-              id="note-type-description"
-              placeholder="Describe what this note type is used for..."
-              class="form-textarea"
-              rows="3"
-              data-testid="note-type-description-input"
-            ></textarea>
-          </div>
-        </div>
-
-        <!-- Properties Section -->
-        <div class="form-section">
-          <h4>Properties</h4>
-          <p class="section-note">
-            Property definition interface with schema builder is available as a
-            separate component. Integration will be completed in the next
-            development phase.
-          </p>
-        </div>
-
-        <!-- Template Section -->
-        <div class="form-section">
-          <h4>Template</h4>
-          <p class="section-note">
-            Template editor with syntax highlighting is available as a separate
-            component. Integration will be completed in the next development
-            phase.
-          </p>
-          <div class="form-field">
-            <label for="template-content">Template Content</label>
-            <textarea
-              id="template-content"
-              placeholder="Enter your template content here...
-
-Use double curly braces for variables:
-- title for the note title
-- description for the note description
-- date for the current date"
-              class="form-textarea template-textarea"
-              rows="10"
-              data-testid="template-content-input"
-            ></textarea>
-          </div>
-        </div>
-
-        <!-- Form Actions -->
-        <div class="form-actions">
+    <!-- Note type editor -->
+    <div class="note-type-editor">
+      <div class="editor-header">
+        <h3>{isNewNoteType ? "Create" : "Edit"} Note Type</h3>
+        <div class="editor-actions">
           <button
             type="button"
             class="save-button"
-            onclick={handleCancelForm}
-            data-testid="save-note-type-button"
+            onclick={handleSaveNoteType}
           >
-            Save Note Type
+            Save
           </button>
           <button
             type="button"
             class="cancel-button"
-            onclick={handleCancelForm}
+            onclick={handleCancelEdit}
           >
             Cancel
           </button>
+        </div>
+      </div>
+
+      <div class="editor-form">
+        <!-- Basic info -->
+        <div class="form-section">
+          <h4>Basic Information</h4>
+          <div class="form-grid">
+            <FieldGroup label="Name" required={true} htmlFor="note-type-name">
+              <input
+                id="note-type-name"
+                type="text"
+                bind:value={formName}
+                oninput={handleIdInput}
+                placeholder="e.g., Meeting Note, Project Plan"
+                class="form-input"
+              />
+            </FieldGroup>
+
+            <FieldGroup label="ID" required={true} htmlFor="note-type-id">
+              <input
+                id="note-type-id"
+                type="text"
+                bind:value={formId}
+                placeholder="e.g., meeting-note, project-plan"
+                class="form-input"
+                disabled={!isNewNoteType}
+              />
+            </FieldGroup>
+
+            <FieldGroup
+              label="Version"
+              required={true}
+              htmlFor="note-type-version"
+              description={!isVersionValid
+                ? "Invalid version format (use x.y.z)"
+                : undefined}
+            >
+              <div class="version-input-group">
+                <input
+                  id="note-type-version"
+                  type="text"
+                  bind:value={formVersion}
+                  placeholder="1.0.0"
+                  class="form-input"
+                  class:invalid={!isVersionValid}
+                />
+                <div class="version-buttons">
+                  <button
+                    type="button"
+                    class="version-increment-button"
+                    onclick={handleIncrementMajor}
+                    title="Increment major version"
+                  >
+                    Major
+                  </button>
+                  <button
+                    type="button"
+                    class="version-increment-button"
+                    onclick={handleIncrementMinor}
+                    title="Increment minor version"
+                  >
+                    Minor
+                  </button>
+                  <button
+                    type="button"
+                    class="version-increment-button"
+                    onclick={handleIncrementPatch}
+                    title="Increment patch version"
+                  >
+                    Patch
+                  </button>
+                </div>
+              </div>
+              {#if versionHistory.length > 0}
+                <div class="version-history">
+                  <span class="version-history-label">History:</span>
+                  {#each versionHistory as version}
+                    <span class="version-history-item">{version}</span>
+                  {/each}
+                </div>
+              {/if}
+            </FieldGroup>
+
+            <FieldGroup label="Category" htmlFor="note-type-category">
+              <input
+                id="note-type-category"
+                type="text"
+                bind:value={formCategory}
+                placeholder="e.g., Work, Personal"
+                class="form-input"
+              />
+            </FieldGroup>
+
+            <FieldGroup label="Icon" htmlFor="note-type-icon">
+              <input
+                id="note-type-icon"
+                type="text"
+                bind:value={formIcon}
+                placeholder="e.g., 📝, 📋"
+                class="form-input"
+              />
+            </FieldGroup>
+
+            <FieldGroup label="Color" htmlFor="note-type-color">
+              <input
+                id="note-type-color"
+                type="text"
+                bind:value={formColor}
+                placeholder="e.g., blue, #3b82f6"
+                class="form-input"
+              />
+            </FieldGroup>
+          </div>
+
+          <FieldGroup label="Description" htmlFor="note-type-description">
+            <textarea
+              id="note-type-description"
+              bind:value={formDescription}
+              placeholder="Describe what this note type is for..."
+              class="form-textarea"
+              rows="3"
+            ></textarea>
+          </FieldGroup>
+        </div>
+
+        <!-- Properties -->
+        <div class="form-section">
+          <PropertyDefinitionBuilder
+            bind:properties={formProperties}
+            onpropertieschange={handlePropertiesChange}
+          />
+        </div>
+
+        <!-- Template -->
+        <div class="form-section">
+          <TemplateEditor
+            bind:template={formTemplate}
+            onchange={handleTemplateChange}
+            properties={formProperties}
+          />
         </div>
       </div>
     </div>
@@ -344,39 +448,35 @@ Use double curly braces for variables:
 
 <style>
   .type-note-settings {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+    padding: 1rem 0;
   }
 
-  .settings-description {
-    margin: 0;
+  .setting-item-description {
+    margin-bottom: 1.5rem;
     color: var(--text-muted);
     font-size: 0.9rem;
-    line-height: 1.4;
   }
 
-  .note-types-section {
+  .note-types-list {
     display: flex;
     flex-direction: column;
     gap: 1rem;
   }
 
-  .section-header {
+  .list-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 1rem;
   }
 
-  .section-header h3 {
+  .list-header h3 {
     margin: 0;
     font-size: 1.1rem;
     font-weight: 600;
   }
 
-  .create-button,
-  .save-button {
+  .create-button {
     padding: 0.5rem 1rem;
     border: none;
     border-radius: 4px;
@@ -386,14 +486,13 @@ Use double curly braces for variables:
     font-size: 0.9rem;
   }
 
-  .create-button:hover,
-  .save-button:hover {
+  .create-button:hover {
     background: var(--interactive-accent-hover);
   }
 
   .empty-state {
     text-align: center;
-    padding: 2rem;
+    padding: 3rem 1rem;
     color: var(--text-muted);
     border: 1px dashed var(--background-modifier-border);
     border-radius: 6px;
@@ -408,10 +507,10 @@ Use double curly braces for variables:
     opacity: 0.8;
   }
 
-  .note-types-list {
+  .note-type-items {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
   }
 
   .note-type-item {
@@ -425,35 +524,37 @@ Use double curly braces for variables:
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
   }
 
   .note-type-info {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
-    flex-wrap: wrap;
+  }
+
+  .note-type-icon {
+    font-size: 1.5rem;
   }
 
   .note-type-name {
-    margin: 0;
+    margin: 0 0 0.25rem 0;
     font-size: 1rem;
     font-weight: 600;
   }
 
-  .note-type-version {
+  .note-type-id {
     font-size: 0.8rem;
-    padding: 0.2rem 0.5rem;
-    background: var(--background-modifier-border);
-    border-radius: 3px;
+    color: var(--text-muted);
     font-family: var(--font-monospace);
+    margin-right: 0.5rem;
   }
 
-  .note-type-category {
+  .note-type-version {
     font-size: 0.8rem;
-    padding: 0.2rem 0.5rem;
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
+    color: var(--text-muted);
+    padding: 0.1rem 0.3rem;
+    background: var(--background-modifier-border);
     border-radius: 3px;
   }
 
@@ -463,25 +564,23 @@ Use double curly braces for variables:
   }
 
   .edit-button,
-  .delete-button,
-  .cancel-button {
+  .delete-button {
     padding: 0.25rem 0.75rem;
     border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
+    border-radius: 3px;
     background: var(--background-primary);
     color: var(--text-normal);
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
   }
 
-  .edit-button:hover,
-  .cancel-button:hover {
+  .edit-button:hover {
     background: var(--background-modifier-hover);
   }
 
   .delete-button {
-    color: var(--text-error);
     border-color: var(--text-error);
+    color: var(--text-error);
   }
 
   .delete-button:hover {
@@ -489,63 +588,72 @@ Use double curly braces for variables:
   }
 
   .note-type-description {
-    margin: 0 0 0.75rem 0;
+    margin: 0 0 0.5rem 0;
     font-size: 0.9rem;
     color: var(--text-muted);
-    line-height: 1.4;
   }
 
   .note-type-meta {
     display: flex;
-    align-items: center;
     gap: 1rem;
-    flex-wrap: wrap;
     font-size: 0.8rem;
     color: var(--text-muted);
   }
 
-  .meta-item {
+  .note-type-editor {
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    gap: 1.5rem;
   }
 
-  .note-type-tags {
-    display: flex;
-    gap: 0.25rem;
-    flex-wrap: wrap;
-  }
-
-  .tag {
-    padding: 0.1rem 0.4rem;
-    background: var(--background-modifier-border);
-    border-radius: 2px;
-    font-size: 0.7rem;
-  }
-
-  .form-header {
+  .editor-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1.5rem;
     padding-bottom: 1rem;
     border-bottom: 1px solid var(--background-modifier-border);
   }
 
-  .form-header h3 {
+  .editor-header h3 {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 600;
   }
 
-  .form-actions {
-    margin-top: 2rem;
+  .editor-actions {
     display: flex;
     gap: 0.5rem;
-    justify-content: center;
   }
 
-  /* Note Type Definition Form */
-  .note-type-definition-form {
+  .save-button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  .save-button:hover {
+    background: var(--interactive-accent-hover);
+  }
+
+  .cancel-button {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: 0.9rem;
+  }
+
+  .cancel-button:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  .editor-form {
     display: flex;
     flex-direction: column;
     gap: 2rem;
@@ -559,20 +667,10 @@ Use double curly braces for variables:
 
   .form-section h4 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--background-modifier-border);
-  }
-
-  .section-note {
-    margin: 0;
-    padding: 1rem;
-    background: var(--background-modifier-hover);
-    border-radius: 4px;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    font-style: italic;
   }
 
   .form-grid {
@@ -581,20 +679,9 @@ Use double curly braces for variables:
     gap: 1rem;
   }
 
-  .form-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .form-field label {
-    font-weight: 500;
-    font-size: 0.9rem;
-    color: var(--text-normal);
-  }
-
   .form-input,
   .form-textarea {
+    width: 100%;
     padding: 0.5rem;
     border: 1px solid var(--background-modifier-border);
     border-radius: 4px;
@@ -610,14 +697,67 @@ Use double curly braces for variables:
     box-shadow: 0 0 0 2px var(--interactive-accent-hover);
   }
 
+  .form-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
   .form-textarea {
     resize: vertical;
     font-family: var(--font-text);
-    line-height: 1.5;
   }
 
-  .template-textarea {
+  .version-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .version-buttons {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .version-increment-button {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 3px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    cursor: pointer;
+    font-size: 0.75rem;
+  }
+
+  .version-increment-button:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  .version-history {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: var(--background-secondary);
+    border-radius: 4px;
+    font-size: 0.8rem;
+  }
+
+  .version-history-label {
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .version-history-item {
+    padding: 0.1rem 0.4rem;
+    background: var(--background-modifier-border);
+    border-radius: 3px;
     font-family: var(--font-monospace);
-    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .form-input.invalid {
+    border-color: var(--text-error);
   }
 </style>

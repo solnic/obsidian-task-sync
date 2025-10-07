@@ -20,31 +20,31 @@ export type BackupType = "note-type" | "template" | "file" | "registry";
 export interface BackupEntry {
   /** Unique backup ID */
   id: string;
-  
+
   /** Type of backup */
   type: BackupType;
-  
+
   /** Backup timestamp */
   timestamp: Date;
-  
+
   /** Description of what was backed up */
   description: string;
-  
+
   /** Original data */
   originalData: any;
-  
+
   /** File path (for file backups) */
   filePath?: string;
-  
+
   /** Note type ID (for note type backups) */
   noteTypeId?: string;
-  
+
   /** Version (for versioned backups) */
   version?: SemanticVersion;
-  
+
   /** Tags for categorization */
   tags?: string[];
-  
+
   /** Whether this backup can be automatically cleaned up */
   autoCleanup?: boolean;
 }
@@ -55,13 +55,13 @@ export interface BackupEntry {
 export interface BackupOptions {
   /** Description for the backup */
   description?: string;
-  
+
   /** Tags to add to the backup */
   tags?: string[];
-  
+
   /** Whether this backup can be automatically cleaned up */
   autoCleanup?: boolean;
-  
+
   /** Maximum number of backups to keep for this item */
   maxBackups?: number;
 }
@@ -72,10 +72,10 @@ export interface BackupOptions {
 export interface RestoreOptions {
   /** Whether to create a backup before restoring */
   createBackupBeforeRestore?: boolean;
-  
+
   /** Whether to validate after restore */
   validateAfterRestore?: boolean;
-  
+
   /** Whether to force restore even if validation fails */
   forceRestore?: boolean;
 }
@@ -86,13 +86,13 @@ export interface RestoreOptions {
 export interface BackupResult {
   /** Whether backup was successful */
   success: boolean;
-  
+
   /** Backup ID if successful */
   backupId?: string;
-  
+
   /** Backup entry if successful */
   backupEntry?: BackupEntry;
-  
+
   /** Errors */
   errors?: string[];
 }
@@ -103,19 +103,19 @@ export interface BackupResult {
 export interface RestoreResult {
   /** Whether restore was successful */
   success: boolean;
-  
+
   /** Backup ID that was restored */
   backupId?: string;
-  
+
   /** Pre-restore backup ID (if created) */
   preRestoreBackupId?: string;
-  
+
   /** Validation result after restore */
   validationResult?: any;
-  
+
   /** Errors */
   errors?: string[];
-  
+
   /** Warnings */
   warnings?: string[];
 }
@@ -130,7 +130,11 @@ export class BackupManager {
   private backups: Map<string, BackupEntry> = new Map();
   private backupFolder: string;
 
-  constructor(app: App, registry: TypeRegistry, backupFolder: string = ".obsidian/type-note-backups") {
+  constructor(
+    app: App,
+    registry: TypeRegistry,
+    backupFolder: string = ".obsidian/type-note-backups"
+  ) {
     this.app = app;
     this.vault = app.vault;
     this.registry = registry;
@@ -143,7 +147,7 @@ export class BackupManager {
   async initialize(): Promise<void> {
     // Ensure backup folder exists
     await this.ensureBackupFolder();
-    
+
     // Load existing backups
     await this.loadBackups();
   }
@@ -168,7 +172,8 @@ export class BackupManager {
         id: this.generateBackupId(),
         type: "note-type",
         timestamp: new Date(),
-        description: options.description || `Backup of note type "${noteType.name}"`,
+        description:
+          options.description || `Backup of note type "${noteType.name}"`,
         originalData: this.serializeNoteType(noteType),
         noteTypeId,
         version: noteType.version,
@@ -178,10 +183,14 @@ export class BackupManager {
 
       // Save backup
       await this.saveBackup(backupEntry);
-      
+
       // Cleanup old backups if needed
       if (options.maxBackups) {
-        await this.cleanupOldBackups("note-type", noteTypeId, options.maxBackups);
+        await this.cleanupOldBackups(
+          "note-type",
+          noteTypeId,
+          options.maxBackups
+        );
       }
 
       return {
@@ -189,7 +198,6 @@ export class BackupManager {
         backupId: backupEntry.id,
         backupEntry,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -210,7 +218,9 @@ export class BackupManager {
         id: this.generateBackupId(),
         type: "template",
         timestamp: new Date(),
-        description: options.description || `Backup of template "${template.content.substring(0, 50)}..."`,
+        description:
+          options.description ||
+          `Backup of template "${template.content.substring(0, 50)}..."`,
         originalData: { ...template },
         tags: options.tags,
         autoCleanup: options.autoCleanup,
@@ -218,7 +228,7 @@ export class BackupManager {
 
       // Save backup
       await this.saveBackup(backupEntry);
-      
+
       // Cleanup old backups if needed
       if (options.maxBackups) {
         await this.cleanupOldBackups("template", undefined, options.maxBackups);
@@ -229,7 +239,6 @@ export class BackupManager {
         backupId: backupEntry.id,
         backupEntry,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -266,7 +275,7 @@ export class BackupManager {
 
       // Save backup
       await this.saveBackup(backupEntry);
-      
+
       // Cleanup old backups if needed
       if (options.maxBackups) {
         await this.cleanupOldBackups("file", file.path, options.maxBackups);
@@ -277,7 +286,6 @@ export class BackupManager {
         backupId: backupEntry.id,
         backupEntry,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -292,13 +300,17 @@ export class BackupManager {
   async backupRegistry(options: BackupOptions = {}): Promise<BackupResult> {
     try {
       const allNoteTypes = this.registry.getAll();
-      const serializedRegistry = allNoteTypes.map(nt => this.serializeNoteType(nt));
+      const serializedRegistry = allNoteTypes.map((nt) =>
+        this.serializeNoteType(nt)
+      );
 
       const backupEntry: BackupEntry = {
         id: this.generateBackupId(),
         type: "registry",
         timestamp: new Date(),
-        description: options.description || `Full registry backup (${allNoteTypes.length} note types)`,
+        description:
+          options.description ||
+          `Full registry backup (${allNoteTypes.length} note types)`,
         originalData: serializedRegistry,
         tags: options.tags,
         autoCleanup: options.autoCleanup,
@@ -306,7 +318,7 @@ export class BackupManager {
 
       // Save backup
       await this.saveBackup(backupEntry);
-      
+
       // Cleanup old backups if needed
       if (options.maxBackups) {
         await this.cleanupOldBackups("registry", undefined, options.maxBackups);
@@ -317,7 +329,6 @@ export class BackupManager {
         backupId: backupEntry.id,
         backupEntry,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -381,7 +392,6 @@ export class BackupManager {
         backupId,
         preRestoreBackupId,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -405,28 +415,30 @@ export class BackupManager {
 
     if (filter) {
       if (filter.type) {
-        backups = backups.filter(b => b.type === filter.type);
+        backups = backups.filter((b) => b.type === filter.type);
       }
       if (filter.noteTypeId) {
-        backups = backups.filter(b => b.noteTypeId === filter.noteTypeId);
+        backups = backups.filter((b) => b.noteTypeId === filter.noteTypeId);
       }
       if (filter.filePath) {
-        backups = backups.filter(b => b.filePath === filter.filePath);
+        backups = backups.filter((b) => b.filePath === filter.filePath);
       }
       if (filter.tags) {
-        backups = backups.filter(b => 
-          b.tags && filter.tags!.some(tag => b.tags!.includes(tag))
+        backups = backups.filter(
+          (b) => b.tags && filter.tags!.some((tag) => b.tags!.includes(tag))
         );
       }
       if (filter.since) {
-        backups = backups.filter(b => b.timestamp >= filter.since!);
+        backups = backups.filter((b) => b.timestamp >= filter.since!);
       }
       if (filter.until) {
-        backups = backups.filter(b => b.timestamp <= filter.until!);
+        backups = backups.filter((b) => b.timestamp <= filter.until!);
       }
     }
 
-    return backups.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    return backups.sort(
+      (a, b) => b.timestamp.getTime() - a.timestamp.getTime()
+    );
   }
 
   /**
@@ -463,8 +475,11 @@ export class BackupManager {
     identifier?: string,
     maxBackups: number = 10
   ): Promise<number> {
-    const backups = this.listBackups({ type, noteTypeId: identifier, filePath: identifier })
-      .filter(b => b.autoCleanup !== false);
+    const backups = this.listBackups({
+      type,
+      noteTypeId: identifier,
+      filePath: identifier,
+    }).filter((b) => b.autoCleanup !== false);
 
     if (backups.length <= maxBackups) {
       return 0;
@@ -489,8 +504,8 @@ export class BackupManager {
   }
 
   private async ensureBackupFolder(): Promise<void> {
-    const folder = this.vault.getAbstractFileByPath(this.backupFolder);
-    if (!folder) {
+    const exists = await this.vault.adapter.exists(this.backupFolder);
+    if (!exists) {
       await this.vault.createFolder(this.backupFolder);
     }
   }
@@ -501,26 +516,30 @@ export class BackupManager {
 
   private async saveBackup(backup: BackupEntry): Promise<void> {
     this.backups.set(backup.id, backup);
-    
+
     const backupFilePath = this.getBackupFilePath(backup.id);
     const backupData = JSON.stringify(backup, null, 2);
-    
+
     await this.vault.create(backupFilePath, backupData);
   }
 
   private async loadBackups(): Promise<void> {
     try {
-      const backupFiles = this.vault.getFiles()
-        .filter(file => file.path.startsWith(this.backupFolder) && file.extension === "json");
+      const backupFiles = this.vault
+        .getFiles()
+        .filter(
+          (file) =>
+            file.path.startsWith(this.backupFolder) && file.extension === "json"
+        );
 
       for (const file of backupFiles) {
         try {
           const content = await this.vault.read(file);
           const backup: BackupEntry = JSON.parse(content);
-          
+
           // Convert timestamp string back to Date
           backup.timestamp = new Date(backup.timestamp);
-          
+
           this.backups.set(backup.id, backup);
         } catch (error) {
           console.warn(`Failed to load backup file ${file.path}:`, error);
@@ -538,16 +557,21 @@ export class BackupManager {
     };
   }
 
-  private async createPreRestoreBackup(originalBackup: BackupEntry): Promise<BackupResult> {
+  private async createPreRestoreBackup(
+    originalBackup: BackupEntry
+  ): Promise<BackupResult> {
     const description = `Pre-restore backup before restoring ${originalBackup.id}`;
-    
+
     switch (originalBackup.type) {
       case "note-type":
         return this.backupNoteType(originalBackup.noteTypeId!, { description });
       case "registry":
         return this.backupRegistry({ description });
       default:
-        return { success: false, errors: ["Cannot create pre-restore backup for this type"] };
+        return {
+          success: false,
+          errors: ["Cannot create pre-restore backup for this type"],
+        };
     }
   }
 

@@ -34,7 +34,7 @@
   }
 
   // Determine display text
-  $: displayText = value || label || placeholder;
+  let displayText = $derived(value || label || placeholder);
 </script>
 
 <button

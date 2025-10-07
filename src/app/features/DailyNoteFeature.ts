@@ -149,7 +149,7 @@ export class DailyNoteFeature {
 
     // Ensure the daily notes folder exists
     const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
-    const folderExists = this.app.vault.getAbstractFileByPath(dailyNotesFolder);
+    const folderExists = await this.app.vault.adapter.exists(dailyNotesFolder);
 
     if (!folderExists) {
       await this.app.vault.createFolder(dailyNotesFolder);

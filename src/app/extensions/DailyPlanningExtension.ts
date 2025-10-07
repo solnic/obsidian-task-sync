@@ -689,8 +689,9 @@ export class DailyPlanningExtension implements Extension {
 
       if (!existingFile) {
         // Ensure the daily notes folder exists
-        const folderExists =
-          this.host.plugin.app.vault.getAbstractFileByPath(dailyNotesFolder);
+        const folderExists = await this.host.plugin.app.vault.adapter.exists(
+          dailyNotesFolder
+        );
         if (!folderExists) {
           await this.host.plugin.app.vault.createFolder(dailyNotesFolder);
         }

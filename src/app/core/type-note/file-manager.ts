@@ -403,12 +403,16 @@ export class FileManager {
    */
   async ensureFolder(folderPath: string): Promise<void> {
     const normalizedPath = normalizePath(folderPath);
-    const folder = this.vault.getAbstractFileByPath(normalizedPath);
+    const exists = await this.vault.adapter.exists(normalizedPath);
 
-    if (!folder) {
+    if (!exists) {
       await this.vault.createFolder(normalizedPath);
-    } else if (!(folder instanceof TFolder)) {
-      throw new Error(`Path exists but is not a folder: ${normalizedPath}`);
+    } else {
+      // Verify it's actually a folder
+      const folder = this.vault.getAbstractFileByPath(normalizedPath);
+      if (folder && !(folder instanceof TFolder)) {
+        throw new Error(`Path exists but is not a folder: ${normalizedPath}`);
+      }
     }
   }
 }

@@ -13,13 +13,12 @@
 
   interface Props {
     properties: Record<string, PropertyDefinition>;
-    onpropertieschange?: (properties: Record<string, PropertyDefinition>) => void;
+    onpropertieschange?: (
+      properties: Record<string, PropertyDefinition>
+    ) => void;
   }
 
-  let {
-    properties = $bindable({}),
-    onpropertieschange,
-  }: Props = $props();
+  let { properties = $bindable({}), onpropertieschange }: Props = $props();
 
   // Available schema types
   const schemaTypes = [
@@ -89,8 +88,8 @@
       case "enum":
         const options = newProperty.enumOptions
           .split(",")
-          .map(opt => opt.trim())
-          .filter(opt => opt);
+          .map((opt) => opt.trim())
+          .filter((opt) => opt);
         schema = enumSchema(options as [string, ...string[]]);
         break;
       case "array":
@@ -124,8 +123,8 @@
           case "array":
             propertyDef.defaultValue = newProperty.defaultValue
               .split(",")
-              .map(item => item.trim())
-              .filter(item => item);
+              .map((item) => item.trim())
+              .filter((item) => item);
             break;
           default:
             propertyDef.defaultValue = newProperty.defaultValue;
@@ -145,7 +144,11 @@
   }
 
   function handleDeleteProperty(key: string) {
-    if (confirm(`Are you sure you want to delete the "${properties[key]?.name}" property?`)) {
+    if (
+      confirm(
+        `Are you sure you want to delete the "${properties[key]?.name}" property?`
+      )
+    ) {
       const newProperties = { ...properties };
       delete newProperties[key];
       properties = newProperties;
@@ -156,13 +159,17 @@
   function handleKeyInput() {
     // Auto-generate front matter key from property key
     if (!newProperty.frontMatterKey) {
-      newProperty.frontMatterKey = newProperty.key.toLowerCase().replace(/\s+/g, "_");
+      newProperty.frontMatterKey = newProperty.key
+        .toLowerCase()
+        .replace(/\s+/g, "_");
     }
   }
 
   // Sort properties by order
-  $: sortedProperties = Object.entries(properties).sort(
-    ([, a], [, b]) => (a.order || 0) - (b.order || 0)
+  let sortedProperties = $derived(
+    Object.entries(properties).sort(
+      ([, a], [, b]) => (a.order || 0) - (b.order || 0)
+    )
   );
 </script>
 
@@ -217,7 +224,9 @@
   {:else}
     <div class="empty-properties">
       <p>No properties defined</p>
-      <p class="empty-hint">Add properties to define the structure of this note type.</p>
+      <p class="empty-hint">
+        Add properties to define the structure of this note type.
+      </p>
     </div>
   {/if}
 
@@ -225,7 +234,7 @@
   {#if showAddForm}
     <div class="add-property-form">
       <h4>Add Property</h4>
-      
+
       <div class="form-grid">
         <FieldGroup label="Property Key" required={true} htmlFor="prop-key">
           <input
@@ -275,7 +284,12 @@
         </FieldGroup>
 
         {#if newProperty.schemaType === "enum"}
-          <FieldGroup label="Options" required={true} htmlFor="prop-options" description="Comma-separated list of options">
+          <FieldGroup
+            label="Options"
+            required={true}
+            htmlFor="prop-options"
+            description="Comma-separated list of options"
+          >
             <input
               id="prop-options"
               type="text"
