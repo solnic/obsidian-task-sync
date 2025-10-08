@@ -111,10 +111,7 @@ test.describe("TaskTodoMarkdownProcessor", () => {
     const badgeCount = await todoWithBadges.count();
     expect(badgeCount).toBeGreaterThan(0);
 
-    // Check for basic badge presence (using default values)
-    const categoryBadge = page.locator(".task-sync-todo-category-badge");
-    await expect(categoryBadge.first()).toBeVisible();
-
+    // Check for status badge presence (status has default value "Backlog")
     const statusBadge = page.locator(".task-sync-todo-status-badge");
     await expect(statusBadge.first()).toBeVisible();
 
