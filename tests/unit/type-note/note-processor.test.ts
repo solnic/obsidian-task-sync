@@ -64,7 +64,7 @@ describe("NoteProcessor", () => {
       version: "1.0.0",
       content: "# {{title}}\n\n{{description}}\n\nPriority: {{priority}}",
       variables: {
-        title: { name: "title", defaultValue: "Untitled" },
+        title: { name: "title" }, // No default value since it's required
         description: { name: "description", defaultValue: "No description" },
         priority: { name: "priority", defaultValue: 3 },
       },
