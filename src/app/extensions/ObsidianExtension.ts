@@ -32,6 +32,8 @@ import type { TaskSyncSettings } from "../types/settings";
 import { ObsidianBaseManager } from "./obsidian/BaseManager";
 import { DailyNoteFeature } from "../features/DailyNoteFeature";
 import { derived, get, type Readable } from "svelte/store";
+import { TypeNote } from "../core/type-note/TypeNote";
+import { buildTaskNoteType } from "./obsidian/TaskNoteType";
 
 /**
  * Obsidian Extension Settings
@@ -68,14 +70,28 @@ export class ObsidianExtension implements Extension {
   readonly projectOperations: ObsidianProjectOperations;
   readonly taskOperations: ObsidianTaskOperations;
   readonly todoPromotionOperations: Obsidian.TodoPromotionOperations;
+  readonly typeNote: TypeNote;
 
   constructor(
     private app: App,
     private plugin: Plugin,
-    private settings: ObsidianExtensionSettings
+    private settings: ObsidianExtensionSettings,
+    typeNote?: TypeNote
   ) {
     // Initialize base manager first so it can be passed to operations
     this.baseManager = new ObsidianBaseManager(app, app.vault, settings);
+
+    // Use provided TypeNote instance or create a new one
+    // This allows sharing the TypeNote instance with the plugin for settings UI
+    this.typeNote =
+      typeNote ||
+      new TypeNote(app, {
+        preferredProvider: "core",
+        useTemplaterWhenAvailable: settings.useTemplater,
+        templateFolder: settings.templateFolder,
+        autoDetectTemplates: true,
+        showUpdateNotifications: true,
+      });
 
     this.areaOperations = new ObsidianAreaOperations(app, settings);
 
@@ -128,6 +144,15 @@ export class ObsidianExtension implements Extension {
 
       // Set up event listeners for domain events
       this.setupEventListeners();
+
+      // Note: TypeNote initialization is handled by the plugin
+      // We're using a shared TypeNote instance passed from the plugin
+
+      // Register Task note type with TypeNote
+      await this.registerTaskNoteType();
+
+      // Pass TypeNote instance to task operations
+      this.taskOperations.setTypeNote(this.typeNote);
 
       // Initialize markdown processor now that wikiLinkOperations is available
       this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
@@ -188,6 +213,9 @@ export class ObsidianExtension implements Extension {
 
     // Cleanup daily note feature
     this.dailyNoteFeature.cleanup();
+
+    // Cleanup TypeNote system
+    await this.typeNote.cleanup();
 
     eventBus.trigger({
       type: "extension.unregistered",
@@ -922,5 +950,45 @@ export class ObsidianExtension implements Extension {
         "Task todo markdown processor reference cleared (actual cleanup occurs on plugin unload)"
       );
     }
+  }
+
+  /**
+   * Register Task note type with TypeNote
+   * This creates and registers the Task note type based on current settings
+   */
+  private async registerTaskNoteType(): Promise<void> {
+    try {
+      // Build Task note type from current settings
+      const taskNoteType = buildTaskNoteType(this.settings);
+
+      // Register with TypeNote registry
+      const result = this.typeNote.registry.register(taskNoteType, {
+        allowOverwrite: true, // Allow re-registration when settings change
+        validate: true,
+        checkCompatibility: false, // Don't check compatibility on initial registration
+      });
+
+      if (!result.valid) {
+        console.error("Failed to register Task note type:", result.errors);
+        throw new Error(
+          `Task note type registration failed: ${
+            result.errors?.[0]?.message || "Unknown error"
+          }`
+        );
+      }
+
+      console.log("Task note type registered successfully with TypeNote");
+    } catch (error) {
+      console.error("Error registering Task note type:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update Task note type when settings change
+   * This should be called when task categories, priorities, or statuses are modified
+   */
+  async updateTaskNoteType(): Promise<void> {
+    await this.registerTaskNoteType();
   }
 }

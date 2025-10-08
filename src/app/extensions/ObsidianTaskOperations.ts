@@ -11,13 +11,23 @@ import { taskStore } from "../stores/taskStore";
 import { getDateString } from "../utils/dateFiltering";
 import { PROPERTY_REGISTRY } from "./obsidian/PropertyRegistry";
 import type { TaskSyncSettings } from "../types/settings";
+import type { TypeNote } from "../core/type-note/TypeNote";
 
 export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   private wikiLinkOperations: any;
+  private typeNote?: TypeNote;
 
   constructor(app: App, settings: TaskSyncSettings, wikiLinkOperations?: any) {
     super(app, settings.tasksFolder);
     this.wikiLinkOperations = wikiLinkOperations;
+  }
+
+  /**
+   * Set TypeNote instance for creating typed notes
+   * This is called by ObsidianExtension after TypeNote is initialized
+   */
+  setTypeNote(typeNote: TypeNote): void {
+    this.typeNote = typeNote;
   }
 
   /**
@@ -81,6 +91,94 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     if (taskData) {
       taskStore.upsertTask(taskData);
     }
+  }
+
+  /**
+   * Override createNote to use TypeNote when available
+   * Falls back to parent implementation if TypeNote is not set
+   */
+  async createNote(task: Task): Promise<string> {
+    // If TypeNote is available, use it to create the note
+    if (this.typeNote) {
+      return await this.createNoteWithTypeNote(task);
+    }
+
+    // Otherwise, fall back to the parent implementation
+    return await super.createNote(task);
+  }
+
+  /**
+   * Create a task note using TypeNote
+   */
+  private async createNoteWithTypeNote(task: Task): Promise<string> {
+    const fileName = this.sanitizeFileName(task.title);
+    const filePath = `${this.folder}/${fileName}.md`;
+
+    // Prepare properties for TypeNote
+    const properties = this.prepareTypeNoteProperties(task);
+
+    // Create the note using TypeNote
+    const result = await this.typeNote!.fileManager.createTypedNote("task", {
+      folder: this.folder,
+      fileName: task.title,
+      properties,
+      validateProperties: true,
+      overwrite: true, // Allow overwriting existing files
+    });
+
+    if (!result.success) {
+      throw new Error(
+        `Failed to create task note: ${
+          result.errors?.join(", ") || "Unknown error"
+        }`
+      );
+    }
+
+    // Trigger appropriate event
+    const existingFile = this.app.vault.getAbstractFileByPath(filePath);
+    if (existingFile) {
+      this.trigger("notes.updated", {
+        entityId: task.id,
+        filePath: result.filePath!,
+      });
+    } else {
+      this.trigger("notes.created", {
+        entityId: task.id,
+        filePath: result.filePath!,
+      });
+    }
+
+    return result.filePath!;
+  }
+
+  /**
+   * Prepare task properties for TypeNote
+   * Converts Task entity to TypeNote property format
+   */
+  private prepareTypeNoteProperties(task: Task): Record<string, any> {
+    // Convert project name to wiki link format
+    let projectValue = task.project || "";
+    if (projectValue && !projectValue.startsWith("[[")) {
+      const project = this.findProjectByName(projectValue);
+      if (project && project.source?.filePath) {
+        projectValue = `[[${project.source.filePath}|${projectValue}]]`;
+      }
+    }
+
+    return {
+      title: task.title,
+      category: task.category || "",
+      priority: task.priority || "",
+      status: task.status,
+      done: task.done,
+      project: projectValue,
+      areas: task.areas || [],
+      parentTask: task.parentTask || "",
+      doDate: task.doDate || undefined,
+      dueDate: task.dueDate || undefined,
+      tags: task.tags || [],
+      description: task.description || "",
+    };
   }
 
   // Implement abstract method to get entity display name for file naming
