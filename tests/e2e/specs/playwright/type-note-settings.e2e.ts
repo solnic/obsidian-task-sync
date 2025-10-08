@@ -97,11 +97,11 @@ test.describe("TypeNote Settings - Property Management", () => {
     // Note: The toggle state is managed by Obsidian's toggle component and may not reflect in DOM immediately
     // The console logs show the property.required is correctly set to true
 
-    // Verify a second property was added
-    const allPropertySettings = page
-      .locator(".setting-item-name")
-      .filter({ hasText: "New Property" });
-    await expect(allPropertySettings).toHaveCount(1); // One new property should exist
+    // Verify a second property was added by checking for property name inputs
+    const allPropertyInputs = page.locator(
+      '[data-testid^="property-name-input-"]'
+    );
+    await expect(allPropertyInputs).toHaveCount(2); // Should have 2 properties total (original + new)
   });
 
   test("should preserve type when toggling required status", async ({
@@ -119,30 +119,37 @@ test.describe("TypeNote Settings - Property Management", () => {
       .filter({ hasText: "Properties" });
     await propertiesHeading.scrollIntoViewIfNeeded();
 
-    // Find the first property
-    const firstPropertyName = page
-      .locator(".setting-item-name")
-      .filter({ hasText: "New Property" })
+    // Find the first property by its name input
+    const firstPropertyInput = page
+      .locator('[data-testid^="property-name-input-"]')
       .first();
-    await expect(firstPropertyName).toBeVisible();
+    await expect(firstPropertyInput).toBeVisible();
+    await expect(firstPropertyInput).toHaveValue("New Property");
+
+    // Get the property key from the data-testid
+    const propertyKey = await firstPropertyInput.getAttribute("data-testid");
+    const key = propertyKey?.replace("property-name-input-", "") || "";
 
     // Change the property's type to Number
-    const propertyDropdown = page
-      .locator(".setting-item")
-      .filter({ has: firstPropertyName })
-      .locator("select")
-      .first();
+    const propertyDropdown = page.locator(
+      `[data-testid="property-type-dropdown-${key}"]`
+    );
     await propertyDropdown.selectOption("number");
 
     // Verify type is Number
     await expect(propertyDropdown).toHaveValue("number");
 
     // Toggle required status
-    const propertyToggle = page
-      .locator(".setting-item")
-      .filter({ has: firstPropertyName })
-      .locator('input[type="checkbox"]')
-      .first();
+    const propertyToggleContainer = page.locator(
+      `[data-testid="property-required-toggle-${key}"]`
+    );
+    await expect(propertyToggleContainer).toBeVisible();
+
+    // Find the actual checkbox input inside the toggle container
+    const propertyToggle = propertyToggleContainer.locator(
+      'input[type="checkbox"]'
+    );
+    await expect(propertyToggle).toBeVisible();
     await propertyToggle.click();
 
     // Verify type is STILL Number (not reset to Text)
@@ -172,48 +179,69 @@ test.describe("TypeNote Settings - Property Management", () => {
       .filter({ hasText: "Properties" });
     await propertiesHeading.scrollIntoViewIfNeeded();
 
-    // Find the first property
-    const firstPropertyName = page
-      .locator(".setting-item-name")
-      .filter({ hasText: "New Property" })
+    // Find the first property by its name input
+    const firstPropertyInput = page
+      .locator('[data-testid^="property-name-input-"]')
       .first();
-    await expect(firstPropertyName).toBeVisible();
+    await expect(firstPropertyInput).toBeVisible();
+    await expect(firstPropertyInput).toHaveValue("New Property");
+
+    // Get the property key from the data-testid
+    const propertyKey = await firstPropertyInput.getAttribute("data-testid");
+    const key = propertyKey?.replace("property-name-input-", "") || "";
 
     // Toggle required status to true
-    const propertyToggle = page
-      .locator(".setting-item")
-      .filter({ has: firstPropertyName })
-      .locator('input[type="checkbox"]')
-      .first();
-    await propertyToggle.click();
+    const propertyToggleContainer = page.locator(
+      `[data-testid="property-required-toggle-${key}"]`
+    );
+    await expect(propertyToggleContainer).toBeVisible();
+    await propertyToggleContainer.click();
 
-    // Verify required is checked
-    await expect(propertyToggle).toBeChecked();
+    // Verify required is checked by checking if toggle has the checked class
+    await expect(propertyToggleContainer).toHaveClass(/is-enabled/);
 
     // Change type to Number
-    const propertyDropdown = page
-      .locator(".setting-item")
-      .filter({ has: firstPropertyName })
-      .locator("select")
-      .first();
+    const propertyDropdown = page.locator(
+      `[data-testid="property-type-dropdown-${key}"]`
+    );
+    await expect(propertyDropdown).toBeVisible();
     await propertyDropdown.selectOption("number");
 
+    // Wait for UI to recreate after type change
+    await page.waitForTimeout(500);
+
+    // Re-find the toggle after UI recreation
+    const updatedPropertyToggleContainer = page.locator(
+      `[data-testid="property-required-toggle-${key}"]`
+    );
+    await expect(updatedPropertyToggleContainer).toBeVisible();
+
     // Verify required is STILL checked (not reset to false)
-    await expect(propertyToggle).toBeChecked();
+    await expect(updatedPropertyToggleContainer).toHaveClass(/is-enabled/);
     await expect(propertyDropdown).toHaveValue("number");
 
     // Change type to Boolean
     await propertyDropdown.selectOption("boolean");
+    await page.waitForTimeout(500);
 
+    // Re-find the toggle after UI recreation
+    const booleanToggleContainer = page.locator(
+      `[data-testid="property-required-toggle-${key}"]`
+    );
     // Verify required is STILL checked
-    await expect(propertyToggle).toBeChecked();
+    await expect(booleanToggleContainer).toHaveClass(/is-enabled/);
     await expect(propertyDropdown).toHaveValue("boolean");
 
     // Change type to Date
     await propertyDropdown.selectOption("date");
+    await page.waitForTimeout(500);
 
+    // Re-find the toggle after UI recreation
+    const dateToggleContainer = page.locator(
+      `[data-testid="property-required-toggle-${key}"]`
+    );
     // Verify required is STILL checked
-    await expect(propertyToggle).toBeChecked();
+    await expect(dateToggleContainer).toHaveClass(/is-enabled/);
     await expect(propertyDropdown).toHaveValue("date");
   });
 
@@ -271,12 +299,8 @@ test.describe("TypeNote Settings - Property Management", () => {
     // Note: The toggle state is managed by Obsidian's toggle component and may not reflect in DOM immediately
     // The console logs show the property.required is correctly set to true
 
-    // Verify the setting name is updated to reflect the property name
-    const firstPropertyName = page
-      .locator(".setting-item-name")
-      .filter({ hasText: "Priority" })
-      .first();
-    await expect(firstPropertyName).toContainText("Priority");
+    // Verify the property name input shows the updated name
+    await expect(propertyNameInput).toHaveValue("Priority");
   });
 });
 

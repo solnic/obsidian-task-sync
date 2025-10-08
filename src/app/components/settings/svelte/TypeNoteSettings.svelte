@@ -4,7 +4,7 @@
     TaskSyncSettings,
   } from "../../../types/settings";
   import { Setting, Notice } from "obsidian";
-  import { onMount } from "svelte";
+  import { onMount, mount } from "svelte";
   import type TaskSyncPlugin from "../../../../main";
   import type {
     NoteType,
@@ -16,6 +16,7 @@
     booleanSchema,
     dateSchema,
   } from "../../../core/type-note/schemas";
+  import PropertySettings from "./PropertySettings.svelte";
 
   let container: HTMLElement;
 
@@ -24,9 +25,52 @@
     settings: TaskSyncSettings;
     saveSettings: (newSettings: TaskSyncSettings) => Promise<void>;
     plugin: TaskSyncPlugin;
+    typeMapping?: Record<string, string>;
   }
 
-  let { settings = $bindable(), saveSettings, plugin }: Props = $props();
+  let {
+    settings = $bindable(),
+    saveSettings,
+    plugin,
+    typeMapping = {
+      string: "Text",
+      number: "Number",
+      boolean: "Checkbox",
+      date: "Date",
+    },
+  }: Props = $props();
+
+  // Helper function to generate camelCase key from name
+  function generateKeyFromName(name: string): string {
+    if (!name) return "";
+    return name
+      .trim()
+      .replace(/[^\w\s]/g, "") // Remove special characters
+      .split(/\s+/) // Split on whitespace
+      .map((word, index) => {
+        if (index === 0) {
+          return word.toLowerCase();
+        }
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      })
+      .join("");
+  }
+
+  // Helper function to get default value for a property type
+  function getDefaultValueForType(schemaType: string): any {
+    switch (schemaType) {
+      case "string":
+        return "";
+      case "number":
+        return 0;
+      case "boolean":
+        return false;
+      case "date":
+        return ""; // Empty date input instead of today
+      default:
+        return "";
+    }
+  }
 
   // Helper function to create Zod schemas from string types
   function createSchemaFromType(schemaType: string) {
@@ -60,8 +104,8 @@
   });
 
   /**
-   * Create property management interface using native Obsidian Settings
-   * Following the pattern from TaskStatusesSettings.svelte
+   * Create property management interface using Svelte components
+   * with drag-and-drop support
    */
   function createPropertyManagementInterface(
     container: HTMLElement,
@@ -91,9 +135,9 @@
               key: newKey,
               name: "New Property",
               schemaType: "string",
-              frontMatterKey: newKey,
+              frontMatterKey: "New Property",
               required: false,
-              defaultValue: "",
+              defaultValue: getDefaultValueForType("string"),
               description: "",
               visible: true,
               order: Object.keys(properties).length,
@@ -110,128 +154,149 @@
   }
 
   /**
-   * Create settings for each property
-   * Following the pattern from TaskStatusesSettings.svelte
+   * Create settings for each property using Svelte components
+   * with drag-and-drop support
    */
+  let draggedElement: HTMLElement | null = null;
+  let draggedKey: string | null = null;
+
   function createPropertySettings(
     container: HTMLElement,
     properties: Record<string, any>
   ) {
+    // Clear container
+    container.empty();
+
+    // Get property entries and sort by order if available
+    const propertyEntries = Object.entries(properties).sort(
+      ([, a], [, b]) => (a.order || 0) - (b.order || 0)
+    );
+
     // Create settings for each property
-    Object.entries(properties).forEach(([key, property]) => {
-      const propertySetting = new Setting(container);
+    propertyEntries.forEach(([key, property]) => {
+      // Mount PropertySettings component
+      mount(PropertySettings, {
+        target: container,
+        props: {
+          propertyKey: key,
+          property: property,
+          typeMapping: typeMapping,
+          onUpdate: () => {
+            // Property was updated, no need to recreate
+          },
+          onDelete: () => {
+            // Delete the property
+            delete properties[key];
+            // Recreate the property list
+            createPropertySettings(container, properties);
+          },
+        },
+      });
 
-      // Create a more descriptive name that includes the property name
-      const propertyDisplayName = property.name || "New Property";
+      // Get the container element for drag-and-drop
+      const propertyContainer = container.lastElementChild as HTMLElement;
+      if (propertyContainer) {
+        propertyContainer.draggable = true;
+        propertyContainer.dataset.propertyKey = key;
 
-      propertySetting
-        .setName(propertyDisplayName)
-        .addText((text) => {
-          text
-            .setPlaceholder("Property name")
-            .setValue(property.name || "")
-            .onChange((value) => {
-              // Directly modify the property
-              property.name = value;
-              // Update the setting name to reflect the change
-              propertySetting.setName(value || "New Property");
-            });
-
-          // Add data-testid for e2e testing
-          text.inputEl.setAttribute(
-            "data-testid",
-            `property-name-input-${key}`
-          );
-        })
-        .addDropdown((dropdown) => {
-          dropdown
-            .addOption("string", "Text")
-            .addOption("number", "Number")
-            .addOption("boolean", "Boolean")
-            .addOption("date", "Date")
-            .setValue(property.schemaType || "string")
-            .onChange((value) => {
-              try {
-                // Directly modify the property
-                property.schemaType = value;
-                console.log(
-                  "Property schemaType changed to:",
-                  value,
-                  "for property:",
-                  property
-                );
-                // Description removed - input values show the configuration
-              } catch (error) {
-                console.error("Error in dropdown onChange:", error);
-                new Notice(`Error changing property type: ${error.message}`);
-              }
-            });
-
-          // Add data-testid for e2e testing
-          dropdown.selectEl.setAttribute(
-            "data-testid",
-            `property-type-dropdown-${key}`
-          );
-        })
-        .addToggle((toggle) => {
-          toggle
-            .setValue(property.required || false)
-            .setTooltip("Toggle to mark this property as required")
-            .onChange((value) => {
-              try {
-                // Directly modify the property
-                property.required = value;
-                console.log(
-                  "Property required changed to:",
-                  value,
-                  "for property:",
-                  property
-                );
-                // Description removed - input values show the configuration
-              } catch (error) {
-                console.error("Error in toggle onChange:", error);
-                new Notice(
-                  `Error changing property required status: ${error.message}`
-                );
-              }
-            });
-
-          // Add data-testid for e2e testing
-          toggle.toggleEl.setAttribute(
-            "data-testid",
-            `property-required-toggle-${key}`
-          );
-
-          // Add a label next to the toggle for clarity
-          const toggleContainer = toggle.toggleEl.parentElement;
-          if (toggleContainer) {
-            const label = toggleContainer.createSpan({
-              text: "Required",
-              cls: "setting-toggle-label",
-            });
-            label.style.marginLeft = "0.5rem";
-            label.style.fontSize = "0.9rem";
-            label.style.color = "var(--text-muted)";
+        // Add drag event listeners
+        propertyContainer.addEventListener("dragstart", (e) => {
+          draggedElement = propertyContainer;
+          draggedKey = key;
+          propertyContainer.classList.add("dragging");
+          if (e.dataTransfer) {
+            e.dataTransfer.effectAllowed = "move";
           }
-        })
-        .addButton((button) => {
-          button
-            .setButtonText("Delete")
-            .setWarning()
-            .onClick(() => {
-              // Delete the property
-              delete properties[key];
-              // Recreate the property list
-              container.empty();
-              createPropertySettings(container, properties);
-            });
+        });
 
-          // Add data-testid for e2e testing
-          button.buttonEl.setAttribute(
-            "data-testid",
-            `property-delete-button-${key}`
+        propertyContainer.addEventListener("dragend", () => {
+          propertyContainer.classList.remove("dragging");
+          draggedElement = null;
+          draggedKey = null;
+        });
+
+        propertyContainer.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = "move";
+          }
+
+          if (draggedElement && draggedElement !== propertyContainer) {
+            const rect = propertyContainer.getBoundingClientRect();
+            const midpoint = rect.top + rect.height / 2;
+            const insertBefore = e.clientY < midpoint;
+
+            if (insertBefore) {
+              propertyContainer.classList.add("drag-over-top");
+              propertyContainer.classList.remove("drag-over-bottom");
+            } else {
+              propertyContainer.classList.add("drag-over-bottom");
+              propertyContainer.classList.remove("drag-over-top");
+            }
+          }
+        });
+
+        propertyContainer.addEventListener("dragleave", () => {
+          propertyContainer.classList.remove(
+            "drag-over-top",
+            "drag-over-bottom"
           );
         });
+
+        propertyContainer.addEventListener("drop", (e) => {
+          e.preventDefault();
+          propertyContainer.classList.remove(
+            "drag-over-top",
+            "drag-over-bottom"
+          );
+
+          if (draggedKey && draggedKey !== key) {
+            // Reorder properties
+            const propertyKeys = Object.keys(properties);
+            const fromIndex = propertyKeys.indexOf(draggedKey);
+            const toIndex = propertyKeys.indexOf(key);
+
+            if (fromIndex !== -1 && toIndex !== -1) {
+              // Determine if we should insert before or after
+              const rect = propertyContainer.getBoundingClientRect();
+              const midpoint = rect.top + rect.height / 2;
+              const insertBefore = e.clientY < midpoint;
+
+              // Create new properties object with reordered keys
+              const newProperties: Record<string, any> = {};
+              const movedProperty = properties[draggedKey];
+
+              propertyKeys.forEach((k) => {
+                if (k === draggedKey) return; // Skip the dragged item
+
+                if (k === key) {
+                  if (insertBefore) {
+                    newProperties[draggedKey] = movedProperty;
+                    newProperties[k] = properties[k];
+                  } else {
+                    newProperties[k] = properties[k];
+                    newProperties[draggedKey] = movedProperty;
+                  }
+                } else {
+                  newProperties[k] = properties[k];
+                }
+              });
+
+              // Update order property for each item
+              Object.keys(newProperties).forEach((k, i) => {
+                newProperties[k].order = i;
+              });
+
+              // Clear and update properties
+              Object.keys(properties).forEach((k) => delete properties[k]);
+              Object.assign(properties, newProperties);
+
+              // Recreate the property list
+              createPropertySettings(container, properties);
+            }
+          }
+        });
+      }
     });
   }
 
@@ -387,12 +452,12 @@
             version: "1.0.0",
             properties: {
               [defaultPropertyKey]: {
-                key: defaultPropertyKey,
+                key: generateKeyFromName("New Property"),
                 name: "New Property",
                 schemaType: "string",
-                frontMatterKey: defaultPropertyKey,
+                frontMatterKey: "New Property",
                 required: false,
-                defaultValue: "",
+                defaultValue: getDefaultValueForType("string"),
                 description: "",
                 visible: true,
                 order: 0,
@@ -911,5 +976,92 @@
     color: var(--text-muted) !important;
     margin: 0.5rem 0 !important;
     font-style: italic !important;
+  }
+
+  /* Property container styling with drag-and-drop support */
+  :global(.property-container) {
+    display: flex !important;
+    align-items: stretch !important;
+    margin-bottom: 1rem !important;
+    border: 1px solid var(--background-modifier-border) !important;
+    border-radius: 6px !important;
+    background: var(--background-primary) !important;
+    overflow: hidden !important;
+    transition: all 0.2s ease !important;
+  }
+
+  :global(.property-container.dragging) {
+    opacity: 0.5 !important;
+  }
+
+  :global(.property-container.drag-over-top) {
+    border-top: 2px solid var(--interactive-accent) !important;
+  }
+
+  :global(.property-container.drag-over-bottom) {
+    border-bottom: 2px solid var(--interactive-accent) !important;
+  }
+
+  :global(.property-drag-handle) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 24px !important;
+    background: var(--background-modifier-border) !important;
+    color: var(--text-muted) !important;
+    cursor: grab !important;
+    font-size: 0.8rem !important;
+    line-height: 1 !important;
+    user-select: none !important;
+    border-right: 1px solid var(--background-modifier-border) !important;
+  }
+
+  :global(.property-drag-handle:hover) {
+    background: var(--background-modifier-hover) !important;
+    color: var(--text-normal) !important;
+  }
+
+  :global(.property-drag-handle:active) {
+    cursor: grabbing !important;
+  }
+
+  :global(.property-content) {
+    flex: 1 !important;
+    padding: 0 !important;
+  }
+
+  :global(.property-main-setting) {
+    border-bottom: 1px solid var(--background-modifier-border) !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  :global(.property-secondary-settings) {
+    background: var(--background-secondary) !important;
+    padding: 0.75rem 1rem !important;
+  }
+
+  :global(.property-settings-row) {
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+
+  :global(.property-settings-row .setting-item-name) {
+    font-size: 0.85rem !important;
+    color: var(--text-muted) !important;
+    font-weight: 500 !important;
+    min-width: 100px !important;
+  }
+
+  :global(.property-settings-row .setting-item-control) {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1rem !important;
+  }
+
+  :global(.setting-toggle-label) {
+    margin-left: 0.5rem !important;
+    font-size: 0.9rem !important;
+    color: var(--text-muted) !important;
   }
 </style>
