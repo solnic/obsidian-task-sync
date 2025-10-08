@@ -4,6 +4,13 @@ import * as os from "os";
 /**
  * Playwright configuration for e2e tests
  * Provides proper configuration for Electron testing with debug artifacts
+ *
+ * Note on headless mode:
+ * - Electron apps on Linux require an X server even in "headless" mode
+ * - We use xvfb-maybe (configured in package.json test:e2e script) which automatically:
+ *   - Runs xvfb on Linux when no display is available (CI/headless environments)
+ *   - Skips xvfb on macOS/Windows or when a display is already available
+ * - The viewport size is set to 1920x1080 (Full HD) for consistent test rendering
  */
 
 const isCI = process.env.CI === "true";
