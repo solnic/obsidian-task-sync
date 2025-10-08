@@ -709,9 +709,15 @@ export async function executeCommand(
   options?: { notice?: string }
 ): Promise<void> {
   await page.keyboard.press("Control+P");
-  await page.waitForSelector(".prompt-input");
+  await page.waitForSelector(".prompt-input", { state: "visible" });
   await page.fill(".prompt-input", command);
   await page.keyboard.press("Enter");
+
+  // Wait for command palette to close, indicating command has been triggered
+  await page.waitForSelector(".prompt-input", {
+    state: "hidden",
+    timeout: 5000,
+  });
 
   if (options?.notice) {
     await expectNotice(page, options.notice);
@@ -835,7 +841,7 @@ export async function openFile(
     { timeout }
   );
 
-  // Now open the file
+  // Now open the file and wait for it to become active
   await page.evaluate(async (path) => {
     const app = (window as any).app;
     const file = app.vault.getAbstractFileByPath(path);
@@ -846,20 +852,21 @@ export async function openFile(
 
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(file);
-
-    await new Promise((resolve) => {
-      const checkActive = () => {
-        if (app.workspace.getActiveFile()?.path === path) {
-          resolve(true);
-        } else {
-          setTimeout(checkActive, 50);
-        }
-      };
-      checkActive();
-    });
   }, filePath);
 
+  // Wait for the file to become the active file using Playwright's waitForFunction
+  await page.waitForFunction(
+    ({ path }) => {
+      const app = (window as any).app;
+      return app.workspace.getActiveFile()?.path === path;
+    },
+    { path: filePath },
+    { timeout: 5000 }
+  );
+
+  // Wait for the editor view to be visible
   await page.waitForSelector(".markdown-source-view, .markdown-preview-view", {
+    state: "visible",
     timeout: 5000,
   });
 }

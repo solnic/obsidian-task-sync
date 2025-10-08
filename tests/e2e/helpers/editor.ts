@@ -58,7 +58,7 @@ export async function getLine(page: Page, text: string): Promise<number> {
  * @param text - Text to search for in the editor
  */
 export async function goToLine(page: Page, text: string): Promise<void> {
-  await page.evaluate(
+  const lineNumber = await page.evaluate(
     ({ searchText }) => {
       const app = (window as any).app;
       const activeView = app.workspace.activeLeaf?.view;
@@ -93,7 +93,25 @@ export async function goToLine(page: Page, text: string): Promise<void> {
       const lineNumber = matchingLines[0];
       // Set cursor to the beginning of the line
       editor.setCursor({ line: lineNumber, ch: 0 });
+
+      return lineNumber;
     },
     { searchText: text }
+  );
+
+  // Wait for cursor position to be actually set by verifying it
+  await page.waitForFunction(
+    ({ expectedLine }) => {
+      const app = (window as any).app;
+      const activeView = app.workspace.activeLeaf?.view;
+      if (!activeView || activeView.getViewType() !== "markdown") {
+        return false;
+      }
+      const editor = activeView.editor;
+      const cursor = editor.getCursor();
+      return cursor.line === expectedLine;
+    },
+    { expectedLine: lineNumber },
+    { timeout: 2000 }
   );
 }

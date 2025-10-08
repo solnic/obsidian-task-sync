@@ -32,8 +32,21 @@ export async function setCursorPosition(
     { line, ch }
   );
 
-  // Wait a bit for the cursor to be set
-  await page.waitForTimeout(100);
+  // Wait for cursor position to be actually set by verifying it
+  await page.waitForFunction(
+    ({ expectedLine, expectedCh }) => {
+      const app = (window as any).app;
+      const activeLeaf = app.workspace.activeLeaf;
+      if (!activeLeaf || !activeLeaf.view || !activeLeaf.view.editor) {
+        return false;
+      }
+      const editor = activeLeaf.view.editor;
+      const cursor = editor.getCursor();
+      return cursor.line === expectedLine && cursor.ch === expectedCh;
+    },
+    { expectedLine: line, expectedCh: ch },
+    { timeout: 2000 }
+  );
 }
 
 /**
