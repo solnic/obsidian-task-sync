@@ -12,10 +12,16 @@ import type { NoteType } from "../core/type-note/types";
 export class NoteCreateModal extends Modal {
   private component: any = null;
   private plugin: TaskSyncPlugin;
+  private preselectedNoteTypeId?: string;
 
-  constructor(app: App, plugin: TaskSyncPlugin) {
+  constructor(
+    app: App,
+    plugin: TaskSyncPlugin,
+    preselectedNoteTypeId?: string
+  ) {
     super(app);
     this.plugin = plugin;
+    this.preselectedNoteTypeId = preselectedNoteTypeId;
   }
 
   onOpen() {
@@ -39,6 +45,7 @@ export class NoteCreateModal extends Modal {
         props: {
           typeRegistry: this.plugin.typeNote.registry,
           noteProcessor: this.plugin.typeNote.noteProcessor,
+          preselectedNoteTypeId: this.preselectedNoteTypeId,
           onsubmit: async (data: {
             noteType: NoteType;
             properties: Record<string, any>;

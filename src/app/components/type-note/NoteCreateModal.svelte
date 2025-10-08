@@ -7,6 +7,7 @@
   interface Props {
     typeRegistry: TypeRegistry;
     noteProcessor: NoteProcessor;
+    preselectedNoteTypeId?: string;
     onsubmit?: (data: {
       noteType: NoteType;
       properties: Record<string, any>;
@@ -16,14 +17,20 @@
     oncancel?: () => void;
   }
 
-  let { typeRegistry, noteProcessor, onsubmit, oncancel }: Props = $props();
+  let {
+    typeRegistry,
+    noteProcessor,
+    preselectedNoteTypeId,
+    onsubmit,
+    oncancel,
+  }: Props = $props();
 
   // Get all available note types
   const noteTypes = typeRegistry.getAll();
 
-  // Form state
+  // Form state - use preselected note type if provided, otherwise auto-select if only one type
   let selectedNoteTypeId = $state(
-    noteTypes.length === 1 ? noteTypes[0].id : ""
+    preselectedNoteTypeId || (noteTypes.length === 1 ? noteTypes[0].id : "")
   );
   let propertyValues: Record<string, any> = $state({});
   let propertyValidation: Record<string, ValidationResult> = $state({});
@@ -146,8 +153,8 @@
 
   <!-- Main content -->
   <div class="task-sync-main-content">
-    <!-- Note type selector (if multiple types) -->
-    {#if noteTypes.length > 1}
+    <!-- Note type selector (if multiple types and no preselected type) -->
+    {#if noteTypes.length > 1 && !preselectedNoteTypeId}
       <div class="task-sync-field">
         <label for="note-type-select" class="task-sync-field-label">
           Note Type *

@@ -38,6 +38,9 @@ export default class TaskSyncPlugin extends Plugin {
   // TypeNote API
   public typeNote: TypeNote;
 
+  // Track registered note type commands for cleanup
+  private registeredNoteTypeCommands: string[] = [];
+
   // Expose stores for testing (like in the old implementation)
   public get stores(): {
     taskStore: TaskStore;
@@ -156,14 +159,8 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
-    // Add command to create note
-    this.addCommand({
-      id: "create-note",
-      name: "Create Note",
-      callback: () => {
-        this.openCreateNoteModal();
-      },
-    });
+    // Register dynamic commands for each note type
+    this.registerNoteTypeCommands();
 
     // Add command to refresh bases
     this.addCommand({
@@ -517,9 +514,44 @@ export default class TaskSyncPlugin extends Plugin {
     new TaskCreateModal(this.app, this).open();
   }
 
-  async openCreateNoteModal() {
+  async openCreateNoteModal(noteTypeId?: string) {
     const { NoteCreateModal } = await import("./app/modals/NoteCreateModal");
-    new NoteCreateModal(this.app, this).open();
+    new NoteCreateModal(this.app, this, noteTypeId).open();
+  }
+
+  /**
+   * Register dynamic commands for each note type
+   * This allows users to create notes of specific types directly from the command palette
+   */
+  registerNoteTypeCommands() {
+    // Clear any previously registered commands
+    this.registeredNoteTypeCommands.forEach((commandId) => {
+      this.removeCommand(commandId);
+    });
+    this.registeredNoteTypeCommands = [];
+
+    // Get all note types from the registry
+    const noteTypes = this.typeNote.registry.getAll();
+
+    // Register a command for each note type
+    noteTypes.forEach((noteType) => {
+      const commandId = `create-note-${noteType.id}`;
+
+      this.addCommand({
+        id: commandId,
+        name: `Create ${noteType.name}`,
+        callback: () => {
+          this.openCreateNoteModal(noteType.id);
+        },
+      });
+
+      this.registeredNoteTypeCommands.push(commandId);
+    });
+
+    console.log(
+      `Registered ${noteTypes.length} note type commands:`,
+      this.registeredNoteTypeCommands
+    );
   }
 
   /**
