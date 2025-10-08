@@ -328,6 +328,26 @@
         `property-required-toggle-${propertyKey}`
       );
     });
+
+    // Hide in forms toggle
+    new Setting(propertyContent)
+      .setName("Hide in forms")
+      .setDesc("Hide this property in note creation forms")
+      .addToggle((toggle) => {
+        toggle
+          .setValue(property.form?.hidden || false)
+          .onChange((value: boolean) => {
+            if (!property.form) {
+              property.form = {};
+            }
+            property.form.hidden = value;
+            onUpdate();
+          });
+        toggle.toggleEl.setAttribute(
+          "data-testid",
+          `property-hide-in-forms-toggle-${propertyKey}`
+        );
+      });
   }
 
   onMount(() => {

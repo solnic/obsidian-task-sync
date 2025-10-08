@@ -71,6 +71,14 @@ export interface PropertyDefinition {
   link?: boolean;
   /** Options for select properties with colors */
   selectOptions?: SelectOption[];
+
+  /** Form-specific configuration */
+  form?: {
+    /** Whether to hide this property in forms */
+    hidden?: boolean;
+    /** Label to display in forms. If false, no label is shown. If string, use that label. If undefined, use property.name */
+    label?: string | false;
+  };
 }
 
 /**
@@ -122,6 +130,12 @@ export interface PropertySettingsData {
 
   /** Options for select properties with colors */
   selectOptions?: SelectOption[];
+
+  /** Form-specific configuration */
+  form?: {
+    /** Whether to hide this property in forms */
+    hidden?: boolean;
+  };
 }
 
 /**

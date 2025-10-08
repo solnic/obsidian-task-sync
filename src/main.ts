@@ -279,7 +279,13 @@ export default class TaskSyncPlugin extends Plugin {
     for (const key of existingKeys) {
       const noteType = await typeCache.get(key);
       if (noteType) {
-        typeNote.registry.register(noteType, {
+        // Reconstruct schemas from serialized note type
+        const { reconstructNoteTypeSchemas } = await import(
+          "./app/core/type-note/schema-utils"
+        );
+        const reconstructedNoteType = reconstructNoteTypeSchemas(noteType);
+
+        typeNote.registry.register(reconstructedNoteType, {
           allowOverwrite: true,
           validate: false,
         });

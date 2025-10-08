@@ -4,7 +4,10 @@
 -->
 <script lang="ts">
   import { FieldGroup } from "../../base";
-  import type { PropertyDefinition, ValidationResult } from "../../../core/type-note/types";
+  import type {
+    PropertyDefinition,
+    ValidationResult,
+  } from "../../../core/type-note/types";
 
   interface Props {
     property: PropertyDefinition;
@@ -13,6 +16,7 @@
     onvaluechange?: (value: boolean) => void;
     validationResult?: ValidationResult;
     touched?: boolean;
+    compact?: boolean;
   }
 
   let {
@@ -24,8 +28,15 @@
     touched = false,
   }: Props = $props();
 
-  const hasError = $derived(touched && validationResult && !validationResult.valid && validationResult.errors.length > 0);
-  const errorMessage = $derived(hasError ? validationResult!.errors[0].message : undefined);
+  const hasError = $derived(
+    touched &&
+      validationResult &&
+      !validationResult.valid &&
+      validationResult.errors.length > 0
+  );
+  const errorMessage = $derived(
+    hasError ? validationResult!.errors[0].message : undefined
+  );
 
   function handleChange(event: Event) {
     const target = event.target as HTMLInputElement;

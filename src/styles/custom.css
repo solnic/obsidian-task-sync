@@ -2078,6 +2078,7 @@ Provides consistent styling for all UI components
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow: visible; /* Allow dropdowns to overflow */
 }
 
 .task-sync-title-input {

@@ -17,6 +17,7 @@
     dateSchema,
     enumSchema,
   } from "../../../core/type-note/schemas";
+  import { createSchemaFromType } from "../../../core/type-note/schema-utils";
   import PropertySettings from "./PropertySettings.svelte";
   import { camelize } from "inflection";
   import { ObsidianPropertyManager } from "../../../core/type-note/obsidian-property-manager";
@@ -67,29 +68,6 @@
         return ""; // Empty date input instead of today
       default:
         return "";
-    }
-  }
-
-  // Helper function to create Zod schemas from string types
-  function createSchemaFromType(schemaType: string, selectOptions?: any[]) {
-    switch (schemaType) {
-      case "string":
-        return stringSchema;
-      case "number":
-        return numberSchema;
-      case "boolean":
-        return booleanSchema;
-      case "date":
-        return dateSchema;
-      case "select":
-        // For select type, create enum schema from options
-        if (selectOptions && selectOptions.length > 0) {
-          const values = selectOptions.map((opt) => opt.value);
-          return enumSchema(values as [string, ...string[]]);
-        }
-        return stringSchema; // Fallback if no options
-      default:
-        return stringSchema;
     }
   }
 

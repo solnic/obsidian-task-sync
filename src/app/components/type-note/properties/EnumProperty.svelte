@@ -1,9 +1,11 @@
 <!--
   Enum Property Component
   Handles select dropdown for enum properties
+  Uses the same Dropdown component as TaskCreateModal for consistency
 -->
 <script lang="ts">
   import { FieldGroup } from "../../base";
+  import Dropdown from "../../Dropdown.svelte";
   import type {
     PropertyDefinition,
     ValidationResult,
@@ -16,6 +18,7 @@
     onvaluechange?: (value: string | undefined) => void;
     validationResult?: ValidationResult;
     touched?: boolean;
+    compact?: boolean;
   }
 
   let {
@@ -25,6 +28,7 @@
     onvaluechange,
     validationResult,
     touched = false,
+    compact = false,
   }: Props = $props();
 
   const hasError = $derived(
@@ -39,34 +43,91 @@
 
   const enumOptions = $derived(property.options || []);
 
-  function handleChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    const newValue = target.value || undefined;
-    value = newValue;
-    onvaluechange?.(newValue);
+  // State for dropdown
+  let showDropdown = $state(false);
+  let buttonEl: HTMLButtonElement | null = $state(null);
+
+  // Create dropdown items
+  const dropdownItems = $derived(
+    enumOptions.map((option) => ({
+      value: option,
+      label: option,
+    }))
+  );
+
+  function handleButtonClick() {
+    showDropdown = true;
   }
+
+  function handleSelect(selectedValue: string) {
+    value = selectedValue;
+    onvaluechange?.(selectedValue);
+    showDropdown = false;
+  }
+
+  function updateButtonContent() {
+    if (!buttonEl) return;
+    buttonEl.innerHTML = "";
+
+    const label = document.createElement("span");
+    label.textContent = value || `Select ${property.name}`;
+    if (!value) {
+      label.style.color = "var(--text-muted)";
+    }
+    buttonEl.appendChild(label);
+  }
+
+  $effect(() => {
+    // Update button content when value changes
+    if (buttonEl) {
+      updateButtonContent();
+    }
+  });
 </script>
 
-<FieldGroup
-  label={property.name}
-  required={property.required}
-  description={hasError ? errorMessage : property.description}
-  error={hasError}
-  htmlFor="prop-{propertyKey}"
->
-  <select
-    id="prop-{propertyKey}"
-    value={value || ""}
-    onchange={handleChange}
-    class="property-select"
+{#if compact}
+  <!-- Compact mode: no label, just button -->
+  <button
+    bind:this={buttonEl}
+    type="button"
+    onclick={handleButtonClick}
+    class="task-sync-property-button"
     class:error={hasError}
     data-testid="property-{propertyKey}"
+    aria-label="Select {property.name}"
+  ></button>
+{:else}
+  <!-- Standard mode: with FieldGroup label -->
+  <FieldGroup
+    label={property.name}
+    required={property.required}
+    description={hasError ? errorMessage : property.description}
+    error={hasError}
+    htmlFor="prop-{propertyKey}"
   >
-    {#if !property.required}
-      <option value="">-- Select {property.name} --</option>
-    {/if}
-    {#each enumOptions as option}
-      <option value={option}>{option}</option>
-    {/each}
-  </select>
-</FieldGroup>
+    <button
+      bind:this={buttonEl}
+      type="button"
+      onclick={handleButtonClick}
+      class="task-sync-property-button"
+      class:error={hasError}
+      data-testid="property-{propertyKey}"
+      aria-label="Select {property.name}"
+    ></button>
+  </FieldGroup>
+{/if}
+
+{#if showDropdown && buttonEl}
+  <Dropdown
+    anchor={buttonEl}
+    items={dropdownItems}
+    selectedValue={value}
+    onSelect={handleSelect}
+    onClose={() => (showDropdown = false)}
+    testId="property-{propertyKey}-dropdown"
+  />
+{/if}
+
+<style>
+  /* Styles are in custom.css - using task-sync-property-button class */
+</style>

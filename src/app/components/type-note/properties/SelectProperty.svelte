@@ -1,9 +1,11 @@
 <!--
   Select Property Component
   Handles select dropdown for select properties with colored options
+  Uses the same Dropdown component as TaskCreateModal for consistency
 -->
 <script lang="ts">
   import { FieldGroup } from "../../base";
+  import Dropdown from "../../Dropdown.svelte";
   import type {
     PropertyDefinition,
     ValidationResult,
@@ -16,6 +18,7 @@
     onvaluechange?: (value: string | undefined) => void;
     validationResult?: ValidationResult;
     touched?: boolean;
+    compact?: boolean;
   }
 
   let {
@@ -25,6 +28,7 @@
     onvaluechange,
     validationResult,
     touched = false,
+    compact = false,
   }: Props = $props();
 
   const hasError = $derived(
@@ -39,74 +43,119 @@
 
   const selectOptions = $derived(property.selectOptions || []);
 
-  function handleChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    const newValue = target.value || undefined;
-    value = newValue;
-    onvaluechange?.(newValue);
+  // Get color for selected option
+  const selectedOption = $derived(() => {
+    if (!value) return null;
+    return selectOptions.find((opt) => opt.value === value);
+  });
+
+  // State for dropdown
+  let showDropdown = $state(false);
+  let buttonEl: HTMLButtonElement | null = $state(null);
+
+  // Create dropdown items with custom badge content
+  const dropdownItems = $derived(
+    selectOptions.map((option) => ({
+      value: option.value,
+      label: option.value,
+      customContent: createOptionBadge(option),
+    }))
+  );
+
+  function createOptionBadge(option: {
+    value: string;
+    color?: string;
+  }): string {
+    const color = option.color || "#3b82f6";
+    return `<span class="task-sync-color-dot" style="background-color: ${color}"></span><span>${option.value}</span>`;
   }
 
-  // Get color for selected option
-  const selectedColor = $derived(() => {
-    if (!value) return undefined;
-    const option = selectOptions.find((opt) => opt.value === value);
-    return option?.color;
+  function handleButtonClick() {
+    showDropdown = true;
+  }
+
+  function handleSelect(selectedValue: string) {
+    value = selectedValue;
+    onvaluechange?.(selectedValue);
+    showDropdown = false;
+  }
+
+  function updateButtonContent() {
+    if (!buttonEl) return;
+    buttonEl.innerHTML = "";
+
+    const selected = selectedOption();
+    if (selected) {
+      // Create color dot
+      const dot = document.createElement("span");
+      dot.className = "task-sync-color-dot";
+      dot.style.backgroundColor = selected.color || "#3b82f6";
+
+      // Create label
+      const label = document.createElement("span");
+      label.textContent = selected.value;
+
+      buttonEl.appendChild(dot);
+      buttonEl.appendChild(label);
+    } else {
+      const label = document.createElement("span");
+      label.textContent = `Select ${property.name}`;
+      label.style.color = "var(--text-muted)";
+      buttonEl.appendChild(label);
+    }
+  }
+
+  $effect(() => {
+    // Update button content when value changes
+    if (buttonEl) {
+      updateButtonContent();
+    }
   });
 </script>
 
-<FieldGroup
-  label={property.name}
-  required={property.required}
-  description={hasError ? errorMessage : property.description}
-  error={hasError}
-  htmlFor="prop-{propertyKey}"
->
-  <div class="select-property-wrapper">
-    <select
-      id="prop-{propertyKey}"
-      value={value || ""}
-      onchange={handleChange}
-      class="property-select"
+{#if compact}
+  <!-- Compact mode: no label, just button -->
+  <button
+    bind:this={buttonEl}
+    type="button"
+    onclick={handleButtonClick}
+    class="task-sync-property-button"
+    class:error={hasError}
+    data-testid="property-{propertyKey}"
+    aria-label="Select {property.name}"
+  ></button>
+{:else}
+  <!-- Standard mode: with FieldGroup label -->
+  <FieldGroup
+    label={property.name}
+    required={property.required}
+    description={hasError ? errorMessage : property.description}
+    error={hasError}
+    htmlFor="prop-{propertyKey}"
+  >
+    <button
+      bind:this={buttonEl}
+      type="button"
+      onclick={handleButtonClick}
+      class="task-sync-property-button"
       class:error={hasError}
       data-testid="property-{propertyKey}"
-    >
-      {#if !property.required}
-        <option value="">-- Select {property.name} --</option>
-      {/if}
-      {#each selectOptions as option}
-        <option value={option.value}>{option.value}</option>
-      {/each}
-    </select>
-    {#if value && selectedColor()}
-      <span
-        class="select-option-badge"
-        style="background-color: {selectedColor()}"
-      >
-        {value}
-      </span>
-    {/if}
-  </div>
-</FieldGroup>
+      aria-label="Select {property.name}"
+    ></button>
+  </FieldGroup>
+{/if}
+
+{#if showDropdown && buttonEl}
+  <Dropdown
+    anchor={buttonEl}
+    items={dropdownItems}
+    selectedValue={value}
+    onSelect={handleSelect}
+    onClose={() => (showDropdown = false)}
+    testId="property-{propertyKey}-dropdown"
+  />
+{/if}
 
 <style>
-  .select-property-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .select-option-badge {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 12px;
-    font-size: 0.85rem;
-    font-weight: 500;
-    white-space: nowrap;
-  }
-
-  .property-select {
-    flex: 1;
-    min-width: 0;
-  }
+  /* Styles are in custom.css - using task-sync-property-button class */
 </style>
-

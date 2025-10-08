@@ -1,10 +1,14 @@
 <!--
   String Property Component
   Handles text input for string properties
+  Supports compact mode (no label) for cleaner forms
 -->
 <script lang="ts">
   import { FieldGroup } from "../../base";
-  import type { PropertyDefinition, ValidationResult } from "../../../core/type-note/types";
+  import type {
+    PropertyDefinition,
+    ValidationResult,
+  } from "../../../core/type-note/types";
 
   interface Props {
     property: PropertyDefinition;
@@ -13,6 +17,7 @@
     onvaluechange?: (value: string | undefined) => void;
     validationResult?: ValidationResult;
     touched?: boolean;
+    compact?: boolean; // If true, no label/FieldGroup wrapper
   }
 
   let {
@@ -22,10 +27,26 @@
     onvaluechange,
     validationResult,
     touched = false,
+    compact = false,
   }: Props = $props();
 
-  const hasError = $derived(touched && validationResult && !validationResult.valid && validationResult.errors.length > 0);
-  const errorMessage = $derived(hasError ? validationResult!.errors[0].message : undefined);
+  const hasError = $derived(
+    touched &&
+      validationResult &&
+      !validationResult.valid &&
+      validationResult.errors.length > 0
+  );
+  const errorMessage = $derived(
+    hasError ? validationResult!.errors[0].message : undefined
+  );
+
+  // Determine placeholder text
+  const placeholder = $derived(() => {
+    if (property.required) {
+      return `${property.name.toUpperCase()} *`;
+    }
+    return property.name.toUpperCase();
+  });
 
   function handleInput(event: Event) {
     const target = event.target as HTMLInputElement;
@@ -35,21 +56,37 @@
   }
 </script>
 
-<FieldGroup
-  label={property.name}
-  required={property.required}
-  description={hasError ? errorMessage : property.description}
-  error={hasError}
-  htmlFor="prop-{propertyKey}"
->
+{#if compact}
+  <!-- Compact mode: no label, just input with placeholder -->
   <input
     id="prop-{propertyKey}"
     type="text"
     value={value || ""}
     oninput={handleInput}
-    placeholder={property.description || `Enter ${property.name.toLowerCase()}...`}
-    class="property-input"
-    class:error={hasError}
+    placeholder={placeholder()}
+    class="task-sync-title-input"
+    class:task-sync-input-error={hasError}
     data-testid="property-{propertyKey}"
   />
-</FieldGroup>
+{:else}
+  <!-- Standard mode: with FieldGroup label -->
+  <FieldGroup
+    label={property.name}
+    required={property.required}
+    description={hasError ? errorMessage : property.description}
+    error={hasError}
+    htmlFor="prop-{propertyKey}"
+  >
+    <input
+      id="prop-{propertyKey}"
+      type="text"
+      value={value || ""}
+      oninput={handleInput}
+      placeholder={property.description ||
+        `Enter ${property.name.toLowerCase()}...`}
+      class="property-input"
+      class:error={hasError}
+      data-testid="property-{propertyKey}"
+    />
+  </FieldGroup>
+{/if}
