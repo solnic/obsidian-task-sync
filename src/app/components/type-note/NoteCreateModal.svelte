@@ -1,8 +1,9 @@
 <script lang="ts">
   import PropertyFormBuilder from "./PropertyFormBuilder.svelte";
-  import type { NoteType, ValidationResult } from "../../core/type-note/types";
+  import type { NoteType } from "../../core/type-note/types";
   import type { TypeRegistry } from "../../core/type-note/registry";
   import type { NoteProcessor } from "../../core/type-note/note-processor";
+  import { validateProperties } from "../../core/type-note/validation";
 
   interface Props {
     typeRegistry: TypeRegistry;
@@ -33,7 +34,6 @@
     preselectedNoteTypeId || (noteTypes.length === 1 ? noteTypes[0].id : "")
   );
   let propertyValues: Record<string, any> = $state({});
-  let propertyValidation: Record<string, ValidationResult> = $state({});
   let templateContent = $state("");
 
   // Computed
@@ -41,40 +41,8 @@
     noteTypes.find((nt) => nt.id === selectedNoteTypeId) || null
   );
 
-  const hasValidationErrors = $derived(
-    Object.values(propertyValidation).some((result) => !result.valid)
-  );
-
-  // Check if all required properties are filled
-  const allRequiredPropertiesFilled = $derived.by(() => {
-    if (!selectedNoteType) return false;
-
-    // Check each required property
-    for (const [key, prop] of Object.entries(selectedNoteType.properties)) {
-      if (prop.required && !prop.form?.hidden) {
-        const value = propertyValues[prop.frontMatterKey];
-        // Check if value is missing or empty string
-        if (value === undefined || value === null || value === "") {
-          return false;
-        }
-      }
-    }
-
-    return true;
-  });
-
-  const canSubmit = $derived(
-    selectedNoteType && allRequiredPropertiesFilled && !hasValidationErrors
-  );
-
   function handlePropertyValuesChange(values: Record<string, any>) {
     propertyValues = values;
-  }
-
-  function handlePropertyValidationChange(
-    validation: Record<string, ValidationResult>
-  ) {
-    propertyValidation = validation;
   }
 
   function handleTemplateContentChange(content: string) {
@@ -84,13 +52,18 @@
   function handleSubmit() {
     if (!selectedNoteType) return;
 
-    // Check for validation errors
-    if (hasValidationErrors) {
-      return;
-    }
+    // Validate all properties using TypeNote's validation
+    const validationResult = validateProperties(
+      selectedNoteType,
+      propertyValues
+    );
 
-    // Check if all required properties are filled
-    if (!allRequiredPropertiesFilled) {
+    if (!validationResult.valid) {
+      // Show validation errors
+      const errorMessages = validationResult.errors
+        .map((e) => e.message)
+        .join(", ");
+      console.error("Validation failed:", errorMessages);
       return;
     }
 
@@ -115,6 +88,7 @@
     }
 
     if (!title) {
+      console.error("No title found");
       return;
     }
 
@@ -182,7 +156,6 @@
             properties={selectedNoteType.properties}
             values={propertyValues}
             onvalueschange={handlePropertyValuesChange}
-            onvalidationchange={handlePropertyValidationChange}
             showOptionalProperties={true}
             noteType={selectedNoteType}
             {noteProcessor}
@@ -215,7 +188,6 @@
         class="task-sync-create-button mod-cta"
         data-testid="submit-button"
         onclick={handleSubmit}
-        disabled={!canSubmit}
       >
         Create {selectedNoteType?.name || "Note"}
       </button>

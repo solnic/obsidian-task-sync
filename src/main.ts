@@ -150,15 +150,6 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
-    // Add command to create task
-    this.addCommand({
-      id: "create-task",
-      name: "Create Task",
-      callback: () => {
-        this.openCreateTaskModal();
-      },
-    });
-
     // Register dynamic commands for each note type
     this.registerNoteTypeCommands();
 
