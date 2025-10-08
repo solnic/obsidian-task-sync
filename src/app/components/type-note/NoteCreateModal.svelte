@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Notice } from "obsidian";
   import PropertyFormBuilder from "./PropertyFormBuilder.svelte";
   import type { NoteType } from "../../core/type-note/types";
   import type { TypeRegistry } from "../../core/type-note/registry";
@@ -62,11 +63,12 @@
     );
 
     if (!validationResult.valid) {
-      // Show validation errors
+      // Show validation errors as notices
       const errorMessages = validationResult.errors
         .map((e) => e.message)
         .join(", ");
       console.error("Validation failed:", errorMessages);
+      new Notice(errorMessages, 5000);
       return;
     }
 
@@ -91,7 +93,9 @@
     }
 
     if (!title) {
-      console.error("No title found");
+      const errorMessage = `${selectedNoteType.name} title is required`;
+      console.error(errorMessage);
+      new Notice(errorMessage, 5000);
       return;
     }
 
