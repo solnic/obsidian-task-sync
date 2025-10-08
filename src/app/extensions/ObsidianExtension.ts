@@ -76,22 +76,12 @@ export class ObsidianExtension implements Extension {
     private app: App,
     private plugin: Plugin,
     private settings: ObsidianExtensionSettings,
-    typeNote?: TypeNote
+    typeNote: TypeNote
   ) {
     // Initialize base manager first so it can be passed to operations
     this.baseManager = new ObsidianBaseManager(app, app.vault, settings);
 
-    // Use provided TypeNote instance or create a new one
-    // This allows sharing the TypeNote instance with the plugin for settings UI
-    this.typeNote =
-      typeNote ||
-      new TypeNote(app, {
-        preferredProvider: "core",
-        useTemplaterWhenAvailable: settings.useTemplater,
-        templateFolder: settings.templateFolder,
-        autoDetectTemplates: true,
-        showUpdateNotifications: true,
-      });
+    this.typeNote = typeNote;
 
     this.areaOperations = new ObsidianAreaOperations(app, settings);
 

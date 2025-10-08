@@ -77,11 +77,13 @@ export default class TaskSyncPlugin extends Plugin {
     // Load settings through host
     this.settings = await this.host.loadSettings();
 
-    // Initialize the TaskSync app with Host abstraction
-    await taskSyncApp.initialize(this.host);
-
-    // Initialize TypeNote API with persistence
+    // Initialize TypeNote API with persistence BEFORE taskSyncApp.initialize
+    // This is critical because ObsidianExtension needs to use this TypeNote instance
     this.typeNote = await this.createTypeNoteWithPersistence();
+
+    // Initialize the TaskSync app with Host abstraction
+    // ObsidianExtension will now use this.typeNote instance
+    await taskSyncApp.initialize(this.host);
 
     // Call host onload to set up event handlers
     await this.host.onload();
@@ -150,8 +152,8 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
-    // Register dynamic commands for each note type
-    this.registerNoteTypeCommands();
+    // Note: registerNoteTypeCommands() is called in onLayoutReady
+    // after Task note type is registered by ObsidianExtension
 
     // Add command to refresh bases
     this.addCommand({
@@ -192,6 +194,10 @@ export default class TaskSyncPlugin extends Plugin {
     // Load extensions and activate view when layout is ready
     this.app.workspace.onLayoutReady(async () => {
       await this.host.load();
+
+      // Register note type commands after Task note type is registered
+      // This must happen after ObsidianExtension.initialize() which registers the Task note type
+      this.registerNoteTypeCommands();
 
       // Now activate the view
       this.activateView();
