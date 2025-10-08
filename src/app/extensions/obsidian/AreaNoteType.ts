@@ -58,20 +58,6 @@ export function createAreaNoteType(): NoteType {
         hidden: true, // Hide from primary form section
       },
     },
-    description: {
-      key: "description",
-      name: "Description",
-      type: "string",
-      schema: optionalStringSchema,
-      frontMatterKey: "Description",
-      required: false,
-      description: "Area description",
-      visible: true,
-      order: 4,
-      form: {
-        hidden: true, // Hide from primary form section
-      },
-    },
   };
 
   // Create template for Area notes
@@ -120,4 +106,3 @@ export function createAreaNoteType(): NoteType {
 
   return noteType;
 }
-

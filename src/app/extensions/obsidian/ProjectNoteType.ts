@@ -70,20 +70,6 @@ export function createProjectNoteType(): NoteType {
         hidden: true, // Hide from primary form section
       },
     },
-    description: {
-      key: "description",
-      name: "Description",
-      type: "string",
-      schema: optionalStringSchema,
-      frontMatterKey: "Description",
-      required: false,
-      description: "Project description",
-      visible: true,
-      order: 5,
-      form: {
-        hidden: true, // Hide from primary form section
-      },
-    },
   };
 
   // Create template for Project notes
@@ -130,4 +116,3 @@ export function createProjectNoteType(): NoteType {
 
   return noteType;
 }
-

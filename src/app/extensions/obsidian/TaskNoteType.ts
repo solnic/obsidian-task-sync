@@ -3,7 +3,11 @@
  * Defines the Task note type with all required properties and validation
  */
 
-import type { NoteType, PropertyDefinition, SelectOption } from "../../core/type-note/types";
+import type {
+  NoteType,
+  PropertyDefinition,
+  SelectOption,
+} from "../../core/type-note/types";
 import {
   stringSchema,
   optionalStringSchema,
@@ -13,7 +17,12 @@ import {
   stringArraySchema,
   enumSchema,
 } from "../../core/type-note/schemas";
-import type { TaskSyncSettings, TaskType, TaskPriority, TaskStatus } from "../../types/settings";
+import type {
+  TaskSyncSettings,
+  TaskType,
+  TaskPriority,
+  TaskStatus,
+} from "../../types/settings";
 
 /**
  * Create select options from task types
@@ -29,7 +38,9 @@ function createTaskTypeOptions(taskTypes: TaskType[]): SelectOption[] {
 /**
  * Create select options from task priorities
  */
-function createTaskPriorityOptions(taskPriorities: TaskPriority[]): SelectOption[] {
+function createTaskPriorityOptions(
+  taskPriorities: TaskPriority[]
+): SelectOption[] {
   return taskPriorities.map((priority) => ({
     value: priority.name,
     label: priority.name,
@@ -84,9 +95,10 @@ export function buildTaskNoteType(settings: TaskSyncSettings): NoteType {
       key: "category",
       name: "Category",
       type: "select",
-      schema: categoryValues.length > 0 
-        ? enumSchema(categoryValues as [string, ...string[]]) 
-        : optionalStringSchema,
+      schema:
+        categoryValues.length > 0
+          ? enumSchema(categoryValues as [string, ...string[]])
+          : optionalStringSchema,
       frontMatterKey: "Category",
       required: false,
       selectOptions: categoryOptions,
@@ -98,9 +110,10 @@ export function buildTaskNoteType(settings: TaskSyncSettings): NoteType {
       key: "priority",
       name: "Priority",
       type: "select",
-      schema: priorityValues.length > 0 
-        ? enumSchema(priorityValues as [string, ...string[]]) 
-        : optionalStringSchema,
+      schema:
+        priorityValues.length > 0
+          ? enumSchema(priorityValues as [string, ...string[]])
+          : optionalStringSchema,
       frontMatterKey: "Priority",
       required: false,
       selectOptions: priorityOptions,
@@ -112,9 +125,10 @@ export function buildTaskNoteType(settings: TaskSyncSettings): NoteType {
       key: "status",
       name: "Status",
       type: "select",
-      schema: statusValues.length > 0 
-        ? enumSchema(statusValues as [string, ...string[]]) 
-        : stringSchema,
+      schema:
+        statusValues.length > 0
+          ? enumSchema(statusValues as [string, ...string[]])
+          : stringSchema,
       frontMatterKey: "Status",
       required: true,
       defaultValue: statusValues.length > 0 ? statusValues[0] : "Backlog",
@@ -215,20 +229,6 @@ export function buildTaskNoteType(settings: TaskSyncSettings): NoteType {
         hidden: true, // Hide from primary form section
       },
     },
-    description: {
-      key: "description",
-      name: "Description",
-      type: "string",
-      schema: optionalStringSchema,
-      frontMatterKey: "Description",
-      required: false,
-      description: "Task description",
-      visible: true,
-      order: 12,
-      form: {
-        hidden: true, // Hide from primary form section
-      },
-    },
   };
 
   // Create template for Task notes
@@ -293,4 +293,3 @@ export function buildTaskNoteType(settings: TaskSyncSettings): NoteType {
 
   return noteType;
 }
-

@@ -53,7 +53,7 @@ export class NoteCreateModal extends Modal {
             noteType: NoteType;
             properties: Record<string, any>;
             title: string;
-            templateContent?: string;
+            templateVariables?: Record<string, any>;
           }) => {
             await this.handleSubmit(data);
           },
@@ -91,10 +91,10 @@ export class NoteCreateModal extends Modal {
     noteType: NoteType;
     properties: Record<string, any>;
     title: string;
-    templateContent?: string;
+    templateVariables?: Record<string, any>;
   }) {
     try {
-      // Merge title into properties
+      // Merge title into properties for front-matter
       const allProperties = {
         ...data.properties,
         title: data.title,
@@ -103,15 +103,22 @@ export class NoteCreateModal extends Modal {
       // Determine folder based on note type ID and settings
       const folder = this.getFolderForNoteType(data.noteType.id);
 
+      // Use templateVariables if provided (includes description for template processing)
+      // Otherwise use allProperties
+      const propertiesForTemplate = data.templateVariables || allProperties;
+
       // Create the note using TypeNote FileManager API
+      // The FileManager will:
+      // 1. Process the template with propertiesForTemplate (includes description)
+      // 2. Generate front-matter from allProperties (excludes description)
+      // 3. Combine them into the final file
       const result = await this.plugin.typeNote.fileManager.createTypedNote(
         data.noteType.id,
         {
           folder,
           fileName: data.title,
-          properties: allProperties,
+          properties: propertiesForTemplate, // Used for template processing
           validateProperties: true,
-          content: data.templateContent,
         }
       );
 

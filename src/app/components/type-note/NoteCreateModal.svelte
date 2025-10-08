@@ -13,7 +13,7 @@
       noteType: NoteType;
       properties: Record<string, any>;
       title: string;
-      templateContent?: string;
+      templateVariables?: Record<string, any>;
     }) => void;
     oncancel?: () => void;
   }
@@ -35,6 +35,7 @@
   );
   let propertyValues: Record<string, any> = $state({});
   let templateContent = $state("");
+  let description = $state(""); // Description/content field separate from properties
 
   // Computed
   const selectedNoteType = $derived(
@@ -92,11 +93,18 @@
       return;
     }
 
+    // Pass description separately for template processing (not as a property)
+    // The description will be used in template variables but won't be added to front-matter
+    const templateVariables = {
+      ...propertyValues,
+      ...(description.trim() ? { description: description.trim() } : {}),
+    };
+
     onsubmit?.({
       noteType: selectedNoteType,
-      properties: propertyValues,
+      properties: propertyValues, // Only actual properties go to front-matter
       title: title,
-      templateContent: templateContent?.trim() || undefined,
+      templateVariables, // Template variables include description for content
     });
   }
 
@@ -107,9 +115,10 @@
   function handleNoteTypeChange(e: Event) {
     const target = e.target as HTMLSelectElement;
     selectedNoteTypeId = target.value;
-    // Reset property values and template content when note type changes
+    // Reset property values, template content, and description when note type changes
     propertyValues = {};
     templateContent = "";
+    description = "";
   }
 </script>
 
@@ -169,6 +178,21 @@
           to customize the form.
         </p>
       {/if}
+
+      <!-- Description/Content field (separate from properties) -->
+      <div class="description-section">
+        <label for="note-description" class="task-sync-field-label">
+          Description
+        </label>
+        <textarea
+          id="note-description"
+          bind:value={description}
+          placeholder="Enter description or content for this note..."
+          class="task-sync-textarea"
+          data-testid="property-description"
+          rows="4"
+        ></textarea>
+      </div>
     {/if}
   </div>
 
@@ -224,5 +248,27 @@
     text-align: center;
     color: var(--text-muted);
     font-style: italic;
+  }
+
+  .description-section {
+    margin-top: 1rem;
+  }
+
+  .task-sync-textarea {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 4px;
+    background: var(--background-primary);
+    color: var(--text-normal);
+    font-size: 0.9rem;
+    font-family: var(--font-text);
+    resize: vertical;
+    min-height: 80px;
+  }
+
+  .task-sync-textarea:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
   }
 </style>
