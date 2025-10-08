@@ -172,11 +172,7 @@
 
 /* TypeNote Settings Styles */
 .properties-editor-container {
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  padding: 1rem;
   margin: 1rem 0;
-  background: var(--background-secondary);
 }
 
 .template-editor-container {

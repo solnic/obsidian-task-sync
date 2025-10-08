@@ -980,13 +980,6 @@
 
   /* Property container styling with drag-and-drop support */
   :global(.property-container) {
-    display: flex !important;
-    align-items: stretch !important;
-    margin-bottom: 1rem !important;
-    border: 1px solid var(--background-modifier-border) !important;
-    border-radius: 6px !important;
-    background: var(--background-primary) !important;
-    overflow: hidden !important;
     transition: all 0.2s ease !important;
   }
 
@@ -1000,68 +993,5 @@
 
   :global(.property-container.drag-over-bottom) {
     border-bottom: 2px solid var(--interactive-accent) !important;
-  }
-
-  :global(.property-drag-handle) {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 24px !important;
-    background: var(--background-modifier-border) !important;
-    color: var(--text-muted) !important;
-    cursor: grab !important;
-    font-size: 0.8rem !important;
-    line-height: 1 !important;
-    user-select: none !important;
-    border-right: 1px solid var(--background-modifier-border) !important;
-  }
-
-  :global(.property-drag-handle:hover) {
-    background: var(--background-modifier-hover) !important;
-    color: var(--text-normal) !important;
-  }
-
-  :global(.property-drag-handle:active) {
-    cursor: grabbing !important;
-  }
-
-  :global(.property-content) {
-    flex: 1 !important;
-    padding: 0 !important;
-  }
-
-  :global(.property-main-setting) {
-    border-bottom: 1px solid var(--background-modifier-border) !important;
-    margin-bottom: 0 !important;
-    padding-bottom: 0 !important;
-  }
-
-  :global(.property-secondary-settings) {
-    background: var(--background-secondary) !important;
-    padding: 0.75rem 1rem !important;
-  }
-
-  :global(.property-settings-row) {
-    margin-bottom: 0 !important;
-    padding: 0 !important;
-  }
-
-  :global(.property-settings-row .setting-item-name) {
-    font-size: 0.85rem !important;
-    color: var(--text-muted) !important;
-    font-weight: 500 !important;
-    min-width: 100px !important;
-  }
-
-  :global(.property-settings-row .setting-item-control) {
-    display: flex !important;
-    align-items: center !important;
-    gap: 1rem !important;
-  }
-
-  :global(.setting-toggle-label) {
-    margin-left: 0.5rem !important;
-    font-size: 0.9rem !important;
-    color: var(--text-muted) !important;
   }
 </style>
