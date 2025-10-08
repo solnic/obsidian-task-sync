@@ -33,17 +33,31 @@
   const selectedNoteType = $derived(
     noteTypes.find((nt) => nt.id === selectedNoteTypeId) || null
   );
+
   const hasValidationErrors = $derived(
     Object.values(propertyValidation).some((result) => !result.valid)
   );
 
-  // Check if we have a title property value (required for file name)
-  const hasTitle = $derived(
-    propertyValues.title && String(propertyValues.title).trim().length > 0
-  );
+  // Check if all required properties are filled
+  const allRequiredPropertiesFilled = $derived.by(() => {
+    if (!selectedNoteType) return false;
+
+    // Check each required property
+    for (const [key, prop] of Object.entries(selectedNoteType.properties)) {
+      if (prop.required && !prop.form?.hidden) {
+        const value = propertyValues[prop.frontMatterKey];
+        // Check if value is missing or empty string
+        if (value === undefined || value === null || value === "") {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  });
 
   const canSubmit = $derived(
-    selectedNoteType && hasTitle && !hasValidationErrors
+    selectedNoteType && allRequiredPropertiesFilled && !hasValidationErrors
   );
 
   function handlePropertyValuesChange(values: Record<string, any>) {
@@ -68,8 +82,31 @@
       return;
     }
 
-    // Get title from property values
-    const title = String(propertyValues.title || "").trim();
+    // Check if all required properties are filled
+    if (!allRequiredPropertiesFilled) {
+      return;
+    }
+
+    // Find the title property (look for a property with frontMatterKey 'title' or the first string property)
+    let title = "";
+    const titleProp = Object.values(selectedNoteType.properties).find(
+      (p) => p.frontMatterKey === "title"
+    );
+
+    if (titleProp) {
+      title = String(propertyValues[titleProp.frontMatterKey] || "").trim();
+    } else {
+      // Fallback: use the first string property value
+      const firstStringProp = Object.values(selectedNoteType.properties).find(
+        (p) => p.type === "string"
+      );
+      if (firstStringProp) {
+        title = String(
+          propertyValues[firstStringProp.frontMatterKey] || ""
+        ).trim();
+      }
+    }
+
     if (!title) {
       return;
     }
