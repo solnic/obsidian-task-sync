@@ -121,7 +121,7 @@
 <div class="task-sync-modal-container note-create-modal">
   <!-- Header -->
   <div class="task-sync-modal-header">
-    <h2>Create {selectedNoteType?.name || "Note"}</h2>
+    <h2>Create New {selectedNoteType?.name || "Note"}</h2>
     {#if selectedNoteType?.metadata?.description}
       <p class="task-sync-modal-description">
         {selectedNoteType.metadata.description}
