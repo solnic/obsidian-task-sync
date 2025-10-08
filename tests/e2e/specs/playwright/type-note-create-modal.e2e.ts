@@ -51,8 +51,8 @@ test.describe("TypeNote Create Note Modal", () => {
   });
 
   test("should open note creation modal via command", async ({ page }) => {
-    // Execute the create note command
-    await executeCommand(page, "Create Task");
+    // Execute the create note command for the Test Article note type
+    await executeCommand(page, "Create Test Article");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible({
@@ -61,13 +61,13 @@ test.describe("TypeNote Create Note Modal", () => {
 
     // Verify the modal header
     await expect(page.locator(".task-sync-modal-header h2")).toContainText(
-      "Create Test Article"
+      "Create New Test Article"
     );
   });
 
   test("should cancel note creation", async ({ page }) => {
-    // Execute the create note command
-    await executeCommand(page, "Create Task");
+    // Execute the create note command for the Test Article note type
+    await executeCommand(page, "Create Test Article");
 
     // Wait for the modal
     await expect(page.locator(".task-sync-modal-container")).toBeVisible({
