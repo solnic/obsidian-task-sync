@@ -113,11 +113,11 @@ interface PropertyDefinition {
 - [x] Create backup and rollback mechanisms for template updates
 
 ### 4.2 Creation Modals and UI
-- [ ] Implement `NoteTypeModal` for selecting note types during creation
-- [ ] Create `PropertyFormBuilder` for dynamic form generation
-- [ ] Add property-specific input controls (date pickers, dropdowns, etc.)
-- [ ] Implement validation feedback in real-time
-- [ ] Create note type selection with search and filtering
+- [x] Implement `NoteTypeModal` for selecting note types during creation
+- [x] Create `PropertyFormBuilder` for dynamic form generation
+- [x] Add property-specific input controls (date pickers, dropdowns, etc.)
+- [x] Implement validation feedback in real-time
+- [x] Create note type selection with search and filtering
 
 ### 4.3 Management Interface in Settings Tab
 - [x] Implement `TypeNoteSettings` section for creating/editing note types
@@ -131,11 +131,8 @@ interface PropertyDefinition {
 
 ### 5.1 Migration and Versioning
 - [ ] Implement `MigrationManager` for handling note type updates
-- [ ] Create migration scripts and transformation rules
 - [ ] Add batch migration with progress tracking
 - [ ] Implement rollback capabilities for failed migrations
-- [ ] Create migration testing and validation tools
-- [ ] Create note type import/export functionality
 
 ### 5.2 Integration Enhancements
 - [ ] Add support for conditional properties based on other property values
@@ -143,6 +140,7 @@ interface PropertyDefinition {
 - [ ] Create property validation rules with custom error messages
 - [ ] Add support for property groups and sections
 - [ ] Implement property dependencies and cascading updates
+- [ ] Create note type import/export functionality
 
 ### 5.3 Developer Experience
 - [ ] Create comprehensive API documentation
