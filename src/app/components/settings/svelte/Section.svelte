@@ -49,18 +49,7 @@
   {:else if section.id === "bases"}
     <BasesSettings bind:settings {saveSettings} {section} {app} {plugin} />
   {:else if section.id === "type-note"}
-    <TypeNoteSettings
-      bind:settings
-      {saveSettings}
-      {section}
-      {plugin}
-      typeMapping={{
-        string: "Text",
-        number: "Number",
-        boolean: "Checkbox",
-        date: "Date",
-      }}
-    />
+    <TypeNoteSettings bind:settings {saveSettings} {section} {plugin} />
   {:else if section.id === "task-properties"}
     <TaskPropertiesSettings bind:settings {saveSettings} {section} {plugin} />
   {:else if section.id === "task-categories"}

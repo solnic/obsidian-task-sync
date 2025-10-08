@@ -17,6 +17,8 @@ export const TYPE_NOTE_TO_OBSIDIAN_TYPE_MAP = {
   boolean: "checkbox",
   date: "date",
   array: "multitext",
+  select: "text", // Select maps to text in Obsidian (will store the selected value)
+  enum: "text", // Enum also maps to text
   object: "text", // Objects are serialized as text in Obsidian
 } as const;
 
@@ -276,6 +278,20 @@ export class ObsidianPropertyManager {
     return {
       compatible: issues.length === 0,
       issues,
+    };
+  }
+
+  /**
+   * Get UI-friendly type mapping for property type selection
+   * Returns a mapping of TypeNote types to their display names
+   */
+  static getTypeMapping(): Record<string, string> {
+    return {
+      string: "Text",
+      number: "Number",
+      boolean: "Checkbox",
+      date: "Date",
+      select: "Select",
     };
   }
 }

@@ -20,7 +20,8 @@ export type PropertyType =
   | "boolean"
   | "date"
   | "enum"
-  | "array";
+  | "array"
+  | "select";
 
 /**
  * Property definition with Zod schema and transformation rules
@@ -68,6 +69,59 @@ export interface PropertyDefinition {
 
   /** Whether this property should be rendered as a link in Obsidian Bases */
   link?: boolean;
+  /** Options for select properties with colors */
+  selectOptions?: SelectOption[];
+}
+
+/**
+ * Select option with optional color
+ * Used for select property type
+ */
+export interface SelectOption {
+  /** Option value */
+  value: string;
+
+  /** Optional color for this option (hex code) */
+  color?: string;
+}
+
+/**
+ * Property settings data for UI
+ * Extends PropertyDefinition with UI-specific fields
+ */
+export interface PropertySettingsData {
+  /** Unique identifier for this property */
+  key: string;
+
+  /** Human-readable name */
+  name: string;
+
+  /** Property type as string for UI (before schema creation) */
+  schemaType: string;
+
+  /** Front-matter key where this property is stored */
+  frontMatterKey: string;
+
+  /** Whether this property is required */
+  required: boolean;
+
+  /** Default value if not provided */
+  defaultValue?: any;
+
+  /** Optional description for documentation */
+  description?: string;
+
+  /** Whether this property should be displayed in UI */
+  visible?: boolean;
+
+  /** Display order in forms/UI (lower numbers first) */
+  order?: number;
+
+  /** Options for enum properties (comma-separated string in UI) */
+  enumOptions?: string;
+
+  /** Options for select properties with colors */
+  selectOptions?: SelectOption[];
 }
 
 /**

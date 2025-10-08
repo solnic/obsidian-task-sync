@@ -15,8 +15,11 @@
     numberSchema,
     booleanSchema,
     dateSchema,
+    enumSchema,
   } from "../../../core/type-note/schemas";
   import PropertySettings from "./PropertySettings.svelte";
+  import { camelize } from "inflection";
+  import { ObsidianPropertyManager } from "../../../core/type-note/obsidian-property-manager";
 
   let container: HTMLElement;
 
@@ -32,12 +35,7 @@
     settings = $bindable(),
     saveSettings,
     plugin,
-    typeMapping = {
-      string: "Text",
-      number: "Number",
-      boolean: "Checkbox",
-      date: "Date",
-    },
+    typeMapping = ObsidianPropertyManager.getTypeMapping(),
   }: Props = $props();
 
   // Helper function to generate camelCase key from name
@@ -73,7 +71,7 @@
   }
 
   // Helper function to create Zod schemas from string types
-  function createSchemaFromType(schemaType: string) {
+  function createSchemaFromType(schemaType: string, selectOptions?: any[]) {
     switch (schemaType) {
       case "string":
         return stringSchema;
@@ -83,6 +81,13 @@
         return booleanSchema;
       case "date":
         return dateSchema;
+      case "select":
+        // For select type, create enum schema from options
+        if (selectOptions && selectOptions.length > 0) {
+          const values = selectOptions.map((opt) => opt.value);
+          return enumSchema(values as [string, ...string[]]);
+        }
+        return stringSchema; // Fallback if no options
       default:
         return stringSchema;
     }
@@ -518,9 +523,11 @@
           editProperties[key] = { ...prop };
         } else if (prop.schema) {
           // Convert from NoteType format to UI format
+          // Use the property's type field if available, otherwise infer from schema
+          const schemaType = prop.type || getSchemaTypeFromSchema(prop.schema);
           editProperties[key] = {
             ...prop,
-            schemaType: getSchemaTypeFromSchema(prop.schema),
+            schemaType: schemaType,
           };
           // Remove the schema field since UI uses schemaType
           delete editProperties[key].schema;
@@ -644,15 +651,35 @@
             return;
           }
 
-          // Convert schemaType strings to proper schema objects
+          // Convert schemaType strings to proper schema objects and generate keys
           const processedProperties: Record<string, PropertyDefinition> = {};
           Object.entries(editProperties).forEach(
-            ([key, property]: [string, any]) => {
-              const { schemaType, ...propertyWithoutSchemaType } = property;
-              processedProperties[key] = {
+            ([_key, property]: [string, any]) => {
+              const { schemaType, enumOptions, ...propertyWithoutSchemaType } =
+                property;
+
+              // Generate key and frontMatterKey from name
+              const generatedKey = camelize(property.name || "", true); // true = lower camel case
+              const frontMatterKey = property.name || "";
+
+              // Create the property definition
+              const propertyDef: any = {
                 ...propertyWithoutSchemaType,
-                schema: createSchemaFromType(schemaType || "string"),
+                key: generatedKey,
+                frontMatterKey: frontMatterKey,
+                type: schemaType || "string",
+                schema: createSchemaFromType(
+                  schemaType || "string",
+                  property.selectOptions
+                ),
               };
+
+              // For select type, ensure selectOptions are included
+              if (schemaType === "select" && property.selectOptions) {
+                propertyDef.selectOptions = property.selectOptions;
+              }
+
+              processedProperties[generatedKey] = propertyDef;
             }
           );
 

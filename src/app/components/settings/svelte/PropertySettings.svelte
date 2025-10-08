@@ -1,11 +1,11 @@
 <script lang="ts">
   import { Setting } from "obsidian";
   import { onMount } from "svelte";
-  import { camelize } from "inflection";
+  import type { PropertySettingsData } from "../../../core/type-note/types";
 
   interface Props {
     propertyKey: string;
-    property: any;
+    property: PropertySettingsData;
     typeMapping: Record<string, string>;
     onUpdate: () => void;
     onDelete: () => void;
@@ -21,11 +21,6 @@
 
   let container: HTMLElement;
 
-  // Helper function to generate camelCase key from name using inflection
-  function generateKeyFromName(name: string): string {
-    return camelize(name, true); // true = lower camel case
-  }
-
   // Helper function to get default value for a given type
   function getDefaultValueForType(type: string) {
     switch (type) {
@@ -35,9 +30,43 @@
         return false;
       case "date":
         return "";
+      case "select":
+        return "";
       default:
         return "";
     }
+  }
+
+  // Helper function to create a badge for select option preview
+  function createSelectOptionBadge(option: {
+    value: string;
+    color?: string;
+  }): HTMLElement {
+    const badge = document.createElement("span");
+    badge.className = "select-option-badge";
+    badge.textContent = option.value;
+    if (option.color) {
+      badge.style.backgroundColor = option.color;
+      // Calculate optimal text color based on background
+      const rgb = hexToRgb(option.color);
+      if (rgb) {
+        const luminance = (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+        badge.style.color = luminance > 0.5 ? "#000000" : "#ffffff";
+      }
+    }
+    return badge;
+  }
+
+  // Helper function to convert hex to RGB
+  function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result
+      ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16),
+        }
+      : null;
   }
 
   function renderPropertySettings() {
@@ -60,10 +89,6 @@
         .setValue(property.name || "")
         .onChange((value) => {
           property.name = value;
-          if (value) {
-            property.key = generateKeyFromName(value);
-            property.frontMatterKey = value;
-          }
           onUpdate();
         });
       text.inputEl.setAttribute(
@@ -71,20 +96,6 @@
         `property-name-input-${propertyKey}`
       );
     });
-
-    // Front-matter key
-    new Setting(propertyContent)
-      .setName("Front-matter key")
-      .setDesc("The key used in the note's front-matter")
-      .addText((text) => {
-        text
-          .setPlaceholder("Front-matter key")
-          .setValue(property.frontMatterKey || property.name)
-          .onChange((value) => {
-            property.frontMatterKey = value;
-            onUpdate();
-          });
-      });
 
     // Type
     new Setting(propertyContent).setName("Type").addDropdown((dropdown) => {
@@ -177,6 +188,133 @@
           );
         });
         break;
+
+      case "select":
+        // For select type, show dropdown of options
+        if (property.selectOptions && property.selectOptions.length > 0) {
+          defaultSetting.addDropdown((dropdown) => {
+            property.selectOptions?.forEach((option) => {
+              dropdown.addOption(option.value, option.value);
+            });
+            dropdown
+              .setValue(property.defaultValue || "")
+              .onChange((value: string) => {
+                property.defaultValue = value;
+                onUpdate();
+              });
+            dropdown.selectEl.setAttribute(
+              "data-testid",
+              `property-default-select-${propertyKey}`
+            );
+          });
+        } else {
+          defaultSetting.setDesc(
+            "Add select options below to set a default value"
+          );
+        }
+        break;
+    }
+
+    // Select options management (only for select type)
+    if (property.schemaType === "select") {
+      // Initialize selectOptions if not present
+      if (!property.selectOptions) {
+        property.selectOptions = [];
+      }
+
+      propertyContent.createEl("h5", {
+        text: "Select Options",
+        cls: "select-options-heading",
+      });
+
+      // List existing options
+      property.selectOptions.forEach((option, index) => {
+        const optionSetting = new Setting(propertyContent);
+        optionSetting.setClass("select-option-setting");
+
+        // Add badge preview
+        const badgeContainer = optionSetting.controlEl.createDiv(
+          "select-option-badge-preview"
+        );
+        const badge = createSelectOptionBadge(option);
+        badgeContainer.appendChild(badge);
+
+        // Add value input
+        optionSetting.addText((text) => {
+          text
+            .setValue(option.value)
+            .setPlaceholder("Option value")
+            .onChange((value) => {
+              if (property.selectOptions) {
+                property.selectOptions[index].value = value;
+                badge.textContent = value;
+                onUpdate();
+              }
+            });
+          text.inputEl.setAttribute(
+            "data-testid",
+            `select-option-value-${index}`
+          );
+        });
+
+        // Add color picker
+        optionSetting.addColorPicker((colorPicker) => {
+          colorPicker
+            .setValue(option.color || "#3b82f6")
+            .onChange((value: string) => {
+              if (property.selectOptions) {
+                property.selectOptions[index].color = value;
+                badge.style.backgroundColor = value;
+                // Update text color for contrast
+                const rgb = hexToRgb(value);
+                if (rgb) {
+                  const luminance =
+                    (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
+                  badge.style.color = luminance > 0.5 ? "#000000" : "#ffffff";
+                }
+                onUpdate();
+              }
+            });
+        });
+
+        // Add delete button
+        optionSetting.addButton((button) => {
+          button
+            .setButtonText("Delete")
+            .setWarning()
+            .onClick(() => {
+              if (property.selectOptions) {
+                property.selectOptions.splice(index, 1);
+                renderPropertySettings();
+                onUpdate();
+              }
+            });
+        });
+      });
+
+      // Add new option button
+      const addOptionSetting = new Setting(propertyContent);
+      addOptionSetting.setClass("add-select-option-setting");
+      addOptionSetting.setName("Add Option").addButton((button) => {
+        button
+          .setButtonText("Add Option")
+          .setCta()
+          .onClick(() => {
+            if (!property.selectOptions) {
+              property.selectOptions = [];
+            }
+            property.selectOptions.push({
+              value: `Option ${property.selectOptions.length + 1}`,
+              color: "#3b82f6",
+            });
+            renderPropertySettings();
+            onUpdate();
+          });
+        button.buttonEl.setAttribute(
+          "data-testid",
+          `add-select-option-button-${propertyKey}`
+        );
+      });
     }
 
     // Required toggle
@@ -300,5 +438,42 @@
 
   :global(.property-content .setting-item:first-child) {
     padding-top: 0;
+  }
+
+  /* Select options styling */
+  :global(.select-options-heading) {
+    margin: 1rem 0 0.5rem 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-normal);
+  }
+
+  :global(.select-option-setting) {
+    border-left: 2px solid var(--background-modifier-border);
+    padding-left: 0.5rem !important;
+    margin-left: 0.5rem;
+  }
+
+  :global(.select-option-badge-preview) {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 0.5rem;
+  }
+
+  :global(.select-option-badge) {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background-color: var(--background-modifier-border);
+    color: var(--text-normal);
+    white-space: nowrap;
+  }
+
+  :global(.add-select-option-setting) {
+    margin-top: 0.5rem;
+    border-top: 1px dashed var(--background-modifier-border);
+    padding-top: 0.75rem !important;
   }
 </style>

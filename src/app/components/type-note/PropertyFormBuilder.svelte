@@ -7,6 +7,7 @@
     DateProperty,
     EnumProperty,
     ArrayProperty,
+    SelectProperty,
   } from "./properties";
   import type {
     PropertyDefinition,
@@ -144,6 +145,16 @@
       />
     {:else if property.type === "enum"}
       <EnumProperty
+        {property}
+        {propertyKey}
+        bind:value={values[property.frontMatterKey]}
+        onvaluechange={(value) =>
+          handleValueChange(propertyKey, property.frontMatterKey, value)}
+        {validationResult}
+        {touched}
+      />
+    {:else if property.type === "select"}
+      <SelectProperty
         {property}
         {propertyKey}
         bind:value={values[property.frontMatterKey]}
