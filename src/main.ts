@@ -134,27 +134,6 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
-    // Add command to create area
-    this.addCommand({
-      id: "create-area",
-      name: "Create Area",
-      callback: () => {
-        this.openCreateAreaModal();
-      },
-    });
-
-    // Add command to create project
-    this.addCommand({
-      id: "create-project",
-      name: "Create Project",
-      callback: () => {
-        this.openCreateProjectModal();
-      },
-    });
-
-    // Note: registerNoteTypeCommands() is called in onLayoutReady
-    // after Task note type is registered by ObsidianExtension
-
     // Add command to refresh bases
     this.addCommand({
       id: "refresh-bases",
