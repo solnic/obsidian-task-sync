@@ -50,7 +50,8 @@ test.describe("Task Creation with New Architecture", () => {
     // Verify the front-matter contains correct task properties
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Title).toBe(taskTitle);
-    expect(frontMatter.Description).toBe(taskDescription);
+    // Description should be in content, not front-matter
+    expect(frontMatter.Description).toBeUndefined();
     expect(frontMatter.Category).toBe("Task");
     expect(frontMatter.Status).toBe("Backlog");
     expect(frontMatter.Done).toBe(false);
@@ -192,7 +193,8 @@ test.describe("Task Creation with New Architecture", () => {
 
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Title).toBe(taskTitle);
-    expect(frontMatter.Description).toBe(taskDescription);
+    // Description should be in content, not front-matter
+    expect(frontMatter.Description).toBeUndefined();
     expect(frontMatter.Category).toBe("Task");
     expect(frontMatter.Status).toBe("Backlog");
     expect(frontMatter.Done).toBe(false);
