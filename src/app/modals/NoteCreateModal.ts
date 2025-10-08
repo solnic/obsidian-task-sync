@@ -80,10 +80,15 @@ export class NoteCreateModal extends Modal {
         title: data.title,
       };
 
+      // Determine folder based on note type
+      // TODO: Make this configurable in note type settings
+      const folder = data.noteType.id === "task" ? "Tasks" : "";
+
       // Create the note using TypeNote FileManager API
       const result = await this.plugin.typeNote.fileManager.createTypedNote(
         data.noteType.id,
         {
+          folder,
           fileName: data.title,
           properties: allProperties,
           validateProperties: true,

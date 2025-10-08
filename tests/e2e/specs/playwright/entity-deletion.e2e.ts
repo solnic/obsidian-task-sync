@@ -19,12 +19,12 @@ test.describe("Entity Deletion on Note Deletion", () => {
     page,
   }) => {
     // Create a task through the modal
-    await executeCommand(page, "Task Sync: Create Task");
+    await executeCommand(page, "Create Task");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     const taskTitle = "Task to Delete";
-    await page.fill('[data-testid="title-input"]', taskTitle);
-    await page.click('[data-testid="create-button"]');
+    await page.fill('[data-testid="property-title"]', taskTitle);
+    await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
 
     // Wait for the task file to be created
@@ -54,7 +54,7 @@ test.describe("Entity Deletion on Note Deletion", () => {
 
     const projectName = "Project to Delete";
     await page.fill('[data-testid="project-name-input"]', projectName);
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
 
     // Wait for the project file to be created
@@ -87,7 +87,7 @@ test.describe("Entity Deletion on Note Deletion", () => {
 
     const areaName = "Area to Delete";
     await page.fill('[data-testid="area-name-input"]', areaName);
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
 
     // Wait for the area file to be created

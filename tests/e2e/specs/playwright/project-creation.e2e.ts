@@ -40,7 +40,7 @@ test.describe("Project Creation with New Architecture", () => {
     );
 
     // Click the Create Project button
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Wait for the modal to close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
@@ -74,7 +74,7 @@ test.describe("Project Creation with New Architecture", () => {
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Try to submit without entering a name
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Should show validation error
     await expect(
@@ -104,7 +104,7 @@ test.describe("Project Creation with New Architecture", () => {
     await page.fill('[data-testid="project-name-input"]', projectName);
 
     // Click the Create Project button
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Wait for the modal to close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
@@ -143,7 +143,7 @@ test.describe("Project Creation with New Architecture", () => {
     );
 
     // Click the Create Project button
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Wait for the modal to close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();

@@ -265,7 +265,23 @@ priority: 5
     });
 
     test("fails when template processing fails", () => {
-      const noteType = createSampleNoteType();
+      // Create a note type with a template variable that has no default value
+      const noteType: NoteType = {
+        ...createSampleNoteType(),
+        template: {
+          version: "1.0.0",
+          content: "# {{title}}\n\n{{description}}\n\nPriority: {{priority}}",
+          variables: {
+            title: { name: "title" }, // No default value - required
+            description: {
+              name: "description",
+              defaultValue: "No description",
+            },
+            priority: { name: "priority", defaultValue: 3 },
+          },
+        },
+      };
+
       const properties = {
         // Missing required title
         description: "A test task",

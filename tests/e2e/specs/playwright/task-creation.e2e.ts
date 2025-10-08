@@ -17,21 +17,21 @@ test.describe("Task Creation with New Architecture", () => {
     page,
   }) => {
     // Open the Create Task command
-    await executeCommand(page, "Task Sync: Create Task");
+    await executeCommand(page, "Create Task");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Fill in the task title
     const taskTitle = "Test Task E2E";
-    await page.fill('[data-testid="title-input"]', taskTitle);
+    await page.fill('[data-testid="property-title"]', taskTitle);
 
     // Fill in the description
     const taskDescription = "This is a test task created by e2e test";
-    await page.fill('[data-testid="description-input"]', taskDescription);
+    await page.fill('[data-testid="property-description"]', taskDescription);
 
     // Click the Create Task button
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Wait for the modal to close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
@@ -50,7 +50,8 @@ test.describe("Task Creation with New Architecture", () => {
     // Verify the front-matter contains correct task properties
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Title).toBe(taskTitle);
-    expect(frontMatter.Type).toBe("Task");
+    expect(frontMatter.Description).toBe(taskDescription);
+    expect(frontMatter.Category).toBe("Task");
     expect(frontMatter.Status).toBe("Backlog");
     expect(frontMatter.Done).toBe(false);
   });
@@ -59,13 +60,13 @@ test.describe("Task Creation with New Architecture", () => {
     page,
   }) => {
     // Open the Create Task command
-    await executeCommand(page, "Task Sync: Create Task");
+    await executeCommand(page, "Create Task");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Try to submit without entering a title
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Should show validation error notice
     await expectNotice(page, "Task title is required");
@@ -74,17 +75,17 @@ test.describe("Task Creation with New Architecture", () => {
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Verify input has error styling
-    await expect(page.locator('[data-testid="title-input"]')).toHaveClass(
+    await expect(page.locator('[data-testid="property-title"]')).toHaveClass(
       /task-sync-input-error/
     );
 
     // Type in the title input to clear the error
-    await page.fill('[data-testid="title-input"]', "Valid Title");
+    await page.fill('[data-testid="property-title"]', "Valid Title");
 
     // Verify error styling is removed
-    await expect(page.locator('[data-testid="title-input"]')).not.toHaveClass(
-      /task-sync-input-error/
-    );
+    await expect(
+      page.locator('[data-testid="property-title"]')
+    ).not.toHaveClass(/task-sync-input-error/);
 
     // Cancel the modal
     await page.click('[data-testid="cancel-button"]');
@@ -95,18 +96,18 @@ test.describe("Task Creation with New Architecture", () => {
     page,
   }) => {
     // Open the Create Task command
-    await executeCommand(page, "Task Sync: Create Task");
+    await executeCommand(page, "Create Task");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Fill in the task title
     const taskTitle = "Complete Feature Task";
-    await page.fill('[data-testid="title-input"]', taskTitle);
+    await page.fill('[data-testid="property-title"]', taskTitle);
 
     // Fill in the description
     const taskDescription = "A feature task with all properties set";
-    await page.fill('[data-testid="description-input"]', taskDescription);
+    await page.fill('[data-testid="property-description"]', taskDescription);
 
     // Change the status by clicking the status badge
     await page.click('[data-testid="status-badge"]');
@@ -131,7 +132,7 @@ test.describe("Task Creation with New Architecture", () => {
     await page.fill('[data-testid="areas-input"]', "Development, Testing");
 
     // Submit the form
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Wait for the modal to close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
@@ -157,21 +158,23 @@ test.describe("Task Creation with New Architecture", () => {
     expect(frontMatter.Done).toBe(false);
   });
 
-  test("should handle task creation with only name (no description)", async ({
+  test("should handle task creation with minimal required fields", async ({
     page,
   }) => {
     // Open the Create Task command
-    await executeCommand(page, "Task Sync: Create Task");
+    await executeCommand(page, "Create Task");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    // Fill in only the task title
+    // Fill in required fields only
     const taskTitle = "Minimal Test Task";
-    await page.fill('[data-testid="title-input"]', taskTitle);
+    const taskDescription = "Minimal description";
+    await page.fill('[data-testid="property-title"]', taskTitle);
+    await page.fill('[data-testid="property-description"]', taskDescription);
 
     // Click the Create Task button
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Wait for the modal to close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
@@ -185,11 +188,12 @@ test.describe("Task Creation with New Architecture", () => {
 
     // Verify the file content
     const fileContent = await readVaultFile(page, expectedFilePath);
-    expect(fileContent).not.toContain("This is a test");
+    expect(fileContent).toContain(taskDescription);
 
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Title).toBe(taskTitle);
-    expect(frontMatter.Type).toBe("Task");
+    expect(frontMatter.Description).toBe(taskDescription);
+    expect(frontMatter.Category).toBe("Task");
     expect(frontMatter.Status).toBe("Backlog");
     expect(frontMatter.Done).toBe(false);
   });

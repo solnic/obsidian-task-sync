@@ -31,7 +31,7 @@ test.describe("Area Creation with New Architecture", () => {
     await page.fill('[data-testid="area-description-input"]', areaDescription);
 
     // Click the Create Area button
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Wait for the modal to close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
@@ -64,7 +64,7 @@ test.describe("Area Creation with New Architecture", () => {
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Try to submit without entering a name
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Should show validation error
     await expect(
@@ -106,7 +106,7 @@ test.describe("Area Creation with New Architecture", () => {
     await page.fill('[data-testid="area-name-input"]', areaName);
 
     // Click the Create Area button
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
     // Wait for the modal to close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();

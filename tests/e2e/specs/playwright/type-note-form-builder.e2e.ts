@@ -78,7 +78,7 @@ test.describe("TypeNote Form Builder", () => {
     await closeButton.click();
 
     // Open create note modal
-    await executeCommand(page, "Task Sync: Create Note");
+    await executeCommand(page, "Create Task");
 
     await page.waitForTimeout(500);
 
@@ -171,7 +171,7 @@ test.describe("TypeNote Form Builder", () => {
     await closeButton.click();
 
     // Open create note modal
-    await executeCommand(page, "Task Sync: Create Note");
+    await executeCommand(page, "Create Task");
 
     await page.waitForTimeout(500);
 
@@ -258,7 +258,7 @@ test.describe("TypeNote Form Builder", () => {
     await closeButton.click();
 
     // Open create note modal
-    await executeCommand(page, "Task Sync: Create Note");
+    await executeCommand(page, "Create Task");
 
     await page.waitForTimeout(500);
 

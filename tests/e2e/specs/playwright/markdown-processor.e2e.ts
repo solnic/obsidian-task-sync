@@ -18,42 +18,42 @@ test.describe("TaskTodoMarkdownProcessor", () => {
     page,
   }) => {
     // Create test tasks with different properties
-    await executeCommand(page, "Task Sync: Create Task");
+    await executeCommand(page, "Create Task");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Create first task - High Priority Bug
-    await page.fill('[data-testid="title-input"]', "High Priority Bug");
+    await page.fill('[data-testid="property-title"]', "High Priority Bug");
     await page.fill(
-      '[data-testid="description-input"]',
+      '[data-testid="property-description"]',
       "Critical bug that needs immediate attention"
     );
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");
 
     // Create second task - Feature Request
-    await executeCommand(page, "Task Sync: Create Task");
+    await executeCommand(page, "Create Task");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    await page.fill('[data-testid="title-input"]', "Feature Request");
+    await page.fill('[data-testid="property-title"]', "Feature Request");
     await page.fill(
-      '[data-testid="description-input"]',
+      '[data-testid="property-description"]',
       "New feature to implement"
     );
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");
 
     // Create third task - Completed Task
-    await executeCommand(page, "Task Sync: Create Task");
+    await executeCommand(page, "Create Task");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    await page.fill('[data-testid="title-input"]', "Completed Task");
+    await page.fill('[data-testid="property-title"]', "Completed Task");
     await page.fill(
-      '[data-testid="description-input"]',
+      '[data-testid="property-description"]',
       "Task that is already done"
     );
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");
 
@@ -131,12 +131,12 @@ test.describe("TaskTodoMarkdownProcessor", () => {
 
   test("should handle nested todo items with task links", async ({ page }) => {
     // Create a simple task for testing
-    await executeCommand(page, "Task Sync: Create Task");
+    await executeCommand(page, "Create Task");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    await page.fill('[data-testid="title-input"]', "Nested Task Test");
+    await page.fill('[data-testid="property-title"]', "Nested Task Test");
     await page.fill(
-      '[data-testid="description-input"]',
+      '[data-testid="property-description"]',
       "Task for nested list testing"
     );
 
@@ -152,7 +152,7 @@ test.describe("TaskTodoMarkdownProcessor", () => {
     );
 
     // Keep default status (Backlog)
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");
 

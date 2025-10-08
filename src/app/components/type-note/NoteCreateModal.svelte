@@ -96,7 +96,7 @@
       noteType: selectedNoteType,
       properties: propertyValues,
       title: title,
-      templateContent: templateContent || undefined,
+      templateContent: templateContent?.trim() || undefined,
     });
   }
 
