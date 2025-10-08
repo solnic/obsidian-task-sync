@@ -34,6 +34,8 @@ import { DailyNoteFeature } from "../features/DailyNoteFeature";
 import { derived, get, type Readable } from "svelte/store";
 import { TypeNote } from "../core/type-note/TypeNote";
 import { buildTaskNoteType } from "./obsidian/TaskNoteType";
+import { createProjectNoteType } from "./obsidian/ProjectNoteType";
+import { createAreaNoteType } from "./obsidian/AreaNoteType";
 
 /**
  * Obsidian Extension Settings
@@ -138,11 +140,15 @@ export class ObsidianExtension implements Extension {
       // Note: TypeNote initialization is handled by the plugin
       // We're using a shared TypeNote instance passed from the plugin
 
-      // Register Task note type with TypeNote
+      // Register note types with TypeNote
       await this.registerTaskNoteType();
+      await this.registerProjectNoteType();
+      await this.registerAreaNoteType();
 
-      // Pass TypeNote instance to task operations
+      // Pass TypeNote instance to operations
       this.taskOperations.setTypeNote(this.typeNote);
+      this.projectOperations.setTypeNote(this.typeNote);
+      this.areaOperations.setTypeNote(this.typeNote);
 
       // Initialize markdown processor now that wikiLinkOperations is available
       this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
@@ -980,5 +986,69 @@ export class ObsidianExtension implements Extension {
    */
   async updateTaskNoteType(): Promise<void> {
     await this.registerTaskNoteType();
+  }
+
+  /**
+   * Register Project note type with TypeNote
+   * This creates and registers the Project note type
+   */
+  private async registerProjectNoteType(): Promise<void> {
+    try {
+      // Create Project note type
+      const projectNoteType = createProjectNoteType();
+
+      // Register with TypeNote registry
+      const result = this.typeNote.registry.register(projectNoteType, {
+        allowOverwrite: true, // Allow re-registration
+        validate: true,
+        checkCompatibility: false,
+      });
+
+      if (!result.valid) {
+        console.error("Failed to register Project note type:", result.errors);
+        throw new Error(
+          `Project note type registration failed: ${
+            result.errors?.[0]?.message || "Unknown error"
+          }`
+        );
+      }
+
+      console.log("Project note type registered successfully with TypeNote");
+    } catch (error) {
+      console.error("Error registering Project note type:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Register Area note type with TypeNote
+   * This creates and registers the Area note type
+   */
+  private async registerAreaNoteType(): Promise<void> {
+    try {
+      // Create Area note type
+      const areaNoteType = createAreaNoteType();
+
+      // Register with TypeNote registry
+      const result = this.typeNote.registry.register(areaNoteType, {
+        allowOverwrite: true, // Allow re-registration
+        validate: true,
+        checkCompatibility: false,
+      });
+
+      if (!result.valid) {
+        console.error("Failed to register Area note type:", result.errors);
+        throw new Error(
+          `Area note type registration failed: ${
+            result.errors?.[0]?.message || "Unknown error"
+          }`
+        );
+      }
+
+      console.log("Area note type registered successfully with TypeNote");
+    } catch (error) {
+      console.error("Error registering Area note type:", error);
+      throw error;
+    }
   }
 }

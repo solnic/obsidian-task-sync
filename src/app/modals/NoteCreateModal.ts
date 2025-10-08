@@ -8,10 +8,12 @@ import { mount, unmount } from "svelte";
 import NoteCreateModalSvelte from "../components/type-note/NoteCreateModal.svelte";
 import type TaskSyncPlugin from "../../main";
 import type { NoteType } from "../core/type-note/types";
+import type { TaskSyncSettings } from "../types/settings";
 
 export class NoteCreateModal extends Modal {
   private component: any = null;
   private plugin: TaskSyncPlugin;
+  private settings: TaskSyncSettings;
   private preselectedNoteTypeId?: string;
 
   constructor(
@@ -21,6 +23,7 @@ export class NoteCreateModal extends Modal {
   ) {
     super(app);
     this.plugin = plugin;
+    this.settings = plugin.settings;
     this.preselectedNoteTypeId = preselectedNoteTypeId;
   }
 
@@ -67,6 +70,23 @@ export class NoteCreateModal extends Modal {
     }
   }
 
+  /**
+   * Get the folder path for a note type based on settings
+   */
+  private getFolderForNoteType(noteTypeId: string): string {
+    switch (noteTypeId) {
+      case "task":
+        return this.settings.tasksFolder;
+      case "project":
+        return this.settings.projectsFolder;
+      case "area":
+        return this.settings.areasFolder;
+      default:
+        // For custom note types, use empty string (root folder)
+        return "";
+    }
+  }
+
   private async handleSubmit(data: {
     noteType: NoteType;
     properties: Record<string, any>;
@@ -80,9 +100,8 @@ export class NoteCreateModal extends Modal {
         title: data.title,
       };
 
-      // Determine folder based on note type
-      // TODO: Make this configurable in note type settings
-      const folder = data.noteType.id === "task" ? "Tasks" : "";
+      // Determine folder based on note type ID and settings
+      const folder = this.getFolderForNoteType(data.noteType.id);
 
       // Create the note using TypeNote FileManager API
       const result = await this.plugin.typeNote.fileManager.createTypedNote(

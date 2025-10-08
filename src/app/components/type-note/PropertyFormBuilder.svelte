@@ -211,31 +211,33 @@
     showOptional = !showOptional;
   }
 
-  function handleTemplateContentChange(e: Event) {
-    const target = e.target as HTMLTextAreaElement;
-    templateContent = target.value;
-    ontemplatecontentchange?.(templateContent);
-  }
+  // Track the current note type ID to detect when it changes
+  let currentNoteTypeId = $state<string | null>(null);
 
-  // Evaluate template content with current property values using TypeNote's template processor
-  const evaluatedTemplateContent = $derived.by(() => {
-    if (!noteType?.template || !noteProcessor) return "";
+  // Initialize template content only when note type changes (not on every property update)
+  $effect(() => {
+    // Only update template content when note type changes, not when properties change
+    if (noteType && noteType.id !== currentNoteTypeId) {
+      currentNoteTypeId = noteType.id;
 
-    // Use the TypeNote template processor to evaluate the template
-    const result = noteProcessor.processTemplate(noteType, values, {
-      validateVariables: false,
-      allowUndefinedVariables: true,
-    });
+      // Evaluate template with current property values
+      if (noteProcessor && noteType.template) {
+        const result = noteProcessor.processTemplate(noteType, values, {
+          validateVariables: false,
+          allowUndefinedVariables: true,
+        });
 
-    return result.success ? result.content || "" : "";
+        if (result.success && result.content) {
+          templateContent = result.content;
+          ontemplatecontentchange?.(templateContent);
+        }
+      }
+    }
   });
 
-  // Initialize template content when note type changes or values update
+  // Call the callback when template content changes (user edits)
   $effect(() => {
-    if (noteType && noteProcessor && evaluatedTemplateContent) {
-      templateContent = evaluatedTemplateContent;
-      ontemplatecontentchange?.(templateContent);
-    }
+    ontemplatecontentchange?.(templateContent);
   });
 </script>
 
@@ -262,7 +264,6 @@
   <div class="task-sync-template-content">
     <textarea
       bind:value={templateContent}
-      oninput={handleTemplateContentChange}
       placeholder="Note content (edit template as needed)..."
       rows="8"
       class="task-sync-template-textarea"
