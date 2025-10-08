@@ -17,6 +17,7 @@ import {
   createInvalidResult,
   createValidationError,
 } from "./validation";
+import { reconstructNoteTypeSchemas } from "./schema-utils";
 
 /**
  * Registry error types
@@ -192,7 +193,9 @@ export class TypeRegistry {
    * Get a note type by ID
    */
   get(noteTypeId: string): NoteType | undefined {
-    return this.noteTypes.get(noteTypeId);
+    const noteType = this.noteTypes.get(noteTypeId);
+    // Reconstruct schemas before returning
+    return noteType ? reconstructNoteTypeSchemas(noteType) : undefined;
   }
 
   /**
@@ -228,7 +231,8 @@ export class TypeRegistry {
       });
     }
 
-    return noteTypes;
+    // Reconstruct schemas for all note types before returning
+    return noteTypes.map((nt) => reconstructNoteTypeSchemas(nt));
   }
 
   /**
