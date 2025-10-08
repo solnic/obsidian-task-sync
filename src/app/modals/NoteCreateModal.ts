@@ -38,10 +38,12 @@ export class NoteCreateModal extends Modal {
         target: contentEl,
         props: {
           typeRegistry: this.plugin.typeNote.registry,
+          noteProcessor: this.plugin.typeNote.noteProcessor,
           onsubmit: async (data: {
             noteType: NoteType;
             properties: Record<string, any>;
             title: string;
+            templateContent?: string;
           }) => {
             await this.handleSubmit(data);
           },
@@ -62,6 +64,7 @@ export class NoteCreateModal extends Modal {
     noteType: NoteType;
     properties: Record<string, any>;
     title: string;
+    templateContent?: string;
   }) {
     try {
       // Merge title into properties
@@ -77,6 +80,7 @@ export class NoteCreateModal extends Modal {
           fileName: data.title,
           properties: allProperties,
           validateProperties: true,
+          content: data.templateContent,
         }
       );
 

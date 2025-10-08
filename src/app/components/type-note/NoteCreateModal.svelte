@@ -2,18 +2,21 @@
   import PropertyFormBuilder from "./PropertyFormBuilder.svelte";
   import type { NoteType, ValidationResult } from "../../core/type-note/types";
   import type { TypeRegistry } from "../../core/type-note/registry";
+  import type { NoteProcessor } from "../../core/type-note/note-processor";
 
   interface Props {
     typeRegistry: TypeRegistry;
+    noteProcessor: NoteProcessor;
     onsubmit?: (data: {
       noteType: NoteType;
       properties: Record<string, any>;
       title: string;
+      templateContent?: string;
     }) => void;
     oncancel?: () => void;
   }
 
-  let { typeRegistry, onsubmit, oncancel }: Props = $props();
+  let { typeRegistry, noteProcessor, onsubmit, oncancel }: Props = $props();
 
   // Get all available note types
   const noteTypes = typeRegistry.getAll();
@@ -24,6 +27,7 @@
   );
   let propertyValues: Record<string, any> = $state({});
   let propertyValidation: Record<string, ValidationResult> = $state({});
+  let templateContent = $state("");
 
   // Computed
   const selectedNoteType = $derived(
@@ -52,6 +56,10 @@
     propertyValidation = validation;
   }
 
+  function handleTemplateContentChange(content: string) {
+    templateContent = content;
+  }
+
   function handleSubmit() {
     if (!selectedNoteType) return;
 
@@ -70,6 +78,7 @@
       noteType: selectedNoteType,
       properties: propertyValues,
       title: title,
+      templateContent: templateContent || undefined,
     });
   }
 
@@ -80,8 +89,9 @@
   function handleNoteTypeChange(e: Event) {
     const target = e.target as HTMLSelectElement;
     selectedNoteTypeId = target.value;
-    // Reset property values when note type changes
+    // Reset property values and template content when note type changes
     propertyValues = {};
+    templateContent = "";
   }
 </script>
 
@@ -130,6 +140,10 @@
             onvalueschange={handlePropertyValuesChange}
             onvalidationchange={handlePropertyValidationChange}
             showOptionalProperties={true}
+            noteType={selectedNoteType}
+            {noteProcessor}
+            bind:templateContent
+            ontemplatecontentchange={handleTemplateContentChange}
           />
         </div>
       {:else}

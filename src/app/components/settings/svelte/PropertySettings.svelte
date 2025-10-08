@@ -348,6 +348,28 @@
           `property-hide-in-forms-toggle-${propertyKey}`
         );
       });
+
+    // Main property toggle
+    new Setting(propertyContent)
+      .setName("Main property")
+      .setDesc(
+        "This property will be rendered first in note creation forms, before the template content"
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(property.form?.main || false)
+          .onChange((value: boolean) => {
+            if (!property.form) {
+              property.form = {};
+            }
+            property.form.main = value;
+            onUpdate();
+          });
+        toggle.toggleEl.setAttribute(
+          "data-testid",
+          `property-main-toggle-${propertyKey}`
+        );
+      });
   }
 
   onMount(() => {

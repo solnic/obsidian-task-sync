@@ -19,8 +19,10 @@
   import type {
     PropertyDefinition,
     ValidationResult,
+    NoteType,
   } from "../../core/type-note/types";
   import { validateProperty } from "../../core/type-note/validation";
+  import type { NoteProcessor } from "../../core/type-note/note-processor";
 
   interface Props {
     properties: Record<string, PropertyDefinition>;
@@ -28,6 +30,10 @@
     onvalueschange?: (values: Record<string, any>) => void;
     onvalidationchange?: (validation: Record<string, ValidationResult>) => void;
     showOptionalProperties?: boolean;
+    noteType?: NoteType;
+    noteProcessor?: NoteProcessor;
+    templateContent?: string;
+    ontemplatecontentchange?: (content: string) => void;
   }
 
   let {
@@ -36,6 +42,10 @@
     onvalueschange,
     onvalidationchange,
     showOptionalProperties = true,
+    noteType,
+    noteProcessor,
+    templateContent = $bindable(""),
+    ontemplatecontentchange,
   }: Props = $props();
 
   // Internal state
@@ -63,10 +73,18 @@
     Object.entries(properties).filter(([_, prop]) => !prop.form?.hidden)
   );
 
-  // Separate required properties by type
+  // Separate main property (only one should be marked as main)
+  const mainProperty = $derived(
+    visibleProperties.find(([_, prop]) => prop.form?.main)
+  );
+
+  // Separate required properties by type (excluding main property)
   const requiredTextProperties = $derived(
     visibleProperties
-      .filter(([_, prop]) => prop.required && isTextProperty(prop))
+      .filter(([key, prop]) => {
+        const isMain = mainProperty && mainProperty[0] === key;
+        return prop.required && isTextProperty(prop) && !isMain;
+      })
       .sort(([_, a], [__, b]) => {
         const orderA = a.order ?? 999;
         const orderB = b.order ?? 999;
@@ -192,7 +210,66 @@
   function toggleOptional() {
     showOptional = !showOptional;
   }
+
+  function handleTemplateContentChange(e: Event) {
+    const target = e.target as HTMLTextAreaElement;
+    templateContent = target.value;
+    ontemplatecontentchange?.(templateContent);
+  }
+
+  // Evaluate template content with current property values using TypeNote's template processor
+  const evaluatedTemplateContent = $derived.by(() => {
+    if (!noteType?.template || !noteProcessor) return "";
+
+    // Use the TypeNote template processor to evaluate the template
+    const result = noteProcessor.processTemplate(noteType, values, {
+      validateVariables: false,
+      allowUndefinedVariables: true,
+    });
+
+    return result.success ? result.content || "" : "";
+  });
+
+  // Initialize template content when note type changes or values update
+  $effect(() => {
+    if (noteType && noteProcessor && evaluatedTemplateContent) {
+      templateContent = evaluatedTemplateContent;
+      ontemplatecontentchange?.(templateContent);
+    }
+  });
 </script>
+
+<!-- Main property (rendered first) -->
+{#if mainProperty}
+  {@const [propertyKey, property] = mainProperty}
+  {@const Component = renderProperty(propertyKey, property)}
+  {#if Component}
+    <Component
+      {property}
+      {propertyKey}
+      value={values[property.frontMatterKey]}
+      onvaluechange={(newValue) =>
+        handleValueChange(propertyKey, property.frontMatterKey, newValue)}
+      validationResult={validationResults[propertyKey]}
+      touched={touchedFields[propertyKey] || false}
+      compact={true}
+    />
+  {/if}
+{/if}
+
+<!-- Template content textarea (if note type has a template) -->
+{#if noteType?.template?.content}
+  <div class="task-sync-template-content">
+    <textarea
+      bind:value={templateContent}
+      oninput={handleTemplateContentChange}
+      placeholder="Note content (edit template as needed)..."
+      rows="8"
+      class="task-sync-template-textarea"
+      data-testid="template-content-textarea"
+    ></textarea>
+  </div>
+{/if}
 
 <!-- Required text properties (title, description, etc.) -->
 {#each requiredTextProperties as [propertyKey, property]}
@@ -305,5 +382,32 @@
 
   .task-sync-field-group:last-child {
     margin-bottom: 0;
+  }
+
+  .task-sync-template-content {
+    margin: 16px 0;
+  }
+
+  .task-sync-template-textarea {
+    width: 100%;
+    min-height: 150px;
+    padding: 12px;
+    font-family: var(--font-monospace);
+    font-size: var(--font-ui-small);
+    line-height: 1.5;
+    background: var(--background-primary);
+    border: 1px solid var(--background-modifier-border);
+    border-radius: 6px;
+    resize: vertical;
+    color: var(--text-normal);
+  }
+
+  .task-sync-template-textarea:focus {
+    outline: none;
+    border-color: var(--interactive-accent);
+  }
+
+  .task-sync-template-textarea::placeholder {
+    color: var(--text-muted);
   }
 </style>

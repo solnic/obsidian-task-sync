@@ -78,6 +78,8 @@ export interface PropertyDefinition {
     hidden?: boolean;
     /** Label to display in forms. If false, no label is shown. If string, use that label. If undefined, use property.name */
     label?: string | false;
+    /** Whether this is the main property (rendered first in forms) */
+    main?: boolean;
   };
 }
 
@@ -135,6 +137,8 @@ export interface PropertySettingsData {
   form?: {
     /** Whether to hide this property in forms */
     hidden?: boolean;
+    /** Whether this is the main property (rendered first in forms) */
+    main?: boolean;
   };
 }
 
