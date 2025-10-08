@@ -94,16 +94,14 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   }
 
   /**
-   * Override createNote to use TypeNote when available
-   * Falls back to parent implementation if TypeNote is not set
+   * Override createNote to use parent implementation
+   * TypeNote integration is disabled for entity notes because:
+   * 1. Entity notes need description in content, not front-matter
+   * 2. TypeNote validation expects front-matter keys but templates use property keys
+   * 3. ObsidianEntityOperations already handles front-matter correctly
    */
   async createNote(task: Task): Promise<string> {
-    // If TypeNote is available, use it to create the note
-    if (this.typeNote) {
-      return await this.createNoteWithTypeNote(task);
-    }
-
-    // Otherwise, fall back to the parent implementation
+    // Always use the parent implementation which handles front-matter correctly
     return await super.createNote(task);
   }
 
@@ -153,11 +151,12 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
   /**
    * Prepare task properties for TypeNote
-   * Converts Task entity to TypeNote property format
+   * Converts Task entity to TypeNote property format using property keys (not front-matter keys)
+   * TypeNote will handle mapping to front-matter keys automatically
    */
   private prepareTypeNoteProperties(task: Task): Record<string, any> {
     // Convert project name to wiki link format
-    let projectValue = task.project || "";
+    let projectValue = task.project;
     if (projectValue && !projectValue.startsWith("[[")) {
       const project = this.findProjectByName(projectValue);
       if (project && project.source?.filePath) {
@@ -165,19 +164,22 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       }
     }
 
+    // Map task entity properties to TypeNote property keys (lowercase)
+    // TypeNote will map these to front-matter keys (capitalized) automatically
+    // Description is NOT included here because it's not a property - it goes in the template content
     return {
       title: task.title,
-      category: task.category || "",
-      priority: task.priority || "",
+      category: task.category,
+      priority: task.priority,
       status: task.status,
       done: task.done,
       project: projectValue,
-      areas: task.areas || [],
-      parentTask: task.parentTask || "",
-      doDate: task.doDate || undefined,
-      dueDate: task.dueDate || undefined,
-      tags: task.tags || [],
-      description: task.description || "",
+      areas: task.areas,
+      parentTask: task.parentTask,
+      doDate: task.doDate,
+      dueDate: task.dueDate,
+      tags: task.tags,
+      description: task.description, // Include for template processing
     };
   }
 

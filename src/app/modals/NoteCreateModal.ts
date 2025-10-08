@@ -53,7 +53,7 @@ export class NoteCreateModal extends Modal {
             noteType: NoteType;
             properties: Record<string, any>;
             title: string;
-            templateVariables?: Record<string, any>;
+            description?: string;
           }) => {
             await this.handleSubmit(data);
           },
@@ -91,56 +91,158 @@ export class NoteCreateModal extends Modal {
     noteType: NoteType;
     properties: Record<string, any>;
     title: string;
-    templateVariables?: Record<string, any>;
+    description?: string;
   }) {
     try {
-      // Merge title into properties for front-matter
-      const allProperties = {
-        ...data.properties,
-        title: data.title,
-      };
-
-      // Determine folder based on note type ID and settings
-      const folder = this.getFolderForNoteType(data.noteType.id);
-
-      // Use templateVariables if provided (includes description for template processing)
-      // Otherwise use allProperties
-      const propertiesForTemplate = data.templateVariables || allProperties;
-
-      // Create the note using TypeNote FileManager API
-      // The FileManager will:
-      // 1. Process the template with propertiesForTemplate (includes description)
-      // 2. Generate front-matter from allProperties (excludes description)
-      // 3. Combine them into the final file
-      const result = await this.plugin.typeNote.fileManager.createTypedNote(
-        data.noteType.id,
-        {
-          folder,
-          fileName: data.title,
-          properties: propertiesForTemplate, // Used for template processing
-          validateProperties: true,
-        }
-      );
-
-      if (result.success) {
-        new Notice(`${data.noteType.name} created successfully`);
-        this.close();
-
-        // Open the created file
-        if (result.file) {
-          const leaf = this.app.workspace.getLeaf(false);
-          await leaf.openFile(result.file);
-        }
+      // For Task/Area/Project entities, use entity operations instead of TypeNote FileManager
+      // This ensures proper front-matter handling through ObsidianEntityOperations
+      if (data.noteType.id === "task") {
+        await this.createTaskEntity(data);
+      } else if (data.noteType.id === "area") {
+        await this.createAreaEntity(data);
+      } else if (data.noteType.id === "project") {
+        await this.createProjectEntity(data);
       } else {
-        const errorMessage = result.errors?.join(", ") || "Unknown error";
-        new Notice(
-          `Failed to create ${data.noteType.name}: ${errorMessage}`,
-          5000
-        );
+        // For other note types, use TypeNote FileManager
+        await this.createGenericNote(data);
       }
     } catch (error) {
       console.error("Failed to create note:", error);
       new Notice(`Failed to create note: ${error.message}`, 5000);
+    }
+  }
+
+  private async createTaskEntity(data: {
+    noteType: NoteType;
+    properties: Record<string, any>;
+    title: string;
+    description?: string;
+  }) {
+    const taskData: any = {
+      title: data.title,
+      description: data.description,
+      category: data.properties.Category,
+      priority: data.properties.Priority,
+      status: data.properties.Status,
+      done: data.properties.Done,
+      project: data.properties.Project,
+      areas: data.properties.Areas,
+      parentTask: data.properties["Parent task"],
+      doDate: data.properties["Do Date"],
+      dueDate: data.properties["Due Date"],
+      tags: data.properties.tags,
+    };
+
+    const createdTask = await this.plugin.operations.taskOperations.create(
+      taskData
+    );
+    new Notice(`Task "${createdTask.title}" created successfully`);
+    this.close();
+
+    // Open the created file
+    const filePath = `${this.settings.tasksFolder}/${createdTask.title}.md`;
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (file) {
+      const leaf = this.app.workspace.getLeaf(false);
+      await leaf.openFile(file as any);
+    }
+  }
+
+  private async createAreaEntity(data: {
+    noteType: NoteType;
+    properties: Record<string, any>;
+    title: string;
+    description?: string;
+  }) {
+    const areaData: any = {
+      name: data.title,
+      description: data.description,
+      tags: data.properties.tags,
+    };
+
+    const createdArea = await this.plugin.operations.areaOperations.create(
+      areaData
+    );
+    new Notice(`Area "${createdArea.name}" created successfully`);
+    this.close();
+
+    // Open the created file
+    const filePath = `${this.settings.areasFolder}/${createdArea.name}.md`;
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (file) {
+      const leaf = this.app.workspace.getLeaf(false);
+      await leaf.openFile(file as any);
+    }
+  }
+
+  private async createProjectEntity(data: {
+    noteType: NoteType;
+    properties: Record<string, any>;
+    title: string;
+    description?: string;
+  }) {
+    const projectData: any = {
+      name: data.title,
+      description: data.description,
+      areas: data.properties.Areas,
+      tags: data.properties.tags,
+    };
+
+    const createdProject =
+      await this.plugin.operations.projectOperations.create(projectData);
+    new Notice(`Project "${createdProject.name}" created successfully`);
+    this.close();
+
+    // Open the created file
+    const filePath = `${this.settings.projectsFolder}/${createdProject.name}.md`;
+    const file = this.app.vault.getAbstractFileByPath(filePath);
+    if (file) {
+      const leaf = this.app.workspace.getLeaf(false);
+      await leaf.openFile(file as any);
+    }
+  }
+
+  private async createGenericNote(data: {
+    noteType: NoteType;
+    properties: Record<string, any>;
+    title: string;
+    description?: string;
+  }) {
+    // Merge title into properties
+    const allProperties = {
+      ...data.properties,
+      title: data.title,
+    };
+
+    // Determine folder based on note type ID and settings
+    const folder = this.getFolderForNoteType(data.noteType.id);
+
+    // Create the note using TypeNote FileManager API
+    const result = await this.plugin.typeNote.fileManager.createTypedNote(
+      data.noteType.id,
+      {
+        folder,
+        fileName: data.title,
+        properties: allProperties,
+        validateProperties: true,
+      }
+    );
+
+    if (result.success) {
+      new Notice(`${data.noteType.name} created successfully`);
+      this.close();
+
+      // Open the created file
+      if (result.file) {
+        const leaf = this.app.workspace.getLeaf(false);
+        await leaf.openFile(result.file);
+      }
+    } else {
+      const errorMessage = result.errors?.join(", ") || "Unknown error";
+      new Notice(
+        `Failed to create ${data.noteType.name}: ${errorMessage}`,
+        5000
+      );
     }
   }
 

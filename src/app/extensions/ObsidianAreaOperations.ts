@@ -45,16 +45,13 @@ export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
   }
 
   /**
-   * Override createNote to use TypeNote when available
-   * Falls back to parent implementation if TypeNote is not set
+   * Override createNote to use parent implementation
+   * TypeNote integration is disabled for entity notes because:
+   * 1. Entity notes need description in content, not front-matter
+   * 2. ObsidianEntityOperations already handles front-matter correctly
    */
   async createNote(area: Area): Promise<string> {
-    // If TypeNote is available, use it to create the note
-    if (this.typeNote) {
-      return await this.createNoteWithTypeNote(area);
-    }
-
-    // Otherwise, fall back to the parent implementation
+    // Always use the parent implementation which handles front-matter correctly
     return await super.createNote(area);
   }
 

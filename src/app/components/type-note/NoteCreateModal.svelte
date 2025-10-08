@@ -13,7 +13,7 @@
       noteType: NoteType;
       properties: Record<string, any>;
       title: string;
-      templateVariables?: Record<string, any>;
+      description?: string;
     }) => void;
     oncancel?: () => void;
   }
@@ -51,7 +51,9 @@
   }
 
   function handleSubmit() {
-    if (!selectedNoteType) return;
+    if (!selectedNoteType) {
+      return;
+    }
 
     // Validate all properties using TypeNote's validation
     const validationResult = validateProperties(
@@ -93,18 +95,11 @@
       return;
     }
 
-    // Pass description separately for template processing (not as a property)
-    // The description will be used in template variables but won't be added to front-matter
-    const templateVariables = {
-      ...propertyValues,
-      ...(description.trim() ? { description: description.trim() } : {}),
-    };
-
     onsubmit?.({
       noteType: selectedNoteType,
-      properties: propertyValues, // Only actual properties go to front-matter
+      properties: propertyValues,
       title: title,
-      templateVariables, // Template variables include description for content
+      description: description.trim() || undefined,
     });
   }
 

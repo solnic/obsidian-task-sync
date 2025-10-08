@@ -52,18 +52,14 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
   }
 
   /**
-   * Override createNote to use TypeNote when available and include base generation
-   * Falls back to parent implementation if TypeNote is not set
+   * Override createNote to use parent implementation
+   * TypeNote integration is disabled for entity notes because:
+   * 1. Entity notes need description in content, not front-matter
+   * 2. ObsidianEntityOperations already handles front-matter correctly
    */
   async createNote(project: Project): Promise<string> {
-    // If TypeNote is available, use it to create the note
-    let filePath: string;
-    if (this.typeNote) {
-      filePath = await this.createNoteWithTypeNote(project);
-    } else {
-      // Otherwise, fall back to the parent implementation
-      filePath = await super.createNote(project);
-    }
+    // Always use the parent implementation which handles front-matter correctly
+    const filePath = await super.createNote(project);
 
     // Then generate the base file if enabled
     await this.generateBaseForProject(project);
