@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Setting } from "obsidian";
   import { onMount } from "svelte";
-  import inflection from "inflection";
+  import { camelize } from "inflection";
 
   interface Props {
     propertyKey: string;
@@ -23,8 +23,7 @@
 
   // Helper function to generate camelCase key from name using inflection
   function generateKeyFromName(name: string): string {
-    if (!name) return "";
-    return inflection.camelize(name, true); // true = lower camel case
+    return camelize(name, true); // true = lower camel case
   }
 
   // Helper function to get default value for a given type
@@ -73,6 +72,20 @@
       );
     });
 
+    // Front-matter key
+    new Setting(propertyContent)
+      .setName("Front-matter key")
+      .setDesc("The key used in the note's front-matter")
+      .addText((text) => {
+        text
+          .setPlaceholder("Front-matter key")
+          .setValue(property.frontMatterKey || property.name)
+          .onChange((value) => {
+            property.frontMatterKey = value;
+            onUpdate();
+          });
+      });
+
     // Type
     new Setting(propertyContent).setName("Type").addDropdown((dropdown) => {
       Object.entries(typeMapping).forEach(([value, label]) => {
@@ -97,8 +110,7 @@
       "Default value"
     );
 
-    const schemaType = property.schemaType || "string";
-    switch (schemaType) {
+    switch (property.schemaType) {
       case "string":
         defaultSetting.addText((text) => {
           text
@@ -119,10 +131,10 @@
         defaultSetting.addText((text) => {
           text
             .setPlaceholder("Default value")
-            .setValue(property.defaultValue?.toString() || "0")
+            .setValue(property.defaultValue?.toString() || "")
             .onChange((value: string) => {
               const numValue = parseFloat(value);
-              property.defaultValue = isNaN(numValue) ? 0 : numValue;
+              property.defaultValue = isNaN(numValue) ? "" : numValue;
               onUpdate();
             });
           text.inputEl.setAttribute("type", "number");
@@ -169,7 +181,7 @@
 
     // Required toggle
     new Setting(propertyContent).setName("Required").addToggle((toggle) => {
-      toggle.setValue(property.required || false).onChange((value: boolean) => {
+      toggle.setValue(property.required).onChange((value: boolean) => {
         property.required = value;
         onUpdate();
       });
@@ -178,20 +190,6 @@
         `property-required-toggle-${propertyKey}`
       );
     });
-
-    // Front-matter key
-    new Setting(propertyContent)
-      .setName("Front-matter key")
-      .setDesc("The key used in the note's front-matter")
-      .addText((text) => {
-        text
-          .setPlaceholder("Front-matter key")
-          .setValue(property.frontMatterKey || "")
-          .onChange((value) => {
-            property.frontMatterKey = value;
-            onUpdate();
-          });
-      });
   }
 
   onMount(() => {
@@ -200,7 +198,7 @@
 </script>
 
 <div bind:this={container} class="property-container" draggable="true">
-  <div class="property-handle-wrapper">
+  <div class="property-handle-wrapper drag-handle">
     <button
       class="property-handle-button drag-handle"
       title="Drag to reorder"
@@ -213,7 +211,7 @@
   <div class="property-controls-container">
     <!-- Property settings will be rendered here -->
   </div>
-  <div class="property-handle-wrapper">
+  <div class="property-handle-wrapper delete-handle">
     <button
       class="property-handle-button delete-handle"
       title="Delete property"
@@ -248,42 +246,44 @@
     align-items: center;
     justify-content: center;
     width: 32px;
-    height: 100%;
     background: var(--background-modifier-border);
-    color: var(--text-muted);
-    cursor: pointer;
-    font-size: 1rem;
-    line-height: 1;
-    user-select: none;
-    border: none;
-    padding: 0;
-    margin: 0;
     transition: background 0.2s ease;
   }
 
-  :global(.property-handle-button) {
-    display: flex;
+  :global(.property-handle-wrapper.drag-handle) {
+    border-right: 1px solid var(--background-modifier-border);
   }
 
-  :global(.property-handle-button:hover) {
+  :global(.property-handle-wrapper.delete-handle) {
+    border-left: 1px solid var(--background-modifier-border);
+  }
+
+  :global(.property-handle-wrapper:hover) {
     background: var(--background-modifier-hover);
+  }
+
+  :global(.property-handle-wrapper.delete-handle:hover) {
+    color: var(--text-error);
+  }
+
+  :global(.property-handle-button) {
+    background: none;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0.5rem;
+    margin: 0;
+    user-select: none;
   }
 
   :global(.property-handle-button.drag-handle) {
     cursor: grab;
-    border-right: 1px solid var(--background-modifier-border);
   }
 
   :global(.property-handle-button.drag-handle:active) {
     cursor: grabbing;
-  }
-
-  :global(.property-handle-button.delete-handle) {
-    border-left: 1px solid var(--background-modifier-border);
-  }
-
-  :global(.property-handle-button.delete-handle:hover) {
-    color: var(--text-error);
   }
 
   :global(.property-content) {
