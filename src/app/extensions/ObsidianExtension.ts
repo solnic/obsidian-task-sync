@@ -141,9 +141,17 @@ export class ObsidianExtension implements Extension {
       // We're using a shared TypeNote instance passed from the plugin
 
       // Register note types with TypeNote
+      console.log("Registering note types with TypeNote...");
       await this.registerTaskNoteType();
       await this.registerProjectNoteType();
       await this.registerAreaNoteType();
+
+      // Verify registration
+      const registeredTypes = this.typeNote.registry.getAll();
+      console.log(
+        `Total note types registered: ${registeredTypes.length}`,
+        registeredTypes.map((nt) => nt.id)
+      );
 
       // Pass TypeNote instance to operations
       this.taskOperations.setTypeNote(this.typeNote);
