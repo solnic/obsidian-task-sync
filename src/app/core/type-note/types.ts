@@ -62,6 +62,12 @@ export interface PropertyDefinition {
 
   /** Options for enum properties */
   options?: string[];
+
+  /** Source for computed/formula properties (e.g., "file.ctime", "formula.Title") */
+  source?: string;
+
+  /** Whether this property should be rendered as a link in Obsidian Bases */
+  link?: boolean;
 }
 
 /**

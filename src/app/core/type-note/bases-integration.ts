@@ -5,21 +5,23 @@
 
 import type { App, Vault } from "obsidian";
 import { TFile } from "obsidian";
-import type { NoteType } from "./types";
+import type { NoteType, PropertyType } from "./types";
 import type { TypeRegistry } from "./registry";
 import * as yaml from "js-yaml";
-import { z } from "zod";
 
 /**
  * Mapping between TypeNote property types and Obsidian Base property types
  */
-export const TYPE_NOTE_TO_BASE_TYPE_MAP = {
+export const TYPE_NOTE_TO_BASE_TYPE_MAP: Record<
+  PropertyType,
+  BasePropertyType
+> = {
   string: "text",
   number: "number",
   boolean: "checkbox",
   date: "date",
   array: "multitext",
-  object: "text", // Objects are serialized as text in bases
+  enum: "text", // Enums are stored as text in bases
 } as const;
 
 /**
@@ -89,12 +91,10 @@ export interface BaseCreationResult {
  * BasesIntegration handles automatic creation of Obsidian Bases from TypeNote note types
  */
 export class BasesIntegration {
-  private app: App;
   private vault: Vault;
   private registry: TypeRegistry;
 
   constructor(app: App, registry: TypeRegistry) {
-    this.app = app;
     this.vault = app.vault;
     this.registry = registry;
   }
@@ -102,45 +102,8 @@ export class BasesIntegration {
   /**
    * Map TypeNote property type to Base property type
    */
-  mapTypeNoteTypeToBaseType(typeNoteType: string): BasePropertyType {
-    // Handle Zod schema types
-    if (typeNoteType.startsWith("Zod")) {
-      return this.mapZodTypeToBaseType(typeNoteType);
-    }
-
-    // Handle simple type strings
-    return (
-      TYPE_NOTE_TO_BASE_TYPE_MAP[
-        typeNoteType as keyof typeof TYPE_NOTE_TO_BASE_TYPE_MAP
-      ] || "text"
-    );
-  }
-
-  /**
-   * Map Zod schema type to Base property type
-   */
-  private mapZodTypeToBaseType(zodType: string): BasePropertyType {
-    if (zodType.includes("String")) return "text";
-    if (zodType.includes("Number")) return "number";
-    if (zodType.includes("Boolean")) return "checkbox";
-    if (zodType.includes("Date")) return "date";
-    if (zodType.includes("Array")) return "multitext";
-    return "text";
-  }
-
-  /**
-   * Infer TypeNote type from Zod schema
-   */
-  private inferTypeFromZodSchema(schema: z.ZodType<any>): string {
-    const typeName = schema.constructor.name;
-
-    if (typeName.includes("String")) return "string";
-    if (typeName.includes("Number")) return "number";
-    if (typeName.includes("Boolean")) return "boolean";
-    if (typeName.includes("Date")) return "date";
-    if (typeName.includes("Array")) return "array";
-
-    return "string"; // Default fallback
+  mapTypeNoteTypeToBaseType(typeNoteType: PropertyType): BasePropertyType {
+    return TYPE_NOTE_TO_BASE_TYPE_MAP[typeNoteType];
   }
 
   /**
@@ -218,19 +181,27 @@ export class BasesIntegration {
 
     // Convert TypeNote properties to base properties
     for (const [, propertyDef] of Object.entries(noteType.properties)) {
-      const typeNoteType = this.inferTypeFromZodSchema(propertyDef.schema);
-      const baseType = this.mapTypeNoteTypeToBaseType(typeNoteType);
+      const baseType = this.mapTypeNoteTypeToBaseType(propertyDef.type);
 
-      config.properties![propertyDef.frontMatterKey] = {
+      const baseProperty: BaseProperty = {
         name: propertyDef.name,
         type: baseType,
       };
 
-      // Add default values if available
-      if (propertyDef.defaultValue !== undefined) {
-        config.properties![propertyDef.frontMatterKey].default =
-          propertyDef.defaultValue;
+      // Add optional fields from PropertyDefinition
+      if (propertyDef.source !== undefined) {
+        baseProperty.source = propertyDef.source;
       }
+
+      if (propertyDef.link !== undefined) {
+        baseProperty.link = propertyDef.link;
+      }
+
+      if (propertyDef.defaultValue !== undefined) {
+        baseProperty.default = propertyDef.defaultValue;
+      }
+
+      config.properties![propertyDef.frontMatterKey] = baseProperty;
     }
 
     // Add standard metadata properties

@@ -88,6 +88,8 @@ export interface SerializedPropertyDefinition {
   visible?: boolean;
   order?: number;
   options?: string[]; // Options for enum properties
+  source?: string; // Source for computed/formula properties
+  link?: boolean; // Whether property should be rendered as a link
 }
 
 /**
@@ -414,6 +416,8 @@ export class TypeRegistry {
         visible: prop.visible,
         order: prop.order,
         options: prop.options,
+        source: prop.source,
+        link: prop.link,
       };
     }
 
