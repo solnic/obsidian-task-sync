@@ -61,10 +61,17 @@ export default class TaskSyncPlugin extends Plugin {
 
   // Expose operations for testing
   public get operations() {
-    return {
+    const operations = {
       taskOperations: new Tasks.Operations(this.settings),
       areaOperations: new Areas.Operations(this.settings),
       projectOperations: new Projects.Operations(this.settings),
+    };
+
+    return {
+      task: operations.taskOperations,
+      area: operations.areaOperations,
+      project: operations.projectOperations,
+      ...operations,
     };
   }
 
