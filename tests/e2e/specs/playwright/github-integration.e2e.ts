@@ -249,9 +249,6 @@ test.describe("GitHub Integration", () => {
     await page.click('[data-testid="tasks-view-tab"]');
     await switchToTaskService(page, "github");
 
-    // Wait a moment for the state to propagate
-    await page.waitForTimeout(1000);
-
     // Hover over the first issue again to reveal the updated button
     await firstIssue.hover();
 
