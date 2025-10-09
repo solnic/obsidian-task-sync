@@ -1,9 +1,9 @@
 <!--
   Date Property Component
-  Handles date input for date properties
+  Handles date input for date properties using base PropertyInput
 -->
 <script lang="ts">
-  import { FieldGroup } from "../../base";
+  import PropertyInput from "./PropertyInput.svelte";
   import type {
     PropertyDefinition,
     ValidationResult,
@@ -24,16 +24,8 @@
     value = $bindable(),
     onvaluechange,
     validationResult,
+    compact = false,
   }: Props = $props();
-
-  const hasError = $derived(
-    validationResult &&
-      !validationResult.valid &&
-      validationResult.errors.length > 0
-  );
-  const errorMessage = $derived(
-    hasError ? validationResult!.errors[0].message : undefined
-  );
 
   function formatDate(date: Date | string | undefined): string {
     if (!date) return "";
@@ -55,20 +47,28 @@
   }
 </script>
 
-<FieldGroup
-  label={property.name}
-  required={property.required}
-  description={hasError ? errorMessage : property.description}
-  error={hasError}
-  htmlFor="prop-{propertyKey}"
+<PropertyInput
+  {property}
+  {propertyKey}
+  bind:value
+  {onvaluechange}
+  {validationResult}
+  {compact}
+  inputType="date"
 >
-  <input
-    id="prop-{propertyKey}"
-    type="date"
-    value={formatDate(value)}
-    onchange={handleChange}
-    class="property-input"
-    class:error={hasError}
-    data-testid="property-{propertyKey}"
-  />
-</FieldGroup>
+  {#snippet children()}
+    <input
+      id="prop-{propertyKey}"
+      type="date"
+      value={formatDate(value)}
+      onchange={handleChange}
+      required={property.required}
+      class={compact ? "task-sync-title-input" : "property-input"}
+      class:task-sync-input-error={compact &&
+        validationResult &&
+        !validationResult.valid}
+      class:error={!compact && validationResult && !validationResult.valid}
+      data-testid="property-{propertyKey}"
+    />
+  {/snippet}
+</PropertyInput>

@@ -74,10 +74,10 @@ export function buildTaskNoteType(): NoteType {
       required: true,
       defaultValue: "Task",
       description: "Entity type (always 'Task')",
-      visible: false, // Hidden from form, auto-set
+      visible: true,
       order: 1,
       form: {
-        hidden: true, // Hide from primary form section
+        hidden: true, // Hidden from form, auto-set
       },
     },
     title: {

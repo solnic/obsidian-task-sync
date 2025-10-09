@@ -40,8 +40,11 @@ export function createAreaNoteType(): NoteType {
       required: true,
       defaultValue: "Area",
       description: "Entity type (always 'Area')",
-      visible: false, // Hidden from form, auto-set
+      visible: true,
       order: 2,
+      form: {
+        hidden: true, // Hidden from form, auto-set
+      },
     },
     tags: {
       key: "tags",

@@ -1,9 +1,9 @@
 <!--
   Number Property Component
-  Handles number input for numeric properties
+  Handles number input for numeric properties using base PropertyInput
 -->
 <script lang="ts">
-  import { FieldGroup } from "../../base";
+  import PropertyInput from "./PropertyInput.svelte";
   import type {
     PropertyDefinition,
     ValidationResult,
@@ -24,16 +24,8 @@
     value = $bindable(),
     onvaluechange,
     validationResult,
+    compact = false,
   }: Props = $props();
-
-  const hasError = $derived(
-    validationResult &&
-      !validationResult.valid &&
-      validationResult.errors.length > 0
-  );
-  const errorMessage = $derived(
-    hasError ? validationResult!.errors[0].message : undefined
-  );
 
   function handleInput(event: Event) {
     const target = event.target as HTMLInputElement;
@@ -43,22 +35,33 @@
   }
 </script>
 
-<FieldGroup
-  label={property.name}
-  required={property.required}
-  description={hasError ? errorMessage : property.description}
-  error={hasError}
-  htmlFor="prop-{propertyKey}"
+<PropertyInput
+  {property}
+  {propertyKey}
+  bind:value
+  {onvaluechange}
+  {validationResult}
+  {compact}
+  inputType="number"
 >
-  <input
-    id="prop-{propertyKey}"
-    type="number"
-    value={value || ""}
-    oninput={handleInput}
-    placeholder={property.description ||
-      `Enter ${property.name.toLowerCase()}...`}
-    class="property-input"
-    class:error={hasError}
-    data-testid="property-{propertyKey}"
-  />
-</FieldGroup>
+  {#snippet children()}
+    <input
+      id="prop-{propertyKey}"
+      type="number"
+      value={value || ""}
+      oninput={handleInput}
+      placeholder={compact
+        ? property.required
+          ? `${property.name.toUpperCase()} *`
+          : property.name.toUpperCase()
+        : property.description || `Enter ${property.name.toLowerCase()}...`}
+      required={property.required}
+      class={compact ? "task-sync-title-input" : "property-input"}
+      class:task-sync-input-error={compact &&
+        validationResult &&
+        !validationResult.valid}
+      class:error={!compact && validationResult && !validationResult.valid}
+      data-testid="property-{propertyKey}"
+    />
+  {/snippet}
+</PropertyInput>
