@@ -630,4 +630,92 @@ test.describe("Daily Planning Wizard", () => {
       .count();
     expect(updatedTaskCount).toBe(1);
   });
+
+  test("should discover daily note location from Obsidian Daily Notes plugin settings", async ({
+    page,
+  }) => {
+    // This test reproduces the bug where daily note discovery doesn't use
+    // Obsidian's Daily Notes plugin settings but uses hardcoded folder instead
+
+    await openView(page, "task-sync-main");
+
+    // Configure Obsidian's Daily Notes plugin settings
+    const dailyNotesSettings = await page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Enable Daily Notes plugin and configure it
+      const dailyNotesPlugin =
+        app.internalPlugins.getEnabledPluginById("daily-notes");
+      if (dailyNotesPlugin) {
+        // Set custom folder for daily notes
+        dailyNotesPlugin.instance.options.folder = "My Daily Notes";
+        dailyNotesPlugin.instance.options.format = "YYYY-MM-DD";
+        dailyNotesPlugin.instance.options.template = "";
+
+        // Save the settings
+        await app.internalPlugins.saveConfig();
+
+        return {
+          enabled: true,
+          folder: dailyNotesPlugin.instance.options.folder,
+          format: dailyNotesPlugin.instance.options.format,
+        };
+      }
+
+      return { enabled: false };
+    });
+
+    expect(dailyNotesSettings.enabled).toBe(true);
+    expect(dailyNotesSettings.folder).toBe("My Daily Notes");
+
+    // Start daily planning to trigger daily note discovery
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible();
+
+    // Navigate to step 3 and confirm the plan to trigger daily note creation
+    await page.click('[data-testid="next-button"]');
+    await page.click('[data-testid="next-button"]');
+    await page.click('[data-testid="confirm-button"]');
+
+    // Wait for daily note operations to complete
+    await page.waitForTimeout(2000);
+
+    // Check if daily note was created in the correct location
+    const dailyNoteInfo = await page.evaluate(async () => {
+      const app = (window as any).app;
+      const today = new Date();
+      const dateString =
+        today.getFullYear() +
+        "-" +
+        String(today.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(today.getDate()).padStart(2, "0");
+
+      // Check if daily note exists in the Daily Notes plugin configured folder
+      const expectedPath = `My Daily Notes/${dateString}.md`;
+      const file = app.vault.getAbstractFileByPath(expectedPath);
+
+      // Also check if it was incorrectly created in the hardcoded folder
+      const incorrectPath = `Daily Notes/${dateString}.md`;
+      const incorrectFile = app.vault.getAbstractFileByPath(incorrectPath);
+
+      return {
+        correctLocation: !!file,
+        incorrectLocation: !!incorrectFile,
+        expectedPath,
+        incorrectPath,
+      };
+    });
+
+    // BUG: Currently the system creates daily notes in hardcoded "Daily Notes" folder
+    // instead of using the Daily Notes plugin's configured folder
+
+    // The daily note should be created in the Daily Notes plugin's configured folder
+    expect(dailyNoteInfo.correctLocation).toBe(true);
+
+    // The daily note should NOT be created in the hardcoded folder
+    expect(dailyNoteInfo.incorrectLocation).toBe(false);
+  });
 });

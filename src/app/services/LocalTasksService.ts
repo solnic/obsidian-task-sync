@@ -58,7 +58,6 @@ export class LocalTasksService {
       // Remove tasks that no longer exist in the file system
       for (const task of currentTasks) {
         if (
-          task.source?.extension === "obsidian" &&
           task.source?.filePath &&
           !freshNaturalKeys.has(task.source.filePath)
         ) {
