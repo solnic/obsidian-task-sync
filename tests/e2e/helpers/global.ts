@@ -846,10 +846,6 @@ export async function openFile(
     const app = (window as any).app;
     const file = app.vault.getAbstractFileByPath(path);
 
-    if (!file) {
-      throw new Error(`File not found: ${path}`);
-    }
-
     const leaf = app.workspace.getLeaf();
     await leaf.openFile(file);
   }, filePath);
