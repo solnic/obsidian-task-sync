@@ -20,19 +20,15 @@ export const TYPE_NOTE_TO_BASE_TYPE_MAP: Record<
   number: "number",
   boolean: "checkbox",
   date: "date",
-  array: "multitext",
-  enum: "text", // Enums are stored as text in bases
+  array: "list",
+  enum: "text", // Enums are stored as text in basesm,
+  select: "list",
 } as const;
 
 /**
  * Base property type definitions
  */
-export type BasePropertyType =
-  | "text"
-  | "number"
-  | "checkbox"
-  | "date"
-  | "multitext";
+export type BasePropertyType = "text" | "number" | "checkbox" | "date" | "list";
 
 /**
  * Base property definition
