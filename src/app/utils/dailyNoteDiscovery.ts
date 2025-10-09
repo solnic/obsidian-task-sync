@@ -56,7 +56,8 @@ export function discoverDailyNoteSettings(
 
   // Second, try to get settings from Periodic Notes community plugin
   const periodicNotesPlugin = extendedApp.plugins?.plugins?.["periodic-notes"];
-  if (periodicNotesPlugin?.enabled) {
+  // For community plugins, if they exist in app.plugins.plugins, they are enabled
+  if (periodicNotesPlugin) {
     try {
       // Access Periodic Notes settings for daily notes
       // The settings might be in different locations depending on the plugin version
