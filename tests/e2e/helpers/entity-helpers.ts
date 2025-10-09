@@ -71,6 +71,34 @@ export async function getTaskByTitle(page: ExtendedPage, title: string) {
   );
 }
 
+export async function getProjectByName(page: ExtendedPage, name: string) {
+  return await page.evaluate(
+    async ({ name }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const project = await plugin.stores.projectStore.getProjectByName(name);
+
+      return project;
+    },
+    { name }
+  );
+}
+
+export async function getAreaByName(page: ExtendedPage, name: string) {
+  return await page.evaluate(
+    async ({ name }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const area = await plugin.stores.areaStore.getAreaByName(name);
+
+      return area;
+    },
+    { name }
+  );
+}
+
 /**
  * Wait for a task to be removed from the store
  * This is useful for testing revert operations where we expect the task to be deleted

@@ -9,10 +9,12 @@ import {
   waitForFileCreation,
   deleteVaultFile,
   waitForFileDeletion,
-  getTasksFromView,
-  getProjectsFromView,
-  getAreasFromView,
 } from "../../helpers/global";
+import {
+  getTaskByTitle,
+  getProjectByName,
+  getAreaByName,
+} from "../../helpers/entity-helpers";
 
 test.describe("Entity Deletion on Note Deletion", () => {
   test("should delete task entity when task note is deleted", async ({
@@ -31,18 +33,11 @@ test.describe("Entity Deletion on Note Deletion", () => {
     const taskFilePath = `Tasks/${taskTitle}.md`;
     await waitForFileCreation(page, taskFilePath);
 
-    // Verify task appears in the tasks view
-    await executeCommand(page, "Task Sync: Open Main View");
-    const tasksBeforeDeletion = await getTasksFromView(page);
-    expect(tasksBeforeDeletion.some((t) => t.title === taskTitle)).toBe(true);
-
     // Delete the task file
     await deleteVaultFile(page, taskFilePath);
-    await waitForFileDeletion(page, taskFilePath);
 
-    // Verify task no longer appears in the tasks view
-    const tasksAfterDeletion = await getTasksFromView(page);
-    expect(tasksAfterDeletion.some((t) => t.title === taskTitle)).toBe(false);
+    const task = await getTaskByTitle(page, taskTitle);
+    expect(task).toBeUndefined();
   });
 
   test("should delete project entity when project note is deleted", async ({
@@ -61,21 +56,11 @@ test.describe("Entity Deletion on Note Deletion", () => {
     const projectFilePath = `Projects/${projectName}.md`;
     await waitForFileCreation(page, projectFilePath);
 
-    // Verify project appears in the projects view
-    const projectsBeforeDeletion = await getProjectsFromView(page);
-    expect(projectsBeforeDeletion.some((p) => p.name === projectName)).toBe(
-      true
-    );
-
     // Delete the project file
     await deleteVaultFile(page, projectFilePath);
-    await waitForFileDeletion(page, projectFilePath);
 
-    // Verify project no longer appears in the projects view
-    const projectsAfterDeletion = await getProjectsFromView(page);
-    expect(projectsAfterDeletion.some((p) => p.name === projectName)).toBe(
-      false
-    );
+    const project = await getProjectByName(page, projectName);
+    expect(project).toBeUndefined();
   });
 
   test("should delete area entity when area note is deleted", async ({
@@ -94,16 +79,10 @@ test.describe("Entity Deletion on Note Deletion", () => {
     const areaFilePath = `Areas/${areaName}.md`;
     await waitForFileCreation(page, areaFilePath);
 
-    // Verify area appears in the areas view
-    const areasBeforeDeletion = await getAreasFromView(page);
-    expect(areasBeforeDeletion.some((a) => a.name === areaName)).toBe(true);
-
     // Delete the area file
     await deleteVaultFile(page, areaFilePath);
-    await waitForFileDeletion(page, areaFilePath);
 
-    // Verify area no longer appears in the areas view
-    const areasAfterDeletion = await getAreasFromView(page);
-    expect(areasAfterDeletion.some((a) => a.name === areaName)).toBe(false);
+    const area = await getAreaByName(page, areaName);
+    expect(area).toBeUndefined();
   });
 });

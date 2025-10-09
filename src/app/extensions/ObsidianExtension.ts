@@ -153,11 +153,6 @@ export class ObsidianExtension implements Extension {
         registeredTypes.map((nt) => nt.id)
       );
 
-      // Pass TypeNote instance to operations
-      this.taskOperations.setTypeNote(this.typeNote);
-      this.projectOperations.setTypeNote(this.typeNote);
-      this.areaOperations.setTypeNote(this.typeNote);
-
       // Initialize markdown processor now that wikiLinkOperations is available
       this.taskTodoMarkdownProcessor = new TaskTodoMarkdownProcessor(
         this.app,
@@ -774,14 +769,9 @@ export class ObsidianExtension implements Extension {
    */
   private handleTaskFileDeletion(filePath: string): void {
     const task = taskStore.findByFilePath(filePath);
-    if (task) {
-      console.log(
-        `Task file deleted: ${filePath}, deleting entity: ${task.id}`
-      );
-      // Use Tasks.Operations directly since we need to trigger domain events
-      const taskOps = new Tasks.Operations(this.settings);
-      taskOps.delete(task.id);
-    }
+    console.log(`Task file deleted: ${filePath}, deleting entity: ${task.id}`);
+    const taskOps = new Tasks.Operations(this.settings);
+    taskOps.delete(task.id);
   }
 
   /**
@@ -789,13 +779,11 @@ export class ObsidianExtension implements Extension {
    */
   private handleProjectFileDeletion(filePath: string): void {
     const project = projectStore.findByFilePath(filePath);
-    if (project) {
-      console.log(
-        `Project file deleted: ${filePath}, deleting entity: ${project.id}`
-      );
-      const projectOps = new Projects.Operations(this.settings);
-      projectOps.delete(project.id);
-    }
+    console.log(
+      `Project file deleted: ${filePath}, deleting entity: ${project.id}`
+    );
+    const projectOps = new Projects.Operations(this.settings);
+    projectOps.delete(project.id);
   }
 
   /**
@@ -803,13 +791,9 @@ export class ObsidianExtension implements Extension {
    */
   private handleAreaFileDeletion(filePath: string): void {
     const area = areaStore.findByFilePath(filePath);
-    if (area) {
-      console.log(
-        `Area file deleted: ${filePath}, deleting entity: ${area.id}`
-      );
-      const areaOps = new Areas.Operations(this.settings);
-      areaOps.delete(area.id);
-    }
+    console.log(`Area file deleted: ${filePath}, deleting entity: ${area.id}`);
+    const areaOps = new Areas.Operations(this.settings);
+    areaOps.delete(area.id);
   }
 
   /*

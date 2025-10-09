@@ -1973,10 +1973,10 @@ export async function deleteVaultFile(
   await page.evaluate(async (filePath) => {
     const app = (window as any).app;
     const file = app.vault.getAbstractFileByPath(filePath);
-    if (file) {
-      await app.vault.delete(file);
-    }
+    await app.vault.delete(file);
   }, filePath);
+
+  await waitForFileDeletion(page, filePath);
 }
 
 /**

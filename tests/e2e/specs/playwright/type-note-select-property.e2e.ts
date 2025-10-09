@@ -111,9 +111,6 @@ test.describe("TypeNote Select Property Type", () => {
       .first();
     await propertyTypeDropdown.selectOption("select");
 
-    // Wait for select options UI to appear
-    await page.waitForTimeout(500);
-
     // Verify "Select Options" heading appears
     const selectOptionsHeading = page
       .locator("h5")
@@ -128,7 +125,6 @@ test.describe("TypeNote Select Property Type", () => {
 
     // Add first option
     await addOptionButton.click();
-    await page.waitForTimeout(200);
 
     // Verify option input appears
     const firstOptionInput = page.locator(
@@ -141,7 +137,6 @@ test.describe("TypeNote Select Property Type", () => {
 
     // Add second option
     await addOptionButton.click();
-    await page.waitForTimeout(200);
 
     const secondOptionInput = page.locator(
       '[data-testid="select-option-value-1"]'
@@ -151,7 +146,6 @@ test.describe("TypeNote Select Property Type", () => {
 
     // Add third option
     await addOptionButton.click();
-    await page.waitForTimeout(200);
 
     const thirdOptionInput = page.locator(
       '[data-testid="select-option-value-2"]'
@@ -165,9 +159,6 @@ test.describe("TypeNote Select Property Type", () => {
       .filter({ hasText: "Create Note Type" });
     await saveButton.scrollIntoViewIfNeeded();
     await saveButton.click();
-
-    // Wait for success
-    await page.waitForTimeout(500);
 
     // Verify we're back at the list view
     const noteTypeItem = page
@@ -225,11 +216,9 @@ test.describe("TypeNote Select Property Type", () => {
       .first();
 
     await addOptionButton.click();
-    await page.waitForTimeout(200);
     await page.locator('[data-testid="select-option-value-0"]').fill("Low");
 
     await addOptionButton.click();
-    await page.waitForTimeout(200);
     await page.locator('[data-testid="select-option-value-1"]').fill("High");
 
     // Save
