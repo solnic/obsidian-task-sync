@@ -4,7 +4,7 @@
  */
 
 import { test, expect } from "../../helpers/setup";
-import { executeCommand } from "../../helpers/global";
+import { executeCommand, openView } from "../../helpers/global";
 import { getTodayString, getYesterdayString } from "../../helpers/date-helpers";
 import { createTask } from "../../helpers/entity-helpers";
 
@@ -631,42 +631,22 @@ test.describe("Daily Planning Wizard", () => {
     expect(updatedTaskCount).toBe(1);
   });
 
-  test("should discover daily note location from Obsidian Daily Notes plugin settings", async ({
+  test("should discover daily note location from Daily Notes core plugin", async ({
     page,
   }) => {
-    // This test reproduces the bug where daily note discovery doesn't use
-    // Obsidian's Daily Notes plugin settings but uses hardcoded folder instead
+    // This test verifies that the system uses Daily Notes core plugin settings
+    // when Periodic Notes is disabled
 
     await openView(page, "task-sync-main");
 
-    // Configure Obsidian's Daily Notes plugin settings
-    const dailyNotesSettings = await page.evaluate(async () => {
+    // Disable Periodic Notes plugin to ensure Daily Notes core plugin is used
+    await page.evaluate(async () => {
       const app = (window as any).app;
-
-      // Enable Daily Notes plugin and configure it
-      const dailyNotesPlugin =
-        app.internalPlugins.getEnabledPluginById("daily-notes");
-      if (dailyNotesPlugin) {
-        // Set custom folder for daily notes
-        dailyNotesPlugin.instance.options.folder = "My Daily Notes";
-        dailyNotesPlugin.instance.options.format = "YYYY-MM-DD";
-        dailyNotesPlugin.instance.options.template = "";
-
-        // Save the settings
-        await app.internalPlugins.saveConfig();
-
-        return {
-          enabled: true,
-          folder: dailyNotesPlugin.instance.options.folder,
-          format: dailyNotesPlugin.instance.options.format,
-        };
+      const periodicNotesPlugin = app.plugins.plugins["periodic-notes"];
+      if (periodicNotesPlugin) {
+        await app.plugins.disablePlugin("periodic-notes");
       }
-
-      return { enabled: false };
     });
-
-    expect(dailyNotesSettings.enabled).toBe(true);
-    expect(dailyNotesSettings.folder).toBe("My Daily Notes");
 
     // Start daily planning to trigger daily note discovery
     await executeCommand(page, "Task Sync: Start Daily Planning");
@@ -682,7 +662,7 @@ test.describe("Daily Planning Wizard", () => {
     // Wait for daily note operations to complete
     await page.waitForTimeout(2000);
 
-    // Check if daily note was created in the correct location
+    // Check if daily note was created in the Daily Notes core plugin folder
     const dailyNoteInfo = await page.evaluate(async () => {
       const app = (window as any).app;
       const today = new Date();
@@ -693,29 +673,139 @@ test.describe("Daily Planning Wizard", () => {
         "-" +
         String(today.getDate()).padStart(2, "0");
 
-      // Check if daily note exists in the Daily Notes plugin configured folder
-      const expectedPath = `My Daily Notes/${dateString}.md`;
-      const file = app.vault.getAbstractFileByPath(expectedPath);
+      // Check if daily note exists in the Daily Notes core plugin folder
+      const dailyNotesPath = `Daily Notes/${dateString}.md`;
+      const dailyNotesFile = app.vault.getAbstractFileByPath(dailyNotesPath);
 
-      // Also check if it was incorrectly created in the hardcoded folder
-      const incorrectPath = `Daily Notes/${dateString}.md`;
-      const incorrectFile = app.vault.getAbstractFileByPath(incorrectPath);
+      // Check if it was incorrectly created in Periodic Notes folder
+      const periodicNotesPath = `Periodic Daily Notes/${dateString}.md`;
+      const periodicNotesFile =
+        app.vault.getAbstractFileByPath(periodicNotesPath);
 
       return {
-        correctLocation: !!file,
-        incorrectLocation: !!incorrectFile,
-        expectedPath,
-        incorrectPath,
+        dailyNotesExists: !!dailyNotesFile,
+        periodicNotesExists: !!periodicNotesFile,
+        dailyNotesPath,
+        periodicNotesPath,
       };
     });
 
-    // BUG: Currently the system creates daily notes in hardcoded "Daily Notes" folder
-    // instead of using the Daily Notes plugin's configured folder
+    // The daily note should be created in the Daily Notes core plugin folder
+    expect(dailyNoteInfo.dailyNotesExists).toBe(true);
 
-    // The daily note should be created in the Daily Notes plugin's configured folder
-    expect(dailyNoteInfo.correctLocation).toBe(true);
+    // The daily note should NOT be created in the Periodic Notes folder
+    expect(dailyNoteInfo.periodicNotesExists).toBe(false);
+  });
 
-    // The daily note should NOT be created in the hardcoded folder
-    expect(dailyNoteInfo.incorrectLocation).toBe(false);
+  test("should discover daily note location from Periodic Notes plugin", async ({
+    page,
+  }) => {
+    // This test verifies that the system uses Periodic Notes plugin settings
+    // when Daily Notes core plugin is disabled
+
+    await openView(page, "task-sync-main");
+
+    // Disable Daily Notes core plugin to ensure Periodic Notes plugin is used
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Disable Daily Notes core plugin
+      const dailyNotesPlugin = app.internalPlugins.plugins["daily-notes"];
+      if (dailyNotesPlugin && dailyNotesPlugin.enabled) {
+        dailyNotesPlugin.enabled = false;
+        await app.internalPlugins.saveConfig();
+      }
+
+      // Ensure Periodic Notes plugin is enabled
+      const periodicNotesPlugin = app.plugins.plugins["periodic-notes"];
+      if (periodicNotesPlugin) {
+        if (!periodicNotesPlugin.enabled) {
+          await app.plugins.enablePlugin("periodic-notes");
+        }
+        console.log(
+          "Periodic Notes plugin enabled:",
+          periodicNotesPlugin.enabled
+        );
+      } else {
+        console.log("Periodic Notes plugin not found");
+      }
+    });
+
+    // Start daily planning to trigger daily note discovery
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible();
+
+    // Navigate to step 3 and confirm the plan to trigger daily note creation
+    await page.click('[data-testid="next-button"]');
+    await page.click('[data-testid="next-button"]');
+    await page.click('[data-testid="confirm-button"]');
+
+    // Wait for daily note operations to complete
+    await page.waitForTimeout(2000);
+
+    // Check if daily note was created in the Periodic Notes plugin folder
+    const dailyNoteInfo = await page.evaluate(async () => {
+      const app = (window as any).app;
+      const today = new Date();
+      const dateString =
+        today.getFullYear() +
+        "-" +
+        String(today.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(today.getDate()).padStart(2, "0");
+
+      // Check if daily note exists in the Periodic Notes plugin folder
+      const periodicNotesPath = `Periodic Daily Notes/${dateString}.md`;
+      const periodicNotesFile =
+        app.vault.getAbstractFileByPath(periodicNotesPath);
+
+      // Check if it was incorrectly created in Daily Notes core plugin folder
+      const dailyNotesPath = `Daily Notes/${dateString}.md`;
+      const dailyNotesFile = app.vault.getAbstractFileByPath(dailyNotesPath);
+
+      // Debug: Check plugin states and discovery utility
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const dailyNoteFeature =
+        plugin?.host?.obsidianExtension?.dailyNoteFeature;
+
+      let discoveredPath = null;
+      let discoveredSettings = null;
+      if (dailyNoteFeature) {
+        try {
+          discoveredPath = await dailyNoteFeature.getTodayDailyNotePath();
+          // Also test the discovery utility directly
+          const { discoverDailyNoteSettings } =
+            plugin.host.obsidianExtension.constructor;
+          if (discoverDailyNoteSettings) {
+            discoveredSettings = discoverDailyNoteSettings(app, "Fallback");
+          }
+        } catch (error) {
+          console.error("Discovery error:", error);
+        }
+      }
+
+      return {
+        periodicNotesExists: !!periodicNotesFile,
+        dailyNotesExists: !!dailyNotesFile,
+        periodicNotesPath,
+        dailyNotesPath,
+        discoveredPath,
+        discoveredSettings,
+        dailyNotesPluginEnabled:
+          app.internalPlugins.plugins["daily-notes"]?.enabled,
+        periodicNotesPluginEnabled:
+          app.plugins.plugins["periodic-notes"]?.enabled,
+      };
+    });
+
+    console.log("Daily note info:", dailyNoteInfo);
+
+    // The daily note should be created in the Periodic Notes plugin folder
+    expect(dailyNoteInfo.periodicNotesExists).toBe(true);
+
+    // The daily note should NOT be created in the Daily Notes core plugin folder
+    expect(dailyNoteInfo.dailyNotesExists).toBe(false);
   });
 });

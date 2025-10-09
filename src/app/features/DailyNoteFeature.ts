@@ -7,6 +7,10 @@
 import { App, Plugin, TFile } from "obsidian";
 import { eventBus, type DomainEvent } from "../core/events";
 import type { Schedule, Task } from "../core/entities";
+import {
+  discoverDailyNoteSettings,
+  getDailyNotePath,
+} from "../utils/dailyNoteDiscovery";
 
 export interface DailyNoteFeatureSettings {
   dailyNotesFolder: string;
@@ -97,18 +101,22 @@ export class DailyNoteFeature {
    */
   async getTodayDailyNotePath(): Promise<string> {
     const today = new Date();
-    const dateString = this.getDateString(today);
-    const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
 
-    // First, check if a daily note exists in the configured folder
-    const expectedPath = `${dailyNotesFolder}/${dateString}.md`;
-    const expectedFile = this.app.vault.getAbstractFileByPath(expectedPath);
+    // Use discovery utility to get the correct path based on Obsidian plugin settings
+    const discoveredPath = getDailyNotePath(
+      this.app,
+      today,
+      this.settings.dailyNotesFolder
+    );
 
+    // First, check if a daily note exists at the discovered path
+    const expectedFile = this.app.vault.getAbstractFileByPath(discoveredPath);
     if (expectedFile instanceof TFile) {
-      return expectedPath;
+      return discoveredPath;
     }
 
     // Second, try to find an existing daily note with today's date anywhere in the vault
+    const dateString = this.getDateString(today);
     const allFiles = this.app.vault.getMarkdownFiles();
     const existingDailyNotes = allFiles.filter((file) => {
       const fileName = file.name.replace(/\.md$/, "");
@@ -116,18 +124,24 @@ export class DailyNoteFeature {
     });
 
     if (existingDailyNotes.length > 0) {
-      // If multiple daily notes exist, prefer the one in the configured folder
-      const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
+      // If multiple daily notes exist, prefer the one in the discovered folder
+      const settings = discoverDailyNoteSettings(
+        this.app,
+        this.settings.dailyNotesFolder
+      );
+      const preferredFolder =
+        settings.folder || this.settings.dailyNotesFolder || "Daily Notes";
+
       const preferredNote = existingDailyNotes.find((file) =>
-        file.path.startsWith(dailyNotesFolder + "/")
+        file.path.startsWith(preferredFolder + "/")
       );
 
       const selectedNote = preferredNote || existingDailyNotes[0];
       return selectedNote.path;
     }
 
-    // If no existing daily note found, return the expected path for creation
-    return expectedPath;
+    // If no existing daily note found, return the discovered path for creation
+    return discoveredPath;
   }
 
   /**
@@ -147,12 +161,21 @@ export class DailyNoteFeature {
       };
     }
 
-    // Ensure the daily notes folder exists
-    const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
-    const folderExists = await this.app.vault.adapter.exists(dailyNotesFolder);
+    // Ensure the daily notes folder exists (use discovered settings)
+    const settings = discoverDailyNoteSettings(
+      this.app,
+      this.settings.dailyNotesFolder
+    );
+    const dailyNotesFolder =
+      settings.folder || this.settings.dailyNotesFolder || "Daily Notes";
 
-    if (!folderExists) {
-      await this.app.vault.createFolder(dailyNotesFolder);
+    if (dailyNotesFolder) {
+      const folderExists = await this.app.vault.adapter.exists(
+        dailyNotesFolder
+      );
+      if (!folderExists) {
+        await this.app.vault.createFolder(dailyNotesFolder);
+      }
     }
 
     // Create the daily note

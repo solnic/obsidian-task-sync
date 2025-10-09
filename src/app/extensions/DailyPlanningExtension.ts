@@ -30,6 +30,10 @@ import {
   getTodayTasksGrouped,
   getDateString,
 } from "../utils/dateFiltering";
+import {
+  getDailyNotePath,
+  discoverDailyNoteSettings,
+} from "../utils/dailyNoteDiscovery";
 import { ObsidianHost } from "../hosts/ObsidianHost";
 import type { ObsidianExtension } from "./ObsidianExtension";
 
@@ -679,24 +683,38 @@ export class DailyPlanningExtension implements Extension {
   private async ensureAndOpenTodayDailyNote(): Promise<void> {
     try {
       const today = new Date();
-      const dateString = getDateString(today); // YYYY-MM-DD format in local timezone
-      const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
-      const dailyNotePath = `${dailyNotesFolder}/${dateString}.md`;
+
+      // Use discovery utility to get the correct path based on Obsidian plugin settings
+      const dailyNotePath = getDailyNotePath(
+        this.host.plugin.app,
+        today,
+        this.settings.dailyNotesFolder
+      );
 
       // Check if the daily note already exists
       const existingFile =
         this.host.plugin.app.vault.getAbstractFileByPath(dailyNotePath);
 
       if (!existingFile) {
-        // Ensure the daily notes folder exists
-        const folderExists = await this.host.plugin.app.vault.adapter.exists(
-          dailyNotesFolder
+        // Ensure the daily notes folder exists (use discovered settings)
+        const settings = discoverDailyNoteSettings(
+          this.host.plugin.app,
+          this.settings.dailyNotesFolder
         );
-        if (!folderExists) {
-          await this.host.plugin.app.vault.createFolder(dailyNotesFolder);
+        const dailyNotesFolder =
+          settings.folder || this.settings.dailyNotesFolder || "Daily Notes";
+
+        if (dailyNotesFolder) {
+          const folderExists = await this.host.plugin.app.vault.adapter.exists(
+            dailyNotesFolder
+          );
+          if (!folderExists) {
+            await this.host.plugin.app.vault.createFolder(dailyNotesFolder);
+          }
         }
 
         // Create the daily note with basic content
+        const dateString = getDateString(today);
         const content = this.generateDailyNoteContent(dateString);
         await this.host.plugin.app.vault.create(dailyNotePath, content);
       }
@@ -740,9 +758,13 @@ export class DailyPlanningExtension implements Extension {
   async addTasksToTodayDailyNote(tasks: Task[]): Promise<void> {
     try {
       const today = new Date();
-      const dateString = getDateString(today); // YYYY-MM-DD format in local timezone
-      const dailyNotesFolder = this.settings.dailyNotesFolder || "Daily Notes";
-      const dailyNotePath = `${dailyNotesFolder}/${dateString}.md`;
+
+      // Use discovery utility to get the correct path based on Obsidian plugin settings
+      const dailyNotePath = getDailyNotePath(
+        this.host.plugin.app,
+        today,
+        this.settings.dailyNotesFolder
+      );
 
       // Ensure today's daily note exists
       await this.ensureAndOpenTodayDailyNote();
