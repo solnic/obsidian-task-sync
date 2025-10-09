@@ -43,8 +43,6 @@ test.describe("Task Note Type Verification", () => {
       };
     });
 
-    console.log("Verification result:", JSON.stringify(verification, null, 2));
-
     expect(verification.success).toBe(true);
     expect(verification.taskNoteType?.id).toBe("task");
     expect(verification.taskNoteType?.name).toBe("Task");
