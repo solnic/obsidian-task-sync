@@ -9,6 +9,7 @@ import {
   waitForFileCreation,
   readVaultFile,
   getFrontMatter,
+  expectNotice,
 } from "../../helpers/global";
 
 test.describe("Area Creation", () => {
@@ -63,23 +64,29 @@ test.describe("Area Creation", () => {
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    // Try to submit without entering a name
+    // Clear the name input (it might have a default value)
+    await page.fill('[data-testid="property-name"]', "");
+
+    // Try to submit without a name - HTML validation should prevent submission
     await page.click('[data-testid="submit-button"]');
 
-    // Should show validation error notice
-    await expect(
-      page.locator('.notice:has-text("Area title is required")')
-    ).toBeVisible();
+    // Wait a bit to ensure submission was attempted
+    await page.waitForTimeout(500);
 
-    // Modal should still be open
+    // Modal should still be open (HTML required attribute prevents submission)
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Type in the name input
-    await page.fill('[data-testid="property-name"]', "Test Area");
+    await page.fill('[data-testid="property-name"]', "Valid Area");
 
-    // Cancel the modal
-    await page.click('[data-testid="cancel-button"]');
+    // Now submission should work
+    await page.click('[data-testid="submit-button"]');
+
+    // Modal should close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
+
+    // Verify area was created
+    await expectNotice(page, "created successfully");
   });
 
   test("should handle area creation with only name (no description)", async ({

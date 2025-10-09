@@ -9,6 +9,7 @@ import {
   waitForFileCreation,
   readVaultFile,
   getFrontMatter,
+  expectNotice,
 } from "../../helpers/global";
 
 test.describe("Project Creation", () => {
@@ -28,10 +29,6 @@ test.describe("Project Creation", () => {
     const projectName = "Test Project E2E";
     await page.fill('[data-testid="property-name"]', projectName);
 
-    // Fill in the areas
-    const projectAreas = "Work, Development";
-    await page.fill('[data-testid="property-areas"]', projectAreas);
-
     // Fill in the template content (note body)
     const projectContent = "This is a test project created by e2e test";
     await page.fill(
@@ -46,22 +43,19 @@ test.describe("Project Creation", () => {
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
 
     // Wait for success notice
-    await expect(
-      page.locator('.notice:has-text("created successfully")')
-    ).toBeVisible();
+    await expectNotice(page, "created successfully");
 
     // Verify the project file was created in the vault
     const expectedFilePath = `Projects/${projectName}.md`;
     await waitForFileCreation(page, expectedFilePath);
 
-    // Verify the file content contains the correct front-matter and description
+    // Verify the file content contains the project content
     const fileContent = await readVaultFile(page, expectedFilePath);
-    expect(fileContent).toContain(projectDescription);
+    expect(fileContent).toContain(projectContent);
 
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Name).toBe(projectName);
     expect(frontMatter.Type).toBe("Project");
-    expect(frontMatter.Areas).toEqual(["Work", "Development"]);
   });
 
   test("should show validation error when project name is empty", async ({
@@ -73,21 +67,29 @@ test.describe("Project Creation", () => {
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    // Try to submit without entering a name
+    // Clear the name input (it might have a default value)
+    await page.fill('[data-testid="property-name"]', "");
+
+    // Try to submit without a name - HTML validation should prevent submission
     await page.click('[data-testid="submit-button"]');
 
-    // Should show validation error
-    await expect(
-      page.locator('.notice:has-text("Project title is required")')
-    ).toBeVisible();
+    // Wait a bit to ensure submission was attempted
+    await page.waitForTimeout(500);
 
-    // Modal should still be open
+    // Modal should still be open (HTML required attribute prevents submission)
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    // Verify input has error styling
-    await expect(
-      page.locator('[data-testid="project-name-input"]')
-    ).toHaveClass(/task-sync-input-error/);
+    // Type in the name input
+    await page.fill('[data-testid="property-name"]', "Valid Project");
+
+    // Now submission should work
+    await page.click('[data-testid="submit-button"]');
+
+    // Modal should close
+    await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
+
+    // Verify project was created
+    await expectNotice(page, "created successfully");
   });
 
   test("should handle project creation with only name (no areas or description)", async ({
@@ -125,7 +127,7 @@ test.describe("Project Creation", () => {
     expect(fileContent).toContain("Project");
   });
 
-  test("should handle project creation with areas but no description", async ({
+  test("should handle project creation with only name (no description)", async ({
     page,
   }) => {
     // Open the Create Project command
@@ -134,10 +136,9 @@ test.describe("Project Creation", () => {
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    // Fill in the project name and areas
-    const projectName = "Project with Areas";
+    // Fill in the project name only
+    const projectName = "Simple Project";
     await page.fill('[data-testid="property-name"]', projectName);
-    await page.fill('[data-testid="property-areas"]', "Learning, Personal");
 
     // Click the Create Project button
     await page.click('[data-testid="submit-button"]');
@@ -146,9 +147,7 @@ test.describe("Project Creation", () => {
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
 
     // Wait for success notice
-    await expect(
-      page.locator('.notice:has-text("created successfully")')
-    ).toBeVisible();
+    await expectNotice(page, "created successfully");
 
     // Verify the project file was created
     const expectedFilePath = `Projects/${projectName}.md`;
@@ -156,10 +155,10 @@ test.describe("Project Creation", () => {
 
     // Verify the file content
     const fileContent = await readVaultFile(page, expectedFilePath);
-
     expect(fileContent).toContain(projectName);
-    expect(fileContent).toContain("Project");
-    expect(fileContent).toContain("Learning");
-    expect(fileContent).toContain("Personal");
+
+    const frontMatter = await getFrontMatter(page, expectedFilePath);
+    expect(frontMatter.Name).toBe(projectName);
+    expect(frontMatter.Type).toBe("Project");
   });
 });

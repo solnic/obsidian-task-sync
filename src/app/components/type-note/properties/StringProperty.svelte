@@ -61,6 +61,7 @@
     value={value || ""}
     oninput={handleInput}
     placeholder={placeholder()}
+    required={property.required}
     class="task-sync-title-input"
     class:task-sync-input-error={hasError}
     data-testid="property-{propertyKey}"
@@ -81,6 +82,7 @@
       oninput={handleInput}
       placeholder={property.description ||
         `Enter ${property.name.toLowerCase()}...`}
+      required={property.required}
       class="property-input"
       class:error={hasError}
       data-testid="property-{propertyKey}"
