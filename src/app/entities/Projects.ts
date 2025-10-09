@@ -85,8 +85,13 @@ export class Projects extends Entities {
     }
 
     async delete(id: string): Promise<void> {
+      // Get the project before removing it so we can include it in the event
+      const project = get(store).projects.find((p) => p.id === id);
+
       store.removeProject(id);
-      eventBus.trigger({ type: "projects.deleted", projectId: id });
+
+      // Include the project in the event so listeners can access its properties (like filePath)
+      eventBus.trigger({ type: "projects.deleted", projectId: id, project });
     }
 
     // Project-specific operations

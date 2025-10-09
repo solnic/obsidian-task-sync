@@ -82,10 +82,19 @@ export abstract class ObsidianEntityOperations<
     await this.createNote(entity);
   }
 
-  async deleteNote(entityId: string): Promise<void> {
-    const entity = await this.getById(entityId);
+  async deleteNote(entity: T): Promise<void> {
+    if (!entity) {
+      console.warn("Cannot delete note: entity is undefined");
+      return;
+    }
 
-    const filePath = entity.source.filePath as string;
+    const filePath = entity.source?.filePath as string;
+
+    if (!filePath) {
+      console.warn("Cannot delete note: entity has no filePath");
+      return;
+    }
+
     const file = this.app.vault.getAbstractFileByPath(filePath);
 
     if (!file) {

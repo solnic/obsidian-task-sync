@@ -718,13 +718,16 @@ export class ObsidianExtension implements Extension {
   async onEntityDeleted(event: any): Promise<void> {
     if (event.type === "areas.deleted") {
       // React to area deletion by deleting the corresponding Obsidian note
-      await this.areaOperations.deleteNote(event.areaId);
+      // The event includes the area entity so we can access its filePath
+      await this.areaOperations.deleteNote(event.area);
     } else if (event.type === "projects.deleted") {
       // React to project deletion by deleting the corresponding Obsidian note
-      await this.projectOperations.deleteNote(event.projectId);
+      // The event includes the project entity so we can access its filePath
+      await this.projectOperations.deleteNote(event.project);
     } else if (event.type === "tasks.deleted") {
       // React to task deletion by deleting the corresponding Obsidian note
-      await this.taskOperations.deleteNote(event.taskId);
+      // The event includes the task entity so we can access its filePath
+      await this.taskOperations.deleteNote(event.task);
     }
   }
 
@@ -992,12 +995,20 @@ export class ObsidianExtension implements Extension {
    */
   private async registerTaskNoteType(): Promise<void> {
     try {
+      // Check if Task note type already exists (from persisted data)
+      if (this.typeNote.registry.has("task")) {
+        console.log(
+          "Task note type already exists in registry (loaded from persistence), skipping default registration"
+        );
+        return;
+      }
+
       // Build Task note type with default configuration
       const taskNoteType = buildTaskNoteType();
 
       // Register with TypeNote registry
       const result = this.typeNote.registry.register(taskNoteType, {
-        allowOverwrite: true, // Allow re-registration when settings change
+        allowOverwrite: false, // Don't overwrite persisted note types
         validate: true,
         checkCompatibility: false, // Don't check compatibility on initial registration
       });
@@ -1032,12 +1043,20 @@ export class ObsidianExtension implements Extension {
    */
   private async registerProjectNoteType(): Promise<void> {
     try {
+      // Check if Project note type already exists (from persisted data)
+      if (this.typeNote.registry.has("project")) {
+        console.log(
+          "Project note type already exists in registry (loaded from persistence), skipping default registration"
+        );
+        return;
+      }
+
       // Create Project note type
       const projectNoteType = createProjectNoteType();
 
       // Register with TypeNote registry
       const result = this.typeNote.registry.register(projectNoteType, {
-        allowOverwrite: true, // Allow re-registration
+        allowOverwrite: false, // Don't overwrite persisted note types
         validate: true,
         checkCompatibility: false,
       });
@@ -1064,12 +1083,20 @@ export class ObsidianExtension implements Extension {
    */
   private async registerAreaNoteType(): Promise<void> {
     try {
+      // Check if Area note type already exists (from persisted data)
+      if (this.typeNote.registry.has("area")) {
+        console.log(
+          "Area note type already exists in registry (loaded from persistence), skipping default registration"
+        );
+        return;
+      }
+
       // Create Area note type
       const areaNoteType = createAreaNoteType();
 
       // Register with TypeNote registry
       const result = this.typeNote.registry.register(areaNoteType, {
-        allowOverwrite: true, // Allow re-registration
+        allowOverwrite: false, // Don't overwrite persisted note types
         validate: true,
         checkCompatibility: false,
       });

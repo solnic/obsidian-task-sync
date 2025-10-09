@@ -278,13 +278,19 @@ export default class TaskSyncPlugin extends Plugin {
       typeNote.registry
     );
 
+    // Track pending persistence operations
+    const pendingPersistence: Promise<void>[] = [];
+
     typeNote.registry.register = (noteType, options = {}) => {
       const result = originalRegister(noteType, options);
       if (result.valid) {
-        // Save to cache asynchronously
-        typeCache.set(noteType.id, noteType).catch((error) => {
-          console.error(`Failed to persist note type ${noteType.id}:`, error);
-        });
+        // Save to cache asynchronously and track the promise
+        const persistPromise = typeCache
+          .set(noteType.id, noteType)
+          .catch((error) => {
+            console.error(`Failed to persist note type ${noteType.id}:`, error);
+          });
+        pendingPersistence.push(persistPromise);
       }
       return result;
     };
@@ -292,15 +298,22 @@ export default class TaskSyncPlugin extends Plugin {
     typeNote.registry.unregister = (noteTypeId) => {
       const result = originalUnregister(noteTypeId);
       if (result) {
-        // Remove from cache asynchronously
-        typeCache.delete(noteTypeId).catch((error) => {
+        // Remove from cache asynchronously and track the promise
+        const persistPromise = typeCache.delete(noteTypeId).catch((error) => {
           console.error(
             `Failed to remove note type ${noteTypeId} from persistence:`,
             error
           );
         });
+        pendingPersistence.push(persistPromise);
       }
       return result;
+    };
+
+    // Add a method to wait for all pending persistence operations
+    (typeNote.registry as any).waitForPersistence = async () => {
+      await Promise.all(pendingPersistence);
+      pendingPersistence.length = 0; // Clear the array
     };
   }
 

@@ -684,6 +684,14 @@
           });
 
           if (result.valid) {
+            // Wait for persistence to complete before showing success message
+            if (
+              typeof (plugin.typeNote.registry as any).waitForPersistence ===
+              "function"
+            ) {
+              await (plugin.typeNote.registry as any).waitForPersistence();
+            }
+
             new Notice(
               isNew
                 ? "Note type created successfully"

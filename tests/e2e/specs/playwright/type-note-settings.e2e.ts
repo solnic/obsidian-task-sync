@@ -466,4 +466,186 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
       .filter({ hasText: "Project Plan Updated" });
     await expect(updatedNoteTypeItem).toBeVisible();
   });
+
+  test("should persist note type changes after plugin reload", async ({
+    page,
+  }) => {
+    // First create a note type
+    await openTaskSyncSettings(page);
+
+    const noteTypesSection = page.locator(
+      '[data-testid="settings-section-type-note"]'
+    );
+    await noteTypesSection.click();
+
+    const createButton = page.locator(
+      '[data-testid="create-note-type-button"]'
+    );
+    await createButton.scrollIntoViewIfNeeded();
+    await createButton.click();
+
+    await page
+      .locator('[data-testid="note-type-id-input"]')
+      .waitFor({ state: "visible" });
+
+    await page
+      .locator('[data-testid="note-type-name-input"]')
+      .fill("Persistence Test");
+    await page
+      .locator('[data-testid="note-type-id-input"]')
+      .fill("persistence-test");
+
+    const propertiesHeading = page
+      .locator("h4")
+      .filter({ hasText: "Properties" });
+    await propertiesHeading.scrollIntoViewIfNeeded();
+
+    const firstPropertyInput = page
+      .locator('[data-testid^="property-name-input-"]')
+      .first();
+    await firstPropertyInput.fill("TestProperty");
+
+    const saveButton = page
+      .locator("button")
+      .filter({ hasText: "Create Note Type" });
+    await saveButton.scrollIntoViewIfNeeded();
+    await saveButton.click();
+
+    // Wait for save to complete
+    await page.waitForTimeout(1000);
+
+    // Check if note type was persisted to plugin data
+    const persistedData = await page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Load data directly from storage
+      const data = await plugin.loadData();
+
+      return {
+        hasNoteTypes: !!data?.noteTypes,
+        noteTypeIds: data?.noteTypes ? Object.keys(data.noteTypes) : [],
+        persistenceTestExists:
+          data?.noteTypes?.["persistence-test"] !== undefined,
+      };
+    });
+
+    // Verify the note type was persisted
+    expect(persistedData.hasNoteTypes).toBe(true);
+    expect(persistedData.noteTypeIds).toContain("persistence-test");
+    expect(persistedData.persistenceTestExists).toBe(true);
+  });
+
+  test("should persist note type edits to plugin data", async ({ page }) => {
+    // First create a note type
+    await openTaskSyncSettings(page);
+
+    const noteTypesSection = page.locator(
+      '[data-testid="settings-section-type-note"]'
+    );
+    await noteTypesSection.click();
+
+    const createButton = page.locator(
+      '[data-testid="create-note-type-button"]'
+    );
+    await createButton.scrollIntoViewIfNeeded();
+    await createButton.click();
+
+    await page
+      .locator('[data-testid="note-type-id-input"]')
+      .waitFor({ state: "visible" });
+
+    await page
+      .locator('[data-testid="note-type-name-input"]')
+      .fill("Edit Test");
+    await page.locator('[data-testid="note-type-id-input"]').fill("edit-test");
+
+    const propertiesHeading = page
+      .locator("h4")
+      .filter({ hasText: "Properties" });
+    await propertiesHeading.scrollIntoViewIfNeeded();
+
+    const firstPropertyInput = page
+      .locator('[data-testid^="property-name-input-"]')
+      .first();
+    await firstPropertyInput.fill("OriginalProperty");
+
+    const saveButton = page
+      .locator("button")
+      .filter({ hasText: "Create Note Type" });
+    await saveButton.scrollIntoViewIfNeeded();
+    await saveButton.click();
+
+    await page.waitForTimeout(1000);
+
+    // Check initial persisted data
+    const initialData = await page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const data = await plugin.loadData();
+      const noteType = data?.noteTypes?.["edit-test"];
+      return {
+        exists: noteType !== undefined,
+        name: noteType?.data?.name,
+      };
+    });
+
+    expect(initialData.exists).toBe(true);
+    expect(initialData.name).toBe("Edit Test");
+
+    // Now edit the note type
+    const noteTypeItem = page
+      .locator(".setting-item")
+      .filter({ hasText: "Edit Test" });
+    await expect(noteTypeItem).toBeVisible();
+
+    const editButton = noteTypeItem.locator("button").first();
+    await editButton.click();
+
+    await page
+      .locator('[data-testid="note-type-id-input"]')
+      .waitFor({ state: "visible" });
+
+    // Update the name
+    await page
+      .locator('[data-testid="note-type-name-input"]')
+      .fill("Edit Test Updated");
+
+    // Save changes - wait for the notice to appear which indicates save completed
+    const updateSaveButton = page
+      .locator("button")
+      .filter({ hasText: "Save Changes" });
+    await updateSaveButton.scrollIntoViewIfNeeded();
+
+    // Listen for the success notice
+    const noticePromise = page.waitForSelector(".notice", {
+      state: "visible",
+      timeout: 5000,
+    });
+    await updateSaveButton.click();
+    await noticePromise;
+
+    // Wait a bit more for persistence to complete
+    await page.waitForTimeout(500);
+
+    // Check if the edited note type was persisted to plugin data
+    const persistedData = await page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Load data directly from storage
+      const data = await plugin.loadData();
+
+      const noteType = data?.noteTypes?.["edit-test"];
+
+      return {
+        exists: noteType !== undefined,
+        name: noteType?.data?.name,
+      };
+    });
+
+    // Verify the edited note type was persisted with updated name
+    expect(persistedData.exists).toBe(true);
+    expect(persistedData.name).toBe("Edit Test Updated");
+  });
 });

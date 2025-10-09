@@ -87,10 +87,6 @@ This is a test article to verify property type reading.
     // Verify that we can read property types
     expect(propertyTypes).toBeTruthy();
     expect(typeof propertyTypes).toBe("object");
-
-    // Check if our properties are recognized (they might not be if this is the first time)
-    // This test mainly verifies that the API works
-    console.log("Property types found:", propertyTypes);
   });
 
   test("should validate property values against Obsidian types", async ({

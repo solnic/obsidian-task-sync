@@ -85,8 +85,13 @@ export class Areas extends Entities {
     }
 
     async delete(id: string): Promise<void> {
+      // Get the area before removing it so we can include it in the event
+      const area = get(store).areas.find((a) => a.id === id);
+
       store.removeArea(id);
-      eventBus.trigger({ type: "areas.deleted", areaId: id });
+
+      // Include the area in the event so listeners can access its properties (like filePath)
+      eventBus.trigger({ type: "areas.deleted", areaId: id, area });
     }
 
     async rename(areaId: string, newName: string): Promise<void> {

@@ -105,8 +105,13 @@ export class Tasks extends Entities {
     }
 
     async delete(id: string): Promise<void> {
+      // Get the task before removing it so we can include it in the event
+      const task = store.findById(id);
+
       store.removeTask(id);
-      eventBus.trigger({ type: "tasks.deleted", taskId: id });
+
+      // Include the task in the event so listeners can access its properties (like filePath)
+      eventBus.trigger({ type: "tasks.deleted", taskId: id, task });
     }
 
     async markDone(taskId: string): Promise<void> {
