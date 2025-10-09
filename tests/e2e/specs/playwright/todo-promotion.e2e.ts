@@ -85,12 +85,17 @@ test.describe("Todo Promotion", () => {
   });
 
   test("should show notice when no todo found", async ({ page }) => {
+    // Use unique name to avoid conflicts with other tests
+    const uniqueAreaName = `TestArea-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(2, 11)}`;
+
     await createArea(page, {
-      name: "Test",
+      name: uniqueAreaName,
       description: "This is just regular text.",
     });
 
-    await openFile(page, "Areas/Test.md");
+    await openFile(page, `Areas/${uniqueAreaName}.md`);
     await goToLine(page, "This is just regular text");
 
     await executeCommand(page, "Promote Todo to Task");
@@ -128,12 +133,17 @@ test.describe("Todo Promotion", () => {
   test("should set context properties correctly when promoting todo in area", async ({
     page,
   }) => {
+    // Use unique name to avoid conflicts with other tests
+    const uniqueAreaName = `WorkArea-${Date.now()}-${Math.random()
+      .toString(36)
+      .substring(2, 11)}`;
+
     await createArea(page, {
-      name: "Work",
+      name: uniqueAreaName,
       description: "- [ ] Task with area context",
     });
 
-    await openFile(page, "Areas/Work.md");
+    await openFile(page, `Areas/${uniqueAreaName}.md`);
     await goToLine(page, "Task with area context");
 
     await executeCommand(page, "Promote Todo to Task");
@@ -149,7 +159,7 @@ test.describe("Todo Promotion", () => {
       "Tasks/Task with area context.md"
     );
     expect(taskContent).toContain("Areas:");
-    expect(taskContent).toContain("Work");
+    expect(taskContent).toContain(uniqueAreaName);
   });
 
   test("should promote sub-todo with parent task set", async ({ page }) => {
