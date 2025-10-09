@@ -49,11 +49,11 @@ test.describe("Entity Deletion on Note Deletion", () => {
     page,
   }) => {
     // Create a project through the modal
-    await executeCommand(page, "Task Sync: Create Project");
+    await executeCommand(page, "Create Project");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     const projectName = "Project to Delete";
-    await page.fill('[data-testid="project-name-input"]', projectName);
+    await page.fill('[data-testid="property-name"]', projectName);
     await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
 
@@ -82,11 +82,11 @@ test.describe("Entity Deletion on Note Deletion", () => {
     page,
   }) => {
     // Create an area through the modal
-    await executeCommand(page, "Task Sync: Create Area");
+    await executeCommand(page, "Create Area");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     const areaName = "Area to Delete";
-    await page.fill('[data-testid="area-name-input"]', areaName);
+    await page.fill('[data-testid="property-name"]', areaName);
     await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
 

@@ -96,7 +96,7 @@ export async function waitForTaskToBeRemoved(
 }
 
 /**
- * Create an area using the plugin's createArea API
+ * Create an area using the TypeNote system
  * Returns the created entity directly from the plugin
  */
 export async function createArea(
@@ -111,8 +111,16 @@ export async function createArea(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const areaOperations = plugin.operations.areaOperations;
-      const createdArea = await areaOperations.create(props);
+      // Use entity operations to create area (triggers event → ObsidianExtension creates note)
+      const areaData = {
+        name: props.name,
+        description: props.description,
+        tags: [],
+      };
+
+      const createdArea = await plugin.operations.areaOperations.create(
+        areaData
+      );
 
       return createdArea;
     },
@@ -126,7 +134,7 @@ export async function createArea(
 }
 
 /**
- * Create a project using the plugin's createProject API
+ * Create a project using the TypeNote system
  * Returns the created entity directly from the plugin
  */
 export async function createProject(
@@ -146,12 +154,17 @@ export async function createProject(
         throw new Error("Task Sync plugin not found");
       }
 
-      const projectOperations = plugin.operations.projectOperations;
-      const createdProject = await projectOperations.create(props);
+      // Use entity operations to create project (triggers event → ObsidianExtension creates note)
+      const projectData = {
+        name: props.name,
+        description: props.description,
+        areas: props.areas || [],
+        tags: [],
+      };
 
-      if (!createdProject) {
-        throw new Error(`Failed to create project "${props.name}"`);
-      }
+      const createdProject = await plugin.operations.projectOperations.create(
+        projectData
+      );
 
       return createdProject;
     },

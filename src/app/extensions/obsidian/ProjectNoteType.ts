@@ -40,8 +40,10 @@ export function createProjectNoteType(): NoteType {
       required: true,
       defaultValue: "Project",
       description: "Entity type (always 'Project')",
-      visible: false, // Hidden from form, auto-set
       order: 2,
+      form: {
+        hidden: true, // Hide from primary form section
+      },
     },
     areas: {
       key: "areas",

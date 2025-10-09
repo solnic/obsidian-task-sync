@@ -26,9 +26,13 @@ test.describe("Note Description as Content", () => {
     const taskTitle = "Test Task Description";
     await page.fill('[data-testid="property-title"]', taskTitle);
 
-    // Fill in the description
-    const taskDescription = "This description should be in content, not front-matter";
-    await page.fill('[data-testid="property-description"]', taskDescription);
+    // Fill in the template content (note body)
+    const taskDescription =
+      "This description should be in content, not front-matter";
+    await page.fill(
+      '[data-testid="template-content-textarea"]',
+      taskDescription
+    );
 
     // Click the Create Task button
     await page.click('[data-testid="submit-button"]');
@@ -51,9 +55,13 @@ test.describe("Note Description as Content", () => {
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Title).toBe(taskTitle);
     expect(frontMatter.Description).toBeUndefined(); // Description should NOT be in front-matter
-    
+
     // Verify description is in the content body (after the front-matter)
-    const contentAfterFrontMatter = fileContent.split('---').slice(2).join('---').trim();
+    const contentAfterFrontMatter = fileContent
+      .split("---")
+      .slice(2)
+      .join("---")
+      .trim();
     expect(contentAfterFrontMatter).toContain(taskDescription);
   });
 
@@ -70,9 +78,12 @@ test.describe("Note Description as Content", () => {
     const areaName = "Test Area Description";
     await page.fill('[data-testid="property-name"]', areaName);
 
-    // Fill in the description
+    // Fill in the template content (note body)
     const areaDescription = "This area description should be in content";
-    await page.fill('[data-testid="property-description"]', areaDescription);
+    await page.fill(
+      '[data-testid="template-content-textarea"]',
+      areaDescription
+    );
 
     // Click the Create button
     await page.click('[data-testid="submit-button"]');
@@ -95,9 +106,13 @@ test.describe("Note Description as Content", () => {
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Name).toBe(areaName);
     expect(frontMatter.Description).toBeUndefined(); // Description should NOT be in front-matter
-    
+
     // Verify description is in the content body (after the front-matter)
-    const contentAfterFrontMatter = fileContent.split('---').slice(2).join('---').trim();
+    const contentAfterFrontMatter = fileContent
+      .split("---")
+      .slice(2)
+      .join("---")
+      .trim();
     expect(contentAfterFrontMatter).toContain(areaDescription);
   });
 
@@ -114,9 +129,12 @@ test.describe("Note Description as Content", () => {
     const projectName = "Test Project Description";
     await page.fill('[data-testid="property-name"]', projectName);
 
-    // Fill in the description
+    // Fill in the template content (note body)
     const projectDescription = "This project description should be in content";
-    await page.fill('[data-testid="property-description"]', projectDescription);
+    await page.fill(
+      '[data-testid="template-content-textarea"]',
+      projectDescription
+    );
 
     // Click the Create button
     await page.click('[data-testid="submit-button"]');
@@ -139,10 +157,13 @@ test.describe("Note Description as Content", () => {
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Name).toBe(projectName);
     expect(frontMatter.Description).toBeUndefined(); // Description should NOT be in front-matter
-    
+
     // Verify description is in the content body (after the front-matter)
-    const contentAfterFrontMatter = fileContent.split('---').slice(2).join('---').trim();
+    const contentAfterFrontMatter = fileContent
+      .split("---")
+      .slice(2)
+      .join("---")
+      .trim();
     expect(contentAfterFrontMatter).toContain(projectDescription);
   });
 });
-

@@ -16,7 +16,7 @@ test.describe("Project Creation with New Architecture", () => {
     page,
   }) => {
     // Open the Create Project command
-    await executeCommand(page, "Task Sync: Create Project");
+    await executeCommand(page, "Create Project");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
@@ -26,17 +26,17 @@ test.describe("Project Creation with New Architecture", () => {
 
     // Fill in the project name
     const projectName = "Test Project E2E";
-    await page.fill('[data-testid="project-name-input"]', projectName);
+    await page.fill('[data-testid="property-name"]', projectName);
 
     // Fill in the areas
     const projectAreas = "Work, Development";
-    await page.fill('[data-testid="project-areas-input"]', projectAreas);
+    await page.fill('[data-testid="property-areas"]', projectAreas);
 
-    // Fill in the description
-    const projectDescription = "This is a test project created by e2e test";
+    // Fill in the template content (note body)
+    const projectContent = "This is a test project created by e2e test";
     await page.fill(
-      '[data-testid="project-description-input"]',
-      projectDescription
+      '[data-testid="template-content-textarea"]',
+      projectContent
     );
 
     // Click the Create Project button
@@ -68,7 +68,7 @@ test.describe("Project Creation with New Architecture", () => {
     page,
   }) => {
     // Open the Create Project command
-    await executeCommand(page, "Task Sync: Create Project");
+    await executeCommand(page, "Create Project");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
@@ -78,7 +78,7 @@ test.describe("Project Creation with New Architecture", () => {
 
     // Should show validation error
     await expect(
-      page.locator('.notice:has-text("Project name is required")')
+      page.locator('.notice:has-text("Project title is required")')
     ).toBeVisible();
 
     // Modal should still be open
@@ -94,14 +94,14 @@ test.describe("Project Creation with New Architecture", () => {
     page,
   }) => {
     // Open the Create Project command
-    await executeCommand(page, "Task Sync: Create Project");
+    await executeCommand(page, "Create Project");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Fill in only the project name
     const projectName = "Minimal Test Project";
-    await page.fill('[data-testid="project-name-input"]', projectName);
+    await page.fill('[data-testid="property-name"]', projectName);
 
     // Click the Create Project button
     await page.click('[data-testid="submit-button"]');
@@ -129,18 +129,15 @@ test.describe("Project Creation with New Architecture", () => {
     page,
   }) => {
     // Open the Create Project command
-    await executeCommand(page, "Task Sync: Create Project");
+    await executeCommand(page, "Create Project");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Fill in the project name and areas
     const projectName = "Project with Areas";
-    await page.fill('[data-testid="project-name-input"]', projectName);
-    await page.fill(
-      '[data-testid="project-areas-input"]',
-      "Learning, Personal"
-    );
+    await page.fill('[data-testid="property-name"]', projectName);
+    await page.fill('[data-testid="property-areas"]', "Learning, Personal");
 
     // Click the Create Project button
     await page.click('[data-testid="submit-button"]');

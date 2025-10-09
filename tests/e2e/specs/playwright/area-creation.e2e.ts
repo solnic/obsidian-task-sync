@@ -16,7 +16,7 @@ test.describe("Area Creation with New Architecture", () => {
     page,
   }) => {
     // Open the Create Area command
-    await executeCommand(page, "Task Sync: Create Area");
+    await executeCommand(page, "Create Area");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
@@ -26,9 +26,9 @@ test.describe("Area Creation with New Architecture", () => {
     const areaName = "Test Area E2E";
     await page.fill('[data-testid="property-name"]', areaName);
 
-    // Fill in the description
-    const areaDescription = "This is a test area created by e2e test";
-    await page.fill('[data-testid="note-description"]', areaDescription);
+    // Fill in the template content (note body)
+    const areaContent = "This is a test area created by e2e test";
+    await page.fill('[data-testid="template-content-textarea"]', areaContent);
 
     // Click the Create button
     await page.click('[data-testid="submit-button"]');
@@ -45,9 +45,9 @@ test.describe("Area Creation with New Architecture", () => {
     const expectedFilePath = `Areas/${areaName}.md`;
     await waitForFileCreation(page, expectedFilePath);
 
-    // Verify the file content contains the correct front-matter and description
+    // Verify the file content contains the correct front-matter and content
     const fileContent = await readVaultFile(page, expectedFilePath);
-    expect(fileContent).toContain(areaDescription);
+    expect(fileContent).toContain(areaContent);
 
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Name).toBe(areaName);
@@ -58,7 +58,7 @@ test.describe("Area Creation with New Architecture", () => {
     page,
   }) => {
     // Open the Create Area command
-    await executeCommand(page, "Task Sync: Create Area");
+    await executeCommand(page, "Create Area");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
@@ -86,7 +86,7 @@ test.describe("Area Creation with New Architecture", () => {
     page,
   }) => {
     // Open the Create Area command
-    await executeCommand(page, "Task Sync: Create Area");
+    await executeCommand(page, "Create Area");
 
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();

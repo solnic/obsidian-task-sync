@@ -153,9 +153,18 @@ export function validateProperties(
 
   // Validate each property definition
   for (const [key, propertyDef] of Object.entries(noteType.properties)) {
-    const value = properties[propertyDef.frontMatterKey];
+    let value = properties[propertyDef.frontMatterKey];
 
-    // Check required properties
+    // Apply default value if value is missing
+    if (
+      (value === undefined || value === null) &&
+      propertyDef.defaultValue !== undefined
+    ) {
+      value = propertyDef.defaultValue;
+      validatedData[propertyDef.frontMatterKey] = propertyDef.defaultValue;
+    }
+
+    // Check required properties (after applying defaults)
     if (propertyDef.required && (value === undefined || value === null)) {
       errors.push(
         createValidationError(
@@ -169,10 +178,6 @@ export function validateProperties(
 
     // Skip validation if value is not provided and not required
     if (value === undefined || value === null) {
-      // Use default value if provided
-      if (propertyDef.defaultValue !== undefined) {
-        validatedData[propertyDef.frontMatterKey] = propertyDef.defaultValue;
-      }
       continue;
     }
 

@@ -35,8 +35,7 @@
     preselectedNoteTypeId || (noteTypes.length === 1 ? noteTypes[0].id : "")
   );
   let propertyValues: Record<string, any> = $state({});
-  let templateContent = $state("");
-  let description = $state(""); // Description/content field separate from properties
+  let templateContent = $state(""); // Template content becomes the note content
 
   // Computed
   const selectedNoteType = $derived(
@@ -72,6 +71,9 @@
       return;
     }
 
+    // Use validated data which includes default values
+    const validatedProperties = validationResult.data;
+
     // Find the title property (look for a property with frontMatterKey 'title' or the first string property)
     let title = "";
     const titleProp = Object.values(selectedNoteType.properties).find(
@@ -79,7 +81,9 @@
     );
 
     if (titleProp) {
-      title = String(propertyValues[titleProp.frontMatterKey] || "").trim();
+      title = String(
+        validatedProperties[titleProp.frontMatterKey] || ""
+      ).trim();
     } else {
       // Fallback: use the first string property value
       const firstStringProp = Object.values(selectedNoteType.properties).find(
@@ -87,7 +91,7 @@
       );
       if (firstStringProp) {
         title = String(
-          propertyValues[firstStringProp.frontMatterKey] || ""
+          validatedProperties[firstStringProp.frontMatterKey] || ""
         ).trim();
       }
     }
@@ -101,9 +105,9 @@
 
     onsubmit?.({
       noteType: selectedNoteType,
-      properties: propertyValues,
+      properties: validatedProperties,
       title: title,
-      description: description.trim() || undefined,
+      description: templateContent.trim() || undefined,
     });
   }
 
@@ -114,10 +118,9 @@
   function handleNoteTypeChange(e: Event) {
     const target = e.target as HTMLSelectElement;
     selectedNoteTypeId = target.value;
-    // Reset property values, template content, and description when note type changes
+    // Reset property values and template content when note type changes
     propertyValues = {};
     templateContent = "";
-    description = "";
   }
 </script>
 
@@ -177,21 +180,6 @@
           to customize the form.
         </p>
       {/if}
-
-      <!-- Description/Content field (separate from properties) -->
-      <div class="description-section">
-        <label for="note-description" class="task-sync-field-label">
-          Description
-        </label>
-        <textarea
-          id="note-description"
-          bind:value={description}
-          placeholder="Enter description or content for this note..."
-          class="task-sync-textarea"
-          data-testid="property-description"
-          rows="4"
-        ></textarea>
-      </div>
     {/if}
   </div>
 
@@ -247,27 +235,5 @@
     text-align: center;
     color: var(--text-muted);
     font-style: italic;
-  }
-
-  .description-section {
-    margin-top: 1rem;
-  }
-
-  .task-sync-textarea {
-    width: 100%;
-    padding: 0.5rem;
-    border: 1px solid var(--background-modifier-border);
-    border-radius: 4px;
-    background: var(--background-primary);
-    color: var(--text-normal);
-    font-size: 0.9rem;
-    font-family: var(--font-text);
-    resize: vertical;
-    min-height: 80px;
-  }
-
-  .task-sync-textarea:focus {
-    outline: none;
-    border-color: var(--interactive-accent);
   }
 </style>

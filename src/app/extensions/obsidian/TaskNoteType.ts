@@ -3,11 +3,7 @@
  * Defines the Task note type with all required properties and validation
  */
 
-import type {
-  NoteType,
-  PropertyDefinition,
-  SelectOption,
-} from "../../core/type-note/types";
+import type { NoteType, PropertyDefinition } from "../../core/type-note/types";
 import {
   stringSchema,
   optionalStringSchema,
@@ -17,57 +13,50 @@ import {
   stringArraySchema,
   enumSchema,
 } from "../../core/type-note/schemas";
-import type {
-  TaskSyncSettings,
-  TaskType,
-  TaskPriority,
-  TaskStatus,
-} from "../../types/settings";
 
 /**
- * Create select options from task types
+ * Default task categories with colors
  */
-function createTaskTypeOptions(taskTypes: TaskType[]): SelectOption[] {
-  return taskTypes.map((type) => ({
-    value: type.name,
-    label: type.name,
-    color: type.color,
-  }));
-}
+const DEFAULT_CATEGORIES = [
+  { value: "Task", color: "#3b82f6" },
+  { value: "Bug", color: "#ef4444" },
+  { value: "Feature", color: "#10b981" },
+  { value: "Improvement", color: "#8b5cf6" },
+  { value: "Chore", color: "#6b7280" },
+];
 
 /**
- * Create select options from task priorities
+ * Default task priorities with colors
  */
-function createTaskPriorityOptions(
-  taskPriorities: TaskPriority[]
-): SelectOption[] {
-  return taskPriorities.map((priority) => ({
-    value: priority.name,
-    label: priority.name,
-    color: priority.color,
-  }));
-}
+const DEFAULT_PRIORITIES = [
+  { value: "Low", color: "#6b7280" },
+  { value: "Medium", color: "#f59e0b" },
+  { value: "High", color: "#ef4444" },
+  { value: "Urgent", color: "#dc2626" },
+];
 
 /**
- * Create select options from task statuses
+ * Default task statuses with colors
  */
-function createTaskStatusOptions(taskStatuses: TaskStatus[]): SelectOption[] {
-  return taskStatuses.map((status) => ({
-    value: status.name,
-    label: status.name,
-    color: status.color,
-  }));
-}
+const DEFAULT_STATUSES = [
+  { value: "Backlog", color: "#6b7280" },
+  { value: "Ready", color: "#3b82f6" },
+  { value: "In Progress", color: "#f59e0b" },
+  { value: "Review", color: "#8b5cf6" },
+  { value: "Done", color: "#10b981" },
+  { value: "Cancelled", color: "#ef4444" },
+];
 
 /**
- * Build Task note type from settings
- * This creates a complete NoteType definition based on current TaskSync settings
+ * Build Task note type
+ * This creates a complete NoteType definition with sensible defaults
+ * No longer dependent on settings - all configuration is in the note type itself
  */
-export function buildTaskNoteType(settings: TaskSyncSettings): NoteType {
-  // Create select options from settings
-  const categoryOptions = createTaskTypeOptions(settings.taskTypes);
-  const priorityOptions = createTaskPriorityOptions(settings.taskPriorities);
-  const statusOptions = createTaskStatusOptions(settings.taskStatuses);
+export function buildTaskNoteType(): NoteType {
+  // Use default options
+  const categoryOptions = DEFAULT_CATEGORIES;
+  const priorityOptions = DEFAULT_PRIORITIES;
+  const statusOptions = DEFAULT_STATUSES;
 
   // Extract values for enum schemas
   const categoryValues = categoryOptions.map((opt) => opt.value);
@@ -76,6 +65,21 @@ export function buildTaskNoteType(settings: TaskSyncSettings): NoteType {
 
   // Define properties for Task note type
   const properties: Record<string, PropertyDefinition> = {
+    type: {
+      key: "type",
+      name: "Type",
+      type: "string",
+      schema: stringSchema,
+      frontMatterKey: "Type",
+      required: true,
+      defaultValue: "Task",
+      description: "Entity type (always 'Task')",
+      visible: false, // Hidden from form, auto-set
+      order: 1,
+      form: {
+        hidden: true, // Hide from primary form section
+      },
+    },
     title: {
       key: "title",
       name: "Title",
@@ -98,9 +102,10 @@ export function buildTaskNoteType(settings: TaskSyncSettings): NoteType {
       schema:
         categoryValues.length > 0
           ? enumSchema(categoryValues as [string, ...string[]])
-          : optionalStringSchema,
+          : stringSchema,
       frontMatterKey: "Category",
-      required: false,
+      required: true,
+      defaultValue: categoryValues.length > 0 ? categoryValues[0] : "Task",
       selectOptions: categoryOptions,
       description: "Task category/type",
       visible: true,
@@ -115,7 +120,8 @@ export function buildTaskNoteType(settings: TaskSyncSettings): NoteType {
           ? enumSchema(priorityValues as [string, ...string[]])
           : optionalStringSchema,
       frontMatterKey: "Priority",
-      required: false,
+      required: true,
+      defaultValue: priorityValues.length > 0 ? priorityValues[0] : "Medium",
       selectOptions: priorityOptions,
       description: "Task priority level",
       visible: true,
@@ -234,33 +240,7 @@ export function buildTaskNoteType(settings: TaskSyncSettings): NoteType {
   // Create template for Task notes
   const template = {
     version: "1.0.0",
-    content: `# {{title}}
-
-{{#if description}}
-## Description
-
-{{description}}
-{{/if}}
-
-## Details
-
-- **Status**: {{status}}
-- **Category**: {{category}}
-- **Priority**: {{priority}}
-{{#if project}}
-- **Project**: [[{{project}}]]
-{{/if}}
-{{#if areas}}
-- **Areas**: {{#each areas}}[[{{this}}]]{{#unless @last}}, {{/unless}}{{/each}}
-{{/if}}
-{{#if doDate}}
-- **Do Date**: {{doDate}}
-{{/if}}
-{{#if dueDate}}
-- **Due Date**: {{dueDate}}
-{{/if}}
-
-## Notes
+    content: `## Notes
 
 `,
     variables: {},

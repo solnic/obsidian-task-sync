@@ -962,8 +962,8 @@ export class ObsidianExtension implements Extension {
    */
   private async registerTaskNoteType(): Promise<void> {
     try {
-      // Build Task note type from current settings
-      const taskNoteType = buildTaskNoteType(this.settings);
+      // Build Task note type with default configuration
+      const taskNoteType = buildTaskNoteType();
 
       // Register with TypeNote registry
       const result = this.typeNote.registry.register(taskNoteType, {

@@ -24,7 +24,7 @@ test.describe("TaskTodoMarkdownProcessor", () => {
     // Create first task - High Priority Bug
     await page.fill('[data-testid="property-title"]', "High Priority Bug");
     await page.fill(
-      '[data-testid="property-description"]',
+      '[data-testid="template-content-textarea"]',
       "Critical bug that needs immediate attention"
     );
     await page.click('[data-testid="submit-button"]');
@@ -37,7 +37,7 @@ test.describe("TaskTodoMarkdownProcessor", () => {
 
     await page.fill('[data-testid="property-title"]', "Feature Request");
     await page.fill(
-      '[data-testid="property-description"]',
+      '[data-testid="template-content-textarea"]',
       "New feature to implement"
     );
     await page.click('[data-testid="submit-button"]');
@@ -50,7 +50,7 @@ test.describe("TaskTodoMarkdownProcessor", () => {
 
     await page.fill('[data-testid="property-title"]', "Completed Task");
     await page.fill(
-      '[data-testid="property-description"]',
+      '[data-testid="template-content-textarea"]',
       "Task that is already done"
     );
     await page.click('[data-testid="submit-button"]');
@@ -137,18 +137,7 @@ test.describe("TaskTodoMarkdownProcessor", () => {
       "Task for nested list testing"
     );
 
-    // Keep default category (Task)
-
-    // Set priority to Medium
-    await page.click('[data-testid="priority-badge"]');
-    await expect(
-      page.locator('[data-testid="priority-dropdown"]')
-    ).toBeVisible();
-    await page.click(
-      '[data-testid="priority-dropdown"] [data-testid="priority-dropdown-item"]:has-text("Medium")'
-    );
-
-    // Keep default status (Backlog)
+    // Submit with defaults
     await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");

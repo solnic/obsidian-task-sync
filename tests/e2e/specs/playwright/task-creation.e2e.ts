@@ -26,9 +26,9 @@ test.describe("Task Creation with New Architecture", () => {
     const taskTitle = "Test Task E2E";
     await page.fill('[data-testid="property-title"]', taskTitle);
 
-    // Fill in the description
-    const taskDescription = "This is a test task created by e2e test";
-    await page.fill('[data-testid="property-description"]', taskDescription);
+    // Fill in the template content (note body)
+    const taskContent = "This is a test task created by e2e test";
+    await page.fill('[data-testid="template-content-textarea"]', taskContent);
 
     // Click the Create Task button
     await page.click('[data-testid="submit-button"]');
@@ -43,9 +43,9 @@ test.describe("Task Creation with New Architecture", () => {
     const expectedFilePath = `Tasks/${taskTitle}.md`;
     await waitForFileCreation(page, expectedFilePath);
 
-    // Verify the file content contains the description
+    // Verify the file content contains the task content
     const fileContent = await readVaultFile(page, expectedFilePath);
-    expect(fileContent).toContain(taskDescription);
+    expect(fileContent).toContain(taskContent);
 
     // Verify the front-matter contains correct task properties
     const frontMatter = await getFrontMatter(page, expectedFilePath);
@@ -106,31 +106,43 @@ test.describe("Task Creation with New Architecture", () => {
     const taskTitle = "Complete Feature Task";
     await page.fill('[data-testid="property-title"]', taskTitle);
 
-    // Fill in the description
-    const taskDescription = "A feature task with all properties set";
-    await page.fill('[data-testid="property-description"]', taskDescription);
+    // Fill in the template content (note body)
+    const taskContent = "A feature task with all properties set";
+    await page.fill('[data-testid="template-content-textarea"]', taskContent);
 
-    // Change the status by clicking the status badge
-    await page.click('[data-testid="status-badge"]');
-    await expect(page.locator(".task-sync-selector-menu")).toBeVisible();
-    await page.click('.task-sync-selector-item:has-text("In Progress")');
+    // Change the category by clicking the category property button (category is required)
+    await page.click('[data-testid="property-category"]');
+    await page.waitForSelector('[data-testid="property-category-dropdown"]', {
+      state: "visible",
+    });
+    await page.click(
+      '[data-testid="property-category-dropdown-item"]:has-text("Feature")'
+    );
 
-    // Change the type by clicking the type badge
-    await page.click('[data-testid="type-badge"]');
-    await expect(page.locator(".task-sync-selector-menu")).toBeVisible();
-    await page.click('.task-sync-selector-item:has-text("Feature")');
+    // Change the status by clicking the status property button (status is required)
+    await page.click('[data-testid="property-status"]');
+    await page.waitForSelector('[data-testid="property-status-dropdown"]', {
+      state: "visible",
+    });
+    await page.click(
+      '[data-testid="property-status-dropdown-item"]:has-text("In Progress")'
+    );
 
-    // Change the priority by clicking the priority badge
-    await page.click('[data-testid="priority-badge"]');
-    await expect(page.locator(".task-sync-selector-menu")).toBeVisible();
-    await page.click('.task-sync-selector-item:has-text("High")');
-
-    // Open extra fields
+    // Open extra fields to access optional properties (priority, areas)
     await page.click('[data-testid="more-options-button"]');
     await expect(page.locator(".task-sync-extra-fields")).toBeVisible();
 
+    // Change the priority by clicking the priority property button
+    await page.click('[data-testid="property-priority"]');
+    await page.waitForSelector('[data-testid="property-priority-dropdown"]', {
+      state: "visible",
+    });
+    await page.click(
+      '[data-testid="property-priority-dropdown-item"]:has-text("High")'
+    );
+
     // Fill in areas
-    await page.fill('[data-testid="areas-input"]', "Development, Testing");
+    await page.fill('[data-testid="property-areas"]', "Development, Testing");
 
     // Submit the form
     await page.click('[data-testid="submit-button"]');
@@ -147,12 +159,12 @@ test.describe("Task Creation with New Architecture", () => {
 
     // Verify the file content
     const fileContent = await readVaultFile(page, expectedFilePath);
-    expect(fileContent).toContain(taskDescription);
+    expect(fileContent).toContain(taskContent);
 
     // Verify the front-matter contains all the set properties
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Title).toBe(taskTitle);
-    expect(frontMatter.Type).toBe("Task");
+    expect(frontMatter.Category).toBe("Feature");
     expect(frontMatter.Status).toBe("In Progress");
     expect(frontMatter.Priority).toBe("High");
     expect(frontMatter.Areas).toEqual(["Development", "Testing"]);
@@ -170,9 +182,9 @@ test.describe("Task Creation with New Architecture", () => {
 
     // Fill in required fields only
     const taskTitle = "Minimal Test Task";
-    const taskDescription = "Minimal description";
+    const taskContent = "Minimal description";
     await page.fill('[data-testid="property-title"]', taskTitle);
-    await page.fill('[data-testid="property-description"]', taskDescription);
+    await page.fill('[data-testid="template-content-textarea"]', taskContent);
 
     // Click the Create Task button
     await page.click('[data-testid="submit-button"]');
@@ -189,7 +201,7 @@ test.describe("Task Creation with New Architecture", () => {
 
     // Verify the file content
     const fileContent = await readVaultFile(page, expectedFilePath);
-    expect(fileContent).toContain(taskDescription);
+    expect(fileContent).toContain(taskContent);
 
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Title).toBe(taskTitle);

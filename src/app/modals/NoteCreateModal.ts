@@ -94,8 +94,8 @@ export class NoteCreateModal extends Modal {
     description?: string;
   }) {
     try {
-      // For Task/Area/Project entities, use entity operations instead of TypeNote FileManager
-      // This ensures proper front-matter handling through ObsidianEntityOperations
+      // For Task/Area/Project entities, use entity operations
+      // This triggers events that ObsidianExtension handles to create notes
       if (data.noteType.id === "task") {
         await this.createTaskEntity(data);
       } else if (data.noteType.id === "area") {
@@ -103,7 +103,7 @@ export class NoteCreateModal extends Modal {
       } else if (data.noteType.id === "project") {
         await this.createProjectEntity(data);
       } else {
-        // For other note types, use TypeNote FileManager
+        // For other note types, use TypeNote FileManager directly
         await this.createGenericNote(data);
       }
     } catch (error) {
@@ -208,12 +208,6 @@ export class NoteCreateModal extends Modal {
     title: string;
     description?: string;
   }) {
-    // Merge title into properties
-    const allProperties = {
-      ...data.properties,
-      title: data.title,
-    };
-
     // Determine folder based on note type ID and settings
     const folder = this.getFolderForNoteType(data.noteType.id);
 
@@ -223,7 +217,8 @@ export class NoteCreateModal extends Modal {
       {
         folder,
         fileName: data.title,
-        properties: allProperties,
+        properties: data.properties,
+        content: data.description, // Use description as content for generic notes
         validateProperties: true,
       }
     );
