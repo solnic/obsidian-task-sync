@@ -717,18 +717,15 @@ test.describe("Daily Planning Wizard", () => {
       }
 
       // Ensure Periodic Notes plugin is enabled
-      const periodicNotesPlugin = app.plugins.plugins["periodic-notes"];
-      if (periodicNotesPlugin) {
-        if (!periodicNotesPlugin.enabled) {
-          await app.plugins.enablePlugin("periodic-notes");
-        }
-        console.log(
-          "Periodic Notes plugin enabled:",
-          periodicNotesPlugin.enabled
-        );
-      } else {
-        console.log("Periodic Notes plugin not found");
+      const periodicNotesPluginEnabled =
+        app.plugins.isEnabled("periodic-notes");
+      if (!periodicNotesPluginEnabled) {
+        await app.plugins.enablePlugin("periodic-notes");
       }
+      console.log(
+        "Periodic Notes plugin enabled:",
+        app.plugins.isEnabled("periodic-notes")
+      );
     });
 
     // Start daily planning to trigger daily note discovery
@@ -795,8 +792,7 @@ test.describe("Daily Planning Wizard", () => {
         discoveredSettings,
         dailyNotesPluginEnabled:
           app.internalPlugins.plugins["daily-notes"]?.enabled,
-        periodicNotesPluginEnabled:
-          app.plugins.plugins["periodic-notes"]?.enabled,
+        periodicNotesPluginEnabled: app.plugins.isEnabled("periodic-notes"),
       };
     });
 
