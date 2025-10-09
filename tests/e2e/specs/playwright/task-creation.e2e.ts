@@ -66,31 +66,29 @@ test.describe("Task Creation with New Architecture", () => {
     // Wait for the modal to appear
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    // Try to submit without entering a title
+    // Clear the title input (it might have a default value)
+    await page.fill('[data-testid="property-title"]', "");
+
+    // Try to submit without a title - HTML validation should prevent submission
     await page.click('[data-testid="submit-button"]');
 
-    // Should show validation error notice
-    await expectNotice(page, "Task title is required");
+    // Wait a bit to ensure submission was attempted
+    await page.waitForTimeout(500);
 
-    // Modal should still be open
+    // Modal should still be open (HTML required attribute prevents submission)
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    // Verify input has error styling
-    await expect(page.locator('[data-testid="property-title"]')).toHaveClass(
-      /task-sync-input-error/
-    );
-
-    // Type in the title input to clear the error
+    // Type in the title input
     await page.fill('[data-testid="property-title"]', "Valid Title");
 
-    // Verify error styling is removed
-    await expect(
-      page.locator('[data-testid="property-title"]')
-    ).not.toHaveClass(/task-sync-input-error/);
+    // Now submission should work
+    await page.click('[data-testid="submit-button"]');
 
-    // Cancel the modal
-    await page.click('[data-testid="cancel-button"]');
+    // Modal should close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
+
+    // Verify task was created
+    await expectNotice(page, "created successfully");
   });
 
   test("should create task with all properties and verify file content", async ({
@@ -129,7 +127,7 @@ test.describe("Task Creation with New Architecture", () => {
     );
 
     // Open extra fields to access optional properties (priority, areas)
-    await page.click('[data-testid="more-options-button"]');
+    await page.click('[data-testid="toggle-optional-properties"]');
     await expect(page.locator(".task-sync-extra-fields")).toBeVisible();
 
     // Change the priority by clicking the priority property button
