@@ -10,6 +10,7 @@ import {
   switchToTaskService,
   selectFromDropdown,
   fileExists,
+  executeCommand,
 } from "../../helpers/global";
 import {
   stubGitHubWithFixtures,
@@ -180,5 +181,105 @@ test.describe("GitHub Integration", () => {
         .locator(".task-sync-item-title:has-text('Fix critical bug')")
         .count()
     ).toBe(0);
+  });
+
+  test("should show 'Schedule for today' button when Daily Planning wizard is active", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Wait for issues to load
+    await expect(
+      page.locator('[data-testid="github-issues-list"]')
+    ).toBeVisible();
+
+    // Find the first issue and hover to reveal import button
+    const firstIssue = page
+      .locator('[data-testid="github-issue-item"]')
+      .first();
+    await firstIssue.waitFor({ state: "visible" });
+    await firstIssue.hover();
+
+    // Initially, should show regular "Import" button
+    await expect(
+      page.locator('[data-testid="issue-import-button"]').first()
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="issue-import-button"]').first()
+    ).toHaveText("Import");
+
+    // Start Daily Planning wizard
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Navigate to step 2 (Today's Agenda) where we can import tasks
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Switch back to GitHub service in the Tasks view
+    // The Daily Planning wizard should still be active in the background
+    await page.click('[data-testid="tasks-view-tab"]');
+    await switchToTaskService(page, "github");
+
+    // Now the import button should show "Schedule for today"
+    await expect(
+      page.locator('[data-testid="schedule-for-today-button"]').first()
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-testid="schedule-for-today-button"]').first()
+    ).toHaveText("Schedule for today");
+
+    // Click "Schedule for today" button for first issue (#111)
+    await page.click('[data-testid="schedule-for-today-button"]');
+
+    // Wait for import to complete
+    await waitForIssueImportComplete(page, 111);
+
+    // Verify task file was created
+    const taskExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(taskExists).toBe(true);
+
+    // The button should now show "✓ Scheduled for today"
+    await expect(
+      page.locator('[data-testid="schedule-for-today-button"]').first()
+    ).toHaveText("✓ Scheduled for today");
+
+    // Switch back to Daily Planning view to verify task was staged
+    await page.click('[data-testid="daily-planning-view-tab"]');
+
+    // Should see the task in the "Today's tasks" section
+    await expect(
+      page
+        .locator('[data-testid="scheduled-task"]')
+        .filter({ hasText: "First test issue" })
+    ).toBeVisible();
   });
 });
