@@ -23,7 +23,5 @@ export { default as GeneralSettings } from "./svelte/GeneralSettings.svelte";
 export { default as TemplatesSettings } from "./svelte/TemplatesSettings.svelte";
 export { default as BasesSettings } from "./svelte/BasesSettings.svelte";
 export { default as TaskPropertiesSettings } from "./svelte/TaskPropertiesSettings.svelte";
-export { default as TaskCategoriesSettings } from "./svelte/TaskCategoriesSettings.svelte";
-export { default as TaskPrioritiesSettings } from "./svelte/TaskPrioritiesSettings.svelte";
-export { default as TaskStatusesSettings } from "./svelte/TaskStatusesSettings.svelte";
+
 export { default as IntegrationsSettings } from "./svelte/IntegrationsSettings.svelte";
