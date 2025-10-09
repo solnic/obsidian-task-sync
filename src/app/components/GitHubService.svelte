@@ -20,6 +20,8 @@
     GitHubLabel,
   } from "../cache/schemas/github";
   import type { GitHubExtension } from "../extensions/GitHubExtension";
+  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
+  import { getContextStore } from "../stores/contextStore";
 
   interface SortField {
     key: string;
@@ -31,13 +33,35 @@
     settings: TaskSyncSettings;
     extension: Extension;
     host: Host;
+    isPlanningActive?: boolean;
+    currentSchedule?: any;
+    dailyPlanningExtension?: DailyPlanningExtension;
     testId?: string;
   }
 
-  let { settings, extension, host, testId }: Props = $props();
+  let {
+    settings,
+    extension,
+    host,
+    isPlanningActive = false,
+    currentSchedule,
+    dailyPlanningExtension,
+    testId,
+  }: Props = $props();
 
   // Cast extension to GitHubExtension for type safety
   const githubExtension = extension as GitHubExtension;
+
+  // Get the reactive context store
+  const contextStore = getContextStore();
+
+  // Computed daily planning modes
+  let dayPlanningMode = $derived.by(() => {
+    const context = $contextStore;
+    return context?.type === "daily";
+  });
+
+  let dailyPlanningWizardMode = $derived(isPlanningActive);
 
   // State
   let activeTab = $state<"issues" | "pull-requests">("issues");
@@ -655,6 +679,30 @@
         console.log(
           `Successfully imported ${isPR ? "PR" : "issue"} #${githubData.number} as task ${result.taskId}`
         );
+
+        // Handle Daily Planning integration
+        if (dailyPlanningWizardMode && dailyPlanningExtension) {
+          // In wizard mode, stage the task for today
+          try {
+            dailyPlanningExtension.scheduleTaskForToday(result.taskId);
+            console.log(
+              `Staged task ${result.taskId} for today in Daily Planning`
+            );
+          } catch (err: any) {
+            console.error("Error staging task for today:", err);
+          }
+        } else if (dayPlanningMode && dailyPlanningExtension) {
+          // In regular day planning mode, add to today's daily note immediately
+          try {
+            await dailyPlanningExtension.addTasksToTodayDailyNote([
+              { id: result.taskId, title: githubData.title } as Task,
+            ]);
+            console.log(`Added task ${result.taskId} to today's daily note`);
+          } catch (err: any) {
+            console.error("Error adding to today's daily note:", err);
+          }
+        }
+
         // Reload tasks to get the updated list with the imported task
         await loadTasks();
       } else {
@@ -867,6 +915,8 @@
                 {isImporting}
                 {isScheduled}
                 {scheduledDate}
+                {dayPlanningMode}
+                {dailyPlanningWizardMode}
                 onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
                 onImport={() => importTask(task)}
                 {host}
@@ -882,6 +932,8 @@
                 {isImporting}
                 {isScheduled}
                 {scheduledDate}
+                {dayPlanningMode}
+                {dailyPlanningWizardMode}
                 onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
                 onImport={() => importTask(task)}
                 {host}
