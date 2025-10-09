@@ -3,19 +3,17 @@
  * Comprehensive settings including all integrations and task configuration
  */
 
-// Task category interface with color support
+// Legacy task type interfaces (for backward compatibility - will be removed in future)
 export interface TaskType {
   name: string;
   color: string; // Hex color code (e.g., "#3b82f6")
 }
 
-// Task priority interface with color support
 export interface TaskPriority {
   name: string;
   color: string; // Hex color code (e.g., "#ef4444")
 }
 
-// Task status interface with color support
 export interface TaskStatus {
   name: string;
   color: string; // Hex color code (e.g., "#10b981")
@@ -110,11 +108,9 @@ export interface TaskSyncSettings {
   tasksBaseFile: string;
   autoGenerateBases: boolean;
   autoUpdateBaseViews: boolean;
-  // Task categories configuration
+  // Legacy properties for backward compatibility (will be removed in future)
   taskTypes: TaskType[];
-  // Task priorities configuration
   taskPriorities: TaskPriority[];
-  // Task statuses configuration
   taskStatuses: TaskStatus[];
   // Individual area/project bases
   areaBasesEnabled: boolean;
@@ -172,7 +168,7 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   tasksBaseFile: "Tasks.base",
   autoGenerateBases: true,
   autoUpdateBaseViews: true,
-  // Task categories defaults
+  // Legacy properties for backward compatibility (will be removed in future)
   taskTypes: [
     { name: "Task", color: "#3b82f6" },
     { name: "Bug", color: "#ef4444" },
@@ -180,14 +176,12 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
     { name: "Improvement", color: "#8b5cf6" },
     { name: "Chore", color: "#6b7280" },
   ],
-  // Task priorities defaults
   taskPriorities: [
     { name: "Low", color: "#10b981" },
     { name: "Medium", color: "#f59e0b" },
     { name: "High", color: "#f97316" },
     { name: "Urgent", color: "#ef4444" },
   ],
-  // Task statuses defaults
   taskStatuses: [
     { name: "Backlog", color: "#6b7280", isDone: false, isInProgress: false },
     {

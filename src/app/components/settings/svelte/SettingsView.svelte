@@ -23,9 +23,6 @@
     { id: "bases", title: "Bases" },
     { id: "type-note", title: "TypeNote" },
     { id: "task-properties", title: "Task Properties" },
-    { id: "task-categories", title: "Task Categories" },
-    { id: "task-priorities", title: "Task Priorities" },
-    { id: "task-statuses", title: "Task Statuses" },
     { id: "integrations", title: "Integrations" },
   ];
 </script>

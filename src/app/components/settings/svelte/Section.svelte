@@ -8,9 +8,6 @@
   import TemplatesSettings from "./TemplatesSettings.svelte";
   import BasesSettings from "./BasesSettings.svelte";
   import TaskPropertiesSettings from "./TaskPropertiesSettings.svelte";
-  import TaskCategoriesSettings from "./TaskCategoriesSettings.svelte";
-  import TaskPrioritiesSettings from "./TaskPrioritiesSettings.svelte";
-  import TaskStatusesSettings from "./TaskStatusesSettings.svelte";
   import IntegrationsSettings from "./IntegrationsSettings.svelte";
   import TypeNoteSettings from "./TypeNoteSettings.svelte";
 
@@ -52,12 +49,6 @@
     <TypeNoteSettings bind:settings {saveSettings} {section} {plugin} />
   {:else if section.id === "task-properties"}
     <TaskPropertiesSettings bind:settings {saveSettings} {section} {plugin} />
-  {:else if section.id === "task-categories"}
-    <TaskCategoriesSettings bind:settings {saveSettings} {section} {plugin} />
-  {:else if section.id === "task-priorities"}
-    <TaskPrioritiesSettings bind:settings {saveSettings} {section} {plugin} />
-  {:else if section.id === "task-statuses"}
-    <TaskStatusesSettings bind:settings {saveSettings} {section} {plugin} />
   {:else if section.id === "integrations"}
     <IntegrationsSettings
       bind:settings
