@@ -486,8 +486,10 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   async openCreateNoteModal(noteTypeId?: string) {
-    const { NoteCreateModal } = await import("./app/modals/NoteCreateModal");
-    new NoteCreateModal(this.app, this, noteTypeId).open();
+    const { CreateEntityModal } = await import(
+      "./app/modals/CreateEntityModal"
+    );
+    new CreateEntityModal(this.app, this, noteTypeId).open();
   }
 
   /**

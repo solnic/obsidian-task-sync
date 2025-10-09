@@ -1,16 +1,17 @@
 /**
- * Note Create Modal
- * Obsidian modal wrapper for the NoteCreateModal Svelte component
+ * Create Entity Modal
+ * Obsidian modal wrapper for the CreateEntityModal Svelte component
+ * Used for creating entities (tasks, areas, projects) through the entity system
  */
 
 import { App, Modal, Notice } from "obsidian";
 import { mount, unmount } from "svelte";
-import NoteCreateModalSvelte from "../components/type-note/NoteCreateModal.svelte";
+import CreateEntityModalSvelte from "../components/type-note/CreateEntityModal.svelte";
 import type TaskSyncPlugin from "../../main";
 import type { NoteType } from "../core/type-note/types";
 import type { TaskSyncSettings } from "../types/settings";
 
-export class NoteCreateModal extends Modal {
+export class CreateEntityModal extends Modal {
   private component: any = null;
   private plugin: TaskSyncPlugin;
   private settings: TaskSyncSettings;
@@ -43,7 +44,7 @@ export class NoteCreateModal extends Modal {
         return;
       }
 
-      this.component = mount(NoteCreateModalSvelte, {
+      this.component = mount(CreateEntityModalSvelte, {
         target: contentEl,
         props: {
           typeRegistry: this.plugin.typeNote.registry,
@@ -63,9 +64,9 @@ export class NoteCreateModal extends Modal {
         },
       });
     } catch (error) {
-      console.error("Failed to open NoteCreateModal:", error);
+      console.error("Failed to open CreateEntityModal:", error);
       contentEl.createEl("div", {
-        text: "Failed to load note creation form: " + error.message,
+        text: "Failed to load entity creation form: " + error.message,
       });
     }
   }
