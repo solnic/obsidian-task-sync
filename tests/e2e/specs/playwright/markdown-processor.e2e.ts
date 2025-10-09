@@ -133,7 +133,7 @@ test.describe("TaskTodoMarkdownProcessor", () => {
 
     await page.fill('[data-testid="property-title"]', "Nested Task Test");
     await page.fill(
-      '[data-testid="property-description"]',
+      '[data-testid="template-content-textarea"]',
       "Task for nested list testing"
     );
 

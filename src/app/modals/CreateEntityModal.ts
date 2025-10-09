@@ -10,7 +10,7 @@ import CreateEntityModalSvelte from "../components/type-note/CreateEntityModal.s
 import type TaskSyncPlugin from "../../main";
 import type { NoteType } from "../core/type-note/types";
 import type { TaskSyncSettings } from "../types/settings";
-import type { EntitiesOperations } from "../core/entities-base";
+import type { EntitiesOperations, Entity } from "../core/entities-base";
 
 export class CreateEntityModal extends Modal {
   private component: any = null;
@@ -83,10 +83,13 @@ export class CreateEntityModal extends Modal {
     description?: string
   ) {
     try {
-      await this.operations[noteType.id].create({
-        description: description,
+      // Build entity data - include description in properties if provided
+      const entityData = {
         ...properties,
-      });
+        ...(description ? { description } : {}),
+      } as Omit<Entity, "id" | "createdAt" | "updatedAt">;
+
+      await this.operations[noteType.id].create(entityData);
       new Notice(`${noteType.name} created successfully`);
       this.close();
     } catch (error) {

@@ -27,7 +27,7 @@ import { ContextService } from "../services/ContextService";
 import { Tasks } from "../entities/Tasks";
 import { Projects } from "../entities/Projects";
 import { Areas } from "../entities/Areas";
-import type { Task, Project } from "../core/entities";
+import type { Task, Project, Area } from "../core/entities";
 import type { TaskSyncSettings } from "../types/settings";
 import { ObsidianBaseManager } from "./obsidian/BaseManager";
 import { DailyNoteFeature } from "../features/DailyNoteFeature";
@@ -643,9 +643,43 @@ export class ObsidianExtension implements Extension {
   // Event handler methods required by Extension interface
   async onEntityCreated(event: any): Promise<void> {
     if (event.type === "areas.created") {
-      await this.areaOperations.createNote(event.area);
+      const area = event.area;
+
+      // Create the note file and get the file path
+      const filePath = await this.areaOperations.createNote(area);
+
+      // Update the area's source to include the file path
+      // This prevents issues when the file is deleted
+      const updatedArea: Area = {
+        ...area,
+        source: {
+          extension: "obsidian",
+          ...area.source,
+          filePath: filePath,
+        },
+      };
+
+      // Update the area in the store without triggering another event
+      areaStore.updateArea(updatedArea);
     } else if (event.type === "projects.created") {
-      await this.projectOperations.createNote(event.project);
+      const project = event.project;
+
+      // Create the note file and get the file path
+      const filePath = await this.projectOperations.createNote(project);
+
+      // Update the project's source to include the file path
+      // This prevents issues when the file is deleted
+      const updatedProject: Project = {
+        ...project,
+        source: {
+          extension: "obsidian",
+          ...project.source,
+          filePath: filePath,
+        },
+      };
+
+      // Update the project in the store without triggering another event
+      projectStore.updateProject(updatedProject);
     } else if (event.type === "tasks.created") {
       const task = event.task;
 
@@ -767,33 +801,45 @@ export class ObsidianExtension implements Extension {
   /**
    * Handle task file deletion by finding and deleting the corresponding entity
    */
-  private handleTaskFileDeletion(filePath: string): void {
+  private async handleTaskFileDeletion(filePath: string): Promise<void> {
     const task = taskStore.findByFilePath(filePath);
+    if (!task) {
+      console.warn(`Task file deleted but entity not found: ${filePath}`);
+      return;
+    }
     console.log(`Task file deleted: ${filePath}, deleting entity: ${task.id}`);
     const taskOps = new Tasks.Operations(this.settings);
-    taskOps.delete(task.id);
+    await taskOps.delete(task.id);
   }
 
   /**
    * Handle project file deletion by finding and deleting the corresponding entity
    */
-  private handleProjectFileDeletion(filePath: string): void {
+  private async handleProjectFileDeletion(filePath: string): Promise<void> {
     const project = projectStore.findByFilePath(filePath);
+    if (!project) {
+      console.warn(`Project file deleted but entity not found: ${filePath}`);
+      return;
+    }
     console.log(
       `Project file deleted: ${filePath}, deleting entity: ${project.id}`
     );
     const projectOps = new Projects.Operations(this.settings);
-    projectOps.delete(project.id);
+    await projectOps.delete(project.id);
   }
 
   /**
    * Handle area file deletion by finding and deleting the corresponding entity
    */
-  private handleAreaFileDeletion(filePath: string): void {
+  private async handleAreaFileDeletion(filePath: string): Promise<void> {
     const area = areaStore.findByFilePath(filePath);
+    if (!area) {
+      console.warn(`Area file deleted but entity not found: ${filePath}`);
+      return;
+    }
     console.log(`Area file deleted: ${filePath}, deleting entity: ${area.id}`);
     const areaOps = new Areas.Operations(this.settings);
-    areaOps.delete(area.id);
+    await areaOps.delete(area.id);
   }
 
   /*

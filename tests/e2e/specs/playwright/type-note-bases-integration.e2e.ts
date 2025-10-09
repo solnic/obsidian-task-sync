@@ -253,7 +253,7 @@ test.describe("TypeNote BasesIntegration", () => {
         { typeNoteType: "number", expectedBaseType: "number" },
         { typeNoteType: "boolean", expectedBaseType: "checkbox" },
         { typeNoteType: "date", expectedBaseType: "date" },
-        { typeNoteType: "array", expectedBaseType: "multitext" },
+        { typeNoteType: "array", expectedBaseType: "list" },
       ];
 
       const results = [];
