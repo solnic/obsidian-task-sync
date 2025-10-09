@@ -19,6 +19,7 @@ import { taskStore, type TaskStore } from "./app/stores/taskStore";
 import { projectStore, type ProjectStore } from "./app/stores/projectStore";
 import { areaStore, type AreaStore } from "./app/stores/areaStore";
 import type { ObsidianExtension } from "./app/extensions/ObsidianExtension";
+import { extensionRegistry } from "./app/core/extension";
 import { Tasks } from "./app/entities/Tasks";
 import { Areas } from "./app/entities/Areas";
 import { Projects } from "./app/entities/Projects";
@@ -147,6 +148,15 @@ export default class TaskSyncPlugin extends Plugin {
       name: "Refresh Bases",
       callback: async () => {
         await this.refreshBases();
+      },
+    });
+
+    // Add command to refresh tasks
+    this.addCommand({
+      id: "refresh-tasks",
+      name: "Refresh Tasks",
+      callback: async () => {
+        await this.refreshTasks();
       },
     });
 
@@ -545,6 +555,34 @@ export default class TaskSyncPlugin extends Plugin {
       `Registered ${noteTypes.length} note type commands:`,
       this.registeredNoteTypeCommands
     );
+  }
+
+  /**
+   * Refresh all tasks - clears task store and rescans from all extensions
+   */
+  async refreshTasks() {
+    try {
+      new Notice("Refreshing tasks...");
+
+      // Get all extensions that support tasks
+      const extensions = extensionRegistry.getByEntityType("task");
+
+      if (extensions.length === 0) {
+        new Notice("❌ No task extensions found");
+        return;
+      }
+
+      // Refresh each extension - they will handle their own task cleanup and restoration
+      for (const extension of extensions) {
+        console.log(`Refreshing tasks from extension: ${extension.id}`);
+        await extension.refresh();
+      }
+
+      new Notice("✅ Tasks refreshed successfully");
+    } catch (error) {
+      console.error("Failed to refresh tasks:", error);
+      new Notice(`❌ Failed to refresh tasks: ${error.message}`);
+    }
   }
 
   /**

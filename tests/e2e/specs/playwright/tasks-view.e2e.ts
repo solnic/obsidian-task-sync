@@ -17,6 +17,7 @@ import {
   verifyTaskCount,
 } from "../../helpers/tasks-view-helpers";
 import { createTask } from "../../helpers/entity-helpers";
+import { executeCommand } from "../../helpers/global";
 
 test.describe("TasksView Component", () => {
   test("should open Tasks view and display local tasks", async ({ page }) => {
@@ -538,5 +539,167 @@ test.describe("TasksView Component", () => {
     // Verify the task is no longer displayed
     const finalTasks = await getVisibleTaskItems(page);
     expect(finalTasks.length).toBe(initialCount);
+  });
+
+  test("should not delete tasks from other extensions when refreshing local tasks", async ({
+    page,
+  }) => {
+    // Open Tasks view first
+    await openTasksView(page);
+    await waitForLocalTasksToLoad(page);
+
+    // Create a local Obsidian task
+    await createTask(page, {
+      title: "Local Task",
+      category: "Feature",
+    });
+
+    // Add a mock GitHub task directly to the store
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const { taskStore } = plugin.stores;
+
+      // Create a mock GitHub task
+      const githubTask = {
+        id: `github-task-${Date.now()}`,
+        title: "GitHub Task",
+        description: "A task from GitHub",
+        category: "Bug",
+        status: "In Progress",
+        priority: "High",
+        done: false,
+        project: "",
+        areas: [],
+        parentTask: "",
+        tags: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        source: {
+          extension: "github",
+          filePath: "github/issue/123", // Has a filePath but not an Obsidian file
+        },
+      };
+
+      taskStore.addTask(githubTask);
+    });
+
+    // Wait for both tasks to appear
+    await page.waitForFunction(
+      () => {
+        const taskItems = document.querySelectorAll(
+          '[data-testid^="local-task-item-"]'
+        );
+        return taskItems.length >= 2;
+      },
+      { timeout: 5000 }
+    );
+
+    // Verify both tasks are present
+    await getTaskItemByTitle(page, "Local Task");
+    await getTaskItemByTitle(page, "GitHub Task");
+
+    // Refresh local tasks
+    await refreshTasks(page);
+
+    // Wait for refresh to complete
+    await page.waitForTimeout(1000);
+
+    // Verify both tasks are still present after refresh
+    // The GitHub task should NOT be deleted even though its filePath
+    // is not in the Obsidian tasks folder
+    await getTaskItemByTitle(page, "Local Task");
+    await getTaskItemByTitle(page, "GitHub Task");
+
+    // Verify task count is still 2
+    const finalTasks = await getVisibleTaskItems(page);
+    expect(finalTasks.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("should refresh all tasks using global refresh command", async ({
+    page,
+  }) => {
+    // Create some test tasks
+    await createTask(page, {
+      title: "Task Before Refresh",
+      category: "Feature",
+    });
+
+    // Open Tasks view
+    await openTasksView(page);
+    await waitForLocalTasksToLoad(page);
+
+    // Verify initial task is present
+    await getTaskItemByTitle(page, "Task Before Refresh");
+
+    // Create another task file directly in the vault
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      await app.vault.create(
+        "Tasks/External Task.md",
+        `---
+Title: External Task
+Type: Task
+Category: Bug
+Priority: High
+Status: In Progress
+Done: false
+---
+
+Task created directly in vault.`
+      );
+    });
+
+    // Execute the global refresh tasks command
+    await executeCommand(page, "Task Sync: Refresh Tasks");
+
+    // Wait for refresh to complete and new task to appear
+    await page.waitForFunction(
+      () => {
+        const taskItems = document.querySelectorAll(
+          '[data-testid^="local-task-item-"]'
+        );
+        return taskItems.length >= 2;
+      },
+      { timeout: 5000 }
+    );
+
+    // Verify both tasks are present after refresh
+    await getTaskItemByTitle(page, "Task Before Refresh");
+    await getTaskItemByTitle(page, "External Task");
+
+    // Delete one task file
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath("Tasks/External Task.md");
+      if (file) {
+        await app.vault.delete(file);
+      }
+    });
+
+    // Execute refresh command again
+    await executeCommand(page, "Task Sync: Refresh Tasks");
+
+    // Wait for deleted task to disappear
+    await page.waitForFunction(
+      () => {
+        const taskItems = document.querySelectorAll(
+          '[data-testid^="local-task-item-"]'
+        );
+        // Should have at least the original task
+        return taskItems.length >= 1;
+      },
+      { timeout: 5000 }
+    );
+
+    // Verify only the original task remains
+    await getTaskItemByTitle(page, "Task Before Refresh");
+
+    // Verify deleted task is gone
+    const finalTasks = await getVisibleTaskItems(page);
+    const externalTaskExists = finalTasks.some(
+      (task) => task.title === "External Task"
+    );
+    expect(externalTaskExists).toBe(false);
   });
 });
