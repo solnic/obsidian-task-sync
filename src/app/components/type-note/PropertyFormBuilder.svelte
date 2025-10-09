@@ -50,7 +50,6 @@
 
   // Internal state
   let validationResults: Record<string, ValidationResult> = $state({});
-  let touchedFields: Record<string, boolean> = $state({});
   let showOptional = $state(false);
 
   // Helper to check if property is a "button-style" property (select/enum)
@@ -149,8 +148,6 @@
   }
 
   function handleValueChange(propertyKey: string, value: any) {
-    touchedFields[propertyKey] = true;
-
     const newValues = { ...values };
     // Use property key, not frontMatterKey
     newValues[propertyKey] = value;
@@ -166,22 +163,7 @@
     }
   }
 
-  function renderProperty(propertyKey: string, property: PropertyDefinition) {
-    // Use property key, not frontMatterKey
-    const value = values[propertyKey];
-    const validationResult = validationResults[propertyKey];
-    const touched = touchedFields[propertyKey] || false;
-
-    const commonProps = {
-      property,
-      propertyKey,
-      value,
-      onvaluechange: (newValue: any) =>
-        handleValueChange(propertyKey, newValue),
-      validationResult,
-      touched,
-    };
-
+  function renderProperty(property: PropertyDefinition) {
     switch (property.type) {
       case "string":
         return StringProperty;
@@ -239,15 +221,13 @@
 <!-- Main property (rendered first) -->
 {#if mainProperty}
   {@const [propertyKey, property] = mainProperty}
-  {@const Component = renderProperty(propertyKey, property)}
+  {@const Component = renderProperty(property)}
   {#if Component}
     <Component
       {property}
       {propertyKey}
-      value={values[propertyKey]}
       onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
       validationResult={validationResults[propertyKey]}
-      touched={touchedFields[propertyKey] || false}
       compact={true}
     />
   {/if}
@@ -268,15 +248,13 @@
 
 <!-- Required text properties (title, description, etc.) -->
 {#each requiredTextProperties as [propertyKey, property]}
-  {@const Component = renderProperty(propertyKey, property)}
+  {@const Component = renderProperty(property)}
   {#if Component}
     <Component
       {property}
       {propertyKey}
-      value={values[propertyKey]}
       onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
       validationResult={validationResults[propertyKey]}
-      touched={touchedFields[propertyKey] || false}
       compact={true}
     />
   {/if}
@@ -286,15 +264,13 @@
 {#if requiredButtonProperties.length > 0 || optionalProperties.length > 0}
   <div class="task-sync-property-controls">
     {#each requiredButtonProperties as [propertyKey, property]}
-      {@const Component = renderProperty(propertyKey, property)}
+      {@const Component = renderProperty(property)}
       {#if Component}
         <Component
           {property}
           {propertyKey}
-          value={values[propertyKey]}
           onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
           validationResult={validationResults[propertyKey]}
-          touched={touchedFields[propertyKey] || false}
           compact={true}
         />
       {/if}
@@ -317,15 +293,13 @@
 
 <!-- Required boolean properties -->
 {#each requiredBooleanProperties as [propertyKey, property]}
-  {@const Component = renderProperty(propertyKey, property)}
+  {@const Component = renderProperty(property)}
   {#if Component}
     <Component
       {property}
       {propertyKey}
-      value={values[propertyKey]}
       onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
       validationResult={validationResults[propertyKey]}
-      touched={touchedFields[propertyKey] || false}
     />
   {/if}
 {/each}
@@ -334,17 +308,15 @@
 {#if showOptional}
   <div class="task-sync-extra-fields">
     {#each optionalProperties as [propertyKey, property]}
-      {@const Component = renderProperty(propertyKey, property)}
+      {@const Component = renderProperty(property)}
       {#if Component}
         <div class="task-sync-field-group">
           <Component
             {property}
             {propertyKey}
-            value={values[propertyKey]}
             onvaluechange={(newValue) =>
               handleValueChange(propertyKey, newValue)}
             validationResult={validationResults[propertyKey]}
-            touched={touchedFields[propertyKey] || false}
           />
         </div>
       {/if}

@@ -15,7 +15,6 @@
     value?: number;
     onvaluechange?: (value: number | undefined) => void;
     validationResult?: ValidationResult;
-    touched?: boolean;
     compact?: boolean;
   }
 
@@ -25,12 +24,10 @@
     value = $bindable(),
     onvaluechange,
     validationResult,
-    touched = false,
   }: Props = $props();
 
   const hasError = $derived(
-    touched &&
-      validationResult &&
+    validationResult &&
       !validationResult.valid &&
       validationResult.errors.length > 0
   );

@@ -16,7 +16,6 @@
     value?: string;
     onvaluechange?: (value: string | undefined) => void;
     validationResult?: ValidationResult;
-    touched?: boolean;
     compact?: boolean; // If true, no label/FieldGroup wrapper
   }
 
@@ -26,13 +25,11 @@
     value = $bindable(),
     onvaluechange,
     validationResult,
-    touched = false,
     compact = false,
   }: Props = $props();
 
   const hasError = $derived(
-    touched &&
-      validationResult &&
+    validationResult &&
       !validationResult.valid &&
       validationResult.errors.length > 0
   );
