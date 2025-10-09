@@ -557,4 +557,77 @@ test.describe("Daily Planning Wizard", () => {
       page.locator('[data-testid="daily-planning-view"]')
     ).not.toBeVisible();
   });
+
+  test("should reflect freshly imported tasks when using 'Schedule for today'", async ({
+    page,
+  }) => {
+    // This test reproduces the bug where "Schedule for today" imports and stages tasks
+    // but they don't appear in the Daily Planning UI until refresh
+
+    // Start daily planning first
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Navigate to step 2 (Today's Agenda)
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Verify no tasks are initially scheduled
+    const initialTaskCount = await page
+      .locator('[data-testid="scheduled-task"]')
+      .count();
+    expect(initialTaskCount).toBe(0);
+
+    // Create a task using the "Schedule for today" functionality
+    // This simulates importing a GitHub issue with "Schedule for today"
+    const importedTask = await page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Create a task and immediately stage it for today (simulating GitHub import)
+      const taskOperations = plugin.operations.taskOperations;
+      const createdTask = await taskOperations.create({
+        title: "Freshly Imported Task",
+        description: "A task imported via 'Schedule for today'",
+        status: "Not Started",
+        priority: "Medium",
+        done: false,
+      });
+
+      // Stage the task for today (this is what "Schedule for today" does)
+      const dailyPlanningExtension =
+        plugin.host.getExtensionById("daily-planning");
+      if (dailyPlanningExtension) {
+        dailyPlanningExtension.scheduleTaskForToday(createdTask.id);
+      }
+
+      return createdTask;
+    });
+
+    expect(importedTask).toBeTruthy();
+    expect(importedTask.title).toBe("Freshly Imported Task");
+
+    // BUG: The task should now appear in the Daily Planning UI without needing to refresh
+    // Wait a moment for reactivity to kick in
+    await page.waitForTimeout(1000);
+
+    // The task should appear in today's tasks section
+    await expect(
+      page
+        .locator('[data-testid="scheduled-task"] .task-title')
+        .filter({ hasText: "Freshly Imported Task" })
+    ).toBeVisible({ timeout: 5000 });
+
+    // Verify the task count has increased
+    const updatedTaskCount = await page
+      .locator('[data-testid="scheduled-task"]')
+      .count();
+    expect(updatedTaskCount).toBe(1);
+  });
 });

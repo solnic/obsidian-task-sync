@@ -7,6 +7,7 @@
   import { onMount, onDestroy, untrack } from "svelte";
   import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
   import type { Task, CalendarEvent } from "../core/entities";
+  import { taskStore } from "../stores/taskStore";
 
   // Step components
   import Step from "./daily-planning/Step.svelte";
@@ -72,9 +73,33 @@
     );
 
     // Tasks from unscheduled list that are staged for scheduling
-    const stagingTasks = unscheduledTasks.filter((t) =>
+    const stagingTasksFromUnscheduled = unscheduledTasks.filter((t) =>
       stagedChanges.toSchedule.has(t.id)
     );
+
+    // Get freshly staged tasks that might not be in any existing list yet
+    // This handles the case where a task is created and immediately staged
+    const allExistingTaskIds = new Set([
+      ...todayTasks.map((t) => t.id),
+      ...unscheduledTasks.map((t) => t.id),
+      ...yesterdayTasks.done.map((t) => t.id),
+      ...yesterdayTasks.notDone.map((t) => t.id),
+    ]);
+
+    const freshStagedTasks: Task[] = [];
+    for (const taskId of stagedChanges.toSchedule) {
+      if (!allExistingTaskIds.has(taskId)) {
+        // This is a freshly created task that's not in our existing lists
+        // We need to get it from the task store
+        const task = taskStore.findById(taskId);
+        if (task) {
+          freshStagedTasks.push(task);
+        }
+      }
+    }
+
+    // Combine staging tasks from unscheduled list and fresh staged tasks
+    const stagingTasks = [...stagingTasksFromUnscheduled, ...freshStagedTasks];
 
     // Tasks from unscheduled list that are NOT staged
     const unscheduledVisible = unscheduledTasks.filter(
