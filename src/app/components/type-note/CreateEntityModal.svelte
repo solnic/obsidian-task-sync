@@ -49,7 +49,9 @@
     templateContent = content;
   }
 
-  function handleSubmit() {
+  function handleSubmit(e: Event) {
+    e.preventDefault(); // Prevent default form submission
+
     if (!selectedNoteType) {
       return;
     }
@@ -62,7 +64,8 @@
     });
   }
 
-  function handleCancel() {
+  function handleCancel(e: Event) {
+    e.preventDefault();
     oncancel?.();
   }
 
@@ -98,74 +101,76 @@
     </div>
   {/if}
 
-  <!-- Main content -->
-  <div class="task-sync-main-content">
-    <!-- Note type selector (if multiple types and no preselected type) -->
-    {#if noteTypes.length > 1 && !preselectedNoteTypeId}
-      <div class="task-sync-field">
-        <label for="note-type-select" class="task-sync-field-label">
-          Note Type *
-        </label>
-        <select
-          id="note-type-select"
-          bind:value={selectedNoteTypeId}
-          onchange={handleNoteTypeChange}
-          class="task-sync-select"
-          data-testid="note-type-select"
-        >
-          <option value="">Select a note type...</option>
-          {#each noteTypes as noteType}
-            <option value={noteType.id}>{noteType.name}</option>
-          {/each}
-        </select>
-      </div>
-    {/if}
-
-    <!-- Property form builder - renders ALL properties including title -->
-    {#if selectedNoteType}
-      {#if Object.keys(selectedNoteType.properties).length > 0}
-        <div class="properties-section">
-          <PropertyFormBuilder
-            properties={selectedNoteType.properties}
-            values={propertyValues}
-            onvalueschange={handlePropertyValuesChange}
-            showOptionalProperties={true}
-            noteType={selectedNoteType}
-            {noteProcessor}
-            bind:templateContent
-            ontemplatecontentchange={handleTemplateContentChange}
-          />
+  <!-- Form wrapper for HTML validation -->
+  <form onsubmit={handleSubmit}>
+    <!-- Main content -->
+    <div class="task-sync-main-content">
+      <!-- Note type selector (if multiple types and no preselected type) -->
+      {#if noteTypes.length > 1 && !preselectedNoteTypeId}
+        <div class="task-sync-field">
+          <label for="note-type-select" class="task-sync-field-label">
+            Note Type *
+          </label>
+          <select
+            id="note-type-select"
+            bind:value={selectedNoteTypeId}
+            onchange={handleNoteTypeChange}
+            class="task-sync-select"
+            data-testid="note-type-select"
+          >
+            <option value="">Select a note type...</option>
+            {#each noteTypes as noteType}
+              <option value={noteType.id}>{noteType.name}</option>
+            {/each}
+          </select>
         </div>
-      {:else}
-        <p class="no-properties-message">
-          This note type has no properties defined. Add properties in settings
-          to customize the form.
-        </p>
       {/if}
-    {/if}
-  </div>
 
-  <!-- Footer -->
-  <div class="task-sync-modal-footer">
-    <div class="task-sync-footer-actions">
-      <button
-        type="button"
-        class="task-sync-cancel-button"
-        data-testid="cancel-button"
-        onclick={handleCancel}
-      >
-        Cancel
-      </button>
-      <button
-        type="button"
-        class="task-sync-create-button mod-cta"
-        data-testid="submit-button"
-        onclick={handleSubmit}
-      >
-        Create {selectedNoteType?.name || "Note"}
-      </button>
+      <!-- Property form builder - renders ALL properties including title -->
+      {#if selectedNoteType}
+        {#if Object.keys(selectedNoteType.properties).length > 0}
+          <div class="properties-section">
+            <PropertyFormBuilder
+              properties={selectedNoteType.properties}
+              values={propertyValues}
+              onvalueschange={handlePropertyValuesChange}
+              showOptionalProperties={true}
+              noteType={selectedNoteType}
+              {noteProcessor}
+              bind:templateContent
+              ontemplatecontentchange={handleTemplateContentChange}
+            />
+          </div>
+        {:else}
+          <p class="no-properties-message">
+            This note type has no properties defined. Add properties in settings
+            to customize the form.
+          </p>
+        {/if}
+      {/if}
     </div>
-  </div>
+
+    <!-- Footer -->
+    <div class="task-sync-modal-footer">
+      <div class="task-sync-footer-actions">
+        <button
+          type="button"
+          class="task-sync-cancel-button"
+          data-testid="cancel-button"
+          onclick={handleCancel}
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          class="task-sync-create-button mod-cta"
+          data-testid="submit-button"
+        >
+          Create {selectedNoteType?.name || "Note"}
+        </button>
+      </div>
+    </div>
+  </form>
 </div>
 
 <style>
