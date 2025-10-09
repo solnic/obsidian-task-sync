@@ -1,15 +1,14 @@
 <script lang="ts">
-  import { Notice } from "obsidian";
   import PropertyFormBuilder from "./PropertyFormBuilder.svelte";
   import type { NoteType } from "../../core/type-note/types";
   import type { TypeRegistry } from "../../core/type-note/registry";
   import type { NoteProcessor } from "../../core/type-note/note-processor";
-  import { validateProperties } from "../../core/type-note/validation";
 
   interface Props {
     typeRegistry: TypeRegistry;
     noteProcessor: NoteProcessor;
     preselectedNoteTypeId?: string;
+    validationErrors?: string[];
     onsubmit?: (data: {
       noteType: NoteType;
       properties: Record<string, any>;
@@ -23,6 +22,7 @@
     typeRegistry,
     noteProcessor,
     preselectedNoteTypeId,
+    validationErrors = [],
     onsubmit,
     oncancel,
   }: Props = $props();
@@ -35,7 +35,7 @@
     preselectedNoteTypeId || (noteTypes.length === 1 ? noteTypes[0].id : "")
   );
   let propertyValues: Record<string, any> = $state({});
-  let templateContent = $state(""); // Template content becomes the note content
+  let templateContent = $state(""); // Template content becomes the description for entities
 
   // Computed
   const selectedNoteType = $derived(
@@ -55,25 +55,6 @@
       return;
     }
 
-    // Validate all properties using TypeNote's validation
-    const validationResult = validateProperties(
-      selectedNoteType,
-      propertyValues
-    );
-
-    if (!validationResult.valid) {
-      // Show validation errors as notices
-      const errorMessages = validationResult.errors
-        .map((e) => e.message)
-        .join(", ");
-      console.error("Validation failed:", errorMessages);
-      new Notice(errorMessages, 5000);
-      return;
-    }
-
-    // Use validated data which includes default values
-    const validatedProperties = validationResult.data;
-
     // Find the title property (look for a property with frontMatterKey 'title' or the first string property)
     let title = "";
     const titleProp = Object.values(selectedNoteType.properties).find(
@@ -81,9 +62,7 @@
     );
 
     if (titleProp) {
-      title = String(
-        validatedProperties[titleProp.frontMatterKey] || ""
-      ).trim();
+      title = String(propertyValues[titleProp.frontMatterKey] || "").trim();
     } else {
       // Fallback: use the first string property value
       const firstStringProp = Object.values(selectedNoteType.properties).find(
@@ -91,21 +70,15 @@
       );
       if (firstStringProp) {
         title = String(
-          validatedProperties[firstStringProp.frontMatterKey] || ""
+          propertyValues[firstStringProp.frontMatterKey] || ""
         ).trim();
       }
     }
 
-    if (!title) {
-      const errorMessage = `${selectedNoteType.name} title is required`;
-      console.error(errorMessage);
-      new Notice(errorMessage, 5000);
-      return;
-    }
-
+    // Submit the data - validation will be handled by entity schema
     onsubmit?.({
       noteType: selectedNoteType,
-      properties: validatedProperties,
+      properties: propertyValues,
       title: title,
       description: templateContent.trim() || undefined,
     });
@@ -135,6 +108,17 @@
       </p>
     {/if}
   </div>
+
+  <!-- Validation Errors -->
+  {#if validationErrors.length > 0}
+    <div class="task-sync-validation-errors">
+      <ul>
+        {#each validationErrors as error}
+          <li>{error}</li>
+        {/each}
+      </ul>
+    </div>
+  {/if}
 
   <!-- Main content -->
   <div class="task-sync-main-content">
@@ -213,6 +197,24 @@
 
   .properties-section {
     margin-top: 1rem;
+  }
+
+  .task-sync-validation-errors {
+    margin: 1rem 0;
+    padding: 1rem;
+    background: var(--background-modifier-error);
+    border: 1px solid var(--text-error);
+    border-radius: 4px;
+  }
+
+  .task-sync-validation-errors ul {
+    margin: 0;
+    padding-left: 1.5rem;
+    color: var(--text-error);
+  }
+
+  .task-sync-validation-errors li {
+    margin: 0.25rem 0;
   }
 
   .task-sync-select {
