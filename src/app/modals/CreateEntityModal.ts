@@ -227,34 +227,45 @@ export class CreateEntityModal extends Modal {
     title: string;
     description?: string;
   }) {
-    // Determine folder based on note type ID and settings
-    const folder = this.getFolderForNoteType(data.noteType.id);
+    try {
+      // Determine folder based on note type ID and settings
+      const folder = this.getFolderForNoteType(data.noteType.id);
 
-    // Create the note using TypeNote FileManager API
-    const result = await this.plugin.typeNote.fileManager.createTypedNote(
-      data.noteType.id,
-      {
-        folder,
-        fileName: data.title,
-        properties: data.properties,
-        content: data.description, // Use description as content for generic notes
-        validateProperties: true,
+      // Create the note using TypeNote FileManager API
+      // TypeNote validation is fully encapsulated - any validation errors will be in the result
+      const result = await this.plugin.typeNote.fileManager.createTypedNote(
+        data.noteType.id,
+        {
+          folder,
+          fileName: data.title,
+          properties: data.properties,
+          content: data.description, // Use description as content for generic notes
+          validateProperties: true,
+        }
+      );
+
+      if (result.success) {
+        new Notice(`${data.noteType.name} created successfully`);
+        this.close();
+
+        // Open the created file
+        if (result.file) {
+          const leaf = this.app.workspace.getLeaf(false);
+          await leaf.openFile(result.file);
+        }
+      } else {
+        // TypeNote validation failed - show errors to user
+        const errorMessage = result.errors?.join(", ") || "Unknown error";
+        new Notice(
+          `Failed to create ${data.noteType.name}: ${errorMessage}`,
+          5000
+        );
       }
-    );
-
-    if (result.success) {
-      new Notice(`${data.noteType.name} created successfully`);
-      this.close();
-
-      // Open the created file
-      if (result.file) {
-        const leaf = this.app.workspace.getLeaf(false);
-        await leaf.openFile(result.file);
-      }
-    } else {
-      const errorMessage = result.errors?.join(", ") || "Unknown error";
+    } catch (error) {
+      // Unexpected error during note creation
+      console.error("Failed to create generic note:", error);
       new Notice(
-        `Failed to create ${data.noteType.name}: ${errorMessage}`,
+        `Failed to create ${data.noteType.name}: ${error.message}`,
         5000
       );
     }
