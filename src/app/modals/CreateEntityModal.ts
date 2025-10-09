@@ -119,33 +119,39 @@ export class CreateEntityModal extends Modal {
     title: string;
     description?: string;
   }) {
-    const taskData: any = {
-      title: data.title,
-      description: data.description,
-      category: data.properties.Category,
-      priority: data.properties.Priority,
-      status: data.properties.Status,
-      done: data.properties.Done,
-      project: data.properties.Project,
-      areas: data.properties.Areas,
-      parentTask: data.properties["Parent task"],
-      doDate: data.properties["Do Date"],
-      dueDate: data.properties["Due Date"],
-      tags: data.properties.tags,
-    };
+    try {
+      const taskData: any = {
+        title: data.title,
+        description: data.description, // Description from template content
+        category: data.properties.Category,
+        priority: data.properties.Priority,
+        status: data.properties.Status,
+        done: data.properties.Done,
+        project: data.properties.Project,
+        areas: data.properties.Areas,
+        parentTask: data.properties["Parent task"],
+        doDate: data.properties["Do Date"],
+        dueDate: data.properties["Due Date"],
+        tags: data.properties.tags,
+      };
 
-    const createdTask = await this.plugin.operations.taskOperations.create(
-      taskData
-    );
-    new Notice(`Task "${createdTask.title}" created successfully`);
-    this.close();
+      const createdTask = await this.plugin.operations.taskOperations.create(
+        taskData
+      );
+      new Notice(`Task "${createdTask.title}" created successfully`);
+      this.close();
 
-    // Open the created file
-    const filePath = `${this.settings.tasksFolder}/${createdTask.title}.md`;
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (file) {
-      const leaf = this.app.workspace.getLeaf(false);
-      await leaf.openFile(file as any);
+      // Open the created file
+      const filePath = `${this.settings.tasksFolder}/${createdTask.title}.md`;
+      const file = this.app.vault.getAbstractFileByPath(filePath);
+      if (file) {
+        const leaf = this.app.workspace.getLeaf(false);
+        await leaf.openFile(file as any);
+      }
+    } catch (error) {
+      // Entity schema validation failed
+      console.error("Failed to create task:", error);
+      new Notice(`Failed to create task: ${error.message}`, 5000);
     }
   }
 
@@ -155,24 +161,30 @@ export class CreateEntityModal extends Modal {
     title: string;
     description?: string;
   }) {
-    const areaData: any = {
-      name: data.title,
-      description: data.description,
-      tags: data.properties.tags,
-    };
+    try {
+      const areaData: any = {
+        name: data.title,
+        description: data.description, // Description from template content
+        tags: data.properties.tags,
+      };
 
-    const createdArea = await this.plugin.operations.areaOperations.create(
-      areaData
-    );
-    new Notice(`Area "${createdArea.name}" created successfully`);
-    this.close();
+      const createdArea = await this.plugin.operations.areaOperations.create(
+        areaData
+      );
+      new Notice(`Area "${createdArea.name}" created successfully`);
+      this.close();
 
-    // Open the created file
-    const filePath = `${this.settings.areasFolder}/${createdArea.name}.md`;
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (file) {
-      const leaf = this.app.workspace.getLeaf(false);
-      await leaf.openFile(file as any);
+      // Open the created file
+      const filePath = `${this.settings.areasFolder}/${createdArea.name}.md`;
+      const file = this.app.vault.getAbstractFileByPath(filePath);
+      if (file) {
+        const leaf = this.app.workspace.getLeaf(false);
+        await leaf.openFile(file as any);
+      }
+    } catch (error) {
+      // Entity schema validation failed
+      console.error("Failed to create area:", error);
+      new Notice(`Failed to create area: ${error.message}`, 5000);
     }
   }
 
@@ -182,24 +194,30 @@ export class CreateEntityModal extends Modal {
     title: string;
     description?: string;
   }) {
-    const projectData: any = {
-      name: data.title,
-      description: data.description,
-      areas: data.properties.Areas,
-      tags: data.properties.tags,
-    };
+    try {
+      const projectData: any = {
+        name: data.title,
+        description: data.description, // Description from template content
+        areas: data.properties.Areas,
+        tags: data.properties.tags,
+      };
 
-    const createdProject =
-      await this.plugin.operations.projectOperations.create(projectData);
-    new Notice(`Project "${createdProject.name}" created successfully`);
-    this.close();
+      const createdProject =
+        await this.plugin.operations.projectOperations.create(projectData);
+      new Notice(`Project "${createdProject.name}" created successfully`);
+      this.close();
 
-    // Open the created file
-    const filePath = `${this.settings.projectsFolder}/${createdProject.name}.md`;
-    const file = this.app.vault.getAbstractFileByPath(filePath);
-    if (file) {
-      const leaf = this.app.workspace.getLeaf(false);
-      await leaf.openFile(file as any);
+      // Open the created file
+      const filePath = `${this.settings.projectsFolder}/${createdProject.name}.md`;
+      const file = this.app.vault.getAbstractFileByPath(filePath);
+      if (file) {
+        const leaf = this.app.workspace.getLeaf(false);
+        await leaf.openFile(file as any);
+      }
+    } catch (error) {
+      // Entity schema validation failed
+      console.error("Failed to create project:", error);
+      new Notice(`Failed to create project: ${error.message}`, 5000);
     }
   }
 
