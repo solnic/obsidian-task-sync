@@ -260,4 +260,95 @@ test.describe("GitHub Integration", () => {
       page.locator('[data-testid="schedule-for-today-button"]').first()
     ).toHaveText("Schedule for today");
   });
+
+  test("should clear cache and reload data when refresh button is clicked", async ({
+    page,
+  }) => {
+    // This test reproduces the bug where refresh doesn't immediately clear the list
+    // and show "Refreshing..." indicator before loading fresh data
+
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Wait for issues to load
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Verify issues are displayed
+    const initialIssueCount = await page
+      .locator('[data-testid="github-issue-item"]')
+      .count();
+    expect(initialIssueCount).toBeGreaterThan(0);
+
+    // Click refresh button and immediately check for loading state
+    const refreshButton = page.locator(
+      '[data-testid="task-sync-github-refresh-button"]'
+    );
+
+    // Start the refresh and immediately check for loading indicator
+    const refreshPromise = refreshButton.click();
+
+    // The loading indicator should appear immediately when refresh starts
+    const loadingIndicator = page.locator('[data-testid="loading-indicator"]');
+
+    // Wait for either the loading indicator to appear OR for the refresh to complete
+    // This tests that the UI immediately shows loading state
+    await Promise.race([
+      loadingIndicator.waitFor({ state: "visible", timeout: 1000 }),
+      refreshPromise,
+    ]);
+
+    // At this point, either loading indicator appeared (good) or refresh completed very fast
+    const hasLoadingIndicator = await loadingIndicator.isVisible();
+
+    // If loading indicator didn't appear, check if tasks were at least cleared momentarily
+    let tasksWereCleared = false;
+    if (!hasLoadingIndicator) {
+      // Check if tasks list is empty (they should be cleared immediately on refresh)
+      const issueCount = await page
+        .locator('[data-testid="github-issue-item"]')
+        .count();
+      tasksWereCleared = issueCount === 0;
+    }
+
+    // The refresh should either show loading indicator OR clear the tasks list immediately
+    expect(hasLoadingIndicator || tasksWereCleared).toBe(true);
+
+    // Wait for refresh to complete and data to reload
+    await page.waitForTimeout(2000);
+
+    // After refresh, issues should be loaded again
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    const finalIssueCount = await page
+      .locator('[data-testid="github-issue-item"]')
+      .count();
+    expect(finalIssueCount).toBeGreaterThan(0);
+  });
 });

@@ -355,11 +355,25 @@
   }
 
   async function refresh(): Promise<void> {
-    await githubExtension.clearCache();
-    await loadOrganizations();
-    await loadRepositories();
-    if (currentRepository) {
-      await loadTasks();
+    try {
+      // Immediately clear current data and show loading state
+      tasks = [];
+      isLoading = true;
+      error = null;
+
+      // Clear cache
+      await githubExtension.clearCache();
+
+      // Reload all data
+      await loadOrganizations();
+      await loadRepositories();
+      if (currentRepository) {
+        await loadTasks();
+      }
+    } catch (err: any) {
+      console.error("Failed to refresh GitHub data:", err);
+      error = err.message;
+      isLoading = false;
     }
   }
 
@@ -883,7 +897,7 @@
         {error}
       </div>
     {:else if isLoading}
-      <div class="task-sync-loading-indicator">
+      <div class="task-sync-loading-indicator" data-testid="loading-indicator">
         Loading {activeTab === "issues" ? "issues" : "pull requests"}...
       </div>
     {:else}
