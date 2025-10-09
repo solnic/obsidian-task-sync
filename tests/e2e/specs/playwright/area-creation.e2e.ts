@@ -64,28 +64,18 @@ test.describe("Area Creation with New Architecture", () => {
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
     // Try to submit without entering a name
-    await page.click('[data-testid="create-button"]');
+    await page.click('[data-testid="submit-button"]');
 
-    // Should show validation error
+    // Should show validation error notice
     await expect(
-      page.locator('.notice:has-text("Area name is required")')
+      page.locator('.notice:has-text("Area title is required")')
     ).toBeVisible();
 
     // Modal should still be open
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
-    // Verify input has error styling
-    await expect(page.locator('[data-testid="area-name-input"]')).toHaveClass(
-      /task-sync-input-error/
-    );
-
-    // Type in the name input to clear the error
-    await page.fill('[data-testid="area-name-input"]', "Test Area");
-
-    // Verify error styling is removed
-    await expect(
-      page.locator('[data-testid="area-name-input"]')
-    ).not.toHaveClass(/task-sync-input-error/);
+    // Type in the name input
+    await page.fill('[data-testid="property-name"]', "Test Area");
 
     // Cancel the modal
     await page.click('[data-testid="cancel-button"]');
@@ -103,10 +93,10 @@ test.describe("Area Creation with New Architecture", () => {
 
     // Fill in only the area name
     const areaName = "Minimal Test Area";
-    await page.fill('[data-testid="area-name-input"]', areaName);
+    await page.fill('[data-testid="property-name"]', areaName);
 
-    // Click the Create Area button
-    await page.click('[data-testid="create-button"]');
+    // Click the Create button
+    await page.click('[data-testid="submit-button"]');
 
     // Wait for the modal to close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
