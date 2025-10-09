@@ -11,7 +11,7 @@ import {
   getFrontMatter,
 } from "../../helpers/global";
 
-test.describe("Area Creation with New Architecture", () => {
+test.describe("Area Creation", () => {
   test("should create area through modal and verify area file is created", async ({
     page,
   }) => {

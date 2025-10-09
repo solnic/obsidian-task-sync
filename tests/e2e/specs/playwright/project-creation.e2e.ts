@@ -11,7 +11,7 @@ import {
   getFrontMatter,
 } from "../../helpers/global";
 
-test.describe("Project Creation with New Architecture", () => {
+test.describe("Project Creation", () => {
   test("should create project through modal and verify project file is created", async ({
     page,
   }) => {

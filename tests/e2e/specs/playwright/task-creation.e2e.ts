@@ -12,7 +12,7 @@ import {
   expectNotice,
 } from "../../helpers/global";
 
-test.describe("Task Creation with New Architecture", () => {
+test.describe("Task Creation", () => {
   test("should create task through modal and verify task file is created", async ({
     page,
   }) => {
