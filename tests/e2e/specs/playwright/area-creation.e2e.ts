@@ -34,14 +34,6 @@ test.describe("Area Creation", () => {
     // Click the Create button
     await page.click('[data-testid="submit-button"]');
 
-    // Check if there's an error notice
-    await page.waitForTimeout(1000);
-    const errorNotice = page.locator('.notice:has-text("Failed to create")');
-    if (await errorNotice.isVisible()) {
-      const errorText = await errorNotice.textContent();
-      console.log("ERROR NOTICE:", errorText);
-    }
-
     // Wait for the modal to close
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
 

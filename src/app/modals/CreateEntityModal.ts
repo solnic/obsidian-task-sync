@@ -157,7 +157,6 @@ export class CreateEntityModal extends Modal {
         ...(data.properties.tags && { tags: data.properties.tags }),
       };
 
-      console.log("Creating area with data:", areaData);
       const createdArea = await this.plugin.operations.areaOperations.create(
         areaData
       );
@@ -165,11 +164,6 @@ export class CreateEntityModal extends Modal {
       this.close();
     } catch (error) {
       console.error("Failed to create area:", error);
-      console.error("Area data was:", {
-        name: data.properties.name,
-        description: data.description,
-        tags: data.properties.tags,
-      });
       new Notice(`Failed to create area: ${error.message}`, 5000);
     }
   }

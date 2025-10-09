@@ -7,7 +7,9 @@ import { test, expect } from "../../helpers/setup";
 import { openTaskSyncSettings } from "../../helpers/global";
 
 test.describe("TypeNote Select Property Type", () => {
-  test("should show Select type in property type dropdown", async ({ page }) => {
+  test("should show Select type in property type dropdown", async ({
+    page,
+  }) => {
     await openTaskSyncSettings(page);
 
     // Navigate to Note Types section
@@ -50,7 +52,9 @@ test.describe("TypeNote Select Property Type", () => {
     await firstPropertyDropdown.click();
 
     // Get all options from the dropdown
-    const options = await firstPropertyDropdown.locator("option").allTextContents();
+    const options = await firstPropertyDropdown
+      .locator("option")
+      .allTextContents();
 
     // Verify Select type is in the list
     expect(options).toContain("Select");
@@ -111,7 +115,9 @@ test.describe("TypeNote Select Property Type", () => {
     await page.waitForTimeout(500);
 
     // Verify "Select Options" heading appears
-    const selectOptionsHeading = page.locator("h5").filter({ hasText: "Select Options" });
+    const selectOptionsHeading = page
+      .locator("h5")
+      .filter({ hasText: "Select Options" });
     await expect(selectOptionsHeading).toBeVisible();
 
     // Find the "Add Option" button
@@ -125,7 +131,9 @@ test.describe("TypeNote Select Property Type", () => {
     await page.waitForTimeout(200);
 
     // Verify option input appears
-    const firstOptionInput = page.locator('[data-testid="select-option-value-0"]');
+    const firstOptionInput = page.locator(
+      '[data-testid="select-option-value-0"]'
+    );
     await expect(firstOptionInput).toBeVisible();
 
     // Change the option value
@@ -135,7 +143,9 @@ test.describe("TypeNote Select Property Type", () => {
     await addOptionButton.click();
     await page.waitForTimeout(200);
 
-    const secondOptionInput = page.locator('[data-testid="select-option-value-1"]');
+    const secondOptionInput = page.locator(
+      '[data-testid="select-option-value-1"]'
+    );
     await expect(secondOptionInput).toBeVisible();
     await secondOptionInput.fill("In Progress");
 
@@ -143,7 +153,9 @@ test.describe("TypeNote Select Property Type", () => {
     await addOptionButton.click();
     await page.waitForTimeout(200);
 
-    const thirdOptionInput = page.locator('[data-testid="select-option-value-2"]');
+    const thirdOptionInput = page.locator(
+      '[data-testid="select-option-value-2"]'
+    );
     await expect(thirdOptionInput).toBeVisible();
     await thirdOptionInput.fill("Done");
 
@@ -185,7 +197,9 @@ test.describe("TypeNote Select Property Type", () => {
       .locator('[data-testid="note-type-id-input"]')
       .waitFor({ state: "visible" });
 
-    await page.locator('[data-testid="note-type-id-input"]').fill("priority-note");
+    await page
+      .locator('[data-testid="note-type-id-input"]')
+      .fill("priority-note");
     await page
       .locator('[data-testid="note-type-name-input"]')
       .fill("Priority Note");
@@ -204,8 +218,6 @@ test.describe("TypeNote Select Property Type", () => {
       .locator('[data-testid^="property-type-dropdown-"]')
       .first();
     await propertyTypeDropdown.selectOption("select");
-
-    await page.waitForTimeout(500);
 
     // Add options
     const addOptionButton = page
@@ -227,27 +239,28 @@ test.describe("TypeNote Select Property Type", () => {
     await saveButton.scrollIntoViewIfNeeded();
     await saveButton.click();
 
-    await page.waitForTimeout(500);
-
     // Now edit the note type
     const noteTypeItem = page
       .locator(".setting-item")
       .filter({ hasText: "Priority Note" });
     await expect(noteTypeItem).toBeVisible();
 
-    const editButton = noteTypeItem.locator("button").filter({ hasText: "Edit" });
+    const editButton = noteTypeItem
+      .locator("button")
+      .filter({ hasText: "Edit" });
     await editButton.click();
 
-    await page.waitForTimeout(500);
-
     // Verify the select options are still there
-    const firstOptionInput = page.locator('[data-testid="select-option-value-0"]');
+    const firstOptionInput = page.locator(
+      '[data-testid="select-option-value-0"]'
+    );
     await expect(firstOptionInput).toBeVisible();
     await expect(firstOptionInput).toHaveValue("Low");
 
-    const secondOptionInput = page.locator('[data-testid="select-option-value-1"]');
+    const secondOptionInput = page.locator(
+      '[data-testid="select-option-value-1"]'
+    );
     await expect(secondOptionInput).toBeVisible();
     await expect(secondOptionInput).toHaveValue("High");
   });
 });
-
