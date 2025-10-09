@@ -12,7 +12,6 @@
     onsubmit?: (data: {
       noteType: NoteType;
       properties: Record<string, any>;
-      title: string;
       description?: string;
     }) => void;
     oncancel?: () => void;
@@ -55,30 +54,10 @@
       return;
     }
 
-    // Find the title property (look for a property with key 'title' or the first string property)
-    let title = "";
-    const titleProp = Object.values(selectedNoteType.properties).find(
-      (p) => p.key === "title"
-    );
-
-    if (titleProp) {
-      // Use property key, not frontMatterKey
-      title = String(propertyValues[titleProp.key] || "").trim();
-    } else {
-      // Fallback: use the first string property value
-      const firstStringProp = Object.values(selectedNoteType.properties).find(
-        (p) => p.type === "string"
-      );
-      if (firstStringProp) {
-        title = String(propertyValues[firstStringProp.key] || "").trim();
-      }
-    }
-
     // Submit the data - validation will be handled by entity schema
     onsubmit?.({
       noteType: selectedNoteType,
       properties: propertyValues,
-      title: title,
       description: templateContent.trim() || undefined,
     });
   }

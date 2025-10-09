@@ -244,9 +244,8 @@
     <Component
       {property}
       {propertyKey}
-      value={values[property.frontMatterKey]}
-      onvaluechange={(newValue) =>
-        handleValueChange(propertyKey, property.frontMatterKey, newValue)}
+      value={values[propertyKey]}
+      onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
       validationResult={validationResults[propertyKey]}
       touched={touchedFields[propertyKey] || false}
       compact={true}

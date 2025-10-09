@@ -53,7 +53,6 @@ export class CreateEntityModal extends Modal {
           onsubmit: async (data: {
             noteType: NoteType;
             properties: Record<string, any>;
-            title: string;
             description?: string;
           }) => {
             await this.handleSubmit(data);
@@ -91,7 +90,6 @@ export class CreateEntityModal extends Modal {
   private async handleSubmit(data: {
     noteType: NoteType;
     properties: Record<string, any>;
-    title: string;
     description?: string;
   }) {
     try {
@@ -116,14 +114,12 @@ export class CreateEntityModal extends Modal {
   private async createTaskEntity(data: {
     noteType: NoteType;
     properties: Record<string, any>;
-    title: string;
     description?: string;
   }) {
     try {
-      // PropertyFormBuilder now uses property keys (e.g., "category", "priority")
-      // which match the entity schema property names
+      // PropertyFormBuilder uses property keys which match entity schema property names
       const taskData: any = {
-        title: data.title,
+        title: data.properties.title,
         description: data.description, // Description from template content
         category: data.properties.category,
         priority: data.properties.priority,
@@ -142,14 +138,6 @@ export class CreateEntityModal extends Modal {
       );
       new Notice(`Task "${createdTask.title}" created successfully`);
       this.close();
-
-      // Open the created file
-      const filePath = `${this.settings.tasksFolder}/${createdTask.title}.md`;
-      const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (file) {
-        const leaf = this.app.workspace.getLeaf(false);
-        await leaf.openFile(file as any);
-      }
     } catch (error) {
       // Entity schema validation failed
       console.error("Failed to create task:", error);
@@ -160,13 +148,12 @@ export class CreateEntityModal extends Modal {
   private async createAreaEntity(data: {
     noteType: NoteType;
     properties: Record<string, any>;
-    title: string;
     description?: string;
   }) {
     try {
       const areaData: any = {
-        name: data.title,
-        description: data.description, // Description from template content
+        name: data.properties.name,
+        description: data.description,
         tags: data.properties.tags,
       };
 
@@ -175,16 +162,7 @@ export class CreateEntityModal extends Modal {
       );
       new Notice(`Area "${createdArea.name}" created successfully`);
       this.close();
-
-      // Open the created file
-      const filePath = `${this.settings.areasFolder}/${createdArea.name}.md`;
-      const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (file) {
-        const leaf = this.app.workspace.getLeaf(false);
-        await leaf.openFile(file as any);
-      }
     } catch (error) {
-      // Entity schema validation failed
       console.error("Failed to create area:", error);
       new Notice(`Failed to create area: ${error.message}`, 5000);
     }
@@ -193,14 +171,13 @@ export class CreateEntityModal extends Modal {
   private async createProjectEntity(data: {
     noteType: NoteType;
     properties: Record<string, any>;
-    title: string;
     description?: string;
   }) {
     try {
       const projectData: any = {
-        name: data.title,
-        description: data.description, // Description from template content
-        areas: data.properties.Areas,
+        name: data.properties.name,
+        description: data.description,
+        areas: data.properties.areas,
         tags: data.properties.tags,
       };
 
@@ -208,16 +185,7 @@ export class CreateEntityModal extends Modal {
         await this.plugin.operations.projectOperations.create(projectData);
       new Notice(`Project "${createdProject.name}" created successfully`);
       this.close();
-
-      // Open the created file
-      const filePath = `${this.settings.projectsFolder}/${createdProject.name}.md`;
-      const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (file) {
-        const leaf = this.app.workspace.getLeaf(false);
-        await leaf.openFile(file as any);
-      }
     } catch (error) {
-      // Entity schema validation failed
       console.error("Failed to create project:", error);
       new Notice(`Failed to create project: ${error.message}`, 5000);
     }
@@ -226,12 +194,14 @@ export class CreateEntityModal extends Modal {
   private async createGenericNote(data: {
     noteType: NoteType;
     properties: Record<string, any>;
-    title: string;
     description?: string;
   }) {
     try {
       // Determine folder based on note type ID and settings
       const folder = this.getFolderForNoteType(data.noteType.id);
+
+      // Extract title from properties (required for file name)
+      const title = data.properties.title || data.properties.name || "Untitled";
 
       // Create the note using TypeNote FileManager API
       // TypeNote validation is fully encapsulated - any validation errors will be in the result
@@ -239,7 +209,7 @@ export class CreateEntityModal extends Modal {
         data.noteType.id,
         {
           folder,
-          fileName: data.title,
+          fileName: title,
           properties: data.properties,
           content: data.description, // Use description as content for generic notes
           validateProperties: true,
@@ -249,12 +219,6 @@ export class CreateEntityModal extends Modal {
       if (result.success) {
         new Notice(`${data.noteType.name} created successfully`);
         this.close();
-
-        // Open the created file
-        if (result.file) {
-          const leaf = this.app.workspace.getLeaf(false);
-          await leaf.openFile(result.file);
-        }
       } else {
         // TypeNote validation failed - show errors to user
         const errorMessage = result.errors?.join(", ") || "Unknown error";
