@@ -55,23 +55,22 @@
       return;
     }
 
-    // Find the title property (look for a property with frontMatterKey 'title' or the first string property)
+    // Find the title property (look for a property with key 'title' or the first string property)
     let title = "";
     const titleProp = Object.values(selectedNoteType.properties).find(
-      (p) => p.frontMatterKey === "title"
+      (p) => p.key === "title"
     );
 
     if (titleProp) {
-      title = String(propertyValues[titleProp.frontMatterKey] || "").trim();
+      // Use property key, not frontMatterKey
+      title = String(propertyValues[titleProp.key] || "").trim();
     } else {
       // Fallback: use the first string property value
       const firstStringProp = Object.values(selectedNoteType.properties).find(
         (p) => p.type === "string"
       );
       if (firstStringProp) {
-        title = String(
-          propertyValues[firstStringProp.frontMatterKey] || ""
-        ).trim();
+        title = String(propertyValues[firstStringProp.key] || "").trim();
       }
     }
 

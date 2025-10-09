@@ -120,18 +120,20 @@ export class CreateEntityModal extends Modal {
     description?: string;
   }) {
     try {
+      // PropertyFormBuilder now uses property keys (e.g., "category", "priority")
+      // which match the entity schema property names
       const taskData: any = {
         title: data.title,
         description: data.description, // Description from template content
-        category: data.properties.Category,
-        priority: data.properties.Priority,
-        status: data.properties.Status,
-        done: data.properties.Done,
-        project: data.properties.Project,
-        areas: data.properties.Areas,
-        parentTask: data.properties["Parent task"],
-        doDate: data.properties["Do Date"],
-        dueDate: data.properties["Due Date"],
+        category: data.properties.category,
+        priority: data.properties.priority,
+        status: data.properties.status,
+        done: data.properties.done,
+        project: data.properties.project,
+        areas: data.properties.areas,
+        parentTask: data.properties.parentTask,
+        doDate: data.properties.doDate,
+        dueDate: data.properties.dueDate,
         tags: data.properties.tags,
       };
 

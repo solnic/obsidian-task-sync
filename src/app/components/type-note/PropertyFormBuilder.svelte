@@ -135,11 +135,9 @@
     let hasChanges = false;
 
     for (const [key, prop] of Object.entries(properties)) {
-      if (
-        values[prop.frontMatterKey] === undefined &&
-        prop.defaultValue !== undefined
-      ) {
-        newValues[prop.frontMatterKey] = prop.defaultValue;
+      // Use property key, not frontMatterKey
+      if (values[key] === undefined && prop.defaultValue !== undefined) {
+        newValues[key] = prop.defaultValue;
         hasChanges = true;
       }
     }
@@ -150,15 +148,12 @@
     }
   }
 
-  function handleValueChange(
-    propertyKey: string,
-    frontMatterKey: string,
-    value: any
-  ) {
+  function handleValueChange(propertyKey: string, value: any) {
     touchedFields[propertyKey] = true;
 
     const newValues = { ...values };
-    newValues[frontMatterKey] = value;
+    // Use property key, not frontMatterKey
+    newValues[propertyKey] = value;
     values = newValues;
     onvalueschange?.(values);
 
@@ -172,8 +167,8 @@
   }
 
   function renderProperty(propertyKey: string, property: PropertyDefinition) {
-    const frontMatterKey = property.frontMatterKey;
-    const value = values[frontMatterKey];
+    // Use property key, not frontMatterKey
+    const value = values[propertyKey];
     const validationResult = validationResults[propertyKey];
     const touched = touchedFields[propertyKey] || false;
 
@@ -182,7 +177,7 @@
       propertyKey,
       value,
       onvaluechange: (newValue: any) =>
-        handleValueChange(propertyKey, frontMatterKey, newValue),
+        handleValueChange(propertyKey, newValue),
       validationResult,
       touched,
     };
@@ -279,9 +274,8 @@
     <Component
       {property}
       {propertyKey}
-      value={values[property.frontMatterKey]}
-      onvaluechange={(newValue) =>
-        handleValueChange(propertyKey, property.frontMatterKey, newValue)}
+      value={values[propertyKey]}
+      onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
       validationResult={validationResults[propertyKey]}
       touched={touchedFields[propertyKey] || false}
       compact={true}
@@ -298,9 +292,8 @@
         <Component
           {property}
           {propertyKey}
-          value={values[property.frontMatterKey]}
-          onvaluechange={(newValue) =>
-            handleValueChange(propertyKey, property.frontMatterKey, newValue)}
+          value={values[propertyKey]}
+          onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
           validationResult={validationResults[propertyKey]}
           touched={touchedFields[propertyKey] || false}
           compact={true}
@@ -330,9 +323,8 @@
     <Component
       {property}
       {propertyKey}
-      value={values[property.frontMatterKey]}
-      onvaluechange={(newValue) =>
-        handleValueChange(propertyKey, property.frontMatterKey, newValue)}
+      value={values[propertyKey]}
+      onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
       validationResult={validationResults[propertyKey]}
       touched={touchedFields[propertyKey] || false}
     />
@@ -349,9 +341,9 @@
           <Component
             {property}
             {propertyKey}
-            value={values[property.frontMatterKey]}
+            value={values[propertyKey]}
             onvaluechange={(newValue) =>
-              handleValueChange(propertyKey, property.frontMatterKey, newValue)}
+              handleValueChange(propertyKey, newValue)}
             validationResult={validationResults[propertyKey]}
             touched={touchedFields[propertyKey] || false}
           />
