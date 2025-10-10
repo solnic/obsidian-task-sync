@@ -157,7 +157,7 @@
     // Validate
     const property = properties[propertyKey];
     if (property) {
-      const result = validateProperty(value, property);
+      const result = validateProperty(property, value);
       validationResults[propertyKey] = result;
       onvalidationchange?.(validationResults);
     }
