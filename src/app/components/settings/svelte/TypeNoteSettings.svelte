@@ -66,6 +66,8 @@
         return false;
       case "date":
         return ""; // Empty date input instead of today
+      case "array":
+        return [];
       default:
         return "";
     }

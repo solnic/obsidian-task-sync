@@ -30,6 +30,8 @@
         return false;
       case "date":
         return "";
+      case "array":
+        return [];
       case "select":
         return "";
       default:
@@ -182,6 +184,32 @@
               onUpdate();
             });
           text.inputEl.setAttribute("type", "date");
+          text.inputEl.setAttribute(
+            "data-testid",
+            `property-default-input-${propertyKey}`
+          );
+        });
+        break;
+
+      case "array":
+        defaultSetting.addText((text) => {
+          text
+            .setPlaceholder("Comma-separated values")
+            .setValue(
+              Array.isArray(property.defaultValue)
+                ? property.defaultValue.join(", ")
+                : ""
+            )
+            .onChange((value: string) => {
+              // Convert comma-separated string to array
+              property.defaultValue = value
+                ? value
+                    .split(",")
+                    .map((v) => v.trim())
+                    .filter((v) => v)
+                : [];
+              onUpdate();
+            });
           text.inputEl.setAttribute(
             "data-testid",
             `property-default-input-${propertyKey}`

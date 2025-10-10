@@ -291,6 +291,7 @@ export class ObsidianPropertyManager {
       number: "Number",
       boolean: "Checkbox",
       date: "Date",
+      array: "List",
       select: "Select",
     };
   }

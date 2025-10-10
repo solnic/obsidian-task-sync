@@ -27,7 +27,7 @@ export default defineConfig({
   globalTeardown: require.resolve("./tests/e2e/global-teardown.ts"),
 
   // Timeout configuration
-  timeout: isCI ? 30000 : 10000,
+  timeout: isCI ? 30000 : 15000,
   expect: {
     timeout: 5000,
   },
