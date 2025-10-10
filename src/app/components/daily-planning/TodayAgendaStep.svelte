@@ -25,8 +25,28 @@
     onRescheduleTask,
   }: Props = $props();
 
-  // Combine today's tasks with scheduled tasks
-  let allTodayTasks = $derived([...todayTasks, ...scheduledTasks]);
+  // Filter out tasks that are staged for unscheduling
+  // Also deduplicate by task ID
+  let allTodayTasks = $derived.by(() => {
+    const taskMap = new Map<string, Task>();
+
+    // Add all today tasks
+    for (const task of todayTasks) {
+      taskMap.set(task.id, task);
+    }
+
+    // Add scheduled tasks (won't duplicate if already in todayTasks)
+    for (const task of scheduledTasks) {
+      taskMap.set(task.id, task);
+    }
+
+    // Remove tasks that are staged for unscheduling
+    for (const task of unscheduledTasks) {
+      taskMap.delete(task.id);
+    }
+
+    return Array.from(taskMap.values());
+  });
 
   // Handle unscheduling tasks
   async function handleUnscheduleFromPlanning(task: Task) {
@@ -82,16 +102,13 @@
     </div>
   {/if}
 
-  <!-- Already Scheduled Tasks -->
-  {#if scheduledTasks.length > 0}
+  <!-- Today's Tasks -->
+  {#if allTodayTasks.length > 0}
     <div class="agenda-section">
-      <h5>✅ Already scheduled for today ({scheduledTasks.length})</h5>
+      <h5>📋 Today's tasks ({allTodayTasks.length})</h5>
       <div class="task-list">
-        {#each scheduledTasks as task}
-          <div
-            class="task-item scheduled already-scheduled"
-            data-testid="scheduled-task"
-          >
+        {#each allTodayTasks as task}
+          <div class="task-item scheduled" data-testid="scheduled-task">
             <div class="task-content">
               <span class="task-title">{task.title}</span>
             </div>
@@ -108,38 +125,7 @@
         {/each}
       </div>
     </div>
-  {/if}
-
-  <!-- To Be Scheduled Tasks -->
-  {#if allTodayTasks.length > 0}
-    <div class="agenda-section">
-      <h5>📋 Today's tasks ({allTodayTasks.length})</h5>
-      <div class="task-list">
-        {#each allTodayTasks as task}
-          <div
-            class="task-item scheduled to-be-scheduled"
-            data-testid="scheduled-task"
-          >
-            <div class="task-content">
-              <span class="task-title">{task.title}</span>
-            </div>
-            <div class="task-actions">
-              <button
-                class="action-btn unschedule"
-                onclick={() => handleUnscheduleFromPlanning(task)}
-                data-testid="unschedule-planning-button"
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        {/each}
-      </div>
-    </div>
-  {/if}
-
-  <!-- Show message if no tasks are scheduled -->
-  {#if scheduledTasks.length === 0 && allTodayTasks.length === 0}
+  {:else}
     <div class="no-tasks">
       <p>No tasks scheduled for today yet.</p>
     </div>

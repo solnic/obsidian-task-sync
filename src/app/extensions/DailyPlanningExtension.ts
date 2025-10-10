@@ -322,6 +322,27 @@ export class DailyPlanningExtension implements Extension {
   }
 
   /**
+   * Sync schedule with Daily Note
+   * Updates the schedule to match what's actually in the Daily Note
+   */
+  async syncScheduleWithDailyNote(): Promise<void> {
+    try {
+      // Get tasks from Daily Note (source of truth)
+      const dailyNoteTasks = await this.getTasksFromTodayDailyNote();
+
+      // Get today's schedule
+      const todaySchedule = await this.ensureTodayScheduleExists();
+
+      // Update schedule to match Daily Note
+      await this.schedules.update(todaySchedule.id, {
+        tasks: dailyNoteTasks,
+      });
+    } catch (error) {
+      console.error("Error syncing schedule with Daily Note:", error);
+    }
+  }
+
+  /**
    * Start daily planning wizard
    */
   async startDailyPlanning(): Promise<void> {
@@ -329,6 +350,10 @@ export class DailyPlanningExtension implements Extension {
 
     // Ensure today's schedule exists
     const todaySchedule = await this.ensureTodayScheduleExists();
+
+    // Sync schedule with Daily Note (source of truth)
+    await this.syncScheduleWithDailyNote();
+
     this.setCurrentSchedule(todaySchedule);
 
     // Ensure today's daily note exists and open it
@@ -398,17 +423,7 @@ export class DailyPlanningExtension implements Extension {
     // Get tasks with doDate=today
     const tasksWithTodayDoDate = getTodayTasksGrouped([...allTasks]);
 
-    // Get tasks actually linked in today's Daily Note
-    const dailyNoteTasks = await this.getTasksFromTodayDailyNote();
-    const dailyNoteTaskPaths = new Set(
-      dailyNoteTasks.map((t) => t.source?.filePath).filter(Boolean)
-    );
-
-    // Categorize tasks:
-    // - Tasks in Daily Note = already scheduled (confirmed by user)
-    // - Tasks with doDate=today but NOT in Daily Note = candidates for scheduling
-
-    // For now, return all tasks with doDate=today
+    // Return all tasks with doDate=today
     // The wizard will handle the categorization based on Daily Note content
     return tasksWithTodayDoDate;
   }

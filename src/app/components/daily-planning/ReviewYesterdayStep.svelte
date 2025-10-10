@@ -164,9 +164,9 @@
                 class="action-btn unschedule"
                 onclick={() => handleUnscheduleTask(task)}
                 disabled={isLoading || isUnscheduled}
-                data-testid="remove-from-today-button"
+                data-testid="unschedule-task-button"
               >
-                {isUnscheduled ? "Removed" : "Remove"}
+                {isUnscheduled ? "Unscheduled" : "Unschedule"}
               </button>
             </div>
           </div>
