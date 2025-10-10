@@ -580,13 +580,23 @@ export class DailyPlanningExtension implements Extension {
    * Unschedule a task immediately (used internally and for applying staging)
    */
   async unscheduleTaskImmediate(task: Task): Promise<void> {
+    // Remove doDate from the task
     await this.taskOperations.update({
       ...task,
       doDate: null,
     });
 
-    // Remove task from all schedules
+    // Remove task from all schedules (including today's schedule)
     await this.removeTaskFromAllSchedules(task.id);
+
+    // Also remove from today's schedule tasks array to prevent it from being written to Daily Note
+    const todaySchedule = await this.ensureTodayScheduleExists();
+    const scheduleOperations = new Schedules.Operations();
+    const updatedTasks = todaySchedule.tasks.filter((t) => t.id !== task.id);
+
+    await scheduleOperations.update(todaySchedule.id, {
+      tasks: updatedTasks,
+    });
   }
 
   /**

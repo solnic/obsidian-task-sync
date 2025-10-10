@@ -265,7 +265,7 @@ export class DailyNoteFeature {
   }
 
   /**
-   * Update daily note from schedule (replaces entire Tasks section to match schedule)
+   * Update daily note from schedule (merges with existing tasks, doesn't replace)
    */
   private async updateDailyNoteFromSchedule(schedule: Schedule): Promise<void> {
     try {
@@ -290,10 +290,32 @@ export class DailyNoteFeature {
       // Read current daily note content
       const currentContent = await this.app.vault.read(dailyNoteResult.file!);
 
+      // Extract existing task links from the Daily Note
+      const existingTaskPaths = new Set<string>();
+      const tasksSection = currentContent.match(
+        /## Today's Tasks\n([\s\S]*?)(?=\n## |$)/
+      );
+      if (tasksSection) {
+        const taskLinkRegex = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
+        let match;
+        while ((match = taskLinkRegex.exec(tasksSection[1])) !== null) {
+          existingTaskPaths.add(match[1]);
+        }
+      }
+
       // Generate task links for all tasks in the schedule
       const taskLinks: string[] = [];
+      const scheduledTaskPaths = new Set<string>();
+
       for (const task of schedule.tasks) {
         if (task.source?.filePath) {
+          scheduledTaskPaths.add(task.source.filePath);
+
+          // Skip if task is already in the Daily Note
+          if (existingTaskPaths.has(task.source.filePath)) {
+            continue;
+          }
+
           // Get the task file to extract the title
           const taskFile = this.app.vault.getAbstractFileByPath(
             task.source.filePath
@@ -318,20 +340,24 @@ export class DailyNoteFeature {
         }
       }
 
-      // Replace the entire Tasks section with the current schedule
+      // Only update if we have new tasks to add
+      if (taskLinks.length === 0) {
+        return;
+      }
+
+      // Merge new tasks with existing Daily Note content
       let updatedContent = currentContent;
 
       if (currentContent.includes("## Today's Tasks")) {
-        // Replace existing Tasks section
-        const tasksRegex = /## Today's Tasks\n[\s\S]*?(?=\n## |$)/;
-        const newTasksSection =
-          taskLinks.length > 0
-            ? `## Today's Tasks\n${taskLinks.join("\n")}\n`
-            : `## Today's Tasks\n<!-- No tasks scheduled for today -->\n`;
-
-        updatedContent = currentContent.replace(tasksRegex, newTasksSection);
-      } else if (taskLinks.length > 0) {
-        // Add Tasks section if it doesn't exist and we have tasks
+        // Add new tasks to existing Tasks section
+        const tasksRegex = /(## Today's Tasks\n)/;
+        const newTasksToAdd = taskLinks.join("\n") + "\n";
+        updatedContent = currentContent.replace(
+          tasksRegex,
+          `$1${newTasksToAdd}`
+        );
+      } else {
+        // Add Tasks section if it doesn't exist
         const newTasksSection = `\n## Today's Tasks\n${taskLinks.join("\n")}\n`;
         updatedContent = currentContent + newTasksSection;
       }
@@ -340,7 +366,7 @@ export class DailyNoteFeature {
       if (updatedContent !== currentContent) {
         await this.app.vault.modify(dailyNoteResult.file!, updatedContent);
         console.log(
-          `Updated daily note with ${taskLinks.length} tasks from schedule`
+          `Added ${taskLinks.length} new tasks to daily note (${existingTaskPaths.size} tasks already present)`
         );
       }
     } catch (error) {
