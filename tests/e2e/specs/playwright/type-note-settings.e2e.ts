@@ -4,7 +4,11 @@
  */
 
 import { test, expect } from "../../helpers/setup";
-import { openTaskSyncSettings } from "../../helpers/global";
+import {
+  openTaskSyncSettings,
+  waitForBaseFile,
+  readVaultFile,
+} from "../../helpers/global";
 
 test.describe("TypeNote Settings - Property Management", () => {
   test.beforeEach(async ({ page }) => {
@@ -367,8 +371,17 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
     await saveButton.scrollIntoViewIfNeeded();
     await saveButton.click();
 
-    // Wait for the success notice
-    await page.waitForTimeout(500);
+    // Wait for template file to be created
+    await waitForBaseFile(page, "Templates/Meeting Note.md");
+
+    // Verify template file content is valid
+    const templateContent = await readVaultFile(
+      page,
+      "Templates/Meeting Note.md"
+    );
+    expect(templateContent).toContain("---");
+    expect(templateContent).toContain("Attendees: {{attendees}}");
+    expect(templateContent).toContain("# {{title}}");
 
     // Verify we're back at the list view and the note type appears
     const noteTypeItem = page
@@ -421,7 +434,8 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
     await saveButton.scrollIntoViewIfNeeded();
     await saveButton.click();
 
-    await page.waitForTimeout(500);
+    // Wait for initial template file to be created
+    await waitForBaseFile(page, "Templates/Project Plan.md");
 
     // Now edit the note type
     const noteTypeItem = page
@@ -458,7 +472,17 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
     await updateSaveButton.scrollIntoViewIfNeeded();
     await updateSaveButton.click();
 
-    await page.waitForTimeout(500);
+    // Wait for template file to be updated (name changed)
+    await waitForBaseFile(page, "Templates/Project Plan Updated.md");
+
+    // Verify updated template file content is valid
+    const updatedTemplateContent = await readVaultFile(
+      page,
+      "Templates/Project Plan Updated.md"
+    );
+    expect(updatedTemplateContent).toContain("---");
+    expect(updatedTemplateContent).toContain("Status: {{status}}");
+    expect(updatedTemplateContent).toContain("# {{title}}");
 
     // Verify the updated name appears in the list
     const updatedNoteTypeItem = page
@@ -511,8 +535,17 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
     await saveButton.scrollIntoViewIfNeeded();
     await saveButton.click();
 
-    // Wait for save to complete
-    await page.waitForTimeout(1000);
+    // Wait for template file to be created
+    await waitForBaseFile(page, "Templates/Persistence Test.md");
+
+    // Verify template file is valid
+    const templateContent = await readVaultFile(
+      page,
+      "Templates/Persistence Test.md"
+    );
+    expect(templateContent).toContain("---");
+    expect(templateContent).toContain("TestProperty: {{testProperty}}");
+    expect(templateContent).toContain("# {{title}}");
 
     // Check if note type was persisted to plugin data
     const persistedData = await page.evaluate(async () => {
@@ -576,7 +609,19 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
     await saveButton.scrollIntoViewIfNeeded();
     await saveButton.click();
 
-    await page.waitForTimeout(1000);
+    // Wait for template file to be created
+    await waitForBaseFile(page, "Templates/Edit Test.md");
+
+    // Verify initial template file is valid
+    const initialTemplateContent = await readVaultFile(
+      page,
+      "Templates/Edit Test.md"
+    );
+    expect(initialTemplateContent).toContain("---");
+    expect(initialTemplateContent).toContain(
+      "OriginalProperty: {{originalProperty}}"
+    );
+    expect(initialTemplateContent).toContain("# {{title}}");
 
     // Check initial persisted data
     const initialData = await page.evaluate(async () => {
@@ -625,8 +670,19 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
     await updateSaveButton.click();
     await noticePromise;
 
-    // Wait a bit more for persistence to complete
-    await page.waitForTimeout(500);
+    // Wait for template file to be updated
+    await waitForBaseFile(page, "Templates/Edit Test Updated.md");
+
+    // Verify updated template file is valid
+    const updatedTemplateContent = await readVaultFile(
+      page,
+      "Templates/Edit Test Updated.md"
+    );
+    expect(updatedTemplateContent).toContain("---");
+    expect(updatedTemplateContent).toContain(
+      "OriginalProperty: {{originalProperty}}"
+    );
+    expect(updatedTemplateContent).toContain("# {{title}}");
 
     // Check if the edited note type was persisted to plugin data
     const persistedData = await page.evaluate(async () => {

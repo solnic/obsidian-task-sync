@@ -377,7 +377,12 @@ export class TemplateManager {
     }
 
     // Create versioned copy
-    await this.createVersionedTemplate(noteType, templateContent);
+    try {
+      await this.createVersionedTemplate(noteType, templateContent);
+    } catch (error) {
+      console.error("Failed to create versioned template:", error);
+      // Don't throw - versioned template is optional
+    }
   }
 
   /**
