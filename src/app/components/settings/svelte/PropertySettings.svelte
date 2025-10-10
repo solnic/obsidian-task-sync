@@ -22,7 +22,9 @@
   let container: HTMLElement;
 
   // Helper function to get default value for a given type
-  function getDefaultValueForType(type: string) {
+  function getDefaultValueForType(
+    type: string
+  ): string | number | boolean | any[] {
     switch (type) {
       case "number":
         return 0;
