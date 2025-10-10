@@ -354,6 +354,62 @@ export class TemplateManager {
   }
 
   /**
+   * Create or update template file for a note type
+   * Generates a template file with front-matter based on note type properties
+   */
+  async createTemplateFile(noteType: NoteType): Promise<void> {
+    // Ensure template folder exists
+    const templateFolder = this.vault.getAbstractFileByPath(
+      this.preferences.templateFolder
+    );
+
+    if (!templateFolder) {
+      // Create template folder if it doesn't exist
+      await this.vault.createFolder(this.preferences.templateFolder);
+    }
+
+    // Generate template file path
+    const templatePath = `${this.preferences.templateFolder}/${noteType.name}.md`;
+
+    // Generate template content with front-matter
+    const templateContent = this.generateTemplateContent(noteType);
+
+    // Check if template file already exists
+    const existingFile = this.vault.getAbstractFileByPath(templatePath);
+
+    if (existingFile instanceof TFile) {
+      // Update existing template file
+      await this.vault.modify(existingFile, templateContent);
+    } else {
+      // Create new template file
+      await this.vault.create(templatePath, templateContent);
+    }
+  }
+
+  /**
+   * Generate template content with front-matter for a note type
+   */
+  private generateTemplateContent(noteType: NoteType): string {
+    const frontMatterLines: string[] = ["---"];
+
+    // Add properties to front-matter
+    Object.entries(noteType.properties).forEach(([key, property]) => {
+      const frontMatterKey = property.frontMatterKey || property.name;
+      // Use template variable syntax for property values
+      frontMatterLines.push(`${frontMatterKey}: {{${key}}}`);
+    });
+
+    frontMatterLines.push("---");
+    frontMatterLines.push("");
+
+    // Add empty content section
+    frontMatterLines.push("# {{title}}");
+    frontMatterLines.push("");
+
+    return frontMatterLines.join("\n");
+  }
+
+  /**
    * Scan template folder for changes and update notifications
    */
   async scanTemplateFolder(): Promise<{

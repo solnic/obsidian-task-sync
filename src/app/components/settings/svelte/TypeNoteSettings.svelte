@@ -283,51 +283,6 @@
     });
   }
 
-  /**
-   * Create template editor interface using native Obsidian Settings
-   */
-  function createTemplateEditorInterface(
-    container: HTMLElement,
-    template: any,
-    onChange: (newTemplate: any) => void
-  ) {
-    // Template content
-    const contentSetting = new Setting(container);
-    contentSetting
-      .setName("Template Content")
-      .setDesc("Use {{variable}} syntax for property values")
-      .addTextArea((textArea) => {
-        textArea
-          .setPlaceholder("# {{title}}\n\n{{description}}\n\n## Properties")
-          .setValue(template.content || "")
-          .onChange((value) => {
-            const updatedTemplate = { ...template, content: value };
-            onChange(updatedTemplate);
-          });
-
-        // Make textarea larger and editable
-        textArea.inputEl.rows = 10;
-        textArea.inputEl.style.width = "100%";
-        textArea.inputEl.style.fontFamily = "monospace";
-      });
-
-    // Template variables info
-    const variablesSetting = new Setting(container);
-    variablesSetting
-      .setName("Available Variables")
-      .setDesc("These variables can be used in your template:");
-
-    const variablesDiv = container.createDiv("template-variables");
-    variablesDiv.innerHTML = `
-      <ul>
-        <li><code>{{title}}</code> - Note title</li>
-        <li><code>{{description}}</code> - Note description</li>
-        <li><code>{{date}}</code> - Current date</li>
-        <li><code>{{time}}</code> - Current time</li>
-      </ul>
-    `;
-  }
-
   function recreateSection(): void {
     // Description
     container.createEl("p", {
@@ -519,8 +474,6 @@
       }
     );
 
-    let editTemplate = { ...noteType.template };
-
     // Basic info section
     container.createEl("h4", { text: "Basic Information" });
 
@@ -597,19 +550,6 @@
     // Create a simple property management interface using Obsidian Settings
     createPropertyManagementInterface(propertiesContainer, editProperties);
 
-    // Template section
-    container.createEl("h4", { text: "Template" });
-    const templateContainer = container.createDiv("template-editor-container");
-
-    // Create a simple template editor using Obsidian Settings
-    createTemplateEditorInterface(
-      templateContainer,
-      editTemplate,
-      (newTemplate: any) => {
-        editTemplate = newTemplate;
-      }
-    );
-
     // Save button
     const saveSetting = new Setting(container);
     saveSetting.setName(isNew ? "Create Note Type" : "Save Changes");
@@ -661,13 +601,20 @@
             }
           );
 
+          // Generate default template
+          const defaultTemplate = {
+            version: editVersion,
+            content: `# {{title}}\n\n`,
+            variables: {},
+          };
+
           // Create the note type object
           const noteTypeToSave = {
             id: editId,
             name: editName,
             version: editVersion,
             properties: processedProperties,
-            template: editTemplate,
+            template: defaultTemplate,
             metadata: {
               description: editDescription,
               createdAt: isNew
@@ -684,6 +631,19 @@
           });
 
           if (result.valid) {
+            // Create template file in the configured template folder
+            try {
+              await plugin.typeNote.templateManager.createTemplateFile(
+                noteTypeToSave
+              );
+            } catch (error) {
+              console.error("Failed to create template file:", error);
+              new Notice(
+                `Note type saved but template file creation failed: ${error.message}`,
+                5000
+              );
+            }
+
             // Wait for persistence to complete before showing success message
             if (
               typeof (plugin.typeNote.registry as any).waitForPersistence ===
