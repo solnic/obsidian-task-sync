@@ -356,6 +356,7 @@ export class TemplateManager {
   /**
    * Create or update template file for a note type
    * Generates a template file with front-matter based on note type properties
+   * Also creates a versioned copy in .versions/{key}/{version}/ directory
    */
   async createTemplateFile(noteType: NoteType): Promise<void> {
     // Ensure template folder exists
@@ -383,6 +384,45 @@ export class TemplateManager {
     } else {
       // Create new template file
       await this.vault.create(templatePath, templateContent);
+    }
+
+    // Create versioned copy
+    await this.createVersionedTemplate(noteType, templateContent);
+  }
+
+  /**
+   * Create a versioned copy of the template
+   * Stores template in .versions/{key}/{version}/ directory
+   */
+  private async createVersionedTemplate(
+    noteType: NoteType,
+    templateContent: string
+  ): Promise<void> {
+    // Generate key from id (lowercase)
+    const key = noteType.id.toLowerCase();
+
+    // Generate versioned template path
+    const versionedPath = `${this.preferences.templateFolder}/.versions/${key}/${noteType.version}/${noteType.name}.md`;
+
+    // Ensure versioned directory exists
+    const versionedDir = `${this.preferences.templateFolder}/.versions/${key}/${noteType.version}`;
+    const existingDir = this.vault.getAbstractFileByPath(versionedDir);
+
+    if (!existingDir) {
+      // Create versioned directory structure
+      await this.vault.createFolder(versionedDir);
+    }
+
+    // Check if versioned template already exists
+    const existingVersionedFile =
+      this.vault.getAbstractFileByPath(versionedPath);
+
+    if (existingVersionedFile instanceof TFile) {
+      // Update existing versioned template
+      await this.vault.modify(existingVersionedFile, templateContent);
+    } else {
+      // Create new versioned template
+      await this.vault.create(versionedPath, templateContent);
     }
   }
 
