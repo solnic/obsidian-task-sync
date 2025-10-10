@@ -32,7 +32,8 @@
     done: [],
     notDone: [],
   });
-  let todayTasks = $state<Task[]>([]);
+  let todayTasks = $state<Task[]>([]); // Tasks already in Daily Note (confirmed scheduled)
+  let schedulingCandidates = $state<Task[]>([]); // Tasks with doDate=today but NOT in Daily Note
   let todayEvents = $state<CalendarEvent[]>([]);
   let unscheduledTasks = $state<Task[]>([]);
 
@@ -171,10 +172,15 @@
       // Load yesterday's tasks
       yesterdayTasks = await dailyPlanningExtension.getYesterdayTasksGrouped();
 
-      // Load today's tasks
+      // Load today's tasks (all tasks with doDate=today)
       const todayTasksGrouped =
         await dailyPlanningExtension.getTodayTasksGrouped();
       todayTasks = [...todayTasksGrouped.done, ...todayTasksGrouped.notDone];
+
+      // Load scheduling candidates (tasks with doDate=today but NOT in Daily Note)
+      // These will be shown in Step 1 for user confirmation
+      schedulingCandidates =
+        await dailyPlanningExtension.getSchedulingCandidates();
 
       // Load today's calendar events
       todayEvents = await dailyPlanningExtension.getTodayEvents();
@@ -432,6 +438,7 @@
       >
         <ReviewYesterdayStep
           {yesterdayTasks}
+          {schedulingCandidates}
           scheduledTasks={tasksToMoveToToday}
           unscheduledTasks={displayLists.stagedForUnscheduling}
           {isLoading}

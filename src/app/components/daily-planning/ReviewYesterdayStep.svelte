@@ -8,6 +8,7 @@
 
   interface Props {
     yesterdayTasks: { done: Task[]; notDone: Task[] };
+    schedulingCandidates?: Task[]; // Tasks with doDate=today but NOT in Daily Note
     scheduledTasks?: Task[];
     unscheduledTasks?: Task[];
     isLoading?: boolean;
@@ -18,6 +19,7 @@
 
   let {
     yesterdayTasks,
+    schedulingCandidates = [],
     scheduledTasks = [],
     unscheduledTasks = [],
     isLoading = false,
@@ -128,6 +130,48 @@
   {#if yesterdayTasks.done.length === 0 && yesterdayTasks.notDone.length === 0}
     <div class="no-tasks">
       <p>No tasks were scheduled for yesterday.</p>
+    </div>
+  {/if}
+
+  {#if schedulingCandidates.length > 0}
+    <div class="task-group scheduling-candidates">
+      <h5>📅 Tasks Already Set for Today ({schedulingCandidates.length})</h5>
+      <p class="candidates-description">
+        These tasks have today's date set but aren't in your Daily Note yet.
+        Confirm to add them to your schedule.
+      </p>
+      <div class="task-list">
+        {#each schedulingCandidates as task}
+          {@const isScheduled = isTaskScheduledForToday(task)}
+          {@const isUnscheduled = isTaskUnscheduled(task)}
+          <div
+            class="task-item candidate {isScheduled
+              ? 'pending-scheduled'
+              : ''} {isUnscheduled ? 'pending-unscheduled' : ''}"
+            data-testid="scheduling-candidate-task"
+          >
+            <span class="task-title">{task.title}</span>
+            <div class="task-actions">
+              <button
+                class="action-btn schedule"
+                onclick={() => handleMoveTaskToToday(task)}
+                disabled={isLoading || isScheduled}
+                data-testid="confirm-schedule-button"
+              >
+                {isScheduled ? "Scheduled" : "Confirm"}
+              </button>
+              <button
+                class="action-btn unschedule"
+                onclick={() => handleUnscheduleTask(task)}
+                disabled={isLoading || isUnscheduled}
+                data-testid="remove-from-today-button"
+              >
+                {isUnscheduled ? "Removed" : "Remove"}
+              </button>
+            </div>
+          </div>
+        {/each}
+      </div>
     </div>
   {/if}
 </div>
