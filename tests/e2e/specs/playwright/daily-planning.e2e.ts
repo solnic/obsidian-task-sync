@@ -4,9 +4,16 @@
  */
 
 import { test, expect } from "../../helpers/setup";
-import { executeCommand, openView } from "../../helpers/global";
+import {
+  executeCommand,
+  openView,
+  enableIntegration,
+  switchToTaskService,
+  selectFromDropdown,
+} from "../../helpers/global";
 import { getTodayString, getYesterdayString } from "../../helpers/date-helpers";
 import { createTask } from "../../helpers/entity-helpers";
+import { stubGitHubWithFixtures } from "../../helpers/github-integration-helpers";
 
 test.describe("Daily Planning Wizard", () => {
   test.beforeEach(async ({ page }) => {
@@ -796,12 +803,125 @@ test.describe("Daily Planning Wizard", () => {
       };
     });
 
-    console.log("Daily note info:", dailyNoteInfo);
-
     // The daily note should be created in the Periodic Notes plugin folder
     expect(dailyNoteInfo.periodicNotesExists).toBe(true);
 
     // The daily note should NOT be created in the Daily Notes core plugin folder
     expect(dailyNoteInfo.dailyNotesExists).toBe(false);
+  });
+
+  test("should include imported tasks in daily note when confirming plan", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Set up GitHub integration
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service to be ready
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    // Start Daily Planning wizard
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Navigate to step 2 (Today's Agenda)
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Import a GitHub issue while in the wizard
+    // First, switch to the Tasks view tab (wizard stays open in background)
+    const tasksViewTab = page.locator('[data-testid="tasks-view-tab"]');
+    await tasksViewTab.click();
+
+    // Switch to GitHub service
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Wait for issues to load
+    await expect(
+      page.locator('[data-testid="github-issues-list"]')
+    ).toBeVisible({ timeout: 10000 });
+
+    // Find the first issue and import it
+    const firstIssue = page
+      .locator('[data-testid="github-issue-item"]')
+      .first();
+    await firstIssue.waitFor({ state: "visible", timeout: 10000 });
+    await firstIssue.hover();
+
+    // Click "Schedule for today" button (should be visible because wizard is active)
+    const scheduleButton = page
+      .locator('[data-testid="schedule-for-today-button"]')
+      .first();
+    await scheduleButton.waitFor({ state: "visible", timeout: 10000 });
+    await scheduleButton.click();
+
+    // Wait for import to complete
+    await page.waitForTimeout(2000);
+
+    // Now complete the daily planning wizard
+    // Use the command palette to navigate directly to confirm
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for wizard to be visible
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 10000 });
+
+    // We should be on step 2 still, navigate to step 3
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Confirm the plan
+    const confirmButton = page.locator('[data-testid="confirm-button"]');
+    await confirmButton.waitFor({ state: "visible", timeout: 10000 });
+    await confirmButton.click();
+    await page.waitForTimeout(2000);
+
+    // Verify daily note was created and contains the imported task
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    const dailyNoteContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    // Verify daily note exists
+    expect(dailyNoteContent).toBeTruthy();
+
+    // Verify daily note contains the imported GitHub issue
+    // The test imports whichever issue is first in the list
+    // Based on the test output, it's "Third test issue"
+    expect(dailyNoteContent).toContain("Third test issue");
+
+    // Verify the task link format is correct
+    expect(dailyNoteContent).toContain("## Today's Tasks");
+    expect(dailyNoteContent).toContain("- [ ] [[Tasks/");
   });
 });

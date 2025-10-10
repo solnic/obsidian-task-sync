@@ -239,17 +239,39 @@
         await dailyPlanningExtension.moveTaskToTodayImmediate(task);
       }
 
-      // Ensure today's schedule exists and update it with the final plan
-      const todaySchedule =
-        await dailyPlanningExtension.ensureTodayScheduleExists();
+      // Get the current schedule state after all tasks have been added
+      // This ensures we include tasks that were imported during planning
+      const scheduleQueries = new (
+        await import("../entities/Schedules")
+      ).Schedules.Queries();
+      const todaySchedule = await scheduleQueries.getToday();
 
-      // Update the schedule with the final plan (tasks and events)
-      // This will trigger the DailyNoteFeature to automatically update the daily note
+      if (!todaySchedule) {
+        throw new Error("Today's schedule not found after applying changes");
+      }
+
+      // Merge tasks from finalPlan with tasks already in the schedule (from applyStaging)
+      // Use a Map to deduplicate by task ID
+      const taskMap = new Map<string, Task>();
+
+      // First add tasks from the schedule (these include imported tasks from applyStaging)
+      for (const task of todaySchedule.tasks) {
+        taskMap.set(task.id, task);
+      }
+
+      // Then add/update with tasks from finalPlan (these include all visible tasks in the wizard)
+      for (const task of finalPlan.tasks) {
+        taskMap.set(task.id, task);
+      }
+
+      const mergedTasks = Array.from(taskMap.values());
+
+      // Update the schedule with merged tasks, events, and mark as planned
       const scheduleOperations = new (
         await import("../entities/Schedules")
       ).Schedules.Operations();
       await scheduleOperations.update(todaySchedule.id, {
-        tasks: finalPlan.tasks,
+        tasks: mergedTasks,
         events: finalPlan.events,
         isPlanned: true,
         planningCompletedAt: new Date(),
