@@ -56,7 +56,11 @@ export class DailyNoteFeature {
    */
   private async handleScheduleCreated(event: DomainEvent): Promise<void> {
     if (event.type === "schedules.created") {
-      await this.updateDailyNoteFromSchedule(event.schedule);
+      // Only update Daily Note if the schedule is marked as planned
+      // This prevents writing to Daily Note when schedule is just being initialized
+      if (event.schedule.isPlanned) {
+        await this.updateDailyNoteFromSchedule(event.schedule);
+      }
     }
   }
 

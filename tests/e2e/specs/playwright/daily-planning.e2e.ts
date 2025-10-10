@@ -614,8 +614,30 @@ test.describe("Daily Planning Wizard", () => {
       doDate: todayString,
     });
 
+    // Create a third task scheduled for today that we will UNSCHEDULE during planning
+    const task3 = await createTask(page, {
+      title: "Task to Unschedule",
+      description: "Task with doDate that will be unscheduled during planning.",
+      status: "Not Started",
+      priority: "Low",
+      done: false,
+      doDate: todayString, // This task HAS doDate set
+    });
+
     expect(task1).toBeTruthy();
     expect(task2).toBeTruthy();
+    expect(task3).toBeTruthy();
+
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // BUG 1: Verify daily note does NOT exist before starting planning
+    const dailyNoteBeforePlanning = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(dailyNoteBeforePlanning).toBeNull();
 
     // Start daily planning
     await executeCommand(page, "Task Sync: Start Daily Planning");
@@ -627,9 +649,56 @@ test.describe("Daily Planning Wizard", () => {
       timeout: 10000,
     });
 
-    // Navigate through all steps
+    // BUG 1: Verify daily note is still empty/doesn't contain tasks after starting wizard
+    const dailyNoteAfterStart = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    // Daily note may be created but should NOT contain any tasks yet
+    if (dailyNoteAfterStart) {
+      expect(dailyNoteAfterStart).not.toContain("Daily Note Task 1");
+      expect(dailyNoteAfterStart).not.toContain("Daily Note Task 2");
+      expect(dailyNoteAfterStart).not.toContain("Task to Unschedule");
+    }
+
+    // Navigate to step 2
     await page.click('[data-testid="next-button"]'); // Step 1 -> Step 2
+
+    // Wait for step 2 to be visible
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // BUG 2: Unschedule task3 during planning - it should NOT appear in daily note after confirm
+    // Find task3 in the scheduled tasks section
+    const scheduledTasksSection = page.locator(
+      '[data-testid="step-2-content"]'
+    );
+    const task3Item = scheduledTasksSection
+      .locator(".task-item")
+      .filter({ hasText: "Task to Unschedule" });
+
+    // Click the "Unschedule" button for this task
+    const unscheduleButton = task3Item.locator(
+      'button[data-testid="unschedule-planning-button"]'
+    );
+    await expect(unscheduleButton).toBeVisible();
+    await unscheduleButton.click();
+    await page.waitForTimeout(500);
+
+    // Navigate to step 3
     await page.click('[data-testid="next-button"]'); // Step 2 -> Step 3
+
+    // BUG 2: Verify daily note still doesn't contain the unscheduled task before confirming
+    const dailyNoteBeforeConfirm = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    if (dailyNoteBeforeConfirm) {
+      expect(dailyNoteBeforeConfirm).not.toContain("Task to Unschedule");
+    }
 
     // Confirm the plan
     await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
@@ -637,10 +706,7 @@ test.describe("Daily Planning Wizard", () => {
     await confirmButton.click();
     await page.waitForTimeout(2000);
 
-    // Verify daily note was created and contains task links
-    const dailyNotePath = `Daily Notes/${todayString}.md`;
-
-    // Get the daily note content
+    // NOW verify daily note was created and contains task links
     const dailyNoteContent = await page.evaluate(async (path) => {
       const file = (window as any).app.vault.getAbstractFileByPath(path);
       if (!file) return null;
@@ -650,10 +716,13 @@ test.describe("Daily Planning Wizard", () => {
     // Verify daily note exists
     expect(dailyNoteContent).toBeTruthy();
 
-    // Verify daily note contains task links
+    // Verify daily note contains task links for task1 and task2
     expect(dailyNoteContent).toContain("## Tasks");
     expect(dailyNoteContent).toContain("Daily Note Task 1");
     expect(dailyNoteContent).toContain("Daily Note Task 2");
+
+    // BUG 2: Verify daily note does NOT contain the unscheduled task
+    expect(dailyNoteContent).not.toContain("Task to Unschedule");
 
     // Verify tasks have Do Date set to today
     const task1File = await page.evaluate(async (title) => {
@@ -665,6 +734,18 @@ test.describe("Daily Planning Wizard", () => {
     }, "Daily Note Task 1");
 
     expect(task1File).toContain(`Do Date: ${todayString}`);
+
+    // Verify task3 does NOT have Do Date anymore (it was unscheduled)
+    const task3File = await page.evaluate(async (title) => {
+      const files = (window as any).app.vault.getMarkdownFiles();
+      const taskFile = files.find((f: any) => f.basename === title);
+      if (!taskFile) return null;
+      const content = await (window as any).app.vault.read(taskFile);
+      return content;
+    }, "Task to Unschedule");
+
+    // Task3 should not have Do Date set (or it should be empty/null)
+    expect(task3File).not.toContain(`Do Date: ${todayString}`);
   });
 
   test("should close wizard when cancel button is clicked", async ({

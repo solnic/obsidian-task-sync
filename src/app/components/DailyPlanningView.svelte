@@ -243,13 +243,19 @@
         throw new Error("Daily planning extension not available");
       }
 
-      // Apply all staged changes first (this will schedule/unschedule tasks)
+      // IMPORTANT: Capture finalPlan.tasks and task IDs to exclude BEFORE calling applyStaging()
+      // because applyStaging() clears stagedChanges, which would cause finalPlan to be recomputed
+      // without the filtering logic
+      const taskIdsToExclude = new Set(stagedChanges.toUnschedule);
+      const tasksBeforeApplying = [...finalPlan.tasks];
+
+      // Apply all staged changes (this will schedule/unschedule tasks and clear staging)
       await dailyPlanningExtension.applyStaging();
 
       // Filter tasksToMoveToToday to exclude tasks that were staged for unscheduling
       // This prevents re-scheduling tasks that the user explicitly unscheduled
       const tasksToActuallyMove = tasksToMoveToToday.filter(
-        (task) => !stagedChanges.toUnschedule.has(task.id)
+        (task) => !taskIdsToExclude.has(task.id)
       );
 
       // Apply all the planned task movements from the wizard
@@ -268,32 +274,32 @@
         throw new Error("Today's schedule not found after applying changes");
       }
 
-      // Merge tasks from finalPlan with tasks already in the schedule (from applyStaging)
+      // Merge tasks from before applying with tasks added during applying (imported tasks)
       // Use a Map to deduplicate by task ID
       const taskMap = new Map<string, Task>();
 
-      // First add tasks from the schedule (these include imported tasks from applyStaging)
+      // Add tasks from before applying (includes originally scheduled + moved from yesterday)
+      for (const task of tasksBeforeApplying) {
+        if (!taskIdsToExclude.has(task.id)) {
+          taskMap.set(task.id, task);
+        }
+      }
+
+      // Add tasks from schedule (includes imported tasks that were staged during planning)
       for (const task of todaySchedule.tasks) {
-        taskMap.set(task.id, task);
+        if (!taskIdsToExclude.has(task.id)) {
+          taskMap.set(task.id, task);
+        }
       }
 
-      // Then add/update with tasks from finalPlan (these include all visible tasks in the wizard)
-      for (const task of finalPlan.tasks) {
-        taskMap.set(task.id, task);
-      }
+      const tasksForSchedule = Array.from(taskMap.values());
 
-      const mergedTasks = Array.from(taskMap.values());
-
-      console.log(
-        `[DailyPlanning] Merging ${todaySchedule.tasks.length} tasks from schedule + ${finalPlan.tasks.length} from finalPlan = ${mergedTasks.length} total tasks`
-      );
-
-      // Update the schedule with merged tasks, events, and mark as planned
+      // Update the schedule with final tasks/events and mark as planned
       const scheduleOperations = new (
         await import("../entities/Schedules")
       ).Schedules.Operations();
       await scheduleOperations.update(todaySchedule.id, {
-        tasks: mergedTasks,
+        tasks: tasksForSchedule,
         events: finalPlan.events,
         isPlanned: true,
         planningCompletedAt: new Date(),
