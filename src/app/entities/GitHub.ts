@@ -33,7 +33,7 @@ export namespace GitHub {
         title: issue.title,
         description: issue.body || "",
         category: this.extractCategoryFromLabels(issue.labels),
-        status: issue.state === "open" ? "Backlog" : "Done",
+        status: undefined as any, // Let schema apply default "Backlog" status
         priority: this.extractPriorityFromLabels(issue.labels),
         done: issue.state === "closed",
         project: repository || "",
@@ -73,7 +73,7 @@ export namespace GitHub {
         title: pr.title,
         description: pr.body || "",
         category: this.extractCategoryFromLabels(pr.labels),
-        status: pr.state === "open" ? "In Progress" : "Done",
+        status: undefined as any, // Let schema apply default "Backlog" status
         priority: this.extractPriorityFromLabels(pr.labels),
         done: pr.state === "closed" || pr.merged_at !== null,
         project: repository || "",
