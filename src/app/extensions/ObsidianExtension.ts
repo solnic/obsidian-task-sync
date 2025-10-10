@@ -229,14 +229,6 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
-   * Add a task to today's daily note
-   * Exposed method for other parts of the application to use
-   */
-  async addTaskToTodayDailyNote(taskPath: string) {
-    return await this.dailyNoteFeature.addTaskToToday(taskPath);
-  }
-
-  /**
    * Ensure today's daily note exists
    * Exposed method for other parts of the application to use
    */

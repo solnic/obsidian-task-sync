@@ -11,6 +11,7 @@ import {
   discoverDailyNoteSettings,
   getDailyNotePath,
 } from "../utils/dailyNoteDiscovery";
+import { DailyNoteParser } from "../services/DailyNoteParser";
 
 export interface DailyNoteFeatureSettings {
   dailyNotesFolder: string;
@@ -30,12 +31,14 @@ export interface AddTaskResult {
 
 export class DailyNoteFeature {
   private unsubscribeFunctions: (() => void)[] = [];
+  private dailyNoteParser: DailyNoteParser;
 
   constructor(
     private app: App,
     private plugin: Plugin,
     private settings: DailyNoteFeatureSettings
   ) {
+    this.dailyNoteParser = new DailyNoteParser(app);
     this.setupEventListeners();
   }
 
@@ -59,6 +62,9 @@ export class DailyNoteFeature {
       // Only update Daily Note if the schedule is marked as planned
       // This prevents writing to Daily Note when schedule is just being initialized
       if (event.schedule.isPlanned) {
+        console.log(
+          "DailyNoteFeature: Handling schedule created event, updating daily note..."
+        );
         await this.updateDailyNoteFromSchedule(event.schedule);
       }
     }
@@ -72,6 +78,9 @@ export class DailyNoteFeature {
       // Only update Daily Note if the schedule is marked as planned
       // This prevents writing to Daily Note when we're just syncing FROM it
       if (event.schedule.isPlanned) {
+        console.log(
+          "DailyNoteFeature: Handling schedule updated event, updating daily note..."
+        );
         await this.updateDailyNoteFromSchedule(event.schedule);
       }
     }
@@ -198,187 +207,99 @@ export class DailyNoteFeature {
   }
 
   /**
-   * Add a task link to today's daily note and set the Do Date property
+   * Update daily note from schedule (idempotent - only adds missing tasks)
    */
-  async addTaskToToday(taskPath: string): Promise<AddTaskResult> {
-    try {
-      // Ensure today's daily note exists
-      const dailyNoteResult = await this.ensureTodayDailyNote();
+  private async updateDailyNoteFromSchedule(schedule: Schedule): Promise<void> {
+    // Only update daily note if schedule is planned
+    if (!schedule.isPlanned) {
+      throw "Schedule is not planned";
+    }
 
-      // Get the task file to extract the title
-      const taskFile = this.app.vault.getAbstractFileByPath(taskPath);
-      if (!taskFile || !(taskFile instanceof TFile)) {
-        return {
-          success: false,
-          dailyNotePath: dailyNoteResult.path,
-          error: "Task file not found",
-        };
+    // Check if this is today's schedule
+    const today = new Date();
+    const scheduleDate = new Date(schedule.date);
+    const isToday =
+      this.getDateString(today) === this.getDateString(scheduleDate);
+
+    if (!isToday) {
+      throw "Schedule is not for today";
+    }
+
+    // Ensure today's daily note exists
+    const dailyNoteResult = await this.ensureTodayDailyNote();
+
+    // Extract existing task links from the Daily Note using DailyNoteParser
+    const existingTaskPaths = await this.extractTaskPathsFromDailyNote(
+      dailyNoteResult.file!
+    );
+
+    // Read current daily note content for modification
+    const currentContent = await this.app.vault.read(dailyNoteResult.file!);
+
+    let tasksToAdd: Task[] = [];
+
+    for (const task of schedule.tasks) {
+      if (existingTaskPaths.has(task.source.filePath!)) {
+        continue;
       }
+      tasksToAdd.push(task);
+    }
 
-      // Read the task file to get the title from front-matter
-      const taskContent = await this.app.vault.read(taskFile);
-      const frontMatterMatch = taskContent.match(/^---\n([\s\S]*?)\n---/);
-      let taskTitle = taskFile.basename; // fallback to filename
+    // Early return if no new tasks to add (idempotent behavior)
+    if (tasksToAdd.length === 0) {
+      return;
+    }
 
-      if (frontMatterMatch) {
-        const frontMatter = frontMatterMatch[1];
-        const titleMatch = frontMatter.match(/^Title:\s*(.+)$/m);
-        if (titleMatch) {
-          taskTitle = titleMatch[1].trim();
-        }
-      }
+    // Generate task links for new tasks
+    const taskLinks = tasksToAdd.map(
+      (task) => `- [ ] [[${task.source.filePath}|${task.title}]]`
+    );
 
-      // Read the daily note content
-      const dailyNoteContent = await this.app.vault.read(dailyNoteResult.file!);
+    // Merge new tasks with existing Daily Note content
+    const updatedContent = this.insertTasksIntoContent(
+      currentContent,
+      taskLinks
+    );
 
-      // Check if the task is already linked in the daily note
-      const taskLink = `[[${taskFile.path}|${taskTitle}]]`;
-      if (!dailyNoteContent.includes(taskLink)) {
-        // Add the task link under "Today's Tasks" section
-        const todaysTasksRegex = /## Today's Tasks\n/;
-        if (todaysTasksRegex.test(dailyNoteContent)) {
-          const updatedContent = dailyNoteContent.replace(
-            todaysTasksRegex,
-            `## Today's Tasks\n- ${taskLink}\n`
-          );
-          await this.app.vault.modify(dailyNoteResult.file!, updatedContent);
-        } else {
-          // If no "Today's Tasks" section, append at the end
-          const updatedContent = dailyNoteContent + `\n- ${taskLink}\n`;
-          await this.app.vault.modify(dailyNoteResult.file!, updatedContent);
-        }
-      }
-
-      // Set the Do Date property in the task's front-matter to today's date
-      const today = this.getDateString(new Date()); // YYYY-MM-DD format
-
-      await this.app.fileManager.processFrontMatter(taskFile, (frontmatter) => {
-        // Only set Do Date if it's not already set or if it's different from today
-        if (!frontmatter["Do Date"] || frontmatter["Do Date"] !== today) {
-          frontmatter["Do Date"] = today;
-        }
-      });
-
-      return {
-        success: true,
-        dailyNotePath: dailyNoteResult.path,
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        dailyNotePath: "",
-        error: error.message,
-      };
+    // Only update if content actually changed
+    if (updatedContent !== currentContent) {
+      await this.app.vault.modify(dailyNoteResult.file!, updatedContent);
+      console.log(
+        `Added ${taskLinks.length} new tasks to daily note (${existingTaskPaths.size} tasks already present)`
+      );
     }
   }
 
   /**
-   * Update daily note from schedule (merges with existing tasks, doesn't replace)
+   * Extract task file paths from daily note using DailyNoteParser
    */
-  private async updateDailyNoteFromSchedule(schedule: Schedule): Promise<void> {
-    try {
-      // Only update daily note if schedule is planned
-      if (!schedule.isPlanned) {
-        return;
-      }
+  private async extractTaskPathsFromDailyNote(
+    dailyNoteFile: TFile
+  ): Promise<Set<string>> {
+    const taskLinks = await this.dailyNoteParser.parseTaskLinks(
+      dailyNoteFile,
+      "Tasks"
+    );
+    return new Set(
+      taskLinks
+        .map((link) => link.filePath)
+        .filter((path) => path !== undefined) as string[]
+    );
+  }
 
-      // Check if this is today's schedule
-      const today = new Date();
-      const scheduleDate = new Date(schedule.date);
-      const isToday =
-        this.getDateString(today) === this.getDateString(scheduleDate);
-
-      if (!isToday) {
-        return; // Only update today's daily note
-      }
-
-      // Ensure today's daily note exists
-      const dailyNoteResult = await this.ensureTodayDailyNote();
-
-      // Read current daily note content
-      const currentContent = await this.app.vault.read(dailyNoteResult.file!);
-
-      // Extract existing task links from the Daily Note
-      const existingTaskPaths = new Set<string>();
-      const tasksSection = currentContent.match(
-        /## Today's Tasks\n([\s\S]*?)(?=\n## |$)/
-      );
-      if (tasksSection) {
-        const taskLinkRegex = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
-        let match;
-        while ((match = taskLinkRegex.exec(tasksSection[1])) !== null) {
-          existingTaskPaths.add(match[1]);
-        }
-      }
-
-      // Generate task links for all tasks in the schedule
-      const taskLinks: string[] = [];
-      const scheduledTaskPaths = new Set<string>();
-
-      for (const task of schedule.tasks) {
-        if (task.source?.filePath) {
-          scheduledTaskPaths.add(task.source.filePath);
-
-          // Skip if task is already in the Daily Note
-          if (existingTaskPaths.has(task.source.filePath)) {
-            continue;
-          }
-
-          // Get the task file to extract the title
-          const taskFile = this.app.vault.getAbstractFileByPath(
-            task.source.filePath
-          );
-          if (taskFile instanceof TFile) {
-            // Read the task file to get the title from front-matter
-            const taskContent = await this.app.vault.read(taskFile);
-            const frontMatterMatch = taskContent.match(/^---\n([\s\S]*?)\n---/);
-            let taskTitle = taskFile.basename; // fallback to filename
-
-            if (frontMatterMatch) {
-              const frontMatter = frontMatterMatch[1];
-              const titleMatch = frontMatter.match(/^Title:\s*(.+)$/m);
-              if (titleMatch) {
-                taskTitle = titleMatch[1].trim();
-              }
-            }
-
-            const taskLink = `- [ ] [[${taskFile.path}|${taskTitle}]]`;
-            taskLinks.push(taskLink);
-          }
-        }
-      }
-
-      // Only update if we have new tasks to add
-      if (taskLinks.length === 0) {
-        return;
-      }
-
-      // Merge new tasks with existing Daily Note content
-      let updatedContent = currentContent;
-
-      if (currentContent.includes("## Today's Tasks")) {
-        // Add new tasks to existing Tasks section
-        const tasksRegex = /(## Today's Tasks\n)/;
-        const newTasksToAdd = taskLinks.join("\n") + "\n";
-        updatedContent = currentContent.replace(
-          tasksRegex,
-          `$1${newTasksToAdd}`
-        );
-      } else {
-        // Add Tasks section if it doesn't exist
-        const newTasksSection = `\n## Today's Tasks\n${taskLinks.join("\n")}\n`;
-        updatedContent = currentContent + newTasksSection;
-      }
-
-      // Only update if content changed
-      if (updatedContent !== currentContent) {
-        await this.app.vault.modify(dailyNoteResult.file!, updatedContent);
-        console.log(
-          `Added ${taskLinks.length} new tasks to daily note (${existingTaskPaths.size} tasks already present)`
-        );
-      }
-    } catch (error) {
-      console.error("Failed to update daily note from schedule:", error);
+  /**
+   * Insert task links into daily note content
+   */
+  private insertTasksIntoContent(content: string, taskLinks: string[]): string {
+    if (content.includes("## Today's Tasks")) {
+      // Add new tasks to existing Tasks section
+      const tasksRegex = /(## Today's Tasks\n)/;
+      const newTasksToAdd = taskLinks.join("\n") + "\n";
+      return content.replace(tasksRegex, `$1${newTasksToAdd}`);
+    } else {
+      // Add Tasks section if it doesn't exist
+      const newTasksSection = `\n## Today's Tasks\n${taskLinks.join("\n")}\n`;
+      return content + newTasksSection;
     }
   }
 

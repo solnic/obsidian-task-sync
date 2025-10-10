@@ -148,6 +148,17 @@ export namespace Schedules {
         updatedAt: this.timestamp(),
       };
 
+      // Check if anything actually changed (excluding updatedAt)
+      const hasChanges = this.hasScheduleChanges(
+        existingSchedule,
+        updatedSchedule
+      );
+
+      if (!hasChanges) {
+        // No actual changes, return existing schedule without triggering event
+        return existingSchedule;
+      }
+
       store.updateSchedule(updatedSchedule);
 
       eventBus.trigger({
@@ -156,6 +167,25 @@ export namespace Schedules {
       });
 
       return updatedSchedule;
+    }
+
+    /**
+     * Check if two schedules have meaningful differences (excluding updatedAt)
+     */
+    private hasScheduleChanges(
+      oldSchedule: Schedule,
+      newSchedule: Schedule
+    ): boolean {
+      // Compare all fields except updatedAt
+      const oldWithoutTimestamp = { ...oldSchedule };
+      const newWithoutTimestamp = { ...newSchedule };
+      delete (oldWithoutTimestamp as any).updatedAt;
+      delete (newWithoutTimestamp as any).updatedAt;
+
+      return (
+        JSON.stringify(oldWithoutTimestamp) !==
+        JSON.stringify(newWithoutTimestamp)
+      );
     }
 
     async delete(id: string): Promise<boolean> {

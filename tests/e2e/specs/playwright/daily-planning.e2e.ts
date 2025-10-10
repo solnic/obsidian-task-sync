@@ -717,7 +717,7 @@ test.describe("Daily Planning Wizard", () => {
     expect(dailyNoteContent).toBeTruthy();
 
     // Verify daily note contains task links for task1 and task2
-    expect(dailyNoteContent).toContain("## Tasks");
+    expect(dailyNoteContent).toContain("## Today's Tasks");
     expect(dailyNoteContent).toContain("Daily Note Task 1");
     expect(dailyNoteContent).toContain("Daily Note Task 2");
 
@@ -1144,5 +1144,157 @@ test.describe("Daily Planning Wizard", () => {
     // Verify the task link format is correct
     expect(dailyNoteContent).toContain("## Today's Tasks");
     expect(dailyNoteContent).toContain("- [ ] [[Tasks/");
+  });
+
+  test("should not duplicate tasks when confirming schedule multiple times (idempotency)", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create 2 tasks for today
+    const task1 = await createTask(page, {
+      title: "Idempotency Test Task 1",
+      description: "First task for idempotency test",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Idempotency Test Task 2",
+      description: "Second task for idempotency test",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // FIRST CONFIRMATION: Start daily planning and confirm
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 10000 });
+
+    // Navigate through wizard to confirmation
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm
+
+    // Wait for daily note to be updated
+    await page.waitForTimeout(2000);
+
+    // Read daily note content after first confirmation
+    const dailyNoteContentAfterFirst = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(dailyNoteContentAfterFirst).toBeTruthy();
+    expect(dailyNoteContentAfterFirst).toContain("Idempotency Test Task 1");
+    expect(dailyNoteContentAfterFirst).toContain("Idempotency Test Task 2");
+
+    // Count task LINKS (lines with checkboxes) after first confirmation
+    // Use a more specific pattern that matches the full task link line
+    const task1CountFirst = (
+      dailyNoteContentAfterFirst!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 1.*\]\]$/gm
+      ) || []
+    ).length;
+    const task2CountFirst = (
+      dailyNoteContentAfterFirst!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 2.*\]\]$/gm
+      ) || []
+    ).length;
+
+    expect(task1CountFirst).toBe(1);
+    expect(task2CountFirst).toBe(1);
+
+    // SECOND CONFIRMATION: Reopen wizard and confirm again
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 10000 });
+
+    // Navigate through wizard to confirmation again
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm again
+
+    // Wait for any potential updates
+    await page.waitForTimeout(2000);
+
+    // Read daily note content after second confirmation
+    const dailyNoteContentAfterSecond = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(dailyNoteContentAfterSecond).toBeTruthy();
+
+    // CRITICAL ASSERTION: Task link count should remain the same (no duplicates)
+    const task1CountSecond = (
+      dailyNoteContentAfterSecond!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 1.*\]\]$/gm
+      ) || []
+    ).length;
+    const task2CountSecond = (
+      dailyNoteContentAfterSecond!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 2.*\]\]$/gm
+      ) || []
+    ).length;
+
+    // These should still be 1, not 2 or more
+    expect(task1CountSecond).toBe(1);
+    expect(task2CountSecond).toBe(1);
+
+    // Verify content is identical after both confirmations
+    expect(dailyNoteContentAfterSecond).toBe(dailyNoteContentAfterFirst);
+
+    // THIRD CONFIRMATION: One more time to be absolutely sure
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 10000 });
+
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm third time
+
+    await page.waitForTimeout(2000);
+
+    // Read daily note content after third confirmation
+    const dailyNoteContentAfterThird = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(dailyNoteContentAfterThird).toBeTruthy();
+
+    // Final assertion: Still only 1 task link for each task
+    const task1CountThird = (
+      dailyNoteContentAfterThird!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 1.*\]\]$/gm
+      ) || []
+    ).length;
+    const task2CountThird = (
+      dailyNoteContentAfterThird!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 2.*\]\]$/gm
+      ) || []
+    ).length;
+
+    expect(task1CountThird).toBe(1);
+    expect(task2CountThird).toBe(1);
+
+    // Content should be identical across all confirmations
+    expect(dailyNoteContentAfterThird).toBe(dailyNoteContentAfterFirst);
   });
 });
