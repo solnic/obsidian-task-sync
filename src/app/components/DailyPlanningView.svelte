@@ -127,11 +127,23 @@
   });
 
   // Computed state for step 2 - combines today tasks, staging tasks, and yesterday tasks
-  let allTodayTasksForStep2 = $derived([
-    ...displayLists.today,
-    ...displayLists.staging,
-    ...tasksToMoveToToday,
-  ]);
+  // Deduplicate by task ID to prevent showing the same task multiple times
+  let allTodayTasksForStep2 = $derived.by(() => {
+    const taskMap = new Map<string, Task>();
+
+    // Add all tasks, later additions will overwrite earlier ones with same ID
+    for (const task of displayLists.today) {
+      taskMap.set(task.id, task);
+    }
+    for (const task of displayLists.staging) {
+      taskMap.set(task.id, task);
+    }
+    for (const task of tasksToMoveToToday) {
+      taskMap.set(task.id, task);
+    }
+
+    return Array.from(taskMap.values());
+  });
 
   // Use $derived to compute final plan (excludes tasks staged for unscheduling)
   let finalPlan = $derived.by(() => {
