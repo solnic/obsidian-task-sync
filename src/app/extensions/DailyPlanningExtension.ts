@@ -34,8 +34,8 @@ import {
   getDailyNotePath,
   discoverDailyNoteSettings,
 } from "../utils/dailyNoteDiscovery";
+import { DailyNoteParser } from "../services/DailyNoteParser";
 import { ObsidianHost } from "../hosts/ObsidianHost";
-import type { ObsidianExtension } from "./ObsidianExtension";
 
 export interface DailyPlanningExtensionSettings {
   enabled: boolean;
@@ -63,6 +63,9 @@ export class DailyPlanningExtension implements Extension {
   // Calendar extension for events
   private calendarExtension?: CalendarExtension;
 
+  // Daily note parser for extracting task links
+  private dailyNoteParser: DailyNoteParser;
+
   // Note: Planning state is now managed by contextStore
 
   // Single source of truth for staging changes
@@ -80,6 +83,7 @@ export class DailyPlanningExtension implements Extension {
     this.host = host;
     this.schedules = new Schedules.Operations();
     this.taskOperations = new Tasks.Operations(settings);
+    this.dailyNoteParser = new DailyNoteParser(host.plugin.app);
 
     // Calendar extension will be set during initialization
     this.calendarExtension = undefined;
@@ -385,11 +389,90 @@ export class DailyPlanningExtension implements Extension {
 
   /**
    * Get today's tasks grouped by completion status
+   * This reconciles tasks with doDate=today against the Daily Note
    */
   async getTodayTasksGrouped(): Promise<{ done: Task[]; notDone: Task[] }> {
     const taskQueries = new Tasks.Queries();
     const allTasks = await taskQueries.getAll();
-    return getTodayTasksGrouped([...allTasks]);
+
+    // Get tasks with doDate=today
+    const tasksWithTodayDoDate = getTodayTasksGrouped([...allTasks]);
+
+    // Get tasks actually linked in today's Daily Note
+    const dailyNoteTasks = await this.getTasksFromTodayDailyNote();
+    const dailyNoteTaskPaths = new Set(
+      dailyNoteTasks.map((t) => t.source?.filePath).filter(Boolean)
+    );
+
+    // Categorize tasks:
+    // - Tasks in Daily Note = already scheduled (confirmed by user)
+    // - Tasks with doDate=today but NOT in Daily Note = candidates for scheduling
+
+    // For now, return all tasks with doDate=today
+    // The wizard will handle the categorization based on Daily Note content
+    return tasksWithTodayDoDate;
+  }
+
+  /**
+   * Get tasks that are actually linked in today's Daily Note
+   * This is the source of truth for what's scheduled
+   */
+  async getTasksFromTodayDailyNote(): Promise<Task[]> {
+    try {
+      const today = new Date();
+      const dailyNotePath = getDailyNotePath(
+        this.host.plugin.app,
+        today,
+        this.settings.dailyNotesFolder
+      );
+
+      const dailyNoteFile =
+        this.host.plugin.app.vault.getAbstractFileByPath(dailyNotePath);
+
+      if (!dailyNoteFile || !(dailyNoteFile instanceof TFile)) {
+        return [];
+      }
+
+      // Parse the Daily Note to get task file paths
+      const taskFilePaths = await this.dailyNoteParser.getTaskFilePaths(
+        dailyNoteFile,
+        this.settings.tasksFolder
+      );
+
+      // Get all tasks and filter to those in the Daily Note
+      const taskQueries = new Tasks.Queries();
+      const allTasks = await taskQueries.getAll();
+
+      return allTasks.filter((task) =>
+        taskFilePaths.includes(task.source?.filePath || "")
+      );
+    } catch (error) {
+      console.error("Error getting tasks from Daily Note:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get tasks that have doDate=today but are NOT in the Daily Note
+   * These are candidates for scheduling
+   */
+  async getSchedulingCandidates(): Promise<Task[]> {
+    const taskQueries = new Tasks.Queries();
+    const allTasks = await taskQueries.getAll();
+
+    // Get tasks with doDate=today
+    const tasksWithTodayDoDate = getTodayTasksGrouped([...allTasks]);
+    const allTodayTasks = [
+      ...tasksWithTodayDoDate.done,
+      ...tasksWithTodayDoDate.notDone,
+    ];
+
+    // Get tasks in Daily Note
+    const dailyNoteTasks = await this.getTasksFromTodayDailyNote();
+    const dailyNoteTaskIds = new Set(dailyNoteTasks.map((t) => t.id));
+
+    // Return tasks with doDate=today that are NOT in Daily Note
+    return allTodayTasks.filter((task) => !dailyNoteTaskIds.has(task.id));
   }
 
   /**

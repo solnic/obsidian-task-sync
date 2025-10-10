@@ -28,6 +28,146 @@ test.describe("Daily Planning Wizard", () => {
     });
   });
 
+  test("should preserve schedule state when reopening wizard after confirmation", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create 2 tasks for today
+    const task1 = await createTask(page, {
+      title: "Task 1 - Keep scheduled",
+      description: "This task should remain scheduled",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Task 2 - Will be unscheduled",
+      description: "This task will be unscheduled during planning",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Navigate to step 2 (Today's Agenda)
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Verify initial state: Task 1 and Task 2 should be in today's tasks
+    await expect(
+      page.locator(".task-item").filter({ hasText: "Task 1 - Keep scheduled" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".task-item")
+        .filter({ hasText: "Task 2 - Will be unscheduled" })
+    ).toBeVisible();
+
+    // Unschedule Task 2
+    const task2Item = page
+      .locator(".task-item")
+      .filter({ hasText: "Task 2 - Will be unscheduled" });
+    await task2Item
+      .locator('[data-testid="unschedule-planning-button"]')
+      .click();
+
+    // Verify Task 2 moved to "Staged for unscheduling" section
+    await expect(
+      page
+        .locator('[data-testid="unscheduled-task"]')
+        .filter({ hasText: "Task 2 - Will be unscheduled" })
+    ).toBeVisible();
+
+    // Navigate to step 3 (Plan Summary)
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
+
+    // Verify the final plan shows only Task 1 (Task 2 was unscheduled)
+    await expect(
+      page
+        .locator(".preview-item.task")
+        .filter({ hasText: "Task 1 - Keep scheduled" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".preview-item.task")
+        .filter({ hasText: "Task 2 - Will be unscheduled" })
+    ).not.toBeVisible();
+
+    // Confirm the plan
+    await page.click('[data-testid="confirm-button"]');
+
+    // Wait for confirmation and daily note to open
+    await page.waitForTimeout(2000);
+
+    // NOW THE CRITICAL TEST: Reopen the daily planning wizard
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open again
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Navigate to step 2 (Today's Agenda)
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // CRITICAL ASSERTION: The schedule state should match what was confirmed
+    // Task 1 should be visible in today's tasks
+    await expect(
+      page.locator(".task-item").filter({ hasText: "Task 1 - Keep scheduled" })
+    ).toBeVisible();
+
+    // Task 2 should NOT be in today's tasks (it was unscheduled)
+    // This is the bug - currently Task 2 will reappear because the wizard
+    // loads from task store (which still has Task 2 with doDate=today)
+    // instead of from the schedule (which has the correct state)
+    const task2Count = await page
+      .locator(".task-item")
+      .filter({ hasText: "Task 2 - Will be unscheduled" })
+      .count();
+
+    // Log for debugging
+    console.log(`Task 2 count in reopened wizard: ${task2Count}`);
+
+    // This should be 0, but if the bug exists, it will be > 0
+    expect(task2Count).toBe(0);
+
+    // Navigate to step 3 to verify final plan
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
+
+    // Final plan should show only Task 1
+    await expect(
+      page
+        .locator(".preview-item.task")
+        .filter({ hasText: "Task 1 - Keep scheduled" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".preview-item.task")
+        .filter({ hasText: "Task 2 - Will be unscheduled" })
+    ).not.toBeVisible();
+  });
+
   test("should open daily planning wizard and display all 3 steps", async ({
     page,
   }) => {

@@ -266,6 +266,10 @@
 
       const mergedTasks = Array.from(taskMap.values());
 
+      console.log(
+        `[DailyPlanning] Merging ${todaySchedule.tasks.length} tasks from schedule + ${finalPlan.tasks.length} from finalPlan = ${mergedTasks.length} total tasks`
+      );
+
       // Update the schedule with merged tasks, events, and mark as planned
       const scheduleOperations = new (
         await import("../entities/Schedules")
