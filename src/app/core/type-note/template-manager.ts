@@ -359,16 +359,6 @@ export class TemplateManager {
    * Also creates a versioned copy in .versions/{key}/{version}/ directory
    */
   async createTemplateFile(noteType: NoteType): Promise<void> {
-    // Ensure template folder exists
-    const templateFolder = this.vault.getAbstractFileByPath(
-      this.preferences.templateFolder
-    );
-
-    if (!templateFolder) {
-      // Create template folder if it doesn't exist
-      await this.vault.createFolder(this.preferences.templateFolder);
-    }
-
     // Generate template file path
     const templatePath = `${this.preferences.templateFolder}/${noteType.name}.md`;
 
@@ -382,7 +372,7 @@ export class TemplateManager {
       // Update existing template file
       await this.vault.modify(existingFile, templateContent);
     } else {
-      // Create new template file
+      // Create new template file (vault.create will create parent folders automatically)
       await this.vault.create(templatePath, templateContent);
     }
 
@@ -404,15 +394,6 @@ export class TemplateManager {
     // Generate versioned template path
     const versionedPath = `${this.preferences.templateFolder}/.versions/${key}/${noteType.version}/${noteType.name}.md`;
 
-    // Ensure versioned directory exists
-    const versionedDir = `${this.preferences.templateFolder}/.versions/${key}/${noteType.version}`;
-    const existingDir = this.vault.getAbstractFileByPath(versionedDir);
-
-    if (!existingDir) {
-      // Create versioned directory structure
-      await this.vault.createFolder(versionedDir);
-    }
-
     // Check if versioned template already exists
     const existingVersionedFile =
       this.vault.getAbstractFileByPath(versionedPath);
@@ -421,8 +402,44 @@ export class TemplateManager {
       // Update existing versioned template
       await this.vault.modify(existingVersionedFile, templateContent);
     } else {
+      // Ensure parent directories exist
+      const versionedDir = `${this.preferences.templateFolder}/.versions/${key}/${noteType.version}`;
+      await this.ensureDirectoryExists(versionedDir);
+
       // Create new versioned template
       await this.vault.create(versionedPath, templateContent);
+    }
+  }
+
+  /**
+   * Ensure a directory exists, creating it and parent directories if needed
+   */
+  private async ensureDirectoryExists(dirPath: string): Promise<void> {
+    const existingDir = this.vault.getAbstractFileByPath(dirPath);
+    if (existingDir) {
+      return; // Directory already exists
+    }
+
+    // Split path and create directories from root to leaf
+    const parts = dirPath.split("/");
+    let currentPath = "";
+
+    for (const part of parts) {
+      if (!part) continue; // Skip empty parts
+
+      currentPath = currentPath ? `${currentPath}/${part}` : part;
+      const existing = this.vault.getAbstractFileByPath(currentPath);
+
+      if (!existing) {
+        try {
+          await this.vault.createFolder(currentPath);
+        } catch (error) {
+          // Ignore error if folder already exists (race condition)
+          if (!error.message?.includes("already exists")) {
+            throw error;
+          }
+        }
+      }
     }
   }
 
