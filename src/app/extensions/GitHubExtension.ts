@@ -56,6 +56,24 @@ export class GitHubExtension implements Extension {
     this.githubOperations = new GitHub.Operations(settings);
   }
 
+  /**
+   * Update settings and reinitialize components that depend on them
+   */
+  updateSettings(newSettings: TaskSyncSettings): void {
+    this.settings = newSettings;
+
+    // Update GitHub operations with new settings
+    this.githubOperations = new GitHub.Operations(newSettings);
+
+    // Update organization/repository mappings
+    this.githubOperations.tasks.updateOrgRepoMappings(
+      newSettings.integrations.github.orgRepoMappings || []
+    );
+
+    // Reinitialize Octokit with new settings
+    this.initializeOctokit();
+  }
+
   async initialize(): Promise<void> {
     if (this.initialized) return;
 

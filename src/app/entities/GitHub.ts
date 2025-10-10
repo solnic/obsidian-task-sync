@@ -6,7 +6,8 @@
 import { Task } from "../core/entities";
 import { Tasks } from "./Tasks";
 import type { GitHubIssue, GitHubPullRequest } from "../cache/schemas/github";
-import type { TaskSyncSettings } from "../types/settings";
+import type { TaskSyncSettings, GitHubOrgRepoMapping } from "../types/settings";
+import { GitHubOrgRepoMapper } from "../services/GitHubOrgRepoMapper";
 
 /**
  * GitHub namespace containing extension-specific operations
@@ -17,8 +18,22 @@ export namespace GitHub {
    * Handles importing GitHub issues and PRs as tasks
    */
   export class TaskOperations extends Tasks.Operations {
+    private orgRepoMapper: GitHubOrgRepoMapper;
+
     constructor(settings: TaskSyncSettings) {
       super(settings);
+
+      // Initialize organization/repository mapper
+      this.orgRepoMapper = new GitHubOrgRepoMapper(
+        settings.integrations.github.orgRepoMappings || []
+      );
+    }
+
+    /**
+     * Update the organization/repository mappings
+     */
+    updateOrgRepoMappings(mappings: GitHubOrgRepoMapping[]): void {
+      this.orgRepoMapper.setMappings(mappings);
     }
 
     /**
@@ -29,7 +44,7 @@ export namespace GitHub {
       issue: GitHubIssue,
       repository?: string
     ): Omit<Task, "id" | "createdAt" | "updatedAt"> {
-      return {
+      const baseTaskData = {
         title: issue.title,
         description: issue.body || "",
         category: this.extractCategoryFromLabels(issue.labels),
@@ -37,10 +52,10 @@ export namespace GitHub {
         priority: this.extractPriorityFromLabels(issue.labels),
         done: issue.state === "closed",
         project: repository || "",
-        areas: [],
+        areas: [] as string[],
         parentTask: "",
-        doDate: undefined,
-        dueDate: undefined,
+        doDate: undefined as Date | undefined,
+        dueDate: undefined as Date | undefined,
         tags: issue.labels.map((label) => label.name),
         source: {
           extension: "github",
@@ -48,6 +63,19 @@ export namespace GitHub {
           data: issue, // Store original GitHub issue data
         },
       };
+
+      // Apply organization/repository mappings if repository is provided
+      if (repository) {
+        const enhancedData = this.orgRepoMapper.enhanceTaskData(repository, {
+          project: baseTaskData.project,
+          areas: baseTaskData.areas,
+        });
+
+        baseTaskData.project = enhancedData.project || baseTaskData.project;
+        baseTaskData.areas = enhancedData.areas || baseTaskData.areas;
+      }
+
+      return baseTaskData;
     }
 
     /**
@@ -69,7 +97,7 @@ export namespace GitHub {
       pr: GitHubPullRequest,
       repository?: string
     ): Omit<Task, "id" | "createdAt" | "updatedAt"> {
-      return {
+      const baseTaskData = {
         title: pr.title,
         description: pr.body || "",
         category: this.extractCategoryFromLabels(pr.labels),
@@ -77,10 +105,10 @@ export namespace GitHub {
         priority: this.extractPriorityFromLabels(pr.labels),
         done: pr.state === "closed" || pr.merged_at !== null,
         project: repository || "",
-        areas: [],
+        areas: [] as string[],
         parentTask: "",
-        doDate: undefined,
-        dueDate: undefined,
+        doDate: undefined as Date | undefined,
+        dueDate: undefined as Date | undefined,
         tags: pr.labels.map((label) => label.name),
         source: {
           extension: "github",
@@ -88,6 +116,19 @@ export namespace GitHub {
           data: pr, // Store original GitHub PR data
         },
       };
+
+      // Apply organization/repository mappings if repository is provided
+      if (repository) {
+        const enhancedData = this.orgRepoMapper.enhanceTaskData(repository, {
+          project: baseTaskData.project,
+          areas: baseTaskData.areas,
+        });
+
+        baseTaskData.project = enhancedData.project || baseTaskData.project;
+        baseTaskData.areas = enhancedData.areas || baseTaskData.areas;
+      }
+
+      return baseTaskData;
     }
 
     /**
