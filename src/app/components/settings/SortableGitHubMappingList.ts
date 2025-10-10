@@ -36,17 +36,175 @@ export class SortableGitHubMappingList {
     this.listElement = this.container.createDiv("sortable-github-mapping-list");
 
     this.render();
+    this.addStyles();
+  }
+
+  private addStyles(): void {
+    // Only add styles once
+    if (document.getElementById("sortable-github-mapping-list-styles")) {
+      return;
+    }
+
+    const style = document.createElement("style");
+    style.id = "sortable-github-mapping-list-styles";
+    style.textContent = `
+      .github-mapping-section-description {
+        margin-bottom: 16px;
+        padding: 12px;
+        background: var(--background-secondary);
+        border-radius: 6px;
+      }
+
+      .github-mapping-section-description p {
+        margin: 0 0 8px 0;
+        color: var(--text-normal);
+      }
+
+      .github-mapping-section-description p:last-child {
+        margin-bottom: 0;
+      }
+
+      .sortable-github-mapping-list {
+        margin-bottom: 16px;
+      }
+
+      .github-mapping-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        margin-bottom: 8px;
+        background: var(--background-primary);
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 6px;
+        cursor: grab;
+      }
+
+      .github-mapping-item:hover {
+        background: var(--background-modifier-hover);
+      }
+
+      .github-mapping-item.dragging {
+        opacity: 0.5;
+        cursor: grabbing;
+      }
+
+      .mapping-drag-handle {
+        color: var(--text-muted);
+        cursor: grab;
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      .mapping-source, .mapping-target {
+        display: flex;
+        gap: 8px;
+        flex: 1;
+      }
+
+      .mapping-source-field, .mapping-target-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+      }
+
+      .mapping-source-label, .mapping-target-label {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 500;
+      }
+
+      .mapping-source-input, .mapping-target-input {
+        padding: 6px 8px;
+        border: 1px solid var(--background-modifier-border);
+        border-radius: 4px;
+        background: var(--background-primary);
+        color: var(--text-normal);
+        font-size: 13px;
+      }
+
+      .mapping-source-input:focus, .mapping-target-input:focus {
+        outline: none;
+        border-color: var(--interactive-accent);
+      }
+
+      .mapping-arrow {
+        color: var(--text-muted);
+        font-size: 16px;
+        align-self: center;
+        margin-top: 12px;
+      }
+
+      .mapping-actions {
+        display: flex;
+        gap: 4px;
+      }
+
+      .mapping-delete-btn {
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
+        border: none;
+        border-radius: 4px;
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: bold;
+      }
+
+      .mapping-delete-btn:hover {
+        background: var(--interactive-accent-hover);
+      }
+
+      .github-mapping-empty {
+        text-align: center;
+        padding: 24px;
+        color: var(--text-muted);
+        font-style: italic;
+      }
+
+      .github-mapping-add-section {
+        margin-top: 16px;
+      }
+
+      .github-mapping-add-btn {
+        background: var(--interactive-accent);
+        color: var(--text-on-accent);
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .github-mapping-add-btn:hover {
+        background: var(--interactive-accent-hover);
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   private render(): void {
-    this.listElement.empty();
+    this.container.empty();
+
+    // Add description
+    const description = this.container.createDiv(
+      "github-mapping-section-description"
+    );
+    description.innerHTML = `
+      <p><strong>GitHub Organization/Repository Mappings</strong></p>
+      <p>Map GitHub organizations and repositories to specific areas and projects. When importing issues or pull requests, they will be automatically assigned to the configured area/project.</p>
+      <p><strong>Repository mappings</strong> take precedence over organization mappings. Higher priority mappings (drag to top) are evaluated first.</p>
+    `;
+
+    // Create list container
+    this.listElement = this.container.createDiv("sortable-github-mapping-list");
 
     if (this.mappings.length === 0) {
-      const emptyState = this.listElement.createDiv("github-mapping-item");
-      emptyState.style.cursor = "default";
-      emptyState.style.textAlign = "center";
-      emptyState.style.color = "var(--text-muted)";
-      emptyState.textContent = "No GitHub mappings configured";
+      const emptyState = this.listElement.createDiv("github-mapping-empty");
+      emptyState.textContent =
+        "No mappings configured. Click 'Add Mapping' to create your first mapping.";
     } else {
       this.mappings.forEach((mapping, index) => {
         this.renderMappingItem(mapping, index);
@@ -54,9 +212,10 @@ export class SortableGitHubMappingList {
     }
 
     // Add button
-    const addButton = this.container.createEl("button", {
-      text: "Add GitHub Mapping",
-      cls: "github-mapping-add-button",
+    const addSection = this.container.createDiv("github-mapping-add-section");
+    const addButton = addSection.createEl("button", {
+      text: "Add Mapping",
+      cls: "github-mapping-add-btn",
     });
     addButton.onclick = () => this.onAdd();
   }
@@ -71,46 +230,89 @@ export class SortableGitHubMappingList {
 
     // Drag handle
     const handle = item.createSpan("mapping-drag-handle");
-    handle.innerHTML = "⋮⋮";
+    handle.innerHTML = "⋮⋮"; // Vertical dots
 
-    // Content
-    const content = item.createDiv("mapping-content");
-    const primary = content.createDiv("mapping-primary");
-    const secondary = content.createDiv("mapping-secondary");
+    // Source section (org/repo)
+    const source = item.createDiv("mapping-source");
 
-    // Display mapping info
-    if (mapping.organization) {
-      primary.textContent = `Organization: ${mapping.organization}`;
-    } else if (mapping.repository) {
-      primary.textContent = `Repository: ${mapping.repository}`;
-    } else {
-      primary.textContent = "Empty mapping";
-    }
+    const orgField = source.createDiv("mapping-source-field");
+    orgField.createSpan("mapping-source-label").textContent = "Org";
+    const orgInput = orgField.createEl("input", {
+      cls: "mapping-source-input",
+    });
+    orgInput.type = "text";
+    orgInput.placeholder = "Organization name";
+    orgInput.value = mapping.organization || "";
+    orgInput.oninput = () => {
+      const updatedMapping = {
+        ...mapping,
+        organization: orgInput.value.trim() || undefined,
+      };
+      this.onUpdate(index, updatedMapping);
+    };
 
-    const targets = [];
-    if (mapping.targetArea) targets.push(`Area: ${mapping.targetArea}`);
-    if (mapping.targetProject)
-      targets.push(`Project: ${mapping.targetProject}`);
-    secondary.textContent =
-      targets.length > 0 ? targets.join(", ") : "No targets set";
+    const repoField = source.createDiv("mapping-source-field");
+    repoField.createSpan("mapping-source-label").textContent = "Repo";
+    const repoInput = repoField.createEl("input", {
+      cls: "mapping-source-input",
+    });
+    repoInput.type = "text";
+    repoInput.placeholder = "owner/repository";
+    repoInput.value = mapping.repository || "";
+    repoInput.oninput = () => {
+      const updatedMapping = {
+        ...mapping,
+        repository: repoInput.value.trim() || undefined,
+      };
+      this.onUpdate(index, updatedMapping);
+    };
+
+    // Arrow
+    const arrow = item.createSpan("mapping-arrow");
+    arrow.innerHTML = "→";
+
+    // Target section (area/project)
+    const target = item.createDiv("mapping-target");
+
+    const areaField = target.createDiv("mapping-target-field");
+    areaField.createSpan("mapping-target-label").textContent = "Area";
+    const areaInput = areaField.createEl("input", {
+      cls: "mapping-target-input",
+    });
+    areaInput.type = "text";
+    areaInput.placeholder = "Area name";
+    areaInput.value = mapping.targetArea || "";
+    areaInput.oninput = () => {
+      const updatedMapping = {
+        ...mapping,
+        targetArea: areaInput.value.trim() || undefined,
+      };
+      this.onUpdate(index, updatedMapping);
+    };
+
+    const projectField = target.createDiv("mapping-target-field");
+    projectField.createSpan("mapping-target-label").textContent = "Project";
+    const projectInput = projectField.createEl("input", {
+      cls: "mapping-target-input",
+    });
+    projectInput.type = "text";
+    projectInput.placeholder = "Project name";
+    projectInput.value = mapping.targetProject || "";
+    projectInput.oninput = () => {
+      const updatedMapping = {
+        ...mapping,
+        targetProject: projectInput.value.trim() || undefined,
+      };
+      this.onUpdate(index, updatedMapping);
+    };
 
     // Actions
     const actions = item.createDiv("mapping-actions");
-
-    const editButton = actions.createEl("button", {
-      text: "Edit",
-      cls: "mod-muted",
+    const deleteBtn = actions.createEl("button", {
+      text: "×",
+      cls: "mapping-delete-btn",
     });
-    editButton.onclick = (e) => {
-      e.stopPropagation();
-      this.editMapping(index);
-    };
-
-    const deleteButton = actions.createEl("button", {
-      text: "Delete",
-      cls: "mod-warning",
-    });
-    deleteButton.onclick = (e) => {
+    deleteBtn.onclick = (e) => {
       e.stopPropagation();
       this.onDelete(index);
     };
