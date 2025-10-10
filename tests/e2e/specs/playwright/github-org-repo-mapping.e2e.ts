@@ -19,6 +19,10 @@ import { configureGitHubOrgRepoMappings } from "../../helpers/github";
 import { createArea, createProject } from "../../helpers/entity-helpers";
 
 test.describe("GitHub Organization/Repository Mapping", () => {
+  test.beforeEach(async ({ page }) => {
+    await enableIntegration(page, "github");
+  });
+
   test("should apply repository-specific mapping over organization mapping", async ({
     page,
   }) => {
@@ -45,7 +49,6 @@ test.describe("GitHub Organization/Repository Mapping", () => {
 
     // Open Tasks view and enable GitHub integration
     await openView(page, "task-sync-main");
-    await enableIntegration(page, "github");
 
     // Configure GitHub organization/repository mappings programmatically
     await configureGitHubOrgRepoMappings(page, [
@@ -168,7 +171,6 @@ test.describe("GitHub Organization/Repository Mapping", () => {
 
     // Open Tasks view and enable GitHub integration
     await openView(page, "task-sync-main");
-    await enableIntegration(page, "github");
 
     // Stub GitHub API responses
     await stubGitHubWithFixtures(page, {
@@ -225,7 +227,6 @@ test.describe("GitHub Organization/Repository Mapping", () => {
 
     // Open Tasks view and enable GitHub integration
     await openView(page, "task-sync-main");
-    await enableIntegration(page, "github");
 
     // Stub GitHub API responses with unknown repository
     await stubGitHubWithFixtures(page, {
