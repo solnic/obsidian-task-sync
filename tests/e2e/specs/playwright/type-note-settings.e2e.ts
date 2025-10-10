@@ -374,14 +374,16 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
     // Wait for template file to be created
     await waitForBaseFile(page, "Templates/Meeting Note.md");
 
-    // Verify template file content is valid
+    // Verify template file content has empty front-matter (no handlebars placeholders)
     const templateContent = await readVaultFile(
       page,
       "Templates/Meeting Note.md"
     );
     expect(templateContent).toContain("---");
-    expect(templateContent).toContain("Attendees: {{attendees}}");
-    expect(templateContent).toContain("# {{title}}");
+    expect(templateContent).toContain("Attendees:");
+    // Verify NO handlebars syntax in front-matter
+    expect(templateContent).not.toContain("{{attendees}}");
+    expect(templateContent).not.toContain("{{title}}");
 
     // Verify we're back at the list view and the note type appears
     const noteTypeItem = page
@@ -481,8 +483,10 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
       "Templates/Project Plan Updated.md"
     );
     expect(updatedTemplateContent).toContain("---");
-    expect(updatedTemplateContent).toContain("Status: {{status}}");
-    expect(updatedTemplateContent).toContain("# {{title}}");
+    expect(updatedTemplateContent).toContain("Status:");
+    // Verify NO handlebars syntax in front-matter
+    expect(updatedTemplateContent).not.toContain("{{status}}");
+    expect(updatedTemplateContent).not.toContain("{{title}}");
 
     // Verify the updated name appears in the list
     const updatedNoteTypeItem = page
@@ -544,8 +548,10 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
       "Templates/Persistence Test.md"
     );
     expect(templateContent).toContain("---");
-    expect(templateContent).toContain("TestProperty: {{testProperty}}");
-    expect(templateContent).toContain("# {{title}}");
+    expect(templateContent).toContain("TestProperty:");
+    // Verify NO handlebars syntax in front-matter
+    expect(templateContent).not.toContain("{{testProperty}}");
+    expect(templateContent).not.toContain("{{title}}");
 
     // Check if note type was persisted to plugin data
     const persistedData = await page.evaluate(async () => {
@@ -618,10 +624,10 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
       "Templates/Edit Test.md"
     );
     expect(initialTemplateContent).toContain("---");
-    expect(initialTemplateContent).toContain(
-      "OriginalProperty: {{originalProperty}}"
-    );
-    expect(initialTemplateContent).toContain("# {{title}}");
+    expect(initialTemplateContent).toContain("OriginalProperty:");
+    // Verify NO handlebars syntax in front-matter
+    expect(initialTemplateContent).not.toContain("{{originalProperty}}");
+    expect(initialTemplateContent).not.toContain("{{title}}");
 
     // Check initial persisted data
     const initialData = await page.evaluate(async () => {
@@ -679,10 +685,10 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
       "Templates/Edit Test Updated.md"
     );
     expect(updatedTemplateContent).toContain("---");
-    expect(updatedTemplateContent).toContain(
-      "OriginalProperty: {{originalProperty}}"
-    );
-    expect(updatedTemplateContent).toContain("# {{title}}");
+    expect(updatedTemplateContent).toContain("OriginalProperty:");
+    // Verify NO handlebars syntax in front-matter
+    expect(updatedTemplateContent).not.toContain("{{originalProperty}}");
+    expect(updatedTemplateContent).not.toContain("{{title}}");
 
     // Check if the edited note type was persisted to plugin data
     const persistedData = await page.evaluate(async () => {

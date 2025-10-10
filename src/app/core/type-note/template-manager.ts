@@ -8,7 +8,6 @@ import type { App, Vault } from "obsidian";
 import { TFile, TFolder } from "obsidian";
 import type { NoteType, Template, TemplateVariable } from "./types";
 import type { TypeRegistry } from "./registry";
-import { TemplateEngine } from "./template-engine";
 import { PropertyProcessor } from "./property-processor";
 import type { ValidationResult } from "./validation";
 import {
@@ -113,7 +112,6 @@ export class TemplateManager {
   private app: App;
   private vault: Vault;
   private registry: TypeRegistry;
-  private templateEngine: TemplateEngine;
   private propertyProcessor: PropertyProcessor;
   private preferences: TemplatePreferences;
 
@@ -125,7 +123,6 @@ export class TemplateManager {
     this.app = app;
     this.vault = app.vault;
     this.registry = registry;
-    this.templateEngine = new TemplateEngine();
     this.propertyProcessor = new PropertyProcessor();
     this.preferences = preferences;
   }
@@ -183,21 +180,18 @@ export class TemplateManager {
   }
 
   /**
-   * Get template for note type with provider preference
+   * Get template for note type
    */
   async getTemplateForNoteType(
     noteTypeId: string,
-    provider?: TemplateProvider
+    _provider?: TemplateProvider
   ): Promise<Template | null> {
     const noteType = this.registry.get(noteTypeId);
     if (!noteType) {
       return null;
     }
 
-    const detection = await this.detectTemplateProviders();
-    const useProvider = provider || detection.preferredProvider;
-
-    // For now, return the note type's built-in template
+    // Return the note type's built-in template
     // In the future, this could check for external template files
     return noteType.template;
   }
@@ -260,33 +254,37 @@ export class TemplateManager {
         processedProperties = propertyResult.properties;
       }
 
-      // Determine provider to use
-      const detection = await this.detectTemplateProviders();
-      const useProvider = provider || detection.preferredProvider;
-
-      // Apply template based on provider
-      let content: string;
-      if (useProvider === "templater" && detection.templaterAvailable) {
-        content = await this.applyTemplaterTemplate(
-          template,
-          processedProperties
-        );
-      } else {
-        content = await this.applyCoreTemplate(template, processedProperties);
-      }
+      // Get template content (without processing variables)
+      const templateContent = template.content;
 
       // Create file if target path is provided
       let filePath: string | undefined;
+      let file: TFile | undefined;
       if (targetPath) {
-        await this.vault.create(targetPath, content);
+        // Create file with template content (empty front-matter)
+        file = await this.vault.create(targetPath, templateContent);
         filePath = targetPath;
+
+        // Set property values using processFrontMatter
+        if (Object.keys(processedProperties).length > 0) {
+          await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
+            // Map property keys to front-matter keys
+            Object.entries(processedProperties).forEach(([key, value]) => {
+              const property = noteType.properties[key];
+              if (property) {
+                const frontMatterKey = property.frontMatterKey || property.name;
+                frontMatter[frontMatterKey] = value;
+              }
+            });
+          });
+        }
       }
 
       return {
         success: true,
-        content,
+        content: templateContent,
         filePath,
-        providerUsed: useProvider,
+        providerUsed: "core", // Always use core since we don't process template variables
       };
     } catch (error) {
       return {
@@ -294,49 +292,6 @@ export class TemplateManager {
         errors: [error instanceof Error ? error.message : String(error)],
       };
     }
-  }
-
-  /**
-   * Apply template using core template engine
-   */
-  private async applyCoreTemplate(
-    template: Template,
-    properties: Record<string, any>
-  ): Promise<string> {
-    const result = this.templateEngine.process(template, {
-      variables: properties,
-      noteType: undefined, // Will be set by caller if needed
-    });
-
-    if (!result.success) {
-      throw new Error(
-        `Template processing failed: ${result.errors
-          .map((e) => e.message)
-          .join(", ")}`
-      );
-    }
-
-    return result.content;
-  }
-
-  /**
-   * Apply template using Templater plugin
-   */
-  private async applyTemplaterTemplate(
-    template: Template,
-    properties: Record<string, any>
-  ): Promise<string> {
-    // Get Templater plugin
-    const templaterPlugin = (this.app as any).plugins?.getPlugin(
-      "templater-obsidian"
-    );
-    if (!templaterPlugin) {
-      throw new Error("Templater plugin not available");
-    }
-
-    // For now, fall back to core template processing
-    // In a full implementation, this would use Templater's API
-    return this.applyCoreTemplate(template, properties);
   }
 
   /**
@@ -450,25 +405,55 @@ export class TemplateManager {
 
   /**
    * Generate template content with front-matter for a note type
+   * Front-matter properties have empty values - actual values are set using processFrontMatter
    */
   private generateTemplateContent(noteType: NoteType): string {
     const frontMatterLines: string[] = ["---"];
 
-    // Add properties to front-matter
-    Object.entries(noteType.properties).forEach(([key, property]) => {
+    // Add properties to front-matter with empty values or defaults
+    Object.entries(noteType.properties).forEach(([_key, property]) => {
       const frontMatterKey = property.frontMatterKey || property.name;
-      // Use template variable syntax for property values
-      frontMatterLines.push(`${frontMatterKey}: {{${key}}}`);
+
+      // Set default value if defined, otherwise leave empty
+      if (property.defaultValue !== undefined) {
+        // Format default value appropriately for YAML
+        const defaultValue = this.formatYamlValue(property.defaultValue);
+        frontMatterLines.push(`${frontMatterKey}: ${defaultValue}`);
+      } else {
+        // Empty value - will be set via processFrontMatter when note is created
+        frontMatterLines.push(`${frontMatterKey}:`);
+      }
     });
 
     frontMatterLines.push("---");
     frontMatterLines.push("");
 
-    // Add empty content section
-    frontMatterLines.push("# {{title}}");
+    // Add empty content section (no template variables in content)
     frontMatterLines.push("");
 
     return frontMatterLines.join("\n");
+  }
+
+  /**
+   * Format a value for YAML front-matter
+   */
+  private formatYamlValue(value: any): string {
+    if (value === null || value === undefined) {
+      return "";
+    }
+    if (typeof value === "string") {
+      return value;
+    }
+    if (typeof value === "boolean") {
+      return String(value);
+    }
+    if (typeof value === "number") {
+      return String(value);
+    }
+    if (Array.isArray(value)) {
+      return `[${value.map((v) => this.formatYamlValue(v)).join(", ")}]`;
+    }
+    return String(value);
   }
 
   /**
@@ -479,8 +464,6 @@ export class TemplateManager {
     updatedTemplates: TFile[];
     removedTemplates: string[];
   }> {
-    const detection = await this.detectTemplateProviders();
-
     // For now, return empty results
     // In a full implementation, this would track template changes
     return {
