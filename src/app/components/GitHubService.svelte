@@ -128,8 +128,22 @@
   // DATA PROCESSING - GitHub-specific approach (async data loading)
   // ============================================================================
 
-  // Raw tasks from GitHub API (before filtering/sorting)
-  let rawTasks = $state<Task[]>([]);
+  // Current tasks from the reactive store
+  let rawTasks = $state<readonly Task[]>([]);
+
+  // Subscribe to GitHub extension tasks with current filters
+  $effect(() => {
+    const tasksStore = githubExtension.getTasks({
+      repository: filters.repository,
+      type: filters.type,
+    });
+
+    const unsubscribe = tasksStore.subscribe((tasks) => {
+      rawTasks = tasks;
+    });
+
+    return unsubscribe;
+  });
 
   /**
    * Process tasks using extension methods
@@ -320,12 +334,8 @@
     }
   });
 
-  // React to filter changes and reload tasks
-  $effect(() => {
-    if (filters.repository && hasLoadedInitialData) {
-      loadTasks();
-    }
-  });
+  // React to filter changes - tasks are now automatically reactive
+  // No need to manually reload tasks since they're reactive to the filters
 
   // ============================================================================
   // EVENT HANDLERS - Simple pass-through, no logic
@@ -389,10 +399,8 @@
     }
 
     if (repository) {
-      await loadTasks();
       await loadLabels();
     } else {
-      rawTasks = [];
       availableLabels = [];
       filters = { ...filters, labels: [] };
     }
@@ -416,9 +424,7 @@
       // Then load repositories (which needs organizations to be loaded)
       await loadRepositories();
 
-      if (filters.repository) {
-        await loadTasks();
-      }
+      // Tasks are now reactive, no need to manually load
     } finally {
       isLoading = false;
     }
@@ -475,32 +481,9 @@
     }
   }
 
-  async function loadTasks(): Promise<void> {
-    if (!filters.repository) {
-      return;
-    }
-
-    try {
-      isLoading = true;
-      error = null;
-      const fetchedTasks = await githubExtension.getTasksForRepository(
-        filters.repository,
-        filters.type
-      );
-      rawTasks = fetchedTasks;
-    } catch (err: any) {
-      console.error("Failed to load tasks:", err);
-      error = err.message;
-      rawTasks = [];
-    } finally {
-      isLoading = false;
-    }
-  }
-
   async function refresh(): Promise<void> {
     try {
-      // Immediately clear current data and show loading state
-      rawTasks = [];
+      // Show loading state
       isLoading = true;
       error = null;
 
@@ -510,9 +493,7 @@
       // Reload all data
       await loadOrganizations();
       await loadRepositories();
-      if (filters.repository) {
-        await loadTasks();
-      }
+      // Tasks are now reactive and will automatically refresh
     } catch (err: any) {
       console.error("Failed to refresh GitHub data:", err);
       error = err.message;
@@ -682,8 +663,7 @@
           }
         }
 
-        // Reload tasks to get the updated list with the imported task
-        await loadTasks();
+        // Tasks are now reactive and will automatically update
       } else {
         console.error(
           `Failed to import ${isPR ? "PR" : "issue"} #${githubData.number}:`,

@@ -642,11 +642,12 @@ export class ObsidianExtension implements Extension {
 
       // Update the area's source to include the file path
       // This prevents issues when the file is deleted
+      // IMPORTANT: Preserve the original extension if it exists
       const updatedArea: Area = {
         ...area,
         source: {
-          extension: "obsidian",
           ...area.source,
+          extension: area.source?.extension || "obsidian", // Preserve original extension
           filePath: filePath,
         },
       };
@@ -661,11 +662,12 @@ export class ObsidianExtension implements Extension {
 
       // Update the project's source to include the file path
       // This prevents issues when the file is deleted
+      // IMPORTANT: Preserve the original extension if it exists
       const updatedProject: Project = {
         ...project,
         source: {
-          extension: "obsidian",
           ...project.source,
+          extension: project.source?.extension || "obsidian", // Preserve original extension
           filePath: filePath,
         },
       };
@@ -680,11 +682,12 @@ export class ObsidianExtension implements Extension {
 
       // Update the task's source to include the file path
       // This prevents duplicate tasks when the file change event fires
+      // IMPORTANT: Preserve the original extension (e.g., "github") if it exists
       const updatedTask: Task = {
         ...task,
         source: {
-          extension: "obsidian",
           ...task.source,
+          extension: task.source?.extension || "obsidian", // Preserve original extension
           filePath: filePath,
         },
       };

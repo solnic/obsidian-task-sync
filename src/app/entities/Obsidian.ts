@@ -86,7 +86,8 @@ export namespace Obsidian {
         ...baseEntity,
         status: finalStatus || baseEntity.status,
         source: {
-          extension: "obsidian",
+          ...taskData.source, // Preserve existing source data (e.g., from GitHub)
+          extension: taskData.source?.extension || "obsidian", // Preserve original extension
           filePath: `${folder}/${sanitizedTitle}.md`,
         },
       };

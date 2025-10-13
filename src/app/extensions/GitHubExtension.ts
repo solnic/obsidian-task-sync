@@ -8,7 +8,13 @@ import { requestUrl, Plugin } from "obsidian";
 import { Extension, extensionRegistry, EntityType } from "../core/extension";
 import { eventBus } from "../core/events";
 import { taskStore } from "../stores/taskStore";
-import { derived, get, type Readable } from "svelte/store";
+import {
+  derived,
+  get,
+  writable,
+  type Readable,
+  type Writable,
+} from "svelte/store";
 import type { Task } from "../core/entities";
 import { SchemaCache } from "../cache/SchemaCache";
 import {
@@ -145,79 +151,89 @@ export class GitHubExtension implements Extension {
   }
 
   /**
-   * Get observable tasks for this extension
-   * Returns tasks that were imported from GitHub
+   * Get observable tasks for this extension with optional filters
+   * Returns both imported tasks and available GitHub issues/PRs for a repository
+   * @param filters - Optional filters for repository and type
    */
-  getTasks(): Readable<readonly Task[]> {
-    return derived(taskStore, ($store) =>
-      $store.tasks.filter((task) => task.source?.extension === "github")
-    );
-  }
-
-  /**
-   * Get tasks for a specific repository (both imported and available)
-   * Returns Task objects for all issues/PRs in the repository, with imported status
-   * @param repository - Repository in format "owner/repo"
-   * @param type - Type of items to fetch ("issues" or "pull-requests")
-   */
-  async getTasksForRepository(
-    repository: string,
-    type: "issues" | "pull-requests" = "issues"
-  ): Promise<Task[]> {
-    if (!repository) {
-      return [];
+  getTasks(filters?: {
+    repository?: string;
+    type?: "issues" | "pull-requests";
+  }): Readable<readonly Task[]> {
+    if (!filters?.repository) {
+      // Return only imported GitHub tasks if no repository filter
+      return derived(taskStore, ($store) =>
+        $store.tasks.filter((task) => task.source?.extension === "github")
+      );
     }
 
-    try {
-      // Fetch GitHub data
-      const githubItems =
-        type === "issues"
-          ? await this.fetchIssues(repository)
-          : await this.fetchPullRequests(repository);
+    // Return reactive store that combines GitHub data with imported tasks
+    const { repository, type = "issues" } = filters;
 
-      // Get imported tasks from store
-      const imported = get(taskStore).tasks.filter(
-        (task) => task.source?.extension === "github"
-      );
+    // Create a writable store that will be updated when task store changes
+    const tasksStore = writable<readonly Task[]>([]);
 
-      // Transform GitHub items to tasks
-      const tasks: Task[] = githubItems.map((item) => {
-        // Check if this item is already imported
-        const existingTask = imported.find(
-          (task) => task.source?.url === item.html_url
+    // Function to update the store
+    const updateTasks = async (storeState: any) => {
+      try {
+        // Fetch GitHub data
+        const githubItems =
+          type === "issues"
+            ? await this.fetchIssues(repository)
+            : await this.fetchPullRequests(repository);
+
+        // Get imported tasks from store
+        const imported = storeState.tasks.filter(
+          (task: Task) => task.source?.extension === "github"
         );
 
-        if (existingTask) {
-          // Return the imported task (which has the real ID, doDate, etc.)
-          return existingTask;
-        } else {
-          // Transform to a temporary task object for display
-          const taskData =
-            type === "issues"
-              ? this.githubOperations.tasks.transformIssueToTask(
-                  item as any,
-                  repository
-                )
-              : this.githubOperations.tasks.transformPullRequestToTask(
-                  item as any,
-                  repository
-                );
+        // Transform GitHub items to tasks
+        const tasks: Task[] = githubItems.map((item) => {
+          // Check if this item is already imported
+          const existingTask = imported.find(
+            (task: Task) => task.source?.url === item.html_url
+          );
 
-          // Create a temporary task with a synthetic ID
-          return {
-            ...taskData,
-            id: `github-temp-${item.id}`,
-            createdAt: new Date(item.created_at),
-            updatedAt: new Date(item.updated_at),
-          } as Task;
-        }
-      });
+          if (existingTask) {
+            // Return the imported task (which has the real ID, doDate, etc.)
+            return existingTask;
+          } else {
+            // Transform to a temporary task object for display
+            const taskData =
+              type === "issues"
+                ? this.githubOperations.tasks.transformIssueToTask(
+                    item as any,
+                    repository
+                  )
+                : this.githubOperations.tasks.transformPullRequestToTask(
+                    item as any,
+                    repository
+                  );
 
-      return tasks;
-    } catch (error) {
-      console.error(`Failed to get tasks for repository ${repository}:`, error);
-      return [];
-    }
+            // Create a temporary task with a synthetic ID
+            return {
+              ...taskData,
+              id: `github-temp-${item.id}`,
+              createdAt: new Date(item.created_at),
+              updatedAt: new Date(item.updated_at),
+            } as Task;
+          }
+        });
+
+        tasksStore.set(tasks);
+      } catch (error) {
+        console.error(
+          `Failed to get tasks for repository ${repository}:`,
+          error
+        );
+        tasksStore.set([]);
+      }
+    };
+
+    // Subscribe to task store changes and update our store
+    taskStore.subscribe(updateTasks);
+
+    // Return the readable store
+    return tasksStore;
   }
 
   /**

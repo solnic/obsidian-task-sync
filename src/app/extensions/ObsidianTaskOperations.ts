@@ -253,6 +253,13 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       return undefined;
     };
 
+    // Check if there's already a task with this file path to preserve its source extension
+    // This is critical for GitHub-imported tasks that should maintain source.extension = "github"
+    const existingTask = taskStore.findByFilePath(file.path);
+    const preservedExtension = existingTask?.source?.extension || "obsidian";
+    const preservedSourceData = existingTask?.source?.data;
+    const preservedSourceUrl = existingTask?.source?.url;
+
     // Create Task data without ID - store will handle ID generation and upsert
     const taskData: Omit<Task, "id"> & { naturalKey: string } = {
       title: frontMatter.Title,
@@ -269,10 +276,12 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
       createdAt: new Date(file.stat.ctime),
       updatedAt: new Date(file.stat.mtime),
-      // Source information for tracking
+      // Source information for tracking - PRESERVE original extension and data
       source: {
-        extension: "obsidian",
+        extension: preservedExtension, // Preserve original extension (e.g., "github")
         filePath: file.path, // Use file path as the source identifier
+        ...(preservedSourceUrl && { url: preservedSourceUrl }), // Preserve GitHub URL if it exists
+        ...(preservedSourceData && { data: preservedSourceData }), // Preserve GitHub data if it exists
       },
       // Natural key for store upsert logic
       naturalKey: file.path,
