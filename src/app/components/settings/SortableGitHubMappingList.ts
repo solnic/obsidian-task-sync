@@ -217,6 +217,7 @@ export class SortableGitHubMappingList {
       text: "Add Mapping",
       cls: "github-mapping-add-btn",
     });
+    addButton.setAttribute("data-testid", "github-add-mapping-btn");
     addButton.onclick = () => this.onAdd();
   }
 
@@ -227,6 +228,7 @@ export class SortableGitHubMappingList {
     const item = this.listElement.createDiv("github-mapping-item");
     item.draggable = true;
     item.dataset.index = index.toString();
+    item.setAttribute("data-testid", `github-mapping-item-${index}`);
 
     // Drag handle
     const handle = item.createSpan("mapping-drag-handle");
@@ -243,11 +245,14 @@ export class SortableGitHubMappingList {
     orgInput.type = "text";
     orgInput.placeholder = "Organization name";
     orgInput.value = mapping.organization || "";
+    orgInput.setAttribute("data-testid", `github-mapping-org-input-${index}`);
     orgInput.oninput = () => {
       const updatedMapping = {
-        ...mapping,
+        ...this.mappings[index],
         organization: orgInput.value.trim() || undefined,
       };
+      // Update the internal mappings array to keep it in sync
+      this.mappings[index] = updatedMapping;
       this.onUpdate(index, updatedMapping);
     };
 
@@ -259,11 +264,14 @@ export class SortableGitHubMappingList {
     repoInput.type = "text";
     repoInput.placeholder = "owner/repository";
     repoInput.value = mapping.repository || "";
+    repoInput.setAttribute("data-testid", `github-mapping-repo-input-${index}`);
     repoInput.oninput = () => {
       const updatedMapping = {
-        ...mapping,
+        ...this.mappings[index],
         repository: repoInput.value.trim() || undefined,
       };
+      // Update the internal mappings array to keep it in sync
+      this.mappings[index] = updatedMapping;
       this.onUpdate(index, updatedMapping);
     };
 
@@ -282,11 +290,14 @@ export class SortableGitHubMappingList {
     areaInput.type = "text";
     areaInput.placeholder = "Area name";
     areaInput.value = mapping.targetArea || "";
+    areaInput.setAttribute("data-testid", `github-mapping-area-input-${index}`);
     areaInput.oninput = () => {
       const updatedMapping = {
-        ...mapping,
+        ...this.mappings[index],
         targetArea: areaInput.value.trim() || undefined,
       };
+      // Update the internal mappings array to keep it in sync
+      this.mappings[index] = updatedMapping;
       this.onUpdate(index, updatedMapping);
     };
 
@@ -298,11 +309,14 @@ export class SortableGitHubMappingList {
     projectInput.type = "text";
     projectInput.placeholder = "Project name";
     projectInput.value = mapping.targetProject || "";
+    projectInput.setAttribute("data-testid", `github-mapping-project-input-${index}`);
     projectInput.oninput = () => {
       const updatedMapping = {
-        ...mapping,
+        ...this.mappings[index],
         targetProject: projectInput.value.trim() || undefined,
       };
+      // Update the internal mappings array to keep it in sync
+      this.mappings[index] = updatedMapping;
       this.onUpdate(index, updatedMapping);
     };
 
@@ -312,6 +326,7 @@ export class SortableGitHubMappingList {
       text: "×",
       cls: "mapping-delete-btn",
     });
+    deleteBtn.setAttribute("data-testid", `github-mapping-delete-btn-${index}`);
     deleteBtn.onclick = (e) => {
       e.stopPropagation();
       this.onDelete(index);
