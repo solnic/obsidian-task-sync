@@ -295,14 +295,44 @@ export class GitHubExtension implements Extension {
       area?: string | null;
       source?: string | null;
       showCompleted?: boolean;
+      // GitHub-specific filters
+      state?: "open" | "closed" | "all";
+      assignedToMe?: boolean;
+      labels?: string[];
+      currentUser?: { login: string; id: number; avatar_url: string } | null;
     }
   ): readonly Task[] {
     return tasks.filter((task) => {
+      // Standard filters
       if (criteria.project && task.project !== criteria.project) return false;
       if (criteria.area && !task.areas.includes(criteria.area)) return false;
       if (criteria.source && task.source?.extension !== criteria.source)
         return false;
       if (!criteria.showCompleted && task.done) return false;
+
+      // GitHub-specific filters
+      const githubData = task.source?.data;
+
+      // Filter by state
+      if (criteria.state && criteria.state !== "all" && githubData) {
+        if (githubData.state !== criteria.state) return false;
+      }
+
+      // Filter by assignee
+      if (criteria.assignedToMe && criteria.currentUser && githubData) {
+        if (githubData.assignee?.login !== criteria.currentUser.login)
+          return false;
+      }
+
+      // Filter by labels
+      if (criteria.labels && criteria.labels.length > 0 && githubData) {
+        if (!githubData.labels) return false;
+        const hasMatchingLabel = criteria.labels.some((selectedLabel: string) =>
+          githubData.labels.some((label: any) => label.name === selectedLabel)
+        );
+        if (!hasMatchingLabel) return false;
+      }
+
       return true;
     });
   }
