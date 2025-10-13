@@ -59,13 +59,12 @@ export async function createTask(
 
 export async function getTaskByTitle(page: ExtendedPage, title: string) {
   return await page.evaluate(
-    async ({ title }) => {
+    ({ title }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const task = await plugin.stores.taskStore.findByTitle(title);
-
-      return task;
+      // Use the public query API
+      return plugin.query.findTaskByTitle(title);
     },
     { title }
   );
@@ -73,13 +72,12 @@ export async function getTaskByTitle(page: ExtendedPage, title: string) {
 
 export async function getProjectByName(page: ExtendedPage, name: string) {
   return await page.evaluate(
-    async ({ name }) => {
+    ({ name }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const project = await plugin.stores.projectStore.getProjectByName(name);
-
-      return project;
+      // Use the public query API
+      return plugin.query.findProjectByName(name);
     },
     { name }
   );
@@ -87,13 +85,12 @@ export async function getProjectByName(page: ExtendedPage, name: string) {
 
 export async function getAreaByName(page: ExtendedPage, name: string) {
   return await page.evaluate(
-    async ({ name }) => {
+    ({ name }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const area = await plugin.stores.areaStore.getAreaByName(name);
-
-      return area;
+      // Use the public query API
+      return plugin.query.findAreaByName(name);
     },
     { name }
   );
@@ -109,14 +106,20 @@ export async function waitForTaskToBeRemoved(
   timeout: number = 5000
 ) {
   await page.waitForFunction(
-    async ({ title }) => {
+    ({ title }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const task = await plugin.stores.taskStore.findByTitle(title);
+      // Access the store state and find task by title
+      let taskFound = false;
+      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
+        const task = state.tasks.find((t: any) => t.title === title);
+        taskFound = task !== undefined;
+      });
+      unsubscribe();
 
-      // Return true when task is undefined (removed)
-      return task === undefined;
+      // Return true when task is NOT found (removed)
+      return !taskFound;
     },
     { title },
     { timeout }

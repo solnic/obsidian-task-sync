@@ -264,9 +264,6 @@ test.describe("GitHub Integration", () => {
   test("should clear cache and reload data when refresh button is clicked", async ({
     page,
   }) => {
-    // This test reproduces the bug where refresh doesn't immediately clear the list
-    // and show "Refreshing..." indicator before loading fresh data
-
     await openView(page, "task-sync-main");
     await enableIntegration(page, "github");
 
@@ -350,5 +347,161 @@ test.describe("GitHub Integration", () => {
       .locator('[data-testid="github-issue-item"]')
       .count();
     expect(finalIssueCount).toBeGreaterThan(0);
+  });
+
+  test("should reactively update imported issue when task note is modified", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Wait for issues to load
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Get the first issue data from the fixture
+    const issueData = await page.evaluate(() => {
+      return {
+        id: 111222,
+        number: 111,
+        title: "First test issue",
+        html_url: "https://github.com/solnic/obsidian-task-sync/issues/111",
+      };
+    });
+
+    // Create a task with proper source property matching the GitHub issue
+    await page.evaluate(
+      async ({ issueData }) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+        const taskData = {
+          title: issueData.title,
+          description: "This is the first test issue for multiple imports.",
+          category: "Bug",
+          status: "Backlog",
+          priority: "Medium",
+          project: "",
+          doDate: undefined,
+          source: {
+            extension: "github",
+            url: issueData.html_url,
+            filePath: `Tasks/${issueData.title}.md`,
+            data: {
+              id: issueData.id,
+              number: issueData.number,
+              title: issueData.title,
+              html_url: issueData.html_url,
+            },
+          },
+        };
+
+        const task = await plugin.operations.taskOperations.create(taskData);
+        return task;
+      },
+      { issueData }
+    );
+
+    // Wait for the task file to be created
+    await fileExists(page, `Tasks/${issueData.title}.md`);
+
+    // Wait for the task to be added to the task store and verify it has the correct source
+    await page.waitForFunction(
+      ({ url }) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const task = plugin.query.findTaskBySourceUrl(url);
+        if (task) {
+          console.log("✅ Task found in store:", {
+            id: task.id,
+            title: task.title,
+            sourceExtension: task.source?.extension,
+            sourceUrl: task.source?.url,
+          });
+        }
+        return task !== undefined;
+      },
+      { url: issueData.html_url },
+      { timeout: 5000 }
+    );
+
+    // Wait for the issue to show as imported in the GitHub view
+    // The reactivity should update the view automatically
+    await page.waitForTimeout(2000);
+
+    // Verify the issue is now marked as imported in the GitHub view
+    const issueLocator = page
+      .locator('[data-testid="github-issue-item"]')
+      .filter({
+        hasText: `#${issueData.number}`,
+      });
+
+    await expect(issueLocator).toHaveAttribute("data-imported", "true");
+
+    // Now update the task note with new properties using processFrontMatter
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath("Tasks/First test issue.md");
+      if (file) {
+        await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
+          frontmatter.Category = "Feature";
+          frontmatter.Status = "In Progress";
+          frontmatter.Project = "obsidian-task-sync";
+          frontmatter["Do Date"] = "2024-02-15";
+        });
+      }
+    });
+
+    // Wait for the file to be updated and changes to propagate
+    await page.waitForTimeout(1000);
+
+    // Verify the changes are reflected in the task store
+    const updatedTask = await page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const task = plugin.query.findTaskByTitle("First test issue");
+      return task;
+    });
+
+    expect(updatedTask.category).toBe("Feature");
+    expect(updatedTask.status).toBe("In Progress");
+    expect(updatedTask.project).toBe("obsidian-task-sync");
+    expect(updatedTask.doDate).toBeDefined();
+
+    // Verify the issue still shows as imported (reactivity maintained)
+    await expect(issueLocator).toHaveAttribute("data-imported", "true");
+
+    // Verify the updated doDate is visible in the UI as a scheduled badge
+    // Reactivity should automatically update the UI when the task changes
+    // The scheduled badge should appear within the issue item
+    const scheduledBadge = issueLocator.locator(".scheduled-badge");
+    await expect(scheduledBadge).toBeVisible({ timeout: 10000 });
+
+    // Verify the badge shows the correct date
+    await expect(scheduledBadge).toContainText("Scheduled for");
   });
 });

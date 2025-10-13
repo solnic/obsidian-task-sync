@@ -71,10 +71,7 @@ test.describe("Task Note Type Verification", () => {
       };
     });
 
-    console.log("Command check:", JSON.stringify(commandCheck, null, 2));
-
     expect(commandCheck.found).toBe(true);
-    // Obsidian automatically prefixes plugin commands with "Task Sync: "
     expect(commandCheck.commandName).toBe("Task Sync: Create Task");
   });
 });

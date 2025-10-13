@@ -3,12 +3,12 @@
  * Initializes the new entities system with Host abstraction
  */
 
-import { ObsidianExtension } from "./extensions/ObsidianExtension";
-import { GitHubExtension } from "./extensions/GitHubExtension";
-import { CalendarExtension } from "./extensions/CalendarExtension";
-import { DailyPlanningExtension } from "./extensions/DailyPlanningExtension";
-import { ContextExtension } from "./extensions/ContextExtension";
-import { AppleCalendarService } from "./services/AppleCalendarService";
+import { ObsidianExtension } from "./extensions/obsidian/ObsidianExtension";
+import { GitHubExtension } from "./extensions/github/GitHubExtension";
+import { CalendarExtension } from "./extensions/calendar/CalendarExtension";
+import { DailyPlanningExtension } from "./extensions/daily-planning/DailyPlanningExtension";
+import { ContextExtension } from "./extensions/context/ContextExtension";
+import { AppleCalendarService } from "./extensions/calendar/services/AppleCalendarService";
 import { Host } from "./core/host";
 import type { TaskSyncSettings } from "./types/settings";
 import { taskStore } from "./stores/taskStore";
@@ -231,7 +231,7 @@ export class TaskSyncApp {
             doDate: task.doDate ? new Date(task.doDate) : undefined,
             dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
           };
-          taskStore.addTask(taskWithDates);
+          taskStore.dispatch({ type: "ADD_TASK", task: taskWithDates });
         }
       }
 
@@ -244,7 +244,10 @@ export class TaskSyncApp {
             createdAt: new Date(project.createdAt),
             updatedAt: new Date(project.updatedAt),
           };
-          projectStore.addProject(projectWithDates);
+          projectStore.dispatch({
+            type: "ADD_PROJECT",
+            project: projectWithDates,
+          });
         }
       }
 
@@ -257,7 +260,7 @@ export class TaskSyncApp {
             createdAt: new Date(area.createdAt),
             updatedAt: new Date(area.updatedAt),
           };
-          areaStore.addArea(areaWithDates);
+          areaStore.dispatch({ type: "ADD_AREA", area: areaWithDates });
         }
       }
 

@@ -1,35 +1,16 @@
 /**
- * Pure area store with event-driven architecture
- * Maintains reactive state and triggers events - no extension knowledge
+ * Area store with action-based architecture
+ * All mutations go through action dispatcher for centralized state management
  */
 
-import { writable, derived, get, type Readable } from "svelte/store";
+import { writable, get, type Readable } from "svelte/store";
 import { Area } from "../core/entities";
-
-interface AreaStoreState {
-  areas: readonly Area[];
-  loading: boolean;
-  error: string | null;
-  lastSync: Date | null;
-}
+import { areaReducer, type AreaStoreState } from "./reducers/areaReducer";
+import type { AreaAction } from "./actions";
 
 export interface AreaStore extends Readable<AreaStoreState> {
-  // Derived stores for common queries
-  areasByExtension: Readable<Map<string, Area[]>>;
-  importedAreas: Readable<Area[]>;
-
-  // Actions
-  setLoading: (loading: boolean) => void;
-  setError: (error: string | null) => void;
-
-  // Direct store manipulation methods (for core operations)
-  addArea: (area: Area) => void;
-  updateArea: (area: Area) => void;
-  removeArea: (areaId: string) => void;
-
-  // Query methods
-  findByFilePath: (filePath: string) => Area | undefined;
-  getAreaByName: (name: string) => Area | undefined;
+  // Action dispatcher
+  dispatch: (action: AreaAction) => void;
 }
 
 export function createAreaStore(): AreaStore {
@@ -42,79 +23,14 @@ export function createAreaStore(): AreaStore {
 
   const { subscribe, update } = writable(initialState);
 
-  // Derived stores for common queries
-  const areasByExtension = derived({ subscribe }, ($store) => {
-    const grouped = new Map<string, Area[]>();
-    for (const area of $store.areas) {
-      const extension = area.source?.extension || "unknown";
-      if (!grouped.has(extension)) {
-        grouped.set(extension, []);
-      }
-      grouped.get(extension)!.push(area);
-    }
-    return grouped;
-  });
-
-  const importedAreas = derived({ subscribe }, ($store) =>
-    $store.areas.filter((area) => area.source)
-  );
-
-  // Actions
-  const setLoading = (loading: boolean) => {
-    update((state) => ({ ...state, loading }));
-  };
-
-  const setError = (error: string | null) => {
-    update((state) => ({ ...state, error }));
-  };
-
-  // Direct store manipulation methods (for core operations)
-  const addArea = (area: Area): void => {
-    update((state) => ({
-      ...state,
-      areas: [...state.areas, area],
-      lastSync: new Date(),
-    }));
-  };
-
-  const updateArea = (area: Area): void => {
-    update((state) => ({
-      ...state,
-      areas: state.areas.map((a) => (a.id === area.id ? area : a)),
-      lastSync: new Date(),
-    }));
-  };
-
-  const removeArea = (areaId: string): void => {
-    update((state) => ({
-      ...state,
-      areas: state.areas.filter((a) => a.id !== areaId),
-      lastSync: new Date(),
-    }));
-  };
-
-  // Query methods - synchronous access to current state
-  const findByFilePath = (filePath: string): Area | undefined => {
-    return get({ subscribe }).areas.find(
-      (a) => a.source?.filePath === filePath
-    );
-  };
-
-  const getAreaByName = (name: string): Area | undefined => {
-    return get({ subscribe }).areas.find((a) => a.name === name);
+  // Action dispatcher - all mutations go through reducer
+  const dispatch = (action: AreaAction) => {
+    update((state) => areaReducer(state, action));
   };
 
   return {
     subscribe,
-    areasByExtension,
-    importedAreas,
-    setLoading,
-    setError,
-    addArea,
-    updateArea,
-    removeArea,
-    findByFilePath,
-    getAreaByName,
+    dispatch,
   };
 }
 

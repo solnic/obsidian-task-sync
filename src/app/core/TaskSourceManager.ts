@@ -1,0 +1,181 @@
+/**
+ * TaskSourceManager - Coordinates data sources and store updates
+ * 
+ * Responsibilities:
+ * - Register and manage task data sources
+ * - Load data from sources and dispatch to store
+ * - Coordinate refresh operations
+ * - Set up watchers for external changes
+ * 
+ * This is the bridge between DataSources (pure data providers) and
+ * the Store (state management). Sources don't know about stores,
+ * and stores don't know about sources - the manager coordinates.
+ */
+
+import type { DataSource } from '../sources/DataSource';
+import type { Task } from './entities';
+import { taskStore } from '../stores/taskStore';
+
+/**
+ * TaskSourceManager class
+ * 
+ * Manages task data sources and coordinates loading/refreshing
+ */
+export class TaskSourceManager {
+  /** Registered data sources by ID */
+  private sources = new Map<string, DataSource<Task>>();
+  
+  /** Active watchers by source ID */
+  private watchers = new Map<string, () => void>();
+
+  /**
+   * Register a task data source
+   * 
+   * @param source - The data source to register
+   */
+  registerSource(source: DataSource<Task>): void {
+    this.sources.set(source.id, source);
+
+    // Set up watching if supported
+    if (source.watch) {
+      const unwatch = source.watch((tasks) => {
+        // When source detects changes, dispatch to store
+        taskStore.dispatch({
+          type: 'LOAD_SOURCE_SUCCESS',
+          sourceId: source.id,
+          tasks,
+        });
+      });
+      this.watchers.set(source.id, unwatch);
+    }
+  }
+
+  /**
+   * Unregister a task data source
+   * 
+   * @param sourceId - ID of the source to unregister
+   */
+  unregisterSource(sourceId: string): void {
+    // Clean up watcher
+    const unwatch = this.watchers.get(sourceId);
+    if (unwatch) {
+      unwatch();
+      this.watchers.delete(sourceId);
+    }
+
+    this.sources.delete(sourceId);
+  }
+
+  /**
+   * Load initial data from a source
+   * 
+   * @param sourceId - ID of the source to load
+   */
+  async loadSource(sourceId: string): Promise<void> {
+    const source = this.sources.get(sourceId);
+    if (!source) {
+      throw new Error(`Source not found: ${sourceId}`);
+    }
+
+    try {
+      taskStore.dispatch({ type: 'LOAD_SOURCE_START', sourceId });
+      const tasks = await source.loadInitialData();
+      taskStore.dispatch({
+        type: 'LOAD_SOURCE_SUCCESS',
+        sourceId,
+        tasks,
+      });
+    } catch (error: any) {
+      taskStore.dispatch({
+        type: 'LOAD_SOURCE_ERROR',
+        sourceId,
+        error: error.message || 'Unknown error loading source',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Refresh data from a source
+   * 
+   * @param sourceId - ID of the source to refresh
+   */
+  async refreshSource(sourceId: string): Promise<void> {
+    const source = this.sources.get(sourceId);
+    if (!source) {
+      throw new Error(`Source not found: ${sourceId}`);
+    }
+
+    try {
+      taskStore.dispatch({ type: 'LOAD_SOURCE_START', sourceId });
+      const tasks = await source.refresh();
+      taskStore.dispatch({
+        type: 'LOAD_SOURCE_SUCCESS',
+        sourceId,
+        tasks,
+      });
+    } catch (error: any) {
+      taskStore.dispatch({
+        type: 'LOAD_SOURCE_ERROR',
+        sourceId,
+        error: error.message || 'Unknown error refreshing source',
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Refresh all registered sources
+   */
+  async refreshAll(): Promise<void> {
+    const refreshPromises = Array.from(this.sources.keys()).map(id =>
+      this.refreshSource(id).catch(error => {
+        console.error(`Failed to refresh source ${id}:`, error);
+        // Don't throw - allow other sources to continue refreshing
+      })
+    );
+
+    await Promise.all(refreshPromises);
+  }
+
+  /**
+   * Get a registered source by ID
+   * 
+   * @param sourceId - ID of the source to get
+   * @returns The data source, or undefined if not found
+   */
+  getSource(sourceId: string): DataSource<Task> | undefined {
+    return this.sources.get(sourceId);
+  }
+
+  /**
+   * Get all registered source IDs
+   * 
+   * @returns Array of source IDs
+   */
+  getSourceIds(): string[] {
+    return Array.from(this.sources.keys());
+  }
+
+  /**
+   * Check if a source is registered
+   * 
+   * @param sourceId - ID of the source to check
+   * @returns True if the source is registered
+   */
+  hasSource(sourceId: string): boolean {
+    return this.sources.has(sourceId);
+  }
+}
+
+/**
+ * Global TaskSourceManager instance
+ * 
+ * Usage:
+ * - Register: taskSourceManager.registerSource(source)
+ * - Load: await taskSourceManager.loadSource('obsidian')
+ * - Refresh: await taskSourceManager.refreshSource('obsidian')
+ * - Refresh all: await taskSourceManager.refreshAll()
+ */
+export const taskSourceManager = new TaskSourceManager();
+

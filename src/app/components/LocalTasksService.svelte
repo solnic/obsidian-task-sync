@@ -2,6 +2,9 @@
   /**
    * LocalTasksService component for the new architecture
    * Provides task listing, filtering, sorting, and search functionality
+   *
+   * Updated to use Svelte 5 $derived runes with taskStore and TaskQueryService
+   * instead of derived stores and extension methods.
    */
 
   import SearchInput from "./SearchInput.svelte";
@@ -11,11 +14,13 @@
   import { getFilterOptions } from "../utils/contextFiltering";
   import type { TaskSyncSettings } from "../types/settings";
   import { createLocalTask, type LocalTask } from "../types/LocalTask";
-  import type { Task, Schedule } from "../core/entities";
+  import type { Task } from "../core/entities";
   import type { Extension } from "../core/extension";
   import type { Host } from "../core/host";
-  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
+  import type { DailyPlanningExtension } from "../extensions/daily-planning/DailyPlanningExtension";
   import { isPlanningActive } from "../stores/contextStore";
+  import { taskStore } from "../stores/taskStore";
+  import { TaskQueryService } from "../services/TaskQueryService";
 
   interface SortField {
     key: string;
@@ -72,9 +77,30 @@
     testId,
   }: Props = $props();
 
-  // State
-  let tasks = $state<Task[]>([]);
+  // ============================================================================
+  // REACTIVE STATE - UI state only (data comes from store)
+  // ============================================================================
+
+  // Filters - currently applied filters (UI state)
+  let filters = $state({
+    project: localTasksSettings?.selectedProject ?? null,
+    area: localTasksSettings?.selectedArea ?? null,
+    source: localTasksSettings?.selectedSource ?? null,
+    showCompleted: localTasksSettings?.showCompleted ?? false,
+  });
+
+  // Sort - currently applied sorting logic (UI state)
+  let sort = $state<SortField[]>(
+    localTasksSettings?.sortFields ?? [
+      { key: "updatedAt", label: "Updated", direction: "desc" },
+      { key: "title", label: "Title", direction: "asc" },
+    ]
+  );
+
+  // Search query (part of filtering)
   let searchQuery = $state("");
+
+  // UI state
   let error = $state<string | null>(null);
   let isLoading = $state(false);
   let hoveredTask = $state<string | null>(null);
@@ -83,19 +109,7 @@
   let selectedTasksForPlanning = $state<Set<string>>(new Set());
   let stagedTasks = $state<Task[]>([]);
 
-  // Additional filter state - initialized from provided settings
-  let selectedProject = $state<string | null>(
-    localTasksSettings?.selectedProject ?? null
-  );
-  let selectedArea = $state<string | null>(
-    localTasksSettings?.selectedArea ?? null
-  );
-  let selectedSource = $state<string | null>(
-    localTasksSettings?.selectedSource ?? null
-  );
-  let showCompleted = $state(localTasksSettings?.showCompleted ?? false);
-
-  // Recently used filters - initialized from provided settings
+  // Recently used filters - for UI convenience
   let recentlyUsedProjects = $state<string[]>(
     localTasksSettings?.recentlyUsedProjects ?? []
   );
@@ -106,13 +120,71 @@
     localTasksSettings?.recentlyUsedSources ?? []
   );
 
-  // Sorting state - initialized from provided settings
-  let sortFields = $state<SortField[]>(
-    localTasksSettings?.sortFields ?? [
-      { key: "updatedAt", label: "Updated", direction: "desc" },
-      { key: "title", label: "Title", direction: "asc" },
-    ]
+  // ============================================================================
+  // DATA PROCESSING - Using Svelte 5 $derived with taskStore and TaskQueryService
+  // ============================================================================
+
+  /**
+   * Get store state reactively
+   * Subscribe to taskStore to get all tasks
+   */
+  let storeState = $derived($taskStore);
+
+  /**
+   * Get all tasks from the store that have Obsidian notes
+   * This includes tasks imported from other sources (like GitHub) that have been saved as notes
+   * Filter by source.filePath to get all tasks with Obsidian notes
+   */
+  let allTasks = $derived(
+    storeState.tasks.filter((task) => task.source?.filePath !== undefined)
   );
+
+  /**
+   * Process tasks using TaskQueryService
+   * Apply filters, search, and sort using pure functions
+   */
+  let tasks = $derived.by((): LocalTask[] => {
+    let processed: readonly Task[] = allTasks;
+
+    // Apply filters using TaskQueryService
+    processed = TaskQueryService.filter(processed, {
+      project: filters.project || undefined,
+      area: filters.area || undefined,
+      source: filters.source || undefined,
+      showCompleted: filters.showCompleted,
+    });
+
+    // Apply search using TaskQueryService
+    if (searchQuery) {
+      processed = TaskQueryService.search(processed, searchQuery);
+    }
+
+    // Apply sort using TaskQueryService
+    if (sort.length > 0) {
+      // Convert sort fields to TaskQueryService format
+      const sortFields = sort.map((s) => ({
+        field: s.key as keyof Task,
+        direction: s.direction,
+      }));
+      processed = TaskQueryService.sort(processed, sortFields);
+    }
+
+    // Convert to LocalTask objects for rendering
+    return processed.map((task: Task) => createLocalTask(task));
+  });
+
+  // ============================================================================
+  // FILTER OPTIONS - Derived from all tasks (not filtered)
+  // ============================================================================
+
+  /**
+   * Get filter options from all tasks (before filtering)
+   * This provides the available options for project/area/source dropdowns
+   */
+  let filterOptions = $derived.by(() => getFilterOptions(allTasks));
+  let projectOptions = $derived(filterOptions.projects);
+  let areaOptions = $derived(filterOptions.areas);
+  let sourceOptions = $derived(filterOptions.sources);
 
   // Available sort fields
   const availableSortFields = [
@@ -126,70 +198,29 @@
     { key: "areas", label: "Areas" },
   ];
 
-  // Computed filter options
-  let filterOptions = $derived.by(() => {
-    return getFilterOptions(tasks);
-  });
-
-  // Filter options are already clean strings from entities
-  let projectOptions = $derived(filterOptions.projects);
-  let areaOptions = $derived(filterOptions.areas);
-  let sourceOptions = $derived(filterOptions.sources);
-
-  // Computed filtered tasks - delegate to extension
-  let filteredTasks = $derived.by(() => {
-    // Start with all tasks
-    let filtered: readonly Task[] = tasks;
-
-    // Apply filtering using extension
-    filtered = extension.filterTasks(filtered, {
-      project: selectedProject,
-      area: selectedArea,
-      source: selectedSource,
-      showCompleted: showCompleted,
-    });
-
-    // Apply search using extension
-    if (searchQuery) {
-      filtered = extension.searchTasks(searchQuery, filtered);
-    }
-
-    // Apply sorting using extension
-    if (sortFields.length > 0) {
-      filtered = extension.sortTasks(filtered, sortFields);
-    }
-
-    // Convert to LocalTask objects for rendering
-    return filtered.map((task: Task) => createLocalTask(task));
-  });
-
-  // Reset hover state when filtered tasks change
-  $effect(() => {
-    // This effect runs when filteredTasks changes
-    filteredTasks;
-    hoveredTask = null;
-  });
-
-  // Subscribe to extension's tasks observable
-  $effect(() => {
-    const tasksStore = extension.getTasks();
-    const unsubscribe = tasksStore.subscribe((extensionTasks) => {
-      tasks = [...extensionTasks]; // Create mutable copy
-    });
-
-    return unsubscribe;
-  });
-
-  // Note: Settings are now provided via props, no need to load/save via host
+  // ============================================================================
+  // EVENT HANDLERS - Simple pass-through, no logic
+  // ============================================================================
 
   async function refresh(): Promise<void> {
     await extension.refresh();
   }
 
-  // Task actions
   async function openTask(task: any): Promise<void> {
     host.openFile(task);
   }
+
+  function handleSortChange(newSortFields: SortField[]): void {
+    sort = newSortFields;
+  }
+
+  function handleFilterChange(key: keyof typeof filters, value: any): void {
+    filters = { ...filters, [key]: value };
+  }
+
+  // ============================================================================
+  // RECENTLY USED MANAGEMENT
+  // ============================================================================
 
   function addRecentlyUsedProject(project: string): void {
     if (!project || recentlyUsedProjects.includes(project)) return;
@@ -227,11 +258,10 @@
     recentlyUsedSources = recentlyUsedSources.filter((s) => s !== source);
   }
 
-  function handleSortChange(newSortFields: SortField[]): void {
-    sortFields = newSortFields;
-  }
+  // ============================================================================
+  // PLANNING MODE FUNCTIONS
+  // ============================================================================
 
-  // Planning mode functions
   function toggleTaskSelection(task: Task): void {
     if (!$isPlanningActive) return;
 
@@ -245,33 +275,6 @@
     }
 
     selectedTasksForPlanning = newSelection;
-  }
-
-  function addSelectedTasksToSchedule(): void {
-    if (!$isPlanningActive || !dailyPlanningExtension) return;
-
-    const tasksToAdd = filteredTasks
-      .filter((localTask) => selectedTasksForPlanning.has(localTask.task.id))
-      .map((localTask) => localTask.task);
-
-    // Add tasks to staging area
-    stagedTasks = [...stagedTasks, ...tasksToAdd];
-
-    // Move tasks to today's schedule via the daily planning extension
-    tasksToAdd.forEach(async (task) => {
-      try {
-        await dailyPlanningExtension.moveTaskToToday(task);
-      } catch (error) {
-        console.error("Failed to add task to schedule:", error);
-      }
-    });
-
-    // Clear selection
-    selectedTasksForPlanning = new Set();
-  }
-
-  function clearSelection(): void {
-    selectedTasksForPlanning = new Set();
   }
 </script>
 
@@ -294,13 +297,13 @@
     <div class="primary-filters">
       <FilterButton
         label="Project"
-        currentValue={selectedProject || "All projects"}
+        currentValue={filters.project || "All projects"}
         allOptions={projectOptions}
         defaultOption="All projects"
         onselect={(value: string) => {
           const newProject =
             value === "All projects" || value === "" ? null : value;
-          selectedProject = newProject;
+          handleFilterChange("project", newProject);
           if (newProject) {
             addRecentlyUsedProject(newProject);
           }
@@ -309,19 +312,19 @@
         testId="project-filter"
         autoSuggest={true}
         allowClear={true}
-        isActive={selectedProject !== null}
+        isActive={filters.project !== null}
         recentlyUsedItems={recentlyUsedProjects}
         onRemoveRecentItem={removeRecentlyUsedProject}
       />
 
       <FilterButton
         label="Area"
-        currentValue={selectedArea || "All areas"}
+        currentValue={filters.area || "All areas"}
         allOptions={areaOptions}
         defaultOption="All areas"
         onselect={(value: string) => {
           const newArea = value === "All areas" || value === "" ? null : value;
-          selectedArea = newArea;
+          handleFilterChange("area", newArea);
           if (newArea) {
             addRecentlyUsedArea(newArea);
           }
@@ -330,20 +333,20 @@
         testId="area-filter"
         autoSuggest={true}
         allowClear={true}
-        isActive={selectedArea !== null}
+        isActive={filters.area !== null}
         recentlyUsedItems={recentlyUsedAreas}
         onRemoveRecentItem={removeRecentlyUsedArea}
       />
 
       <FilterButton
         label="Source"
-        currentValue={selectedSource || "All sources"}
+        currentValue={filters.source || "All sources"}
         allOptions={sourceOptions}
         defaultOption="All sources"
         onselect={(value: string) => {
           const newSource =
             value === "All sources" || value === "" ? null : value;
-          selectedSource = newSource;
+          handleFilterChange("source", newSource);
           if (newSource) {
             addRecentlyUsedSource(newSource);
           }
@@ -352,7 +355,7 @@
         testId="source-filter"
         autoSuggest={true}
         allowClear={true}
-        isActive={selectedSource !== null}
+        isActive={filters.source !== null}
         recentlyUsedItems={recentlyUsedSources}
         onRemoveRecentItem={removeRecentlyUsedSource}
       />
@@ -361,9 +364,9 @@
     <!-- 3. Secondary filter buttons group - first row: Show completed -->
     <div class="secondary-filters-row-1">
       <button
-        class="task-sync-filter-toggle {showCompleted ? 'active' : ''}"
+        class="task-sync-filter-toggle {filters.showCompleted ? 'active' : ''}"
         onclick={() => {
-          showCompleted = !showCompleted;
+          handleFilterChange("showCompleted", !filters.showCompleted);
         }}
         data-testid="show-completed-toggle"
         title="Toggle showing completed tasks"
@@ -375,7 +378,7 @@
     <!-- 5. Sort controls group -->
     <SortDropdown
       label="Sort by"
-      {sortFields}
+      sortFields={sort}
       availableFields={availableSortFields}
       onSortChange={handleSortChange}
       testId="local-tasks-sort"
@@ -392,12 +395,12 @@
       <div class="task-sync-loading-indicator">Loading local tasks...</div>
     {:else}
       <div class="task-sync-task-list">
-        {#if filteredTasks.length === 0}
+        {#if tasks.length === 0}
           <div class="task-sync-empty-message">
             {searchQuery ? "No tasks match your search." : "No tasks found."}
           </div>
         {:else}
-          {#each filteredTasks as localTask (localTask.task.id)}
+          {#each tasks as localTask (localTask.task.id)}
             <LocalTaskItem
               task={localTask.task}
               {localTask}

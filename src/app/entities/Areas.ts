@@ -67,7 +67,8 @@ export class Areas extends Entities {
       // buildEntity now handles schema validation and date coercion
       const area = this.buildEntity(areaData) as Area;
 
-      store.addArea(area);
+      // Dispatch action instead of calling store method directly
+      store.dispatch({ type: "ADD_AREA", area });
 
       eventBus.trigger({ type: "areas.created", area });
 
@@ -77,7 +78,8 @@ export class Areas extends Entities {
     async update(area: Area): Promise<Area> {
       const updatedArea: Area = { ...area, updatedAt: this.timestamp() };
 
-      store.updateArea(updatedArea);
+      // Dispatch action instead of calling store method directly
+      store.dispatch({ type: "UPDATE_AREA", area: updatedArea });
 
       eventBus.trigger({ type: "areas.updated", area: updatedArea });
 
@@ -88,7 +90,8 @@ export class Areas extends Entities {
       // Get the area before removing it so we can include it in the event
       const area = get(store).areas.find((a) => a.id === id);
 
-      store.removeArea(id);
+      // Dispatch action instead of calling store method directly
+      store.dispatch({ type: "REMOVE_AREA", areaId: id });
 
       // Include the area in the event so listeners can access its properties (like filePath)
       eventBus.trigger({ type: "areas.deleted", areaId: id, area });

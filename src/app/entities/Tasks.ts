@@ -84,11 +84,13 @@ export class Tasks extends Entities {
     async create(
       taskData: Omit<Task, "id" | "createdAt" | "updatedAt">
     ): Promise<Task> {
-      // buildEntity now handles schema validation and date coercion
+      // buildEntity handles schema validation and date coercion
       const task = this.buildEntity(taskData) as Task;
 
-      store.addTask(task);
+      // Dispatch action instead of calling store.addTask()
+      store.dispatch({ type: "ADD_TASK", task });
 
+      // Still trigger domain event for cross-cutting concerns
       eventBus.trigger({ type: "tasks.created", task });
 
       return task;
@@ -97,8 +99,10 @@ export class Tasks extends Entities {
     async update(task: Task): Promise<Task> {
       const updatedTask: Task = { ...task, updatedAt: this.timestamp() };
 
-      store.updateTask(updatedTask);
+      // Dispatch action instead of calling store.updateTask()
+      store.dispatch({ type: "UPDATE_TASK", task: updatedTask });
 
+      // Still trigger domain event for cross-cutting concerns
       eventBus.trigger({ type: "tasks.updated", task: updatedTask });
 
       return updatedTask;
@@ -106,11 +110,12 @@ export class Tasks extends Entities {
 
     async delete(id: string): Promise<void> {
       // Get the task before removing it so we can include it in the event
-      const task = store.findById(id);
+      const task = get(store).tasks.find((t) => t.id === id);
 
-      store.removeTask(id);
+      // Dispatch action instead of calling store.removeTask()
+      store.dispatch({ type: "REMOVE_TASK", taskId: id });
 
-      // Include the task in the event so listeners can access its properties (like filePath)
+      // Include the task in the event so listeners can access its properties
       eventBus.trigger({ type: "tasks.deleted", taskId: id, task });
     }
 

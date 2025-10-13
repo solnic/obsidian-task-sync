@@ -7,7 +7,7 @@
   import SearchInput from "./SearchInput.svelte";
 
   import type { Calendar, CalendarEvent } from "../types/calendar";
-  import type { CalendarExtension } from "../extensions/CalendarExtension";
+  import type { CalendarExtension } from "../extensions/calendar/CalendarExtension";
   import type { Host } from "../core/host";
   import type { TaskSyncSettings } from "../types/settings";
   import { isPlanningActive } from "../stores/contextStore";

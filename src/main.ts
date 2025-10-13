@@ -18,11 +18,13 @@ import {
 import { taskStore, type TaskStore } from "./app/stores/taskStore";
 import { projectStore, type ProjectStore } from "./app/stores/projectStore";
 import { areaStore, type AreaStore } from "./app/stores/areaStore";
-import type { ObsidianExtension } from "./app/extensions/ObsidianExtension";
+import type { ObsidianExtension } from "./app/extensions/obsidian/ObsidianExtension";
 import { extensionRegistry } from "./app/core/extension";
 import { Tasks } from "./app/entities/Tasks";
 import { Areas } from "./app/entities/Areas";
 import { Projects } from "./app/entities/Projects";
+import { get } from "svelte/store";
+import type { Task, Project, Area } from "./app/core/entities";
 // Singleton operations removed - use operations from ObsidianExtension instance
 
 // TypeNote imports
@@ -75,6 +77,65 @@ export default class TaskSyncPlugin extends Plugin {
       ...operations,
     };
   }
+
+  // Public query API for tests - provides easy access to store data
+  public query = {
+    /**
+     * Find a task by its source URL (e.g., GitHub issue URL)
+     */
+    findTaskBySourceUrl: (url: string): Task | undefined => {
+      const state = get(taskStore);
+      return state.tasks.find((t) => t.source?.url === url);
+    },
+
+    /**
+     * Find a task by its ID
+     */
+    findTaskById: (id: string): Task | undefined => {
+      const state = get(taskStore);
+      return state.tasks.find((t) => t.id === id);
+    },
+
+    /**
+     * Find a task by its file path
+     */
+    findTaskByFilePath: (filePath: string): Task | undefined => {
+      const state = get(taskStore);
+      return state.tasks.find((t) => t.source?.filePath === filePath);
+    },
+
+    /**
+     * Find a task by its title
+     */
+    findTaskByTitle: (title: string): Task | undefined => {
+      const state = get(taskStore);
+      return state.tasks.find((t) => t.title === title);
+    },
+
+    /**
+     * Get all tasks
+     */
+    getAllTasks: (): readonly Task[] => {
+      const state = get(taskStore);
+      return state.tasks;
+    },
+
+    /**
+     * Find a project by its name
+     */
+    findProjectByName: (name: string): Project | undefined => {
+      const state = get(projectStore);
+      return state.projects.find((p) => p.name === name);
+    },
+
+    /**
+     * Find an area by its name
+     */
+    findAreaByName: (name: string): Area | undefined => {
+      const state = get(areaStore);
+      return state.areas.find((a) => a.name === name);
+    },
+  };
 
   async onload() {
     console.log("TaskSync plugin loading...");
@@ -355,7 +416,7 @@ export default class TaskSyncPlugin extends Plugin {
   async regenerateBases(): Promise<void> {
     try {
       const { ObsidianBaseManager } = await import(
-        "./app/extensions/obsidian/BaseManager"
+        "./app/extensions/obsidian/utils/BaseManager"
       );
       const baseManager = new ObsidianBaseManager(
         this.app,
@@ -386,7 +447,7 @@ export default class TaskSyncPlugin extends Plugin {
   async syncAreaProjectBases(): Promise<void> {
     try {
       const { ObsidianBaseManager } = await import(
-        "./app/extensions/obsidian/BaseManager"
+        "./app/extensions/obsidian/utils/BaseManager"
       );
       const baseManager = new ObsidianBaseManager(
         this.app,
