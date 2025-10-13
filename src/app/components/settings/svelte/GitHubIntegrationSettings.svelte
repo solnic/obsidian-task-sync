@@ -115,6 +115,15 @@
     createGitHubOrgRepoMappings();
   }
 
+  function updateGitHubExtension(): void {
+    // Notify the GitHub extension that settings have changed
+    // This ensures the org/repo mappings are updated in the extension
+    const githubExtension = plugin.host?.getExtensionById?.("github");
+    if (githubExtension && githubExtension.updateSettings) {
+      githubExtension.updateSettings(settings);
+    }
+  }
+
   function createGitHubOrgRepoMappings(): void {
     // Ensure orgRepoMappings array exists
     if (!settings.integrations.github.orgRepoMappings) {
@@ -141,11 +150,15 @@
         // Update the mapping directly in the settings array
         settings.integrations.github.orgRepoMappings[index] = mapping;
         await saveSettings(settings);
+        // Notify GitHub extension of the updated mappings
+        updateGitHubExtension();
       },
       onDelete: async (index: number) => {
         // Remove the mapping from the settings array
         settings.integrations.github.orgRepoMappings.splice(index, 1);
         await saveSettings(settings);
+        // Notify GitHub extension of the updated mappings
+        updateGitHubExtension();
         // Refresh the mappings section by recreating the entire list
         githubMappingsContainer.empty();
         createGitHubOrgRepoMappings();
@@ -161,6 +174,8 @@
         };
         settings.integrations.github.orgRepoMappings.push(newMapping);
         await saveSettings(settings);
+        // Notify GitHub extension of the updated mappings
+        updateGitHubExtension();
         // Recreate the entire list to ensure the new mapping is displayed
         githubMappingsContainer.empty();
         createGitHubOrgRepoMappings();

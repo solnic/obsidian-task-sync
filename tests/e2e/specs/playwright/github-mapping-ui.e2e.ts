@@ -195,5 +195,67 @@ test.describe("GitHub Mapping UI", () => {
     await page.keyboard.press("Escape");
     await page.waitForTimeout(500);
   });
+
+  test("should update GitHub extension when mappings are changed", async ({
+    page,
+  }) => {
+    // Open settings
+    await page.keyboard.press("Control+,");
+    await page.waitForSelector(".vertical-tab-content", { timeout: 5000 });
+
+    // Navigate to Task Sync settings
+    const taskSyncTab = page
+      .locator(".vertical-tab-nav-item")
+      .filter({ hasText: "Task Sync" });
+    await taskSyncTab.click();
+    await page.waitForTimeout(500);
+
+    // Scroll to Integrations section
+    await page.evaluate(() => {
+      const settingsContainer = document.querySelector(".vertical-tab-content");
+      if (settingsContainer) {
+        settingsContainer.scrollTop = settingsContainer.scrollHeight;
+      }
+    });
+
+    // Wait for GitHub settings to be visible
+    await page.waitForTimeout(1000);
+
+    // Add a mapping
+    const addButton = page.locator('[data-testid="github-add-mapping-btn"]');
+    await addButton.waitFor({ state: "visible", timeout: 10000 });
+    await addButton.click();
+    await page.waitForTimeout(500);
+
+    // Fill in the mapping
+    const orgInput = page.locator('[data-testid="github-mapping-org-input-0"]');
+    await orgInput.fill("test-org");
+    await page.waitForTimeout(300);
+
+    const areaInput = page.locator('[data-testid="github-mapping-area-input-0"]');
+    await areaInput.fill("Test Area");
+    await page.waitForTimeout(300);
+
+    // Verify that the GitHub extension was updated with the new mappings
+    const extensionMappings = await page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const githubExtension = plugin.host?.getExtensionById?.("github");
+
+      if (!githubExtension) return null;
+
+      // Get the mappings from the GitHub extension's org/repo mapper
+      return githubExtension.githubOperations.tasks.orgRepoMapper.getMappings();
+    });
+
+    expect(extensionMappings).not.toBeNull();
+    expect(extensionMappings).toHaveLength(1);
+    expect(extensionMappings[0].organization).toBe("test-org");
+    expect(extensionMappings[0].targetArea).toBe("Test Area");
+
+    // Close settings
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(500);
+  });
 });
 

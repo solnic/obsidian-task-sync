@@ -70,7 +70,7 @@ export class SortableGitHubMappingList {
 
       .github-mapping-item {
         display: flex;
-        align-items: center;
+        flex-direction: column;
         gap: 12px;
         padding: 12px;
         margin-bottom: 8px;
@@ -78,6 +78,7 @@ export class SortableGitHubMappingList {
         border: 1px solid var(--background-modifier-border);
         border-radius: 6px;
         cursor: grab;
+        max-width: 100%;
       }
 
       .github-mapping-item:hover {
@@ -89,6 +90,13 @@ export class SortableGitHubMappingList {
         cursor: grabbing;
       }
 
+      .mapping-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        justify-content: space-between;
+      }
+
       .mapping-drag-handle {
         color: var(--text-muted);
         cursor: grab;
@@ -96,10 +104,22 @@ export class SortableGitHubMappingList {
         line-height: 1;
       }
 
+      .mapping-content {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
       .mapping-source, .mapping-target {
         display: flex;
+        flex-direction: column;
         gap: 8px;
-        flex: 1;
+      }
+
+      .mapping-source-row, .mapping-target-row {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
       }
 
       .mapping-source-field, .mapping-target-field {
@@ -107,6 +127,14 @@ export class SortableGitHubMappingList {
         flex-direction: column;
         gap: 4px;
         flex: 1;
+        min-width: 200px;
+      }
+
+      .mapping-source h4, .mapping-target h4 {
+        margin: 0 0 8px 0;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text-normal);
       }
 
       .mapping-source-label, .mapping-target-label {
@@ -132,8 +160,9 @@ export class SortableGitHubMappingList {
       .mapping-arrow {
         color: var(--text-muted);
         font-size: 16px;
-        align-self: center;
-        margin-top: 12px;
+        align-self: flex-start;
+        margin: 8px 0;
+        text-align: center;
       }
 
       .mapping-actions {
@@ -230,15 +259,34 @@ export class SortableGitHubMappingList {
     item.dataset.index = index.toString();
     item.setAttribute("data-testid", `github-mapping-item-${index}`);
 
-    // Drag handle
-    const handle = item.createSpan("mapping-drag-handle");
+    // Header with drag handle and actions
+    const header = item.createDiv("mapping-header");
+
+    const handle = header.createSpan("mapping-drag-handle");
     handle.innerHTML = "⋮⋮"; // Vertical dots
 
-    // Source section (org/repo)
-    const source = item.createDiv("mapping-source");
+    const actions = header.createDiv("mapping-actions");
+    const deleteBtn = actions.createEl("button", {
+      text: "×",
+      cls: "mapping-delete-btn",
+    });
+    deleteBtn.setAttribute("data-testid", `github-mapping-delete-btn-${index}`);
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.onDelete(index);
+    };
 
-    const orgField = source.createDiv("mapping-source-field");
-    orgField.createSpan("mapping-source-label").textContent = "Org";
+    // Content section
+    const content = item.createDiv("mapping-content");
+
+    // Source section (org/repo)
+    const source = content.createDiv("mapping-source");
+    source.createEl("h4", { text: "From GitHub" });
+
+    const sourceRow = source.createDiv("mapping-source-row");
+
+    const orgField = sourceRow.createDiv("mapping-source-field");
+    orgField.createSpan("mapping-source-label").textContent = "Organization";
     const orgInput = orgField.createEl("input", {
       cls: "mapping-source-input",
     });
@@ -256,8 +304,8 @@ export class SortableGitHubMappingList {
       this.onUpdate(index, updatedMapping);
     };
 
-    const repoField = source.createDiv("mapping-source-field");
-    repoField.createSpan("mapping-source-label").textContent = "Repo";
+    const repoField = sourceRow.createDiv("mapping-source-field");
+    repoField.createSpan("mapping-source-label").textContent = "Repository";
     const repoInput = repoField.createEl("input", {
       cls: "mapping-source-input",
     });
@@ -276,13 +324,16 @@ export class SortableGitHubMappingList {
     };
 
     // Arrow
-    const arrow = item.createSpan("mapping-arrow");
-    arrow.innerHTML = "→";
+    const arrow = content.createDiv("mapping-arrow");
+    arrow.innerHTML = "↓";
 
     // Target section (area/project)
-    const target = item.createDiv("mapping-target");
+    const target = content.createDiv("mapping-target");
+    target.createEl("h4", { text: "To Obsidian" });
 
-    const areaField = target.createDiv("mapping-target-field");
+    const targetRow = target.createDiv("mapping-target-row");
+
+    const areaField = targetRow.createDiv("mapping-target-field");
     areaField.createSpan("mapping-target-label").textContent = "Area";
     const areaInput = areaField.createEl("input", {
       cls: "mapping-target-input",
@@ -301,7 +352,7 @@ export class SortableGitHubMappingList {
       this.onUpdate(index, updatedMapping);
     };
 
-    const projectField = target.createDiv("mapping-target-field");
+    const projectField = targetRow.createDiv("mapping-target-field");
     projectField.createSpan("mapping-target-label").textContent = "Project";
     const projectInput = projectField.createEl("input", {
       cls: "mapping-target-input",
@@ -318,18 +369,6 @@ export class SortableGitHubMappingList {
       // Update the internal mappings array to keep it in sync
       this.mappings[index] = updatedMapping;
       this.onUpdate(index, updatedMapping);
-    };
-
-    // Actions
-    const actions = item.createDiv("mapping-actions");
-    const deleteBtn = actions.createEl("button", {
-      text: "×",
-      cls: "mapping-delete-btn",
-    });
-    deleteBtn.setAttribute("data-testid", `github-mapping-delete-btn-${index}`);
-    deleteBtn.onclick = (e) => {
-      e.stopPropagation();
-      this.onDelete(index);
     };
 
     // Add drag listeners
