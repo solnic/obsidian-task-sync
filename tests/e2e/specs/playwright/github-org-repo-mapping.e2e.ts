@@ -16,7 +16,11 @@ import {
   waitForIssueImportComplete,
 } from "../../helpers/github-integration-helpers";
 import { configureGitHubOrgRepoMappings } from "../../helpers/github";
-import { createArea, createProject } from "../../helpers/entity-helpers";
+import {
+  createArea,
+  createProject,
+  getTaskByTitle,
+} from "../../helpers/entity-helpers";
 
 test.describe("GitHub Organization/Repository Mapping", () => {
   test.beforeEach(async ({ page }) => {
@@ -192,9 +196,9 @@ test.describe("GitHub Organization/Repository Mapping", () => {
 
     await switchToTaskService(page, "github");
     await selectFromDropdown(page, "organization-filter", "microsoft");
-    await selectFromDropdown(page, "repository-filter", "typescript");
+    await selectFromDropdown(page, "repository-filter", "vscode");
 
-    // Import an issue from TypeScript repository (should use organization mapping)
+    // Import an issue from vscode repository (should use organization mapping)
     await clickIssueImportButton(page, 789);
     await waitForIssueImportComplete(page, 789);
 
@@ -206,10 +210,12 @@ test.describe("GitHub Organization/Repository Mapping", () => {
     );
     await expect(taskItem).toBeVisible();
 
+    // Check the actual task data to see if mappings were applied
+    const task = await getTaskByTitle(page, "Microsoft Issue");
+
     // The task should be in Microsoft Projects area and Microsoft project
-    const taskContent = await taskItem.locator("..").textContent();
-    expect(taskContent).toContain("Microsoft Projects");
-    expect(taskContent).toContain("Microsoft");
+    expect(task.areas).toContain("Microsoft Projects");
+    expect(task.project).toBe("Projects/Microsoft.md|Microsoft");
   });
 
   test("should not apply any mapping for unknown repositories", async ({
