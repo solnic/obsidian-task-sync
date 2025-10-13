@@ -23,7 +23,6 @@ test.describe("GitHub Mapping UI", () => {
       .locator(".vertical-tab-nav-item")
       .filter({ hasText: "Task Sync" });
     await taskSyncTab.click();
-    await page.waitForTimeout(500);
 
     // Scroll to Integrations section
     await page.evaluate(() => {
@@ -33,34 +32,37 @@ test.describe("GitHub Mapping UI", () => {
       }
     });
 
-    // Wait for GitHub settings to be visible
-    await page.waitForTimeout(1000);
-
     // Click "Add Mapping" button
     const addButton = page.locator('[data-testid="github-add-mapping-btn"]');
     await addButton.waitFor({ state: "visible", timeout: 10000 });
     await addButton.click();
 
-    // Wait for the new mapping item to appear
-    await page.waitForTimeout(500);
-
     // Fill in the mapping fields
     const orgInput = page.locator('[data-testid="github-mapping-org-input-0"]');
     await orgInput.waitFor({ state: "visible", timeout: 5000 });
     await orgInput.fill("test-org");
-    await page.waitForTimeout(500);
 
     const areaInput = page.locator('[data-testid="github-mapping-area-input-0"]');
     await areaInput.waitFor({ state: "visible", timeout: 5000 });
     await areaInput.fill("Test Area");
-    await page.waitForTimeout(500);
 
     const projectInput = page.locator(
       '[data-testid="github-mapping-project-input-0"]'
     );
     await projectInput.waitFor({ state: "visible", timeout: 5000 });
     await projectInput.fill("Test Project");
-    await page.waitForTimeout(500);
+
+    // Wait for the mapping to be saved using waitForFunction
+    await page.waitForFunction(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const mappings = plugin.settings.integrations.github.orgRepoMappings;
+      return Array.isArray(mappings) &&
+        mappings.length === 1 &&
+        mappings[0].organization === "test-org" &&
+        mappings[0].targetArea === "Test Area" &&
+        mappings[0].targetProject === "Test Project";
+    }, { timeout: 5000 });
 
     // Verify the mapping was saved
     const savedMappings = await page.evaluate(() => {
@@ -76,7 +78,6 @@ test.describe("GitHub Mapping UI", () => {
 
     // Close settings
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(500);
   });
 
   test("should allow adding multiple mappings", async ({ page }) => {
@@ -89,7 +90,6 @@ test.describe("GitHub Mapping UI", () => {
       .locator(".vertical-tab-nav-item")
       .filter({ hasText: "Task Sync" });
     await taskSyncTab.click();
-    await page.waitForTimeout(500);
 
     // Scroll to Integrations section
     await page.evaluate(() => {
@@ -99,26 +99,32 @@ test.describe("GitHub Mapping UI", () => {
       }
     });
 
-    // Wait for GitHub settings to be visible
-    await page.waitForTimeout(1000);
-
     // Add first mapping
     const addButton = page.locator('[data-testid="github-add-mapping-btn"]');
     await addButton.waitFor({ state: "visible", timeout: 10000 });
     await addButton.click();
-    await page.waitForTimeout(500);
 
     const orgInput1 = page.locator('[data-testid="github-mapping-org-input-0"]');
+    await orgInput1.waitFor({ state: "visible", timeout: 5000 });
     await orgInput1.fill("org1");
-    await page.waitForTimeout(300);
 
     // Add second mapping
     await addButton.click();
-    await page.waitForTimeout(500);
 
     const orgInput2 = page.locator('[data-testid="github-mapping-org-input-1"]');
+    await orgInput2.waitFor({ state: "visible", timeout: 5000 });
     await orgInput2.fill("org2");
-    await page.waitForTimeout(300);
+
+    // Wait for both mappings to be saved
+    await page.waitForFunction(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const mappings = plugin.settings.integrations.github.orgRepoMappings;
+      return Array.isArray(mappings) &&
+        mappings.length === 2 &&
+        mappings[0].organization === "org1" &&
+        mappings[1].organization === "org2";
+    }, { timeout: 5000 });
 
     // Verify both mappings were saved
     const savedMappings = await page.evaluate(() => {
@@ -133,7 +139,6 @@ test.describe("GitHub Mapping UI", () => {
 
     // Close settings
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(500);
   });
 
   test("should allow deleting a mapping", async ({ page }) => {
@@ -161,7 +166,6 @@ test.describe("GitHub Mapping UI", () => {
       .locator(".vertical-tab-nav-item")
       .filter({ hasText: "Task Sync" });
     await taskSyncTab.click();
-    await page.waitForTimeout(500);
 
     // Scroll to Integrations section
     await page.evaluate(() => {
@@ -171,16 +175,20 @@ test.describe("GitHub Mapping UI", () => {
       }
     });
 
-    // Wait for GitHub settings to be visible
-    await page.waitForTimeout(1000);
-
     // Click delete button
     const deleteButton = page.locator(
       '[data-testid="github-mapping-delete-btn-0"]'
     );
     await deleteButton.waitFor({ state: "visible", timeout: 5000 });
     await deleteButton.click();
-    await page.waitForTimeout(500);
+
+    // Wait for the mapping to be deleted
+    await page.waitForFunction(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const mappings = plugin.settings.integrations.github.orgRepoMappings;
+      return Array.isArray(mappings) && mappings.length === 0;
+    }, { timeout: 5000 });
 
     // Verify the mapping was deleted
     const savedMappings = await page.evaluate(() => {
@@ -193,7 +201,6 @@ test.describe("GitHub Mapping UI", () => {
 
     // Close settings
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(500);
   });
 
   test("should update GitHub extension when mappings are changed", async ({
@@ -208,7 +215,6 @@ test.describe("GitHub Mapping UI", () => {
       .locator(".vertical-tab-nav-item")
       .filter({ hasText: "Task Sync" });
     await taskSyncTab.click();
-    await page.waitForTimeout(500);
 
     // Scroll to Integrations section
     await page.evaluate(() => {
@@ -218,23 +224,34 @@ test.describe("GitHub Mapping UI", () => {
       }
     });
 
-    // Wait for GitHub settings to be visible
-    await page.waitForTimeout(1000);
-
     // Add a mapping
     const addButton = page.locator('[data-testid="github-add-mapping-btn"]');
     await addButton.waitFor({ state: "visible", timeout: 10000 });
     await addButton.click();
-    await page.waitForTimeout(500);
 
     // Fill in the mapping
     const orgInput = page.locator('[data-testid="github-mapping-org-input-0"]');
+    await orgInput.waitFor({ state: "visible", timeout: 5000 });
     await orgInput.fill("test-org");
-    await page.waitForTimeout(300);
 
     const areaInput = page.locator('[data-testid="github-mapping-area-input-0"]');
+    await areaInput.waitFor({ state: "visible", timeout: 5000 });
     await areaInput.fill("Test Area");
-    await page.waitForTimeout(300);
+
+    // Wait for the GitHub extension to be updated
+    await page.waitForFunction(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const githubExtension = plugin.host?.getExtensionById?.("github");
+
+      if (!githubExtension) return false;
+
+      const mappings = githubExtension.githubOperations.tasks.orgRepoMapper.getMappings();
+      return Array.isArray(mappings) &&
+        mappings.length === 1 &&
+        mappings[0].organization === "test-org" &&
+        mappings[0].targetArea === "Test Area";
+    }, { timeout: 5000 });
 
     // Verify that the GitHub extension was updated with the new mappings
     const extensionMappings = await page.evaluate(() => {
@@ -255,7 +272,6 @@ test.describe("GitHub Mapping UI", () => {
 
     // Close settings
     await page.keyboard.press("Escape");
-    await page.waitForTimeout(500);
   });
 });
 

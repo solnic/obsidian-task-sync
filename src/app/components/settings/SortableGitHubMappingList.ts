@@ -250,6 +250,16 @@ export class SortableGitHubMappingList {
     addButton.onclick = () => this.onAdd();
   }
 
+  private updateMapping(index: number, updates: Partial<GitHubOrgRepoMapping>): void {
+    const updatedMapping = {
+      ...this.mappings[index],
+      ...updates,
+    };
+    // Update the internal mappings array to keep it in sync
+    this.mappings[index] = updatedMapping;
+    this.onUpdate(index, updatedMapping);
+  }
+
   private renderMappingItem(
     mapping: GitHubOrgRepoMapping,
     index: number
@@ -295,13 +305,9 @@ export class SortableGitHubMappingList {
     orgInput.value = mapping.organization || "";
     orgInput.setAttribute("data-testid", `github-mapping-org-input-${index}`);
     orgInput.oninput = () => {
-      const updatedMapping = {
-        ...this.mappings[index],
+      this.updateMapping(index, {
         organization: orgInput.value.trim() || undefined,
-      };
-      // Update the internal mappings array to keep it in sync
-      this.mappings[index] = updatedMapping;
-      this.onUpdate(index, updatedMapping);
+      });
     };
 
     const repoField = sourceRow.createDiv("mapping-source-field");
@@ -314,13 +320,9 @@ export class SortableGitHubMappingList {
     repoInput.value = mapping.repository || "";
     repoInput.setAttribute("data-testid", `github-mapping-repo-input-${index}`);
     repoInput.oninput = () => {
-      const updatedMapping = {
-        ...this.mappings[index],
+      this.updateMapping(index, {
         repository: repoInput.value.trim() || undefined,
-      };
-      // Update the internal mappings array to keep it in sync
-      this.mappings[index] = updatedMapping;
-      this.onUpdate(index, updatedMapping);
+      });
     };
 
     // Arrow
@@ -343,13 +345,9 @@ export class SortableGitHubMappingList {
     areaInput.value = mapping.targetArea || "";
     areaInput.setAttribute("data-testid", `github-mapping-area-input-${index}`);
     areaInput.oninput = () => {
-      const updatedMapping = {
-        ...this.mappings[index],
+      this.updateMapping(index, {
         targetArea: areaInput.value.trim() || undefined,
-      };
-      // Update the internal mappings array to keep it in sync
-      this.mappings[index] = updatedMapping;
-      this.onUpdate(index, updatedMapping);
+      });
     };
 
     const projectField = targetRow.createDiv("mapping-target-field");
@@ -362,13 +360,9 @@ export class SortableGitHubMappingList {
     projectInput.value = mapping.targetProject || "";
     projectInput.setAttribute("data-testid", `github-mapping-project-input-${index}`);
     projectInput.oninput = () => {
-      const updatedMapping = {
-        ...this.mappings[index],
+      this.updateMapping(index, {
         targetProject: projectInput.value.trim() || undefined,
-      };
-      // Update the internal mappings array to keep it in sync
-      this.mappings[index] = updatedMapping;
-      this.onUpdate(index, updatedMapping);
+      });
     };
 
     // Add drag listeners
