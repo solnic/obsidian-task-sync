@@ -66,6 +66,7 @@
   // State
   let activeTab = $state<"issues" | "pull-requests">("issues");
   let tasks = $state<Task[]>([]); // All tasks (both imported and available)
+  let importedTasks = $state<readonly Task[]>([]); // Imported tasks from store (reactive)
   let repositories = $state<GitHubRepository[]>([]);
   let organizations = $state<GitHubOrganization[]>([]);
   let currentRepository = $state(
@@ -254,6 +255,39 @@
     if (isEnabled && !hasLoadedInitialData) {
       loadInitialData();
     }
+  });
+
+  // Subscribe to imported tasks from the task store for reactive updates
+  $effect(() => {
+    const tasksStore = githubExtension.getTasks();
+    const unsubscribe = tasksStore.subscribe((extensionTasks) => {
+      importedTasks = extensionTasks;
+    });
+
+    return unsubscribe;
+  });
+
+  // Merge tasks from GitHub API with imported tasks from store
+  // This ensures we show the latest properties (like doDate) for imported tasks
+  let mergedTasks = $derived.by(() => {
+    // Create a map of imported tasks by their source URL
+    const importedTasksMap = new Map<string, Task>();
+    importedTasks.forEach((task) => {
+      if (task.source?.url) {
+        importedTasksMap.set(task.source.url, task);
+      }
+    });
+
+    // Merge: use imported task if available, otherwise use the task from API
+    return tasks.map((task) => {
+      const githubUrl = task.source?.url;
+      if (githubUrl && importedTasksMap.has(githubUrl)) {
+        // Use the imported task from store (has latest properties)
+        return importedTasksMap.get(githubUrl)!;
+      }
+      // Use the task from API (not imported yet)
+      return task;
+    });
   });
 
   async function loadInitialData(): Promise<void> {
@@ -551,7 +585,7 @@
 
   // Computed filtered and sorted tasks
   let filteredAndSortedTasks = $derived.by(() => {
-    let filtered = tasks;
+    let filtered = mergedTasks;
 
     // Filter by state (using source.data which contains the GitHub issue/PR)
     if (currentState !== "all") {
