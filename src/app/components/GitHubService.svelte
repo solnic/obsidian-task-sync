@@ -63,46 +63,57 @@
 
   let dailyPlanningWizardMode = $derived(isPlanningActive);
 
-  // State
-  let activeTab = $state<"issues" | "pull-requests">("issues");
-  let tasks = $state<Task[]>([]); // All tasks (both imported and available)
-  let importedTasks = $state<readonly Task[]>([]); // Imported tasks from store (reactive)
+  // ============================================================================
+  // REACTIVE STATE - Only 3 elements as required by unified pattern
+  // ============================================================================
+
+  // 1. Tasks - current list from extension (processed)
+  let tasks = $state<Task[]>([]);
+
+  // 2. Filters - currently applied filters (UI state)
+  let filters = $state({
+    // GitHub-specific filters
+    repository: settings.integrations.github.defaultRepository,
+    organization: null as string | null,
+    state: settings.integrations.github.issueFilters.state as
+      | "open"
+      | "closed"
+      | "all",
+    assignedToMe: settings.integrations.github.issueFilters.assignee === "me",
+    labels:
+      settings.integrations.github.issueFilters.labels || ([] as string[]),
+    type: "issues" as "issues" | "pull-requests",
+    currentUser: null as {
+      login: string;
+      id: number;
+      avatar_url: string;
+    } | null,
+  });
+
+  // 3. Sort - currently applied sorting logic (UI state)
+  let sort = $state<SortField[]>([
+    { key: "updatedAt", label: "Updated", direction: "desc" },
+    { key: "title", label: "Title", direction: "asc" },
+  ]);
+
+  // Search query (part of filtering)
+  let searchQuery = $state("");
+
+  // ============================================================================
+  // UI STATE (not part of the 3 core states)
+  // ============================================================================
+
   let repositories = $state<GitHubRepository[]>([]);
   let organizations = $state<GitHubOrganization[]>([]);
-  let currentRepository = $state(
-    settings.integrations.github.defaultRepository
-  );
-  let currentOrganization = $state<string | null>(null);
-  let currentState = $state<"open" | "closed" | "all">(
-    settings.integrations.github.issueFilters.state
-  );
-  let assignedToMe = $state(
-    settings.integrations.github.issueFilters.assignee === "me"
-  );
-  let selectedLabels = $state<string[]>(
-    settings.integrations.github.issueFilters.labels || []
-  );
   let availableLabels = $state<GitHubLabel[]>([]);
-  let searchQuery = $state("");
   let error = $state<string | null>(null);
   let isLoading = $state(false);
   let recentlyUsedOrgs = $state<string[]>([]);
   let recentlyUsedRepos = $state<string[]>([]);
-  let hoveredTask = $state<string | null>(null); // Task ID instead of issue/PR number
-  let currentUser = $state<{
-    login: string;
-    id: number;
-    avatar_url: string;
-  } | null>(null);
+  let hoveredTask = $state<string | null>(null);
 
-  // Import tracking state - now just track which tasks are being imported
-  let importingTasks = $state<Set<string>>(new Set()); // Task IDs
-
-  // Sorting state
-  let sortFields = $state<SortField[]>([
-    { key: "updatedAt", label: "Updated", direction: "desc" },
-    { key: "title", label: "Title", direction: "asc" },
-  ]);
+  // Import tracking state
+  let importingTasks = $state<Set<string>>(new Set());
 
   // Available sort fields for GitHub issues/PRs
   const availableSortFields = [
@@ -113,13 +124,61 @@
     { key: "state", label: "State" },
   ];
 
+  // ============================================================================
+  // DATA PROCESSING - GitHub-specific approach (async data loading)
+  // ============================================================================
+
+  // Raw tasks from GitHub API (before filtering/sorting)
+  let rawTasks = $state<Task[]>([]);
+
+  /**
+   * Process tasks using extension methods
+   * This is the ONLY place where we process tasks - all logic is in the extension
+   */
+  let processedTasks = $derived.by(() => {
+    let processed: readonly Task[] = rawTasks;
+
+    // Apply filters using extension
+    processed = githubExtension.filterTasks(processed, {
+      state: filters.state,
+      assignedToMe: filters.assignedToMe,
+      labels: filters.labels,
+      currentUser: filters.currentUser,
+    });
+
+    // Apply search using extension
+    if (searchQuery) {
+      processed = githubExtension.searchTasks(searchQuery, processed);
+    }
+
+    // Apply sort using extension
+    if (sort.length > 0) {
+      processed = githubExtension.sortTasks(processed, sort);
+    }
+
+    return processed;
+  });
+
+  /**
+   * Update tasks state when processed tasks change
+   */
+  $effect(() => {
+    tasks = [...processedTasks];
+    // Reset hover state when tasks change
+    hoveredTask = null;
+  });
+
+  // ============================================================================
+  // UI COMPUTED VALUES - For dropdowns and display
+  // ============================================================================
+
   // Computed - filtered repositories based on organization
   let filteredRepositories = $derived.by(() => {
-    if (!currentOrganization) {
+    if (!filters.organization) {
       return repositories;
     }
     return repositories.filter((repo) =>
-      repo.full_name.startsWith(currentOrganization + "/")
+      repo.full_name.startsWith(filters.organization + "/")
     );
   });
 
@@ -140,7 +199,7 @@
 
   // Computed - repository display options (show just repo name when org is selected)
   let repositoryDisplayOptions = $derived.by(() => {
-    if (currentOrganization) {
+    if (filters.organization) {
       return sortedRepositories.map((repo) => repo.name);
     } else {
       return sortedRepositories.map((repo) => repo.full_name);
@@ -149,17 +208,17 @@
 
   // Computed - current repository display value
   let currentRepositoryDisplay = $derived.by(() => {
-    if (!currentRepository) {
+    if (!filters.repository) {
       return "Select repository";
     }
 
     if (
-      currentOrganization &&
-      currentRepository.startsWith(currentOrganization + "/")
+      filters.organization &&
+      filters.repository.startsWith(filters.organization + "/")
     ) {
-      return currentRepository.split("/")[1];
+      return filters.repository.split("/")[1];
     } else {
-      return currentRepository;
+      return filters.repository;
     }
   });
 
@@ -206,7 +265,7 @@
     const allOptions = repositoryDisplayOptions;
     const recentRepos = recentlyUsedRepos
       .filter((repo) => {
-        if (currentOrganization) {
+        if (filters.organization) {
           return sortedRepositories.some(
             (r) => r.name === repo || r.full_name === repo
           );
@@ -215,7 +274,7 @@
         }
       })
       .map((repo) => {
-        if (currentOrganization && repo.includes("/")) {
+        if (filters.organization && repo.includes("/")) {
           return repo.split("/")[1];
         }
         return repo;
@@ -242,6 +301,10 @@
   // Track if we've done initial load
   let hasLoadedInitialData = $state(false);
 
+  // ============================================================================
+  // INITIALIZATION AND LIFECYCLE
+  // ============================================================================
+
   onMount(async () => {
     if (githubExtension.isEnabled() && !hasLoadedInitialData) {
       await loadInitialData();
@@ -257,38 +320,83 @@
     }
   });
 
-  // Subscribe to imported tasks from the task store for reactive updates
+  // React to filter changes and reload tasks
   $effect(() => {
-    const tasksStore = githubExtension.getTasks();
-    const unsubscribe = tasksStore.subscribe((extensionTasks) => {
-      importedTasks = extensionTasks;
-    });
-
-    return unsubscribe;
+    if (filters.repository && hasLoadedInitialData) {
+      loadTasks();
+    }
   });
 
-  // Merge tasks from GitHub API with imported tasks from store
-  // This ensures we show the latest properties (like doDate) for imported tasks
-  let mergedTasks = $derived.by(() => {
-    // Create a map of imported tasks by their source URL
-    const importedTasksMap = new Map<string, Task>();
-    importedTasks.forEach((task) => {
-      if (task.source?.url) {
-        importedTasksMap.set(task.source.url, task);
-      }
-    });
+  // ============================================================================
+  // EVENT HANDLERS - Simple pass-through, no logic
+  // ============================================================================
 
-    // Merge: use imported task if available, otherwise use the task from API
-    return tasks.map((task) => {
-      const githubUrl = task.source?.url;
-      if (githubUrl && importedTasksMap.has(githubUrl)) {
-        // Use the imported task from store (has latest properties)
-        return importedTasksMap.get(githubUrl)!;
+  function handleSortChange(newSortFields: SortField[]): void {
+    sort = newSortFields;
+  }
+
+  function setActiveTab(tab: "issues" | "pull-requests"): void {
+    filters = { ...filters, type: tab };
+  }
+
+  function setStateFilter(state: "open" | "closed" | "all"): void {
+    filters = { ...filters, state };
+  }
+
+  function toggleAssignedToMe(): void {
+    filters = { ...filters, assignedToMe: !filters.assignedToMe };
+    // Update the settings to persist the filter
+    settings.integrations.github.issueFilters.assignee = filters.assignedToMe
+      ? "me"
+      : "";
+  }
+
+  function setLabelsFilter(labels: string[]): void {
+    filters = { ...filters, labels };
+    // Update the settings to persist the filter
+    settings.integrations.github.issueFilters.labels = labels;
+  }
+
+  function setOrganizationFilter(org: string | null): void {
+    filters = { ...filters, organization: org };
+
+    if (org) {
+      addRecentlyUsedOrg(org);
+    }
+
+    // Save current filter state
+    saveRecentlyUsedFilters();
+
+    if (org) {
+      // Reset repository selection when changing organization
+      if (!filters.repository || !filters.repository.startsWith(org + "/")) {
+        const firstRepoInOrg = filteredRepositories[0];
+        if (firstRepoInOrg) {
+          setRepository(firstRepoInOrg.full_name);
+        }
       }
-      // Use the task from API (not imported yet)
-      return task;
-    });
-  });
+    } else {
+      // Clear repository selection when no organization is selected
+      setRepository(null);
+    }
+  }
+
+  async function setRepository(repository: string | null): Promise<void> {
+    filters = { ...filters, repository };
+
+    if (repository) {
+      addRecentlyUsedRepo(repository);
+    }
+
+    if (repository) {
+      await loadTasks();
+      await loadLabels();
+    } else {
+      rawTasks = [];
+      availableLabels = [];
+      filters = { ...filters, labels: [] };
+    }
+  }
 
   async function loadInitialData(): Promise<void> {
     if (hasLoadedInitialData) {
@@ -308,7 +416,7 @@
       // Then load repositories (which needs organizations to be loaded)
       await loadRepositories();
 
-      if (currentRepository) {
+      if (filters.repository) {
         await loadTasks();
       }
     } finally {
@@ -323,10 +431,11 @@
 
   async function loadCurrentUser(): Promise<void> {
     try {
-      currentUser = await githubExtension.getCurrentUser();
+      const user = await githubExtension.getCurrentUser();
+      filters = { ...filters, currentUser: user };
     } catch (err: any) {
       console.warn("Failed to load current user:", err.message);
-      currentUser = null;
+      filters = { ...filters, currentUser: null };
     }
   }
 
@@ -367,7 +476,7 @@
   }
 
   async function loadTasks(): Promise<void> {
-    if (!currentRepository) {
+    if (!filters.repository) {
       return;
     }
 
@@ -375,14 +484,14 @@
       isLoading = true;
       error = null;
       const fetchedTasks = await githubExtension.getTasksForRepository(
-        currentRepository,
-        activeTab
+        filters.repository,
+        filters.type
       );
-      tasks = fetchedTasks;
+      rawTasks = fetchedTasks;
     } catch (err: any) {
       console.error("Failed to load tasks:", err);
       error = err.message;
-      tasks = [];
+      rawTasks = [];
     } finally {
       isLoading = false;
     }
@@ -391,7 +500,7 @@
   async function refresh(): Promise<void> {
     try {
       // Immediately clear current data and show loading state
-      tasks = [];
+      rawTasks = [];
       isLoading = true;
       error = null;
 
@@ -401,7 +510,7 @@
       // Reload all data
       await loadOrganizations();
       await loadRepositories();
-      if (currentRepository) {
+      if (filters.repository) {
         await loadTasks();
       }
     } catch (err: any) {
@@ -411,101 +520,29 @@
     }
   }
 
-  function setActiveTab(tab: "issues" | "pull-requests"): void {
-    activeTab = tab;
-
-    // Reload tasks when switching tabs
-    if (currentRepository) {
-      loadTasks();
-    }
-  }
-
-  function setStateFilter(state: "open" | "closed" | "all"): void {
-    currentState = state;
-  }
-
-  function toggleAssignedToMe(): void {
-    assignedToMe = !assignedToMe;
-    // Update the settings to persist the filter
-    settings.integrations.github.issueFilters.assignee = assignedToMe
-      ? "me"
-      : "";
-    // No need to reload data - filtering is reactive and happens client-side
-  }
-
-  function setLabelsFilter(labels: string[]): void {
-    selectedLabels = labels;
-    // Update the settings to persist the filter
-    settings.integrations.github.issueFilters.labels = labels;
-    // No need to reload data as filtering is done client-side
-  }
-
-  function setOrganizationFilter(org: string | null): void {
-    currentOrganization = org;
-
-    if (org) {
-      addRecentlyUsedOrg(org);
-    }
-
-    // Save current filter state
-    saveRecentlyUsedFilters();
-
-    if (org) {
-      // Reset repository selection when changing organization
-      if (!currentRepository || !currentRepository.startsWith(org + "/")) {
-        const firstRepoInOrg = filteredRepositories[0];
-        if (firstRepoInOrg) {
-          setRepository(firstRepoInOrg.full_name);
-        }
-      }
-    } else {
-      // Clear repository selection when no organization is selected
-      setRepository(null);
-    }
-  }
-
   async function loadLabels(): Promise<void> {
-    if (!currentRepository) {
+    if (!filters.repository) {
       return;
     }
 
     try {
-      availableLabels = await githubExtension.fetchLabels(currentRepository);
+      availableLabels = await githubExtension.fetchLabels(filters.repository);
 
       // Validate selected labels against available labels
       // Remove any selected labels that are no longer available
       const availableLabelNames = availableLabels.map((label) => label.name);
-      const validSelectedLabels = selectedLabels.filter((label) =>
+      const validSelectedLabels = filters.labels.filter((label) =>
         availableLabelNames.includes(label)
       );
 
-      if (validSelectedLabels.length !== selectedLabels.length) {
-        selectedLabels = validSelectedLabels;
+      if (validSelectedLabels.length !== filters.labels.length) {
         setLabelsFilter(validSelectedLabels);
       }
     } catch (err: any) {
       console.warn("Failed to load labels:", err.message);
       availableLabels = [];
       // Clear selected labels if we can't load available labels
-      selectedLabels = [];
       setLabelsFilter([]);
-    }
-  }
-
-  async function setRepository(repository: string | null): Promise<void> {
-    currentRepository = repository;
-
-    if (repository) {
-      addRecentlyUsedRepo(repository);
-    }
-
-    if (repository) {
-      await loadTasks();
-      await loadLabels();
-    } else {
-      tasks = [];
-      availableLabels = [];
-      selectedLabels = [];
     }
   }
 
@@ -550,13 +587,19 @@
       // Also restore current filter selections
       if (data?.githubCurrentFilters) {
         if (data.githubCurrentFilters.organization !== undefined) {
-          currentOrganization = data.githubCurrentFilters.organization;
+          filters = {
+            ...filters,
+            organization: data.githubCurrentFilters.organization,
+          };
         }
         if (data.githubCurrentFilters.repository !== undefined) {
-          currentRepository = data.githubCurrentFilters.repository;
+          filters = {
+            ...filters,
+            repository: data.githubCurrentFilters.repository,
+          };
         }
         if (data.githubCurrentFilters.sortFields !== undefined) {
-          sortFields = data.githubCurrentFilters.sortFields;
+          sort = data.githubCurrentFilters.sortFields;
         }
       }
     } catch (err: any) {
@@ -573,126 +616,14 @@
       };
       // Also save current filter selections and sort state
       data.githubCurrentFilters = {
-        organization: currentOrganization,
-        repository: currentRepository,
-        sortFields: sortFields,
+        organization: filters.organization,
+        repository: filters.repository,
+        sortFields: sort,
       };
       await host.saveData(data);
     } catch (err: any) {
       console.warn("Failed to save recently used filters:", err.message);
     }
-  }
-
-  // Computed filtered and sorted tasks
-  let filteredAndSortedTasks = $derived.by(() => {
-    let filtered = mergedTasks;
-
-    // Filter by state (using source.data which contains the GitHub issue/PR)
-    if (currentState !== "all") {
-      filtered = filtered.filter((task) => {
-        const githubData = task.source?.data;
-        return githubData && githubData.state === currentState;
-      });
-    }
-
-    // Filter by assignee if "assigned to me" is enabled
-    if (assignedToMe && currentUser) {
-      filtered = filtered.filter((task) => {
-        const githubData = task.source?.data;
-        return githubData && githubData.assignee?.login === currentUser.login;
-      });
-    }
-
-    // Filter by labels if any are selected
-    if (selectedLabels.length > 0) {
-      filtered = filtered.filter((task) => {
-        const githubData = task.source?.data;
-        return (
-          githubData &&
-          githubData.labels &&
-          selectedLabels.some((selectedLabel) =>
-            githubData.labels.some((label: any) => label.name === selectedLabel)
-          )
-        );
-      });
-    }
-
-    // Filter by search query
-    if (searchQuery) {
-      const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter((task) => {
-        const githubData = task.source?.data;
-        return (
-          task.title.toLowerCase().includes(lowerQuery) ||
-          (task.description &&
-            task.description.toLowerCase().includes(lowerQuery)) ||
-          (githubData?.body &&
-            githubData.body.toLowerCase().includes(lowerQuery))
-        );
-      });
-    }
-
-    // Sort
-    return sortTasks(filtered, sortFields);
-  });
-
-  function sortTasks(taskList: Task[], sortFields: SortField[]): Task[] {
-    return [...taskList].sort((a, b) => {
-      for (const field of sortFields) {
-        let aValue: any;
-        let bValue: any;
-
-        const aGithubData = a.source?.data;
-        const bGithubData = b.source?.data;
-
-        switch (field.key) {
-          case "title":
-            aValue = a.title || "";
-            bValue = b.title || "";
-            break;
-          case "createdAt":
-            aValue = a.createdAt.getTime();
-            bValue = b.createdAt.getTime();
-            break;
-          case "updatedAt":
-            aValue = a.updatedAt.getTime();
-            bValue = b.updatedAt.getTime();
-            break;
-          case "number":
-            aValue = aGithubData?.number || 0;
-            bValue = bGithubData?.number || 0;
-            break;
-          case "state":
-            aValue = aGithubData?.state || "";
-            bValue = bGithubData?.state || "";
-            break;
-          default:
-            aValue = "";
-            bValue = "";
-        }
-
-        let comparison = 0;
-        if (typeof aValue === "string" && typeof bValue === "string") {
-          comparison = aValue.localeCompare(bValue);
-        } else if (typeof aValue === "number" && typeof bValue === "number") {
-          comparison = aValue - bValue;
-        }
-
-        if (field.direction === "desc") {
-          comparison = -comparison;
-        }
-
-        if (comparison !== 0) {
-          return comparison;
-        }
-      }
-
-      return 0;
-    });
-  }
-
-  function handleSortChange(newSortFields: SortField[]): void {
-    sortFields = newSortFields;
   }
 
   // Helper to check if a task is imported (has a real ID, not a temp one)
@@ -716,11 +647,11 @@
       const result = isPR
         ? await githubExtension.importPullRequestAsTask(
             githubData,
-            currentRepository || ""
+            filters.repository || ""
           )
         : await githubExtension.importIssueAsTask(
             githubData,
-            currentRepository || ""
+            filters.repository || ""
           );
 
       if (result.success) {
@@ -777,7 +708,7 @@
     <!-- 1. Search with refresh group -->
     <SearchInput
       bind:value={searchQuery}
-      placeholder="Search {activeTab === 'issues'
+      placeholder="Search {filters.type === 'issues'
         ? 'issues'
         : 'pull requests'}..."
       onInput={(value) => (searchQuery = value)}
@@ -789,7 +720,7 @@
     <div class="primary-filters">
       <FilterButton
         label="Organization"
-        currentValue={currentOrganization || "Select organization"}
+        currentValue={filters.organization || "Select organization"}
         options={organizationOptions}
         placeholder="Select organization"
         onselect={(value) =>
@@ -801,7 +732,7 @@
         testId="organization-filter"
         autoSuggest={true}
         allowClear={true}
-        isActive={!!currentOrganization}
+        isActive={!!filters.organization}
         recentlyUsedItems={recentlyUsedOrgs}
         onRemoveRecentItem={removeRecentlyUsedOrg}
       />
@@ -820,15 +751,15 @@
             return;
           }
           let fullName = value;
-          if (currentOrganization && !value.includes("/")) {
-            fullName = `${currentOrganization}/${value}`;
+          if (filters.organization && !value.includes("/")) {
+            fullName = `${filters.organization}/${value}`;
           }
           setRepository(fullName);
         }}
         testId="repository-filter"
         autoSuggest={true}
         allowClear={true}
-        isActive={!!currentRepository}
+        isActive={!!filters.repository}
         recentlyUsedItems={recentlyUsedRepos}
         onRemoveRecentItem={removeRecentlyUsedRepo}
       />
@@ -837,7 +768,9 @@
     <!-- 3. Secondary filter buttons group - first row: Issues/PRs + Open/Closed -->
     <div class="secondary-filters-row-1">
       <button
-        class="task-sync-filter-toggle {activeTab === 'issues' ? 'active' : ''}"
+        class="task-sync-filter-toggle {filters.type === 'issues'
+          ? 'active'
+          : ''}"
         data-tab="issues"
         data-testid="issues-tab"
         onclick={() => setActiveTab("issues")}
@@ -845,7 +778,7 @@
         Issues
       </button>
       <button
-        class="task-sync-filter-toggle {activeTab === 'pull-requests'
+        class="task-sync-filter-toggle {filters.type === 'pull-requests'
           ? 'active'
           : ''}"
         data-tab="pull-requests"
@@ -856,7 +789,7 @@
       </button>
 
       <button
-        class="task-sync-filter-toggle {currentState === 'open'
+        class="task-sync-filter-toggle {filters.state === 'open'
           ? 'active'
           : ''}"
         data-state="open"
@@ -866,7 +799,7 @@
         Open
       </button>
       <button
-        class="task-sync-filter-toggle {currentState === 'closed'
+        class="task-sync-filter-toggle {filters.state === 'closed'
           ? 'active'
           : ''}"
         data-state="closed"
@@ -881,8 +814,8 @@
     <div class="secondary-filters-row-2">
       <FilterButton
         label="Labels"
-        currentValue={selectedLabels.length > 0
-          ? `${selectedLabels.length} selected`
+        currentValue={filters.labels.length > 0
+          ? `${filters.labels.length} selected`
           : "All labels"}
         options={["All labels", ...availableLabels.map((label) => label.name)]}
         placeholder="All labels"
@@ -891,20 +824,20 @@
           if (value === "All labels") {
             setLabelsFilter([]);
           } else {
-            const newLabels = selectedLabels.includes(value)
-              ? selectedLabels.filter((l) => l !== value)
-              : [...selectedLabels, value];
+            const newLabels = filters.labels.includes(value)
+              ? filters.labels.filter((l) => l !== value)
+              : [...filters.labels, value];
             setLabelsFilter(newLabels);
           }
         }}
         testId="labels-filter"
         autoSuggest={true}
         allowClear={true}
-        isActive={selectedLabels.length > 0}
+        isActive={filters.labels.length > 0}
       />
 
       <button
-        class="task-sync-filter-toggle {assignedToMe ? 'active' : ''}"
+        class="task-sync-filter-toggle {filters.assignedToMe ? 'active' : ''}"
         data-testid="assigned-to-me-filter"
         onclick={() => toggleAssignedToMe()}
       >
@@ -914,7 +847,7 @@
 
     <!-- 5. Sort controls group -->
     <SortDropdown
-      {sortFields}
+      sortFields={sort}
       availableFields={availableSortFields}
       onSortChange={handleSortChange}
     />
@@ -932,21 +865,21 @@
       </div>
     {:else if isLoading}
       <div class="task-sync-loading-indicator" data-testid="loading-indicator">
-        Loading {activeTab === "issues" ? "issues" : "pull requests"}...
+        Loading {filters.type === "issues" ? "issues" : "pull requests"}...
       </div>
     {:else}
       <div
         class="task-sync-task-list"
-        data-testid={activeTab === "issues"
+        data-testid={filters.type === "issues"
           ? "github-issues-list"
           : "github-prs-list"}
       >
-        {#if filteredAndSortedTasks.length === 0}
+        {#if tasks.length === 0}
           <div class="task-sync-empty-message">
-            No {activeTab === "issues" ? "issues" : "pull requests"} found.
+            No {filters.type === "issues" ? "issues" : "pull requests"} found.
           </div>
         {:else}
-          {#each filteredAndSortedTasks as task (task.id)}
+          {#each tasks as task (task.id)}
             {@const isImporting = importingTasks.has(task.id)}
             {@const isImported = isTaskImported(task)}
             {@const isScheduled = task.doDate != null}
@@ -957,7 +890,7 @@
             {#if isPR}
               <GitHubPullRequestItem
                 pullRequest={githubData}
-                repository={currentRepository}
+                repository={filters.repository}
                 isHovered={hoveredTask === task.id}
                 {isImported}
                 {isImporting}
@@ -974,7 +907,7 @@
             {:else}
               <GitHubIssueItem
                 issue={githubData}
-                repository={currentRepository}
+                repository={filters.repository}
                 isHovered={hoveredTask === task.id}
                 {isImported}
                 {isImporting}
