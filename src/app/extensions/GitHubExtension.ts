@@ -159,81 +159,31 @@ export class GitHubExtension implements Extension {
     repository?: string;
     type?: "issues" | "pull-requests";
   }): Readable<readonly Task[]> {
-    if (!filters?.repository) {
-      // Return only imported GitHub tasks if no repository filter
-      return derived(taskStore, ($store) =>
-        $store.tasks.filter((task) => task.source?.extension === "github")
+    // Always return only imported GitHub tasks from the task store
+    return derived(taskStore, ($store) => {
+      const githubTasks = $store.tasks.filter(
+        (task) => task.source?.extension === "github"
       );
-    }
 
-    // Return reactive store that combines GitHub data with imported tasks
-    const { repository, type = "issues" } = filters;
-
-    // Create a writable store that will be updated when task store changes
-    const tasksStore = writable<readonly Task[]>([]);
-
-    // Function to update the store
-    const updateTasks = async (storeState: any) => {
-      try {
-        // Fetch GitHub data
-        const githubItems =
-          type === "issues"
-            ? await this.fetchIssues(repository)
-            : await this.fetchPullRequests(repository);
-
-        // Get imported tasks from store
-        const imported = storeState.tasks.filter(
-          (task: Task) => task.source?.extension === "github"
-        );
-
-        // Transform GitHub items to tasks
-        const tasks: Task[] = githubItems.map((item) => {
-          // Check if this item is already imported
-          const existingTask = imported.find(
-            (task: Task) => task.source?.url === item.html_url
-          );
-
-          if (existingTask) {
-            // Return the imported task (which has the real ID, doDate, etc.)
-            return existingTask;
-          } else {
-            // Transform to a temporary task object for display
-            const taskData =
-              type === "issues"
-                ? this.githubOperations.tasks.transformIssueToTask(
-                    item as any,
-                    repository
-                  )
-                : this.githubOperations.tasks.transformPullRequestToTask(
-                    item as any,
-                    repository
-                  );
-
-            // Create a temporary task with a synthetic ID
-            return {
-              ...taskData,
-              id: `github-temp-${item.id}`,
-              createdAt: new Date(item.created_at),
-              updatedAt: new Date(item.updated_at),
-            } as Task;
-          }
-        });
-
-        tasksStore.set(tasks);
-      } catch (error) {
-        console.error(
-          `Failed to get tasks for repository ${repository}:`,
-          error
-        );
-        tasksStore.set([]);
+      // If no repository filter, return all GitHub tasks
+      if (!filters?.repository) {
+        return githubTasks;
       }
-    };
 
-    // Subscribe to task store changes and update our store
-    taskStore.subscribe(updateTasks);
+      // Filter by repository if specified
+      const { repository } = filters;
+      return githubTasks.filter((task) => {
+        // Extract repository from the source URL
+        // URL format: https://github.com/owner/repo/issues/123
+        const url = task.source?.url;
+        if (!url) return false;
 
-    // Return the readable store
-    return tasksStore;
+        const match = url.match(/github\.com\/([^\/]+\/[^\/]+)\//);
+        const taskRepository = match ? match[1] : null;
+
+        return taskRepository === repository;
+      });
+    });
   }
 
   /**
