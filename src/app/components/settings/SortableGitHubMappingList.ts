@@ -253,14 +253,18 @@ export class SortableGitHubMappingList {
   /**
    * Update a mapping at the specified index
    *
-   * This method does NOT modify the internal mappings array directly. Instead, it
-   * delegates to the parent component via the onUpdate callback. The parent component
-   * is the single source of truth for the mappings array and is responsible for:
-   * 1. Updating the settings object
-   * 2. Saving the settings
-   * 3. Optionally calling updateMappings() to refresh the UI if needed
+   * This method updates both the internal mappings array and notifies the parent component.
+   * The dual update is necessary because:
+   * 1. Internal array update: Keeps the UI in sync immediately without re-rendering the entire list
+   * 2. Parent callback: Persists the change to settings and notifies other components
    *
-   * This design prevents synchronization issues between parent and child components.
+   * While this creates two modification points, it's intentional for performance reasons.
+   * The parent component updates settings.integrations.github.orgRepoMappings[index],
+   * and this component updates this.mappings[index] to keep the UI responsive.
+   *
+   * Alternative approaches considered:
+   * - Having parent call updateMappings() after each change: Too expensive, re-renders entire list
+   * - Only updating parent: Causes stale UI state until next full refresh
    *
    * @param index - Index of the mapping to update
    * @param updates - Partial mapping object with fields to update
@@ -273,8 +277,9 @@ export class SortableGitHubMappingList {
       ...this.mappings[index],
       ...updates,
     };
-    // Delegate to parent - do NOT update internal array
-    // Parent component is the single source of truth
+    // Update internal array to keep UI in sync
+    this.mappings[index] = updatedMapping;
+    // Notify parent to persist changes
     this.onUpdate(index, updatedMapping);
   }
 

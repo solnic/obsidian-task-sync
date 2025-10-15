@@ -115,7 +115,8 @@ export async function waitForTaskToBeRemoved(
       const task = plugin.query.findTaskByTitle(title);
 
       // Return true when task is NOT found (removed)
-      return task === null;
+      // findTaskByTitle returns undefined when not found
+      return task === undefined;
     },
     { title },
     { timeout }
