@@ -99,6 +99,7 @@ export async function getAreaByName(page: ExtendedPage, name: string) {
 /**
  * Wait for a task to be removed from the store
  * This is useful for testing revert operations where we expect the task to be deleted
+ * Uses TaskQueryService.findByTitle for consistency with other query operations
  */
 export async function waitForTaskToBeRemoved(
   page: ExtendedPage,
@@ -110,16 +111,11 @@ export async function waitForTaskToBeRemoved(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Access the store state and find task by title
-      let taskFound = false;
-      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
-        const task = state.tasks.find((t: any) => t.title === title);
-        taskFound = task !== undefined;
-      });
-      unsubscribe();
+      // Use the public query API for consistency
+      const task = plugin.query.findTaskByTitle(title);
 
       // Return true when task is NOT found (removed)
-      return !taskFound;
+      return task === null;
     },
     { title },
     { timeout }
