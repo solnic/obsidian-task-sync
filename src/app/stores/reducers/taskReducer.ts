@@ -115,7 +115,7 @@ export function taskReducer(
       // The reconciler will handle ID generation if needed
       const newTaskData = {
         ...action.taskData,
-        id: "", // Placeholder - reconciler will set proper ID
+        id: "__TEMP__", // Explicit placeholder - reconciler will set proper ID
       } as Task;
 
       // Use reconciler to find matching task

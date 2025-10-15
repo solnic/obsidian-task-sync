@@ -200,13 +200,10 @@ export class GitHubExtension implements Extension {
     });
 
     // Fetch GitHub API data if not already fetching
-    // Check the current cache state
-    let currentCache: Map<string, any[]>;
-    this.githubApiDataCache.subscribe((cache) => {
-      currentCache = cache;
-    })();
+    // Check the current cache state synchronously
+    const currentCache = get(this.githubApiDataCache);
 
-    if (!currentCache!.has(cacheKey)) {
+    if (!currentCache.has(cacheKey)) {
       this.fetchGitHubApiData(repository, type);
     }
 

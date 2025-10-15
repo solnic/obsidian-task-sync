@@ -12,6 +12,7 @@
  */
 
 import type { Task } from "./entities";
+import { generateId } from "../utils/idGenerator";
 
 /**
  * Reconciliation strategy for handling task updates from a specific source
@@ -103,7 +104,7 @@ export class SimpleTaskReconciler implements TaskReconciler {
     // New task - generate ID and timestamps
     return {
       ...newTask,
-      id: newTask.id || crypto.randomUUID(),
+      id: newTask.id || generateId(),
       createdAt: new Date(),
       updatedAt: new Date(),
     };

@@ -635,12 +635,11 @@
       await loadOrganizations();
       await loadRepositories();
 
-      // Re-trigger the effect to fetch fresh data
-      // We do this by temporarily clearing and resetting the repository filter
-      const currentRepo = filters.repository;
-      filters.repository = "";
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      filters.repository = currentRepo;
+      // Clear the GitHub API cache to force fresh data fetch
+      // The $effect watching filters.repository will automatically re-fetch
+      // when it detects the cache is empty
+      githubApiCache.clear();
+      githubApiCache = new Map(githubApiCache); // Trigger reactivity
 
       isLoading = false;
     } catch (err: any) {

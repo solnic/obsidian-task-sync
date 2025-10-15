@@ -22,6 +22,12 @@ import { get } from "svelte/store";
 import { ObsidianTaskReconciler } from "../../../core/TaskReconciler";
 
 /**
+ * Task data without ID but with natural key for reconciliation
+ * This is the format returned by scanExistingTasks before the store assigns IDs
+ */
+type TaskDataWithNaturalKey = Omit<Task, "id"> & { naturalKey: string };
+
+/**
  * ObsidianTaskSource class
  *
  * Implements DataSource<Task> for Obsidian vault tasks
@@ -41,20 +47,34 @@ export class ObsidianTaskSource implements DataSource<Task> {
    * Load initial data by scanning the vault for task files
    *
    * @returns Promise resolving to array of tasks (without IDs, with natural keys)
+   *
+   * Note: The returned tasks don't have IDs yet - they have naturalKey instead.
+   * The store reducer will use the reconciler to match tasks and assign IDs.
+   *
+   * Type Safety: This method returns TaskDataWithNaturalKey[] but the interface
+   * requires Task[]. This is intentional - the reconciler pattern expects tasks
+   * without IDs and generates them during reconciliation. The type assertion is
+   * safe because:
+   * 1. The reducer calls reconciler.reconcileTask() for each task
+   * 2. The reconciler generates IDs for tasks that don't have them
+   * 3. The naturalKey is used for matching, then discarded
+   * 4. The final tasks in the store always have valid IDs
    */
   async loadInitialData(): Promise<readonly Task[]> {
     console.log("[ObsidianTaskSource] Loading initial data...");
 
     // Scan existing task files in the vault
-    // Note: scanExistingTasks returns tasks without IDs but with natural keys
-    // The store reducer will handle ID generation and upsert logic
-    const taskData = await this.taskOperations.scanExistingTasks();
+    // scanExistingTasks returns TaskDataWithNaturalKey (Omit<Task, "id"> & { naturalKey: string })
+    const taskData: readonly TaskDataWithNaturalKey[] =
+      await this.taskOperations.scanExistingTasks();
 
     console.log(
       `[ObsidianTaskSource] Loaded ${taskData.length} tasks from vault`
     );
 
-    // Cast to Task[] since the store will handle ID generation
+    // Type assertion: TaskDataWithNaturalKey[] -> Task[]
+    // Safe because reconciler.reconcileTask() generates IDs for tasks without them
+    // See TaskReconciler.reconcileTask() for ID generation logic
     return taskData as unknown as readonly Task[];
   }
 
