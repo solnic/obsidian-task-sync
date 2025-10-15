@@ -197,7 +197,7 @@ export class ObsidianTaskReconciler implements TaskReconciler {
     // New task from vault - generate ID and timestamps
     return {
       ...newTask,
-      id: newTask.id || crypto.randomUUID(),
+      id: newTask.id || generateId(),
       createdAt: new Date(),
       updatedAt: new Date(),
     };
