@@ -145,9 +145,6 @@ test.describe("Daily Planning Wizard", () => {
       .filter({ hasText: "Task 2 - Will be unscheduled" })
       .count();
 
-    // Log for debugging
-    console.log(`Task 2 count in reopened wizard: ${task2Count}`);
-
     // This should be 0, but if the bug exists, it will be > 0
     expect(task2Count).toBe(0);
 

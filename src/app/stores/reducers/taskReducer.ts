@@ -7,7 +7,6 @@
 
 import type { Task } from "../../core/entities";
 import type { TaskAction } from "../actions";
-import { generateId } from "../../utils/idGenerator";
 
 /**
  * Task store state interface
@@ -56,61 +55,29 @@ export function taskReducer(
       };
 
     case "LOAD_SOURCE_SUCCESS": {
-      // For Obsidian source: Remove ALL tasks that have filePath (vault-backed tasks)
-      // This includes GitHub tasks that were imported and have vault files
-      // For other sources: Remove only tasks from that specific extension
-      const filteredTasks = state.tasks.filter((t) => {
-        if (action.sourceId === "obsidian") {
-          // Remove all vault-backed tasks (those with filePath)
-          return !t.source?.filePath;
-        } else {
-          // For other sources, remove only tasks from that extension
-          return t.source?.extension !== action.sourceId;
-        }
-      });
+      // Delegate filtering logic to the reconciler
+      const filteredTasks = action.reconciler.filterTasksOnRefresh(
+        state.tasks,
+        action.sourceId
+      );
 
-      // For Obsidian source, preserve ID, createdAt, and source.extension from old tasks
-      // This ensures tasks maintain their identity and GitHub tasks keep their source.extension = "github" after refresh
-      const tasksToAdd = Array.isArray(action.tasks)
+      // Reconcile each new task using the reconciler's strategy
+      const reconciledTasks = Array.isArray(action.tasks)
         ? action.tasks.map((newTask) => {
-            if (action.sourceId === "obsidian" && newTask.source?.filePath) {
-              // Find old task with same filePath
-              const oldTask = state.tasks.find(
-                (t) => t.source?.filePath === newTask.source?.filePath
-              );
-              if (oldTask) {
-                // Preserve ID, createdAt, and source metadata from old task
-                return {
-                  ...newTask,
-                  id: oldTask.id, // Preserve ID to maintain task identity
-                  createdAt: oldTask.createdAt, // Preserve creation timestamp
-                  source: {
-                    ...newTask.source,
-                    // Preserve original extension (e.g., "github" for imported tasks)
-                    extension:
-                      oldTask.source?.extension ||
-                      newTask.source?.extension ||
-                      "obsidian",
-                    // Preserve source URL (e.g., GitHub issue URL)
-                    url: oldTask.source?.url || newTask.source?.url,
-                    // Preserve source data (e.g., GitHub issue data)
-                    data: oldTask.source?.data || newTask.source?.data,
-                  },
-                } as Task;
-              }
-            }
-            // For new tasks (no old task found), generate ID
-            return {
-              ...newTask,
-              id: newTask.id || crypto.randomUUID(),
-            } as Task;
+            // Find existing task using reconciler's matching logic
+            const existingTask = state.tasks.find((t) =>
+              action.reconciler.matchesTask(t, newTask)
+            );
+
+            // Let reconciler merge the tasks
+            return action.reconciler.reconcileTask(existingTask, newTask);
           })
         : [];
 
-      // Add new tasks from source
+      // Add reconciled tasks to filtered tasks
       return {
         ...state,
-        tasks: [...filteredTasks, ...tasksToAdd],
+        tasks: [...filteredTasks, ...reconciledTasks],
         loading: false,
         lastSync: new Map(state.lastSync).set(action.sourceId, new Date()),
       };
@@ -144,50 +111,37 @@ export function taskReducer(
       };
 
     case "UPSERT_TASK": {
-      // Find existing task by natural key (source.filePath for Obsidian)
-      const existingTask = state.tasks.find(
-        (t) => t.source?.filePath === action.taskData.naturalKey
+      // Create a temporary task object for matching purposes
+      // The reconciler will handle ID generation if needed
+      const newTaskData = {
+        ...action.taskData,
+        id: "", // Placeholder - reconciler will set proper ID
+      } as Task;
+
+      // Use reconciler to find matching task
+      const existingTask = state.tasks.find((t) =>
+        action.reconciler.matchesTask(t, newTaskData)
+      );
+
+      // Let reconciler merge the data
+      const reconciledTask = action.reconciler.reconcileTask(
+        existingTask,
+        newTaskData
       );
 
       if (existingTask) {
-        // Update existing task, preserving ID, created timestamp, and important source metadata
-        const updatedTask: Task = {
-          ...action.taskData,
-          id: existingTask.id,
-          createdAt: existingTask.createdAt,
-          updatedAt: new Date(),
-          source: {
-            ...action.taskData.source,
-            // Preserve original extension (e.g., "github" for imported tasks)
-            extension:
-              existingTask.source?.extension ||
-              action.taskData.source?.extension ||
-              "obsidian",
-            // Preserve source URL (e.g., GitHub issue URL)
-            url: existingTask.source?.url || action.taskData.source?.url,
-            // Preserve source data (e.g., GitHub issue data)
-            data: existingTask.source?.data || action.taskData.source?.data,
-          },
-        } as Task;
-
+        // Update existing task
         return {
           ...state,
           tasks: state.tasks.map((t) =>
-            t.id === existingTask.id ? updatedTask : t
+            t.id === existingTask.id ? reconciledTask : t
           ),
         };
       } else {
-        // Create new task with generated ID
-        const newTask: Task = {
-          ...action.taskData,
-          id: generateId(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        } as Task;
-
+        // Add new task
         return {
           ...state,
-          tasks: [...state.tasks, newTask],
+          tasks: [...state.tasks, reconciledTask],
         };
       }
     }

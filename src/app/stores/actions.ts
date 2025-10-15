@@ -7,6 +7,7 @@
  */
 
 import type { Task, Project, Area } from "../core/entities";
+import type { TaskReconciler } from "../core/TaskReconciler";
 
 /**
  * Task-related actions
@@ -20,7 +21,12 @@ import type { Task, Project, Area } from "../core/entities";
  */
 export type TaskAction =
   | { type: "LOAD_SOURCE_START"; sourceId: string }
-  | { type: "LOAD_SOURCE_SUCCESS"; sourceId: string; tasks: readonly Task[] }
+  | {
+      type: "LOAD_SOURCE_SUCCESS";
+      sourceId: string;
+      tasks: readonly Task[];
+      reconciler: TaskReconciler;
+    }
   | { type: "LOAD_SOURCE_ERROR"; sourceId: string; error: string }
   | { type: "ADD_TASK"; task: Task }
   | { type: "UPDATE_TASK"; task: Task }
@@ -28,6 +34,7 @@ export type TaskAction =
   | {
       type: "UPSERT_TASK";
       taskData: Omit<Task, "id"> & { naturalKey: string };
+      reconciler: TaskReconciler;
     };
 
 /**

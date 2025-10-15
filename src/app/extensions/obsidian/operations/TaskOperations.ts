@@ -11,7 +11,7 @@ import { taskStore } from "../../../stores/taskStore";
 import { getDateString } from "../../../utils/dateFiltering";
 import { PROPERTY_REGISTRY } from "../utils/PropertyRegistry";
 import type { TaskSyncSettings } from "../../../types/settings";
-import type { TypeNote } from "../../../core/type-note/TypeNote";
+import { ObsidianTaskReconciler } from "../../../core/TaskReconciler";
 
 export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   private wikiLinkOperations: any;
@@ -80,10 +80,11 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     // This contains the updated frontmatter data
     const taskData = await this.parseFileToTaskData(file, cache);
     if (taskData) {
-      // Dispatch UPSERT_TASK action to taskStore
+      // Dispatch UPSERT_TASK action to taskStore with Obsidian reconciler
       taskStore.dispatch({
         type: "UPSERT_TASK",
         taskData,
+        reconciler: new ObsidianTaskReconciler(),
       });
     }
   }

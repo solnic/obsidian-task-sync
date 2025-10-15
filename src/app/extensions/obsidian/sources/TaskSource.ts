@@ -19,6 +19,7 @@ import type { TaskSyncSettings } from "../../../types/settings";
 import { ObsidianTaskOperations } from "../operations/TaskOperations";
 import { taskStore } from "../../../stores/taskStore";
 import { get } from "svelte/store";
+import { ObsidianTaskReconciler } from "../../../core/TaskReconciler";
 
 /**
  * ObsidianTaskSource class
@@ -28,6 +29,7 @@ import { get } from "svelte/store";
 export class ObsidianTaskSource implements DataSource<Task> {
   readonly id = "obsidian";
   readonly name = "Obsidian Vault";
+  readonly reconciler = new ObsidianTaskReconciler();
 
   private taskOperations: ObsidianTaskOperations;
 
@@ -79,7 +81,7 @@ export class ObsidianTaskSource implements DataSource<Task> {
    * @param callback - Function to call with updated tasks when changes are detected
    * @returns Cleanup function to stop watching
    */
-  watch(callback: (tasks: readonly Task[]) => void): () => void {
+  watch(_callback: (tasks: readonly Task[]) => void): () => void {
     console.log("[ObsidianTaskSource] Setting up file watchers...");
 
     const tasksFolder = this.settings.tasksFolder;
@@ -104,6 +106,7 @@ export class ObsidianTaskSource implements DataSource<Task> {
           taskStore.dispatch({
             type: "UPSERT_TASK",
             taskData,
+            reconciler: this.reconciler,
           });
           console.log(
             `[ObsidianTaskSource] Upserted task from ${file.path}: ${taskData.title}`

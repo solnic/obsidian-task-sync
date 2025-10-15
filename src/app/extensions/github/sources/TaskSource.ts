@@ -15,6 +15,7 @@ import type { DataSource } from "../../../sources/DataSource";
 import type { Task } from "../../../core/entities";
 import { taskStore } from "../../../stores/taskStore";
 import { get } from "svelte/store";
+import { SimpleTaskReconciler } from "../../../core/TaskReconciler";
 
 /**
  * GitHubTaskSource class
@@ -24,6 +25,7 @@ import { get } from "svelte/store";
 export class GitHubTaskSource implements DataSource<Task> {
   readonly id = "github";
   readonly name = "GitHub";
+  readonly reconciler = new SimpleTaskReconciler();
 
   /**
    * Load initial data by returning imported GitHub tasks from the store
@@ -69,4 +71,3 @@ export class GitHubTaskSource implements DataSource<Task> {
   // The store will be updated through the normal action dispatch flow
   // when users import GitHub issues/PRs
 }
-

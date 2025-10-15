@@ -1,36 +1,36 @@
 /**
  * TaskSourceManager - Coordinates data sources and store updates
- * 
+ *
  * Responsibilities:
  * - Register and manage task data sources
  * - Load data from sources and dispatch to store
  * - Coordinate refresh operations
  * - Set up watchers for external changes
- * 
+ *
  * This is the bridge between DataSources (pure data providers) and
  * the Store (state management). Sources don't know about stores,
  * and stores don't know about sources - the manager coordinates.
  */
 
-import type { DataSource } from '../sources/DataSource';
-import type { Task } from './entities';
-import { taskStore } from '../stores/taskStore';
+import type { DataSource } from "../sources/DataSource";
+import type { Task } from "./entities";
+import { taskStore } from "../stores/taskStore";
 
 /**
  * TaskSourceManager class
- * 
+ *
  * Manages task data sources and coordinates loading/refreshing
  */
 export class TaskSourceManager {
   /** Registered data sources by ID */
   private sources = new Map<string, DataSource<Task>>();
-  
+
   /** Active watchers by source ID */
   private watchers = new Map<string, () => void>();
 
   /**
    * Register a task data source
-   * 
+   *
    * @param source - The data source to register
    */
   registerSource(source: DataSource<Task>): void {
@@ -39,11 +39,15 @@ export class TaskSourceManager {
     // Set up watching if supported
     if (source.watch) {
       const unwatch = source.watch((tasks) => {
-        // When source detects changes, dispatch to store
+        // When source detects changes, dispatch to store with reconciler
+        if (!source.reconciler) {
+          throw new Error(`Source ${source.id} must provide a reconciler`);
+        }
         taskStore.dispatch({
-          type: 'LOAD_SOURCE_SUCCESS',
+          type: "LOAD_SOURCE_SUCCESS",
           sourceId: source.id,
           tasks,
+          reconciler: source.reconciler,
         });
       });
       this.watchers.set(source.id, unwatch);
@@ -52,7 +56,7 @@ export class TaskSourceManager {
 
   /**
    * Unregister a task data source
-   * 
+   *
    * @param sourceId - ID of the source to unregister
    */
   unregisterSource(sourceId: string): void {
@@ -68,7 +72,7 @@ export class TaskSourceManager {
 
   /**
    * Load initial data from a source
-   * 
+   *
    * @param sourceId - ID of the source to load
    */
   async loadSource(sourceId: string): Promise<void> {
@@ -77,19 +81,24 @@ export class TaskSourceManager {
       throw new Error(`Source not found: ${sourceId}`);
     }
 
+    if (!source.reconciler) {
+      throw new Error(`Source ${sourceId} must provide a reconciler`);
+    }
+
     try {
-      taskStore.dispatch({ type: 'LOAD_SOURCE_START', sourceId });
+      taskStore.dispatch({ type: "LOAD_SOURCE_START", sourceId });
       const tasks = await source.loadInitialData();
       taskStore.dispatch({
-        type: 'LOAD_SOURCE_SUCCESS',
+        type: "LOAD_SOURCE_SUCCESS",
         sourceId,
         tasks,
+        reconciler: source.reconciler,
       });
     } catch (error: any) {
       taskStore.dispatch({
-        type: 'LOAD_SOURCE_ERROR',
+        type: "LOAD_SOURCE_ERROR",
         sourceId,
-        error: error.message || 'Unknown error loading source',
+        error: error.message || "Unknown error loading source",
       });
       throw error;
     }
@@ -97,7 +106,7 @@ export class TaskSourceManager {
 
   /**
    * Refresh data from a source
-   * 
+   *
    * @param sourceId - ID of the source to refresh
    */
   async refreshSource(sourceId: string): Promise<void> {
@@ -106,19 +115,24 @@ export class TaskSourceManager {
       throw new Error(`Source not found: ${sourceId}`);
     }
 
+    if (!source.reconciler) {
+      throw new Error(`Source ${sourceId} must provide a reconciler`);
+    }
+
     try {
-      taskStore.dispatch({ type: 'LOAD_SOURCE_START', sourceId });
+      taskStore.dispatch({ type: "LOAD_SOURCE_START", sourceId });
       const tasks = await source.refresh();
       taskStore.dispatch({
-        type: 'LOAD_SOURCE_SUCCESS',
+        type: "LOAD_SOURCE_SUCCESS",
         sourceId,
         tasks,
+        reconciler: source.reconciler,
       });
     } catch (error: any) {
       taskStore.dispatch({
-        type: 'LOAD_SOURCE_ERROR',
+        type: "LOAD_SOURCE_ERROR",
         sourceId,
-        error: error.message || 'Unknown error refreshing source',
+        error: error.message || "Unknown error refreshing source",
       });
       throw error;
     }
@@ -128,8 +142,8 @@ export class TaskSourceManager {
    * Refresh all registered sources
    */
   async refreshAll(): Promise<void> {
-    const refreshPromises = Array.from(this.sources.keys()).map(id =>
-      this.refreshSource(id).catch(error => {
+    const refreshPromises = Array.from(this.sources.keys()).map((id) =>
+      this.refreshSource(id).catch((error) => {
         console.error(`Failed to refresh source ${id}:`, error);
         // Don't throw - allow other sources to continue refreshing
       })
@@ -140,7 +154,7 @@ export class TaskSourceManager {
 
   /**
    * Get a registered source by ID
-   * 
+   *
    * @param sourceId - ID of the source to get
    * @returns The data source, or undefined if not found
    */
@@ -150,7 +164,7 @@ export class TaskSourceManager {
 
   /**
    * Get all registered source IDs
-   * 
+   *
    * @returns Array of source IDs
    */
   getSourceIds(): string[] {
@@ -159,7 +173,7 @@ export class TaskSourceManager {
 
   /**
    * Check if a source is registered
-   * 
+   *
    * @param sourceId - ID of the source to check
    * @returns True if the source is registered
    */
@@ -170,7 +184,7 @@ export class TaskSourceManager {
 
 /**
  * Global TaskSourceManager instance
- * 
+ *
  * Usage:
  * - Register: taskSourceManager.registerSource(source)
  * - Load: await taskSourceManager.loadSource('obsidian')
@@ -178,4 +192,3 @@ export class TaskSourceManager {
  * - Refresh all: await taskSourceManager.refreshAll()
  */
 export const taskSourceManager = new TaskSourceManager();
-
