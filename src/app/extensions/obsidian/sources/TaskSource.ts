@@ -59,6 +59,12 @@ export class ObsidianTaskSource implements DataSource<Task> {
    * 2. The reconciler generates IDs for tasks that don't have them
    * 3. The naturalKey is used for matching, then discarded
    * 4. The final tasks in the store always have valid IDs
+   *
+   * Alternative approaches considered:
+   * - Changing DataSource<T> to DataSource<T, TPartial = T> would require updating
+   *   all data sources and add complexity to the interface
+   * - Creating a separate PartialTaskSource interface would fragment the architecture
+   * - Current approach: Document the contract and use type assertion with clear explanation
    */
   async loadInitialData(): Promise<readonly Task[]> {
     console.log("[ObsidianTaskSource] Loading initial data...");
@@ -74,7 +80,8 @@ export class ObsidianTaskSource implements DataSource<Task> {
 
     // Type assertion: TaskDataWithNaturalKey[] -> Task[]
     // Safe because reconciler.reconcileTask() generates IDs for tasks without them
-    // See TaskReconciler.reconcileTask() for ID generation logic
+    // See ObsidianTaskReconciler.reconcileTask() for ID generation logic
+    // The reconciler is called by taskReducer for each task in LOAD_SOURCE_SUCCESS action
     return taskData as unknown as readonly Task[];
   }
 

@@ -32,6 +32,12 @@ import type { TaskSyncSettings } from "../../types/settings";
 import { GitHubTaskSource } from "./sources/TaskSource";
 import { taskSourceManager } from "../../core/TaskSourceManager";
 
+/**
+ * Prefix for temporary GitHub task IDs
+ * Used to identify tasks that haven't been imported yet
+ */
+const GITHUB_TEMP_ID_PREFIX = "github-temp-" as const;
+
 export class GitHubExtension implements Extension {
   readonly id = "github";
   readonly name = "GitHub";
@@ -282,7 +288,7 @@ export class GitHubExtension implements Extension {
             const task = {
               ...taskData,
               // Generate a temporary ID for non-imported items
-              id: `github-temp-${item.id}`,
+              id: `${GITHUB_TEMP_ID_PREFIX}${item.id}`,
               createdAt: new Date(item.created_at),
               updatedAt: new Date(item.updated_at),
               source: {

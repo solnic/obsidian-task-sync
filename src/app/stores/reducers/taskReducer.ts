@@ -9,6 +9,12 @@ import type { Task } from "../../core/entities";
 import type { TaskAction } from "../actions";
 
 /**
+ * Placeholder ID used for temporary tasks during reconciliation
+ * This ID is replaced by the reconciler with a proper ID
+ */
+const TEMP_TASK_ID = "__TEMP__" as const;
+
+/**
  * Task store state interface
  */
 export interface TaskStoreState {
@@ -115,7 +121,7 @@ export function taskReducer(
       // The reconciler will handle ID generation if needed
       const newTaskData = {
         ...action.taskData,
-        id: "__TEMP__", // Explicit placeholder - reconciler will set proper ID
+        id: TEMP_TASK_ID, // Explicit placeholder - reconciler will set proper ID
       } as Task;
 
       // Use reconciler to find matching task

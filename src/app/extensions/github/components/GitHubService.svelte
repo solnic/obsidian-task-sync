@@ -25,6 +25,12 @@
   import { taskStore } from "../../../stores/taskStore";
   import { TaskQueryService } from "../../../services/TaskQueryService";
 
+  /**
+   * Prefix for temporary GitHub task IDs
+   * Used to identify tasks that haven't been imported yet
+   */
+  const GITHUB_TEMP_ID_PREFIX = "github-temp-" as const;
+
   interface SortField {
     key: string;
     label: string;
@@ -275,7 +281,7 @@
         const task = {
           ...taskData,
           // Generate a temporary ID for non-imported items
-          id: `github-temp-${item.id}`,
+          id: `${GITHUB_TEMP_ID_PREFIX}${item.id}`,
           createdAt: new Date(item.created_at),
           updatedAt: new Date(item.updated_at),
           source: {
@@ -316,7 +322,7 @@
         id: t.id,
         title: t.title,
         doDate: t.doDate,
-        isImported: !t.id.startsWith("github-temp-"),
+        isImported: !t.id.startsWith(GITHUB_TEMP_ID_PREFIX),
       })),
     });
 
@@ -757,7 +763,7 @@
 
   // Helper to check if a task is imported (has a real ID, not a temp one)
   function isTaskImported(task: Task): boolean {
-    return !task.id.startsWith("github-temp-");
+    return !task.id.startsWith(GITHUB_TEMP_ID_PREFIX);
   }
 
   async function importTask(task: Task): Promise<void> {
