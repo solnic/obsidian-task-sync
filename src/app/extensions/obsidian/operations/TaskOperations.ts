@@ -166,10 +166,32 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
   /**
    * Parse a task file and convert it to task data (without ID)
-   * Based on the old TaskFileManager.loadEntity logic but simplified for new architecture
+   *
+   * This method is public to allow external callers (like ObsidianTaskSource) to parse
+   * individual task files when handling file system events. It extracts task data from
+   * the file's front matter and returns it in a format suitable for store upsert operations.
+   *
+   * Based on the old TaskFileManager.loadEntity logic but simplified for new architecture.
+   *
    * @param file - The Obsidian file to parse
-   * @param cache - Optional metadata cache from the changed event
-   * @returns Task data without ID, including naturalKey for store upsert
+   * @param cache - Optional metadata cache from the changed event. If provided, uses this
+   *                directly instead of waiting for the metadata cache to be ready. This
+   *                improves performance when handling file change events.
+   * @returns Task data without ID, including naturalKey for store upsert, or null if the
+   *          file is not a valid task file (missing Type: Task or Title in front matter)
+   *
+   * @example
+   * ```typescript
+   * // Parse a task file during file system event handling
+   * const taskData = await taskOperations.parseFileToTaskData(file, cache);
+   * if (taskData) {
+   *   taskStore.dispatch({
+   *     type: "UPSERT_TASK",
+   *     taskData,
+   *     reconciler: new ObsidianTaskReconciler()
+   *   });
+   * }
+   * ```
    */
   async parseFileToTaskData(
     file: TFile,
