@@ -250,13 +250,31 @@ export class SortableGitHubMappingList {
     addButton.onclick = () => this.onAdd();
   }
 
-  private updateMapping(index: number, updates: Partial<GitHubOrgRepoMapping>): void {
+  /**
+   * Update a mapping at the specified index
+   *
+   * This method does NOT modify the internal mappings array directly. Instead, it
+   * delegates to the parent component via the onUpdate callback. The parent component
+   * is the single source of truth for the mappings array and is responsible for:
+   * 1. Updating the settings object
+   * 2. Saving the settings
+   * 3. Optionally calling updateMappings() to refresh the UI if needed
+   *
+   * This design prevents synchronization issues between parent and child components.
+   *
+   * @param index - Index of the mapping to update
+   * @param updates - Partial mapping object with fields to update
+   */
+  private updateMapping(
+    index: number,
+    updates: Partial<GitHubOrgRepoMapping>
+  ): void {
     const updatedMapping = {
       ...this.mappings[index],
       ...updates,
     };
-    // Update the internal mappings array to keep it in sync
-    this.mappings[index] = updatedMapping;
+    // Delegate to parent - do NOT update internal array
+    // Parent component is the single source of truth
     this.onUpdate(index, updatedMapping);
   }
 
@@ -358,7 +376,10 @@ export class SortableGitHubMappingList {
     projectInput.type = "text";
     projectInput.placeholder = "Project name";
     projectInput.value = mapping.targetProject || "";
-    projectInput.setAttribute("data-testid", `github-mapping-project-input-${index}`);
+    projectInput.setAttribute(
+      "data-testid",
+      `github-mapping-project-input-${index}`
+    );
     projectInput.oninput = () => {
       this.updateMapping(index, {
         targetProject: projectInput.value.trim() || undefined,
