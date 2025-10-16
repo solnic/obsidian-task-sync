@@ -207,7 +207,7 @@ export class DailyNoteFeature {
   }
 
   /**
-   * Update daily note from schedule (idempotent - only adds missing tasks)
+   * Update daily note from schedule (idempotent - adds missing tasks and removes unscheduled ones)
    */
   private async updateDailyNoteFromSchedule(schedule: Schedule): Promise<void> {
     // Only update daily note if schedule is planned
@@ -234,38 +234,51 @@ export class DailyNoteFeature {
     );
 
     // Read current daily note content for modification
-    const currentContent = await this.app.vault.read(dailyNoteResult.file!);
+    let currentContent = await this.app.vault.read(dailyNoteResult.file!);
 
-    let tasksToAdd: Task[] = [];
+    // Build set of scheduled task paths for quick lookup
+    const scheduledTaskPaths = new Set(
+      schedule.tasks.map((task) => task.source.filePath!)
+    );
 
-    for (const task of schedule.tasks) {
-      if (existingTaskPaths.has(task.source.filePath!)) {
-        continue;
+    // Find tasks to remove (in daily note but not in schedule)
+    const tasksToRemove: string[] = [];
+    for (const existingPath of existingTaskPaths) {
+      if (!scheduledTaskPaths.has(existingPath)) {
+        tasksToRemove.push(existingPath);
       }
-      tasksToAdd.push(task);
     }
 
-    // Early return if no new tasks to add (idempotent behavior)
-    if (tasksToAdd.length === 0) {
-      return;
+    // Remove unscheduled tasks from daily note
+    if (tasksToRemove.length > 0) {
+      currentContent = this.removeTasksFromContent(
+        currentContent,
+        tasksToRemove
+      );
     }
 
-    // Generate task links for new tasks
-    const taskLinks = tasksToAdd.map(
-      (task) => `- [ ] [[${task.source.filePath}|${task.title}]]`
-    );
+    // Find tasks to add (in schedule but not in daily note)
+    let tasksToAdd: Task[] = [];
+    for (const task of schedule.tasks) {
+      if (!existingTaskPaths.has(task.source.filePath!)) {
+        tasksToAdd.push(task);
+      }
+    }
 
-    // Merge new tasks with existing Daily Note content
-    const updatedContent = this.insertTasksIntoContent(
-      currentContent,
-      taskLinks
-    );
+    // Add new tasks to daily note
+    if (tasksToAdd.length > 0) {
+      const taskLinks = tasksToAdd.map(
+        (task) => `- [ ] [[${task.source.filePath}|${task.title}]]`
+      );
+      currentContent = this.insertTasksIntoContent(currentContent, taskLinks);
+    }
 
     // Only update if content actually changed
-    if (updatedContent !== currentContent) {
-      await this.app.vault.modify(dailyNoteResult.file!, updatedContent);
+    const originalContent = await this.app.vault.read(dailyNoteResult.file!);
+    if (currentContent !== originalContent) {
+      await this.app.vault.modify(dailyNoteResult.file!, currentContent);
       console.log(
-        `Added ${taskLinks.length} new tasks to daily note (${existingTaskPaths.size} tasks already present)`
+        `Updated daily note: removed ${tasksToRemove.length} tasks, added ${tasksToAdd.length} tasks`
       );
     }
   }
@@ -303,6 +316,55 @@ export class DailyNoteFeature {
       const newTasksSection = `\n## Today's Tasks\n${taskLinks.join("\n")}\n`;
       return content + newTasksSection;
     }
+  }
+
+  /**
+   * Remove task links from daily note content
+   */
+  private removeTasksFromContent(content: string, taskPaths: string[]): string {
+    let updatedContent = content;
+
+    // For each task path to remove, find and remove the corresponding task link
+    for (const taskPath of taskPaths) {
+      // Extract the task title from the file path (remove .md extension and path)
+      const taskTitle = taskPath.split("/").pop()?.replace(/\.md$/, "") || "";
+
+      // Remove task links in various formats:
+      // - [ ] [[Tasks/Task Name|Task Name]]
+      // - [ ] [[Task Name]]
+      // - [x] [[Tasks/Task Name|Task Name]]
+      // - [x] [[Task Name]]
+
+      // Pattern 1: - [ ] or - [x] followed by [[path|title]] or [[title]]
+      const patterns = [
+        // Full path with pipe separator
+        new RegExp(
+          `^\\s*-\\s*\\[[ x]\\]\\s*\\[\\[${taskPath}\\|[^\\]]*\\]\\]\\s*$`,
+          "m"
+        ),
+        // Just title with pipe separator
+        new RegExp(
+          `^\\s*-\\s*\\[[ x]\\]\\s*\\[\\[[^|]*\\|${taskTitle}\\]\\]\\s*$`,
+          "m"
+        ),
+        // Full path without pipe separator
+        new RegExp(`^\\s*-\\s*\\[[ x]\\]\\s*\\[\\[${taskPath}\\]\\]\\s*$`, "m"),
+        // Just title without pipe separator
+        new RegExp(
+          `^\\s*-\\s*\\[[ x]\\]\\s*\\[\\[${taskTitle}\\]\\]\\s*$`,
+          "m"
+        ),
+      ];
+
+      for (const pattern of patterns) {
+        updatedContent = updatedContent.replace(pattern, "");
+      }
+    }
+
+    // Clean up any extra blank lines left behind
+    updatedContent = updatedContent.replace(/\n\n\n+/g, "\n\n");
+
+    return updatedContent;
   }
 
   /**
