@@ -79,7 +79,42 @@ export abstract class ObsidianEntityOperations<
   }
 
   async updateNote(entity: T): Promise<void> {
-    await this.createNote(entity);
+    // For updates, only update front-matter and preserve existing content
+    const entityName = this.getEntityDisplayName(entity);
+    const fileName = this.sanitizeFileName(entityName);
+    const filePath = `${this.folder}/${fileName}.md`;
+
+    const existingFile = this.app.vault.getAbstractFileByPath(filePath);
+
+    if (existingFile) {
+      // Generate entity-specific front-matter
+      const frontMatter = this.generateFrontMatter(entity);
+
+      // Remove undefined values safely
+      const cleanedFrontMatter = Object.fromEntries(
+        Object.entries(frontMatter).filter(([_, value]) => value !== undefined)
+      );
+
+      // Update only the front-matter, preserving existing body content
+      await this.app.fileManager.processFrontMatter(
+        existingFile as any,
+        (existingFrontMatter) => {
+          // Clear existing front-matter and replace with new data
+          Object.keys(existingFrontMatter).forEach(
+            (key) => delete existingFrontMatter[key]
+          );
+          Object.assign(existingFrontMatter, cleanedFrontMatter);
+        }
+      );
+
+      this.trigger("notes.updated", {
+        entityId: entity.id,
+        filePath,
+      });
+    } else {
+      // File doesn't exist, create it
+      await this.createNote(entity);
+    }
   }
 
   async deleteNote(entity: T): Promise<void> {

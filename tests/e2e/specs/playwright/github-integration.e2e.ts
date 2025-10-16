@@ -14,6 +14,7 @@ import {
   getActiveFilePath,
   reloadPlugin,
   updateFileFrontmatter,
+  readVaultFile,
 } from "../../helpers/global";
 import {
   stubGitHubWithFixtures,
@@ -68,6 +69,84 @@ test.describe("GitHub Integration", () => {
         .locator(".task-sync-item-title:has-text('First test issue')")
         .count()
     ).toBe(1);
+  });
+
+  test("should preserve GitHub issue content when task is updated", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Click import button for first issue (#111)
+    await clickIssueImportButton(page, 111);
+    await waitForIssueImportComplete(page, 111);
+
+    // Verify task file was created
+    const taskExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(taskExists).toBe(true);
+
+    // Read the initial file content to verify it contains GitHub issue content
+    const initialContent = await readVaultFile(
+      page,
+      "Tasks/First test issue.md"
+    );
+    expect(initialContent).toBeTruthy();
+    expect(initialContent).toContain(
+      "This is the first test issue for multiple imports"
+    );
+
+    // Get the task and update it (simulating what happens during scheduling)
+    const task = await getTaskByTitle(page, "First test issue");
+    expect(task).toBeDefined();
+
+    // Update the task with a doDate to trigger updateNote
+    const updatedTask = await page.evaluate(async (taskToUpdate) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const taskOps = plugin.operations.taskOperations;
+
+      const updated = {
+        ...taskToUpdate,
+        doDate: new Date().toISOString().split("T")[0], // Today's date
+      };
+
+      return await taskOps.update(updated);
+    }, task);
+
+    expect(updatedTask).toBeTruthy();
+
+    // Wait for the update to complete
+    await page.waitForTimeout(1000);
+
+    // CRITICAL: Read the file content again - it should still contain the GitHub issue content
+    const finalContent = await readVaultFile(page, "Tasks/First test issue.md");
+    expect(finalContent).toBeTruthy();
+    expect(finalContent).toContain(
+      "This is the first test issue for multiple imports"
+    );
+    expect(finalContent).toContain("Do Date:");
   });
 
   test("should automatically open note when GitHub issue is imported", async ({
