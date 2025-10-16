@@ -155,78 +155,103 @@ export class GitHubExtension implements Extension {
     return this.initialized && this.octokit !== undefined;
   }
 
-  // Cache for fetched GitHub API data (issues/PRs) - now reactive
+  // ============================================================================
+  // REACTIVE STATE - Extension-level state that components can observe
+  // ============================================================================
+
+  // Cache for fetched GitHub API data (issues/PRs) - reactive writable store
   private githubApiDataCache = writable<Map<string, any[]>>(new Map());
 
   // Cache for non-imported task objects to ensure stable IDs
   // Maps GitHub URL -> Task object
   private taskObjectCache = new Map<string, Task>();
 
+  // Current active filters - components should read/write these
+  private currentFilters = writable<{
+    repository: string | null;
+    type: "issues" | "pull-requests";
+  }>({
+    repository: null,
+    type: "issues",
+  });
+
   /**
-   * Get observable tasks for this extension with optional filters
-   * Returns imported GitHub tasks combined with GitHub API data
-   * @param filters - Optional filters for repository and type
+   * Get the current filter state (for components to read)
    */
-  getTasks(filters?: {
-    repository?: string;
+  getFilters(): Readable<{
+    repository: string | null;
+    type: "issues" | "pull-requests";
+  }> {
+    return this.currentFilters;
+  }
+
+  /**
+   * Set the current filter state (for components to update)
+   */
+  setFilters(filters: {
+    repository?: string | null;
     type?: "issues" | "pull-requests";
-  }): Readable<readonly Task[]> {
-    // Create derived store of GitHub tasks from taskStore
-    const githubTasks = derived(taskStore, ($store) => {
-      const filtered = $store.tasks.filter(
-        (task) => task.source?.extension === "github"
-      );
-      console.log("[GitHubExtension.getTasks] GitHub tasks from store:", {
-        totalTasks: $store.tasks.length,
-        githubTasks: filtered.length,
-        tasks: filtered.map((t) => ({
-          id: t.id,
-          title: t.title,
-          doDate: t.doDate,
-          url: t.source?.url,
-        })),
-      });
-      return filtered;
+  }): void {
+    this.currentFilters.update((current) => ({
+      repository:
+        filters.repository !== undefined
+          ? filters.repository
+          : current.repository,
+      type: filters.type !== undefined ? filters.type : current.type,
+    }));
+
+    // Trigger data fetch if repository is set
+    const { repository, type } = get(this.currentFilters);
+    if (repository) {
+      const cacheKey = `${repository}:${type}`;
+      const currentCache = get(this.githubApiDataCache);
+      if (!currentCache.has(cacheKey)) {
+        this.fetchGitHubApiData(repository, type);
+      }
+    }
+  }
+
+  /**
+   * Get observable tasks for this extension
+   * Returns a single derived store that combines:
+   * - Imported GitHub tasks from taskStore
+   * - Fetched GitHub API data based on current filters
+   *
+   * This is the main interface for components to get tasks.
+   * Components should NOT pass filters - they should use setFilters() instead.
+   */
+  getTasks(): Readable<readonly Task[]> {
+    // Create derived store of imported GitHub tasks from taskStore
+    const importedGitHubTasks = derived(taskStore, ($store) => {
+      return $store.tasks.filter((task) => task.source?.extension === "github");
     });
 
-    // If no filters, return all imported GitHub tasks
-    if (!filters?.repository) {
-      return githubTasks;
-    }
-
-    const { repository, type = "issues" } = filters;
-    const cacheKey = `${repository}:${type}`;
-
-    console.log("[GitHubExtension.getTasks] Creating derived store for:", {
-      repository,
-      type,
-      cacheKey,
-    });
-
-    // Fetch GitHub API data if not already fetching
-    // Check the current cache state synchronously
-    const currentCache = get(this.githubApiDataCache);
-
-    if (!currentCache.has(cacheKey)) {
-      this.fetchGitHubApiData(repository, type);
-    }
-
-    // Create a derived store that combines imported tasks with fetched GitHub API data
-    // Now depends on BOTH githubTasks AND githubApiDataCache for reactivity
+    // Create a derived store that combines:
+    // 1. Imported GitHub tasks
+    // 2. GitHub API data cache
+    // 3. Current filter state
     return derived(
-      [githubTasks, this.githubApiDataCache],
-      ([$githubTasks, $cache]) => {
+      [importedGitHubTasks, this.githubApiDataCache, this.currentFilters],
+      ([$importedTasks, $cache, $filters]) => {
         console.log("[GitHubExtension.getTasks] Derived store updating:", {
-          githubTasksCount: $githubTasks.length,
+          importedCount: $importedTasks.length,
           cacheSize: $cache.size,
-          cacheKey,
+          filters: $filters,
         });
+
+        // If no repository filter, return all imported tasks
+        if (!$filters.repository) {
+          return $importedTasks;
+        }
+
+        const { repository, type } = $filters;
+        const cacheKey = `${repository}:${type}`;
 
         // Get fetched GitHub API data from reactive cache
         const githubItems = $cache.get(cacheKey) || [];
 
         // Filter imported tasks for this repository
-        const importedForRepo = $githubTasks.filter((task) => {
+        const importedForRepo = $importedTasks.filter((task) => {
           const url = task.source?.url;
           if (!url) return false;
           const match = url.match(/github\.com\/([^\/]+\/[^\/]+)\//);
@@ -237,11 +262,6 @@ export class GitHubExtension implements Extension {
         console.log("[GitHubExtension.getTasks] Imported for repo:", {
           repository,
           count: importedForRepo.length,
-          tasks: importedForRepo.map((t) => ({
-            id: t.id,
-            title: t.title,
-            doDate: t.doDate,
-          })),
         });
 
         // Combine GitHub API data with imported tasks
@@ -252,23 +272,13 @@ export class GitHubExtension implements Extension {
           );
 
           if (existingTask) {
-            console.log(
-              "[GitHubExtension.getTasks] Found existing task for:",
-              item.html_url,
-              {
-                id: existingTask.id,
-                title: existingTask.title,
-                doDate: existingTask.doDate,
-              }
-            );
-            // Return the imported task from the store (which has the latest doDate, etc.)
-            // with updated source.data from GitHub API
+            // Return the imported task from the store with updated GitHub data
             return {
               ...existingTask,
               source: {
                 ...existingTask.source,
-                imported: true, // Explicitly mark as imported
-                data: item, // Update with latest GitHub data (labels, state, etc.)
+                imported: true,
+                data: item, // Update with latest GitHub data
               },
             } as Task;
           } else {
@@ -280,7 +290,7 @@ export class GitHubExtension implements Extension {
                 ...cachedTask,
                 source: {
                   ...cachedTask.source,
-                  data: item, // Update with latest GitHub data
+                  data: item,
                 },
               } as Task;
             }
@@ -376,8 +386,8 @@ export class GitHubExtension implements Extension {
       // Clear GitHub API data cache - this triggers reactivity
       this.githubApiDataCache.set(new Map());
 
-      // Clear task object cache to allow fresh IDs for non-imported tasks
-      this.taskObjectCache.clear();
+      // DON'T clear taskObjectCache - we want stable IDs across refreshes
+      // The cache ensures the same GitHub issue always gets the same ULID
 
       // Use TaskSourceManager to refresh tasks from GitHubTaskSource
       // This will:
@@ -386,6 +396,15 @@ export class GitHubExtension implements Extension {
       // 3. Dispatch LOAD_SOURCE_SUCCESS with fresh tasks
       // 4. Store reducer handles replacing old tasks with fresh ones
       await taskSourceManager.refreshSource("github");
+
+      // Re-fetch GitHub API data for current filter
+      const currentFilter = get(this.currentFilters);
+      if (currentFilter.repository) {
+        await this.fetchGitHubApiData(
+          currentFilter.repository,
+          currentFilter.type
+        );
+      }
 
       console.log(
         "GitHub refresh completed successfully via TaskSourceManager"

@@ -122,22 +122,28 @@
   ];
 
   // ============================================================================
-  // DATA PROCESSING - Use extension's getTasks() interface
+  // DATA PROCESSING - Use extension's reactive state
   // ============================================================================
 
   /**
    * Get tasks from extension's getTasks() method
    * The extension handles combining imported tasks with GitHub API data
    * and ensures stable IDs for non-imported tasks
+   *
+   * The extension now manages filter state internally, so we update it
+   * when our local filters change.
    */
-  let extensionTasksStore = $derived(
-    githubExtension.getTasks({
-      repository: filters.repository,
-      type: filters.type,
-    })
-  );
+  let extensionTasksStore = $derived(githubExtension.getTasks());
 
   let extensionTasks = $derived($extensionTasksStore);
+
+  // Sync local filters to extension state
+  $effect(() => {
+    githubExtension.setFilters({
+      repository: filters.repository,
+      type: filters.type,
+    });
+  });
 
   /**
    * Apply filters, search, and sort to extension tasks
