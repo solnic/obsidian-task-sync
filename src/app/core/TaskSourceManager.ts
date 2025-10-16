@@ -31,6 +31,11 @@ export class TaskSourceManager {
   /**
    * Register a task data source
    *
+   * Sets up watching if the source supports it. The source can notify about changes
+   * in two ways:
+   * 1. Incremental updates (onItemChanged, onItemDeleted) - efficient for file-based sources
+   * 2. Bulk refresh (onBulkRefresh) - for API-based sources that re-fetch everything
+   *
    * @param source - The data source to register
    */
   registerSource(source: DataSource<Task>): void {
@@ -38,18 +43,48 @@ export class TaskSourceManager {
 
     // Set up watching if supported
     if (source.watch) {
-      const unwatch = source.watch((tasks) => {
-        // When source detects changes, dispatch to store with reconciler
-        if (!source.reconciler) {
-          throw new Error(`Source ${source.id} must provide a reconciler`);
-        }
-        taskStore.dispatch({
-          type: "LOAD_SOURCE_SUCCESS",
-          sourceId: source.id,
-          tasks,
-          reconciler: source.reconciler,
-        });
+      if (!source.reconciler) {
+        throw new Error(`Source ${source.id} must provide a reconciler`);
+      }
+
+      const unwatch = source.watch({
+        // Incremental update: single item changed
+        onItemChanged: (task) => {
+          console.log(
+            `[TaskSourceManager] Item changed from ${source.id}: ${task.id}`
+          );
+          taskStore.dispatch({
+            type: "UPSERT_TASK",
+            taskData: task,
+            reconciler: source.reconciler!,
+          });
+        },
+
+        // Incremental update: single item deleted
+        onItemDeleted: (taskId) => {
+          console.log(
+            `[TaskSourceManager] Item deleted from ${source.id}: ${taskId}`
+          );
+          taskStore.dispatch({
+            type: "REMOVE_TASK",
+            taskId,
+          });
+        },
+
+        // Bulk refresh: entire dataset replaced
+        onBulkRefresh: (tasks) => {
+          console.log(
+            `[TaskSourceManager] Bulk refresh from ${source.id}: ${tasks.length} tasks`
+          );
+          taskStore.dispatch({
+            type: "LOAD_SOURCE_SUCCESS",
+            sourceId: source.id,
+            tasks,
+            reconciler: source.reconciler!,
+          });
+        },
       });
+
       this.watchers.set(source.id, unwatch);
     }
   }

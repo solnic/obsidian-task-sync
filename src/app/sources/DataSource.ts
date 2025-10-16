@@ -10,10 +10,46 @@
  * - Optional watching for external changes
  * - Return readonly arrays to prevent accidental mutations
  * - Provide reconciliation strategy for merging data
+ * - Support both bulk refresh and incremental updates
  */
 
 import type { TaskReconciler } from "../core/TaskReconciler";
 import type { Task } from "../core/entities";
+
+/**
+ * Callbacks for watching data source changes
+ *
+ * DataSources can notify about changes in two ways:
+ * 1. Incremental updates (onItemChanged, onItemDeleted) - efficient for file-based sources
+ * 2. Bulk refresh (onBulkRefresh) - for API-based sources that re-fetch everything
+ *
+ * @template T - The entity type
+ */
+export interface DataSourceWatchCallbacks<T> {
+  /**
+   * Called when a single item is created or updated
+   * More efficient than bulk refresh for file-based sources
+   *
+   * @param item - The created or updated item
+   */
+  onItemChanged?: (item: T) => void;
+
+  /**
+   * Called when a single item is deleted
+   * More efficient than bulk refresh for file-based sources
+   *
+   * @param itemId - The ID of the deleted item
+   */
+  onItemDeleted?: (itemId: string) => void;
+
+  /**
+   * Called when the entire dataset should be refreshed
+   * Used by API-based sources that re-fetch everything on change
+   *
+   * @param items - All items from the source
+   */
+  onBulkRefresh?: (items: readonly T[]) => void;
+}
 
 /**
  * Generic DataSource interface for any entity type
@@ -59,10 +95,13 @@ export interface DataSource<T> {
 
   /**
    * Optional: Watch for external changes to the data
-   * If implemented, the callback will be invoked whenever the source detects changes
    *
-   * @param callback - Function to call with updated data when changes are detected
+   * DataSources can use either incremental updates or bulk refresh:
+   * - File-based sources (Obsidian): Use onItemChanged/onItemDeleted for efficiency
+   * - API-based sources (GitHub): Use onBulkRefresh to re-fetch everything
+   *
+   * @param callbacks - Callbacks for different types of changes
    * @returns Cleanup function to stop watching
    */
-  watch?(callback: (items: readonly T[]) => void): () => void;
+  watch?(callbacks: DataSourceWatchCallbacks<T>): () => void;
 }

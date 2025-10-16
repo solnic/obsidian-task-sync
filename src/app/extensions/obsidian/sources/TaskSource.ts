@@ -12,11 +12,16 @@
  */
 
 import type { App } from "obsidian";
-import type { DataSource } from "../../../sources/DataSource";
+import type {
+  DataSource,
+  DataSourceWatchCallbacks,
+} from "../../../sources/DataSource";
 import type { Task } from "../../../core/entities";
 import type { TaskSyncSettings } from "../../../types/settings";
 import { ObsidianTaskOperations } from "../operations/TaskOperations";
 import { ObsidianTaskReconciler } from "../../../core/TaskReconciler";
+import { get } from "svelte/store";
+import { taskStore } from "../../../stores/taskStore";
 
 /**
  * ObsidianTaskSource class
@@ -71,17 +76,17 @@ export class ObsidianTaskSource implements DataSource<Task> {
   /**
    * Watch for file changes in the vault
    *
-   * Sets up event listeners for file modifications and deletions in the tasks folder.
-   * When changes are detected, calls the callback with updated tasks.
+   * Uses incremental updates (onItemChanged, onItemDeleted) for efficiency.
+   * Only parses the changed file using the cache parameter from metadataCache.on("changed").
    *
-   * IMPORTANT: Uses metadataCache.on("changed") with cache parameter to avoid
-   * waitForMetadataCache timeouts. Does NOT listen to vault.on("create") because
-   * that fires when UI creates tasks, causing duplicate processing.
+   * IMPORTANT: Does NOT listen to vault.on("create") because that fires when UI creates
+   * tasks, causing duplicate processing. The metadataCache.on("changed") event fires for
+   * both new files and modified files.
    *
-   * @param callback - Function to call with updated tasks when changes are detected
+   * @param callbacks - Callbacks for different types of changes
    * @returns Cleanup function to stop watching
    */
-  watch(callback: (tasks: readonly Task[]) => void): () => void {
+  watch(callbacks: DataSourceWatchCallbacks<Task>): () => void {
     console.log("[ObsidianTaskSource] Setting up file watchers...");
 
     const tasksFolder = this.settings.tasksFolder;
@@ -98,9 +103,42 @@ export class ObsidianTaskSource implements DataSource<Task> {
       async (file, _data, cache) => {
         if (isTaskFile(file)) {
           console.log(`[ObsidianTaskSource] Task file changed: ${file.path}`);
-          // Re-scan all tasks and notify via callback
-          const tasks = await this.loadInitialData();
-          callback(tasks);
+
+          try {
+            // Parse only the changed file using the cache parameter
+            const taskData = await this.taskOperations.parseFileToTaskData(
+              file,
+              cache
+            );
+
+            if (taskData && callbacks.onItemChanged) {
+              // Notify about the single changed item
+              callbacks.onItemChanged(taskData);
+            }
+          } catch (error) {
+            // Extract validation errors from ZodError if available
+            if (error?.name === "ZodError" && error?.issues) {
+              const invalidFields = error.issues
+                .map((issue: any) => {
+                  const field = issue.path.join(".");
+                  const expected = issue.expected || issue.code;
+                  const received =
+                    issue.received ||
+                    (issue.errors ? "invalid union" : "unknown");
+                  return `  - ${field}: expected ${expected}, received ${received}`;
+                })
+                .join("\n");
+
+              console.warn(
+                `[ObsidianTaskSource] Skipping task file ${file.path} due to invalid front-matter:\n${invalidFields}`
+              );
+            } else {
+              console.error(
+                `[ObsidianTaskSource] Error handling change for ${file.path}:`,
+                error
+              );
+            }
+          }
         }
       }
     );
@@ -109,9 +147,19 @@ export class ObsidianTaskSource implements DataSource<Task> {
     const onDelete = this.app.vault.on("delete", async (file) => {
       if (isTaskFile(file)) {
         console.log(`[ObsidianTaskSource] Task file deleted: ${file.path}`);
-        // Re-scan all tasks and notify via callback
-        const tasks = await this.loadInitialData();
-        callback(tasks);
+
+        if (callbacks.onItemDeleted) {
+          // Find the task by filePath to get its ID
+          const currentState = get(taskStore);
+          const existingTask = currentState.tasks.find(
+            (t) => t.source?.filePath === file.path
+          );
+
+          if (existingTask) {
+            // Notify about the deleted item
+            callbacks.onItemDeleted(existingTask.id);
+          }
+        }
       }
     });
 
