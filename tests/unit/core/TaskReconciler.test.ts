@@ -28,7 +28,10 @@ describe("SimpleTaskReconciler", () => {
           tags: [],
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-01"),
-          source: { extension: "github", url: "https://github.com/org/repo/issues/1" },
+          source: {
+            extension: "github",
+            url: "https://github.com/org/repo/issues/1",
+          },
         },
         {
           id: "2",
@@ -39,7 +42,10 @@ describe("SimpleTaskReconciler", () => {
           tags: [],
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-01"),
-          source: { extension: "github", url: "https://github.com/org/repo/issues/2" },
+          source: {
+            extension: "github",
+            url: "https://github.com/org/repo/issues/2",
+          },
         },
         {
           id: "3",
@@ -94,7 +100,10 @@ describe("SimpleTaskReconciler", () => {
         tags: [],
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-01"),
-        source: { extension: "github", url: "https://github.com/org/repo/issues/1" },
+        source: {
+          extension: "github",
+          url: "https://github.com/org/repo/issues/1",
+        },
       };
 
       const newTask: Task = {
@@ -106,7 +115,10 @@ describe("SimpleTaskReconciler", () => {
         tags: [],
         createdAt: new Date("2024-01-15"),
         updatedAt: new Date("2024-01-15"),
-        source: { extension: "github", url: "https://github.com/org/repo/issues/1" },
+        source: {
+          extension: "github",
+          url: "https://github.com/org/repo/issues/1",
+        },
       };
 
       const reconciled = reconciler.reconcileTask(existingTask, newTask);
@@ -119,7 +131,7 @@ describe("SimpleTaskReconciler", () => {
 
     it("should generate ID and timestamps for new task", () => {
       const newTask: Task = {
-        id: "",
+        id: "task-123",
         title: "New Task",
         status: "todo",
         done: false,
@@ -127,7 +139,10 @@ describe("SimpleTaskReconciler", () => {
         tags: [],
         createdAt: new Date(),
         updatedAt: new Date(),
-        source: { extension: "github", url: "https://github.com/org/repo/issues/1" },
+        source: {
+          extension: "github",
+          url: "https://github.com/org/repo/issues/1",
+        },
       };
 
       const reconciled = reconciler.reconcileTask(undefined, newTask);
@@ -151,7 +166,10 @@ describe("SimpleTaskReconciler", () => {
         tags: [],
         createdAt: new Date(),
         updatedAt: new Date(),
-        source: { extension: "github", url: "https://github.com/org/repo/issues/1" },
+        source: {
+          extension: "github",
+          url: "https://github.com/org/repo/issues/1",
+        },
       };
 
       const task2: Task = {
@@ -163,7 +181,10 @@ describe("SimpleTaskReconciler", () => {
         tags: [],
         createdAt: new Date(),
         updatedAt: new Date(),
-        source: { extension: "github", url: "https://github.com/org/repo/issues/1" },
+        source: {
+          extension: "github",
+          url: "https://github.com/org/repo/issues/1",
+        },
       };
 
       expect(reconciler.matchesTask(task1, task2)).toBe(true);
@@ -179,7 +200,10 @@ describe("SimpleTaskReconciler", () => {
         tags: [],
         createdAt: new Date(),
         updatedAt: new Date(),
-        source: { extension: "github", url: "https://github.com/org/repo/issues/1" },
+        source: {
+          extension: "github",
+          url: "https://github.com/org/repo/issues/1",
+        },
       };
 
       const task2: Task = {
@@ -191,7 +215,10 @@ describe("SimpleTaskReconciler", () => {
         tags: [],
         createdAt: new Date(),
         updatedAt: new Date(),
-        source: { extension: "github", url: "https://github.com/org/repo/issues/2" },
+        source: {
+          extension: "github",
+          url: "https://github.com/org/repo/issues/2",
+        },
       };
 
       expect(reconciler.matchesTask(task1, task2)).toBe(false);
@@ -266,11 +293,17 @@ describe("ObsidianTaskReconciler", () => {
           tags: [],
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-01"),
-          source: { extension: "github", url: "https://github.com/org/repo/issues/2" },
+          source: {
+            extension: "github",
+            url: "https://github.com/org/repo/issues/2",
+          },
         },
       ];
 
-      const filtered = reconciler.filterTasksOnRefresh(currentTasks, "obsidian");
+      const filtered = reconciler.filterTasksOnRefresh(
+        currentTasks,
+        "obsidian"
+      );
 
       // Should only keep task 3 (no filePath)
       expect(filtered).toHaveLength(1);
@@ -299,7 +332,7 @@ describe("ObsidianTaskReconciler", () => {
       };
 
       const newTask: Task = {
-        id: "",
+        id: "task-123",
         title: "New Title",
         status: "in-progress",
         done: false,
@@ -316,11 +349,12 @@ describe("ObsidianTaskReconciler", () => {
       const reconciled = reconciler.reconcileTask(existingTask, newTask);
 
       expect(reconciled.source?.extension).toBe("github");
-      expect(reconciled.source?.url).toBe("https://github.com/org/repo/issues/1");
+      expect(reconciled.source?.url).toBe(
+        "https://github.com/org/repo/issues/1"
+      );
       expect(reconciled.source?.data).toEqual({ number: 1, state: "open" });
       expect(reconciled.id).toBe("123");
       expect(reconciled.createdAt).toEqual(new Date("2024-01-01"));
     });
   });
 });
-
