@@ -573,10 +573,13 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
-   * Set up vault event listeners to handle file deletions
-   * When a note is deleted in Obsidian, we need to delete the corresponding entity
    * Set up vault event listeners to handle file changes and deletions
-   * When a note is modified or deleted in Obsidian, we need to update or delete the corresponding entity
+   *
+   * NOTE: Task file changes are handled by ObsidianTaskSource.watch() which is
+   * registered with TaskSourceManager. This method only handles:
+   * - Project and Area file changes (no DataSources for these yet)
+   * - Entity deletions (triggers Operations.delete())
+   * - Todo checkbox changes (syncs checkbox state with task files)
    */
   private setupVaultEventListeners(): void {
     // Listen for metadata changes (front-matter updates)
@@ -587,14 +590,15 @@ export class ObsidianExtension implements Extension {
 
         const filePath = file.path;
 
-        if (filePath.startsWith(this.settings.tasksFolder + "/")) {
-          this.handleTaskFileChange(file, cache);
-        } else if (filePath.startsWith(this.settings.projectsFolder + "/")) {
+        // Task file changes are handled by ObsidianTaskSource.watch()
+        // Only handle Projects and Areas here
+        if (filePath.startsWith(this.settings.projectsFolder + "/")) {
           this.handleProjectFileChange(file, cache);
         } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
           this.handleAreaFileChange(file, cache);
         }
 
+        // Handle todo checkbox changes in all files
         this.handlePotentialTodoCheckboxChange(file);
       }
     );
@@ -670,13 +674,6 @@ export class ObsidianExtension implements Extension {
     console.log(`Area file deleted: ${filePath}, deleting entity: ${area.id}`);
     const areaOps = new Areas.Operations(this.settings);
     await areaOps.delete(area.id);
-  }
-
-  /*
-   * Handle task file change by reloading the task from the file
-   */
-  private async handleTaskFileChange(file: TFile, cache: any): Promise<void> {
-    await this.taskOperations.rescanFile(file, cache);
   }
 
   /**
@@ -756,7 +753,7 @@ export class ObsidianExtension implements Extension {
    */
   private async handleProjectFileChange(
     file: TFile,
-    cache: any
+    _cache: any
   ): Promise<void> {
     console.log(
       `Project file changed: ${file.path} (rescanning not yet implemented)`
@@ -767,7 +764,7 @@ export class ObsidianExtension implements Extension {
    * Handle area file change by reloading the area from the file
    * TODO: Implement area rescanning once area scanning is implemented
    */
-  private async handleAreaFileChange(file: TFile, cache: any): Promise<void> {
+  private async handleAreaFileChange(file: TFile, _cache: any): Promise<void> {
     console.log(
       `Area file changed: ${file.path} (rescanning not yet implemented)`
     );

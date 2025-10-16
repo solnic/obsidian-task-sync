@@ -71,27 +71,55 @@ export class ObsidianTaskSource implements DataSource<Task> {
   /**
    * Watch for file changes in the vault
    *
-   * IMPORTANT: This should NOT be used. ObsidianExtension.setupVaultEventListeners()
-   * already handles all file watching using metadataCache.on("changed") with cache parameter.
+   * Sets up event listeners for file modifications and deletions in the tasks folder.
+   * When changes are detected, calls the callback with updated tasks.
    *
-   * This method exists only to satisfy the DataSource interface but returns a no-op cleanup.
+   * IMPORTANT: Uses metadataCache.on("changed") with cache parameter to avoid
+   * waitForMetadataCache timeouts. Does NOT listen to vault.on("create") because
+   * that fires when UI creates tasks, causing duplicate processing.
    *
-   * Why we don't use this:
-   * 1. ObsidianExtension already sets up proper event listeners with cache parameter
-   * 2. Using vault.on("create") causes duplicate processing when files are created
-   * 3. metadataCache.on("changed") without cache parameter requires waitForMetadataCache
-   *
-   * @param _callback - Ignored callback (not used)
-   * @returns No-op cleanup function
+   * @param callback - Function to call with updated tasks when changes are detected
+   * @returns Cleanup function to stop watching
    */
-  watch(_callback: (tasks: readonly Task[]) => void): () => void {
-    console.log(
-      "[ObsidianTaskSource] watch() called but not setting up listeners - ObsidianExtension handles this"
+  watch(callback: (tasks: readonly Task[]) => void): () => void {
+    console.log("[ObsidianTaskSource] Setting up file watchers...");
+
+    const tasksFolder = this.settings.tasksFolder;
+
+    // Helper to check if a file is in the tasks folder
+    const isTaskFile = (file: any): boolean => {
+      return file.path.startsWith(tasksFolder + "/");
+    };
+
+    // Listen for file modifications (front-matter changes)
+    // Use metadataCache.on("changed") which provides cache parameter
+    const onModify = this.app.metadataCache.on(
+      "changed",
+      async (file, _data, cache) => {
+        if (isTaskFile(file)) {
+          console.log(`[ObsidianTaskSource] Task file changed: ${file.path}`);
+          // Re-scan all tasks and notify via callback
+          const tasks = await this.loadInitialData();
+          callback(tasks);
+        }
+      }
     );
 
-    // Return no-op cleanup function
+    // Listen for file deletions
+    const onDelete = this.app.vault.on("delete", async (file) => {
+      if (isTaskFile(file)) {
+        console.log(`[ObsidianTaskSource] Task file deleted: ${file.path}`);
+        // Re-scan all tasks and notify via callback
+        const tasks = await this.loadInitialData();
+        callback(tasks);
+      }
+    });
+
+    // Return cleanup function
     return () => {
-      console.log("[ObsidianTaskSource] No watchers to clean up");
+      console.log("[ObsidianTaskSource] Cleaning up file watchers...");
+      this.app.metadataCache.offref(onModify);
+      this.app.vault.offref(onDelete);
     };
   }
 }
