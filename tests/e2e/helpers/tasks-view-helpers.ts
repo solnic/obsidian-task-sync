@@ -223,27 +223,45 @@ export async function getTaskItemByTitle(
   page: Page,
   title: string
 ): Promise<any> {
-  // Wait for task items to be present
-  await page.waitForSelector('[data-testid^="local-task-item-"]', {
+  // Generate the test ID from the title (same logic as LocalTasksService.svelte)
+  const testId = `local-task-item-${title.replace(/\s+/g, "-").toLowerCase()}`;
+
+  // Check if the test ID contains special characters that would make it invalid as a CSS selector
+  // If so, fall back to searching by title text content
+  const hasSpecialChars = /[^\w\-]/.test(testId);
+
+  if (hasSpecialChars) {
+    // Fall back to searching by title text content for titles with special characters
+    await page.waitForSelector('[data-testid^="local-task-item-"]', {
+      timeout: 5000,
+    });
+
+    const taskItems = await page
+      .locator('[data-testid^="local-task-item-"]')
+      .all();
+
+    for (const item of taskItems) {
+      // Look for the title element specifically and check for exact match
+      const titleElement = item.locator(".task-sync-item-title");
+      const titleText = await titleElement.textContent();
+
+      // Use exact match (trim whitespace for comparison)
+      if (titleText && titleText.trim() === title.trim()) {
+        return item;
+      }
+    }
+
+    throw new Error(`Task item with title "${title}" not found`);
+  }
+
+  // For simple titles, use the test ID for faster, more reliable lookup
+  await page.waitForSelector(`[data-testid="${testId}"]`, {
+    state: "visible",
     timeout: 5000,
   });
 
-  const taskItems = await page
-    .locator('[data-testid^="local-task-item-"]')
-    .all();
-
-  for (const item of taskItems) {
-    // Look for the title element specifically and check for exact match
-    const titleElement = item.locator(".task-sync-item-title");
-    const titleText = await titleElement.textContent();
-
-    // Use exact match (trim whitespace for comparison)
-    if (titleText && titleText.trim() === title.trim()) {
-      return item;
-    }
-  }
-
-  throw new Error(`Task item with title "${title}" not found`);
+  // Return the locator for the specific task
+  return page.locator(`[data-testid="${testId}"]`);
 }
 
 /**
