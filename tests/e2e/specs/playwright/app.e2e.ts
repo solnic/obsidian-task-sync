@@ -102,4 +102,75 @@ Another sample task with areas.`;
     );
     await expect(ribbonIcon).toBeVisible();
   });
+
+  test("should preserve updatedAt timestamps during initial task load", async ({
+    page,
+  }) => {
+    // Create a task file before plugin loads
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Create Tasks folder if it doesn't exist
+      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
+      if (!tasksFolder) {
+        await app.vault.createFolder("Tasks");
+      }
+
+      // Create a task file
+      const taskContent = `---
+Title: Timestamp Test Task
+Type: Task
+Status: Not Started
+Priority: Medium
+Done: false
+---
+
+Task for testing timestamp preservation.`;
+
+      await app.vault.create("Tasks/Timestamp Test Task.md", taskContent);
+    });
+
+    // Reload the plugin to trigger task scanning
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      await app.plugins.disablePlugin("obsidian-task-sync");
+      await app.plugins.enablePlugin("obsidian-task-sync");
+    });
+
+    // Wait for plugin to initialize
+    await page.waitForTimeout(1000);
+
+    // Get the task's initial timestamps
+    const initialTimestamps = await page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const { get } = require("svelte/store");
+      const tasks = get(plugin.host.getExtensionById("obsidian").getTasks());
+      const task = tasks.find((t: any) => t.title === "Timestamp Test Task");
+      return {
+        createdAt: task.createdAt.toISOString(),
+        updatedAt: task.updatedAt.toISOString(),
+      };
+    });
+
+    // Wait a bit to ensure any spurious updates would have happened
+    await page.waitForTimeout(500);
+
+    // Get the task's timestamps again
+    const finalTimestamps = await page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const { get } = require("svelte/store");
+      const tasks = get(plugin.host.getExtensionById("obsidian").getTasks());
+      const task = tasks.find((t: any) => t.title === "Timestamp Test Task");
+      return {
+        createdAt: task.createdAt.toISOString(),
+        updatedAt: task.updatedAt.toISOString(),
+      };
+    });
+
+    // Verify timestamps haven't changed
+    expect(finalTimestamps.createdAt).toBe(initialTimestamps.createdAt);
+    expect(finalTimestamps.updatedAt).toBe(initialTimestamps.updatedAt);
+  });
 });

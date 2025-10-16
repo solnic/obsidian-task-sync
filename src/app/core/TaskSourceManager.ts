@@ -31,62 +31,82 @@ export class TaskSourceManager {
   /**
    * Register a task data source
    *
-   * Sets up watching if the source supports it. The source can notify about changes
-   * in two ways:
-   * 1. Incremental updates (onItemChanged, onItemDeleted) - efficient for file-based sources
-   * 2. Bulk refresh (onBulkRefresh) - for API-based sources that re-fetch everything
+   * NOTE: This only registers the source. Watchers are NOT set up until loadSource()
+   * is called. This prevents watchers from triggering during initial data load.
    *
    * @param source - The data source to register
    */
   registerSource(source: DataSource<Task>): void {
     this.sources.set(source.id, source);
+  }
 
-    // Set up watching if supported
-    if (source.watch) {
-      if (!source.reconciler) {
-        throw new Error(`Source ${source.id} must provide a reconciler`);
-      }
-
-      const unwatch = source.watch({
-        // Incremental update: single item changed
-        onItemChanged: (task) => {
-          console.log(
-            `[TaskSourceManager] Item changed from ${source.id}: ${task.id}`
-          );
-          taskStore.dispatch({
-            type: "UPSERT_TASK",
-            taskData: task,
-            reconciler: source.reconciler!,
-          });
-        },
-
-        // Incremental update: single item deleted
-        onItemDeleted: (taskId) => {
-          console.log(
-            `[TaskSourceManager] Item deleted from ${source.id}: ${taskId}`
-          );
-          taskStore.dispatch({
-            type: "REMOVE_TASK",
-            taskId,
-          });
-        },
-
-        // Bulk refresh: entire dataset replaced
-        onBulkRefresh: (tasks) => {
-          console.log(
-            `[TaskSourceManager] Bulk refresh from ${source.id}: ${tasks.length} tasks`
-          );
-          taskStore.dispatch({
-            type: "LOAD_SOURCE_SUCCESS",
-            sourceId: source.id,
-            tasks,
-            reconciler: source.reconciler!,
-          });
-        },
-      });
-
-      this.watchers.set(source.id, unwatch);
+  /**
+   * Set up watcher for a registered source
+   *
+   * This is called automatically by loadSource() after initial data is loaded.
+   * The source can notify about changes in two ways:
+   * 1. Incremental updates (onItemChanged, onItemDeleted) - efficient for file-based sources
+   * 2. Bulk refresh (onBulkRefresh) - for API-based sources that re-fetch everything
+   *
+   * @param sourceId - ID of the source to watch
+   */
+  private setupWatcher(sourceId: string): void {
+    const source = this.sources.get(sourceId);
+    if (!source || !source.watch) {
+      return;
     }
+
+    if (!source.reconciler) {
+      throw new Error(`Source ${sourceId} must provide a reconciler`);
+    }
+
+    // Don't set up watcher if already watching
+    if (this.watchers.has(sourceId)) {
+      return;
+    }
+
+    console.log(`[TaskSourceManager] Setting up watcher for ${sourceId}...`);
+
+    const unwatch = source.watch({
+      // Incremental update: single item changed
+      onItemChanged: (task) => {
+        console.log(
+          `[TaskSourceManager] Item changed from ${sourceId}: ${task.id}`
+        );
+        taskStore.dispatch({
+          type: "UPSERT_TASK",
+          taskData: task,
+          reconciler: source.reconciler!,
+        });
+      },
+
+      // Incremental update: single item deleted
+      onItemDeleted: (taskId) => {
+        console.log(
+          `[TaskSourceManager] Item deleted from ${sourceId}: ${taskId}`
+        );
+        taskStore.dispatch({
+          type: "REMOVE_TASK",
+          taskId,
+        });
+      },
+
+      // Bulk refresh: entire dataset replaced
+      onBulkRefresh: (tasks) => {
+        console.log(
+          `[TaskSourceManager] Bulk refresh from ${sourceId}: ${tasks.length} tasks`
+        );
+        taskStore.dispatch({
+          type: "LOAD_SOURCE_SUCCESS",
+          sourceId: sourceId,
+          tasks,
+          reconciler: source.reconciler!,
+        });
+      },
+    });
+
+    this.watchers.set(sourceId, unwatch);
+    console.log(`[TaskSourceManager] Watcher set up for ${sourceId}`);
   }
 
   /**
@@ -107,6 +127,9 @@ export class TaskSourceManager {
 
   /**
    * Load initial data from a source
+   *
+   * Sets up the watcher AFTER initial data is loaded to prevent watchers from
+   * triggering during the initial scan and causing spurious updatedAt changes.
    *
    * @param sourceId - ID of the source to load
    */
@@ -129,6 +152,10 @@ export class TaskSourceManager {
         tasks,
         reconciler: source.reconciler,
       });
+
+      // Set up watcher AFTER initial load completes
+      // This prevents watchers from triggering during initial scan
+      this.setupWatcher(sourceId);
     } catch (error: any) {
       taskStore.dispatch({
         type: "LOAD_SOURCE_ERROR",
