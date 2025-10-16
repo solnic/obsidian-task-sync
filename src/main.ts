@@ -769,10 +769,10 @@ export default class TaskSyncPlugin extends Plugin {
         return;
       }
 
-      // Clear the task store completely
-      taskStore.dispatch({ type: "CLEAR_ALL_TASKS" });
+      // Don't clear the store - let each extension refresh use its reconciler
+      // to properly preserve source metadata (e.g., GitHub extensions)
 
-      // Refresh each extension - they will rebuild their data from scratch
+      // Refresh each extension - they will use reconcilers to merge data properly
       for (const extension of extensions) {
         try {
           console.log(`Rebuilding tasks from extension: ${extension.id}`);

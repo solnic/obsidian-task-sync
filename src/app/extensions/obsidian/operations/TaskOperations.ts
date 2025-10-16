@@ -306,7 +306,9 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       tags: frontMatter.tags || [],
       // Source information for tracking
       source: {
-        extension: "obsidian", // Default to obsidian, reducer will preserve non-obsidian extensions
+        // Default to "obsidian" but reconciler will preserve existing extension
+        // This prevents overwriting GitHub/other extensions when files are modified
+        extension: "obsidian", // Default for new tasks, reconciler preserves existing
         filePath: file.path, // Use file path as the source identifier
       },
     };

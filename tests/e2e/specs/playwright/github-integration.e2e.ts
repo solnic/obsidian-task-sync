@@ -551,6 +551,164 @@ test.describe("GitHub Integration", () => {
     expect(taskAfterReload.source.filePath).toBe("Tasks/First test issue.md");
   });
 
+  test("should preserve source.extension='github' when file is modified multiple times", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Click import button for first issue (#111)
+    await clickIssueImportButton(page, 111);
+    await waitForIssueImportComplete(page, 111);
+
+    // Verify task file was created
+    const taskExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(taskExists).toBe(true);
+
+    // Verify initial source.extension is 'github'
+    const initialTask = await getTaskByTitle(page, "First test issue");
+    expect(initialTask).toBeDefined();
+    expect(initialTask.source.extension).toBe("github");
+    expect(initialTask.source.url).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/111"
+    );
+
+    // Modify the task file multiple times to trigger parseFileToTaskData
+    await updateFileFrontmatter(page, "Tasks/First test issue.md", {
+      Status: "In Progress",
+    });
+
+    // Wait for file change to be processed
+    await page.waitForTimeout(1000);
+
+    // Verify source.extension is STILL 'github' after first modification
+    const taskAfterFirstUpdate = await getTaskByTitle(page, "First test issue");
+    expect(taskAfterFirstUpdate).toBeDefined();
+    expect(taskAfterFirstUpdate.source.extension).toBe("github");
+    expect(taskAfterFirstUpdate.source.url).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/111"
+    );
+
+    // Modify the task file again
+    await updateFileFrontmatter(page, "Tasks/First test issue.md", {
+      Priority: "High",
+    });
+
+    // Wait for file change to be processed
+    await page.waitForTimeout(1000);
+
+    // Verify source.extension is STILL 'github' after second modification
+    const taskAfterSecondUpdate = await getTaskByTitle(
+      page,
+      "First test issue"
+    );
+    expect(taskAfterSecondUpdate).toBeDefined();
+    expect(taskAfterSecondUpdate.source.extension).toBe("github");
+    expect(taskAfterSecondUpdate.source.url).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/111"
+    );
+
+    // Modify the task file a third time
+    await updateFileFrontmatter(page, "Tasks/First test issue.md", {
+      Category: "Enhancement",
+    });
+
+    // Wait for file change to be processed
+    await page.waitForTimeout(1000);
+
+    // Verify source.extension is STILL 'github' after third modification
+    const taskAfterThirdUpdate = await getTaskByTitle(page, "First test issue");
+    expect(taskAfterThirdUpdate).toBeDefined();
+    expect(taskAfterThirdUpdate.source.extension).toBe("github");
+    expect(taskAfterThirdUpdate.source.url).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/111"
+    );
+  });
+
+  test("should preserve source.extension='github' during Refresh Tasks command", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Click import button for first issue (#111)
+    await clickIssueImportButton(page, 111);
+    await waitForIssueImportComplete(page, 111);
+
+    // Verify task file was created
+    const taskExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(taskExists).toBe(true);
+
+    // Verify initial source.extension is 'github'
+    const initialTask = await getTaskByTitle(page, "First test issue");
+    expect(initialTask).toBeDefined();
+    expect(initialTask.source.extension).toBe("github");
+    expect(initialTask.source.url).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/111"
+    );
+
+    // Trigger "Refresh Tasks" command which should preserve source.extension
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      // Call the refreshTasks method which simulates the "Refresh Tasks" command
+      return plugin.refreshTasks();
+    });
+
+    // Wait for refresh to complete
+    await page.waitForTimeout(3000);
+
+    // Verify source.extension is STILL 'github' after refresh
+    const taskAfterScan = await getTaskByTitle(page, "First test issue");
+    expect(taskAfterScan).toBeDefined();
+    expect(taskAfterScan.source.extension).toBe("github");
+    expect(taskAfterScan.source.url).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/111"
+    );
+  });
+
   test("should reactively update imported issue when task note is modified", async ({
     page,
   }) => {
