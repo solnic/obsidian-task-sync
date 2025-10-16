@@ -332,7 +332,7 @@ describe("ObsidianTaskReconciler", () => {
       };
 
       const newTask: Task = {
-        id: "task-123",
+        id: "456",
         title: "New Title",
         status: "in-progress",
         done: false,
