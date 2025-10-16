@@ -148,17 +148,14 @@
         isImported={isInToday}
       />
     {/if}
+    {#if task.source?.url}
+      <SeeOnServiceButton
+        serviceName={task.source.extension}
+        url={task.source.url}
+        testId="see-on-service-button"
+      />
+    {/if}
   </div>
-{/snippet}
-
-{#snippet secondaryActionSnippet()}
-  {#if task.source?.url}
-    <SeeOnServiceButton
-      serviceName={task.source.extension}
-      url={task.source.url}
-      testId="see-on-service-button"
-    />
-  {/if}
 {/snippet}
 
 <TaskItem
@@ -176,6 +173,5 @@
   {settings}
   actionContent={true}
   actions={actionSnippet}
-  secondaryActions={secondaryActionSnippet}
   {testId}
 />

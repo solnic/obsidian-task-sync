@@ -1,9 +1,9 @@
 <script lang="ts">
   import type { TaskSyncSettings } from "../types/settings";
   import type { Extension } from "../core/extension";
-  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
+  import type { DailyPlanningExtension } from "../extensions/daily-planning/DailyPlanningExtension";
   import LocalTasksService from "./LocalTasksService.svelte";
-  import GitHubService from "./GitHubService.svelte";
+  import GitHubService from "../extensions/github/components/GitHubService.svelte";
   import { Host } from "../core/host";
   import { isPlanningActive, currentSchedule } from "../stores/contextStore";
 
@@ -38,9 +38,17 @@
     testId,
   }: Props = $props();
 
-  // Resolve the extension from the host
+  // Map service IDs to extension IDs
+  // Service IDs are UI-friendly names, extension IDs are internal identifiers
+  const serviceToExtensionId: Record<string, string> = {
+    local: "obsidian",
+    github: "github",
+    // Future: apple-reminders: "apple-reminders",
+  };
+
+  // Resolve the extension from the host using the mapped extension ID
   let extension = $derived<Extension | undefined>(
-    host.getExtensionById(serviceId)
+    host.getExtensionById(serviceToExtensionId[serviceId])
   );
 
   // Map service IDs to their corresponding UI components

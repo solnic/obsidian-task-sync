@@ -9,7 +9,7 @@
   import type { TaskSyncSettings } from "../types/settings";
   import { setIcon } from "obsidian";
   import { extensionRegistry } from "../core/extension";
-  import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
+  import type { DailyPlanningExtension } from "../extensions/daily-planning/DailyPlanningExtension";
   import type { Host } from "../core/host";
   import { isPlanningActive } from "../stores/contextStore";
   import { untrack } from "svelte";

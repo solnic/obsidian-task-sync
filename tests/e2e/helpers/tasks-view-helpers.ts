@@ -114,20 +114,8 @@ export async function refreshTasks(page: Page): Promise<void> {
   );
   await refreshButton.click();
 
-  // Wait for refresh to complete by waiting for loading state to finish
-  await page.waitForFunction(
-    () => {
-      const loadingIndicator = document.querySelector(
-        '[data-testid="loading-indicator"]'
-      );
-      return (
-        !loadingIndicator ||
-        loadingIndicator.getAttribute("aria-hidden") === "true"
-      );
-    },
-    undefined,
-    { timeout: 5000 }
-  );
+  // Just wait a bit for the refresh to start
+  await page.waitForTimeout(100);
 }
 
 /**
@@ -235,27 +223,47 @@ export async function getTaskItemByTitle(
   page: Page,
   title: string
 ): Promise<any> {
-  // Wait for task items to be present
-  await page.waitForSelector('[data-testid^="local-task-item-"]', {
+  // Generate the test ID from the title (same logic as LocalTasksService.svelte)
+  const testId = `local-task-item-${title.replace(/\s+/g, "-").toLowerCase()}`;
+
+  // Check if the test ID contains special characters that would make it invalid as a CSS selector
+  // If so, fall back to searching by title text content
+  const hasSpecialChars = /[^\w\-]/.test(testId);
+
+  if (hasSpecialChars) {
+    // Fall back to searching by title text content for titles with special characters
+    await page.waitForSelector('[data-testid^="local-task-item-"]', {
+      timeout: 5000,
+    });
+
+    const taskItems = await page
+      .locator('[data-testid^="local-task-item-"]')
+      .all();
+
+    for (const item of taskItems) {
+      // Look for the title element specifically and check for exact match
+      const titleElement = item.locator(".task-sync-item-title");
+      const titleText = await titleElement.textContent();
+
+      // Use exact match (trim whitespace for comparison)
+      if (titleText && titleText.trim() === title.trim()) {
+        return item;
+      }
+    }
+
+    throw new Error(
+      `Task item with title "${title}" not found (searched ${taskItems.length} items)`
+    );
+  }
+
+  // For simple titles, use the test ID for faster, more reliable lookup
+  await page.waitForSelector(`[data-testid="${testId}"]`, {
+    state: "visible",
     timeout: 5000,
   });
 
-  const taskItems = await page
-    .locator('[data-testid^="local-task-item-"]')
-    .all();
-
-  for (const item of taskItems) {
-    // Look for the title element specifically and check for exact match
-    const titleElement = item.locator(".task-sync-item-title");
-    const titleText = await titleElement.textContent();
-
-    // Use exact match (trim whitespace for comparison)
-    if (titleText && titleText.trim() === title.trim()) {
-      return item;
-    }
-  }
-
-  throw new Error(`Task item with title "${title}" not found`);
+  // Return the locator for the specific task
+  return page.locator(`[data-testid="${testId}"]`);
 }
 
 /**
@@ -371,83 +379,28 @@ export async function createTestTask(
   }
 ): Promise<void> {
   await page.evaluate(async (taskProps) => {
-    // For now, create task files directly and manually add to store
-    // This is a temporary solution until we have proper vault scanning
     const app = (window as any).app;
-
-    // Create task file directly using Obsidian's vault API
-    const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
-    if (!tasksFolder) {
-      await app.vault.createFolder("Tasks");
-    }
-
-    const frontMatter = {
-      Title: taskProps.title,
-      Type: "Task",
-      Category: taskProps.category || "Feature",
-      Priority: taskProps.priority || "Medium",
-      Status: taskProps.status || "Backlog",
-      Done: false,
-      ...(taskProps.areas && { Areas: taskProps.areas }),
-      ...(taskProps.project && { Project: taskProps.project }),
-    };
-
-    const frontMatterString = Object.entries(frontMatter)
-      .map(([key, value]) => {
-        if (Array.isArray(value)) {
-          return `${key}: [${value.map((v) => `"${v}"`).join(", ")}]`;
-        }
-        return `${key}: ${typeof value === "string" ? `"${value}"` : value}`;
-      })
-      .join("\n");
-
-    const content = `---
-${frontMatterString}
----
-
-${taskProps.description || ""}`;
-
-    // Sanitize the title for use as a filename
-    const sanitizedTitle = taskProps.title
-      .replace(/[/\\:*?"<>|]/g, "-") // Replace invalid filename characters with dashes
-      .replace(/\s+/g, "-") // Replace spaces with dashes
-      .toLowerCase();
-
-    const filePath = `Tasks/${sanitizedTitle}.md`;
-    await app.vault.create(filePath, content);
-
-    // Manually add to task store for testing
-    // Access the taskStore through the plugin's stores getter
     const plugin = app.plugins.plugins["obsidian-task-sync"];
-    if (plugin && plugin.stores && plugin.stores.taskStore) {
-      const { taskStore } = plugin.stores;
-      const task = {
-        id: `task-${Date.now()}`,
-        title: taskProps.title,
-        description: taskProps.description || "",
-        category: taskProps.category || "Feature",
-        priority: taskProps.priority || "Medium",
-        status: taskProps.status || "Backlog",
-        done: false,
-        areas: taskProps.areas || [],
-        project: taskProps.project,
-        tags: [],
-        doDate: undefined,
-        dueDate: undefined,
-        parentTask: undefined,
-        source: {
-          extension: "obsidian",
-          filePath: filePath, // Use the actual file path
-        },
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
 
-      taskStore.addTask(task);
-    }
+    // Use the task operations to create the task properly
+    const taskOperations = plugin.operations.taskOperations;
+    await taskOperations.create({
+      title: taskProps.title,
+      description: taskProps.description || "",
+      category: taskProps.category || "Feature",
+      priority: taskProps.priority || "Medium",
+      status: taskProps.status || "Backlog",
+      done: false,
+      areas: taskProps.areas || [],
+      project: taskProps.project,
+      tags: [],
+      doDate: undefined,
+      dueDate: undefined,
+      parentTask: undefined,
+    });
   }, props);
 
-  // Wait for the task to be created and stores to refresh by checking if task appears
+  // Wait for the task to be created and appear in the UI
   await page.waitForFunction(
     (taskTitle) => {
       const taskElements = document.querySelectorAll(
@@ -481,7 +434,7 @@ export async function createTaskFileAndAddToStore(
   }
 ): Promise<void> {
   await page.evaluate(
-    async ({ fileName, content, taskProps }) => {
+    async ({ fileName, content }) => {
       const app = (window as any).app;
 
       // Ensure Tasks folder exists
@@ -493,33 +446,13 @@ export async function createTaskFileAndAddToStore(
       // Create the file
       await app.vault.create(fileName, content);
 
-      // Also add to task store for testing
+      // Trigger a refresh to pick up the new file
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin && plugin.stores && plugin.stores.taskStore) {
-        const { taskStore } = plugin.stores;
-        const task = {
-          id: `task-${Date.now()}`,
-          title: taskProps.title,
-          description: taskProps.description || "",
-          category: taskProps.category || "Feature",
-          priority: taskProps.priority || "Medium",
-          status: taskProps.status || "Backlog",
-          done: false,
-          areas: taskProps.areas || [],
-          project: taskProps.project,
-          tags: [],
-          doDate: undefined,
-          dueDate: undefined,
-          parentTask: undefined,
-          source: undefined,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-
-        taskStore.addTask(task);
+      if (plugin) {
+        await plugin.host.getExtensionById("obsidian")?.refresh();
       }
     },
-    { fileName, content, taskProps }
+    { fileName, content }
   );
 
   // Wait for the task to appear in the UI

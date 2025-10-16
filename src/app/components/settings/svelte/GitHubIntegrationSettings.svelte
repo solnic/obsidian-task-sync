@@ -115,50 +115,53 @@
     createGitHubOrgRepoMappings();
   }
 
+  function updateGitHubExtension(): void {
+    // Notify the GitHub extension that settings have changed
+    // This ensures the org/repo mappings are updated in the extension
+    const githubExtension = plugin.host?.getExtensionById?.("github");
+    if (githubExtension && githubExtension.updateSettings) {
+      githubExtension.updateSettings(settings);
+    }
+  }
+
   function createGitHubOrgRepoMappings(): void {
     // Ensure orgRepoMappings array exists
     if (!settings.integrations.github.orgRepoMappings) {
       settings.integrations.github.orgRepoMappings = [];
     }
 
-    // Sort mappings by priority (highest first) for display
-    const sortedMappings = [
-      ...settings.integrations.github.orgRepoMappings,
-    ].sort((a, b) => (b.priority || 0) - (a.priority || 0));
+    // Destroy existing list if it exists
+    if (sortableMappingList) {
+      sortableMappingList.destroy();
+      sortableMappingList = null;
+    }
 
     // Create sortable mapping list
+    // Note: We work directly with the settings array, not a sorted copy
+    // This ensures that indices in callbacks always match the settings array
     sortableMappingList = new SortableGitHubMappingList({
       container: githubMappingsContainer,
-      mappings: sortedMappings,
+      mappings: settings.integrations.github.orgRepoMappings,
       onReorder: async (newOrder: GitHubOrgRepoMapping[]) => {
         settings.integrations.github.orgRepoMappings = newOrder;
         await saveSettings(settings);
       },
       onUpdate: async (index: number, mapping: GitHubOrgRepoMapping) => {
-        // Find the mapping in the original array and update it
-        const originalIndex =
-          settings.integrations.github.orgRepoMappings.findIndex(
-            (m) => m === sortedMappings[index]
-          );
-        if (originalIndex !== -1) {
-          settings.integrations.github.orgRepoMappings[originalIndex] = mapping;
-          await saveSettings(settings);
-        }
+        // Update the mapping directly in the settings array
+        settings.integrations.github.orgRepoMappings[index] = mapping;
+        await saveSettings(settings);
+        // Notify GitHub extension of the updated mappings
+        updateGitHubExtension();
       },
       onDelete: async (index: number) => {
-        // Find the mapping in the original array and remove it
-        const mappingToDelete = sortedMappings[index];
-        const originalIndex =
-          settings.integrations.github.orgRepoMappings.findIndex(
-            (m) => m === mappingToDelete
-          );
-        if (originalIndex !== -1) {
-          settings.integrations.github.orgRepoMappings.splice(originalIndex, 1);
-          await saveSettings(settings);
-          // Refresh the mappings section
-          githubMappingsContainer.empty();
-          createGitHubOrgRepoMappings();
-        }
+        // Remove the mapping from the settings array
+        settings.integrations.github.orgRepoMappings.splice(index, 1);
+        await saveSettings(settings);
+        // Notify GitHub extension of the updated mappings
+        updateGitHubExtension();
+        // Refresh the mappings section by recreating the entire list
+        githubMappingsContainer.empty();
+        createGitHubOrgRepoMappings();
       },
       onAdd: async () => {
         const newMapping: GitHubOrgRepoMapping = {
@@ -171,11 +174,11 @@
         };
         settings.integrations.github.orgRepoMappings.push(newMapping);
         await saveSettings(settings);
-        // Update the sortable list with the new mappings
-        const updatedSortedMappings = [
-          ...settings.integrations.github.orgRepoMappings,
-        ].sort((a, b) => (b.priority || 0) - (a.priority || 0));
-        sortableMappingList?.updateMappings(updatedSortedMappings);
+        // Notify GitHub extension of the updated mappings
+        updateGitHubExtension();
+        // Recreate the entire list to ensure the new mapping is displayed
+        githubMappingsContainer.empty();
+        createGitHubOrgRepoMappings();
       },
     });
   }

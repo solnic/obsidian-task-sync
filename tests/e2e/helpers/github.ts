@@ -62,24 +62,13 @@ export async function enableGitHubIntegration(
 }
 
 /**
- * Configure GitHub organization/repository mappings
+ * Configure GitHub organization/repository mappings programmatically
+ * This ensures the mappings are set correctly and the GitHub extension is updated
  */
 export async function configureGitHubOrgRepoMappings(
   page: Page,
   mappings: GitHubOrgRepoMapping[]
 ): Promise<void> {
-  // Scroll down to find the mappings section
-  await page.evaluate(() => {
-    const settingsContainer = document.querySelector(".vertical-tab-content");
-    if (settingsContainer) {
-      settingsContainer.scrollTop = settingsContainer.scrollHeight;
-    }
-  });
-
-  // Wait for GitHub settings to be fully loaded
-  await page.waitForTimeout(2000);
-
-  // For now, configure mappings programmatically since the UI might not be fully implemented
   await page.evaluate(async (mappingsData) => {
     const app = (window as any).app;
     const plugin = app.plugins.plugins["obsidian-task-sync"];

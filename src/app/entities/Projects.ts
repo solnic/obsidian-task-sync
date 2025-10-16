@@ -64,7 +64,8 @@ export class Projects extends Entities {
       // buildEntity now handles schema validation and date coercion
       const project = this.buildEntity(projectData) as Project;
 
-      store.addProject(project);
+      // Dispatch action instead of calling store method directly
+      store.dispatch({ type: "ADD_PROJECT", project });
 
       eventBus.trigger({ type: "projects.created", project });
 
@@ -77,7 +78,8 @@ export class Projects extends Entities {
         updatedAt: this.timestamp(),
       };
 
-      store.updateProject(updatedProject);
+      // Dispatch action instead of calling store method directly
+      store.dispatch({ type: "UPDATE_PROJECT", project: updatedProject });
 
       eventBus.trigger({ type: "projects.updated", project: updatedProject });
 
@@ -88,7 +90,8 @@ export class Projects extends Entities {
       // Get the project before removing it so we can include it in the event
       const project = get(store).projects.find((p) => p.id === id);
 
-      store.removeProject(id);
+      // Dispatch action instead of calling store method directly
+      store.dispatch({ type: "REMOVE_PROJECT", projectId: id });
 
       // Include the project in the event so listeners can access its properties (like filePath)
       eventBus.trigger({ type: "projects.deleted", projectId: id, project });

@@ -141,6 +141,27 @@ describe("Core Domain Entities", () => {
       // @ts-expect-error - Task should be readonly
       task.title = "Modified Title";
     });
+
+    test("should accept null for optional fields and convert to undefined", () => {
+      const taskWithNulls = {
+        id: "task-3",
+        title: "Task with nulls",
+        createdAt: new Date("2024-01-01"),
+        updatedAt: new Date("2024-01-01"),
+        parentTask: null,
+        project: null,
+        category: null,
+        priority: null,
+        description: null,
+      };
+
+      const result = TaskSchema.parse(taskWithNulls);
+      expect(result.parentTask).toBeUndefined();
+      expect(result.project).toBeUndefined();
+      expect(result.category).toBeUndefined();
+      expect(result.priority).toBeUndefined();
+      expect(result.description).toBeUndefined();
+    });
   });
 
   describe("ProjectSchema", () => {

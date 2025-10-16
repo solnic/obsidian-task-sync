@@ -5,9 +5,9 @@
  */
 
 import { ItemView, WorkspaceLeaf } from "obsidian";
-import DailyPlanningViewSvelte from "../components/DailyPlanningView.svelte";
+import DailyPlanningViewSvelte from "../extensions/daily-planning/components/DailyPlanningView.svelte";
 import { mount, unmount } from "svelte";
-import type { DailyPlanningExtension } from "../extensions/DailyPlanningExtension";
+import type { DailyPlanningExtension } from "../extensions/daily-planning/DailyPlanningExtension";
 import { extensionRegistry } from "../core/extension";
 
 export const DAILY_PLANNING_VIEW_TYPE = "daily-planning";

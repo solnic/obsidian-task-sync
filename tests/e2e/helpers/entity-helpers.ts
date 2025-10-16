@@ -59,27 +59,76 @@ export async function createTask(
 
 export async function getTaskByTitle(page: ExtendedPage, title: string) {
   return await page.evaluate(
-    async ({ title }) => {
+    ({ title }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const task = await plugin.stores.taskStore.findByTitle(title);
-
-      return task;
+      // Use the public query API
+      return plugin.query.findTaskByTitle(title);
     },
     { title }
   );
 }
 
-export async function getProjectByName(page: ExtendedPage, name: string) {
+/**
+ * Get persisted task data by title from plugin storage
+ */
+export async function getPersistedTaskByTitle(
+  page: ExtendedPage,
+  title: string
+) {
   return await page.evaluate(
-    async ({ name }) => {
+    async ({ title }: { title: string }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const data = await plugin.loadData();
+      return data?.entities?.tasks?.find((t: any) => t.title === title);
+    },
+    { title }
+  );
+}
+
+/**
+ * Create a task with custom source properties (for testing external integrations)
+ */
+export async function createTaskWithSource(
+  page: ExtendedPage,
+  taskData: {
+    title: string;
+    description?: string;
+    category?: string;
+    priority?: string;
+    status?: string;
+    source: {
+      extension: string;
+      url?: string;
+      id?: string;
+    };
+  }
+): Promise<any> {
+  return await page.evaluate(
+    async ({ taskData }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const project = await plugin.stores.projectStore.getProjectByName(name);
+      const createdTask = await plugin.operations.taskOperations.create(
+        taskData
+      );
 
-      return project;
+      return createdTask;
+    },
+    { taskData }
+  );
+}
+
+export async function getProjectByName(page: ExtendedPage, name: string) {
+  return await page.evaluate(
+    ({ name }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Use the public query API
+      return plugin.query.findProjectByName(name);
     },
     { name }
   );
@@ -87,13 +136,12 @@ export async function getProjectByName(page: ExtendedPage, name: string) {
 
 export async function getAreaByName(page: ExtendedPage, name: string) {
   return await page.evaluate(
-    async ({ name }) => {
+    ({ name }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const area = await plugin.stores.areaStore.getAreaByName(name);
-
-      return area;
+      // Use the public query API
+      return plugin.query.findAreaByName(name);
     },
     { name }
   );
@@ -102,6 +150,7 @@ export async function getAreaByName(page: ExtendedPage, name: string) {
 /**
  * Wait for a task to be removed from the store
  * This is useful for testing revert operations where we expect the task to be deleted
+ * Uses TaskQueryService.findByTitle for consistency with other query operations
  */
 export async function waitForTaskToBeRemoved(
   page: ExtendedPage,
@@ -109,18 +158,49 @@ export async function waitForTaskToBeRemoved(
   timeout: number = 5000
 ) {
   await page.waitForFunction(
-    async ({ title }) => {
+    ({ title }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const task = await plugin.stores.taskStore.findByTitle(title);
+      // Use the public query API for consistency
+      const task = plugin.query.findTaskByTitle(title);
 
-      // Return true when task is undefined (removed)
+      // Return true when task is NOT found (removed)
+      // findTaskByTitle returns undefined when not found
       return task === undefined;
     },
     { title },
     { timeout }
   );
+}
+
+export async function waitForTaskUpdated(
+  page: ExtendedPage,
+  title: string,
+  changes: any,
+  timeout: number = 5000
+) {
+  await page.waitForFunction(
+    ({ title, changes }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Use the public query API for consistency
+      const task = plugin.query.findTaskByTitle(title);
+
+      // Return true when task has changes applied
+      return (
+        task !== undefined &&
+        Object.keys(changes).every((key) => {
+          return task[key] === changes[key];
+        })
+      );
+    },
+    { title, changes },
+    { timeout }
+  );
+
+  return getTaskByTitle(page, title);
 }
 
 /**

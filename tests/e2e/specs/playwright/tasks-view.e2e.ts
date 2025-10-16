@@ -75,6 +75,9 @@ test.describe("TasksView Component", () => {
       status: "Backlog",
     });
 
+    // Wait a bit for the file to be fully written and processed
+    await page.waitForTimeout(500);
+
     // Click refresh button
     await refreshTasks(page);
 
@@ -554,15 +557,13 @@ test.describe("TasksView Component", () => {
       category: "Feature",
     });
 
-    // Add a mock GitHub task directly to the store
+    // Create a GitHub task with source extension set
     await page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const { taskStore } = plugin.stores;
 
-      // Create a mock GitHub task
+      // Create task with GitHub source extension
       const githubTask = {
-        id: `github-task-${Date.now()}`,
         title: "GitHub Task",
         description: "A task from GitHub",
         category: "Bug",
@@ -573,15 +574,13 @@ test.describe("TasksView Component", () => {
         areas: [],
         parentTask: "",
         tags: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
         source: {
           extension: "github",
-          filePath: "github/issue/123", // Has a filePath but not an Obsidian file
+          filePath: "github/issue/123",
         },
       };
 
-      taskStore.addTask(githubTask);
+      await plugin.operations.taskOperations.create(githubTask);
     });
 
     // Wait for both tasks to appear

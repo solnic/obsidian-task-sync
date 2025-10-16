@@ -7,6 +7,16 @@ import { z } from "zod";
 import { DEFAULT_TASK_STATUS } from "../constants/defaults";
 import { requiredDateSchema, optionalDateSchema } from "../utils/dateCoercion";
 
+/**
+ * Helper schema for optional string fields that converts null to undefined
+ * This is needed because Obsidian front-matter can have null values for missing fields
+ * but Zod's .optional() only accepts undefined, not null
+ */
+const optionalStringSchema = z
+  .union([z.string(), z.null(), z.undefined()])
+  .transform((val) => (val === null || val === undefined ? undefined : val))
+  .pipe(z.string().optional());
+
 // Core domain entities - completely source agnostic
 export const TaskStatusSchema = z
   .string()
@@ -18,6 +28,11 @@ export const TaskSourceSchema = z.object({
   extension: z.string(),
   filePath: z.string().optional(),
   url: z.string().optional(),
+  // Whether this task has been imported into the vault (for external sources like GitHub)
+  // - true: task has been imported and exists in the vault
+  // - false: task is from external source but not yet imported
+  // - undefined: not applicable (e.g., native Obsidian tasks)
+  imported: z.boolean().optional(),
   // Raw data from external service (e.g., GitHub issue/PR, Linear issue)
   // Used for rendering service-specific UI and tracking import status
   data: z.any().optional(),
@@ -30,16 +45,16 @@ export const TaskSchema = z.object({
 
   // Core task properties
   title: z.string(),
-  description: z.string().optional(),
+  description: optionalStringSchema,
   // Status can be empty string on input - will be resolved to default by buildEntity
   status: z.string().default(DEFAULT_TASK_STATUS),
   done: z.boolean().default(false),
 
   // Organization
-  category: z.string().optional(),
-  priority: z.string().optional(),
-  parentTask: z.string().optional(),
-  project: z.string().optional(),
+  category: optionalStringSchema,
+  priority: optionalStringSchema,
+  parentTask: optionalStringSchema,
+  project: optionalStringSchema,
   areas: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
 
@@ -60,7 +75,7 @@ export type Task = Readonly<z.infer<typeof TaskSchema>>;
 export const ProjectSchema = z.object({
   id: z.string(),
   name: z.string(),
-  description: z.string().optional(),
+  description: optionalStringSchema,
   areas: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([]),
   createdAt: requiredDateSchema,
@@ -73,7 +88,7 @@ export type Project = Readonly<z.infer<typeof ProjectSchema>>;
 export const AreaSchema = z.object({
   id: z.string(),
   name: z.string(),
-  description: z.string().optional(),
+  description: optionalStringSchema,
   tags: z.array(z.string()).default([]),
   createdAt: requiredDateSchema,
   updatedAt: requiredDateSchema,
