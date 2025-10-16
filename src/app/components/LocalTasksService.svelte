@@ -39,6 +39,7 @@
     selectedArea?: string | null;
     selectedSource?: string | null;
     showCompleted?: boolean;
+    showScheduled?: boolean;
     sortFields?: SortField[];
   }
 
@@ -87,6 +88,7 @@
     area: localTasksSettings?.selectedArea ?? null,
     source: localTasksSettings?.selectedSource ?? null,
     showCompleted: localTasksSettings?.showCompleted ?? false,
+    showScheduled: localTasksSettings?.showScheduled ?? false,
   });
 
   // Sort - currently applied sorting logic (UI state)
@@ -152,6 +154,7 @@
       area: filters.area || undefined,
       source: filters.source || undefined,
       showCompleted: filters.showCompleted,
+      showScheduled: filters.showScheduled,
     });
 
     // Apply search using TaskQueryService
@@ -361,7 +364,7 @@
       />
     </div>
 
-    <!-- 3. Secondary filter buttons group - first row: Show completed -->
+    <!-- 3. Secondary filter buttons group - first row: Show completed and Scheduled -->
     <div class="secondary-filters-row-1">
       <button
         class="task-sync-filter-toggle {filters.showCompleted ? 'active' : ''}"
@@ -372,6 +375,17 @@
         title="Toggle showing completed tasks"
       >
         Show completed
+      </button>
+
+      <button
+        class="task-sync-filter-toggle {filters.showScheduled ? 'active' : ''}"
+        onclick={() => {
+          handleFilterChange("showScheduled", !filters.showScheduled);
+        }}
+        data-testid="show-scheduled-toggle"
+        title="Toggle showing only scheduled tasks"
+      >
+        Scheduled
       </button>
     </div>
 

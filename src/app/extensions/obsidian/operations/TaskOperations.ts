@@ -246,8 +246,22 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
             );
           }
         }
-        // Fallback: simple bracket removal
-        return value.replace(/^\[\[|\]\]$/g, "");
+        // Fallback: parse wiki link format [[path|displayText]] or [[path]]
+        // First check if it's a wiki link
+        if (value.startsWith("[[") && value.endsWith("]]")) {
+          const linkContent = value.slice(2, -2); // Remove [[ and ]]
+          // Check if there's a pipe separator for display text
+          const pipeIndex = linkContent.indexOf("|");
+          if (pipeIndex !== -1) {
+            // Return display text (after the pipe)
+            return linkContent.substring(pipeIndex + 1);
+          } else {
+            // No display text, extract filename from path
+            return linkContent.split("/").pop() || linkContent;
+          }
+        }
+        // Not a wiki link, return as-is
+        return value;
       }
       if (Array.isArray(value)) {
         return value.map((item) => cleanLinkFormat(item));
@@ -306,9 +320,7 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       tags: frontMatter.tags || [],
       // Source information for tracking
       source: {
-        // Default to "obsidian" but reconciler will preserve existing extension
-        // This prevents overwriting GitHub/other extensions when files are modified
-        extension: "obsidian", // Default for new tasks, reconciler preserves existing
+        extension: "obsidian",
         filePath: file.path, // Use file path as the source identifier
       },
     };

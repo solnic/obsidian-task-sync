@@ -28,6 +28,9 @@ export interface TaskFilterCriteria {
 
   /** Whether to show completed tasks */
   showCompleted?: boolean;
+
+  /** Whether to show only scheduled tasks (tasks with doDate) */
+  showScheduled?: boolean;
 }
 
 /**
@@ -103,6 +106,11 @@ export class TaskQueryService {
 
       // Filter by completion status
       if (!filters.showCompleted && task.done) {
+        return false;
+      }
+
+      // Filter by scheduled status (only show tasks with doDate if showScheduled is true)
+      if (filters.showScheduled && !task.doDate) {
         return false;
       }
 

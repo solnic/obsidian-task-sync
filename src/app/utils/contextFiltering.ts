@@ -37,9 +37,9 @@ export function getFilterOptions(tasks: Task[]): {
       parentTasks.add(task.parentTask);
     }
 
-    // Collect sources
-    if (task.source?.filePath) {
-      sources.add(task.source.filePath);
+    // Collect sources - use extension (e.g., "obsidian", "github")
+    if (task.source?.extension) {
+      sources.add(task.source.extension);
     }
   });
 
