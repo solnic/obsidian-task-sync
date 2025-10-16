@@ -73,12 +73,6 @@ export class TaskSourceManager {
   /**
    * Load initial data from a source
    *
-   * For sources with watchers (like ObsidianTaskSource), the watchers are already
-   * active from registerSource() and will process files as they're discovered.
-   * We skip the explicit scan to avoid duplicate processing.
-   *
-   * For sources without watchers (like GitHubTaskSource), we perform the initial load.
-   *
    * @param sourceId - ID of the source to load
    */
   async loadSource(sourceId: string): Promise<void> {
@@ -91,24 +85,6 @@ export class TaskSourceManager {
       throw new Error(`Source ${sourceId} must provide a reconciler`);
     }
 
-    // If source has watchers, they're already active and processing files
-    // Skip the initial scan to avoid duplicate processing
-    if (this.watchers.has(sourceId)) {
-      console.log(
-        `[TaskSourceManager] Source ${sourceId} has active watchers, skipping initial scan`
-      );
-      taskStore.dispatch({ type: "LOAD_SOURCE_START", sourceId });
-      // Dispatch success with empty array - watchers will populate the store
-      taskStore.dispatch({
-        type: "LOAD_SOURCE_SUCCESS",
-        sourceId,
-        tasks: [],
-        reconciler: source.reconciler,
-      });
-      return;
-    }
-
-    // For sources without watchers, perform initial load
     try {
       taskStore.dispatch({ type: "LOAD_SOURCE_START", sourceId });
       const tasks = await source.loadInitialData();
