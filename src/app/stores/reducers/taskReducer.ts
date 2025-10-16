@@ -68,9 +68,13 @@ export function taskReducer(
       );
 
       // Reconcile each new task using the reconciler's strategy
+      // IMPORTANT: Search for existing tasks in the ORIGINAL state.tasks (before filtering)
+      // This allows the reconciler to find and preserve metadata from tasks that will be replaced
+      // For example, a GitHub task imported to vault should preserve source.extension='github'
       const reconciledTasks = Array.isArray(action.tasks)
         ? action.tasks.map((newTask) => {
-            // Find existing task using reconciler's matching logic
+            // Find existing task in ORIGINAL state.tasks, not filtered tasks
+            // This is crucial for preserving source metadata from persisted storage
             const existingTask = state.tasks.find((t) =>
               action.reconciler.matchesTask(t, newTask)
             );

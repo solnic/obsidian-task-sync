@@ -509,9 +509,14 @@ export class ObsidianExtension implements Extension {
         },
       };
 
-      // Update the task in the store without triggering another event
-      // Use taskStore.dispatch directly to avoid triggering tasks.updated event
+      // Update the task in the store AND trigger persistence
+      // We need to trigger tasks.updated event so the updated task (with filePath) gets persisted
+      // This is critical for preserving source.extension after plugin reload
       taskStore.dispatch({ type: "UPDATE_TASK", task: updatedTask });
+      eventBus.trigger({
+        type: "tasks.updated",
+        task: updatedTask,
+      });
     }
   }
 

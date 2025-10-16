@@ -204,17 +204,27 @@ export class ObsidianTaskReconciler implements TaskReconciler {
   }
 
   /**
-   * Match by filePath for vault-backed tasks
+   * Match tasks by ID, filePath, or URL
    *
-   * The file path is the natural key for vault-backed tasks.
-   * Two tasks with the same filePath represent the same entity.
+   * Matching strategy:
+   * 1. By ID - if both tasks have the same ID (primary match)
+   * 2. By filePath - if both tasks have the same filePath (vault-backed tasks)
+   * 3. By URL - if both tasks have the same source URL (external tasks)
+   *
+   * This ensures that:
+   * - Tasks imported from external sources (GitHub) preserve their source.extension
+   * - Tasks are correctly reconciled after plugin reload
+   * - Duplicate tasks are avoided when scanning the vault
    */
   matchesTask(task: Task, newTask: Task): boolean {
-    // Match by filePath for vault-backed tasks
-    return Boolean(
-      task.source?.filePath &&
+    return (
+      task.id == newTask.id ||
+      (task.source?.filePath &&
         newTask.source?.filePath &&
-        task.source.filePath === newTask.source.filePath
+        task.source.filePath == newTask.source.filePath) ||
+      (task.source?.url &&
+        newTask.source?.url &&
+        task.source.url == newTask.source.url)
     );
   }
 }
