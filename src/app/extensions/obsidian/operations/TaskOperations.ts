@@ -207,6 +207,10 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
     // Helper function to clean link formatting from strings using Obsidian's native APIs
     const cleanLinkFormat = (value: any): any => {
+      // Convert null to undefined for optional fields (Zod .optional() allows undefined but not null)
+      if (value === null || value === undefined) {
+        return undefined;
+      }
       if (typeof value === "string") {
         // Use wiki link operations if available, otherwise fallback to simple bracket removal
         if (this.wikiLinkOperations?.parseWikiLink) {
