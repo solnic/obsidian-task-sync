@@ -14,6 +14,61 @@
 import type { Task } from "./entities";
 
 /**
+ * Helper function to check if two tasks have meaningful differences
+ * Ignores updatedAt timestamp to avoid false positives
+ * Returns true if tasks are different, false if they are the same
+ */
+function hasTaskChanged(existingTask: Task, newTask: Task): boolean {
+  // Compare all fields except updatedAt and id
+  const fieldsToCompare: (keyof Task)[] = [
+    "title",
+    "description",
+    "status",
+    "done",
+    "category",
+    "priority",
+    "parentTask",
+    "project",
+  ];
+
+  for (const field of fieldsToCompare) {
+    const existingValue = existingTask[field];
+    const newValue = newTask[field];
+
+    // Handle null/undefined as equivalent
+    if (
+      (existingValue === null || existingValue === undefined) &&
+      (newValue === null || newValue === undefined)
+    ) {
+      continue;
+    }
+
+    // Simple equality check
+    if (existingValue !== newValue) return true;
+  }
+
+  // Check arrays
+  if (existingTask.areas.length !== newTask.areas.length) return true;
+  if (!existingTask.areas.every((val, idx) => val === newTask.areas[idx]))
+    return true;
+
+  if (existingTask.tags.length !== newTask.tags.length) return true;
+  if (!existingTask.tags.every((val, idx) => val === newTask.tags[idx]))
+    return true;
+
+  // Check dates
+  const existingDoDate = existingTask.doDate?.getTime();
+  const newDoDate = newTask.doDate?.getTime();
+  if (existingDoDate !== newDoDate) return true;
+
+  const existingDueDate = existingTask.dueDate?.getTime();
+  const newDueDate = newTask.dueDate?.getTime();
+  if (existingDueDate !== newDueDate) return true;
+
+  return false;
+}
+
+/**
  * Reconciliation strategy for handling task updates from a specific source
  */
 export interface TaskReconciler {
@@ -88,6 +143,7 @@ export class SimpleTaskReconciler implements TaskReconciler {
 
   /**
    * Preserve ID and creation timestamp, update everything else
+   * Only update updatedAt if task data actually changed
    */
   reconcileTask(existingTask: Task | undefined, newTask: Task): Task {
     if (!newTask.id) {
@@ -95,20 +151,21 @@ export class SimpleTaskReconciler implements TaskReconciler {
     }
 
     if (existingTask) {
+      // Check if task data actually changed
+      const taskChanged = hasTaskChanged(existingTask, newTask);
+
       // Preserve ID and creation timestamp
       return {
         ...newTask,
         id: existingTask.id,
         createdAt: existingTask.createdAt,
-        updatedAt: new Date(),
+        // Only update timestamp if data changed
+        updatedAt: taskChanged ? new Date() : existingTask.updatedAt,
       };
     }
 
-    // New task - use the ID from buildEntity
-    return {
-      ...newTask,
-      updatedAt: new Date(),
-    };
+    // New task - use the ID and timestamp from buildEntity
+    return newTask;
   }
 
   /**
@@ -162,6 +219,7 @@ export class ObsidianTaskReconciler implements TaskReconciler {
 
   /**
    * Preserve ID, createdAt, and critical source metadata
+   * Only update updatedAt if task data actually changed
    *
    * This is crucial for maintaining task identity and preserving
    * the original source information for imported tasks.
@@ -181,12 +239,16 @@ export class ObsidianTaskReconciler implements TaskReconciler {
     }
 
     if (existingTask) {
+      // Check if task data actually changed
+      const taskChanged = hasTaskChanged(existingTask, newTask);
+
       // Preserve ID, createdAt, and critical source metadata
       return {
         ...newTask,
         id: existingTask.id,
         createdAt: existingTask.createdAt,
-        updatedAt: new Date(),
+        // Only update timestamp if data changed
+        updatedAt: taskChanged ? new Date() : existingTask.updatedAt,
         source: {
           ...newTask.source,
           // Preserve original extension (e.g., "github" for imported tasks)
@@ -202,11 +264,8 @@ export class ObsidianTaskReconciler implements TaskReconciler {
       };
     }
 
-    // New task from vault - use the ID from buildEntity
-    return {
-      ...newTask,
-      updatedAt: new Date(),
-    };
+    // New task from vault - use the ID and timestamp from buildEntity
+    return newTask;
   }
 
   /**
