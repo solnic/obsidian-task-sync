@@ -276,9 +276,11 @@ export class DailyNoteFeature {
   private async extractTaskPathsFromDailyNote(
     dailyNoteFile: TFile
   ): Promise<Set<string>> {
+    // Get tasksFolder from plugin settings
+    const tasksFolder = (this.plugin as any).settings?.tasksFolder || "Tasks";
     const taskLinks = await this.dailyNoteParser.parseTaskLinks(
       dailyNoteFile,
-      "Tasks"
+      tasksFolder
     );
     return new Set(
       taskLinks
