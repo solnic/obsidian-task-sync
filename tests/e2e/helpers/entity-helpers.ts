@@ -70,6 +70,57 @@ export async function getTaskByTitle(page: ExtendedPage, title: string) {
   );
 }
 
+/**
+ * Get persisted task data by title from plugin storage
+ */
+export async function getPersistedTaskByTitle(
+  page: ExtendedPage,
+  title: string
+) {
+  return await page.evaluate(
+    async ({ title }: { title: string }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const data = await plugin.loadData();
+      return data?.entities?.tasks?.find((t: any) => t.title === title);
+    },
+    { title }
+  );
+}
+
+/**
+ * Create a task with custom source properties (for testing external integrations)
+ */
+export async function createTaskWithSource(
+  page: ExtendedPage,
+  taskData: {
+    title: string;
+    description?: string;
+    category?: string;
+    priority?: string;
+    status?: string;
+    source: {
+      extension: string;
+      url?: string;
+      id?: string;
+    };
+  }
+): Promise<any> {
+  return await page.evaluate(
+    async ({ taskData }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      const createdTask = await plugin.operations.taskOperations.create(
+        taskData
+      );
+
+      return createdTask;
+    },
+    { taskData }
+  );
+}
+
 export async function getProjectByName(page: ExtendedPage, name: string) {
   return await page.evaluate(
     ({ name }) => {
@@ -121,6 +172,35 @@ export async function waitForTaskToBeRemoved(
     { title },
     { timeout }
   );
+}
+
+export async function waitForTaskUpdated(
+  page: ExtendedPage,
+  title: string,
+  changes: any,
+  timeout: number = 5000
+) {
+  await page.waitForFunction(
+    ({ title, changes }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Use the public query API for consistency
+      const task = plugin.query.findTaskByTitle(title);
+
+      // Return true when task has changes applied
+      return (
+        task !== undefined &&
+        Object.keys(changes).every((key) => {
+          return task[key] === changes[key];
+        })
+      );
+    },
+    { title, changes },
+    { timeout }
+  );
+
+  return getTaskByTitle(page, title);
 }
 
 /**

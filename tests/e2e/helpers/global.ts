@@ -703,6 +703,52 @@ export async function getFile(page: Page, filePath: string): Promise<any> {
   );
 }
 
+/**
+ * Get the currently active file path in Obsidian
+ */
+export async function getActiveFilePath(page: Page): Promise<string | null> {
+  return await page.evaluate(() => {
+    const app = (window as any).app;
+    return app.workspace.getActiveFile()?.path || null;
+  });
+}
+
+/**
+ * Reload the plugin to simulate app restart
+ */
+export async function reloadPlugin(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const app = (window as any).app;
+    await app.plugins.disablePlugin("obsidian-task-sync");
+    await app.plugins.enablePlugin("obsidian-task-sync");
+  });
+
+  // Wait for plugin to reload and vault to be scanned
+  await page.waitForTimeout(2000);
+}
+
+/**
+ * Update file frontmatter using Obsidian's processFrontMatter API
+ */
+export async function updateFileFrontmatter(
+  page: Page,
+  filePath: string,
+  updates: Record<string, any>
+): Promise<void> {
+  await page.evaluate(
+    async ({ path, updates }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (file) {
+        await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
+          Object.assign(frontmatter, updates);
+        });
+      }
+    },
+    { path: filePath, updates }
+  );
+}
+
 export async function executeCommand(
   page: ExtendedPage,
   command: string,

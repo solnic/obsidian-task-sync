@@ -11,12 +11,21 @@ import {
   selectFromDropdown,
   fileExists,
   executeCommand,
+  getActiveFilePath,
+  reloadPlugin,
+  updateFileFrontmatter,
 } from "../../helpers/global";
 import {
   stubGitHubWithFixtures,
   clickIssueImportButton,
   waitForIssueImportComplete,
 } from "../../helpers/github-integration-helpers";
+import {
+  getTaskByTitle,
+  getPersistedTaskByTitle,
+  createTaskWithSource,
+  waitForTaskUpdated,
+} from "../../helpers/entity-helpers";
 
 test.describe("GitHub Integration", () => {
   test("should import GitHub issue as task", async ({ page }) => {
@@ -105,22 +114,12 @@ test.describe("GitHub Integration", () => {
     );
 
     // Verify the note was automatically opened in Obsidian
-    // Check that the active file is the imported task note
-    const activeFile = await page.evaluate(() => {
-      const app = (window as any).app;
-      return app.workspace.getActiveFile()?.path;
-    });
-
+    const activeFile = await getActiveFilePath(page);
     expect(activeFile).toBe("Tasks/First test issue.md");
 
-    // Verify the note content is visible by checking the file exists
-    const fileExists = await page.evaluate(() => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath("Tasks/First test issue.md");
-      return file !== null;
-    });
-
-    expect(fileExists).toBe(true);
+    // Verify the note file exists
+    const taskFileExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(taskFileExists).toBe(true);
   });
 
   test("should NOT display pull requests in the issues list", async ({
@@ -334,9 +333,6 @@ test.describe("GitHub Integration", () => {
     // The refresh should either show loading indicator OR clear the tasks list immediately
     expect(hasLoadingIndicator || tasksWereCleared).toBe(true);
 
-    // Wait for refresh to complete and data to reload
-    await page.waitForTimeout(2000);
-
     // After refresh, issues should be loaded again
     await page.waitForSelector('[data-testid="github-issue-item"]', {
       state: "visible",
@@ -384,49 +380,25 @@ test.describe("GitHub Integration", () => {
     const taskExists = await fileExists(page, "Tasks/First test issue.md");
     expect(taskExists).toBe(true);
 
-    // Wait for all async operations to complete (file creation, store updates, etc.)
-    await page.waitForTimeout(1000);
-
     // Verify the task has source.extension set to 'github'
-    const taskSource = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const task = plugin.query.findTaskByTitle("First test issue");
-      return task?.source;
-    });
-
-    expect(taskSource).toBeDefined();
-    expect(taskSource.extension).toBe("github");
-    expect(taskSource.url).toBe(
+    const task = await getTaskByTitle(page, "First test issue");
+    expect(task).toBeDefined();
+    expect(task.source.extension).toBe("github");
+    expect(task.source.url).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
-    expect(taskSource.filePath).toBe("Tasks/First test issue.md");
+    expect(task.source.filePath).toBe("Tasks/First test issue.md");
 
     // Modify the task file to trigger an update
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath("Tasks/First test issue.md");
-      if (file) {
-        await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
-          frontmatter.Status = "In Progress";
-        });
-      }
+    await updateFileFrontmatter(page, "Tasks/First test issue.md", {
+      Status: "In Progress",
     });
-
-    // Wait for the file modification to propagate
-    await page.waitForTimeout(1000);
 
     // Verify source.extension is STILL 'github' after file modification
-    const taskSourceAfterUpdate = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const task = plugin.query.findTaskByTitle("First test issue");
-      return task?.source;
-    });
-
-    expect(taskSourceAfterUpdate).toBeDefined();
-    expect(taskSourceAfterUpdate.extension).toBe("github");
-    expect(taskSourceAfterUpdate.url).toBe(
+    const taskAfterUpdate = await getTaskByTitle(page, "First test issue");
+    expect(taskAfterUpdate).toBeDefined();
+    expect(taskAfterUpdate.source.extension).toBe("github");
+    expect(taskAfterUpdate.source.url).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
   });
@@ -466,65 +438,38 @@ test.describe("GitHub Integration", () => {
     const taskExists = await fileExists(page, "Tasks/First test issue.md");
     expect(taskExists).toBe(true);
 
-    // Wait for all operations to complete
-    await page.waitForTimeout(1000);
-
     // Verify source.extension is 'github' before reload
-    const taskSourceBeforeReload = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const task = plugin.query.findTaskByTitle("First test issue");
-      return task?.source;
-    });
-
-    expect(taskSourceBeforeReload).toBeDefined();
-    expect(taskSourceBeforeReload.extension).toBe("github");
-
-    // Check what's in the persisted data before reload
-    const persistedData = await page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const data = await plugin.loadData();
-      const githubTask = data?.entities?.tasks?.find(
-        (t: any) => t.title === "First test issue"
-      );
-      return githubTask;
-    });
-
-    expect(persistedData).toBeDefined();
-    expect(persistedData.source.extension).toBe("github");
-
-    // Also check what's in the store before reload
-    const storeTaskBeforeReload = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const task = plugin.query.findTaskByTitle("First test issue");
-      return task;
-    });
-
-    // Reload the plugin to simulate app restart
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      await app.plugins.disablePlugin("obsidian-task-sync");
-      await app.plugins.enablePlugin("obsidian-task-sync");
-    });
-
-    // Wait for plugin to reload and vault to be scanned
-    await page.waitForTimeout(2000);
-
-    // Verify source.extension is STILL 'github' after reload
-    const taskSourceAfterReload = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const task = plugin.query.findTaskByTitle("First test issue");
-      return task?.source;
-    });
-
-    expect(taskSourceAfterReload).toBeDefined();
-    expect(taskSourceAfterReload.extension).toBe("github");
-    expect(taskSourceAfterReload.url).toBe(
+    const taskBeforeReload = await getTaskByTitle(page, "First test issue");
+    expect(taskBeforeReload).toBeDefined();
+    expect(taskBeforeReload.source.extension).toBe("github");
+    expect(taskBeforeReload.source.url).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
+    expect(taskBeforeReload.source.filePath).toBe("Tasks/First test issue.md");
+
+    // Verify persisted data has correct source metadata
+    const persistedTask = await getPersistedTaskByTitle(
+      page,
+      "First test issue"
+    );
+    expect(persistedTask).toBeDefined();
+    expect(persistedTask.source.extension).toBe("github");
+    expect(persistedTask.source.url).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/111"
+    );
+    expect(persistedTask.source.filePath).toBe("Tasks/First test issue.md");
+
+    // Reload the plugin to simulate app restart
+    await reloadPlugin(page);
+
+    // Verify source.extension is STILL 'github' after reload
+    const taskAfterReload = await getTaskByTitle(page, "First test issue");
+    expect(taskAfterReload).toBeDefined();
+    expect(taskAfterReload.source.extension).toBe("github");
+    expect(taskAfterReload.source.url).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/111"
+    );
+    expect(taskAfterReload.source.filePath).toBe("Tasks/First test issue.md");
   });
 
   test("should reactively update imported issue when task note is modified", async ({
@@ -560,51 +505,34 @@ test.describe("GitHub Integration", () => {
       timeout: 10000,
     });
 
-    // Get the first issue data from the fixture
-    const issueData = await page.evaluate(() => {
-      return {
-        id: 111222,
-        number: 111,
-        title: "First test issue",
-        html_url: "https://github.com/solnic/obsidian-task-sync/issues/111",
-      };
-    });
+    // Define the issue data from the fixture
+    const issueData = {
+      id: 111222,
+      number: 111,
+      title: "First test issue",
+      html_url: "https://github.com/solnic/obsidian-task-sync/issues/111",
+    };
 
     // Create a task with proper source property matching the GitHub issue
-    await page.evaluate(
-      async ({ issueData }) => {
-        const app = (window as any).app;
-        const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-        const taskData = {
-          title: issueData.title,
-          description: "This is the first test issue for multiple imports.",
-          category: "Bug",
-          status: "Backlog",
-          priority: "Medium",
-          project: "",
-          doDate: undefined,
-          source: {
-            extension: "github",
-            url: issueData.html_url,
-            filePath: `Tasks/${issueData.title}.md`,
-            data: {
-              id: issueData.id,
-              number: issueData.number,
-              title: issueData.title,
-              html_url: issueData.html_url,
-            },
-          },
-        };
-
-        const task = await plugin.operations.taskOperations.create(taskData);
-        return task;
+    await createTaskWithSource(page, {
+      title: issueData.title,
+      description: "This is the first test issue for multiple imports.",
+      category: "Bug",
+      status: "Backlog",
+      priority: "Medium",
+      source: {
+        extension: "github",
+        url: issueData.html_url,
+        id: issueData.id.toString(),
       },
-      { issueData }
-    );
+    });
 
     // Wait for the task file to be created
-    await fileExists(page, `Tasks/${issueData.title}.md`);
+    const taskFileExists = await fileExists(
+      page,
+      `Tasks/${issueData.title}.md`
+    );
+    expect(taskFileExists).toBe(true);
 
     // Wait for the task to be added to the task store and verify it has the correct source
     await page.waitForFunction(
@@ -618,10 +546,6 @@ test.describe("GitHub Integration", () => {
       { timeout: 5000 }
     );
 
-    // Wait for the issue to show as imported in the GitHub view
-    // The reactivity should update the view automatically
-    await page.waitForTimeout(2000);
-
     // Verify the issue is now marked as imported in the GitHub view
     const issueLocator = page
       .locator('[data-testid="github-issue-item"]')
@@ -631,36 +555,25 @@ test.describe("GitHub Integration", () => {
 
     await expect(issueLocator).toHaveAttribute("data-imported", "true");
 
-    // Now update the task note with new properties using processFrontMatter
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath("Tasks/First test issue.md");
-      if (file) {
-        await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
-          frontmatter.Category = "Feature";
-          frontmatter.Status = "In Progress";
-          frontmatter.Project = "obsidian-task-sync";
-          frontmatter["Do Date"] = "2024-02-15";
-        });
-      }
+    const changes = {
+      Category: "Feature",
+      Status: "In Progress",
+      Project: "obsidian-task-sync",
+      "Do Date": "2024-02-15",
+    };
+
+    // Now update the task note with new properties
+    await updateFileFrontmatter(page, "Tasks/First test issue.md", changes);
+
+    const updatedTask = await waitForTaskUpdated(page, "First test issue", {
+      category: "Feature",
+      status: "In Progress",
+      project: "obsidian-task-sync",
     });
 
-    // Wait for the file to be updated and changes to propagate
-    await page.waitForTimeout(1000);
-
-    // Verify the changes are reflected in the task store
-    const updatedTask = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-      const task = plugin.query.findTaskByTitle("First test issue");
-      return task;
-    });
-
-    expect(updatedTask.category).toBe("Feature");
-    expect(updatedTask.status).toBe("In Progress");
-    expect(updatedTask.project).toBe("obsidian-task-sync");
-    expect(updatedTask.doDate).toBeDefined();
+    expect(updatedTask.doDate.getFullYear()).toBe(2024);
+    expect(updatedTask.doDate.getMonth()).toBe(1); // February is 1
+    expect(updatedTask.doDate.getDate()).toBe(15);
 
     // Verify the issue still shows as imported (reactivity maintained)
     await expect(issueLocator).toHaveAttribute("data-imported", "true");
