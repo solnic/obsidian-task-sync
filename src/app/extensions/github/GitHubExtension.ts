@@ -32,12 +32,6 @@ import type { TaskSyncSettings } from "../../types/settings";
 import { GitHubTaskSource } from "./sources/TaskSource";
 import { taskSourceManager } from "../../core/TaskSourceManager";
 
-/**
- * Prefix for temporary GitHub task IDs
- * Used to identify tasks that haven't been imported yet
- */
-const GITHUB_TEMP_ID_PREFIX = "github-temp-" as const;
-
 export class GitHubExtension implements Extension {
   readonly id = "github";
   readonly name = "GitHub";
@@ -164,6 +158,10 @@ export class GitHubExtension implements Extension {
   // Cache for fetched GitHub API data (issues/PRs) - now reactive
   private githubApiDataCache = writable<Map<string, any[]>>(new Map());
 
+  // Cache for non-imported task objects to ensure stable IDs
+  // Maps GitHub URL -> Task object
+  private taskObjectCache = new Map<string, Task>();
+
   /**
    * Get observable tasks for this extension with optional filters
    * Returns imported GitHub tasks combined with GitHub API data
@@ -269,11 +267,25 @@ export class GitHubExtension implements Extension {
               ...existingTask,
               source: {
                 ...existingTask.source,
+                imported: true, // Explicitly mark as imported
                 data: item, // Update with latest GitHub data (labels, state, etc.)
               },
             } as Task;
           } else {
-            // Create a task representation with GitHub data in source.data
+            // Check if we already have a cached task object for this URL
+            const cachedTask = this.taskObjectCache.get(item.html_url);
+            if (cachedTask) {
+              // Return cached task with updated source.data
+              return {
+                ...cachedTask,
+                source: {
+                  ...cachedTask.source,
+                  data: item, // Update with latest GitHub data
+                },
+              } as Task;
+            }
+
+            // Create a new task representation with GitHub data in source.data
             const taskData =
               type === "issues"
                 ? this.githubOperations.tasks.transformIssueToTask(
@@ -285,17 +297,18 @@ export class GitHubExtension implements Extension {
                     repository
                   );
 
-            const task = {
+            // Use buildEntity to generate proper ID and timestamps
+            const task = this.githubOperations.tasks.buildEntity({
               ...taskData,
-              // Generate a temporary ID for non-imported items
-              id: `${GITHUB_TEMP_ID_PREFIX}${item.id}`,
-              createdAt: new Date(item.created_at),
-              updatedAt: new Date(item.updated_at),
               source: {
                 ...taskData.source,
+                imported: false, // Not yet imported
                 data: item, // Store the raw GitHub data
               },
-            } as Task;
+            }) as Task;
+
+            // Cache the task object for future renders
+            this.taskObjectCache.set(item.html_url, task);
 
             return task;
           }
@@ -362,6 +375,9 @@ export class GitHubExtension implements Extension {
 
       // Clear GitHub API data cache - this triggers reactivity
       this.githubApiDataCache.set(new Map());
+
+      // Clear task object cache to allow fresh IDs for non-imported tasks
+      this.taskObjectCache.clear();
 
       // Use TaskSourceManager to refresh tasks from GitHubTaskSource
       // This will:
@@ -869,6 +885,15 @@ export class GitHubExtension implements Extension {
       pullRequest,
       repository
     );
+  }
+
+  /**
+   * Build a task entity with proper ID and timestamps
+   */
+  buildTaskEntity(
+    taskData: Omit<Task, "id" | "createdAt" | "updatedAt">
+  ): Task {
+    return this.githubOperations.tasks.buildEntity(taskData) as Task;
   }
 
   /**

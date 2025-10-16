@@ -12,7 +12,6 @@
  */
 
 import type { Task } from "./entities";
-import { generateId } from "../utils/idGenerator";
 
 /**
  * Reconciliation strategy for handling task updates from a specific source
@@ -91,6 +90,10 @@ export class SimpleTaskReconciler implements TaskReconciler {
    * Preserve ID and creation timestamp, update everything else
    */
   reconcileTask(existingTask: Task | undefined, newTask: Task): Task {
+    if (!newTask.id) {
+      throw new Error("SimpleTaskReconciler: newTask must have an ID");
+    }
+
     if (existingTask) {
       // Preserve ID and creation timestamp
       return {
@@ -101,11 +104,9 @@ export class SimpleTaskReconciler implements TaskReconciler {
       };
     }
 
-    // New task - generate ID and timestamps
+    // New task - use the ID from buildEntity
     return {
       ...newTask,
-      id: newTask.id || generateId(),
-      createdAt: new Date(),
       updatedAt: new Date(),
     };
   }
@@ -171,9 +172,14 @@ export class ObsidianTaskReconciler implements TaskReconciler {
    * - Keep source.extension = "github" (not "obsidian")
    * - Keep source.url pointing to the GitHub issue
    * - Keep source.data with the GitHub issue data
+   * - Keep source.imported flag
    * - Update source.filePath to the vault file path
    */
   reconcileTask(existingTask: Task | undefined, newTask: Task): Task {
+    if (!newTask.id) {
+      throw new Error("ObsidianTaskReconciler: newTask must have an ID");
+    }
+
     if (existingTask) {
       // Preserve ID, createdAt, and critical source metadata
       return {
@@ -188,17 +194,17 @@ export class ObsidianTaskReconciler implements TaskReconciler {
             existingTask.source?.extension || newTask.source?.extension,
           // Preserve source URL (e.g., GitHub issue URL)
           url: existingTask.source?.url || newTask.source?.url,
+          // Preserve imported flag
+          imported: existingTask.source?.imported ?? newTask.source?.imported,
           // Preserve source data (e.g., GitHub issue data)
           data: existingTask.source?.data || newTask.source?.data,
         },
       };
     }
 
-    // New task from vault - generate ID and timestamps
+    // New task from vault - use the ID from buildEntity
     return {
       ...newTask,
-      id: newTask.id || generateId(),
-      createdAt: new Date(),
       updatedAt: new Date(),
     };
   }

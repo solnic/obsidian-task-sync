@@ -18,6 +18,11 @@ export const TaskSourceSchema = z.object({
   extension: z.string(),
   filePath: z.string().optional(),
   url: z.string().optional(),
+  // Whether this task has been imported into the vault (for external sources like GitHub)
+  // - true: task has been imported and exists in the vault
+  // - false: task is from external source but not yet imported
+  // - undefined: not applicable (e.g., native Obsidian tasks)
+  imported: z.boolean().optional(),
   // Raw data from external service (e.g., GitHub issue/PR, Linear issue)
   // Used for rendering service-specific UI and tracking import status
   data: z.any().optional(),

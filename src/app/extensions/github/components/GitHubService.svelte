@@ -22,14 +22,6 @@
   import type { GitHubExtension } from "../GitHubExtension";
   import type { DailyPlanningExtension } from "../../daily-planning/DailyPlanningExtension";
   import { getContextStore } from "../../../stores/contextStore";
-  import { taskStore } from "../../../stores/taskStore";
-  import { TaskQueryService } from "../../../services/TaskQueryService";
-
-  /**
-   * Prefix for temporary GitHub task IDs
-   * Used to identify tasks that haven't been imported yet
-   */
-  const GITHUB_TEMP_ID_PREFIX = "github-temp-" as const;
 
   interface SortField {
     key: string;
@@ -130,87 +122,25 @@
   ];
 
   // ============================================================================
-  // DATA PROCESSING - GitHub-specific approach (async data loading)
+  // DATA PROCESSING - Use extension's getTasks() interface
   // ============================================================================
 
   /**
-   * Get store state reactively to track imported tasks
-   * This is used to determine which GitHub issues/PRs have been imported
-   * REFACTORING: Read directly from taskStore, not from extension's derived store
+   * Get tasks from extension's getTasks() method
+   * The extension handles combining imported tasks with GitHub API data
+   * and ensures stable IDs for non-imported tasks
    */
-  let storeState = $derived($taskStore);
-
-  /**
-   * Get all imported GitHub tasks from the store
-   * These are tasks that have been imported from GitHub
-   */
-  let importedGitHubTasks = $derived(
-    storeState.tasks.filter((task) => task.source?.extension === "github")
-  );
-
-  // Debug logging for reactivity
-  $effect(() => {
-    console.log("[GitHubService] Store state changed:", {
-      totalTasks: storeState.tasks.length,
-      githubTasks: importedGitHubTasks.length,
-      loading: storeState.loading,
-      error: storeState.error,
-    });
-  });
-
-  /**
-   * GitHub API cache state
-   * This is a reactive state that holds fetched GitHub API data
-   */
-  let githubApiCache = $state<Map<string, any[]>>(new Map());
-
-  /**
-   * Fetch GitHub API data when repository or type changes
-   * This replaces the subscription to extension's derived store
-   */
-  $effect(() => {
-    console.log("[GitHubService] Filter changed:", {
+  let extensionTasksStore = $derived(
+    githubExtension.getTasks({
       repository: filters.repository,
       type: filters.type,
-    });
+    })
+  );
 
-    if (!filters.repository) {
-      return;
-    }
-
-    const cacheKey = `${filters.repository}:${filters.type}`;
-
-    // Fetch GitHub API data if not already in cache
-    if (!githubApiCache.has(cacheKey)) {
-      console.log("[GitHubService] Fetching GitHub API data for:", cacheKey);
-
-      // Fetch issues or PRs based on type
-      const fetchPromise =
-        filters.type === "issues"
-          ? githubExtension.fetchIssues(filters.repository)
-          : githubExtension.fetchPullRequests(filters.repository);
-
-      fetchPromise
-        .then((items) => {
-          console.log("[GitHubService] Fetched GitHub API data:", {
-            cacheKey,
-            count: items.length,
-          });
-          githubApiCache.set(cacheKey, items);
-          githubApiCache = new Map(githubApiCache); // Trigger reactivity
-        })
-        .catch((err) => {
-          console.error(
-            "[GitHubService] Failed to fetch GitHub API data:",
-            err
-          );
-        });
-    }
-  });
+  let extensionTasks = $derived($extensionTasksStore);
 
   /**
-   * Combine imported tasks with GitHub API data
-   * This is the core reactivity - when store changes OR API data changes, this recomputes
+   * Apply filters, search, and sort to extension tasks
    */
   let tasks = $derived.by((): Task[] => {
     if (!filters.repository) {
@@ -218,89 +148,25 @@
       return [];
     }
 
-    const cacheKey = `${filters.repository}:${filters.type}`;
-    const githubItems = githubApiCache.get(cacheKey) || [];
-
-    console.log("[GitHubService] Computing derived tasks:", {
-      repository: filters.repository,
-      type: filters.type,
-      githubItemsCount: githubItems.length,
-      importedTasksCount: importedGitHubTasks.length,
-    });
-
-    // Filter imported tasks for this repository
-    const importedForRepo = importedGitHubTasks.filter((task) => {
-      const url = task.source?.url;
-      if (!url) return false;
-      const match = url.match(/github\.com\/([^\/]+\/[^\/]+)\//);
-      const taskRepository = match ? match[1] : null;
-      return taskRepository === filters.repository;
-    });
-
-    console.log("[GitHubService] Imported for repo:", {
-      count: importedForRepo.length,
-      tasks: importedForRepo.map((t) => ({
+    console.log("[GitHubService] Extension tasks:", {
+      count: extensionTasks.length,
+      tasks: extensionTasks.map((t: Task) => ({
         id: t.id,
         title: t.title,
-        doDate: t.doDate,
+        imported: t.source?.imported,
       })),
     });
 
-    // Combine GitHub API data with imported tasks
-    let combined = githubItems.map((item: any) => {
-      // Check if this item is already imported
-      const existingTask = importedForRepo.find(
-        (task: Task) => task.source?.url === item.html_url
-      );
-
-      if (existingTask) {
-        console.log("[GitHubService] Found existing task for:", item.html_url, {
-          id: existingTask.id,
-          title: existingTask.title,
-          doDate: existingTask.doDate,
-        });
-        // Return the imported task from the store (which has the latest doDate, etc.)
-        // with updated source.data from GitHub API
-        return {
-          ...existingTask,
-          source: {
-            ...existingTask.source,
-            data: item, // Update with latest GitHub data (labels, state, etc.)
-          },
-        } as Task;
-      } else {
-        // Create a task representation with GitHub data in source.data
-        const taskData =
-          filters.type === "issues"
-            ? githubExtension.transformIssueToTask(item, filters.repository)
-            : githubExtension.transformPullRequestToTask(
-                item,
-                filters.repository
-              );
-
-        const task = {
-          ...taskData,
-          // Generate a temporary ID for non-imported items
-          id: `${GITHUB_TEMP_ID_PREFIX}${item.id}`,
-          createdAt: new Date(item.created_at),
-          updatedAt: new Date(item.updated_at),
-          source: {
-            ...taskData.source,
-            data: item, // Store the raw GitHub data
-          },
-        } as Task;
-
-        return task;
-      }
-    });
-
     // Apply GitHub-specific filters using extension
-    let processed: readonly Task[] = githubExtension.filterTasks(combined, {
-      state: filters.state,
-      assignedToMe: filters.assignedToMe,
-      labels: filters.labels,
-      currentUser: filters.currentUser,
-    });
+    let processed: readonly Task[] = githubExtension.filterTasks(
+      extensionTasks,
+      {
+        state: filters.state,
+        assignedToMe: filters.assignedToMe,
+        labels: filters.labels,
+        currentUser: filters.currentUser,
+      }
+    );
 
     console.log("[GitHubService] After filtering:", processed.length);
 
@@ -322,7 +188,7 @@
         id: t.id,
         title: t.title,
         doDate: t.doDate,
-        isImported: !t.id.startsWith(GITHUB_TEMP_ID_PREFIX),
+        isImported: t.source?.imported === true,
       })),
     });
 
@@ -634,18 +500,13 @@
       isLoading = true;
       error = null;
 
-      // Use extension's refresh method which clears cache
+      // Use extension's refresh method which clears cache and reloads data
+      // The extension handles clearing its internal githubApiDataCache
       await githubExtension.refresh();
 
       // Reload organizations and repositories
       await loadOrganizations();
       await loadRepositories();
-
-      // Clear the GitHub API cache to force fresh data fetch
-      // The $effect watching filters.repository will automatically re-fetch
-      // when it detects the cache is empty
-      githubApiCache.clear();
-      githubApiCache = new Map(githubApiCache); // Trigger reactivity
 
       isLoading = false;
     } catch (err: any) {
@@ -761,9 +622,9 @@
     }
   }
 
-  // Helper to check if a task is imported (has a real ID, not a temp one)
+  // Helper to check if a task is imported
   function isTaskImported(task: Task): boolean {
-    return !task.id.startsWith(GITHUB_TEMP_ID_PREFIX);
+    return task.source?.imported === true;
   }
 
   async function importTask(task: Task): Promise<void> {

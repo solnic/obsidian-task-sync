@@ -33,7 +33,7 @@ export type TaskAction =
   | { type: "REMOVE_TASK"; taskId: string }
   | {
       type: "UPSERT_TASK";
-      taskData: Omit<Task, "id"> & { naturalKey: string };
+      taskData: Task;
       reconciler: TaskReconciler;
     };
 
