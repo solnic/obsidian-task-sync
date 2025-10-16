@@ -215,7 +215,7 @@ test.describe("GitHub Organization/Repository Mapping", () => {
 
     // The task should be in Microsoft Projects area and Microsoft project
     expect(task.areas).toContain("Microsoft Projects");
-    expect(task.project).toBe("Projects/Microsoft.md|Microsoft");
+    expect(task.project).toBe("Microsoft");
   });
 
   test("should not apply any mapping for unknown repositories", async ({
