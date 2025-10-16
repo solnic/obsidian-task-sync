@@ -251,7 +251,9 @@ export async function getTaskItemByTitle(
       }
     }
 
-    throw new Error(`Task item with title "${title}" not found`);
+    throw new Error(
+      `Task item with title "${title}" not found (searched ${taskItems.length} items)`
+    );
   }
 
   // For simple titles, use the test ID for faster, more reliable lookup
