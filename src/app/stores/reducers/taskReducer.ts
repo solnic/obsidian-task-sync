@@ -150,6 +150,14 @@ export function taskReducer(
       }
     }
 
+    case "CLEAR_ALL_TASKS":
+      return {
+        ...state,
+        tasks: [],
+        loading: false,
+        error: null,
+      };
+
     default:
       return state;
   }

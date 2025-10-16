@@ -35,7 +35,8 @@ export type TaskAction =
       type: "UPSERT_TASK";
       taskData: Task;
       reconciler: TaskReconciler;
-    };
+    }
+  | { type: "CLEAR_ALL_TASKS" };
 
 /**
  * Project-related actions
