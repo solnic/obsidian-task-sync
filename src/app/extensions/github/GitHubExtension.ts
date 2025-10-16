@@ -425,18 +425,61 @@ export class GitHubExtension implements Extension {
 
   /**
    * Sort tasks by multiple fields
-   * Uses TaskQueryService for consistent sort behavior
+   * For GitHub tasks, uses canonical GitHub data (updated_at, created_at) instead of Task entity timestamps
    */
   sortTasks(
     tasks: readonly Task[],
     sortFields: Array<{ key: string; direction: "asc" | "desc" }>
   ): readonly Task[] {
-    // Convert to TaskQueryService format
-    const queryServiceFields = sortFields.map((f) => ({
-      field: f.key as keyof Task,
-      direction: f.direction,
-    }));
-    return TaskQueryService.sort(tasks, queryServiceFields);
+    return [...tasks].sort((a, b) => {
+      for (const { key, direction } of sortFields) {
+        let aVal: any;
+        let bVal: any;
+
+        // Map common sort keys to GitHub canonical data fields
+        if (key === "updatedAt") {
+          // Use GitHub's updated_at from source.data
+          aVal = a.source?.data?.updated_at
+            ? new Date(a.source.data.updated_at)
+            : null;
+          bVal = b.source?.data?.updated_at
+            ? new Date(b.source.data.updated_at)
+            : null;
+        } else if (key === "createdAt") {
+          // Use GitHub's created_at from source.data
+          aVal = a.source?.data?.created_at
+            ? new Date(a.source.data.created_at)
+            : null;
+          bVal = b.source?.data?.created_at
+            ? new Date(b.source.data.created_at)
+            : null;
+        } else {
+          // For other fields, use Task entity properties
+          aVal = a[key as keyof Task];
+          bVal = b[key as keyof Task];
+        }
+
+        let comparison = 0;
+
+        // Handle null/undefined values
+        if (aVal == null && bVal == null) {
+          comparison = 0;
+        } else if (aVal == null) {
+          comparison = 1; // null sorts to end
+        } else if (bVal == null) {
+          comparison = -1; // null sorts to end
+        } else if (aVal < bVal) {
+          comparison = -1;
+        } else if (aVal > bVal) {
+          comparison = 1;
+        }
+
+        if (comparison !== 0) {
+          return direction === "desc" ? -comparison : comparison;
+        }
+      }
+      return 0;
+    });
   }
 
   /**

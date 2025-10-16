@@ -587,4 +587,64 @@ test.describe("GitHub Integration", () => {
     // Verify the badge shows the correct date
     await expect(scheduledBadge).toContainText("Scheduled for");
   });
+
+  test("should sort GitHub issues by canonical updated_at timestamp descending", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Wait for issues to load
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Get all issue items
+    const issueItems = page.locator('[data-testid="github-issue-item"]');
+    const count = await issueItems.count();
+    expect(count).toBe(3);
+
+    // Verify issues are sorted by updated_at descending (newest first)
+    // Fixture data:
+    // - Issue #333: updated_at "2024-01-14T16:45:00Z" (newest)
+    // - Issue #222: updated_at "2024-01-12T14:30:00Z" (middle)
+    // - Issue #111: updated_at "2024-01-10T09:00:00Z" (oldest)
+
+    // First issue should be #333 (newest)
+    const firstIssue = issueItems.nth(0);
+    await expect(firstIssue).toContainText("#333");
+    await expect(firstIssue).toContainText("Third test issue");
+
+    // Second issue should be #222 (middle)
+    const secondIssue = issueItems.nth(1);
+    await expect(secondIssue).toContainText("#222");
+    await expect(secondIssue).toContainText("Second test issue");
+
+    // Third issue should be #111 (oldest)
+    const thirdIssue = issueItems.nth(2);
+    await expect(thirdIssue).toContainText("#111");
+    await expect(thirdIssue).toContainText("First test issue");
+  });
 });
