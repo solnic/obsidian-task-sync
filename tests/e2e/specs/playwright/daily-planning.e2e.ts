@@ -1298,4 +1298,278 @@ test.describe("Daily Planning Wizard", () => {
     // Content should be identical across all confirmations
     expect(dailyNoteContentAfterThird).toBe(dailyNoteContentAfterFirst);
   });
+
+  test("should detect existing tasks in daily note and not duplicate them", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create tasks for today
+    const task1 = await createTask(page, {
+      title: "Pre-existing Task 1",
+      description: "First task that will be pre-existing in daily note",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Pre-existing Task 2",
+      description: "Second task that will be pre-existing in daily note",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // MANUALLY create daily note with existing task links to simulate the bug scenario
+    const preExistingContent = `# ${todayString}
+
+## Today's Tasks
+- [ ] [[Tasks/Pre-existing Task 1|Pre-existing Task 1]]
+- [ ] [[Tasks/Pre-existing Task 2|Pre-existing Task 2]]
+
+## Notes
+
+## Reflections
+`;
+
+    // Create the daily note manually with existing tasks
+    await page.evaluate(
+      async ({ path, content }) => {
+        const app = (window as any).app;
+
+        // Ensure the Daily Notes folder exists
+        const folder = app.vault.getAbstractFileByPath("Daily Notes");
+        if (!folder) {
+          await app.vault.createFolder("Daily Notes");
+        }
+
+        // Create the daily note with pre-existing content
+        await app.vault.create(path, content);
+      },
+      { path: dailyNotePath, content: preExistingContent }
+    );
+
+    // Verify the daily note was created with existing tasks
+    const initialContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(initialContent).toBeTruthy();
+    expect(initialContent).toContain("Pre-existing Task 1");
+    expect(initialContent).toContain("Pre-existing Task 2");
+
+    // Count initial task links
+    const initialTask1Count = (
+      initialContent!.match(/^- \[ \] \[\[.*Pre-existing Task 1.*\]\]$/gm) || []
+    ).length;
+    const initialTask2Count = (
+      initialContent!.match(/^- \[ \] \[\[.*Pre-existing Task 2.*\]\]$/gm) || []
+    ).length;
+
+    expect(initialTask1Count).toBe(1);
+    expect(initialTask2Count).toBe(1);
+
+    // NOW run daily planning - it should detect existing tasks and NOT duplicate them
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 10000 });
+
+    // Navigate through wizard to confirmation
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm
+
+    // Wait for daily note to be updated
+    await page.waitForTimeout(2000);
+
+    // Read daily note content after confirmation
+    const finalContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(finalContent).toBeTruthy();
+
+    // CRITICAL ASSERTION: Task count should remain the same (no duplicates added)
+    const finalTask1Count = (
+      finalContent!.match(/^- \[ \] \[\[.*Pre-existing Task 1.*\]\]$/gm) || []
+    ).length;
+    const finalTask2Count = (
+      finalContent!.match(/^- \[ \] \[\[.*Pre-existing Task 2.*\]\]$/gm) || []
+    ).length;
+
+    // These should still be 1, not 2 (which would indicate duplication)
+    expect(finalTask1Count).toBe(1);
+    expect(finalTask2Count).toBe(1);
+
+    // Content should be identical (no new tasks added since they already existed)
+    expect(finalContent).toBe(initialContent);
+  });
+
+  test("should detect existing tasks with different link formats and not duplicate them", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create tasks for today
+    const task1 = await createTask(page, {
+      title: "Format Test Task 1",
+      description: "Task to test different link formats",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Format Test Task 2",
+      description: "Another task to test different link formats",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // Create daily note with DIFFERENT link format than what DailyNoteFeature generates
+    // DailyNoteFeature generates: [[Tasks/Task Name|Task Name]]
+    // DailyPlanningExtension generates: [[Task Name]]
+    // Let's test with the DailyPlanningExtension format to see if DailyNoteFeature detects it
+    const preExistingContent = `# ${todayString}
+
+## Today's Tasks
+- [ ] [[Format Test Task 1]]
+- [ ] [[Format Test Task 2]]
+
+## Notes
+
+## Reflections
+`;
+
+    // Create the daily note manually with existing tasks in DailyPlanningExtension format
+    await page.evaluate(
+      async ({ path, content }) => {
+        const app = (window as any).app;
+
+        // Ensure the Daily Notes folder exists
+        const folder = app.vault.getAbstractFileByPath("Daily Notes");
+        if (!folder) {
+          await app.vault.createFolder("Daily Notes");
+        }
+
+        // Create the daily note with pre-existing content
+        await app.vault.create(path, content);
+      },
+      { path: dailyNotePath, content: preExistingContent }
+    );
+
+    // Verify the daily note was created with existing tasks
+    const initialContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(initialContent).toBeTruthy();
+    expect(initialContent).toContain("Format Test Task 1");
+    expect(initialContent).toContain("Format Test Task 2");
+
+    // Count initial task links (DailyPlanningExtension format)
+    const initialTask1Count = (
+      initialContent!.match(/^- \[ \] \[\[Format Test Task 1\]\]$/gm) || []
+    ).length;
+    const initialTask2Count = (
+      initialContent!.match(/^- \[ \] \[\[Format Test Task 2\]\]$/gm) || []
+    ).length;
+
+    expect(initialTask1Count).toBe(1);
+    expect(initialTask2Count).toBe(1);
+
+    // NOW run daily planning - DailyNoteFeature should detect existing tasks despite different format
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 10000 });
+
+    // Navigate through wizard to confirmation
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm
+
+    // Wait for daily note to be updated
+    await page.waitForTimeout(2000);
+
+    // Read daily note content after confirmation
+    const finalContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(finalContent).toBeTruthy();
+
+    // CRITICAL ASSERTION: Check if tasks were duplicated due to format mismatch
+    // Count both formats to see if duplicates were added
+    const finalTask1SimpleCount = (
+      finalContent!.match(/^- \[ \] \[\[Format Test Task 1\]\]$/gm) || []
+    ).length;
+    const finalTask2SimpleCount = (
+      finalContent!.match(/^- \[ \] \[\[Format Test Task 2\]\]$/gm) || []
+    ).length;
+
+    const finalTask1FullCount = (
+      finalContent!.match(
+        /^- \[ \] \[\[Tasks\/Format Test Task 1\|Format Test Task 1\]\]$/gm
+      ) || []
+    ).length;
+    const finalTask2FullCount = (
+      finalContent!.match(
+        /^- \[ \] \[\[Tasks\/Format Test Task 2\|Format Test Task 2\]\]$/gm
+      ) || []
+    ).length;
+
+    // Log the final content for debugging
+    console.log("Final daily note content:", finalContent);
+    console.log("Simple format counts:", {
+      finalTask1SimpleCount,
+      finalTask2SimpleCount,
+    });
+    console.log("Full format counts:", {
+      finalTask1FullCount,
+      finalTask2FullCount,
+    });
+
+    // If the bug exists, we'll see both formats (duplication)
+    // If the bug is fixed, we should only see the original format (no duplication)
+    const totalTask1Count = finalTask1SimpleCount + finalTask1FullCount;
+    const totalTask2Count = finalTask2SimpleCount + finalTask2FullCount;
+
+    // These should still be 1 total, not 2 (which would indicate duplication)
+    expect(totalTask1Count).toBe(1);
+    expect(totalTask2Count).toBe(1);
+
+    // The original simple format should still be there
+    expect(finalTask1SimpleCount).toBe(1);
+    expect(finalTask2SimpleCount).toBe(1);
+
+    // No full format should have been added (no duplication)
+    expect(finalTask1FullCount).toBe(0);
+    expect(finalTask2FullCount).toBe(0);
+  });
 });
