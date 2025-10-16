@@ -63,7 +63,24 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
           console.log(`File ${file.path} was not a valid task`);
         }
       } catch (error) {
-        console.error(`Failed to parse task file ${file.path}:`, error);
+        // Extract validation errors from ZodError if available
+        if (error?.name === "ZodError" && error?.issues) {
+          const invalidFields = error.issues
+            .map((issue: any) => {
+              const field = issue.path.join(".");
+              const expected = issue.expected || issue.code;
+              const received =
+                issue.received || (issue.errors ? "invalid union" : "unknown");
+              return `  - ${field}: expected ${expected}, received ${received}`;
+            })
+            .join("\n");
+
+          console.warn(
+            `Skipping task file ${file.path} due to invalid front-matter:\n${invalidFields}`
+          );
+        } else {
+          console.error(`Failed to parse task file ${file.path}:`, error);
+        }
       }
     }
 
