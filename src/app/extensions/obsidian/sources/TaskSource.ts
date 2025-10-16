@@ -111,33 +111,12 @@ export class ObsidianTaskSource implements DataSource<Task> {
               cache
             );
 
-            if (taskData && callbacks.onItemChanged) {
-              // Notify about the single changed item
-              callbacks.onItemChanged(taskData);
-            }
+            callbacks.onItemChanged?.(taskData);
           } catch (error) {
-            // Extract validation errors from ZodError if available
-            if (error?.name === "ZodError" && error?.issues) {
-              const invalidFields = error.issues
-                .map((issue: any) => {
-                  const field = issue.path.join(".");
-                  const expected = issue.expected || issue.code;
-                  const received =
-                    issue.received ||
-                    (issue.errors ? "invalid union" : "unknown");
-                  return `  - ${field}: expected ${expected}, received ${received}`;
-                })
-                .join("\n");
-
-              console.warn(
-                `[ObsidianTaskSource] Skipping task file ${file.path} due to invalid front-matter:\n${invalidFields}`
-              );
-            } else {
-              console.error(
-                `[ObsidianTaskSource] Error handling change for ${file.path}:`,
-                error
-              );
-            }
+            console.warn(
+              `[ObsidianTaskSource] Skipping task file ${file.path}`,
+              error
+            );
           }
         }
       }

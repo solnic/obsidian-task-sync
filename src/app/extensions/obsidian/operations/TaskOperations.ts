@@ -292,20 +292,18 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     };
 
     // Create Task data and use buildEntity to generate ID
-    // Note: source.extension preservation is now handled in the reducer during LOAD_SOURCE_SUCCESS
-    const taskDataWithoutId = {
+    const taskData = {
       title: frontMatter.Title,
-      description: frontMatter.Description || "",
-      category: frontMatter.Category || "", // Use Category property, not Type
-      status: frontMatter.Status || "Not Started",
-      priority: frontMatter.Priority || "", // Ensure priority is always a string
-      done: frontMatter.Done || false,
+      category: frontMatter.Category,
+      status: frontMatter.Status,
+      priority: frontMatter.Priority,
+      done: frontMatter.Done,
       project: cleanLinkFormat(frontMatter.Project),
       areas: areas,
       parentTask: cleanLinkFormat(frontMatter["Parent task"]),
       doDate: parseDate(frontMatter["Do Date"]),
       dueDate: parseDate(frontMatter["Due Date"]),
-      tags: Array.isArray(frontMatter.tags) ? frontMatter.tags : [],
+      tags: frontMatter.tags || [],
       // Source information for tracking
       source: {
         extension: "obsidian", // Default to obsidian, reducer will preserve non-obsidian extensions
@@ -314,7 +312,7 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     };
 
     // Use buildEntity to generate ID and timestamps
-    const task = this.taskOperations.buildEntity(taskDataWithoutId) as Task;
+    const task = this.taskOperations.buildEntity(taskData) as Task;
 
     return task;
   }
