@@ -5,8 +5,14 @@
 
 import { Task } from "../../../core/entities";
 import { Tasks } from "../../../entities/Tasks";
-import type { GitHubIssue, GitHubPullRequest } from "../../../cache/schemas/github";
-import type { TaskSyncSettings, GitHubOrgRepoMapping } from "../../../types/settings";
+import type {
+  GitHubIssue,
+  GitHubPullRequest,
+} from "../../../cache/schemas/github";
+import type {
+  TaskSyncSettings,
+  GitHubOrgRepoMapping,
+} from "../../../types/settings";
 import { GitHubOrgRepoMapper } from "../services/GitHubOrgRepoMapper";
 
 /**
@@ -56,7 +62,7 @@ export namespace GitHub {
         parentTask: "",
         doDate: undefined as Date | undefined,
         dueDate: undefined as Date | undefined,
-        tags: issue.labels.map((label) => label.name),
+        tags: [] as string[], // Do not set tags from GitHub labels
         source: {
           extension: "github",
           url: issue.html_url,
@@ -109,7 +115,7 @@ export namespace GitHub {
         parentTask: "",
         doDate: undefined as Date | undefined,
         dueDate: undefined as Date | undefined,
-        tags: pr.labels.map((label) => label.name),
+        tags: [] as string[], // Do not set tags from GitHub labels
         source: {
           extension: "github",
           url: pr.html_url,
