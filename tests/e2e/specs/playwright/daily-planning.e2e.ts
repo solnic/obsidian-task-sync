@@ -10,6 +10,8 @@ import {
   enableIntegration,
   switchToTaskService,
   selectFromDropdown,
+  waitForNotice,
+  waitForFileUpdate,
 } from "../../helpers/global";
 import { getTodayString, getYesterdayString } from "../../helpers/date-helpers";
 import { createTask } from "../../helpers/entity-helpers";
@@ -113,8 +115,22 @@ test.describe("Daily Planning Wizard", () => {
     // Confirm the plan
     await page.click('[data-testid="confirm-button"]');
 
-    // Wait for confirmation and daily note to open
-    await page.waitForTimeout(2000);
+    // Wait for confirmation by checking for success notice or daily note creation
+    await page.waitForFunction(
+      () => {
+        // Check if daily note was created or if we got a success notice
+        const notices = document.querySelectorAll(".notice");
+        const noticeTexts = Array.from(notices).map((n) => n.textContent || "");
+        return noticeTexts.some(
+          (text) =>
+            text.includes("Daily plan") ||
+            text.includes("created") ||
+            text.includes("success")
+        );
+      },
+      undefined,
+      { timeout: 5000 }
+    );
 
     // NOW THE CRITICAL TEST: Reopen the daily planning wizard
     await executeCommand(page, "Task Sync: Start Daily Planning");
@@ -251,7 +267,21 @@ test.describe("Daily Planning Wizard", () => {
     );
     if (await moveToTodayButton.isVisible()) {
       await moveToTodayButton.click();
-      await page.waitForTimeout(1000);
+      // Wait for the task to be moved by checking if button disappears or task moves
+      await page
+        .waitForFunction(
+          () => {
+            const button = document.querySelector(
+              '[data-testid="move-to-today-button"]'
+            );
+            return !button || !button.isVisible;
+          },
+          undefined,
+          { timeout: 3000 }
+        )
+        .catch(() => {
+          // Ignore timeout - button might still be visible
+        });
     }
   });
 

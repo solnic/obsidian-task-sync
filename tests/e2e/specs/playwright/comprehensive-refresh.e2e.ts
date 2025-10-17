@@ -9,6 +9,8 @@ import {
   executeCommand,
   fileExists,
   readVaultFile,
+  waitForFileUpdate,
+  waitForNotice,
 } from "../../helpers/global";
 import { createTask } from "../../helpers/entity-helpers";
 
@@ -66,8 +68,12 @@ test.describe("Comprehensive Refresh", () => {
     // Execute the comprehensive refresh command
     await executeCommand(page, "Task Sync: Refresh Tasks");
 
-    // Wait for the refresh to complete
-    await page.waitForTimeout(3000);
+    // Wait for the refresh to complete by waiting for file to be updated
+    await waitForFileUpdate(
+      page,
+      "Tasks/Test Refresh Task.md",
+      "Status: Backlog"
+    );
 
     // Verify the file was repaired
     const repairedContent = await readVaultFile(
@@ -84,8 +90,13 @@ test.describe("Comprehensive Refresh", () => {
     // Verify the task still appears in the UI
     await openView(page, "task-sync-main");
 
-    // Wait for tasks to load
-    await page.waitForTimeout(2000);
+    // Wait for tasks to load by checking for the task to appear
+    await page.waitForSelector(
+      '.task-sync-item-title:has-text("Test Refresh Task")',
+      {
+        timeout: 5000,
+      }
+    );
 
     // Check that the task appears in the local tasks view
     const taskInUI = await page
@@ -115,8 +126,18 @@ test.describe("Comprehensive Refresh", () => {
     // Execute the comprehensive refresh command
     await executeCommand(page, "Task Sync: Refresh Tasks");
 
-    // Wait for the refresh to complete
-    await page.waitForTimeout(3000);
+    // Wait for the refresh to complete by waiting for console messages
+    await page.waitForFunction(
+      () => {
+        // Check if we have any refresh-related console messages
+        return (
+          (window as any).testConsoleMessages &&
+          (window as any).testConsoleMessages.length > 0
+        );
+      },
+      undefined,
+      { timeout: 5000 }
+    );
 
     // Check that we captured some refresh-related console messages
     expect(consoleMessages.length).toBeGreaterThan(0);

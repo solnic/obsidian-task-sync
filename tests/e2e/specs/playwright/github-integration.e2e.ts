@@ -15,6 +15,7 @@ import {
   reloadPlugin,
   updateFileFrontmatter,
   readVaultFile,
+  waitForFileUpdate,
 } from "../../helpers/global";
 import {
   stubGitHubWithFixtures,
@@ -137,8 +138,8 @@ test.describe("GitHub Integration", () => {
 
     expect(updatedTask).toBeTruthy();
 
-    // Wait for the update to complete
-    await page.waitForTimeout(1000);
+    // Wait for the update to complete by waiting for file to be updated
+    await waitForFileUpdate(page, "Tasks/First test issue.md", "Do Date:");
 
     // CRITICAL: Read the file content again - it should still contain the GitHub issue content
     const finalContent = await readVaultFile(page, "Tasks/First test issue.md");
@@ -600,7 +601,11 @@ test.describe("GitHub Integration", () => {
     });
 
     // Wait for file change to be processed
-    await page.waitForTimeout(1000);
+    await waitForFileUpdate(
+      page,
+      "Tasks/First test issue.md",
+      "Status: In Progress"
+    );
 
     // Verify source.extension is STILL 'github' after first modification
     const taskAfterFirstUpdate = await getTaskByTitle(page, "First test issue");
@@ -616,7 +621,11 @@ test.describe("GitHub Integration", () => {
     });
 
     // Wait for file change to be processed
-    await page.waitForTimeout(1000);
+    await waitForFileUpdate(
+      page,
+      "Tasks/First test issue.md",
+      "Priority: High"
+    );
 
     // Verify source.extension is STILL 'github' after second modification
     const taskAfterSecondUpdate = await getTaskByTitle(
@@ -635,7 +644,11 @@ test.describe("GitHub Integration", () => {
     });
 
     // Wait for file change to be processed
-    await page.waitForTimeout(1000);
+    await waitForFileUpdate(
+      page,
+      "Tasks/First test issue.md",
+      "Category: Enhancement"
+    );
 
     // Verify source.extension is STILL 'github' after third modification
     const taskAfterThirdUpdate = await getTaskByTitle(page, "First test issue");
@@ -697,8 +710,22 @@ test.describe("GitHub Integration", () => {
       return plugin.refreshTasks();
     });
 
-    // Wait for refresh to complete
-    await page.waitForTimeout(3000);
+    // Wait for refresh to complete by checking that task is still available
+    await page.waitForFunction(
+      async () => {
+        const plugin = (window as any).app.plugins.plugins[
+          "obsidian-task-sync"
+        ];
+        try {
+          const tasks = await plugin.taskOps.getAll();
+          return tasks.some((t: any) => t.title === "First test issue");
+        } catch {
+          return false;
+        }
+      },
+      undefined,
+      { timeout: 5000 }
+    );
 
     // Verify source.extension is STILL 'github' after refresh
     const taskAfterScan = await getTaskByTitle(page, "First test issue");

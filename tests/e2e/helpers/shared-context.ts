@@ -173,14 +173,31 @@ export async function setupObsidianElectron(
   page = await electronApp.firstWindow({ timeout: isHeadless ? 60000 : 30000 });
 
   page.on("console", (msg) => {
+    const msgType = msg.type();
+    const msgText = msg.text();
+
     logs.push({
-      type: msg.type(),
-      text: msg.text(),
+      type: msgType,
+      text: msgText,
       timestamp: new Date(),
     });
 
+    // Always output console.debug statements from the electron app
+    // This helps with debugging without needing DEBUG=true
+    if (msgType === "debug") {
+      console.log("[Obsidian Debug]", msgText);
+    }
+
+    // Also output errors and warnings for visibility
+    if (msgType === "error") {
+      console.error("[Obsidian Error]", msgText);
+    } else if (msgType === "warning") {
+      console.warn("[Obsidian Warning]", msgText);
+    }
+
+    // If DEBUG is explicitly enabled, output all console messages
     if (process.env.DEBUG === "true") {
-      console.log("[Obsidian]", msg.text());
+      console.log(`[Obsidian ${msgType}]`, msgText);
     }
   });
 
@@ -286,12 +303,27 @@ export async function toggleSidebar(
  * Improved for headless mode stability
  */
 export async function resetObsidianUI(page: Page): Promise<void> {
+  // Press Escape multiple times to close any open modals/dialogs
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(200);
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(300);
 
-  // Force close any open modals
+  // Wait for modals to start closing
+  await page
+    .waitForFunction(
+      () => {
+        const modals = document.querySelectorAll(
+          ".modal-container, .modal-backdrop, .suggester-container, .prompt"
+        );
+        return modals.length === 0;
+      },
+      undefined,
+      { timeout: 2000 }
+    )
+    .catch(() => {
+      // If modals don't close naturally, force close them
+    });
+
+  // Force close any remaining open modals
   await page.evaluate(() => {
     const modals = document.querySelectorAll(
       ".modal-container, .modal-backdrop, .suggester-container, .prompt, .modal"
@@ -308,18 +340,30 @@ export async function resetObsidianUI(page: Page): Promise<void> {
           modal.remove();
         }
       } catch (error) {
-        console.warn("Error closing modal:", error);
+        console.debug("Error closing modal:", error);
       }
     });
   });
 
-  // Wait briefly for modals to close
-  await page.waitForTimeout(500);
+  // Wait for all modals to be removed
+  await page
+    .waitForFunction(
+      () => {
+        const modals = document.querySelectorAll(
+          ".modal-container, .modal-backdrop, .suggester-container, .prompt"
+        );
+        return modals.length === 0;
+      },
+      undefined,
+      { timeout: 2000 }
+    )
+    .catch(() => {
+      // Ignore if modals persist - we'll continue anyway
+    });
 
-  // Final cleanup
+  // Final cleanup - press Escape again to ensure everything is closed
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
-  await page.waitForTimeout(300);
 
   // Force remove any remaining modals and reset focus
   await page.evaluate(() => {
@@ -331,7 +375,7 @@ export async function resetObsidianUI(page: Page): Promise<void> {
         try {
           modal.remove();
         } catch (error) {
-          console.warn("Error removing modal:", error);
+          console.debug("Error removing modal:", error);
         }
       });
 
@@ -339,7 +383,7 @@ export async function resetObsidianUI(page: Page): Promise<void> {
         try {
           (document.activeElement as HTMLElement).blur();
         } catch (error) {
-          console.warn("Error blurring active element:", error);
+          console.debug("Error blurring active element:", error);
         }
       }
 
@@ -347,11 +391,11 @@ export async function resetObsidianUI(page: Page): Promise<void> {
         try {
           window.getSelection()?.removeAllRanges();
         } catch (error) {
-          console.warn("Error clearing selection:", error);
+          console.debug("Error clearing selection:", error);
         }
       }
     } catch (error) {
-      console.warn("Error in final UI cleanup:", error);
+      console.debug("Error in final UI cleanup:", error);
     }
   });
 
@@ -375,7 +419,7 @@ export async function resetObsidianUI(page: Page): Promise<void> {
           try {
             leaf.detach();
           } catch (e) {
-            console.warn("Error detaching daily planning leaf:", e);
+            console.debug("Error detaching daily planning leaf:", e);
           }
         });
 
@@ -385,20 +429,33 @@ export async function resetObsidianUI(page: Page): Promise<void> {
           try {
             leaf.detach();
           } catch (e) {
-            console.warn("Error detaching task planning leaf:", e);
+            console.debug("Error detaching task planning leaf:", e);
           }
         });
       }
-
-      // Additional cleanup: wait a bit for view destruction to complete
-      // The onDestroy lifecycle of DailyPlanningView should handle store cleanup
-      setTimeout(() => {
-        // Force a small delay to ensure cleanup completes
-      }, 100);
     } catch (error) {
-      console.warn("Error closing planning views:", error);
+      console.debug("Error closing planning views:", error);
     }
   });
+
+  // Wait for views to be fully detached
+  await page
+    .waitForFunction(
+      () => {
+        const app = (window as any).app;
+        if (!app?.workspace) return true;
+
+        const dailyLeaves = app.workspace.getLeavesOfType("daily-planning");
+        const taskLeaves = app.workspace.getLeavesOfType("task-planning");
+
+        return dailyLeaves.length === 0 && taskLeaves.length === 0;
+      },
+      undefined,
+      { timeout: 2000 }
+    )
+    .catch(() => {
+      // Ignore timeout - views might persist, which is okay
+    });
 }
 
 /**

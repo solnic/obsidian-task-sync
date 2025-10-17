@@ -70,11 +70,12 @@ test.describe("Area Creation", () => {
     // Try to submit without a name - HTML validation should prevent submission
     await page.click('[data-testid="submit-button"]');
 
-    // Wait a bit to ensure submission was attempted
-    await page.waitForTimeout(500);
-
     // Modal should still be open (HTML required attribute prevents submission)
-    await expect(page.locator(".task-sync-modal-container")).toBeVisible();
+    // Wait for modal to remain visible (it shouldn't close)
+    await page.waitForSelector(".task-sync-modal-container", {
+      state: "visible",
+      timeout: 2000,
+    });
 
     // Type in the name input
     await page.fill('[data-testid="property-name"]', "Valid Area");

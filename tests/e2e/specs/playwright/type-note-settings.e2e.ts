@@ -212,7 +212,10 @@ test.describe("TypeNote Settings - Property Management", () => {
     await propertyDropdown.selectOption("number");
 
     // Wait for UI to recreate after type change
-    await page.waitForTimeout(500);
+    await page.waitForSelector(
+      `[data-testid="property-required-toggle-${key}"]`,
+      { state: "visible", timeout: 3000 }
+    );
 
     // Re-find the toggle after UI recreation
     const updatedPropertyToggleContainer = page.locator(
@@ -226,7 +229,12 @@ test.describe("TypeNote Settings - Property Management", () => {
 
     // Change type to Boolean
     await propertyDropdown.selectOption("boolean");
-    await page.waitForTimeout(500);
+
+    // Wait for UI to recreate after type change
+    await page.waitForSelector(
+      `[data-testid="property-required-toggle-${key}"]`,
+      { state: "visible", timeout: 3000 }
+    );
 
     // Re-find the toggle after UI recreation
     const booleanToggleContainer = page.locator(
@@ -238,7 +246,12 @@ test.describe("TypeNote Settings - Property Management", () => {
 
     // Change type to Date
     await propertyDropdown.selectOption("date");
-    await page.waitForTimeout(500);
+
+    // Wait for UI to recreate after type change
+    await page.waitForSelector(
+      `[data-testid="property-required-toggle-${key}"]`,
+      { state: "visible", timeout: 3000 }
+    );
 
     // Re-find the toggle after UI recreation
     const dateToggleContainer = page.locator(
