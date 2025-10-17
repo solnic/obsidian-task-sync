@@ -17,7 +17,9 @@ export class ProjectQueryService {
     projects: readonly Project[],
     filePath: string
   ): Project | undefined {
-    return projects.find((project) => project.source?.filePath === filePath);
+    return projects.find(
+      (project) => project.source?.keys?.obsidian === filePath
+    );
   }
 
   /**
@@ -101,4 +103,3 @@ export class ProjectQueryService {
     );
   }
 }
-

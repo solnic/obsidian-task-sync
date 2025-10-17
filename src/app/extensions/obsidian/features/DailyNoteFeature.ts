@@ -238,7 +238,7 @@ export class DailyNoteFeature {
 
     // Build set of scheduled task paths for quick lookup
     const scheduledTaskPaths = new Set(
-      schedule.tasks.map((task) => task.source.filePath!)
+      schedule.tasks.map((task) => task.source.keys.obsidian!)
     );
 
     // Find tasks to remove (in daily note but not in schedule)
@@ -260,7 +260,7 @@ export class DailyNoteFeature {
     // Find tasks to add (in schedule but not in daily note)
     let tasksToAdd: Task[] = [];
     for (const task of schedule.tasks) {
-      if (!existingTaskPaths.has(task.source.filePath!)) {
+      if (!existingTaskPaths.has(task.source.keys.obsidian!)) {
         tasksToAdd.push(task);
       }
     }
@@ -268,7 +268,7 @@ export class DailyNoteFeature {
     // Add new tasks to daily note
     if (tasksToAdd.length > 0) {
       const taskLinks = tasksToAdd.map(
-        (task) => `- [ ] [[${task.source.filePath}|${task.title}]]`
+        (task) => `- [ ] [[${task.source.keys.obsidian}|${task.title}]]`
       );
       currentContent = this.insertTasksIntoContent(currentContent, taskLinks);
     }

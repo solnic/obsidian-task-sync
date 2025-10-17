@@ -101,8 +101,8 @@ export async function createTaskWithSource(
     status?: string;
     source: {
       extension: string;
-      url?: string;
-      id?: string;
+      keys?: Record<string, string>;
+      data?: any;
     };
   }
 ): Promise<any> {

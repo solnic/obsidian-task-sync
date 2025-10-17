@@ -19,10 +19,8 @@ import { taskStore, type TaskStore } from "./app/stores/taskStore";
 import { projectStore, type ProjectStore } from "./app/stores/projectStore";
 import { areaStore, type AreaStore } from "./app/stores/areaStore";
 import type { ObsidianExtension } from "./app/extensions/obsidian/ObsidianExtension";
+import { Obsidian } from "./app/extensions/obsidian/entities/Obsidian";
 import { extensionRegistry } from "./app/core/extension";
-import { Tasks } from "./app/entities/Tasks";
-import { Areas } from "./app/entities/Areas";
-import { Projects } from "./app/entities/Projects";
 import { get } from "svelte/store";
 import type { Task, Project, Area } from "./app/core/entities";
 // Singleton operations removed - use operations from ObsidianExtension instance
@@ -62,30 +60,34 @@ export default class TaskSyncPlugin extends Plugin {
     return taskSyncApp;
   }
 
-  // Expose operations for testing
+  // Expose operations for testing and entity creation
+  // Uses Obsidian-specific operations which set source.keys.obsidian
   public get operations() {
-    const operations = {
-      taskOperations: new Tasks.Operations(this.settings),
-      areaOperations: new Areas.Operations(this.settings),
-      projectOperations: new Projects.Operations(this.settings),
-    };
+    // Use Obsidian namespace operations which extend EntitiesOperations
+    // and set source.keys.obsidian in buildEntity
+    const taskOps = new Obsidian.TaskOperations(this.settings);
+    const projectOps = new Obsidian.ProjectOperations(this.settings);
+    const areaOps = new Obsidian.AreaOperations(this.settings);
 
     return {
-      task: operations.taskOperations,
-      area: operations.areaOperations,
-      project: operations.projectOperations,
-      ...operations,
+      task: taskOps,
+      area: areaOps,
+      project: projectOps,
+      // Legacy aliases for backward compatibility
+      taskOperations: taskOps,
+      areaOperations: areaOps,
+      projectOperations: projectOps,
     };
   }
 
   // Public query API for tests - provides easy access to store data
   public query = {
     /**
-     * Find a task by its source URL (e.g., GitHub issue URL)
+     * Find a task by its source key for a specific extension
      */
-    findTaskBySourceUrl: (url: string): Task | undefined => {
+    findTaskBySourceKey: (extension: string, key: string): Task | undefined => {
       const state = get(taskStore);
-      return state.tasks.find((t) => t.source?.url === url);
+      return state.tasks.find((t) => t.source?.keys?.[extension] === key);
     },
 
     /**
@@ -97,11 +99,20 @@ export default class TaskSyncPlugin extends Plugin {
     },
 
     /**
-     * Find a task by its file path
+     * Find a task by its Obsidian file path
      */
     findTaskByFilePath: (filePath: string): Task | undefined => {
       const state = get(taskStore);
-      return state.tasks.find((t) => t.source?.filePath === filePath);
+      return state.tasks.find((t) => t.source?.keys?.obsidian === filePath);
+    },
+
+    /**
+     * Find a task by its GitHub URL (convenience method for tests)
+     * @deprecated Use findTaskBySourceKey('github', url) instead
+     */
+    findTaskBySourceUrl: (url: string): Task | undefined => {
+      const state = get(taskStore);
+      return state.tasks.find((t) => t.source?.keys?.github === url);
     },
 
     /**

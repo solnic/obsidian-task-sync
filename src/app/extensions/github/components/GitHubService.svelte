@@ -159,7 +159,7 @@
       tasks: extensionTasks.map((t: Task) => ({
         id: t.id,
         title: t.title,
-        imported: t.source?.imported,
+        imported: !!t.source?.keys?.obsidian,
       })),
     });
 
@@ -194,7 +194,7 @@
         id: t.id,
         title: t.title,
         doDate: t.doDate,
-        isImported: t.source?.imported === true,
+        isImported: !!t.source?.keys?.obsidian,
       })),
     });
 
@@ -628,9 +628,9 @@
     }
   }
 
-  // Helper to check if a task is imported
+  // Helper to check if a task is imported (has Obsidian key)
   function isTaskImported(task: Task): boolean {
-    return task.source?.imported === true;
+    return !!task.source?.keys?.obsidian;
   }
 
   async function importTask(task: Task): Promise<void> {

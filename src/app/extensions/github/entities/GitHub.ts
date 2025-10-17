@@ -65,7 +65,9 @@ export namespace GitHub {
         tags: [] as string[], // Do not set tags from GitHub labels
         source: {
           extension: "github",
-          url: issue.html_url,
+          keys: {
+            github: issue.html_url,
+          },
           data: issue, // Store original GitHub issue data
         },
       };
@@ -118,7 +120,9 @@ export namespace GitHub {
         tags: [] as string[], // Do not set tags from GitHub labels
         source: {
           extension: "github",
-          url: pr.html_url,
+          keys: {
+            github: pr.html_url,
+          },
           data: pr, // Store original GitHub PR data
         },
       };

@@ -113,7 +113,7 @@ describe("Core Domain Entities", () => {
       expect(result.doDate).toEqual(new Date("2024-02-01"));
       expect(result.dueDate).toEqual(new Date("2024-02-15"));
       expect(result.source?.extension).toBe("github");
-      expect(result.source?.filePath).toBe("issue-123");
+      expect(result.source.keys.obsidian).toBe("issue-123");
     });
 
     test("should require id, title, createdAt, and updatedAt", () => {

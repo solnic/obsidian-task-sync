@@ -252,7 +252,7 @@ export class GitHubExtension implements Extension {
 
         // Filter imported tasks for this repository
         const importedForRepo = $importedTasks.filter((task) => {
-          const url = task.source?.url;
+          const url = task.source?.keys?.github;
           if (!url) return false;
           const match = url.match(/github\.com\/([^\/]+\/[^\/]+)\//);
           const taskRepository = match ? match[1] : null;
@@ -268,7 +268,7 @@ export class GitHubExtension implements Extension {
         const tasks = githubItems.map((item: any) => {
           // Check if this item is already imported
           const existingTask = importedForRepo.find(
-            (task: Task) => task.source?.url === item.html_url
+            (task: Task) => task.source?.keys?.github === item.html_url
           );
 
           if (existingTask) {
@@ -277,7 +277,6 @@ export class GitHubExtension implements Extension {
               ...existingTask,
               source: {
                 ...existingTask.source,
-                imported: true,
                 data: item, // Update with latest GitHub data
               },
             } as Task;
@@ -312,7 +311,6 @@ export class GitHubExtension implements Extension {
               ...taskData,
               source: {
                 ...taskData.source,
-                imported: false, // Not yet imported
                 data: item, // Store the raw GitHub data
               },
             }) as Task;

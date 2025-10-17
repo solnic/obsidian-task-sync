@@ -311,7 +311,7 @@ export class TaskQueryService {
   }
 
   /**
-   * Find a task by file path
+   * Find a task by Obsidian file path
    *
    * @param tasks - Array of tasks to search
    * @param filePath - File path to find
@@ -321,21 +321,37 @@ export class TaskQueryService {
     tasks: readonly Task[],
     filePath: string
   ): Task | undefined {
-    return tasks.find((task) => task.source?.filePath === filePath);
+    return tasks.find((task) => task.source?.keys?.obsidian === filePath);
   }
 
   /**
-   * Find a task by source URL
+   * Find a task by source key for a specific extension
    *
    * @param tasks - Array of tasks to search
-   * @param url - Source URL to find
-   * @returns Task with the specified source URL, or undefined if not found
+   * @param extension - Extension ID (e.g., "github", "obsidian")
+   * @param key - Source key to find
+   * @returns Task with the specified source key, or undefined if not found
+   */
+  static findBySourceKey(
+    tasks: readonly Task[],
+    extension: string,
+    key: string
+  ): Task | undefined {
+    return tasks.find((task) => task.source?.keys?.[extension] === key);
+  }
+
+  /**
+   * Find a task by GitHub URL (convenience method)
+   *
+   * @param tasks - Array of tasks to search
+   * @param url - GitHub URL to find
+   * @returns Task with the specified GitHub URL, or undefined if not found
    */
   static findBySourceUrl(
     tasks: readonly Task[],
     url: string
   ): Task | undefined {
-    return tasks.find((task) => task.source?.url === url);
+    return tasks.find((task) => task.source?.keys?.github === url);
   }
 
   /**

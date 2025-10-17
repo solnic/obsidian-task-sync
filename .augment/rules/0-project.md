@@ -18,7 +18,6 @@ The project is in a transition phase moving from an Obsidian plugin to a Svelte 
 - `npm run test:e2e:failed` to run e2e tests that previously failed
 - `npm run test:e2e -- -g "pattern"` to run all `e2e` tests matching pattern
 
-
 # 🚨 IMPORTANT INFORMATION ABOUT E2E TESTS 🚨
 
 - The project is in transition phase from `vitest` with `playwright` to just `playwright` - all new e2e tests from now on must be implemented in `playwright` only
@@ -47,6 +46,8 @@ The project is in a transition phase moving from an Obsidian plugin to a Svelte 
 - **ALWAYS analyze artifacts**: Check `tests/e2e/debug/` for screenshots, traces, and logs
 
 # Running E2E Tests
+
+DO NOT redirect output when running tests - it is extremely annoying that whole output is not visible!
 
 ## Basic Commands
 

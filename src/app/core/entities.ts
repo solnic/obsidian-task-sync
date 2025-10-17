@@ -25,16 +25,13 @@ export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 
 // Source tracking for tasks from external systems
 export const TaskSourceSchema = z.object({
+  // Which extension manages this entity
   extension: z.string(),
-  filePath: z.string().optional(),
-  url: z.string().optional(),
-  // Whether this task has been imported into the vault (for external sources like GitHub)
-  // - true: task has been imported and exists in the vault
-  // - false: task is from external source but not yet imported
-  // - undefined: not applicable (e.g., native Obsidian tasks)
-  imported: z.boolean().optional(),
+  // Natural keys for ALL extensions that have this entity
+  // Example: { github: "https://...", obsidian: "Tasks/foo.md" }
+  keys: z.record(z.string(), z.string()).default({}),
   // Raw data from external service (e.g., GitHub issue/PR, Linear issue)
-  // Used for rendering service-specific UI and tracking import status
+  // Used for rendering service-specific UI and caching
   data: z.any().optional(),
 });
 export type TaskSource = z.infer<typeof TaskSourceSchema>;

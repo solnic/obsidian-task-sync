@@ -135,10 +135,10 @@
   /**
    * Get all tasks from the store that have Obsidian notes
    * This includes tasks imported from other sources (like GitHub) that have been saved as notes
-   * Filter by source.filePath to get all tasks with Obsidian notes
+   * Filter by source.keys.obsidian to get all tasks with Obsidian notes
    */
   let allTasks = $derived(
-    storeState.tasks.filter((task) => task.source?.filePath !== undefined)
+    storeState.tasks.filter((task) => task.source?.keys?.obsidian !== undefined)
   );
 
   /**

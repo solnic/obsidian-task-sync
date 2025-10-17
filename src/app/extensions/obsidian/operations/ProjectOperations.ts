@@ -83,9 +83,10 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
     }
 
     // Check if project has the required filePath
-    if (!project.source?.filePath) {
+    const filePath = project.source?.keys?.obsidian;
+    if (!filePath) {
       console.warn(
-        `Cannot generate base for project "${project.name}": missing filePath`
+        `Cannot generate base for project "${project.name}": missing Obsidian file path`
       );
       return;
     }
@@ -93,7 +94,7 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
     try {
       const projectInfo = {
         name: project.name,
-        path: project.source.filePath,
+        path: filePath,
         type: "project" as const,
       };
 

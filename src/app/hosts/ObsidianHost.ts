@@ -198,11 +198,14 @@ export class ObsidianHost extends Host {
    * @throws Error if file cannot be opened or found
    */
   async openFile(entity: Area | Project | Task): Promise<void> {
-    if (!entity.source?.filePath) {
-      throw new Error(`Entity ${entity.id} does not have a filePath`);
+    const filePath = entity.source?.keys?.obsidian;
+    if (!filePath) {
+      throw new Error(
+        `Entity ${entity.id} does not have an Obsidian file path`
+      );
     }
 
-    await this.openFileByPath(entity.source.filePath);
+    await this.openFileByPath(filePath);
   }
 
   /**

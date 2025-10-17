@@ -111,7 +111,10 @@ export class ObsidianTaskSource implements DataSource<Task> {
               cache
             );
 
-            callbacks.onItemChanged?.(taskData);
+            // Only notify if parsing succeeded (taskData is not null)
+            if (taskData && callbacks.onItemChanged) {
+              callbacks.onItemChanged(taskData);
+            }
           } catch (error) {
             console.warn(
               `[ObsidianTaskSource] Skipping task file ${file.path}`,
@@ -128,10 +131,10 @@ export class ObsidianTaskSource implements DataSource<Task> {
         console.log(`[ObsidianTaskSource] Task file deleted: ${file.path}`);
 
         if (callbacks.onItemDeleted) {
-          // Find the task by filePath to get its ID
+          // Find the task by Obsidian key to get its ID
           const currentState = get(taskStore);
           const existingTask = currentState.tasks.find(
-            (t) => t.source?.filePath === file.path
+            (t) => t.source?.keys?.obsidian === file.path
           );
 
           if (existingTask) {

@@ -123,10 +123,10 @@ export abstract class ObsidianEntityOperations<
       return;
     }
 
-    const filePath = entity.source?.filePath as string;
+    const filePath = entity.source?.keys?.obsidian;
 
     if (!filePath) {
-      console.warn("Cannot delete note: entity has no filePath");
+      console.warn("Cannot delete note: entity has no Obsidian file path");
       return;
     }
 

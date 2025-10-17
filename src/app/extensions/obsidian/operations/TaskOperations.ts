@@ -136,9 +136,10 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     if (projectValue && !projectValue.startsWith("[[")) {
       // Look up the project to get its file path
       const project = this.findProjectByName(projectValue);
-      if (project && project.source?.filePath) {
+      const projectFilePath = project?.source?.keys?.obsidian;
+      if (project && projectFilePath) {
         // Format as [[Projects/Foo Bar.md|Foo Bar]]
-        projectValue = `[[${project.source.filePath}|${projectValue}]]`;
+        projectValue = `[[${projectFilePath}|${projectValue}]]`;
       }
     }
 
@@ -321,7 +322,9 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       // Source information for tracking
       source: {
         extension: "obsidian",
-        filePath: file.path, // Use file path as the source identifier
+        keys: {
+          obsidian: file.path, // Use file path as the natural key
+        },
       },
     };
 

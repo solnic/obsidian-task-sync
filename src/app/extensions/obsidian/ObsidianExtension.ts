@@ -505,7 +505,10 @@ export class ObsidianExtension implements Extension {
         source: {
           ...task.source,
           extension: task.source?.extension || "obsidian", // Preserve original extension
-          filePath: filePath,
+          keys: {
+            ...task.source?.keys,
+            obsidian: filePath,
+          },
         },
       };
 

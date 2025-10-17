@@ -208,6 +208,38 @@ export class TaskSyncApp {
   }
 
   /**
+   * Migrate old source schema to new source.keys schema
+   * Converts source.filePath -> source.keys.obsidian
+   * Converts source.url -> source.keys.github
+   */
+  private migrateSourceSchema(entity: any): any {
+    if (!entity.source) return entity;
+
+    const source = entity.source;
+    const keys: Record<string, string> = source.keys || {};
+
+    // Migrate filePath to keys.obsidian
+    if (source.filePath && !keys.obsidian) {
+      keys.obsidian = source.filePath;
+    }
+
+    // Migrate url to keys.github
+    if (source.url && !keys.github) {
+      keys.github = source.url;
+    }
+
+    // Return entity with migrated source
+    return {
+      ...entity,
+      source: {
+        extension: source.extension,
+        keys,
+        data: source.data,
+      },
+    };
+  }
+
+  /**
    * Load persisted entity data from host storage and populate stores
    */
   private async loadPersistedData(host: Host): Promise<void> {
@@ -223,13 +255,20 @@ export class TaskSyncApp {
       if (data.tasks && Array.isArray(data.tasks)) {
         console.log(`Loading ${data.tasks.length} persisted tasks`);
         for (const task of data.tasks) {
+          // Migrate old source schema
+          const migratedTask = this.migrateSourceSchema(task);
+
           // Convert date strings back to Date objects
           const taskWithDates = {
-            ...task,
-            createdAt: new Date(task.createdAt),
-            updatedAt: new Date(task.updatedAt),
-            doDate: task.doDate ? new Date(task.doDate) : undefined,
-            dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+            ...migratedTask,
+            createdAt: new Date(migratedTask.createdAt),
+            updatedAt: new Date(migratedTask.updatedAt),
+            doDate: migratedTask.doDate
+              ? new Date(migratedTask.doDate)
+              : undefined,
+            dueDate: migratedTask.dueDate
+              ? new Date(migratedTask.dueDate)
+              : undefined,
           };
           taskStore.dispatch({ type: "ADD_TASK", task: taskWithDates });
         }
@@ -239,10 +278,13 @@ export class TaskSyncApp {
       if (data.projects && Array.isArray(data.projects)) {
         console.log(`Loading ${data.projects.length} persisted projects`);
         for (const project of data.projects) {
+          // Migrate old source schema
+          const migratedProject = this.migrateSourceSchema(project);
+
           const projectWithDates = {
-            ...project,
-            createdAt: new Date(project.createdAt),
-            updatedAt: new Date(project.updatedAt),
+            ...migratedProject,
+            createdAt: new Date(migratedProject.createdAt),
+            updatedAt: new Date(migratedProject.updatedAt),
           };
           projectStore.dispatch({
             type: "ADD_PROJECT",
@@ -255,10 +297,13 @@ export class TaskSyncApp {
       if (data.areas && Array.isArray(data.areas)) {
         console.log(`Loading ${data.areas.length} persisted areas`);
         for (const area of data.areas) {
+          // Migrate old source schema
+          const migratedArea = this.migrateSourceSchema(area);
+
           const areaWithDates = {
-            ...area,
-            createdAt: new Date(area.createdAt),
-            updatedAt: new Date(area.updatedAt),
+            ...migratedArea,
+            createdAt: new Date(migratedArea.createdAt),
+            updatedAt: new Date(migratedArea.updatedAt),
           };
           areaStore.dispatch({ type: "ADD_AREA", area: areaWithDates });
         }
@@ -398,6 +443,14 @@ export class TaskSyncApp {
     }
 
     console.log("Context extension initialized successfully");
+  }
+
+  /**
+   * Get the host instance
+   * @returns The host instance, or undefined if not initialized
+   */
+  getHost(): Host | undefined {
+    return this.host;
   }
 }
 

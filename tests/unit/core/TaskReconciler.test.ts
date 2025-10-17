@@ -308,7 +308,7 @@ describe("ObsidianTaskReconciler", () => {
       // Should only keep task 3 (no filePath)
       expect(filtered).toHaveLength(1);
       expect(filtered[0].id).toBe("3");
-      expect(filtered[0].source?.filePath).toBeUndefined();
+      expect(filtered[0].source.keys.obsidian).toBeUndefined();
     });
   });
 

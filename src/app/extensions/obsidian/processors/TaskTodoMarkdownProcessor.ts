@@ -177,7 +177,7 @@ export class TaskTodoMarkdownProcessor {
       // Find task by file path
       const task = storeState.tasks.find((t: Task) => {
         // Handle different path formats
-        const taskFilePath = t.source?.filePath;
+        const taskFilePath = t.source?.keys?.obsidian;
         if (!taskFilePath) return false;
 
         // Check exact match

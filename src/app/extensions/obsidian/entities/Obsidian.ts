@@ -82,13 +82,18 @@ export namespace Obsidian {
       // Use tasksFolder from settings if available, otherwise use constructor parameter
       const folder = this.settings.tasksFolder;
 
+      const filePath = `${folder}/${sanitizedTitle}.md`;
+
       const result = {
         ...baseEntity,
         status: finalStatus || baseEntity.status,
         source: {
           ...taskData.source, // Preserve existing source data (e.g., from GitHub)
           extension: taskData.source?.extension || "obsidian", // Preserve original extension
-          filePath: `${folder}/${sanitizedTitle}.md`,
+          keys: {
+            ...taskData.source?.keys, // Preserve existing keys
+            obsidian: filePath, // Set/update Obsidian key
+          },
         },
       };
 
@@ -145,12 +150,15 @@ export namespace Obsidian {
       projectData: Omit<Project, "id" | "createdAt" | "updatedAt">
     ): Project {
       const baseEntity = super.buildEntity(projectData) as Project;
+      const filePath = `${this.settings.projectsFolder}/${projectData.name}.md`;
 
       return {
         ...baseEntity,
         source: {
           extension: "obsidian",
-          filePath: `${this.settings.projectsFolder}/${projectData.name}.md`,
+          keys: {
+            obsidian: filePath,
+          },
         },
       };
     }
@@ -165,12 +173,15 @@ export namespace Obsidian {
       areaData: Omit<Area, "id" | "createdAt" | "updatedAt">
     ): Area {
       const baseEntity = super.buildEntity(areaData) as Area;
+      const filePath = `${this.settings.areasFolder}/${areaData.name}.md`;
 
       return {
         ...baseEntity,
         source: {
           extension: "obsidian",
-          filePath: `${this.settings.areasFolder}/${areaData.name}.md`,
+          keys: {
+            obsidian: filePath,
+          },
         },
       };
     }
@@ -235,7 +246,7 @@ export namespace Obsidian {
         return {
           success: true,
           message: `Todo promoted to task: ${createdTask.title}`,
-          taskPath: createdTask.source?.filePath,
+          taskPath: createdTask.source?.keys?.obsidian,
         };
       } catch (error: any) {
         return {

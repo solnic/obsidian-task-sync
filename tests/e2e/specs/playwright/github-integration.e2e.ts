@@ -464,10 +464,10 @@ test.describe("GitHub Integration", () => {
     const task = await getTaskByTitle(page, "First test issue");
     expect(task).toBeDefined();
     expect(task.source.extension).toBe("github");
-    expect(task.source.url).toBe(
+    expect(task.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
-    expect(task.source.filePath).toBe("Tasks/First test issue.md");
+    expect(task.source.keys.obsidian).toBe("Tasks/First test issue.md");
 
     // Modify the task file to trigger an update
     await updateFileFrontmatter(page, "Tasks/First test issue.md", {
@@ -478,7 +478,7 @@ test.describe("GitHub Integration", () => {
     const taskAfterUpdate = await getTaskByTitle(page, "First test issue");
     expect(taskAfterUpdate).toBeDefined();
     expect(taskAfterUpdate.source.extension).toBe("github");
-    expect(taskAfterUpdate.source.url).toBe(
+    expect(taskAfterUpdate.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
   });
@@ -522,10 +522,12 @@ test.describe("GitHub Integration", () => {
     const taskBeforeReload = await getTaskByTitle(page, "First test issue");
     expect(taskBeforeReload).toBeDefined();
     expect(taskBeforeReload.source.extension).toBe("github");
-    expect(taskBeforeReload.source.url).toBe(
+    expect(taskBeforeReload.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
-    expect(taskBeforeReload.source.filePath).toBe("Tasks/First test issue.md");
+    expect(taskBeforeReload.source.keys.obsidian).toBe(
+      "Tasks/First test issue.md"
+    );
 
     // Verify persisted data has correct source metadata
     const persistedTask = await getPersistedTaskByTitle(
@@ -534,10 +536,12 @@ test.describe("GitHub Integration", () => {
     );
     expect(persistedTask).toBeDefined();
     expect(persistedTask.source.extension).toBe("github");
-    expect(persistedTask.source.url).toBe(
+    expect(persistedTask.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
-    expect(persistedTask.source.filePath).toBe("Tasks/First test issue.md");
+    expect(persistedTask.source.keys.obsidian).toBe(
+      "Tasks/First test issue.md"
+    );
 
     // Reload the plugin to simulate app restart
     await reloadPlugin(page);
@@ -546,10 +550,12 @@ test.describe("GitHub Integration", () => {
     const taskAfterReload = await getTaskByTitle(page, "First test issue");
     expect(taskAfterReload).toBeDefined();
     expect(taskAfterReload.source.extension).toBe("github");
-    expect(taskAfterReload.source.url).toBe(
+    expect(taskAfterReload.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
-    expect(taskAfterReload.source.filePath).toBe("Tasks/First test issue.md");
+    expect(taskAfterReload.source.keys.obsidian).toBe(
+      "Tasks/First test issue.md"
+    );
   });
 
   test("should preserve source.extension='github' when file is modified multiple times", async ({
@@ -591,7 +597,7 @@ test.describe("GitHub Integration", () => {
     const initialTask = await getTaskByTitle(page, "First test issue");
     expect(initialTask).toBeDefined();
     expect(initialTask.source.extension).toBe("github");
-    expect(initialTask.source.url).toBe(
+    expect(initialTask.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
 
@@ -611,7 +617,7 @@ test.describe("GitHub Integration", () => {
     const taskAfterFirstUpdate = await getTaskByTitle(page, "First test issue");
     expect(taskAfterFirstUpdate).toBeDefined();
     expect(taskAfterFirstUpdate.source.extension).toBe("github");
-    expect(taskAfterFirstUpdate.source.url).toBe(
+    expect(taskAfterFirstUpdate.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
 
@@ -634,7 +640,7 @@ test.describe("GitHub Integration", () => {
     );
     expect(taskAfterSecondUpdate).toBeDefined();
     expect(taskAfterSecondUpdate.source.extension).toBe("github");
-    expect(taskAfterSecondUpdate.source.url).toBe(
+    expect(taskAfterSecondUpdate.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
 
@@ -654,7 +660,7 @@ test.describe("GitHub Integration", () => {
     const taskAfterThirdUpdate = await getTaskByTitle(page, "First test issue");
     expect(taskAfterThirdUpdate).toBeDefined();
     expect(taskAfterThirdUpdate.source.extension).toBe("github");
-    expect(taskAfterThirdUpdate.source.url).toBe(
+    expect(taskAfterThirdUpdate.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
   });
@@ -698,7 +704,7 @@ test.describe("GitHub Integration", () => {
     const initialTask = await getTaskByTitle(page, "First test issue");
     expect(initialTask).toBeDefined();
     expect(initialTask.source.extension).toBe("github");
-    expect(initialTask.source.url).toBe(
+    expect(initialTask.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
 
@@ -731,7 +737,7 @@ test.describe("GitHub Integration", () => {
     const taskAfterScan = await getTaskByTitle(page, "First test issue");
     expect(taskAfterScan).toBeDefined();
     expect(taskAfterScan.source.extension).toBe("github");
-    expect(taskAfterScan.source.url).toBe(
+    expect(taskAfterScan.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
   });
@@ -786,8 +792,14 @@ test.describe("GitHub Integration", () => {
       priority: "Medium",
       source: {
         extension: "github",
-        url: issueData.html_url,
-        id: issueData.id.toString(),
+        keys: {
+          github: issueData.html_url,
+        },
+        data: {
+          id: issueData.id,
+          number: issueData.number,
+          html_url: issueData.html_url,
+        },
       },
     });
 

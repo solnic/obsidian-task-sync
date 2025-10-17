@@ -169,12 +169,22 @@ export class SimpleTaskReconciler implements TaskReconciler {
   }
 
   /**
-   * Match by source URL if available, fallback to ID
+   * Match by source key for the extension or ID
+   *
+   * Note: This reconciler is used by extensions like GitHub.
+   * The sourceId should be passed from the extension (e.g., "github")
+   * to match against the appropriate key in source.keys
    */
   matchesTask(task: Task, newTask: Task): boolean {
-    // Match by source URL if both tasks have it
-    if (task.source?.url && newTask.source?.url) {
-      return task.source.url === newTask.source.url;
+    // Try to match by extension-specific key
+    // For GitHub: source.keys.github
+    const extension = newTask.source?.extension;
+    if (extension) {
+      const existingKey = task.source?.keys?.[extension];
+      const newKey = newTask.source?.keys?.[extension];
+      if (existingKey && newKey) {
+        return existingKey === newKey;
+      }
     }
 
     // Fallback to ID match
@@ -212,9 +222,9 @@ export class ObsidianTaskReconciler implements TaskReconciler {
     currentTasks: readonly Task[],
     _sourceId: string
   ): readonly Task[] {
-    // Remove all vault-backed tasks (those with filePath)
+    // Remove all vault-backed tasks (those with Obsidian key)
     // This includes GitHub tasks that were imported into the vault
-    return currentTasks.filter((t) => !t.source?.filePath);
+    return currentTasks.filter((t) => !t.source?.keys?.obsidian);
   }
 
   /**
@@ -254,10 +264,11 @@ export class ObsidianTaskReconciler implements TaskReconciler {
           // Preserve original extension (e.g., "github" for imported tasks)
           extension:
             existingTask.source?.extension || newTask.source?.extension,
-          // Preserve source URL (e.g., GitHub issue URL)
-          url: existingTask.source?.url || newTask.source?.url,
-          // Preserve imported flag
-          imported: existingTask.source?.imported ?? newTask.source?.imported,
+          // Merge keys from both existing and new task
+          keys: {
+            ...existingTask.source?.keys,
+            ...newTask.source?.keys,
+          },
           // Preserve source data (e.g., GitHub issue data)
           data: existingTask.source?.data || newTask.source?.data,
         },
@@ -269,12 +280,11 @@ export class ObsidianTaskReconciler implements TaskReconciler {
   }
 
   /**
-   * Match tasks by ID, filePath, or URL
+   * Match tasks by ID or Obsidian natural key
    *
    * Matching strategy:
    * 1. By ID - if both tasks have the same ID (primary match)
-   * 2. By filePath - if both tasks have the same filePath (vault-backed tasks)
-   * 3. By URL - if both tasks have the same source URL (external tasks)
+   * 2. By Obsidian key - if both tasks have the same source.keys.obsidian (vault-backed tasks)
    *
    * This ensures that:
    * - Tasks imported from external sources (GitHub) preserve their source.extension
@@ -282,14 +292,11 @@ export class ObsidianTaskReconciler implements TaskReconciler {
    * - Duplicate tasks are avoided when scanning the vault
    */
   matchesTask(task: Task, newTask: Task): boolean {
+    const existingKey = task.source?.keys?.obsidian;
+    const newKey = newTask.source?.keys?.obsidian;
+
     return (
-      task.id == newTask.id ||
-      (task.source?.filePath &&
-        newTask.source?.filePath &&
-        task.source.filePath == newTask.source.filePath) ||
-      (task.source?.url &&
-        newTask.source?.url &&
-        task.source.url == newTask.source.url)
+      task.id == newTask.id || (existingKey && newKey && existingKey === newKey)
     );
   }
 }

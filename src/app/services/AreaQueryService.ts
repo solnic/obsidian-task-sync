@@ -17,7 +17,7 @@ export class AreaQueryService {
     areas: readonly Area[],
     filePath: string
   ): Area | undefined {
-    return areas.find((area) => area.source?.filePath === filePath);
+    return areas.find((area) => area.source?.keys?.obsidian === filePath);
   }
 
   /**
@@ -89,4 +89,3 @@ export class AreaQueryService {
     return Array.from(allTags).sort();
   }
 }
-

@@ -184,6 +184,7 @@ export function createSchedule(data: ScheduleCreateData): Schedule {
     planningCompletedAt: undefined,
     source: {
       extension: "daily-planning",
+      keys: {},
     },
   };
 }

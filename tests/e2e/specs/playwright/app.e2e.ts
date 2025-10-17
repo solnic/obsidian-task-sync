@@ -65,7 +65,6 @@ Another sample task with areas.`;
     // Now reload the plugin to trigger task scanning
     await page.evaluate(async () => {
       const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       // Disable and re-enable plugin to trigger fresh initialization
       await app.plugins.disablePlugin("obsidian-task-sync");

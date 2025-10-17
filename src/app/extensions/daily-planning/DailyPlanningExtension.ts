@@ -458,7 +458,7 @@ export class DailyPlanningExtension implements Extension {
       const allTasks = await taskQueries.getAll();
 
       return allTasks.filter((task) =>
-        taskFilePaths.includes(task.source?.filePath || "")
+        taskFilePaths.includes(task.source?.keys?.obsidian || "")
       );
     } catch (error) {
       console.error("Error getting tasks from Daily Note:", error);
@@ -854,11 +854,11 @@ export class DailyPlanningExtension implements Extension {
       // Add task links to the daily note
       const taskLinks: string[] = [];
       for (const task of tasks) {
-        if (task.source?.filePath) {
+        const filePath = task.source?.keys?.obsidian;
+        if (filePath) {
           // Extract task title from file path (remove .md extension and path)
           const taskTitle =
-            task.source.filePath.split("/").pop()?.replace(/\.md$/, "") ||
-            task.title;
+            filePath.split("/").pop()?.replace(/\.md$/, "") || task.title;
           const taskLink = `- [ ] [[${taskTitle}]]`;
 
           // Check if task already exists to avoid duplicates
