@@ -87,7 +87,6 @@ test.describe("TypeNote Settings - Property Management", () => {
     await expect(firstPropertyInput).toHaveValue("Priority");
     await expect(firstPropertyDropdown).toHaveValue("number");
     // Note: The toggle state is managed by Obsidian's toggle component and may not reflect in DOM immediately
-    // The console logs show the property.required is correctly set to true
 
     // Now click "Add Property" button
     const addPropertyButton = page
@@ -99,7 +98,6 @@ test.describe("TypeNote Settings - Property Management", () => {
     await expect(firstPropertyInput).toHaveValue("Priority");
     await expect(firstPropertyDropdown).toHaveValue("number");
     // Note: The toggle state is managed by Obsidian's toggle component and may not reflect in DOM immediately
-    // The console logs show the property.required is correctly set to true
 
     // Verify a second property was added by checking for property name inputs
     const allPropertyInputs = page.locator(
@@ -314,7 +312,6 @@ test.describe("TypeNote Settings - Property Management", () => {
     await expect(propertyNameInput).toHaveValue("Priority");
     await expect(propertyDropdown).toHaveValue("number");
     // Note: The toggle state is managed by Obsidian's toggle component and may not reflect in DOM immediately
-    // The console logs show the property.required is correctly set to true
 
     // Verify the property name input shows the updated name
     await expect(propertyNameInput).toHaveValue("Priority");

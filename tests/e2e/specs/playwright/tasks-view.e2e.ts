@@ -461,9 +461,7 @@ test.describe("TasksView Component", () => {
         const taskItems = document.querySelectorAll(
           '[data-testid^="local-task-item-"]'
         );
-        console.log(`Found ${taskItems.length} task items`);
         for (const item of taskItems) {
-          console.log(`Task item text: ${item.textContent}`);
           if (
             item.textContent?.includes("Reactivity Test Task") &&
             item.textContent?.includes("High") &&
