@@ -733,6 +733,7 @@ export async function reloadPlugin(page: Page): Promise<void> {
         plugin && plugin.settings && app.plugins.isEnabled("obsidian-task-sync")
       );
     },
+    undefined,
     { timeout: 5000 }
   );
 }
@@ -2252,6 +2253,7 @@ export async function waitForNoticesCleared(
         const notices = document.querySelectorAll(".notice");
         return notices.length === 0;
       },
+      undefined,
       { timeout }
     )
     .catch(() => {

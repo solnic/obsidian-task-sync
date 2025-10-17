@@ -390,19 +390,20 @@ Example:
 
 ```typescript
 /**
- * Wait for a specific condition in the plugin
+ * Wait for a specific property value in the plugin
  */
 export async function waitForPluginCondition(
   page: Page,
-  condition: () => boolean,
+  property: string,
+  expectedValue: any,
   timeout: number = 5000
 ): Promise<void> {
   await page.waitForFunction(
-    (conditionFn) => {
+    ({ property, expectedValue }) => {
       const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
-      return conditionFn.call(plugin);
+      return plugin && plugin[property] === expectedValue;
     },
-    condition,
+    { property, expectedValue },
     { timeout }
   );
 }
