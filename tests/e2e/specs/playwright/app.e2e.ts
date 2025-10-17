@@ -4,7 +4,7 @@
  */
 
 import { test, expect } from "../../helpers/setup";
-import { executeCommand } from "../../helpers/global";
+import { executeCommand, waitForFileProcessed } from "../../helpers/global";
 
 test.describe("Svelte App Initialization", () => {
   test("should load plugin and render main view with tasks view", async ({
@@ -72,8 +72,21 @@ Another sample task with areas.`;
       await app.plugins.enablePlugin("obsidian-task-sync");
     });
 
-    // Wait a bit for plugin to initialize
-    await page.waitForTimeout(1000);
+    // Wait for plugin to be fully initialized
+    await page.waitForFunction(
+      () => {
+        const plugin = (window as any).app.plugins.plugins[
+          "obsidian-task-sync"
+        ];
+        return (
+          plugin &&
+          plugin.settings &&
+          (window as any).app.plugins.isEnabled("obsidian-task-sync")
+        );
+      },
+      undefined,
+      { timeout: 5000 }
+    );
 
     // Open the Task Sync view
     await executeCommand(page, "Task Sync: Open Main View");
@@ -137,8 +150,27 @@ Task for testing timestamp preservation.`;
       await app.plugins.enablePlugin("obsidian-task-sync");
     });
 
-    // Wait for plugin to initialize
-    await page.waitForTimeout(1000);
+    // Wait for plugin to initialize and tasks to be loaded
+    await page.waitForFunction(
+      () => {
+        const plugin = (window as any).app.plugins.plugins[
+          "obsidian-task-sync"
+        ];
+        if (!plugin || !plugin.settings) return false;
+
+        try {
+          const { get } = require("svelte/store");
+          const tasks = get(
+            plugin.host.getExtensionById("obsidian").getTasks()
+          );
+          return tasks.some((t: any) => t.title === "Timestamp Test Task");
+        } catch {
+          return false;
+        }
+      },
+      undefined,
+      { timeout: 5000 }
+    );
 
     // Get the task's initial timestamps
     const initialTimestamps = await page.evaluate(() => {
@@ -152,9 +184,6 @@ Task for testing timestamp preservation.`;
         updatedAt: task.updatedAt.toISOString(),
       };
     });
-
-    // Wait a bit to ensure any spurious updates would have happened
-    await page.waitForTimeout(500);
 
     // Get the task's timestamps again
     const finalTimestamps = await page.evaluate(() => {

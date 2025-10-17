@@ -3,6 +3,7 @@ import * as path from "path";
 
 import type { Page } from "playwright";
 import { TFile } from "obsidian";
+import { expect } from "@playwright/test";
 
 import type { Area, Project, Task } from "../../../src/app/core/entities";
 
@@ -333,8 +334,8 @@ export async function waitForBasesRegeneration(
   // Wait for the main Tasks.base file to exist
   await waitForBaseFile(page, "Bases/Tasks.base", timeout);
 
-  // Add a small delay to ensure all operations are complete
-  await page.waitForTimeout(500);
+  // Wait for the base file to have content (indicating generation is complete)
+  await waitForFileContentToContain(page, "Bases/Tasks.base", "---", timeout);
 }
 
 /**
@@ -723,8 +724,18 @@ export async function reloadPlugin(page: Page): Promise<void> {
     await app.plugins.enablePlugin("obsidian-task-sync");
   });
 
-  // Wait for plugin to reload and vault to be scanned
-  await page.waitForTimeout(2000);
+  // Wait for plugin to be fully loaded and ready
+  await page.waitForFunction(
+    () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      return (
+        plugin && plugin.settings && app.plugins.isEnabled("obsidian-task-sync")
+      );
+    },
+    undefined,
+    { timeout: 5000 }
+  );
 }
 
 /**
@@ -1060,7 +1071,7 @@ export async function openTaskSyncSettings(page: ExtendedPage): Promise<void> {
  * Close settings modal
  */
 export async function closeSettings(page: Page): Promise<void> {
-  console.log("🔧 Attempting to close settings modal...");
+  console.debug("🔧 Attempting to close settings modal...");
 
   try {
     const modalExists = (await page.locator(".modal-container").count()) > 0;
@@ -1071,15 +1082,33 @@ export async function closeSettings(page: Page): Promise<void> {
 
     await page.keyboard.press("Escape");
 
-    await page.waitForTimeout(300);
-
-    const stillOpen = (await page.locator(".modal-container").count()) > 0;
-
-    if (stillOpen) {
-      await page.keyboard.press("Escape");
-      await page.waitForTimeout(300);
-    }
-  } catch (error) {}
+    // Wait for modal to close
+    await page
+      .waitForFunction(
+        () => {
+          return document.querySelectorAll(".modal-container").length === 0;
+        },
+        undefined,
+        { timeout: 2000 }
+      )
+      .catch(async () => {
+        // If first Escape didn't work, try again
+        await page.keyboard.press("Escape");
+        await page
+          .waitForFunction(
+            () => {
+              return document.querySelectorAll(".modal-container").length === 0;
+            },
+            undefined,
+            { timeout: 2000 }
+          )
+          .catch(() => {
+            // Ignore if modal persists
+          });
+      });
+  } catch (error) {
+    console.debug("Error closing settings:", error);
+  }
 }
 
 /**
@@ -1094,7 +1123,8 @@ export async function fillSettingInput(
   await input.waitFor({ timeout: 5000 });
   await input.clear();
   await input.fill(value);
-  await page.waitForTimeout(100);
+  // Wait for input value to be updated
+  await expect(input).toHaveValue(value);
 }
 
 /**
@@ -1181,8 +1211,16 @@ export async function addTaskStatus(
   const addButton = page.locator('[data-testid="add-task-status-button"]');
   await addButton.click();
 
-  // Give UI time to add the new status
-  await page.waitForTimeout(300);
+  // Wait for the new status to be added to settings
+  await page.waitForFunction(
+    ({ name }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      return plugin.settings.taskStatuses.some((s: any) => s.name === name);
+    },
+    { name: statusName },
+    { timeout: 3000 }
+  );
 }
 
 /**
@@ -1230,8 +1268,24 @@ export async function setTaskStatusState(
     }
   }
 
-  // Give UI time to process the change
-  await page.waitForTimeout(100);
+  // Wait for the setting to be saved by checking the plugin's settings
+  await page.waitForFunction(
+    ({ name, expectedState }) => {
+      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+      if (!plugin || !plugin.settings || !plugin.settings.taskStatuses)
+        return false;
+      const status = plugin.settings.taskStatuses.find(
+        (s: any) => s.name === name
+      );
+      if (!status) return false;
+      if (expectedState === "done") return !!status.isDone;
+      if (expectedState === "in-progress") return !!status.isInProgress;
+      // For "none", both should be false
+      return !status.isDone && !status.isInProgress;
+    },
+    { name: statusName, expectedState: state },
+    { timeout: 2000 }
+  );
 }
 
 /**
@@ -1267,8 +1321,19 @@ export async function toggleTaskStatusInProgress(
 
   if (isChecked !== isInProgress) {
     await toggle.click();
-    // Give UI time to process the change
-    await page.waitForTimeout(100);
+    // Wait for the toggle state to update
+    await page.waitForFunction(
+      ({ name, expected }) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const status = plugin.settings.taskStatuses.find(
+          (s: any) => s.name === name
+        );
+        return status && status.isInProgress === expected;
+      },
+      { name: statusName, expected: isInProgress },
+      { timeout: 2000 }
+    );
   }
 }
 
@@ -1410,8 +1475,8 @@ export async function setSettingValue(
 
   await input.fill(value);
 
-  // Wait a moment for the setting to be saved
-  await page.waitForTimeout(500);
+  // Wait for the input value to be updated
+  await expect(input).toHaveValue(value);
 }
 
 /**
@@ -1569,8 +1634,9 @@ export async function fillSetting(
     .filter({ hasText: settingName })
     .locator('input[type="text"], input[type="password"], textarea');
   await input.fill(value);
-  // Give UI time to process the change
-  await page.waitForTimeout(200);
+
+  // Wait for the input value to be updated
+  await expect(input).toHaveValue(value);
 
   await closeSettings(page);
 }
@@ -2083,4 +2149,161 @@ export async function getAreasFromView(page: Page): Promise<Area[]> {
     unsubscribe();
     return areas;
   });
+}
+
+/**
+ * Wait for Obsidian to infer property types from a file
+ * This is more reliable than arbitrary timeouts
+ */
+export async function waitForPropertyTypeInferred(
+  page: Page,
+  filePath: string,
+  propertyName: string,
+  timeout: number = 5000
+): Promise<void> {
+  await page.waitForFunction(
+    async ({ path, property }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (!file) return false;
+
+      const cache = app.metadataCache.getFileCache(file);
+      if (!cache || !cache.frontmatter) return false;
+
+      // Check if the property exists in the frontmatter
+      return cache.frontmatter[property] !== undefined;
+    },
+    { path: filePath, property: propertyName },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for a UI component to be recreated after a state change
+ * This is useful when changing property types or other UI-affecting settings
+ */
+export async function waitForUIRecreation(
+  page: Page,
+  selector: string,
+  timeout: number = 2000
+): Promise<void> {
+  const locator = page.locator(selector);
+
+  // If element is currently visible, wait for it to be detached first
+  if (await locator.isVisible().catch(() => false)) {
+    await locator.waitFor({ state: "detached", timeout }).catch(() => {});
+  }
+
+  // Wait for the element to be reattached and visible
+  await locator.waitFor({ state: "visible", timeout });
+}
+
+/**
+ * Wait for command execution to complete
+ * Waits for command palette to close and optionally for a notice
+ */
+export async function waitForCommandComplete(
+  page: Page,
+  expectedNotice?: string,
+  timeout: number = 5000
+): Promise<void> {
+  // Wait for command palette to close
+  await page.waitForSelector(".prompt-input", {
+    state: "hidden",
+    timeout,
+  });
+
+  // If a notice is expected, wait for it
+  if (expectedNotice) {
+    await waitForNotice(page as ExtendedPage, expectedNotice, timeout);
+  }
+}
+
+/**
+ * Wait for context widget to update after file navigation
+ */
+export async function waitForContextUpdate(
+  page: Page,
+  expectedContextType: string,
+  timeout: number = 3000
+): Promise<void> {
+  await page.waitForFunction(
+    ({ contextType }) => {
+      const contextWidget = document.querySelector(
+        '[data-testid="context-widget"] .context-type'
+      );
+      return contextWidget?.textContent === contextType;
+    },
+    { contextType: expectedContextType },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for all notices to disappear
+ * Useful for ensuring clean state between test steps
+ */
+export async function waitForNoticesCleared(
+  page: Page,
+  timeout: number = 5000
+): Promise<void> {
+  await page
+    .waitForFunction(
+      () => {
+        const notices = document.querySelectorAll(".notice");
+        return notices.length === 0;
+      },
+      undefined,
+      { timeout }
+    )
+    .catch(() => {
+      // Ignore timeout - notices might persist, which is okay
+    });
+}
+
+/**
+ * Wait for a specific notice to disappear
+ */
+export async function waitForNoticeDisappear(
+  page: Page,
+  noticeText: string,
+  timeout: number = 5000
+): Promise<void> {
+  await page
+    .waitForFunction(
+      ({ text }) => {
+        const notices = document.querySelectorAll(".notice");
+        const noticeTexts = Array.from(notices).map((n) => n.textContent || "");
+        return !noticeTexts.some((t) => t.includes(text));
+      },
+      { text: noticeText },
+      { timeout }
+    )
+    .catch(() => {
+      // Ignore timeout - notice might have already disappeared
+    });
+}
+
+/**
+ * Wait for file to be processed by Obsidian's metadata cache
+ * More reliable than arbitrary timeouts
+ */
+export async function waitForFileProcessed(
+  page: Page,
+  filePath: string,
+  timeout: number = 5000
+): Promise<void> {
+  await page.waitForFunction(
+    async ({ path }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (!file) return false;
+
+      // Check if file has been processed by metadata cache
+      const cache = app.metadataCache.getFileCache(file);
+      return cache !== null && cache !== undefined;
+    },
+    { path: filePath },
+    { timeout }
+  );
 }

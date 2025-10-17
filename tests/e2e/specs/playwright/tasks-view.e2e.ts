@@ -17,7 +17,7 @@ import {
   verifyTaskCount,
 } from "../../helpers/tasks-view-helpers";
 import { createTask } from "../../helpers/entity-helpers";
-import { executeCommand } from "../../helpers/global";
+import { executeCommand, waitForContextUpdate } from "../../helpers/global";
 
 test.describe("TasksView Component", () => {
   test("should open Tasks view and display local tasks", async ({ page }) => {
@@ -74,9 +74,6 @@ test.describe("TasksView Component", () => {
       priority: "Low",
       status: "Backlog",
     });
-
-    // Wait a bit for the file to be fully written and processed
-    await page.waitForTimeout(500);
 
     // Click refresh button
     await refreshTasks(page);
@@ -347,7 +344,7 @@ test.describe("TasksView Component", () => {
     });
 
     // Wait for context to update and check project context
-    await page.waitForTimeout(500); // Give context time to update
+    await waitForContextUpdate(page, "Project");
 
     const projectContext = page.locator(
       '[data-testid="context-widget"] .context-type'
@@ -369,7 +366,7 @@ test.describe("TasksView Component", () => {
     });
 
     // Wait for context to update and check area context
-    await page.waitForTimeout(500);
+    await waitForContextUpdate(page, "Area");
 
     const areaContext = page.locator(
       '[data-testid="context-widget"] .context-type'
@@ -391,7 +388,7 @@ test.describe("TasksView Component", () => {
     });
 
     // Wait for context to update and check task context
-    await page.waitForTimeout(500);
+    await waitForContextUpdate(page, "Task");
 
     const taskContext = page.locator(
       '[data-testid="context-widget"] .context-type'
@@ -409,8 +406,17 @@ test.describe("TasksView Component", () => {
       app.workspace.activeLeaf?.detach();
     });
 
-    // Wait for context to update
-    await page.waitForTimeout(500);
+    // Wait for context widget to show "No context"
+    await page.waitForFunction(
+      () => {
+        const noContextEl = document.querySelector(
+          '[data-testid="context-widget"] .no-context'
+        );
+        return noContextEl?.textContent === "No context";
+      },
+      undefined,
+      { timeout: 3000 }
+    );
 
     noContext = page.locator('[data-testid="context-widget"] .no-context');
     await expect(noContext).toHaveText("No context");
@@ -455,9 +461,7 @@ test.describe("TasksView Component", () => {
         const taskItems = document.querySelectorAll(
           '[data-testid^="local-task-item-"]'
         );
-        console.log(`Found ${taskItems.length} task items`);
         for (const item of taskItems) {
-          console.log(`Task item text: ${item.textContent}`);
           if (
             item.textContent?.includes("Reactivity Test Task") &&
             item.textContent?.includes("High") &&
@@ -601,8 +605,16 @@ test.describe("TasksView Component", () => {
     // Refresh local tasks
     await refreshTasks(page);
 
-    // Wait for refresh to complete
-    await page.waitForTimeout(1000);
+    // Wait for refresh to complete by checking that tasks are still visible
+    await page.waitForFunction(
+      () => {
+        const taskItems = document.querySelectorAll(
+          '[data-testid^="local-task-item-"], [data-testid^="github-task-item-"]'
+        );
+        return taskItems.length >= 2;
+      },
+      { timeout: 5000 }
+    );
 
     // Verify both tasks are still present after refresh
     // The GitHub task should NOT be deleted even though its filePath

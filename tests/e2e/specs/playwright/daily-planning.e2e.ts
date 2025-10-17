@@ -10,6 +10,8 @@ import {
   enableIntegration,
   switchToTaskService,
   selectFromDropdown,
+  waitForNotice,
+  waitForFileUpdate,
 } from "../../helpers/global";
 import { getTodayString, getYesterdayString } from "../../helpers/date-helpers";
 import { createTask } from "../../helpers/entity-helpers";
@@ -113,8 +115,22 @@ test.describe("Daily Planning Wizard", () => {
     // Confirm the plan
     await page.click('[data-testid="confirm-button"]');
 
-    // Wait for confirmation and daily note to open
-    await page.waitForTimeout(2000);
+    // Wait for confirmation by checking for success notice or daily note creation
+    await page.waitForFunction(
+      () => {
+        // Check if daily note was created or if we got a success notice
+        const notices = document.querySelectorAll(".notice");
+        const noticeTexts = Array.from(notices).map((n) => n.textContent || "");
+        return noticeTexts.some(
+          (text) =>
+            text.includes("Daily plan") ||
+            text.includes("created") ||
+            text.includes("success")
+        );
+      },
+      undefined,
+      { timeout: 5000 }
+    );
 
     // NOW THE CRITICAL TEST: Reopen the daily planning wizard
     await executeCommand(page, "Task Sync: Start Daily Planning");
@@ -251,7 +267,21 @@ test.describe("Daily Planning Wizard", () => {
     );
     if (await moveToTodayButton.isVisible()) {
       await moveToTodayButton.click();
-      await page.waitForTimeout(1000);
+      // Wait for the task to be moved by checking if button disappears or task moves
+      await page
+        .waitForFunction(
+          () => {
+            const button = document.querySelector(
+              '[data-testid="move-to-today-button"]'
+            );
+            return !button || !button.isVisible;
+          },
+          undefined,
+          { timeout: 3000 }
+        )
+        .catch(() => {
+          // Ignore timeout - button might still be visible
+        });
     }
   });
 
@@ -947,10 +977,6 @@ test.describe("Daily Planning Wizard", () => {
       if (!periodicNotesPluginEnabled) {
         await app.plugins.enablePlugin("periodic-notes");
       }
-      console.log(
-        "Periodic Notes plugin enabled:",
-        app.plugins.isEnabled("periodic-notes")
-      );
     });
 
     // Start daily planning to trigger daily note discovery
@@ -995,16 +1021,12 @@ test.describe("Daily Planning Wizard", () => {
       let discoveredPath = null;
       let discoveredSettings = null;
       if (dailyNoteFeature) {
-        try {
-          discoveredPath = await dailyNoteFeature.getTodayDailyNotePath();
-          // Also test the discovery utility directly
-          const { discoverDailyNoteSettings } =
-            plugin.host.obsidianExtension.constructor;
-          if (discoverDailyNoteSettings) {
-            discoveredSettings = discoverDailyNoteSettings(app, "Fallback");
-          }
-        } catch (error) {
-          console.error("Discovery error:", error);
+        discoveredPath = await dailyNoteFeature.getTodayDailyNotePath();
+        // Also test the discovery utility directly
+        const { discoverDailyNoteSettings } =
+          plugin.host.obsidianExtension.constructor;
+        if (discoverDailyNoteSettings) {
+          discoveredSettings = discoverDailyNoteSettings(app, "Fallback");
         }
       }
 
@@ -1544,17 +1566,6 @@ test.describe("Daily Planning Wizard", () => {
       ) || []
     ).length;
 
-    // Log the final content for debugging
-    console.log("Final daily note content:", finalContent);
-    console.log("Simple format counts:", {
-      finalTask1SimpleCount,
-      finalTask2SimpleCount,
-    });
-    console.log("Full format counts:", {
-      finalTask1FullCount,
-      finalTask2FullCount,
-    });
-
     // If the bug exists, we'll see both formats (duplication)
     // If the bug is fixed, we should only see the original format (no duplication)
     const totalTask1Count = finalTask1SimpleCount + finalTask1FullCount;
@@ -1694,25 +1705,11 @@ test.describe("Daily Planning Wizard", () => {
     ).length;
 
     // Log for debugging
-    console.log("Final content for cache test:", finalContent);
-    console.log("Simple counts:", { simpleTask1Count, simpleTask2Count });
-    console.log("Full counts:", { fullTask1Count, fullTask2Count });
-
-    // Total count should be 1 per task (no duplication)
     const totalTask1Count = simpleTask1Count + fullTask1Count;
     const totalTask2Count = simpleTask2Count + fullTask2Count;
 
     expect(totalTask1Count).toBe(1);
     expect(totalTask2Count).toBe(1);
-
-    // If the bug exists, we might see both formats
-    // If fixed, we should only see one format per task
-    if (totalTask1Count > 1 || totalTask2Count > 1) {
-      console.error("DUPLICATION BUG DETECTED!");
-      console.error("Task 1 appears", totalTask1Count, "times");
-      console.error("Task 2 appears", totalTask2Count, "times");
-      console.error("Final content:", finalContent);
-    }
   });
 
   test("should detect existing tasks with different section headers and not duplicate them", async ({
@@ -1823,15 +1820,9 @@ test.describe("Daily Planning Wizard", () => {
 
     expect(finalContent).toBeTruthy();
 
-    // Log for debugging
-    console.log("Final content for section header test:", finalContent);
-
     // Check if both section headers exist (which would indicate the bug)
     const hasTasksSection = finalContent!.includes("## Tasks");
     const hasTodaysTasksSection = finalContent!.includes("## Today's Tasks");
-
-    console.log("Has '## Tasks' section:", hasTasksSection);
-    console.log("Has '## Today's Tasks' section:", hasTodaysTasksSection);
 
     // Count tasks under each section
     const tasksUnderTasksSection =
@@ -1861,30 +1852,12 @@ test.describe("Daily Planning Wizard", () => {
       ) || []
     ).length;
 
-    console.log("Tasks section counts:", {
-      task1InTasksSection,
-      task2InTasksSection,
-    });
-    console.log("Today's Tasks section counts:", {
-      task1InTodaysTasksSection,
-      task2InTodaysTasksSection,
-    });
-
     // Total count should be 1 per task (no duplication across sections)
     const totalTask1Count = task1InTasksSection + task1InTodaysTasksSection;
     const totalTask2Count = task2InTasksSection + task2InTodaysTasksSection;
 
     expect(totalTask1Count).toBe(1);
     expect(totalTask2Count).toBe(1);
-
-    // If the bug exists, we might see both sections with the same tasks
-    if (hasTasksSection && hasTodaysTasksSection) {
-      console.error("SECTION HEADER MISMATCH BUG DETECTED!");
-      console.error("Both '## Tasks' and '## Today's Tasks' sections exist");
-      console.error(
-        "This indicates the systems are using different section headers"
-      );
-    }
 
     // Ideally, we should only have one section with all tasks
     expect(totalTask1Count).toBe(1);
@@ -1974,9 +1947,6 @@ test.describe("Daily Planning Wizard", () => {
 
     expect(finalContent).toBeTruthy();
 
-    // Log for debugging
-    console.log("Final content for resolution test:", finalContent);
-
     // Check for duplication - count all possible task link formats
     const simpleTask1Count = (
       finalContent!.match(/^- \[ \] \[\[Resolution Test Task 1\]\]$/gm) || []
@@ -1996,24 +1966,9 @@ test.describe("Daily Planning Wizard", () => {
       ) || []
     ).length;
 
-    console.log("Simple format counts:", {
-      simpleTask1Count,
-      simpleTask2Count,
-    });
-    console.log("Full format counts:", { fullTask1Count, fullTask2Count });
-
     // Total count should be 1 per task (no duplication)
     const totalTask1Count = simpleTask1Count + fullTask1Count;
     const totalTask2Count = simpleTask2Count + fullTask2Count;
-
-    // If the bug exists due to resolution timing, we might see both formats
-    if (totalTask1Count > 1 || totalTask2Count > 1) {
-      console.error("LINK RESOLUTION BUG DETECTED!");
-      console.error("Task 1 appears", totalTask1Count, "times");
-      console.error("Task 2 appears", totalTask2Count, "times");
-      console.error("This suggests the parser couldn't resolve existing links");
-      console.error("Final content:", finalContent);
-    }
 
     expect(totalTask1Count).toBe(1);
     expect(totalTask2Count).toBe(1);

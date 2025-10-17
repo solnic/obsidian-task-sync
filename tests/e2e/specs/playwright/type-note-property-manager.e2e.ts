@@ -8,6 +8,7 @@ import {
   executeCommand,
   waitForFileCreation,
   readVaultFile,
+  waitForFileProcessed,
   getFrontMatter,
   expectNotice,
   createFile,
@@ -67,7 +68,7 @@ This is a test article to verify property type reading.
     await createFile(page, filePath, {}, noteContent);
 
     // Wait for Obsidian to process the file and infer property types
-    await page.waitForTimeout(1000);
+    await waitForFileProcessed(page, filePath);
 
     // Use ObsidianPropertyManager to read property types
     const propertyTypes = await page.evaluate(async () => {

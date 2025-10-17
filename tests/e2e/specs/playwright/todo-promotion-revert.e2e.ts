@@ -138,7 +138,9 @@ test.describe("Todo Promotion Reverting", () => {
 
     // Try to execute the revert command
     await executeCommand(page, "Revert Promoted Todo");
-    await page.waitForTimeout(1000);
+
+    // Wait for error notice to appear
+    await page.waitForSelector(".notice", { timeout: 3000 });
 
     // Check for error notice
     const notices = await page.evaluate(() => {

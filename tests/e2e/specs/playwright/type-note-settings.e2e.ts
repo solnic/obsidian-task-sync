@@ -87,7 +87,6 @@ test.describe("TypeNote Settings - Property Management", () => {
     await expect(firstPropertyInput).toHaveValue("Priority");
     await expect(firstPropertyDropdown).toHaveValue("number");
     // Note: The toggle state is managed by Obsidian's toggle component and may not reflect in DOM immediately
-    // The console logs show the property.required is correctly set to true
 
     // Now click "Add Property" button
     const addPropertyButton = page
@@ -99,7 +98,6 @@ test.describe("TypeNote Settings - Property Management", () => {
     await expect(firstPropertyInput).toHaveValue("Priority");
     await expect(firstPropertyDropdown).toHaveValue("number");
     // Note: The toggle state is managed by Obsidian's toggle component and may not reflect in DOM immediately
-    // The console logs show the property.required is correctly set to true
 
     // Verify a second property was added by checking for property name inputs
     const allPropertyInputs = page.locator(
@@ -212,7 +210,10 @@ test.describe("TypeNote Settings - Property Management", () => {
     await propertyDropdown.selectOption("number");
 
     // Wait for UI to recreate after type change
-    await page.waitForTimeout(500);
+    await page.waitForSelector(
+      `[data-testid="property-required-toggle-${key}"]`,
+      { state: "visible", timeout: 3000 }
+    );
 
     // Re-find the toggle after UI recreation
     const updatedPropertyToggleContainer = page.locator(
@@ -226,7 +227,12 @@ test.describe("TypeNote Settings - Property Management", () => {
 
     // Change type to Boolean
     await propertyDropdown.selectOption("boolean");
-    await page.waitForTimeout(500);
+
+    // Wait for UI to recreate after type change
+    await page.waitForSelector(
+      `[data-testid="property-required-toggle-${key}"]`,
+      { state: "visible", timeout: 3000 }
+    );
 
     // Re-find the toggle after UI recreation
     const booleanToggleContainer = page.locator(
@@ -238,7 +244,12 @@ test.describe("TypeNote Settings - Property Management", () => {
 
     // Change type to Date
     await propertyDropdown.selectOption("date");
-    await page.waitForTimeout(500);
+
+    // Wait for UI to recreate after type change
+    await page.waitForSelector(
+      `[data-testid="property-required-toggle-${key}"]`,
+      { state: "visible", timeout: 3000 }
+    );
 
     // Re-find the toggle after UI recreation
     const dateToggleContainer = page.locator(
@@ -301,7 +312,6 @@ test.describe("TypeNote Settings - Property Management", () => {
     await expect(propertyNameInput).toHaveValue("Priority");
     await expect(propertyDropdown).toHaveValue("number");
     // Note: The toggle state is managed by Obsidian's toggle component and may not reflect in DOM immediately
-    // The console logs show the property.required is correctly set to true
 
     // Verify the property name input shows the updated name
     await expect(propertyNameInput).toHaveValue("Priority");

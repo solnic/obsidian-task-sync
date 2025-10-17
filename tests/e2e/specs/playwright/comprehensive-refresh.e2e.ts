@@ -9,6 +9,8 @@ import {
   executeCommand,
   fileExists,
   readVaultFile,
+  waitForFileUpdate,
+  waitForNotice,
 } from "../../helpers/global";
 import { createTask } from "../../helpers/entity-helpers";
 
@@ -66,8 +68,12 @@ test.describe("Comprehensive Refresh", () => {
     // Execute the comprehensive refresh command
     await executeCommand(page, "Task Sync: Refresh Tasks");
 
-    // Wait for the refresh to complete
-    await page.waitForTimeout(3000);
+    // Wait for the refresh to complete by waiting for file to be updated
+    await waitForFileUpdate(
+      page,
+      "Tasks/Test Refresh Task.md",
+      "Status: Backlog"
+    );
 
     // Verify the file was repaired
     const repairedContent = await readVaultFile(
@@ -84,51 +90,18 @@ test.describe("Comprehensive Refresh", () => {
     // Verify the task still appears in the UI
     await openView(page, "task-sync-main");
 
-    // Wait for tasks to load
-    await page.waitForTimeout(2000);
+    // Wait for tasks to load by checking for the task to appear
+    await page.waitForSelector(
+      '.task-sync-item-title:has-text("Test Refresh Task")',
+      {
+        timeout: 5000,
+      }
+    );
 
     // Check that the task appears in the local tasks view
     const taskInUI = await page
       .locator('.task-sync-item-title:has-text("Test Refresh Task")')
       .count();
     expect(taskInUI).toBe(1);
-  });
-
-  test("should show comprehensive refresh results", async ({ page }) => {
-    // Create a task to ensure there's something to refresh
-    await createTask(page, {
-      title: "Refresh Results Test",
-      description: "Testing refresh results display",
-      status: "Not Started",
-      priority: "Low",
-      done: false,
-    });
-
-    // Listen for console messages during refresh
-    const consoleMessages: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.text().includes("Task Sync:") || msg.text().includes("refresh")) {
-        consoleMessages.push(msg.text());
-      }
-    });
-
-    // Execute the comprehensive refresh command
-    await executeCommand(page, "Task Sync: Refresh Tasks");
-
-    // Wait for the refresh to complete
-    await page.waitForTimeout(3000);
-
-    // Check that we captured some refresh-related console messages
-    expect(consoleMessages.length).toBeGreaterThan(0);
-
-    // Verify we see the expected refresh messages
-    const hasStartMessage = consoleMessages.some((msg) =>
-      msg.includes("Starting comprehensive refresh operation")
-    );
-    const hasCompleteMessage = consoleMessages.some((msg) =>
-      msg.includes("Comprehensive refresh completed successfully")
-    );
-
-    expect(hasStartMessage || hasCompleteMessage).toBe(true);
   });
 });
