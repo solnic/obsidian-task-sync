@@ -206,7 +206,20 @@
   // ============================================================================
 
   async function refresh(): Promise<void> {
-    await extension.refresh();
+    try {
+      // Show loading state
+      isLoading = true;
+      error = null;
+
+      // Use extension's refresh method which triggers automatic sync
+      await extension.refresh();
+
+      isLoading = false;
+    } catch (err: any) {
+      console.error("Failed to refresh local tasks:", err);
+      error = err.message;
+      isLoading = false;
+    }
   }
 
   async function openTask(task: any): Promise<void> {
@@ -406,7 +419,9 @@
         {error}
       </div>
     {:else if isLoading}
-      <div class="task-sync-loading-indicator">Loading local tasks...</div>
+      <div class="task-sync-loading-indicator" data-testid="loading-indicator">
+        Loading local tasks...
+      </div>
     {:else}
       <div class="task-sync-task-list">
         {#if tasks.length === 0}
