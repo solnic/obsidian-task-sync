@@ -69,6 +69,14 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
   }
 
   /**
+   * Update settings reference
+   * Should be called when settings change
+   */
+  updateSettings(newSettings: TaskSyncSettings): void {
+    this.settings = newSettings;
+  }
+
+  /**
    * Generate base file for a project
    * Only generates if base manager is available, bases are enabled, and auto-sync is on
    */

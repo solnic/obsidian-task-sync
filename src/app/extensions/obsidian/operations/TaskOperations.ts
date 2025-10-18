@@ -18,11 +18,22 @@ import { EntitiesOperations } from "../../../core/entities-base";
 export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
   private wikiLinkOperations: any;
   private taskOperations: EntitiesOperations;
+  private settings: TaskSyncSettings;
 
   constructor(app: App, settings: TaskSyncSettings, wikiLinkOperations?: any) {
     super(app, settings.tasksFolder);
+    this.settings = settings;
     this.wikiLinkOperations = wikiLinkOperations;
     this.taskOperations = new Tasks.Operations(settings);
+  }
+
+  /**
+   * Update settings reference
+   * Should be called when settings change
+   */
+  updateSettings(newSettings: TaskSyncSettings): void {
+    this.settings = newSettings;
+    this.taskOperations = new Tasks.Operations(newSettings);
   }
 
   /**

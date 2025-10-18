@@ -569,6 +569,23 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
+   * Update settings for all operations and components
+   * Should be called when settings change
+   */
+  updateSettings(newSettings: TaskSyncSettings): void {
+    this.settings = newSettings;
+
+    // Update base manager
+    this.baseManager.updateSettings(newSettings);
+
+    // Update operations that have settings-dependent logic
+    this.projectOperations.updateSettings(newSettings);
+    this.taskOperations.updateSettings(newSettings);
+
+    // Note: AreaOperations doesn't need settings update as it doesn't store settings
+  }
+
+  /**
    * Get base manager instance for direct access if needed
    */
   getBaseManager(): ObsidianBaseManager {

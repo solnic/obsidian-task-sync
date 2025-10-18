@@ -184,9 +184,9 @@ export class TaskSyncApp {
     const oldSettings = this.settings;
     this.settings = newSettings;
 
-    // Update base manager settings in ObsidianExtension
+    // Update settings in ObsidianExtension
     if (this.obsidianExtension) {
-      this.obsidianExtension.updateBaseManagerSettings(newSettings);
+      this.obsidianExtension.updateSettings(newSettings);
     }
 
     // Check if GitHub integration was enabled/disabled
