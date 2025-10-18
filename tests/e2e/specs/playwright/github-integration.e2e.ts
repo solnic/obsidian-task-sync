@@ -923,4 +923,99 @@ test.describe("GitHub Integration", () => {
     await expect(thirdIssue).toContainText("#111");
     await expect(thirdIssue).toContainText("First test issue");
   });
+
+  test("should sync task changes from Obsidian file when GitHub is refreshed", async ({
+    page,
+  }) => {
+    // This test verifies that GitHub refresh now syncs changes from Obsidian files
+    // This addresses the second issue: "Hitting refresh in Github did not sync task's note after I changed its Title in Obisidian"
+
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    // Switch to GitHub service and import an issue
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Click import button for first issue (#111)
+    await clickIssueImportButton(page, 111);
+    await waitForIssueImportComplete(page, 111);
+
+    // Verify task file was created
+    const taskExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(taskExists).toBe(true);
+
+    // Modify the task file title in Obsidian
+    await updateFileFrontmatter(page, "Tasks/First test issue.md", {
+      Title: "Modified GitHub Issue Title",
+    });
+
+    // Wait for file change to be processed
+    await waitForFileUpdate(
+      page,
+      "Tasks/First test issue.md",
+      "Title: Modified GitHub Issue Title"
+    );
+
+    // Now refresh GitHub service - this should sync the changes from the Obsidian file
+    await page
+      .locator('[data-testid="task-sync-github-refresh-button"]')
+      .click();
+
+    // Wait for refresh to complete
+    await page.waitForTimeout(2000);
+
+    // Verify that the GitHub task now reflects the updated title from the Obsidian file
+    // Check this by looking at the task in the store
+    const syncedTask = await page.evaluate(async () => {
+      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+
+      // Get current tasks from store
+      let currentTasks: any[] = [];
+      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
+        currentTasks = state.tasks;
+      });
+      unsubscribe();
+
+      // Find the GitHub task
+      const githubTask = currentTasks.find(
+        (t: any) =>
+          t.source?.keys?.github ===
+          "https://github.com/solnic/obsidian-task-sync/issues/111"
+      );
+
+      return githubTask;
+    });
+
+    expect(syncedTask).toBeDefined();
+    expect(syncedTask.title).toBe("Modified GitHub Issue Title");
+    expect(syncedTask.source.extension).toBe("github");
+    expect(syncedTask.source.keys.github).toBe(
+      "https://github.com/solnic/obsidian-task-sync/issues/111"
+    );
+    expect(syncedTask.source.keys.obsidian).toBe("Tasks/First test issue.md");
+
+    console.log(
+      "GitHub task synced with Obsidian file changes:",
+      syncedTask.title
+    );
+  });
 });

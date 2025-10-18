@@ -156,7 +156,7 @@ describe("SimpleTaskReconciler", () => {
   });
 
   describe("matchesTask", () => {
-    it("should match tasks by source URL", () => {
+    it("should match tasks by source key", () => {
       const task1: Task = {
         id: "1",
         title: "Task 1",
@@ -168,7 +168,9 @@ describe("SimpleTaskReconciler", () => {
         updatedAt: new Date(),
         source: {
           extension: "github",
-          url: "https://github.com/org/repo/issues/1",
+          keys: {
+            github: "https://github.com/org/repo/issues/1",
+          },
         },
       };
 
@@ -183,14 +185,16 @@ describe("SimpleTaskReconciler", () => {
         updatedAt: new Date(),
         source: {
           extension: "github",
-          url: "https://github.com/org/repo/issues/1",
+          keys: {
+            github: "https://github.com/org/repo/issues/1",
+          },
         },
       };
 
       expect(reconciler.matchesTask(task1, task2)).toBe(true);
     });
 
-    it("should not match tasks with different URLs", () => {
+    it("should not match tasks with different keys", () => {
       const task1: Task = {
         id: "1",
         title: "Task 1",
@@ -202,7 +206,9 @@ describe("SimpleTaskReconciler", () => {
         updatedAt: new Date(),
         source: {
           extension: "github",
-          url: "https://github.com/org/repo/issues/1",
+          keys: {
+            github: "https://github.com/org/repo/issues/1",
+          },
         },
       };
 
@@ -217,14 +223,16 @@ describe("SimpleTaskReconciler", () => {
         updatedAt: new Date(),
         source: {
           extension: "github",
-          url: "https://github.com/org/repo/issues/2",
+          keys: {
+            github: "https://github.com/org/repo/issues/2",
+          },
         },
       };
 
       expect(reconciler.matchesTask(task1, task2)).toBe(false);
     });
 
-    it("should fallback to ID matching if no URLs", () => {
+    it("should fallback to ID matching if no keys", () => {
       const task1: Task = {
         id: "same-id",
         title: "Task 1",
@@ -267,7 +275,10 @@ describe("ObsidianTaskReconciler", () => {
           tags: [],
           createdAt: new Date("2024-01-01"),
           updatedAt: new Date("2024-01-01"),
-          source: { extension: "obsidian", filePath: "Tasks/task1.md" },
+          source: {
+            extension: "obsidian",
+            keys: { obsidian: "Tasks/task1.md" },
+          },
         },
         {
           id: "2",
@@ -280,8 +291,10 @@ describe("ObsidianTaskReconciler", () => {
           updatedAt: new Date("2024-01-01"),
           source: {
             extension: "github",
-            filePath: "Tasks/github-task.md",
-            url: "https://github.com/org/repo/issues/1",
+            keys: {
+              obsidian: "Tasks/github-task.md",
+              github: "https://github.com/org/repo/issues/1",
+            },
           },
         },
         {
@@ -295,7 +308,9 @@ describe("ObsidianTaskReconciler", () => {
           updatedAt: new Date("2024-01-01"),
           source: {
             extension: "github",
-            url: "https://github.com/org/repo/issues/2",
+            keys: {
+              github: "https://github.com/org/repo/issues/2",
+            },
           },
         },
       ];
@@ -325,8 +340,10 @@ describe("ObsidianTaskReconciler", () => {
         updatedAt: new Date("2024-01-01"),
         source: {
           extension: "github",
-          url: "https://github.com/org/repo/issues/1",
-          filePath: "Tasks/imported-task.md",
+          keys: {
+            github: "https://github.com/org/repo/issues/1",
+            obsidian: "Tasks/imported-task.md",
+          },
           data: { number: 1, state: "open" },
         },
       };
@@ -342,14 +359,16 @@ describe("ObsidianTaskReconciler", () => {
         updatedAt: new Date(),
         source: {
           extension: "obsidian",
-          filePath: "Tasks/imported-task.md",
+          keys: {
+            obsidian: "Tasks/imported-task.md",
+          },
         },
       };
 
       const reconciled = reconciler.reconcileTask(existingTask, newTask);
 
       expect(reconciled.source?.extension).toBe("github");
-      expect(reconciled.source?.url).toBe(
+      expect(reconciled.source?.keys?.github).toBe(
         "https://github.com/org/repo/issues/1"
       );
       expect(reconciled.source?.data).toEqual({ number: 1, state: "open" });

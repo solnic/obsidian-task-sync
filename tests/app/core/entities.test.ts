@@ -41,20 +41,22 @@ describe("Core Domain Entities", () => {
     test("should validate valid task source", () => {
       const validSource = {
         extension: "obsidian",
-        filePath: "Tasks/test-task.md",
+        keys: {
+          obsidian: "Tasks/test-task.md",
+        },
       };
 
       const result = TaskSourceSchema.parse(validSource);
       expect(result.extension).toBe("obsidian");
-      expect(result.filePath).toBe("Tasks/test-task.md");
+      expect(result.keys.obsidian).toBe("Tasks/test-task.md");
     });
 
-    test("should require extension and filePath", () => {
+    test("should require extension and keys", () => {
       expect(() => TaskSourceSchema.parse({})).toThrow();
       expect(() =>
         TaskSourceSchema.parse({ extension: "obsidian" })
       ).not.toThrow();
-      expect(() => TaskSourceSchema.parse({ filePath: "test" })).toThrow();
+      expect(() => TaskSourceSchema.parse({ keys: {} })).toThrow();
     });
   });
 
@@ -95,7 +97,9 @@ describe("Core Domain Entities", () => {
         updatedAt: new Date("2024-01-02"),
         source: {
           extension: "github",
-          filePath: "issue-123",
+          keys: {
+            obsidian: "issue-123",
+          },
         },
       };
 

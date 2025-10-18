@@ -320,8 +320,10 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       dueDate: parseDate(frontMatter["Due Date"]),
       tags: frontMatter.tags || [],
       // Source information for tracking
+      // NOTE: Set extension to "obsidian" as default, but reconciler will preserve existing extension
+      // This is crucial for imported GitHub tasks to maintain their source.extension = "github"
       source: {
-        extension: "obsidian",
+        extension: "obsidian", // Default for new tasks, reconciler preserves existing extension
         keys: {
           obsidian: file.path, // Use file path as the natural key
         },
