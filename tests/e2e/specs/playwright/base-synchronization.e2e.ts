@@ -13,7 +13,9 @@ import {
 import { createArea, createProject } from "../../helpers/entity-helpers";
 
 test.describe("Base Synchronization", () => {
-  test("should sync area bases when new task type is added", async ({ page }) => {
+  test("should sync area bases when new task type is added", async ({
+    page,
+  }) => {
     // Enable area bases
     await updatePluginSettings(page, {
       areaBasesEnabled: true,
@@ -74,7 +76,9 @@ test.describe("Base Synchronization", () => {
     expect(baseContent).toContain('note["Category"] == "Epic"');
   });
 
-  test("should sync project bases when task type is removed", async ({ page }) => {
+  test("should sync project bases when task type is removed", async ({
+    page,
+  }) => {
     // Enable project bases
     await updatePluginSettings(page, {
       projectBasesEnabled: true,
@@ -185,7 +189,10 @@ test.describe("Base Synchronization", () => {
 
     // Verify both bases exist
     const workBaseContent = await readVaultFile(page, "Bases/Work.base");
-    const apiBaseContent = await readVaultFile(page, "Bases/API Development.base");
+    const apiBaseContent = await readVaultFile(
+      page,
+      "Bases/API Development.base"
+    );
 
     expect(workBaseContent).toBeTruthy();
     expect(apiBaseContent).toBeTruthy();
@@ -194,7 +201,9 @@ test.describe("Base Synchronization", () => {
     expect(workBaseContent).toContain('note["Areas"].contains("Work")');
 
     // Verify project base has project-specific filtering
-    expect(apiBaseContent).toContain('note["Project"] == "[[API Development]]"');
+    expect(apiBaseContent).toContain(
+      'note["Project"] == "[[API Development]]"'
+    );
   });
 
   test("should respect areaBasesEnabled setting", async ({ page }) => {
@@ -275,29 +284,19 @@ test.describe("Base Synchronization", () => {
     expect(baseExists).toBe(false);
   });
 
-  test("should maintain base structure integrity during sync", async ({ page }) => {
-    // Enable project bases
+  test("should maintain base structure integrity during sync", async ({
+    page,
+  }) => {
+    // Enable project bases and auto-sync
     await updatePluginSettings(page, {
       projectBasesEnabled: true,
+      autoSyncAreaProjectBases: true,
     });
 
-    // Create a project
+    // Create a project - this will automatically generate the base
     await createProject(page, {
       name: "Website",
       description: "Website project",
-    });
-
-    // Generate initial base
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin) {
-        const extension = plugin.host.getExtensionById("obsidian");
-        if (extension) {
-          const baseManager = extension.getBaseManager();
-          await baseManager.syncProjectBases();
-        }
-      }
     });
 
     // Wait for base to be created
@@ -310,7 +309,8 @@ test.describe("Base Synchronization", () => {
     expect(baseContent).toContain("filters:");
     expect(baseContent).toContain("and:");
 
-    // Add multiple task types
+    // Add multiple task types and manually trigger sync
+    // (This test specifically tests the sync functionality)
     await page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -320,6 +320,8 @@ test.describe("Base Synchronization", () => {
           { name: "Review", color: "pink" }
         );
         await plugin.saveSettings();
+
+        // Manually trigger sync to test the sync functionality
         const extension = plugin.host.getExtensionById("obsidian");
         if (extension) {
           const baseManager = extension.getBaseManager();
@@ -351,4 +353,3 @@ test.describe("Base Synchronization", () => {
     expect(baseContent).toContain('note["Done"] == false');
   });
 });
-

@@ -104,38 +104,20 @@ test.describe("Base Generation", () => {
   test("should generate individual project base with correct structure", async ({
     page,
   }) => {
-    // Enable project bases
+    // Enable project bases and auto-sync
     await updatePluginSettings(page, {
       projectBasesEnabled: true,
+      autoSyncAreaProjectBases: true,
     });
 
-    // Create a project
+    // Create a project - this will automatically generate the base file
+    // due to autoSyncAreaProjectBases being enabled
     const project = await createProject(page, {
       name: "Website Redesign",
       description: "Redesign company website",
     });
 
-    // Trigger project base generation
-    await page.evaluate(
-      async ({ projectName }) => {
-        const app = (window as any).app;
-        const plugin = app.plugins.plugins["obsidian-task-sync"];
-        if (plugin) {
-          const extension = plugin.host.getExtensionById("obsidian");
-          if (extension) {
-            const baseManager = extension.getBaseManager();
-            const projects = await baseManager.getProjects();
-            const project = projects.find((p: any) => p.name === projectName);
-            if (project) {
-              await baseManager.createOrUpdateProjectBase(project);
-            }
-          }
-        }
-      },
-      { projectName: project.name }
-    );
-
-    // Wait for project base to be created
+    // Wait for project base to be created automatically
     await waitForBaseFile(page, "Bases/Website Redesign.base");
 
     // Read the base file content
@@ -197,7 +179,7 @@ test.describe("Base Generation", () => {
       description: "Health and fitness tracking",
     });
 
-    // Trigger area base generation
+    // Trigger area base generation manually (areas don't have automatic generation yet)
     await page.evaluate(
       async ({ areaName }) => {
         const app = (window as any).app;

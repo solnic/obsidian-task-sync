@@ -17,30 +17,19 @@ import {
 
 test.describe("Base Filtering and Sorting", () => {
   test("should filter out done tasks in all base views", async ({ page }) => {
-    // Enable project bases
+    // Enable project bases and auto-sync
     await updatePluginSettings(page, {
       projectBasesEnabled: true,
+      autoSyncAreaProjectBases: true,
     });
 
-    // Create a project
+    // Create a project - this will automatically generate the base
     await createProject(page, {
       name: "Testing Project",
       description: "Project for testing filters",
     });
 
-    // Generate project base
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin) {
-        const extension = plugin.host.getExtensionById("obsidian");
-        if (extension) {
-          await extension.syncProjectBases();
-        }
-      }
-    });
-
-    // Wait for base to be created
+    // Wait for base to be created automatically
     await waitForBaseFile(page, "Bases/Testing Project.base");
 
     // Read base content
@@ -134,28 +123,16 @@ test.describe("Base Filtering and Sorting", () => {
   test("should have correct sorting configuration in all views", async ({
     page,
   }) => {
-    // Enable project bases
+    // Enable project bases and auto-sync
     await updatePluginSettings(page, {
       projectBasesEnabled: true,
+      autoSyncAreaProjectBases: true,
     });
 
-    // Create a project
+    // Create a project - this will automatically generate the base
     await createProject(page, {
       name: "Sorting Test",
       description: "Project for testing sorting",
-    });
-
-    // Generate project base
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin) {
-        const extension = plugin.host.getExtensionById("obsidian");
-        if (extension) {
-          const baseManager = extension.getBaseManager();
-          await baseManager.syncProjectBases();
-        }
-      }
     });
 
     // Wait for base to be created
@@ -202,31 +179,20 @@ test.describe("Base Filtering and Sorting", () => {
   test("should have project-specific filtering in project bases", async ({
     page,
   }) => {
-    // Enable project bases
+    // Enable project bases and auto-sync
     await updatePluginSettings(page, {
       projectBasesEnabled: true,
+      autoSyncAreaProjectBases: true,
     });
 
     // Create a project with special characters in name
+    // This will automatically generate the base due to autoSyncAreaProjectBases
     await createProject(page, {
       name: "Project & Test",
       description: "Project with special chars",
     });
 
-    // Generate project base
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin) {
-        const extension = plugin.host.getExtensionById("obsidian");
-        if (extension) {
-          const baseManager = extension.getBaseManager();
-          await baseManager.syncProjectBases();
-        }
-      }
-    });
-
-    // Wait for base to be created
+    // Wait for base to be created automatically
     await waitForBaseFile(page, "Bases/Project & Test.base");
 
     // Read base content
@@ -290,31 +256,19 @@ test.describe("Base Filtering and Sorting", () => {
   test("should have category-specific filtering in type views", async ({
     page,
   }) => {
-    // Enable project bases
+    // Enable project bases and auto-sync
     await updatePluginSettings(page, {
       projectBasesEnabled: true,
+      autoSyncAreaProjectBases: true,
     });
 
-    // Create a project
+    // Create a project - this will automatically generate the base
     await createProject(page, {
       name: "Category Test",
       description: "Testing category filters",
     });
 
-    // Generate project base
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin) {
-        const extension = plugin.host.getExtensionById("obsidian");
-        if (extension) {
-          const baseManager = extension.getBaseManager();
-          await baseManager.syncProjectBases();
-        }
-      }
-    });
-
-    // Wait for base to be created
+    // Wait for base to be created automatically
     await waitForBaseFile(page, "Bases/Category Test.base");
 
     // Read base content
