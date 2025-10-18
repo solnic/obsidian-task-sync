@@ -87,7 +87,7 @@ export default class TaskSyncPlugin extends Plugin {
      */
     findTaskBySourceKey: (extension: string, key: string): Task | undefined => {
       const state = get(taskStore);
-      return state.tasks.find((t) => t.source?.keys?.[extension] === key);
+      return state.tasks.find((t) => t.source.keys[extension] === key);
     },
 
     /**
@@ -103,7 +103,7 @@ export default class TaskSyncPlugin extends Plugin {
      */
     findTaskByFilePath: (filePath: string): Task | undefined => {
       const state = get(taskStore);
-      return state.tasks.find((t) => t.source?.keys?.obsidian === filePath);
+      return state.tasks.find((t) => t.source.keys.obsidian === filePath);
     },
 
     /**
@@ -112,7 +112,7 @@ export default class TaskSyncPlugin extends Plugin {
      */
     findTaskBySourceUrl: (url: string): Task | undefined => {
       const state = get(taskStore);
-      return state.tasks.find((t) => t.source?.keys?.github === url);
+      return state.tasks.find((t) => t.source.keys.github === url);
     },
 
     /**

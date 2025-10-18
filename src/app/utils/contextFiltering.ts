@@ -38,7 +38,7 @@ export function getFilterOptions(tasks: Task[]): {
     }
 
     // Collect sources - use extension (e.g., "obsidian", "github")
-    if (task.source?.extension) {
+    if (task.source.extension) {
       sources.add(task.source.extension);
     }
   });

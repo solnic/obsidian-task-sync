@@ -75,7 +75,7 @@ export class GitHubTaskSource implements DataSource<Task> {
     const syncedTasks = await Promise.all(
       importedTasks.map(async (task) => {
         // Only sync tasks that have both GitHub and Obsidian keys
-        if (task.source?.keys?.github && task.source?.keys?.obsidian) {
+        if (task.source.keys.github && task.source.keys.obsidian) {
           return await this.syncTaskFromObsidianFile(task);
         }
         return task;
@@ -97,7 +97,7 @@ export class GitHubTaskSource implements DataSource<Task> {
    */
   private async syncTaskFromObsidianFile(task: Task): Promise<Task> {
     try {
-      const obsidianPath = task.source?.keys?.obsidian;
+      const obsidianPath = task.source.keys.obsidian;
       if (!obsidianPath) {
         return task;
       }
@@ -158,7 +158,7 @@ export class GitHubTaskSource implements DataSource<Task> {
         source: {
           ...task.source,
           keys: {
-            ...task.source?.keys,
+            ...task.source.keys,
             obsidian: obsidianPath, // Ensure Obsidian key is current
           },
         },

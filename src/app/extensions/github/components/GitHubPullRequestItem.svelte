@@ -46,7 +46,7 @@
   }: Props = $props();
 
   // Extract GitHub PR data from task.source.data
-  let pullRequest = $derived(task.source?.data as GitHubPullRequest);
+  let pullRequest = $derived(task.source.data as GitHubPullRequest);
 
   // Convert pull request data to TaskItem format
   let subtitle = $derived(`#${pullRequest.number}`);

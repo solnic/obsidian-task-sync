@@ -382,9 +382,8 @@ export async function createTestTask(
     const app = (window as any).app;
     const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-    // Use the task operations to create the task properly
-    const taskOperations = plugin.operations.taskOperations;
-    await taskOperations.create({
+    // Use plugin operations which will properly set the source
+    await plugin.operations.task.create({
       title: taskProps.title,
       description: taskProps.description || "",
       category: taskProps.category || "Feature",

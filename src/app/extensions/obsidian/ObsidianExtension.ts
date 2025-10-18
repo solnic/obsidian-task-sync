@@ -461,7 +461,7 @@ export class ObsidianExtension implements Extension {
         ...area,
         source: {
           ...area.source,
-          extension: area.source?.extension || "obsidian", // Preserve original extension
+          extension: area.source.extension || "obsidian", // Preserve original extension
           filePath: filePath,
         },
       };
@@ -481,7 +481,7 @@ export class ObsidianExtension implements Extension {
         ...project,
         source: {
           ...project.source,
-          extension: project.source?.extension || "obsidian", // Preserve original extension
+          extension: project.source.extension || "obsidian", // Preserve original extension
           filePath: filePath,
         },
       };
@@ -504,9 +504,9 @@ export class ObsidianExtension implements Extension {
         ...task,
         source: {
           ...task.source,
-          extension: task.source?.extension || "obsidian", // Preserve original extension
+          extension: task.source.extension || "obsidian", // Preserve original extension
           keys: {
-            ...task.source?.keys,
+            ...task.source.keys,
             obsidian: filePath,
           },
         },

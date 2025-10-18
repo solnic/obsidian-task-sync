@@ -262,15 +262,14 @@ export class ObsidianTaskReconciler implements TaskReconciler {
         source: {
           ...newTask.source,
           // Preserve original extension (e.g., "github" for imported tasks)
-          extension:
-            existingTask.source?.extension || newTask.source?.extension,
+          extension: existingTask.source.extension || newTask.source.extension,
           // Merge keys from both existing and new task
           keys: {
-            ...existingTask.source?.keys,
-            ...newTask.source?.keys,
+            ...existingTask.source.keys,
+            ...newTask.source.keys,
           },
           // Preserve source data (e.g., GitHub issue data)
-          data: existingTask.source?.data || newTask.source?.data,
+          data: existingTask.source.data || newTask.source.data,
         },
       };
     }

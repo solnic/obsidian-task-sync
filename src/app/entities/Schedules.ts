@@ -26,7 +26,7 @@ export namespace Schedules {
 
     async getByExtension(extensionId: string): Promise<readonly Schedule[]> {
       return get(store).schedules.filter(
-        (s) => s.source?.extension === extensionId
+        (s) => s.source.extension === extensionId
       );
     }
 

@@ -29,9 +29,7 @@ export class Tasks extends Entities {
     }
 
     async getByExtension(extensionId: string): Promise<readonly Task[]> {
-      return get(store).tasks.filter(
-        (t) => t.source?.extension === extensionId
-      );
+      return get(store).tasks.filter((t) => t.source.extension === extensionId);
     }
 
     // Task-specific query methods

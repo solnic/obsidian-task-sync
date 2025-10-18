@@ -109,6 +109,10 @@ describe("dateCoercion", () => {
         updatedAt: "2024-01-01T12:00:00Z",
         areas: [],
         tags: [],
+        source: {
+          extension: "obsidian",
+          keys: {},
+        },
       };
 
       const result = TaskSchema.parse(taskData);
@@ -130,6 +134,10 @@ describe("dateCoercion", () => {
         updatedAt: "2024-01-01T12:00:00Z",
         areas: [],
         tags: [],
+        source: {
+          extension: "obsidian",
+          keys: {},
+        },
       };
 
       const result = TaskSchema.parse(taskData);
@@ -149,6 +157,10 @@ describe("dateCoercion", () => {
         updatedAt: "2024-01-01T12:00:00Z",
         areas: [],
         tags: [],
+        source: {
+          extension: "obsidian",
+          keys: {},
+        },
       };
 
       const result = ProjectSchema.parse(projectData);
@@ -165,6 +177,10 @@ describe("dateCoercion", () => {
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T12:00:00Z",
         tags: [],
+        source: {
+          extension: "obsidian",
+          keys: {},
+        },
       };
 
       const result = AreaSchema.parse(areaData);
@@ -207,6 +223,10 @@ describe("dateCoercion", () => {
         isPlanned: false,
         dailyNoteExists: false,
         planningCompletedAt: "2024-01-15T18:00:00Z",
+        source: {
+          extension: "obsidian",
+          keys: {},
+        },
       };
 
       const result = ScheduleSchema.parse(scheduleData);

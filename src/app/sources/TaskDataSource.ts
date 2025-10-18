@@ -57,7 +57,7 @@ export abstract class TaskDataSource implements DataSource<Task> {
     tasks: readonly Task[],
     extensionId: string
   ): readonly Task[] {
-    return tasks.filter((task) => task.source?.extension === extensionId);
+    return tasks.filter((task) => task.source.extension === extensionId);
   }
 
   /**

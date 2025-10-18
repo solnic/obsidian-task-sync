@@ -29,9 +29,7 @@ export class Areas extends Entities {
     }
 
     async getByExtension(extensionId: string): Promise<readonly Area[]> {
-      return get(store).areas.filter(
-        (a) => a.source?.extension === extensionId
-      );
+      return get(store).areas.filter((a) => a.source.extension === extensionId);
     }
 
     // Area-specific query methods

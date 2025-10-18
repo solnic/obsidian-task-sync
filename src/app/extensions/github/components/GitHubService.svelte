@@ -638,7 +638,7 @@
       importingTasks.add(task.id);
       importingTasks = new Set(importingTasks);
 
-      const githubData = task.source?.data;
+      const githubData = task.source.data;
       if (!githubData) {
         console.error("Task has no GitHub data");
         return;

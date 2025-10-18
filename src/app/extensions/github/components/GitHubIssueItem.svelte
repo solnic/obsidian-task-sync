@@ -46,7 +46,7 @@
   }: Props = $props();
 
   // Extract GitHub issue data from task.source.data
-  let issue = $derived(task.source?.data as GitHubIssue);
+  let issue = $derived(task.source.data as GitHubIssue);
 
   let subtitle = $derived(`#${issue.number}`);
 

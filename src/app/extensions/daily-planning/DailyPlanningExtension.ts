@@ -289,6 +289,10 @@ export class DailyPlanningExtension implements Extension {
         events: [] as any[],
         dailyNoteExists: false,
         isPlanned: false,
+        source: {
+          extension: "daily-planning",
+          keys: {},
+        },
       };
       todaySchedule = await this.schedules.create(scheduleData);
     }
@@ -313,6 +317,10 @@ export class DailyPlanningExtension implements Extension {
         events: [] as any[],
         dailyNoteExists: false,
         isPlanned: false,
+        source: {
+          extension: "daily-planning",
+          keys: {},
+        },
       };
       yesterdaySchedule = await this.schedules.create(scheduleData);
     }
@@ -660,6 +668,10 @@ export class DailyPlanningExtension implements Extension {
         events: [],
         dailyNoteExists: false,
         isPlanned: false,
+        source: {
+          extension: "daily-planning",
+          keys: {},
+        },
       });
     }
 

@@ -41,6 +41,11 @@ export async function createTask(
     tags?: string[];
     dueDate?: string;
     doDate?: string;
+    source?: {
+      extension: string;
+      keys: Record<string, string>;
+      data?: any;
+    };
   }
 ): Promise<any> {
   return await page.evaluate(
@@ -48,8 +53,8 @@ export async function createTask(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      const taskOperations = plugin.operations.taskOperations;
-      const createdTask = await taskOperations.create(taskData);
+      // Use plugin operations which will properly set the source
+      const createdTask = await plugin.operations.task.create(taskData);
 
       return createdTask;
     },
@@ -219,16 +224,14 @@ export async function createArea(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Use entity operations to create area (triggers event → ObsidianExtension creates note)
+      // Use plugin operations which will properly set the source
       const areaData = {
         name: props.name,
         description: props.description,
         tags: [],
       };
 
-      const createdArea = await plugin.operations.areaOperations.create(
-        areaData
-      );
+      const createdArea = await plugin.operations.area.create(areaData);
 
       return createdArea;
     },
@@ -262,7 +265,7 @@ export async function createProject(
         throw new Error("Task Sync plugin not found");
       }
 
-      // Use entity operations to create project (triggers event → ObsidianExtension creates note)
+      // Use plugin operations which will properly set the source
       const projectData = {
         name: props.name,
         description: props.description,
@@ -270,7 +273,7 @@ export async function createProject(
         tags: [],
       };
 
-      const createdProject = await plugin.operations.projectOperations.create(
+      const createdProject = await plugin.operations.project.create(
         projectData
       );
 

@@ -67,6 +67,10 @@ describe("Core Domain Entities", () => {
         title: "Test Task",
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-01"),
+        source: {
+          extension: "obsidian",
+          keys: {},
+        },
       };
 
       const result = TaskSchema.parse(validTask);
@@ -116,7 +120,7 @@ describe("Core Domain Entities", () => {
       expect(result.tags).toEqual(["urgent", "feature"]);
       expect(result.doDate).toEqual(new Date("2024-02-01"));
       expect(result.dueDate).toEqual(new Date("2024-02-15"));
-      expect(result.source?.extension).toBe("github");
+      expect(result.source.extension).toBe("github");
       expect(result.source.keys.obsidian).toBe("issue-123");
     });
 
@@ -157,6 +161,10 @@ describe("Core Domain Entities", () => {
         category: null,
         priority: null,
         description: null,
+        source: {
+          extension: "obsidian",
+          keys: {},
+        },
       };
 
       const result = TaskSchema.parse(taskWithNulls);
@@ -175,6 +183,10 @@ describe("Core Domain Entities", () => {
         name: "Test Project",
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-01"),
+        source: {
+          extension: "obsidian",
+          keys: {},
+        },
       };
 
       const result = ProjectSchema.parse(validProject);
@@ -204,7 +216,7 @@ describe("Core Domain Entities", () => {
       expect(result.description).toBe("A project with all properties");
       expect(result.areas).toEqual(["area-1"]);
       expect(result.tags).toEqual(["important"]);
-      expect(result.source?.extension).toBe("obsidian");
+      expect(result.source.extension).toBe("obsidian");
     });
 
     test("should require id, name, createdAt, and updatedAt", () => {
@@ -223,6 +235,10 @@ describe("Core Domain Entities", () => {
         name: "Test Area",
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-01"),
+        source: {
+          extension: "obsidian",
+          keys: {},
+        },
       };
 
       const result = AreaSchema.parse(validArea);
@@ -249,7 +265,7 @@ describe("Core Domain Entities", () => {
       expect(result.name).toBe("Complete Area");
       expect(result.description).toBe("An area with all properties");
       expect(result.tags).toEqual(["context"]);
-      expect(result.source?.extension).toBe("obsidian");
+      expect(result.source.extension).toBe("obsidian");
     });
 
     test("should require id, name, createdAt, and updatedAt", () => {

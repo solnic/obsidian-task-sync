@@ -66,8 +66,17 @@ export namespace Obsidian {
     public buildEntity(
       taskData: Omit<Task, "id" | "createdAt" | "updatedAt">
     ): Task {
+      // Ensure source is provided before calling base buildEntity
+      const taskDataWithSource = {
+        ...taskData,
+        source: taskData.source || {
+          extension: "obsidian",
+          keys: {},
+        },
+      };
+
       // First, let the base buildEntity handle schema validation and defaults
-      const baseEntity = super.buildEntity(taskData) as Task;
+      const baseEntity = super.buildEntity(taskDataWithSource) as Task;
 
       // Use conservative sanitization - only remove truly invalid characters
       const sanitizedTitle = this.sanitizeTitle(taskData.title);
@@ -88,10 +97,10 @@ export namespace Obsidian {
         ...baseEntity,
         status: finalStatus || baseEntity.status,
         source: {
-          ...taskData.source, // Preserve existing source data (e.g., from GitHub)
-          extension: taskData.source?.extension || "obsidian", // Preserve original extension
+          ...taskDataWithSource.source, // Preserve existing source data (e.g., from GitHub)
+          extension: taskDataWithSource.source.extension || "obsidian", // Preserve original extension
           keys: {
-            ...taskData.source?.keys, // Preserve existing keys
+            ...taskDataWithSource.source.keys, // Preserve existing keys
             obsidian: filePath, // Set/update Obsidian key
           },
         },
@@ -149,7 +158,16 @@ export namespace Obsidian {
     public buildEntity(
       projectData: Omit<Project, "id" | "createdAt" | "updatedAt">
     ): Project {
-      const baseEntity = super.buildEntity(projectData) as Project;
+      // Ensure source is provided before calling base buildEntity
+      const projectDataWithSource = {
+        ...projectData,
+        source: projectData.source || {
+          extension: "obsidian",
+          keys: {},
+        },
+      };
+
+      const baseEntity = super.buildEntity(projectDataWithSource) as Project;
       const filePath = `${this.settings.projectsFolder}/${projectData.name}.md`;
 
       return {
@@ -172,7 +190,16 @@ export namespace Obsidian {
     public buildEntity(
       areaData: Omit<Area, "id" | "createdAt" | "updatedAt">
     ): Area {
-      const baseEntity = super.buildEntity(areaData) as Area;
+      // Ensure source is provided before calling base buildEntity
+      const areaDataWithSource = {
+        ...areaData,
+        source: areaData.source || {
+          extension: "obsidian",
+          keys: {},
+        },
+      };
+
+      const baseEntity = super.buildEntity(areaDataWithSource) as Area;
       const filePath = `${this.settings.areasFolder}/${areaData.name}.md`;
 
       return {
@@ -246,7 +273,7 @@ export namespace Obsidian {
         return {
           success: true,
           message: `Todo promoted to task: ${createdTask.title}`,
-          taskPath: createdTask.source?.keys?.obsidian,
+          taskPath: createdTask.source.keys.obsidian,
         };
       } catch (error: any) {
         return {

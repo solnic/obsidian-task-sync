@@ -64,7 +64,7 @@ export const TaskSchema = z.object({
   updatedAt: requiredDateSchema,
 
   // Source tracking (which extension owns this task)
-  source: TaskSourceSchema.optional(),
+  source: TaskSourceSchema,
 });
 
 export type Task = Readonly<z.infer<typeof TaskSchema>>;
@@ -77,7 +77,7 @@ export const ProjectSchema = z.object({
   tags: z.array(z.string()).default([]),
   createdAt: requiredDateSchema,
   updatedAt: requiredDateSchema,
-  source: TaskSourceSchema.optional(),
+  source: TaskSourceSchema,
 });
 
 export type Project = Readonly<z.infer<typeof ProjectSchema>>;
@@ -89,7 +89,7 @@ export const AreaSchema = z.object({
   tags: z.array(z.string()).default([]),
   createdAt: requiredDateSchema,
   updatedAt: requiredDateSchema,
-  source: TaskSourceSchema.optional(),
+  source: TaskSourceSchema,
 });
 
 export type Area = Readonly<z.infer<typeof AreaSchema>>;
@@ -145,7 +145,7 @@ export const ScheduleSchema = z.object({
   planningCompletedAt: optionalDateSchema,
 
   // Source tracking (which extension owns this schedule)
-  source: TaskSourceSchema.optional(),
+  source: TaskSourceSchema,
 });
 
 export type Schedule = Readonly<z.infer<typeof ScheduleSchema>>;

@@ -134,7 +134,7 @@ export class ObsidianTaskSource implements DataSource<Task> {
           // Find the task by Obsidian key to get its ID
           const currentState = get(taskStore);
           const existingTask = currentState.tasks.find(
-            (t) => t.source?.keys?.obsidian === file.path
+            (t) => t.source.keys.obsidian === file.path
           );
 
           if (existingTask) {

@@ -30,7 +30,7 @@ export class Projects extends Entities {
 
     async getByExtension(extensionId: string): Promise<readonly Project[]> {
       return get(store).projects.filter(
-        (p) => p.source?.extension === extensionId
+        (p) => p.source.extension === extensionId
       );
     }
 

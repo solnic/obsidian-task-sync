@@ -97,7 +97,7 @@
       }
     }
 
-    if (task.source?.extension) {
+    if (task.source.extension) {
       badges.push({ type: "Source", text: task.source.extension });
     }
 
@@ -148,10 +148,10 @@
         isImported={isInToday}
       />
     {/if}
-    {#if task.source?.url}
+    {#if task.source.keys.github}
       <SeeOnServiceButton
         serviceName={task.source.extension}
-        url={task.source.url}
+        url={task.source.keys.github}
         testId="see-on-service-button"
       />
     {/if}
