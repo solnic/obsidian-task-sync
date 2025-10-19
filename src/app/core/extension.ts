@@ -7,7 +7,6 @@ import { Task, Project, Area, Schedule } from "./entities";
 import { DomainEvent } from "./events";
 import { eventBus } from "./events";
 import type { Readable } from "svelte/store";
-
 // Generic entity union type
 export type Entity = Task | Project | Area | Schedule;
 export type EntityType = "task" | "project" | "area" | "schedule";

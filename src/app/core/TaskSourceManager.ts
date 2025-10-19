@@ -19,6 +19,7 @@ import { projectStore } from "../stores/projectStore";
 import { areaStore } from "../stores/areaStore";
 import { taskSyncApp } from "../App";
 import { get } from "svelte/store";
+import { syncManager } from "./SyncManager";
 
 /**
  * TaskSourceManager class
@@ -31,6 +32,11 @@ export class TaskSourceManager {
 
   /** Active watchers by source ID */
   private watchers = new Map<string, () => void>();
+
+  constructor() {
+    // SyncManager is now generic and doesn't need dependencies
+    // Data providers will be registered by extensions as they initialize
+  }
 
   /**
    * Register a task data source
@@ -197,6 +203,9 @@ export class TaskSourceManager {
 
       // Automatically sync after successful refresh
       await this.syncSourceData(sourceId);
+
+      // Perform cross-source sync for entities that exist in multiple sources
+      await syncManager.syncAllCrossSourceEntities();
     } catch (error: any) {
       taskStore.dispatch({
         type: "LOAD_SOURCE_ERROR",

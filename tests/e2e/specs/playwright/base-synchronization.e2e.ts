@@ -90,19 +90,6 @@ test.describe("Base Synchronization", () => {
       description: "Documentation project",
     });
 
-    // Generate initial project base
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      if (plugin) {
-        const extension = plugin.host.getExtensionById("obsidian");
-        if (extension) {
-          const baseManager = extension.getBaseManager();
-          await baseManager.syncProjectBases();
-        }
-      }
-    });
-
     // Wait for base to be created
     await waitForBaseFile(page, "Bases/Documentation.base");
 
