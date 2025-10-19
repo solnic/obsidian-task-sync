@@ -1013,9 +1013,5 @@ test.describe("GitHub Integration", () => {
     );
     expect(syncedTask.source.keys.obsidian).toBe("Tasks/First test issue.md");
 
-    console.log(
-      "GitHub task synced with Obsidian file changes:",
-      syncedTask.title
-    );
   });
 });
