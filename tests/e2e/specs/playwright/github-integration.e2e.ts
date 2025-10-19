@@ -928,7 +928,7 @@ test.describe("GitHub Integration", () => {
     page,
   }) => {
     // This test verifies that GitHub refresh now syncs changes from Obsidian files
-    // This addresses the second issue: "Hitting refresh in Github did not sync task's note after I changed its Title in Obisidian"
+    // This addresses the second issue: "Hitting refresh in Github did not sync task's note after I changed its Title in Obsidian"
 
     await openView(page, "task-sync-main");
     await enableIntegration(page, "github");
