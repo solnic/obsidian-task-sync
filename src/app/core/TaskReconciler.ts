@@ -18,7 +18,7 @@ import type { Task } from "./entities";
  * Ignores updatedAt timestamp to avoid false positives
  * Returns true if tasks are different, false if they are the same
  */
-function hasTaskChanged(existingTask: Task, newTask: Task): boolean {
+export function hasTaskChanged(existingTask: Task, newTask: Task): boolean {
   // Compare all fields except updatedAt and id
   const fieldsToCompare: (keyof Task)[] = [
     "title",
@@ -242,6 +242,9 @@ export class ObsidianTaskReconciler implements TaskReconciler {
    * - Keep source.data with the GitHub issue data
    * - Keep source.imported flag
    * - Update source.filePath to the vault file path
+   *
+   * IMPORTANT: If the existing task has a different source extension (e.g., "github"),
+   * do NOT override its data with Obsidian file data. The original source is authoritative.
    */
   reconcileTask(existingTask: Task | undefined, newTask: Task): Task {
     if (!newTask.id) {

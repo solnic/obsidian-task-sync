@@ -5,11 +5,13 @@
    */
 
   import { onMount, onDestroy } from "svelte";
+  import { get } from "svelte/store";
   import SearchInput from "../../../components/SearchInput.svelte";
   import SortDropdown from "../../../components/SortDropdown.svelte";
   import FilterButton from "../../../components/FilterButton.svelte";
   import GitHubIssueItem from "./GitHubIssueItem.svelte";
   import GitHubPullRequestItem from "./GitHubPullRequestItem.svelte";
+  import { taskStore } from "../../../stores/taskStore";
   import type { Task } from "../../../core/entities";
   import type { TaskSyncSettings } from "../../../types/settings";
   import type { Extension } from "../../../core/extension";
@@ -506,11 +508,14 @@
       isLoading = true;
       error = null;
 
-      // Use extension's refresh method which clears cache and reloads data
-      // The extension handles clearing its internal githubApiDataCache
+      // Use extension's refresh method which handles everything:
+      // - Clears cache and reloads GitHub API data
+      // - Updates reactive cache for UI
+      // - Refreshes tasks via TaskSourceManager
       await githubExtension.refresh();
 
-      // Reload organizations and repositories
+      // Reload organizations and repositories for the UI dropdowns
+      // These are not handled by the TaskSource since they're UI-specific
       await loadOrganizations();
       await loadRepositories();
 
@@ -628,9 +633,13 @@
     }
   }
 
-  // Helper to check if a task is imported (has Obsidian key)
+  // Helper to check if a task is imported (exists in main task store)
   function isTaskImported(task: Task): boolean {
-    return !!task.source?.keys?.obsidian;
+    // A task is imported when it exists in the main task store
+    const mainStoreTasks = get(taskStore).tasks;
+    return mainStoreTasks.some(
+      (t) => t.source.keys.github === task.source.keys.github
+    );
   }
 
   async function importTask(task: Task): Promise<void> {

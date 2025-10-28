@@ -16,6 +16,7 @@ import {
   updateFileFrontmatter,
   readVaultFile,
   waitForFileUpdate,
+  getFileContent,
 } from "../../helpers/global";
 import {
   stubGitHubWithFixtures,
@@ -924,11 +925,11 @@ test.describe("GitHub Integration", () => {
     await expect(thirdIssue).toContainText("First test issue");
   });
 
-  test("should sync task changes from Obsidian file when GitHub is refreshed", async ({
+  test("should overwrite local changes with GitHub data when GitHub is refreshed", async ({
     page,
   }) => {
-    // This test verifies that GitHub refresh now syncs changes from Obsidian files
-    // This addresses the second issue: "Hitting refresh in Github did not sync task's note after I changed its Title in Obsidian"
+    // This test verifies that GitHub refresh overwrites local changes with authoritative GitHub data
+    // GitHub is the source of truth during refresh operations
 
     await openView(page, "task-sync-main");
     await enableIntegration(page, "github");
@@ -975,15 +976,57 @@ test.describe("GitHub Integration", () => {
       "Title: Modified GitHub Issue Title"
     );
 
-    // Now refresh GitHub service - this should sync the changes from the Obsidian file
-    await page
-      .locator('[data-testid="task-sync-github-refresh-button"]')
-      .click();
+    // Wait for file watcher to process the change
+    // This ensures the Obsidian file change is fully processed before GitHub refresh
+    await waitForFileUpdate(
+      page,
+      "Tasks/First test issue.md",
+      "Title: Modified GitHub Issue Title"
+    );
 
-    // Wait for refresh to complete
-    await page.waitForTimeout(2000);
+    // Set up console log capture before refresh
+    const consoleLogs: string[] = [];
+    page.on("console", (msg) => {
+      if (
+        msg.text().includes("[SyncManager]") ||
+        msg.text().includes("[TaskSourceManager]") ||
+        msg.text().includes("[GitHubTaskSource]") ||
+        msg.text().includes("[ObsidianEntityDataProvider]") ||
+        msg.text().includes("[GitHubExtension]")
+      ) {
+        consoleLogs.push(msg.text());
+      }
+    });
 
-    // Verify that the GitHub task now reflects the updated title from the Obsidian file
+    // Now refresh GitHub service - this should overwrite local changes with GitHub data
+    console.log("About to click GitHub refresh button...");
+    const refreshButton = page.locator(
+      '[data-testid="task-sync-github-refresh-button"]'
+    );
+    await refreshButton.waitFor({ state: "visible", timeout: 5000 });
+    console.log("GitHub refresh button is visible, clicking...");
+    await refreshButton.click();
+    console.log("GitHub refresh button clicked");
+
+    // Wait for refresh to complete by waiting for the button to be enabled again
+    await page.waitForFunction(
+      () => {
+        const refreshButton = document.querySelector(
+          '[data-testid="task-sync-github-refresh-button"]'
+        );
+        return refreshButton && !refreshButton.hasAttribute("disabled");
+      },
+      undefined,
+      { timeout: 10000 }
+    );
+
+    if (process.env.DEBUG) {
+      console.log("=== CAPTURED CONSOLE LOGS ===");
+      consoleLogs.forEach((log) => console.log(log));
+      console.log("=== END CONSOLE LOGS ===");
+    }
+
+    // Verify that the GitHub task now reflects the original GitHub title (local changes overwritten)
     // Check this by looking at the task in the store
     const syncedTask = await page.evaluate(async () => {
       const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
@@ -1002,16 +1045,46 @@ test.describe("GitHub Integration", () => {
           "https://github.com/solnic/obsidian-task-sync/issues/111"
       );
 
+      // Debug logging
+      if (process.env.DEBUG) {
+        console.log(
+          "DEBUG: All tasks after GitHub refresh:",
+          currentTasks.map((t) => ({
+            id: t.id,
+            title: t.title,
+            sourceExtension: t.source?.extension,
+            sourceKeys: t.source?.keys,
+          }))
+        );
+
+        console.log(
+          "DEBUG: Found GitHub task:",
+          githubTask
+            ? {
+                id: githubTask.id,
+                title: githubTask.title,
+                sourceExtension: githubTask.source?.extension,
+                sourceKeys: githubTask.source?.keys,
+              }
+            : "NOT FOUND"
+        );
+      }
+
       return githubTask;
     });
 
     expect(syncedTask).toBeDefined();
-    expect(syncedTask.title).toBe("Modified GitHub Issue Title");
+    expect(syncedTask.title).toBe("First test issue"); // Original GitHub title, not the modified one
     expect(syncedTask.source.extension).toBe("github");
     expect(syncedTask.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
     expect(syncedTask.source.keys.obsidian).toBe("Tasks/First test issue.md");
 
+    // CRITICAL: Also verify that the file front-matter was actually updated
+    // This is the real test - the file should reflect the GitHub data, not the local changes
+    const fileContent = await getFileContent(page, "Tasks/First test issue.md");
+    expect(fileContent).toContain("Title: First test issue"); // Should be GitHub title, not "Modified GitHub Issue Title"
+    expect(fileContent).not.toContain("Title: Modified GitHub Issue Title"); // Local changes should be overwritten
   });
 });

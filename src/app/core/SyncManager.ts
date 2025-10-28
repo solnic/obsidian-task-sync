@@ -13,8 +13,8 @@
  */
 
 import { get } from "svelte/store";
-import { taskStore } from "../stores/taskStore";
 import type { Task } from "./entities";
+import type { TaskStore } from "../stores/taskStore";
 
 /**
  * Sync strategy for handling conflicts between data sources
@@ -72,8 +72,13 @@ export interface EntitySyncResult {
 export class SyncManager {
   private config: SyncConfig;
   private providers = new Map<string, EntityDataProvider>();
+  private taskStore: TaskStore;
 
-  constructor(config: SyncConfig = { strategy: "source-wins" }) {
+  constructor(
+    taskStore: TaskStore,
+    config: SyncConfig = { strategy: "source-wins" }
+  ) {
+    this.taskStore = taskStore;
     this.config = config;
   }
 
@@ -81,7 +86,13 @@ export class SyncManager {
    * Register an entity data provider for a specific extension
    */
   registerProvider(provider: EntityDataProvider): void {
+    console.log(
+      `[SyncManager] Registering provider for extension: ${provider.extensionId}`
+    );
     this.providers.set(provider.extensionId, provider);
+    console.log(
+      `[SyncManager] Total providers registered: ${this.providers.size}`
+    );
   }
 
   /**
@@ -105,7 +116,7 @@ export class SyncManager {
   async syncAllCrossSourceEntities(): Promise<EntitySyncResult[]> {
     console.log("[SyncManager] Starting cross-source entity sync...");
 
-    const currentTasks = get(taskStore).tasks;
+    const currentTasks = get(this.taskStore).tasks;
     const crossSourceTasks = this.findCrossSourceEntities(currentTasks);
 
     console.log(
@@ -178,13 +189,39 @@ export class SyncManager {
       // Read data from all sources
       const sourceData = new Map<string, Partial<Task>>();
 
+      console.log(
+        `[SyncManager] Reading data from sources: ${sourceKeys.join(", ")}`
+      );
+      console.log(
+        `[SyncManager] Available providers: ${Array.from(
+          this.providers.keys()
+        ).join(", ")}`
+      );
+
       for (const sourceKey of sourceKeys) {
         const provider = this.providers.get(sourceKey);
+        console.log(
+          `[SyncManager] Checking provider for source: ${sourceKey}, found: ${!!provider}`
+        );
+
         if (provider && provider.canHandle(entity)) {
+          console.log(
+            `[SyncManager] Provider can handle entity, reading data...`
+          );
           const data = await provider.readEntityData(entity.id);
           if (data) {
+            console.log(`[SyncManager] Read data from ${sourceKey}:`, {
+              title: data.title,
+              extension: data.source?.extension,
+            });
             sourceData.set(sourceKey, data);
+          } else {
+            console.log(`[SyncManager] No data returned from ${sourceKey}`);
           }
+        } else {
+          console.log(
+            `[SyncManager] Provider for ${sourceKey} cannot handle entity or not found`
+          );
         }
       }
 
@@ -201,6 +238,12 @@ export class SyncManager {
           this.trackChanges(result, data, mergedData, sourceKey);
         }
       }
+
+      // Write merged data to main taskStore as the single source of truth for UI
+      await this.updateMainTaskStore(entity.id, mergedData);
+      console.log(
+        `[SyncManager] Updated main taskStore with merged data for entity ${entity.id}`
+      );
 
       result.success = result.errors.length === 0;
     } catch (error) {
@@ -268,6 +311,29 @@ export class SyncManager {
   }
 
   /**
+   * Update the main taskStore with merged data
+   */
+  private async updateMainTaskStore(
+    entityId: string,
+    mergedData: Partial<Task>
+  ): Promise<void> {
+    // Get current task from store and merge with new data
+    const currentState = get(this.taskStore);
+    const existingTask = currentState.tasks.find((t) => t.id === entityId);
+
+    if (existingTask) {
+      // Create the complete merged task
+      const mergedTask: Task = { ...existingTask, ...mergedData };
+
+      // Update the task in the main store with merged data
+      this.taskStore.dispatch({
+        type: "UPDATE_TASK",
+        task: mergedTask,
+      });
+    }
+  }
+
+  /**
    * Track changes between old and new data
    */
   private trackChanges(
@@ -292,5 +358,14 @@ export class SyncManager {
 
 /**
  * Global sync manager instance
+ * Initialized with taskStore dependency
  */
-export const syncManager = new SyncManager();
+export let syncManager: SyncManager;
+
+/**
+ * Initialize the global sync manager with taskStore dependency
+ * This must be called before using syncManager
+ */
+export function initializeSyncManager(taskStore: TaskStore): void {
+  syncManager = new SyncManager(taskStore);
+}

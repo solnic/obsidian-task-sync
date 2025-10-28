@@ -9,11 +9,10 @@
  * - No UI concerns - just data
  * - Optional watching for external changes
  * - Return readonly arrays to prevent accidental mutations
- * - Provide reconciliation strategy for merging data
+ * - Each source is authoritative for its own data
  * - Support both bulk refresh and incremental updates
  */
 
-import type { TaskReconciler } from "../core/TaskReconciler";
 import type { Task } from "../core/entities";
 
 /**
@@ -68,14 +67,6 @@ export interface DataSource<T> {
    * Examples: 'Obsidian Vault', 'GitHub', 'Linear'
    */
   readonly name: string;
-
-  /**
-   * Reconciliation strategy for this data source
-   *
-   * Only applicable for Task data sources. For other entity types, this will be undefined.
-   * The reconciler defines how tasks from this source should be merged with existing tasks.
-   */
-  readonly reconciler?: T extends Task ? TaskReconciler : never;
 
   /**
    * Load initial data from the source

@@ -14,6 +14,7 @@ import type { TaskSyncSettings } from "./types/settings";
 import { taskStore } from "./stores/taskStore";
 import { projectStore } from "./stores/projectStore";
 import { areaStore } from "./stores/areaStore";
+import { initializeSyncManager } from "./core/SyncManager";
 
 export class TaskSyncApp {
   private initialized = false;
@@ -38,6 +39,9 @@ export class TaskSyncApp {
 
       // Load persisted entity data from host storage
       await this.loadPersistedData(host);
+
+      // Initialize SyncManager with taskStore dependency
+      initializeSyncManager(taskStore);
 
       console.log("TaskSync app initializing...", {
         hasHost: !!host,
