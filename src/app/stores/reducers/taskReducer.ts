@@ -7,7 +7,6 @@
 
 import type { Task } from "../../core/entities";
 import type { TaskAction } from "../actions";
-import { hasTaskChanged } from "../../core/TaskReconciler";
 
 /**
  * Task store state interface
@@ -74,14 +73,10 @@ export function taskReducer(
                 ...newTask,
                 id: existingTask.id,
                 createdAt: existingTask.createdAt,
-                // Only update timestamp if data actually changed
-                updatedAt: hasTaskChanged(existingTask, newTask)
-                  ? new Date()
-                  : existingTask.updatedAt,
+                updatedAt: new Date(),
               };
             }
 
-            // New task - use as-is
             return newTask;
           })
         : [];
@@ -137,10 +132,7 @@ export function taskReducer(
         const updatedTask = {
           ...newTaskData,
           createdAt: existingTask.createdAt,
-          // Only update timestamp if data actually changed
-          updatedAt: hasTaskChanged(existingTask, newTaskData)
-            ? new Date()
-            : existingTask.updatedAt,
+          updatedAt: new Date(),
         };
 
         return {

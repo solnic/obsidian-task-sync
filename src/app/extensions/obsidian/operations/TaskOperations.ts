@@ -368,7 +368,7 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
         ...task,
         id: existingTask.id,
         createdAt: existingTask.createdAt,
-        updatedAt: existingTask.updatedAt, // Keep existing timestamp unless data changed
+        updatedAt: existingTask.updatedAt,
       };
     }
 

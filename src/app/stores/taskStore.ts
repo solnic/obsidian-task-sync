@@ -34,7 +34,7 @@ export interface TaskStore extends Readable<TaskStoreState> {
    *   - ADD_TASK: Add a new task to the store
    *   - UPDATE_TASK: Update an existing task in the store
    *   - REMOVE_TASK: Remove a task from the store
-   *   - UPSERT_TASK: Add or update a task (used by reconcilers)
+   *   - UPSERT_TASK: Add or update a task
    *   - CLEAR_ALL_TASKS: Clear all tasks from the store
    *   - REMOVE_TASK: Remove a task from the store
    *   - UPSERT_TASK: Insert or update a task using natural key matching
@@ -51,8 +51,7 @@ export interface TaskStore extends Readable<TaskStoreState> {
    * taskStore.dispatch({
    *   type: 'LOAD_SOURCE_SUCCESS',
    *   sourceId: 'obsidian',
-   *   tasks: loadedTasks,
-   *   reconciler: new ObsidianTaskReconciler()
+   *   tasks: loadedTasks
    * });
    * ```
    */
