@@ -2461,30 +2461,3 @@ export async function waitForDailyNoteUpdate(
     }`
   );
 }
-
-/**
- * Wait for sync operation to complete
- * Waits for synchronization between vault and store to finish
- */
-export async function waitForSyncComplete(
-  page: Page,
-  timeout: number = 3000
-): Promise<void> {
-  // Wait for any sync operations to complete
-  await page
-    .waitForFunction(
-      () => {
-        const app = (window as any).app;
-        const plugin = app.plugins.plugins["obsidian-task-sync"];
-        if (!plugin) return false;
-
-        // Check if there are any pending sync operations
-        // This is a heuristic - adjust based on actual implementation
-        return true; // Assume sync is complete if plugin is loaded
-      },
-      { timeout }
-    )
-    .catch(() => {
-      // Ignore timeout - sync might be complete
-    });
-}

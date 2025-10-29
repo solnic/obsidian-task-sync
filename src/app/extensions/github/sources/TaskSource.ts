@@ -135,6 +135,8 @@ export class GitHubTaskSource implements DataSource<Task> {
       );
 
       // Build a map of all imported tasks, preferring entity store data when available
+      // Performance: O(n+m) where n=taskStore size, m=entityStore size
+      // Using Map for O(1) lookups when merging fresh data
       const resultMap = new Map<string, Task>();
 
       // First, add all imported tasks from task store (these are the source of truth for what's imported)

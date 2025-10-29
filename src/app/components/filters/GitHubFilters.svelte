@@ -330,11 +330,15 @@
     }
   }
 
-  // Save when filters change (but not when recently used lists change to avoid infinite loops)
+  // Save recently used filters when organization or repository changes
+  // Note: We use untrack to prevent infinite loops since saveRecentlyUsedFilters
+  // updates recentlyUsedOrgs/recentlyUsedRepos which would trigger this effect again
   $effect(() => {
+    // Explicitly track these dependencies (accessing them makes the effect reactive to changes)
     currentOrganization;
     currentRepository;
-    // Use untrack to prevent infinite loops when recently used lists are updated
+
+    // Save without tracking the recently used lists to avoid infinite loops
     untrack(() => {
       saveRecentlyUsedFilters();
     });
