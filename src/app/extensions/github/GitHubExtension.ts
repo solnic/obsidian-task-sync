@@ -55,12 +55,12 @@ class GitHubEntityDataProvider implements EntityDataProvider {
     const mainStoreState = get(taskStore);
     const mainTask = mainStoreState.tasks.find((t) => t.id === entityId);
 
-    if (mainTask && mainTask.source?.extension === "github") {
+    if (mainTask) {
       console.log(
         `[GitHubEntityDataProvider] Found GitHub task in main store:`,
         {
           title: mainTask.title,
-          sourceKeys: mainTask.source?.keys,
+          sourceKeys: mainTask.source.keys,
         }
       );
       return mainTask;

@@ -59,11 +59,11 @@ class ObsidianEntityDataProvider implements EntityDataProvider {
     const mainStoreState = get(taskStore);
     const mainTask = mainStoreState.tasks.find((t) => t.id === entityId);
 
-    if (mainTask && mainTask.source?.keys?.obsidian) {
+    if (mainTask && mainTask.source.keys.obsidian) {
       // Find the corresponding task in Obsidian entity store by file path
       const obsidianTasks = get(this.extension.getEntityStore()) as Task[];
       const obsidianTask = obsidianTasks.find(
-        (t) => t.source?.keys?.obsidian === mainTask.source.keys.obsidian
+        (t) => t.source.keys.obsidian === mainTask.source.keys.obsidian
       );
 
       if (obsidianTask) {
@@ -99,11 +99,11 @@ class ObsidianEntityDataProvider implements EntityDataProvider {
 
     let obsidianTask: Task | undefined;
 
-    if (mainTask && mainTask.source?.keys?.obsidian) {
+    if (mainTask && mainTask.source.keys.obsidian) {
       // Find the corresponding task in Obsidian entity store by file path
       const obsidianTasks = get(this.extension.getEntityStore()) as Task[];
       obsidianTask = obsidianTasks.find(
-        (t) => t.source?.keys?.obsidian === mainTask.source.keys.obsidian
+        (t) => t.source.keys.obsidian === mainTask.source.keys.obsidian
       );
     }
 
@@ -113,7 +113,7 @@ class ObsidianEntityDataProvider implements EntityDataProvider {
       obsidianTask = obsidianTasks.find((t) => t.id === entityId);
     }
 
-    if (obsidianTask && obsidianTask.source?.keys?.obsidian) {
+    if (obsidianTask && obsidianTask.source.keys.obsidian) {
       console.log(
         `[ObsidianEntityDataProvider] Found Obsidian task, updating file: ${obsidianTask.source.keys.obsidian}`
       );
