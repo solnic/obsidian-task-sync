@@ -2461,3 +2461,18 @@ export async function waitForDailyNoteUpdate(
     }`
   );
 }
+
+/**
+ * Wait for sync operation to complete
+ * Since sync happens automatically after refresh, we wait a short period
+ * to allow the sync operations to complete
+ */
+export async function waitForSyncComplete(
+  page: Page,
+  timeout: number = 1000
+): Promise<void> {
+  // Wait for sync operations to complete
+  // This is a simple timeout-based wait since sync happens automatically
+  // and doesn't expose explicit state tracking
+  await page.waitForTimeout(timeout);
+}
