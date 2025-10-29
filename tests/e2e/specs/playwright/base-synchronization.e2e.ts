@@ -9,6 +9,7 @@ import {
   waitForBaseFile,
   waitForFileContentToContain,
   readVaultFile,
+  waitForSyncComplete,
 } from "../../helpers/global";
 import { createArea, createProject } from "../../helpers/entity-helpers";
 
@@ -219,8 +220,8 @@ test.describe("Base Synchronization", () => {
       }
     });
 
-    // Wait a bit to ensure no base is created
-    await page.waitForTimeout(1000);
+    // Wait for sync to complete
+    await waitForSyncComplete(page);
 
     // Verify area base was NOT created
     const baseExists = await page.evaluate(async () => {
@@ -258,8 +259,8 @@ test.describe("Base Synchronization", () => {
       }
     });
 
-    // Wait a bit to ensure no base is created
-    await page.waitForTimeout(1000);
+    // Wait for sync to complete
+    await waitForSyncComplete(page);
 
     // Verify project base was NOT created
     const baseExists = await page.evaluate(async () => {

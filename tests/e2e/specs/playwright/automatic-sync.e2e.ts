@@ -16,6 +16,8 @@ import {
   fileExists,
   readVaultFile,
   waitForFileUpdate,
+  waitForTaskRefreshComplete,
+  waitForSyncComplete,
 } from "../../helpers/global";
 
 test.describe("Automatic Sync During Refresh", () => {
@@ -73,7 +75,8 @@ test.describe("Automatic Sync During Refresh", () => {
     await refreshTasks(page);
 
     // Wait for the refresh to complete and sync to happen
-    await page.waitForTimeout(1000);
+    await waitForTaskRefreshComplete(page);
+    await waitForSyncComplete(page);
 
     // Verify the change is reflected in the UI
     // The task should now show "In Progress" status
@@ -83,7 +86,7 @@ test.describe("Automatic Sync During Refresh", () => {
     // Check that the task data was synced to persisted storage
     // We can verify this by checking if the change persists after another refresh
     await refreshTasks(page);
-    await page.waitForTimeout(500);
+    await waitForTaskRefreshComplete(page);
 
     // Task should still be visible with updated status
     await getTaskItemByTitle(page, "Sync Test Task");
@@ -159,7 +162,8 @@ test.describe("Automatic Sync During Refresh", () => {
 
     // Refresh to test that source metadata is preserved during sync
     await refreshTasks(page);
-    await page.waitForTimeout(1000);
+    await waitForTaskRefreshComplete(page);
+    await waitForSyncComplete(page);
 
     // Verify the task still appears (source metadata preserved)
     await getTaskItemByTitle(page, "GitHub Issue Task");
@@ -232,7 +236,7 @@ This task was created outside the app.
 
     // Refresh to pick up the new task
     await refreshTasks(page);
-    await page.waitForTimeout(1000);
+    await waitForTaskRefreshComplete(page);
 
     // Verify the new task appears in the UI
     await getTaskItemByTitle(page, "Externally Created Task");
@@ -283,7 +287,7 @@ This task was created outside the app.
 
     // Refresh to sync the deletion
     await refreshTasks(page);
-    await page.waitForTimeout(1000);
+    await waitForTaskRefreshComplete(page);
 
     // Verify the task no longer appears in the UI
     const deletedTaskExists = await page
