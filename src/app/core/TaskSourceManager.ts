@@ -192,6 +192,10 @@ export class TaskSourceManager {
         tasks,
       });
 
+      // Set up watcher if not already watching
+      // This ensures watchers are set up even when using refreshSource instead of loadSource
+      this.setupWatcher(sourceId);
+
       // Automatically sync after successful refresh
       await this.syncSourceData(sourceId);
 
