@@ -106,6 +106,90 @@ test.describe("GitHub Integration", () => {
     await expect(errorMessage).not.toBeVisible();
   });
 
+  test("should preserve imported tasks when switching to different repository", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multi-repo",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Import issue from first repository
+    await clickIssueImportButton(page, 111);
+    await waitForIssueImportComplete(page, 111);
+
+    // Verify task was imported
+    const taskExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(taskExists).toBe(true);
+
+    // Verify task appears in Local Tasks view
+    await switchToTaskService(page, "local");
+    const localTaskCount = await page
+      .locator(".task-sync-item-title:has-text('First test issue')")
+      .count();
+    expect(localTaskCount).toBe(1);
+
+    // Switch back to GitHub and select a different repository
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "acme-corp");
+    await selectFromDropdown(page, "repository-filter", "project-alpha");
+
+    // BUG: The imported task from obsidian-task-sync should still exist in the task store
+    // but it gets removed when we switch repositories
+
+    // Verify the imported task still exists in Local Tasks view
+    await switchToTaskService(page, "local");
+
+    // Wait for the task to appear
+    await page.waitForSelector(
+      ".task-sync-item-title:has-text('First test issue')",
+      { timeout: 5000 }
+    );
+
+    const taskStillExists = await page
+      .locator(".task-sync-item-title:has-text('First test issue')")
+      .count();
+    expect(taskStillExists).toBe(1);
+
+    // Verify the task file still exists
+    const fileStillExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(fileStillExists).toBe(true);
+
+    // Switch back to GitHub view and original repository to verify task is still there
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // The imported task should still be visible in GitHub view
+    const importedIssue = page
+      .locator('[data-testid="github-issue-item"]')
+      .filter({ hasText: "First test issue" });
+    await expect(importedIssue).toBeVisible({ timeout: 5000 });
+
+    // Verify it's marked as imported by checking the data-imported attribute
+    // The issue item should have data-imported="true"
+    await expect(importedIssue).toHaveAttribute("data-imported", "true");
+  });
+
   test("should preserve GitHub issue content when task is updated", async ({
     page,
   }) => {
@@ -1017,29 +1101,11 @@ test.describe("GitHub Integration", () => {
       "Title: Modified GitHub Issue Title"
     );
 
-    // Set up console log capture before refresh
-    const consoleLogs: string[] = [];
-    page.on("console", (msg) => {
-      if (
-        msg.text().includes("[SyncManager]") ||
-        msg.text().includes("[TaskSourceManager]") ||
-        msg.text().includes("[GitHubTaskSource]") ||
-        msg.text().includes("[ObsidianEntityDataProvider]") ||
-        msg.text().includes("[GitHubExtension]")
-      ) {
-        consoleLogs.push(msg.text());
-      }
-    });
-
-    // Now refresh GitHub service - this should overwrite local changes with GitHub data
-    console.log("About to click GitHub refresh button...");
     const refreshButton = page.locator(
       '[data-testid="task-sync-github-refresh-button"]'
     );
     await refreshButton.waitFor({ state: "visible", timeout: 5000 });
-    console.log("GitHub refresh button is visible, clicking...");
     await refreshButton.click();
-    console.log("GitHub refresh button clicked");
 
     // Wait for refresh to complete by waiting for the button to be enabled again
     await page.waitForFunction(
@@ -1052,12 +1118,6 @@ test.describe("GitHub Integration", () => {
       undefined,
       { timeout: 10000 }
     );
-
-    if (process.env.DEBUG) {
-      console.log("=== CAPTURED CONSOLE LOGS ===");
-      consoleLogs.forEach((log) => console.log(log));
-      console.log("=== END CONSOLE LOGS ===");
-    }
 
     // Verify that the GitHub task now reflects the original GitHub title (local changes overwritten)
     // Check this by looking at the task in the store

@@ -107,27 +107,89 @@ export class GitHubTaskSource implements DataSource<Task> {
         `[GitHubTaskSource] Fetched ${githubItems.length} ${filters.type} from GitHub API`
       );
 
-      // Transform GitHub items into tasks
-      const tasks = await this.transformGitHubItemsToTasks(
+      // Transform GitHub items into tasks for the current repository
+      const tasksForCurrentRepo = await this.transformGitHubItemsToTasks(
         githubItems,
         filters
       );
 
-      console.log(`[GitHubTaskSource] Transformed into ${tasks.length} tasks`);
+      console.log(
+        `[GitHubTaskSource] Transformed into ${tasksForCurrentRepo.length} tasks for repository ${filters.repository}`
+      );
 
       // Update the extension's entity store with fresh GitHub tasks
-      this.githubExtension.updateEntityStore(tasks);
+      // This accumulates tasks in the store, merging with existing tasks
+      this.githubExtension.updateEntityStore(tasksForCurrentRepo);
       console.log(
-        `[GitHubTaskSource] Updated extension entity store with ${tasks.length} GitHub tasks`
+        `[GitHubTaskSource] Updated extension entity store with ${tasksForCurrentRepo.length} GitHub tasks for repository ${filters.repository}`
       );
 
-      // Return only imported tasks (those with obsidian keys) for main taskStore
-      // Non-imported GitHub tasks stay only in extension entity store
-      const importedTasks = tasks.filter((task) => task.source?.keys?.obsidian);
+      // Return ALL imported GitHub tasks with fresh data from entity store
+      // The key is to return ALL imported tasks (from all repos), but with fresh data
+      // for the ones we just fetched
+      const state = get(taskStore);
+      const entityStore = get(this.githubExtension.getEntityStore()) as Task[];
+
       console.log(
-        `[GitHubTaskSource] Returning ${importedTasks.length} imported tasks for main taskStore`
+        `[GitHubTaskSource] Building result - task store has ${state.tasks.length} total tasks, entity store has ${entityStore.length} GitHub tasks`
       );
-      return importedTasks;
+
+      // Build a map of all imported tasks, preferring entity store data when available
+      const resultMap = new Map<string, Task>();
+
+      // First, add all imported tasks from task store (these are the source of truth for what's imported)
+      for (const task of state.tasks) {
+        if (task.source?.extension === "github") {
+          const githubUrl = task.source?.keys?.github;
+          if (githubUrl) {
+            console.log(
+              `[GitHubTaskSource] Found imported task in task store: ${task.title} (${githubUrl})`
+            );
+            resultMap.set(githubUrl, task);
+          }
+        }
+      }
+
+      console.log(
+        `[GitHubTaskSource] Found ${resultMap.size} imported tasks in task store`
+      );
+
+      // Then, override with fresh data from entity store (for tasks we've fetched)
+      // IMPORTANT: Preserve source.keys.obsidian from the imported task
+      let freshDataCount = 0;
+      for (const githubTask of entityStore) {
+        const githubUrl = githubTask.source?.keys?.github;
+        if (githubUrl && resultMap.has(githubUrl)) {
+          // This task is imported AND we have fresh GitHub data - use fresh data
+          // but preserve the obsidian key from the imported task
+          const importedTask = resultMap.get(githubUrl)!;
+
+          const mergedTask = {
+            ...githubTask,
+            source: {
+              ...githubTask.source,
+              keys: {
+                ...githubTask.source.keys,
+                obsidian: importedTask.source?.keys?.obsidian, // Preserve obsidian key
+              },
+            },
+          } as Task;
+
+          console.log(
+            `[GitHubTaskSource] Overriding with fresh data for: ${githubTask.title} (${githubUrl}), preserving obsidian key: ${importedTask.source?.keys?.obsidian}`
+          );
+          resultMap.set(githubUrl, mergedTask);
+          freshDataCount++;
+        }
+      }
+
+      const importedGitHubTasks = Array.from(resultMap.values());
+
+      console.log(
+        `[GitHubTaskSource] Returning ${importedGitHubTasks.length} imported GitHub tasks (${freshDataCount} with fresh data for ${filters.repository})`
+      );
+
+      return importedGitHubTasks;
     } catch (error) {
       console.error(
         "[GitHubTaskSource] Failed to refresh from GitHub API:",

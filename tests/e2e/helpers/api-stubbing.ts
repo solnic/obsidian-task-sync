@@ -521,7 +521,17 @@ export async function stubGitHubAPIs(
         const allItems = (window as any).__githubApiStubs?.issues || [];
         // Filter out pull requests - same logic as real implementation
         // Pull requests have a "pull_request" field that distinguishes them from actual issues
-        return allItems.filter((item: any) => !item.pull_request);
+        let issues = allItems.filter((item: any) => !item.pull_request);
+
+        // Filter by repository if specified
+        if (repository) {
+          issues = issues.filter((item: any) => {
+            const url = item.html_url || "";
+            return url.includes(`github.com/${repository}/`);
+          });
+        }
+
+        return issues;
       };
 
       githubExtension.fetchRepositories = async () => {

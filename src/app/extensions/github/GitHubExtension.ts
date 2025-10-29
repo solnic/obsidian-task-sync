@@ -44,21 +44,40 @@ class GitHubEntityDataProvider implements EntityDataProvider {
   constructor(private extension: GitHubExtension) {}
 
   async readEntityData(entityId: string): Promise<Partial<Task> | null> {
-    // GitHub is read-only from the sync perspective
-    // The authoritative data comes from the extension's entity store
+    // For cross-source entities (like imported GitHub tasks), we need to read from
+    // the main task store to get the complete task with all source keys preserved
     console.log(
       `[GitHubEntityDataProvider] Reading GitHub data for entity ${entityId}`
     );
 
-    // Read from the extension's entity store
+    // First, try to find the task in the main task store
+    // This ensures we get the complete task with all source keys (github + obsidian)
+    const mainStoreState = get(taskStore);
+    const mainTask = mainStoreState.tasks.find((t) => t.id === entityId);
+
+    if (mainTask && mainTask.source?.extension === "github") {
+      console.log(
+        `[GitHubEntityDataProvider] Found GitHub task in main store:`,
+        {
+          title: mainTask.title,
+          sourceKeys: mainTask.source?.keys,
+        }
+      );
+      return mainTask;
+    }
+
+    // Fallback: Read from the extension's entity store for non-imported tasks
     const githubTasks = get(this.extension.getEntityStore()) as Task[];
     const task = githubTasks.find((t) => t.id === entityId);
 
     if (task) {
-      console.log(`[GitHubEntityDataProvider] Found GitHub task:`, {
-        title: task.title,
-        description: task.description,
-      });
+      console.log(
+        `[GitHubEntityDataProvider] Found GitHub task in entity store:`,
+        {
+          title: task.title,
+          description: task.description,
+        }
+      );
       return task;
     }
 
@@ -228,10 +247,50 @@ export class GitHubExtension implements Extension {
   }
 
   /**
-   * Update the extension's entity store
+   * Update the extension's entity store by merging new tasks
+   *
+   * This accumulates tasks in the store, replacing tasks with the same GitHub URL
+   * while preserving all other tasks. This allows the extension to build up a cache
+   * of GitHub data across multiple fetches.
+   *
+   * @param tasks - Tasks to add/update in the store
    */
   updateEntityStore(tasks: Task[]): void {
-    this.entityStore.set(tasks);
+    this.entityStore.update((currentTasks) => {
+      console.log(
+        `[GitHubExtension] updateEntityStore called with ${tasks.length} tasks, current store has ${currentTasks.length} tasks`
+      );
+
+      // Create a map of existing tasks by GitHub URL for efficient lookup
+      const taskMap = new Map<string, Task>();
+
+      // Add all current tasks to the map
+      for (const task of currentTasks) {
+        const url = task.source?.keys?.github;
+        if (url) {
+          taskMap.set(url, task);
+        }
+      }
+
+      console.log(
+        `[GitHubExtension] Added ${taskMap.size} existing tasks to map`
+      );
+
+      // Update/add new tasks
+      for (const task of tasks) {
+        const url = task.source?.keys?.github;
+        if (url) {
+          taskMap.set(url, task);
+        }
+      }
+
+      console.log(
+        `[GitHubExtension] After adding new tasks, map has ${taskMap.size} tasks`
+      );
+
+      // Return all tasks from the map
+      return Array.from(taskMap.values());
+    });
   }
 
   // Current active filters - components should read/write these
@@ -260,6 +319,8 @@ export class GitHubExtension implements Extension {
     repository?: string | null;
     type?: "issues" | "pull-requests";
   }): void {
+    console.log("[GitHubExtension] setFilters called with:", filters);
+
     this.currentFilters.update((current) => ({
       repository:
         filters.repository !== undefined
@@ -268,11 +329,19 @@ export class GitHubExtension implements Extension {
       type: filters.type !== undefined ? filters.type : current.type,
     }));
 
-    // Trigger data fetch if repository is set
+    // Trigger data fetch if repository is set and we don't have data for it
     const { repository, type } = get(this.currentFilters);
+    console.log(
+      `[GitHubExtension] Current filters after update: repository=${repository}, type=${type}`
+    );
+
     if (repository) {
       // Check if we have data in the entity store for this repository/type
       const entityTasks = get(this.getEntityStore()) as Task[];
+      console.log(
+        `[GitHubExtension] Checking if we have data for ${repository}/${type}, entity store has ${entityTasks.length} tasks`
+      );
+
       const hasDataForRepo = entityTasks.some((task) => {
         const url = task.source?.keys?.github;
         if (!url) return false;
@@ -283,9 +352,15 @@ export class GitHubExtension implements Extension {
         return taskRepository === repository && typeMatches;
       });
 
+      console.log(
+        `[GitHubExtension] hasDataForRepo=${hasDataForRepo}, will ${
+          hasDataForRepo ? "NOT" : ""
+        } trigger refresh`
+      );
+
       if (!hasDataForRepo) {
-        // Trigger refresh through TaskSourceManager to fetch data
-        // The TaskSource will handle fetching and updating the entity store
+        // Trigger refresh to fetch data for this repository
+        // The refresh will accumulate data in entity store and return ALL imported tasks
         taskSourceManager.refreshSource("github");
       }
     }

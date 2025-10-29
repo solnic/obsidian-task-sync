@@ -198,15 +198,7 @@ export class TaskSourceManager {
 
       // Automatically sync after successful refresh
       await this.syncSourceData(sourceId);
-
-      // Perform cross-source sync for entities that exist in multiple sources
-      console.log(
-        `[TaskSourceManager] About to call SyncManager for ${sourceId} refresh...`
-      );
       await syncManager.syncAllCrossSourceEntities();
-      console.log(
-        `[TaskSourceManager] SyncManager completed for ${sourceId} refresh`
-      );
     } catch (error: any) {
       taskStore.dispatch({
         type: "LOAD_SOURCE_ERROR",
