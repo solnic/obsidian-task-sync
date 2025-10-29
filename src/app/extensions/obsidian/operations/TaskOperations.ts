@@ -318,7 +318,7 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
     // Check if this task already exists in taskStore (for imported tasks)
     const existingTask = get(taskStore).tasks.find(
-      (task) => task.source?.keys?.obsidian === file.path
+      (task) => task.source.keys.obsidian === file.path
     );
 
     // Determine source information based on existing task

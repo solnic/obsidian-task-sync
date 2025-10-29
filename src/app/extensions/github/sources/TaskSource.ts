@@ -139,8 +139,8 @@ export class GitHubTaskSource implements DataSource<Task> {
 
       // First, add all imported tasks from task store (these are the source of truth for what's imported)
       for (const task of state.tasks) {
-        if (task.source?.extension === "github") {
-          const githubUrl = task.source?.keys?.github;
+        if (task.source.extension === "github") {
+          const githubUrl = task.source.keys.github;
           if (githubUrl) {
             console.log(
               `[GitHubTaskSource] Found imported task in task store: ${task.title} (${githubUrl})`
@@ -158,7 +158,7 @@ export class GitHubTaskSource implements DataSource<Task> {
       // IMPORTANT: Preserve source.keys.obsidian from the imported task
       let freshDataCount = 0;
       for (const githubTask of entityStore) {
-        const githubUrl = githubTask.source?.keys?.github;
+        const githubUrl = githubTask.source.keys.github;
         if (githubUrl && resultMap.has(githubUrl)) {
           // This task is imported AND we have fresh GitHub data - use fresh data
           // but preserve the obsidian key from the imported task
@@ -170,13 +170,13 @@ export class GitHubTaskSource implements DataSource<Task> {
               ...githubTask.source,
               keys: {
                 ...githubTask.source.keys,
-                obsidian: importedTask.source?.keys?.obsidian, // Preserve obsidian key
+                obsidian: importedTask.source.keys.obsidian, // Preserve obsidian key
               },
             },
           } as Task;
 
           console.log(
-            `[GitHubTaskSource] Overriding with fresh data for: ${githubTask.title} (${githubUrl}), preserving obsidian key: ${importedTask.source?.keys?.obsidian}`
+            `[GitHubTaskSource] Overriding with fresh data for: ${githubTask.title} (${githubUrl}), preserving obsidian key: ${importedTask.source.keys.obsidian}`
           );
           resultMap.set(githubUrl, mergedTask);
           freshDataCount++;
@@ -215,8 +215,7 @@ export class GitHubTaskSource implements DataSource<Task> {
     const state = get(taskStore);
     const importedTasks = state.tasks.filter((task) => {
       // Must have both github and obsidian keys to be imported
-      if (!task.source?.keys?.github || !task.source?.keys?.obsidian)
-        return false;
+      if (!task.source.keys.github || !task.source.keys.obsidian) return false;
       const url = task.source.keys.github;
       const taskRepository = extractRepositoryFromGitHubUrl(url);
       return taskRepository === filters.repository;
@@ -230,8 +229,8 @@ export class GitHubTaskSource implements DataSource<Task> {
       importedTasks.map((t) => ({
         id: t.id,
         title: t.title,
-        github: t.source?.keys?.github,
-        obsidian: t.source?.keys?.obsidian,
+        github: t.source.keys.github,
+        obsidian: t.source.keys.obsidian,
       }))
     );
 
@@ -239,7 +238,7 @@ export class GitHubTaskSource implements DataSource<Task> {
     const tasks = githubItems.map((item: GitHubIssue | GitHubPullRequest) => {
       // Check if this item is already imported
       const existingTask = importedTasks.find(
-        (task: Task) => task.source?.keys?.github === item.html_url
+        (task: Task) => task.source.keys.github === item.html_url
       );
 
       if (existingTask) {
