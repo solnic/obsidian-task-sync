@@ -14,6 +14,7 @@
     GitHubOrganization,
     GitHubLabel,
   } from "../../cache/schemas/github";
+  import { untrack } from "svelte";
 
   interface GitHubTaskFilters {
     repository?: string | null;
@@ -329,13 +330,14 @@
     }
   }
 
-  // Save when filters change
+  // Save when filters change (but not when recently used lists change to avoid infinite loops)
   $effect(() => {
     currentOrganization;
     currentRepository;
-    recentlyUsedOrgs;
-    recentlyUsedRepos;
-    saveRecentlyUsedFilters();
+    // Use untrack to prevent infinite loops when recently used lists are updated
+    untrack(() => {
+      saveRecentlyUsedFilters();
+    });
   });
 
   // ============================================================================

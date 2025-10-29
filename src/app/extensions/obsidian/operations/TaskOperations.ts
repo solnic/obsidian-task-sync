@@ -331,6 +331,8 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
           ...existingTask.source.keys,
           obsidian: file.path, // Update obsidian key in case file moved
         },
+        // Preserve source.data (e.g., GitHub issue/PR data) for imported tasks
+        ...(existingTask.source.data && { data: existingTask.source.data }),
       };
     } else {
       // New task - default to obsidian source

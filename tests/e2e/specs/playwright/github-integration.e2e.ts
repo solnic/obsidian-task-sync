@@ -71,6 +71,39 @@ test.describe("GitHub Integration", () => {
         .locator(".task-sync-item-title:has-text('First test issue')")
         .count()
     ).toBe(1);
+
+    // Go back to GitHub tab - this reproduces the bug where source.data was stripped
+    // When the GitHub tab renders the imported task, it will crash if source.data is missing
+    await switchToTaskService(page, "github");
+
+    // Wait for GitHub issues to be visible - this is where the crash would occur
+    // if source.data was missing, because GitHubIssueItem tries to access task.source.data.title
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // CRITICAL: Verify that the imported task still has source.data after filter changes
+    // Without the fix, source.data would be undefined here, causing crash when rendering
+    const taskAfterFilterChange = await getTaskByTitle(
+      page,
+      "First test issue"
+    );
+    expect(taskAfterFilterChange).toBeDefined();
+    expect(taskAfterFilterChange.source.extension).toBe("github");
+    expect(taskAfterFilterChange.source.data).toBeDefined();
+    expect(taskAfterFilterChange.source.data.title).toBe("First test issue");
+
+    // Verify the imported issue is still visible and renders without crashing
+    const importedIssue = page
+      .locator('[data-testid="github-issue-item"]')
+      .filter({ hasText: "First test issue" })
+      .first();
+    await expect(importedIssue).toBeVisible();
+
+    // Verify no error message is shown (would show if source.data was missing)
+    const errorMessage = importedIssue.locator(".error-message");
+    await expect(errorMessage).not.toBeVisible();
   });
 
   test("should preserve GitHub issue content when task is updated", async ({

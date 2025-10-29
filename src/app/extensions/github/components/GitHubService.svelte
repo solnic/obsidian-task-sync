@@ -419,6 +419,9 @@
       addRecentlyUsedRepo(repository);
     }
 
+    // Save current filter state
+    saveRecentlyUsedFilters();
+
     if (repository) {
       await loadLabels();
     } else {
@@ -560,7 +563,7 @@
       org,
       ...recentlyUsedOrgs.filter((o) => o !== org),
     ].slice(0, 5);
-    saveRecentlyUsedFilters();
+    // Don't save here - let the caller save to avoid double saves
   }
 
   function addRecentlyUsedRepo(repo: string): void {
@@ -570,7 +573,7 @@
       repo,
       ...recentlyUsedRepos.filter((r) => r !== repo),
     ].slice(0, 5);
-    saveRecentlyUsedFilters();
+    // Don't save here - let the caller save to avoid double saves
   }
 
   function removeRecentlyUsedOrg(org: string): void {
