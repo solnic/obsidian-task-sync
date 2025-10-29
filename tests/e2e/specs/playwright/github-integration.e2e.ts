@@ -1078,31 +1078,6 @@ test.describe("GitHub Integration", () => {
           "https://github.com/solnic/obsidian-task-sync/issues/111"
       );
 
-      // Debug logging
-      if (process.env.DEBUG) {
-        console.log(
-          "DEBUG: All tasks after GitHub refresh:",
-          currentTasks.map((t) => ({
-            id: t.id,
-            title: t.title,
-            sourceExtension: t.source?.extension,
-            sourceKeys: t.source?.keys,
-          }))
-        );
-
-        console.log(
-          "DEBUG: Found GitHub task:",
-          githubTask
-            ? {
-                id: githubTask.id,
-                title: githubTask.title,
-                sourceExtension: githubTask.source?.extension,
-                sourceKeys: githubTask.source?.keys,
-              }
-            : "NOT FOUND"
-        );
-      }
-
       return githubTask;
     });
 
