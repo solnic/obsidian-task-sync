@@ -183,12 +183,12 @@ export function buildTaskNoteType(): NoteType {
     },
     parentTask: {
       key: "parentTask",
-      name: "Parent task",
+      name: "Parent Task",
       type: "string",
       schema: optionalStringSchema,
-      frontMatterKey: "Parent task",
+      frontMatterKey: "Parent Task",
       required: false,
-      description: "Parent task (wiki link format)",
+      description: "Parent Task (wiki link format)",
       visible: true,
       order: 8,
       form: {

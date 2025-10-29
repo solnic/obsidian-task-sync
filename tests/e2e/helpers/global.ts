@@ -379,7 +379,7 @@ export async function createTestTaskFile(
         done: frontmatter.Done || frontmatter.done || false,
         status: frontmatter.Status || frontmatter.status || "Backlog",
         priority: frontmatter.Priority || frontmatter.priority,
-        parentTask: frontmatter["Parent task"] || frontmatter.parentTask,
+        parentTask: frontmatter["Parent Task"] || frontmatter.parentTask,
         tags: frontmatter.tags || [],
       };
 
