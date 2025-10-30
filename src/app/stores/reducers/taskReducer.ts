@@ -8,23 +8,49 @@
 import type { Task } from "../../core/entities";
 import type { TaskAction } from "../actions";
 
+function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true;
+  if (a == null || b == null) return a === b;
+
+  // Dates
+  if (a instanceof Date && b instanceof Date) {
+    return a.getTime() === b.getTime();
+  }
+
+  // Arrays
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+
+  // Objects
+  if (typeof a === "object" && typeof b === "object") {
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    // Ensure key sets are equal regardless of order
+    for (const key of aKeys) {
+      if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+      if (!deepEqual(a[key], b[key])) return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
 function isMeaningfullyDifferent(a: Task, b: Task): boolean {
   // Compare all keys except timestamps
   const excluded = new Set(["createdAt", "updatedAt"]);
-  const aEntries = Object.entries(a).filter(([k]) => !excluded.has(k));
-  const bEntries = Object.entries(b).filter(([k]) => !excluded.has(k));
-
-  if (aEntries.length !== bEntries.length) return true;
-
-  for (const [key, aVal] of aEntries) {
-    const bVal = (b as any)[key];
-
-    // Simple deep-ish compare for arrays/objects; sufficient for our schema
-    const aJson = JSON.stringify(aVal);
-    const bJson = JSON.stringify(bVal);
-    if (aJson !== bJson) return true;
+  const aKeys = Object.keys(a).filter((k) => !excluded.has(k));
+  const bKeys = Object.keys(b).filter((k) => !excluded.has(k));
+  if (aKeys.length !== bKeys.length) return true;
+  for (const key of aKeys) {
+    if (!deepEqual((a as any)[key], (b as any)[key])) return true;
   }
-
   return false;
 }
 
