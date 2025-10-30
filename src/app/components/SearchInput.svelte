@@ -32,7 +32,10 @@
 
   function handleRefresh() {
     if (onRefresh) {
-      onRefresh();
+      // Fire and forget to allow UI to flip to loading immediately without waiting
+      Promise.resolve(onRefresh()).catch((err) => {
+        console.error("Refresh failed:", err);
+      });
     }
   }
 
