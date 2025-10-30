@@ -2331,14 +2331,16 @@ export async function waitForTaskRefreshComplete(
       // Ignore timeout - loading indicators might not exist
     });
 
-  // Wait for task items to appear in DOM
+  // Wait for either task items OR empty message to appear in DOM
+  // This handles both cases: tasks exist OR no tasks (empty state)
   await page
     .waitForFunction(
       () => {
         const taskItems = document.querySelectorAll(
           '[data-testid^="local-task-item-"], [data-testid^="github-issue-item-"]'
         );
-        return taskItems.length > 0;
+        const emptyMessage = document.querySelector(".task-sync-empty-message");
+        return taskItems.length > 0 || emptyMessage !== null;
       },
       { timeout: 1000 }
     )
