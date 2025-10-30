@@ -58,7 +58,7 @@ export function taskReducer(
       // Simple strategy: Remove all tasks from this source, then add new tasks
       // Each source is authoritative for its own data
       const filteredTasks = state.tasks.filter(
-        (task) => task.source?.extension !== action.sourceId
+        (task) => task.source.extension !== action.sourceId
       );
 
       // Preserve existing task IDs and timestamps for tasks that already exist
