@@ -717,10 +717,10 @@ export class ObsidianExtension implements Extension {
   /**
    * Set up vault event listeners to handle file changes and deletions
    *
-   * NOTE: Task file changes are handled by ObsidianTaskSource.watch() which is
-   * registered with TaskSourceManager. This method only handles:
+   * NOTE: Task file changes AND deletions are handled by ObsidianTaskSource.watch()
+   * which is registered with TaskSourceManager. This method only handles:
    * - Project and Area file changes (no DataSources for these yet)
-   * - Entity deletions (triggers Operations.delete())
+   * - Project and Area deletions (triggers Operations.delete())
    * - Todo checkbox changes (syncs checkbox state with task files)
    */
   private setupVaultEventListeners(): void {
@@ -746,15 +746,16 @@ export class ObsidianExtension implements Extension {
     );
 
     // Listen for file deletions in the vault
+    // NOTE: Task deletions are handled by ObsidianTaskSource.watch()
+    // Only handle Project and Area deletions here
     const deleteRef = this.app.vault.on("delete", (file) => {
       if (!(file instanceof TFile)) return;
 
       const filePath = file.path;
 
-      // Check if the deleted file is in one of our entity folders
-      if (filePath.startsWith(this.settings.tasksFolder + "/")) {
-        this.handleTaskFileDeletion(filePath);
-      } else if (filePath.startsWith(this.settings.projectsFolder + "/")) {
+      // Check if the deleted file is a Project or Area
+      // Task deletions are handled by ObsidianTaskSource
+      if (filePath.startsWith(this.settings.projectsFolder + "/")) {
         this.handleProjectFileDeletion(filePath);
       } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
         this.handleAreaFileDeletion(filePath);
@@ -763,21 +764,6 @@ export class ObsidianExtension implements Extension {
 
     this.vaultEventRefs.push(metadataChangeRef);
     this.vaultEventRefs.push(deleteRef);
-  }
-
-  /**
-   * Handle task file deletion by finding and deleting the corresponding entity
-   */
-  private async handleTaskFileDeletion(filePath: string): Promise<void> {
-    const storeState = get(taskStore);
-    const task = TaskQueryService.findByFilePath(storeState.tasks, filePath);
-    if (!task) {
-      console.warn(`Task file deleted but entity not found: ${filePath}`);
-      return;
-    }
-    console.log(`Task file deleted: ${filePath}, deleting entity: ${task.id}`);
-    const taskOps = new Tasks.Operations(this.settings);
-    await taskOps.delete(task.id);
   }
 
   /**
