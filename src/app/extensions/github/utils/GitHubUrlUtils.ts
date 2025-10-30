@@ -9,8 +9,8 @@
  */
 export function extractRepositoryFromGitHubUrl(url: string): string | null {
   if (!url) return null;
-  
-  const match = url.match(/github\.com\/([^\/]+\/[^\/]+)\//);
+
+  const match = url.match(/github\.com\/([^\/]+\/[^\/]+)(?:\/|$)/);
   return match ? match[1] : null;
 }
 
@@ -20,7 +20,10 @@ export function extractRepositoryFromGitHubUrl(url: string): string | null {
  * @param repository Repository name in format "owner/repo"
  * @returns True if the URL belongs to the specified repository
  */
-export function isGitHubUrlForRepository(url: string, repository: string): boolean {
+export function isGitHubUrlForRepository(
+  url: string,
+  repository: string
+): boolean {
   const extractedRepo = extractRepositoryFromGitHubUrl(url);
   return extractedRepo === repository;
 }
