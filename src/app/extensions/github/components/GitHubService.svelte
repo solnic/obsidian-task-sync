@@ -656,7 +656,11 @@
     return githubUrl ? $importedGitHubUrls.has(githubUrl) : false;
   }
 
-  // Schedule an issue/PR for today. If already imported, schedule existing task.
+  /**
+   * Schedule an issue/PR for today.
+   * If the task is already imported, schedules the existing task.
+   * If not, imports the task first, then schedules it.
+   */
   async function scheduleForToday(task: Task): Promise<void> {
     const githubUrl = task.source?.keys?.github;
 
@@ -675,9 +679,7 @@
           if (dailyPlanningWizardMode) {
             dailyPlanningExtension.scheduleTaskForToday(existing.id);
           } else if (dayPlanningMode) {
-            await dailyPlanningExtension.addTasksToTodayDailyNote([
-              { id: existing.id, title: existing.title } as Task,
-            ]);
+            await dailyPlanningExtension.addTasksToTodayDailyNote([existing]);
           }
         } catch (err) {
           console.error("Error scheduling existing task for today:", err);

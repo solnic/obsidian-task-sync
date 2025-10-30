@@ -6,10 +6,10 @@
   import TaskItem from "../../../components/TaskItem.svelte";
   import ImportButton from "../../../components/ImportButton.svelte";
   import SeeOnServiceButton from "../../../components/SeeOnServiceButton.svelte";
-  import type { GitHubIssue } from "../cache/schemas/github";
-  import type { Host } from "../core/host";
-  import type { Task } from "../core/entities";
-  import type { TaskSyncSettings } from "../types/settings";
+  import type { GitHubIssue } from "../../../cache/schemas/github";
+  import type { Host } from "../../../core/host";
+  import type { Task } from "../../../core/entities";
+  import type { TaskSyncSettings } from "../../../types/settings";
 
   interface Props {
     task: Task; // Task object with GitHub issue data in source.data
@@ -66,7 +66,7 @@
 
   // Convert GitHub labels to TaskItem format
   let labels = $derived(
-    issue?.labels?.map((label) => ({
+    issue?.labels?.map((label: GitHubIssue["labels"][number]) => ({
       name: label.name,
       color: label.color ? `#${label.color}` : undefined,
     })) || []

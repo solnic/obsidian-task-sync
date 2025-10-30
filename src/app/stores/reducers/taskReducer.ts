@@ -8,6 +8,52 @@
 import type { Task } from "../../core/entities";
 import type { TaskAction } from "../actions";
 
+function deepEqual(a: any, b: any): boolean {
+  if (a === b) return true;
+  if (a == null || b == null) return a === b;
+
+  // Dates
+  if (a instanceof Date && b instanceof Date) {
+    return a.getTime() === b.getTime();
+  }
+
+  // Arrays
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!deepEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+
+  // Objects
+  if (typeof a === "object" && typeof b === "object") {
+    const aKeys = Object.keys(a);
+    const bKeys = Object.keys(b);
+    if (aKeys.length !== bKeys.length) return false;
+    // Ensure key sets are equal regardless of order
+    for (const key of aKeys) {
+      if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+      if (!deepEqual(a[key], b[key])) return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+function isMeaningfullyDifferent(a: Task, b: Task): boolean {
+  // Compare all keys except timestamps
+  const excluded = new Set(["createdAt", "updatedAt"]);
+  const aKeys = Object.keys(a).filter((k) => !excluded.has(k));
+  const bKeys = Object.keys(b).filter((k) => !excluded.has(k));
+  if (aKeys.length !== bKeys.length) return true;
+  for (const key of aKeys) {
+    if (!deepEqual((a as any)[key], (b as any)[key])) return true;
+  }
+  return false;
+}
+
 /**
  * Task store state interface
  */
@@ -68,12 +114,18 @@ export function taskReducer(
             const existingTask = state.tasks.find((t) => t.id === newTask.id);
 
             if (existingTask) {
-              // Preserve ID and creation timestamp, update everything else
-              return {
+              // Preserve ID and creation timestamp
+              const merged = {
                 ...newTask,
                 id: existingTask.id,
                 createdAt: existingTask.createdAt,
-                updatedAt: new Date(),
+              } as Task;
+
+              // Only update updatedAt if there is a meaningful change
+              const changed = isMeaningfullyDifferent(existingTask, merged);
+              return {
+                ...merged,
+                updatedAt: changed ? new Date() : existingTask.updatedAt,
               };
             }
 
