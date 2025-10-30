@@ -8,6 +8,26 @@
 import type { Task } from "../../core/entities";
 import type { TaskAction } from "../actions";
 
+function isMeaningfullyDifferent(a: Task, b: Task): boolean {
+  // Compare all keys except timestamps
+  const excluded = new Set(["createdAt", "updatedAt"]);
+  const aEntries = Object.entries(a).filter(([k]) => !excluded.has(k));
+  const bEntries = Object.entries(b).filter(([k]) => !excluded.has(k));
+
+  if (aEntries.length !== bEntries.length) return true;
+
+  for (const [key, aVal] of aEntries) {
+    const bVal = (b as any)[key];
+
+    // Simple deep-ish compare for arrays/objects; sufficient for our schema
+    const aJson = JSON.stringify(aVal);
+    const bJson = JSON.stringify(bVal);
+    if (aJson !== bJson) return true;
+  }
+
+  return false;
+}
+
 /**
  * Task store state interface
  */
@@ -68,12 +88,18 @@ export function taskReducer(
             const existingTask = state.tasks.find((t) => t.id === newTask.id);
 
             if (existingTask) {
-              // Preserve ID and creation timestamp, update everything else
-              return {
+              // Preserve ID and creation timestamp
+              const merged = {
                 ...newTask,
                 id: existingTask.id,
                 createdAt: existingTask.createdAt,
-                updatedAt: new Date(),
+              } as Task;
+
+              // Only update updatedAt if there is a meaningful change
+              const changed = isMeaningfullyDifferent(existingTask, merged);
+              return {
+                ...merged,
+                updatedAt: changed ? new Date() : existingTask.updatedAt,
               };
             }
 
