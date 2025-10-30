@@ -2331,14 +2331,14 @@ export async function waitForTaskRefreshComplete(
       // Ignore timeout - loading indicators might not exist
     });
 
-  // Wait for task items to be stable (no rapid changes)
+  // Wait for task items to appear in DOM
   await page
     .waitForFunction(
       () => {
         const taskItems = document.querySelectorAll(
           '[data-testid^="local-task-item-"], [data-testid^="github-issue-item-"]'
         );
-        return taskItems.length >= 0; // Just ensure DOM is stable
+        return taskItems.length > 0;
       },
       { timeout: 1000 }
     )
@@ -2464,15 +2464,29 @@ export async function waitForDailyNoteUpdate(
 
 /**
  * Wait for sync operation to complete
- * Since sync happens automatically after refresh, we wait a short period
- * to allow the sync operations to complete
+ * Since sync happens automatically after refresh, we wait for loading indicators
+ * to disappear and then a short period to allow async operations to complete
  */
 export async function waitForSyncComplete(
   page: Page,
-  timeout: number = 1000
+  timeout: number = 5000
 ): Promise<void> {
-  // Wait for sync operations to complete
-  // This is a simple timeout-based wait since sync happens automatically
-  // and doesn't expose explicit state tracking
-  await page.waitForTimeout(timeout);
+  // Wait for any loading indicators to disappear
+  await page
+    .waitForFunction(
+      () => {
+        const loadingIndicators = document.querySelectorAll(
+          '.is-loading, .loading, [data-loading="true"]'
+        );
+        return loadingIndicators.length === 0;
+      },
+      { timeout }
+    )
+    .catch(() => {
+      // Ignore timeout - loading indicators might not exist
+    });
+
+  // Wait a short period for async sync operations to complete
+  // SyncManager doesn't expose explicit state tracking, so we use a small delay
+  await page.waitForTimeout(500);
 }
