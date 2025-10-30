@@ -737,6 +737,7 @@
         : 'pull requests'}..."
       onInput={(value) => (searchQuery = value)}
       service="github"
+      disabled={isLoading}
       onRefresh={refresh}
     />
 
