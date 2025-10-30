@@ -4,6 +4,7 @@
  */
 
 import { App, TFile } from "obsidian";
+import { get } from "svelte/store";
 import { Task } from "../../../core/entities";
 import { ObsidianEntityOperations } from "./EntityOperations";
 import { projectStore } from "../../../stores/projectStore";
@@ -11,7 +12,7 @@ import { taskStore } from "../../../stores/taskStore";
 import { getDateString } from "../../../utils/dateFiltering";
 import { PROPERTY_REGISTRY } from "../utils/PropertyRegistry";
 import type { TaskSyncSettings } from "../../../types/settings";
-import { ObsidianTaskReconciler } from "../../../core/TaskReconciler";
+
 import { Tasks } from "../../../entities/Tasks";
 import { EntitiesOperations } from "../../../core/entities-base";
 
@@ -63,10 +64,17 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
     const tasks: Task[] = [];
 
+    // Get existing tasks once to avoid N+1 pattern
+    const existingTasks = get(taskStore).tasks;
+
     for (const file of taskFiles) {
       try {
         console.log(`Parsing task file: ${file.path}`);
-        const taskData = await this.parseFileToTaskData(file);
+        const taskData = await this.parseFileToTaskData(
+          file,
+          undefined,
+          existingTasks
+        );
         if (taskData) {
           console.log(`Successfully parsed task: ${taskData.title}`);
           tasks.push(taskData);
@@ -110,11 +118,10 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     // This contains the updated frontmatter data
     const taskData = await this.parseFileToTaskData(file, cache);
     if (taskData) {
-      // Dispatch UPSERT_TASK action to taskStore with Obsidian reconciler
+      // Dispatch UPSERT_TASK action to taskStore
       taskStore.dispatch({
         type: "UPSERT_TASK",
         taskData,
-        reconciler: new ObsidianTaskReconciler(),
       });
     }
   }
@@ -163,7 +170,7 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       [PROPERTY_REGISTRY.PROJECT.name]: projectValue, // Project in wiki link format
       [PROPERTY_REGISTRY.DONE.name]: task.done, // Done boolean
       [PROPERTY_REGISTRY.STATUS.name]: task.status, // Status
-      [PROPERTY_REGISTRY.PARENT_TASK.name]: task.parentTask || "", // Parent task
+      [PROPERTY_REGISTRY.PARENT_TASK.name]: task.parentTask || "", // Parent Task
       [PROPERTY_REGISTRY.DO_DATE.name]: task.doDate
         ? getDateString(task.doDate)
         : null, // Do Date
@@ -218,13 +225,16 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
    * if (taskData) {
    *   taskStore.dispatch({
    *     type: "UPSERT_TASK",
-   *     taskData,
-   *     reconciler: new ObsidianTaskReconciler()
+   *     taskData
    *   });
    * }
    * ```
    */
-  async parseFileToTaskData(file: TFile, cache?: any): Promise<Task | null> {
+  async parseFileToTaskData(
+    file: TFile,
+    cache?: any,
+    existingTasks?: readonly Task[]
+  ): Promise<Task | null> {
     // If cache is provided (from changed event), use it directly
     // Otherwise wait for metadata cache to be ready
     const frontMatter =
@@ -317,6 +327,36 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       return undefined;
     };
 
+    // Check if this task already exists in taskStore (for imported tasks)
+    // Use provided existingTasks to avoid N+1 pattern, fallback to get(taskStore) if not provided
+    const tasksToSearch = existingTasks || get(taskStore).tasks;
+    const existingTask = tasksToSearch.find(
+      (task) => task.source.keys.obsidian === file.path
+    );
+
+    // Determine source information based on existing task
+    let sourceInfo;
+    if (existingTask) {
+      // Preserve existing source information for imported tasks
+      sourceInfo = {
+        extension: existingTask.source.extension,
+        keys: {
+          ...existingTask.source.keys,
+          obsidian: file.path, // Update obsidian key in case file moved
+        },
+        // Preserve source.data (e.g., GitHub issue/PR data) for imported tasks
+        ...(existingTask.source.data && { data: existingTask.source.data }),
+      };
+    } else {
+      // New task - default to obsidian source
+      sourceInfo = {
+        extension: "obsidian",
+        keys: {
+          obsidian: file.path,
+        },
+      };
+    }
+
     // Create Task data and use buildEntity to generate ID
     const taskData = {
       title: frontMatter.Title,
@@ -326,23 +366,26 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       done: frontMatter.Done,
       project: cleanLinkFormat(frontMatter.Project),
       areas: areas,
-      parentTask: cleanLinkFormat(frontMatter["Parent task"]),
+      parentTask: cleanLinkFormat(frontMatter["Parent Task"]),
       doDate: parseDate(frontMatter["Do Date"]),
       dueDate: parseDate(frontMatter["Due Date"]),
       tags: frontMatter.tags || [],
       // Source information for tracking
-      // NOTE: Set extension to "obsidian" as default, but reconciler will preserve existing extension
-      // This is crucial for imported GitHub tasks to maintain their source.extension = "github"
-      source: {
-        extension: "obsidian", // Default for new tasks, reconciler preserves existing extension
-        keys: {
-          obsidian: file.path, // Use file path as the natural key
-        },
-      },
+      source: sourceInfo,
     };
 
-    // Use buildEntity to generate ID and timestamps
-    const task = this.taskOperations.buildEntity(taskData) as Task;
+    // Use buildEntity to generate ID and timestamps, but preserve existing ID if found
+    let task = this.taskOperations.buildEntity(taskData) as Task;
+
+    // If we found an existing task, preserve its ID and timestamps
+    if (existingTask) {
+      task = {
+        ...task,
+        id: existingTask.id,
+        createdAt: existingTask.createdAt,
+        updatedAt: existingTask.updatedAt,
+      };
+    }
 
     return task;
   }

@@ -379,7 +379,7 @@ export async function createTestTaskFile(
         done: frontmatter.Done || frontmatter.done || false,
         status: frontmatter.Status || frontmatter.status || "Backlog",
         priority: frontmatter.Priority || frontmatter.priority,
-        parentTask: frontmatter["Parent task"] || frontmatter.parentTask,
+        parentTask: frontmatter["Parent Task"] || frontmatter.parentTask,
         tags: frontmatter.tags || [],
       };
 
@@ -2306,4 +2306,189 @@ export async function waitForFileProcessed(
     { path: filePath },
     { timeout }
   );
+}
+
+/**
+ * Wait for task refresh to complete
+ * Waits for the refresh operation to finish by checking for UI updates
+ */
+export async function waitForTaskRefreshComplete(
+  page: Page,
+  timeout: number = 5000
+): Promise<void> {
+  // Wait for any loading indicators to disappear
+  await page
+    .waitForFunction(
+      () => {
+        const loadingIndicators = document.querySelectorAll(
+          '.is-loading, .loading, [data-loading="true"]'
+        );
+        return loadingIndicators.length === 0;
+      },
+      { timeout }
+    )
+    .catch(() => {
+      // Ignore timeout - loading indicators might not exist
+    });
+
+  // Wait for either task items OR empty message to appear in DOM
+  // This handles both cases: tasks exist OR no tasks (empty state)
+  await page
+    .waitForFunction(
+      () => {
+        const taskItems = document.querySelectorAll(
+          '[data-testid^="local-task-item-"], [data-testid^="github-issue-item-"]'
+        );
+        const emptyMessage = document.querySelector(".task-sync-empty-message");
+        return taskItems.length > 0 || emptyMessage !== null;
+      },
+      { timeout: 1000 }
+    )
+    .catch(() => {});
+}
+
+/**
+ * Wait for daily planning wizard to process an action
+ * Waits for wizard state to update after user actions
+ */
+export async function waitForDailyPlanningUpdate(
+  page: Page,
+  timeout: number = 3000
+): Promise<void> {
+  // Wait for any pending updates to complete
+  await page
+    .waitForFunction(
+      () => {
+        // Check if wizard is in a stable state (no pending operations)
+        const wizard = document.querySelector(
+          '[data-testid="daily-planning-view"]'
+        );
+        if (!wizard) return false;
+
+        // Check for loading states or disabled buttons
+        const loadingElements = wizard.querySelectorAll(
+          ".is-loading, [disabled]"
+        );
+        const hasActiveOperations = Array.from(loadingElements).some((el) => {
+          const button = el as HTMLButtonElement;
+          return button.disabled && !button.hasAttribute("data-testid"); // Ignore test buttons
+        });
+
+        return !hasActiveOperations;
+      },
+      { timeout }
+    )
+    .catch(() => {
+      // Ignore timeout - wizard might be ready
+    });
+}
+
+/**
+ * Wait for task to be moved/scheduled in daily planning
+ * Waits for task to appear in the expected section
+ */
+export async function waitForTaskScheduled(
+  page: Page,
+  taskTitle: string,
+  timeout: number = 3000
+): Promise<void> {
+  await page.waitForFunction(
+    ({ title }) => {
+      const scheduledTasks = document.querySelectorAll(
+        '[data-testid="scheduled-task"]'
+      );
+      return Array.from(scheduledTasks).some((task) =>
+        task.textContent?.includes(title)
+      );
+    },
+    { title: taskTitle },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for task to be unscheduled in daily planning
+ * Waits for task to appear in the unscheduled section
+ */
+export async function waitForTaskUnscheduled(
+  page: Page,
+  taskTitle: string,
+  timeout: number = 3000
+): Promise<void> {
+  await page.waitForFunction(
+    ({ title }) => {
+      const unscheduledTasks = document.querySelectorAll(
+        '[data-testid="unscheduled-task"]'
+      );
+      return Array.from(unscheduledTasks).some((task) =>
+        task.textContent?.includes(title)
+      );
+    },
+    { title: taskTitle },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for daily note to be created or updated
+ * Waits for daily note file to exist and contain expected content
+ */
+export async function waitForDailyNoteUpdate(
+  page: Page,
+  dailyNotePath: string,
+  expectedContent?: string,
+  timeout: number = 5000
+): Promise<void> {
+  const startTime = Date.now();
+  while (Date.now() - startTime < timeout) {
+    const fileContent = await page.evaluate(async (path) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await app.vault.read(file);
+    }, dailyNotePath);
+
+    if (fileContent !== null) {
+      if (!expectedContent || fileContent.includes(expectedContent)) {
+        return;
+      }
+    }
+
+    await page.waitForTimeout(100); // Poll every 100ms
+  }
+
+  throw new Error(
+    `Timeout waiting for daily note update. Expected content: ${
+      expectedContent || "file to exist"
+    }`
+  );
+}
+
+/**
+ * Wait for sync operation to complete
+ * Since sync happens automatically after refresh, we wait for loading indicators
+ * to disappear and then a short period to allow async operations to complete
+ */
+export async function waitForSyncComplete(
+  page: Page,
+  timeout: number = 5000
+): Promise<void> {
+  // Wait for any loading indicators to disappear
+  await page
+    .waitForFunction(
+      () => {
+        const loadingIndicators = document.querySelectorAll(
+          '.is-loading, .loading, [data-loading="true"]'
+        );
+        return loadingIndicators.length === 0;
+      },
+      { timeout }
+    )
+    .catch(() => {
+      // Ignore timeout - loading indicators might not exist
+    });
+
+  // Wait a short period for async sync operations to complete
+  // SyncManager doesn't expose explicit state tracking, so we use a small delay
+  await page.waitForTimeout(500);
 }

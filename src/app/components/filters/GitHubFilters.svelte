@@ -329,12 +329,13 @@
     }
   }
 
-  // Save when filters change
+  // Save recently used filters when organization or repository changes
   $effect(() => {
+    // React to changes in current filters
     currentOrganization;
     currentRepository;
-    recentlyUsedOrgs;
-    recentlyUsedRepos;
+
+    // Save current filters to storage
     saveRecentlyUsedFilters();
   });
 

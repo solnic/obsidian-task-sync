@@ -7,7 +7,6 @@
  */
 
 import type { Task, Project, Area } from "../core/entities";
-import type { TaskReconciler } from "../core/TaskReconciler";
 
 /**
  * Task-related actions
@@ -17,7 +16,7 @@ import type { TaskReconciler } from "../core/TaskReconciler";
  * - ADD_TASK - For adding a new task (user creation)
  * - UPDATE_TASK - For updating an existing task
  * - REMOVE_TASK - For removing a task
- * - UPSERT_TASK - For scanning operations (preserves natural key matching)
+ * - UPSERT_TASK - For scanning operations (simple ID-based upsert)
  */
 export type TaskAction =
   | { type: "LOAD_SOURCE_START"; sourceId: string }
@@ -25,7 +24,6 @@ export type TaskAction =
       type: "LOAD_SOURCE_SUCCESS";
       sourceId: string;
       tasks: readonly Task[];
-      reconciler: TaskReconciler;
     }
   | { type: "LOAD_SOURCE_ERROR"; sourceId: string; error: string }
   | { type: "ADD_TASK"; task: Task }
@@ -34,7 +32,6 @@ export type TaskAction =
   | {
       type: "UPSERT_TASK";
       taskData: Task;
-      reconciler: TaskReconciler;
     }
   | { type: "CLEAR_ALL_TASKS" };
 

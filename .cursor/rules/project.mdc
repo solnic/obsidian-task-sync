@@ -1,0 +1,26 @@
+---
+description: "Governs project-wide context: phase, test commands, Docker/legacy notes. Applies to all relevant code in src and tests."
+globs: ["src/**/*", "tests/**/*"]
+alwaysApply: false
+---
+
+# Project Context
+
+**Current Phase:** Transition from Obsidian plugin to Svelte app with Obsidian extension support. (Old plugin code is in `old-stuff/` for reference.)
+
+**Status:** Unreleased
+
+**Testing Commands:**
+
+- `npm test` — All tests
+- `npm run test:e2e` — E2E only
+- `npm run test:e2e:failed` — Only failed E2E
+- All new E2E must use Playwright, not Vitest
+
+**Docker Constraint:** Do NOT use Playwright UI commands in container environments.
+
+---
+
+<!--
+Origin: .augment/rules/0-project.md
+-->

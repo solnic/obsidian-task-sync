@@ -20,21 +20,21 @@ test.describe("Todo Promotion Parent-Child Relationships", () => {
   }) => {
     await createArea(page, {
       name: "Nested",
-      description: `- [ ] Parent task with children
+      description: `- [ ] Parent Task with children
   - [ ] First child task
   - [ ] Second child task
   - [x] Completed child task`,
     });
 
     await openFile(page, "Areas/Nested.md");
-    await goToLine(page, "Parent task with children");
+    await goToLine(page, "Parent Task with children");
 
     await executeCommand(page, "Promote Todo to Task");
 
     await waitForFileContentToContain(
       page,
-      "Tasks/Parent task with children.md",
-      "Parent task with children"
+      "Tasks/Parent Task with children.md",
+      "Parent Task with children"
     );
 
     // Verify only the parent task was created (no auto-creation of children)
@@ -51,7 +51,7 @@ test.describe("Todo Promotion Parent-Child Relationships", () => {
 
     // Verify the original file was updated with a link to the parent task only
     const updatedContent = await getFileContent(page, "Areas/Nested.md");
-    expect(updatedContent).toContain("- [ ] [[Parent task with children]]");
+    expect(updatedContent).toContain("- [ ] [[Parent Task with children]]");
     expect(updatedContent).toContain("  - [ ] First child task"); // Children remain as todos
     expect(updatedContent).toContain("  - [ ] Second child task");
     expect(updatedContent).toContain("  - [x] Completed child task");

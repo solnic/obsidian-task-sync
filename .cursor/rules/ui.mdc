@@ -1,0 +1,32 @@
+---
+description: "Unified UI component/design system rules (composition, reuse, styling, structure). Applies to src/components and all UI code."
+globs: ["src/**/*", "tests/**/*"]
+alwaysApply: false
+---
+
+# UI Component & Design Guidelines
+
+## General Principles
+- **Identify existing component patterns before writing new code**
+- **Prefer extending before creating new components**
+- **Style using design tokens throughout:**
+  - Do not use hardcoded colors/spacing
+  - Place all styles in `src/styles`, not inline/inside components
+
+## Component Structure
+- **Where to put components:**
+  - Design system & base: `src/components/ui/`
+  - Layout: `src/components/layout/`
+  - Features: `src/components/features/`
+
+## Best Practices
+- Prefer composition over custom variants
+- Avoid duplicate style/logic, and do not create one-off variants
+- Use purpose-driven naming for components/styles
+- Use CSS Modules or styled-components where appropriate
+
+---
+
+<!--
+Origin: .augment/rules/5-ui-components.md
+-->

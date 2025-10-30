@@ -12,6 +12,10 @@ import {
   selectFromDropdown,
   waitForNotice,
   waitForFileUpdate,
+  waitForDailyPlanningUpdate,
+  waitForTaskScheduled,
+  waitForTaskUnscheduled,
+  waitForDailyNoteUpdate,
 } from "../../helpers/global";
 import { getTodayString, getYesterdayString } from "../../helpers/date-helpers";
 import { createTask } from "../../helpers/entity-helpers";
@@ -88,6 +92,9 @@ test.describe("Daily Planning Wizard", () => {
     await task2Item
       .locator('[data-testid="unschedule-planning-button"]')
       .click();
+
+    // Wait for task to be unscheduled
+    await waitForTaskUnscheduled(page, "Task 2 - Will be unscheduled");
 
     // Verify Task 2 moved to "Staged for unscheduling" section
     await expect(
@@ -267,21 +274,8 @@ test.describe("Daily Planning Wizard", () => {
     );
     if (await moveToTodayButton.isVisible()) {
       await moveToTodayButton.click();
-      // Wait for the task to be moved by checking if button disappears or task moves
-      await page
-        .waitForFunction(
-          () => {
-            const button = document.querySelector(
-              '[data-testid="move-to-today-button"]'
-            );
-            return !button || !button.isVisible;
-          },
-          undefined,
-          { timeout: 3000 }
-        )
-        .catch(() => {
-          // Ignore timeout - button might still be visible
-        });
+      // Wait for the wizard to process the action
+      await waitForDailyPlanningUpdate(page);
     }
   });
 
@@ -468,7 +462,7 @@ test.describe("Daily Planning Wizard", () => {
     );
     if (await moveToTodayButton.isVisible()) {
       await moveToTodayButton.click();
-      await page.waitForTimeout(1000);
+      await waitForDailyPlanningUpdate(page);
     }
 
     // Navigate to step 2 to verify tasks were moved
@@ -538,7 +532,7 @@ test.describe("Daily Planning Wizard", () => {
       .first();
     if (await unscheduleButton.isVisible()) {
       await unscheduleButton.click();
-      await page.waitForTimeout(500);
+      await waitForTaskUnscheduled(page, "Task to Unschedule");
 
       // After unscheduling, the task should appear in the staged for unscheduling section
       await expect(
@@ -555,7 +549,7 @@ test.describe("Daily Planning Wizard", () => {
         .first();
       if (await rescheduleButton.isVisible()) {
         await rescheduleButton.click();
-        await page.waitForTimeout(500);
+        await waitForDailyPlanningUpdate(page);
       }
     }
   });
@@ -613,7 +607,10 @@ test.describe("Daily Planning Wizard", () => {
     const confirmButton = page.locator('[data-testid="confirm-button"]');
     if (await confirmButton.isVisible()) {
       await confirmButton.click();
-      await page.waitForTimeout(2000);
+      // Wait for wizard to close after confirmation
+      await expect(
+        page.locator('[data-testid="daily-planning-view"]')
+      ).not.toBeVisible({ timeout: 5000 });
     }
   });
 
@@ -711,7 +708,7 @@ test.describe("Daily Planning Wizard", () => {
     );
     await expect(unscheduleButton).toBeVisible();
     await unscheduleButton.click();
-    await page.waitForTimeout(500);
+    await waitForTaskUnscheduled(page, "Task to Unschedule");
 
     // Navigate to step 3
     await page.click('[data-testid="next-button"]'); // Step 2 -> Step 3
@@ -731,7 +728,19 @@ test.describe("Daily Planning Wizard", () => {
     await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
     const confirmButton = page.locator('[data-testid="confirm-button"]');
     await confirmButton.click();
-    await page.waitForTimeout(2000);
+
+    // Wait for wizard to close
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 5000 });
+
+    // Wait for daily note to be written with task content (file I/O can be slow)
+    await waitForDailyNoteUpdate(
+      page,
+      dailyNotePath,
+      "Daily Note Task 1",
+      10000
+    );
 
     // NOW verify daily note was created and contains task links
     const dailyNoteContent = await page.evaluate(async (path) => {
@@ -805,7 +814,6 @@ test.describe("Daily Planning Wizard", () => {
     // Click cancel button
     const cancelButton = page.locator('[data-testid="cancel-button"]');
     await cancelButton.click();
-    await page.waitForTimeout(1000);
 
     // Verify wizard is closed
     await expect(
@@ -869,8 +877,8 @@ test.describe("Daily Planning Wizard", () => {
     expect(importedTask.title).toBe("Freshly Imported Task");
 
     // BUG: The task should now appear in the Daily Planning UI without needing to refresh
-    // Wait a moment for reactivity to kick in
-    await page.waitForTimeout(1000);
+    // Wait for task to be scheduled
+    await waitForTaskScheduled(page, "Freshly Imported Task", 5000);
 
     // The task should appear in today's tasks section
     await expect(
@@ -914,8 +922,10 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="confirm-button"]');
 
-    // Wait for daily note operations to complete
-    await page.waitForTimeout(2000);
+    // Wait for wizard to close after confirmation
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 5000 });
 
     // Check if daily note was created in the Daily Notes core plugin folder
     const dailyNoteInfo = await page.evaluate(async () => {
@@ -990,8 +1000,10 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="next-button"]');
     await page.click('[data-testid="confirm-button"]');
 
-    // Wait for daily note operations to complete
-    await page.waitForTimeout(2000);
+    // Wait for wizard to close after confirmation
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 5000 });
 
     // Check if daily note was created in the Periodic Notes plugin folder
     const dailyNoteInfo = await page.evaluate(async () => {
@@ -1119,8 +1131,8 @@ test.describe("Daily Planning Wizard", () => {
     await scheduleButton.waitFor({ state: "visible", timeout: 10000 });
     await scheduleButton.click();
 
-    // Wait for import to complete
-    await page.waitForTimeout(2000);
+    // Wait for import to complete and wizard state to update
+    await waitForDailyPlanningUpdate(page, 3000);
 
     // Now complete the daily planning wizard
     // Use the command palette to navigate directly to confirm
@@ -1141,10 +1153,12 @@ test.describe("Daily Planning Wizard", () => {
     const confirmButton = page.locator('[data-testid="confirm-button"]');
     await confirmButton.waitFor({ state: "visible", timeout: 10000 });
     await confirmButton.click();
-    await page.waitForTimeout(2000);
+
+    // Wait for daily note to be updated
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+    await waitForDailyNoteUpdate(page, dailyNotePath, "test issue", 10000);
 
     // Verify daily note was created and contains the imported task
-    const dailyNotePath = `Daily Notes/${todayString}.md`;
 
     const dailyNoteContent = await page.evaluate(async (path) => {
       const file = (window as any).app.vault.getAbstractFileByPath(path);
@@ -1210,7 +1224,12 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="confirm-button"]'); // Confirm
 
     // Wait for daily note to be updated
-    await page.waitForTimeout(2000);
+    await waitForDailyNoteUpdate(
+      page,
+      dailyNotePath,
+      "Idempotency Test Task",
+      10000
+    );
 
     // Read daily note content after first confirmation
     const dailyNoteContentAfterFirst = await page.evaluate(async (path) => {
@@ -1250,8 +1269,10 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="next-button"]'); // Step 3
     await page.click('[data-testid="confirm-button"]'); // Confirm again
 
-    // Wait for any potential updates
-    await page.waitForTimeout(2000);
+    // Wait for wizard to close after confirmation
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 5000 });
 
     // Read daily note content after second confirmation
     const dailyNoteContentAfterSecond = await page.evaluate(async (path) => {
@@ -1291,7 +1312,10 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="next-button"]'); // Step 3
     await page.click('[data-testid="confirm-button"]'); // Confirm third time
 
-    await page.waitForTimeout(2000);
+    // Wait for wizard to close after confirmation
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 5000 });
 
     // Read daily note content after third confirmation
     const dailyNoteContentAfterThird = await page.evaluate(async (path) => {
@@ -1413,7 +1437,12 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="confirm-button"]'); // Confirm
 
     // Wait for daily note to be updated
-    await page.waitForTimeout(2000);
+    await waitForDailyNoteUpdate(
+      page,
+      dailyNotePath,
+      "Pre-existing Task",
+      10000
+    );
 
     // Read daily note content after confirmation
     const finalContent = await page.evaluate(async (path) => {
@@ -1535,7 +1564,12 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="confirm-button"]'); // Confirm
 
     // Wait for daily note to be updated
-    await page.waitForTimeout(2000);
+    await waitForDailyNoteUpdate(
+      page,
+      dailyNotePath,
+      "Format Test Task",
+      10000
+    );
 
     // Read daily note content after confirmation
     const finalContent = await page.evaluate(async (path) => {
@@ -1648,8 +1682,8 @@ test.describe("Daily Planning Wizard", () => {
       { path: dailyNotePath, content: preExistingContent }
     );
 
-    // Wait a bit for metadata cache to settle
-    await page.waitForTimeout(1000);
+    // Wait for file to be processed
+    await waitForDailyNoteUpdate(page, dailyNotePath, undefined, 10000);
 
     // Verify the daily note was created with existing tasks
     const initialContent = await page.evaluate(async (path) => {
@@ -1673,8 +1707,8 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="next-button"]'); // Step 3
     await page.click('[data-testid="confirm-button"]'); // Confirm
 
-    // Wait for daily note to be updated
-    await page.waitForTimeout(2000);
+    // Wait for daily note to be updated (file already exists, just wait for it to be processed)
+    await waitForDailyNoteUpdate(page, dailyNotePath, "Cache Test Task", 10000);
 
     // Read daily note content after confirmation
     const finalContent = await page.evaluate(async (path) => {
@@ -1808,8 +1842,13 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="next-button"]'); // Step 3
     await page.click('[data-testid="confirm-button"]'); // Confirm
 
-    // Wait for daily note to be updated
-    await page.waitForTimeout(2000);
+    // Wait for wizard to close
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 5000 });
+
+    // Wait for daily note processing (file already exists, wizard may or may not modify it)
+    await waitForDailyNoteUpdate(page, dailyNotePath, undefined, 10000);
 
     // Read daily note content after confirmation
     const finalContent = await page.evaluate(async (path) => {
@@ -1935,8 +1974,18 @@ test.describe("Daily Planning Wizard", () => {
     await page.click('[data-testid="next-button"]'); // Step 3
     await page.click('[data-testid="confirm-button"]'); // Confirm
 
-    // Wait for daily note to be updated
-    await page.waitForTimeout(2000);
+    // Wait for wizard to close
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 5000 });
+
+    // Wait for daily note processing (file already exists with tasks)
+    await waitForDailyNoteUpdate(
+      page,
+      dailyNotePath,
+      "Resolution Test Task",
+      10000
+    );
 
     // Read daily note content after confirmation
     const finalContent = await page.evaluate(async (path) => {

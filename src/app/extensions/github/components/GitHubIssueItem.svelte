@@ -46,11 +46,14 @@
   }: Props = $props();
 
   // Extract GitHub issue data from task.source.data
-  let issue = $derived(task.source.data as GitHubIssue);
+  let issue = $derived(task.source?.data as GitHubIssue | undefined);
 
-  let subtitle = $derived(`#${issue.number}`);
+  // Guard against missing issue data
+  let subtitle = $derived(issue ? `#${issue.number}` : "");
 
   let meta = $derived.by(() => {
+    if (!issue) return "";
+
     const parts: string[] = [];
 
     if (issue.assignee) {
@@ -63,10 +66,10 @@
 
   // Convert GitHub labels to TaskItem format
   let labels = $derived(
-    issue.labels.map((label) => ({
+    issue?.labels?.map((label) => ({
       name: label.name,
       color: label.color ? `#${label.color}` : undefined,
-    }))
+    })) || []
   );
 
   // Create badges for issue state
@@ -77,7 +80,7 @@
     }> = [];
 
     // Add state badge
-    if (issue.state) {
+    if (issue?.state) {
       result.push({
         text: issue.state,
         type: "status",
@@ -142,32 +145,40 @@
       onImport={handleImport}
     />
   {/if}
-  <SeeOnServiceButton
-    serviceName="GitHub"
-    url={issue.html_url}
-    testId="see-on-github-button"
-  />
+  {#if issue}
+    <SeeOnServiceButton
+      serviceName="GitHub"
+      url={issue.html_url}
+      testId="see-on-github-button"
+    />
+  {/if}
 {/snippet}
 
-<TaskItem
-  title={issue.title}
-  {subtitle}
-  {meta}
-  {badges}
-  {footerBadges}
-  {labels}
-  createdAt={new Date(issue.created_at)}
-  updatedAt={new Date(issue.updated_at)}
-  {isHovered}
-  {isImported}
-  {isScheduled}
-  {scheduledDate}
-  {onHover}
-  {settings}
-  {testId}
-  actionContent={true}
-  actions={actionSnippet}
-/>
+{#if issue}
+  <TaskItem
+    title={issue.title}
+    {subtitle}
+    {meta}
+    {badges}
+    {footerBadges}
+    {labels}
+    createdAt={new Date(issue.created_at)}
+    updatedAt={new Date(issue.updated_at)}
+    {isHovered}
+    {isImported}
+    {isScheduled}
+    {scheduledDate}
+    {onHover}
+    {settings}
+    {testId}
+    actionContent={true}
+    actions={actionSnippet}
+  />
+{:else}
+  <div class="error-message">
+    Error: Missing GitHub issue data for task {task.id}
+  </div>
+{/if}
 
 <style>
   .open-task-button {

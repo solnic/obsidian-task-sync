@@ -46,12 +46,16 @@
   }: Props = $props();
 
   // Extract GitHub PR data from task.source.data
-  let pullRequest = $derived(task.source.data as GitHubPullRequest);
+  let pullRequest = $derived(
+    task.source?.data as GitHubPullRequest | undefined
+  );
 
   // Convert pull request data to TaskItem format
-  let subtitle = $derived(`#${pullRequest.number}`);
+  let subtitle = $derived(pullRequest ? `#${pullRequest.number}` : "");
 
   let meta = $derived.by(() => {
+    if (!pullRequest) return "";
+
     const parts: string[] = [];
 
     if (pullRequest.assignee) {
@@ -67,10 +71,10 @@
 
   // Convert GitHub labels to TaskItem format
   let labels = $derived(
-    pullRequest.labels.map((label) => ({
+    pullRequest?.labels?.map((label) => ({
       name: label.name,
       color: label.color ? `#${label.color}` : undefined,
-    }))
+    })) || []
   );
 
   // Create badges for PR state
@@ -81,7 +85,7 @@
     }> = [];
 
     // Add state badge
-    if (pullRequest.state) {
+    if (pullRequest?.state) {
       result.push({
         text: pullRequest.state,
         type: "status",
@@ -147,33 +151,41 @@
         onImport={handleImport}
       />
     {/if}
-    <SeeOnServiceButton
-      serviceName="GitHub"
-      url={pullRequest.html_url}
-      testId="see-on-github-button"
-    />
+    {#if pullRequest}
+      <SeeOnServiceButton
+        serviceName="GitHub"
+        url={pullRequest.html_url}
+        testId="see-on-github-button"
+      />
+    {/if}
   </div>
 {/snippet}
 
-<TaskItem
-  title={pullRequest.title}
-  {subtitle}
-  {meta}
-  {badges}
-  {labels}
-  {footerBadges}
-  createdAt={new Date(pullRequest.created_at)}
-  updatedAt={new Date(pullRequest.updated_at)}
-  {isHovered}
-  {isImported}
-  {isScheduled}
-  {scheduledDate}
-  {onHover}
-  {settings}
-  actionContent={true}
-  actions={actionSnippet}
-  {testId}
-/>
+{#if pullRequest}
+  <TaskItem
+    title={pullRequest.title}
+    {subtitle}
+    {meta}
+    {badges}
+    {labels}
+    {footerBadges}
+    createdAt={new Date(pullRequest.created_at)}
+    updatedAt={new Date(pullRequest.updated_at)}
+    {isHovered}
+    {isImported}
+    {isScheduled}
+    {scheduledDate}
+    {onHover}
+    {settings}
+    actionContent={true}
+    actions={actionSnippet}
+    {testId}
+  />
+{:else}
+  <div class="error-message">
+    Error: Missing GitHub pull request data for task {task.id}
+  </div>
+{/if}
 
 <style>
   .open-task-button {

@@ -1,0 +1,77 @@
+[
+  {
+    "id": 777888,
+    "number": 1,
+    "title": "Acme Corp Issue 1",
+    "body": "This is an issue from acme-corp/project-alpha.",
+    "labels": [
+      {
+        "id": 10,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignee": null,
+    "assignees": [],
+    "state": "open",
+    "html_url": "https://github.com/acme-corp/project-alpha/issues/1",
+    "created_at": "2024-02-01T10:00:00Z",
+    "updated_at": "2024-02-01T10:00:00Z",
+    "closed_at": null,
+    "user": {
+      "login": "acmeuser",
+      "id": 1111,
+      "avatar_url": "https://avatars.githubusercontent.com/u/1111?v=4",
+      "html_url": "https://github.com/acmeuser"
+    }
+  },
+  {
+    "id": 999000,
+    "number": 2,
+    "title": "Acme Corp Issue 2",
+    "body": "This is another issue from acme-corp/project-alpha.",
+    "labels": [
+      {
+        "id": 11,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      }
+    ],
+    "assignee": null,
+    "assignees": [],
+    "state": "open",
+    "html_url": "https://github.com/acme-corp/project-alpha/issues/2",
+    "created_at": "2024-02-02T11:00:00Z",
+    "updated_at": "2024-02-02T11:00:00Z",
+    "closed_at": null,
+    "user": {
+      "login": "acmeuser2",
+      "id": 2222,
+      "avatar_url": "https://avatars.githubusercontent.com/u/2222?v=4",
+      "html_url": "https://github.com/acmeuser2"
+    }
+  },
+  {
+    "id": 111333,
+    "number": 3,
+    "title": "Acme Corp Issue 3",
+    "body": "This is a third issue from acme-corp/project-alpha.",
+    "labels": [],
+    "assignee": null,
+    "assignees": [],
+    "state": "open",
+    "html_url": "https://github.com/acme-corp/project-alpha/issues/3",
+    "created_at": "2024-02-03T12:00:00Z",
+    "updated_at": "2024-02-03T12:00:00Z",
+    "closed_at": null,
+    "user": {
+      "login": "acmeuser3",
+      "id": 3333,
+      "avatar_url": "https://avatars.githubusercontent.com/u/3333?v=4",
+      "html_url": "https://github.com/acmeuser3"
+    }
+  }
+]
+

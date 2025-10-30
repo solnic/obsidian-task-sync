@@ -16,6 +16,7 @@ import {
   updateFileFrontmatter,
   readVaultFile,
   waitForFileUpdate,
+  getFileContent,
 } from "../../helpers/global";
 import {
   stubGitHubWithFixtures,
@@ -70,6 +71,123 @@ test.describe("GitHub Integration", () => {
         .locator(".task-sync-item-title:has-text('First test issue')")
         .count()
     ).toBe(1);
+
+    // Go back to GitHub tab - this reproduces the bug where source.data was stripped
+    // When the GitHub tab renders the imported task, it will crash if source.data is missing
+    await switchToTaskService(page, "github");
+
+    // Wait for GitHub issues to be visible - this is where the crash would occur
+    // if source.data was missing, because GitHubIssueItem tries to access task.source.data.title
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // CRITICAL: Verify that the imported task still has source.data after filter changes
+    // Without the fix, source.data would be undefined here, causing crash when rendering
+    const taskAfterFilterChange = await getTaskByTitle(
+      page,
+      "First test issue"
+    );
+    expect(taskAfterFilterChange).toBeDefined();
+    expect(taskAfterFilterChange.source.extension).toBe("github");
+    expect(taskAfterFilterChange.source.data).toBeDefined();
+    expect(taskAfterFilterChange.source.data.title).toBe("First test issue");
+
+    // Verify the imported issue is still visible and renders without crashing
+    const importedIssue = page
+      .locator('[data-testid="github-issue-item"]')
+      .filter({ hasText: "First test issue" })
+      .first();
+    await expect(importedIssue).toBeVisible();
+
+    // Verify no error message is shown (would show if source.data was missing)
+    const errorMessage = importedIssue.locator(".error-message");
+    await expect(errorMessage).not.toBeVisible();
+  });
+
+  test("should preserve imported tasks when switching to different repository", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multi-repo",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Import issue from first repository
+    await clickIssueImportButton(page, 111);
+    await waitForIssueImportComplete(page, 111);
+
+    // Verify task was imported
+    const taskExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(taskExists).toBe(true);
+
+    // Verify task appears in Local Tasks view
+    await switchToTaskService(page, "local");
+    const localTaskCount = await page
+      .locator(".task-sync-item-title:has-text('First test issue')")
+      .count();
+    expect(localTaskCount).toBe(1);
+
+    // Switch back to GitHub and select a different repository
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "acme-corp");
+    await selectFromDropdown(page, "repository-filter", "project-alpha");
+
+    // BUG: The imported task from obsidian-task-sync should still exist in the task store
+    // but it gets removed when we switch repositories
+
+    // Verify the imported task still exists in Local Tasks view
+    await switchToTaskService(page, "local");
+
+    // Wait for the task to appear
+    await page.waitForSelector(
+      ".task-sync-item-title:has-text('First test issue')",
+      { timeout: 5000 }
+    );
+
+    const taskStillExists = await page
+      .locator(".task-sync-item-title:has-text('First test issue')")
+      .count();
+    expect(taskStillExists).toBe(1);
+
+    // Verify the task file still exists
+    const fileStillExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(fileStillExists).toBe(true);
+
+    // Switch back to GitHub view and original repository to verify task is still there
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // The imported task should still be visible in GitHub view
+    const importedIssue = page
+      .locator('[data-testid="github-issue-item"]')
+      .filter({ hasText: "First test issue" });
+    await expect(importedIssue).toBeVisible({ timeout: 5000 });
+
+    // Verify it's marked as imported by checking the data-imported attribute
+    // The issue item should have data-imported="true"
+    await expect(importedIssue).toHaveAttribute("data-imported", "true");
   });
 
   test("should preserve GitHub issue content when task is updated", async ({
@@ -924,11 +1042,11 @@ test.describe("GitHub Integration", () => {
     await expect(thirdIssue).toContainText("First test issue");
   });
 
-  test("should sync task changes from Obsidian file when GitHub is refreshed", async ({
+  test("should overwrite local changes with GitHub data when GitHub is refreshed", async ({
     page,
   }) => {
-    // This test verifies that GitHub refresh now syncs changes from Obsidian files
-    // This addresses the second issue: "Hitting refresh in Github did not sync task's note after I changed its Title in Obsidian"
+    // This test verifies that GitHub refresh overwrites local changes with authoritative GitHub data
+    // GitHub is the source of truth during refresh operations
 
     await openView(page, "task-sync-main");
     await enableIntegration(page, "github");
@@ -975,15 +1093,33 @@ test.describe("GitHub Integration", () => {
       "Title: Modified GitHub Issue Title"
     );
 
-    // Now refresh GitHub service - this should sync the changes from the Obsidian file
-    await page
-      .locator('[data-testid="task-sync-github-refresh-button"]')
-      .click();
+    // Wait for file watcher to process the change
+    // This ensures the Obsidian file change is fully processed before GitHub refresh
+    await waitForFileUpdate(
+      page,
+      "Tasks/First test issue.md",
+      "Title: Modified GitHub Issue Title"
+    );
 
-    // Wait for refresh to complete
-    await page.waitForTimeout(2000);
+    const refreshButton = page.locator(
+      '[data-testid="task-sync-github-refresh-button"]'
+    );
+    await refreshButton.waitFor({ state: "visible", timeout: 5000 });
+    await refreshButton.click();
 
-    // Verify that the GitHub task now reflects the updated title from the Obsidian file
+    // Wait for refresh to complete by waiting for the button to be enabled again
+    await page.waitForFunction(
+      () => {
+        const refreshButton = document.querySelector(
+          '[data-testid="task-sync-github-refresh-button"]'
+        );
+        return refreshButton && !refreshButton.hasAttribute("disabled");
+      },
+      undefined,
+      { timeout: 10000 }
+    );
+
+    // Verify that the GitHub task now reflects the original GitHub title (local changes overwritten)
     // Check this by looking at the task in the store
     const syncedTask = await page.evaluate(async () => {
       const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
@@ -1006,12 +1142,17 @@ test.describe("GitHub Integration", () => {
     });
 
     expect(syncedTask).toBeDefined();
-    expect(syncedTask.title).toBe("Modified GitHub Issue Title");
+    expect(syncedTask.title).toBe("First test issue"); // Original GitHub title, not the modified one
     expect(syncedTask.source.extension).toBe("github");
     expect(syncedTask.source.keys.github).toBe(
       "https://github.com/solnic/obsidian-task-sync/issues/111"
     );
     expect(syncedTask.source.keys.obsidian).toBe("Tasks/First test issue.md");
 
+    // CRITICAL: Also verify that the file front-matter was actually updated
+    // This is the real test - the file should reflect the GitHub data, not the local changes
+    const fileContent = await getFileContent(page, "Tasks/First test issue.md");
+    expect(fileContent).toContain("Title: First test issue"); // Should be GitHub title, not "Modified GitHub Issue Title"
+    expect(fileContent).not.toContain("Title: Modified GitHub Issue Title"); // Local changes should be overwritten
   });
 });

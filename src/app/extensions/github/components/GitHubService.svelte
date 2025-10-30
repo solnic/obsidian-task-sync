@@ -5,11 +5,13 @@
    */
 
   import { onMount, onDestroy } from "svelte";
+  import { derived } from "svelte/store";
   import SearchInput from "../../../components/SearchInput.svelte";
   import SortDropdown from "../../../components/SortDropdown.svelte";
   import FilterButton from "../../../components/FilterButton.svelte";
   import GitHubIssueItem from "./GitHubIssueItem.svelte";
   import GitHubPullRequestItem from "./GitHubPullRequestItem.svelte";
+  import { taskStore } from "../../../stores/taskStore";
   import type { Task } from "../../../core/entities";
   import type { TaskSyncSettings } from "../../../types/settings";
   import type { Extension } from "../../../core/extension";
@@ -54,6 +56,20 @@
 
   // Get the reactive context store
   const contextStore = getContextStore();
+
+  // Derived store: Set of imported GitHub URLs for O(1) lookup
+  // This avoids O(n*m) complexity from calling get(taskStore) in the render loop
+  // Created here (not at module level) so it's only active when component is mounted
+  const importedGitHubUrls = derived(taskStore, ($taskStore) => {
+    const urls = new Set<string>();
+    for (const task of $taskStore.tasks) {
+      // Only process tasks that have source.keys defined
+      if (task.source?.keys?.github) {
+        urls.add(task.source.keys.github);
+      }
+    }
+    return urls;
+  });
 
   // Computed daily planning modes
   let dayPlanningMode = $derived.by(() => {
@@ -417,6 +433,9 @@
       addRecentlyUsedRepo(repository);
     }
 
+    // Save current filter state
+    saveRecentlyUsedFilters();
+
     if (repository) {
       await loadLabels();
     } else {
@@ -506,11 +525,14 @@
       isLoading = true;
       error = null;
 
-      // Use extension's refresh method which clears cache and reloads data
-      // The extension handles clearing its internal githubApiDataCache
+      // Use extension's refresh method which handles everything:
+      // - Clears cache and reloads GitHub API data
+      // - Updates reactive cache for UI
+      // - Refreshes tasks via TaskSourceManager
       await githubExtension.refresh();
 
-      // Reload organizations and repositories
+      // Reload organizations and repositories for the UI dropdowns
+      // These are not handled by the TaskSource since they're UI-specific
       await loadOrganizations();
       await loadRepositories();
 
@@ -555,7 +577,7 @@
       org,
       ...recentlyUsedOrgs.filter((o) => o !== org),
     ].slice(0, 5);
-    saveRecentlyUsedFilters();
+    // Don't save here - let the caller save to avoid double saves
   }
 
   function addRecentlyUsedRepo(repo: string): void {
@@ -565,7 +587,7 @@
       repo,
       ...recentlyUsedRepos.filter((r) => r !== repo),
     ].slice(0, 5);
-    saveRecentlyUsedFilters();
+    // Don't save here - let the caller save to avoid double saves
   }
 
   function removeRecentlyUsedOrg(org: string): void {
@@ -628,9 +650,10 @@
     }
   }
 
-  // Helper to check if a task is imported (has Obsidian key)
+  // Helper to check if a task is imported (exists in main task store)
   function isTaskImported(task: Task): boolean {
-    return !!task.source?.keys?.obsidian;
+    const githubUrl = task.source.keys.github;
+    return githubUrl ? $importedGitHubUrls.has(githubUrl) : false;
   }
 
   async function importTask(task: Task): Promise<void> {

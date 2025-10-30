@@ -51,6 +51,13 @@ export class TaskSourceManager {
   }
 
   /**
+   * Get list of registered source IDs
+   */
+  getRegisteredSources(): string[] {
+    return Array.from(this.sources.keys());
+  }
+
+  /**
    * Set up watcher for a registered source
    *
    * This is called automatically by loadSource() after initial data is loaded.
@@ -64,10 +71,6 @@ export class TaskSourceManager {
     const source = this.sources.get(sourceId);
     if (!source || !source.watch) {
       return;
-    }
-
-    if (!source.reconciler) {
-      throw new Error(`Source ${sourceId} must provide a reconciler`);
     }
 
     // Don't set up watcher if already watching
@@ -86,7 +89,6 @@ export class TaskSourceManager {
         taskStore.dispatch({
           type: "UPSERT_TASK",
           taskData: task,
-          reconciler: source.reconciler!,
         });
       },
 
@@ -110,7 +112,6 @@ export class TaskSourceManager {
           type: "LOAD_SOURCE_SUCCESS",
           sourceId: sourceId,
           tasks,
-          reconciler: source.reconciler!,
         });
       },
     });
@@ -149,10 +150,6 @@ export class TaskSourceManager {
       throw new Error(`Source not found: ${sourceId}`);
     }
 
-    if (!source.reconciler) {
-      throw new Error(`Source ${sourceId} must provide a reconciler`);
-    }
-
     try {
       taskStore.dispatch({ type: "LOAD_SOURCE_START", sourceId });
       const tasks = await source.loadInitialData();
@@ -160,7 +157,6 @@ export class TaskSourceManager {
         type: "LOAD_SOURCE_SUCCESS",
         sourceId,
         tasks,
-        reconciler: source.reconciler,
       });
 
       // Set up watcher AFTER initial load completes
@@ -187,10 +183,6 @@ export class TaskSourceManager {
       throw new Error(`Source not found: ${sourceId}`);
     }
 
-    if (!source.reconciler) {
-      throw new Error(`Source ${sourceId} must provide a reconciler`);
-    }
-
     try {
       taskStore.dispatch({ type: "LOAD_SOURCE_START", sourceId });
       const tasks = await source.refresh();
@@ -198,13 +190,14 @@ export class TaskSourceManager {
         type: "LOAD_SOURCE_SUCCESS",
         sourceId,
         tasks,
-        reconciler: source.reconciler,
       });
+
+      // Set up watcher if not already watching
+      // This ensures watchers are set up even when using refreshSource instead of loadSource
+      this.setupWatcher(sourceId);
 
       // Automatically sync after successful refresh
       await this.syncSourceData(sourceId);
-
-      // Perform cross-source sync for entities that exist in multiple sources
       await syncManager.syncAllCrossSourceEntities();
     } catch (error: any) {
       taskStore.dispatch({

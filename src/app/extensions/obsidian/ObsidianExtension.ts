@@ -34,13 +34,108 @@ import type { Task, Project, Area } from "../../core/entities";
 import type { TaskSyncSettings } from "../../types/settings";
 import { ObsidianBaseManager } from "./utils/BaseManager";
 import { DailyNoteFeature } from "./features/DailyNoteFeature";
-import { derived, get, type Readable } from "svelte/store";
+import { derived, get, writable, type Readable } from "svelte/store";
+import { syncManager, type EntityDataProvider } from "../../core/SyncManager";
 import { TypeNote } from "../../core/type-note/TypeNote";
 import { buildTaskNoteType } from "./types/TaskNoteType";
 import { createProjectNoteType } from "./types/ProjectNoteType";
 import { createAreaNoteType } from "./types/AreaNoteType";
 import { ObsidianTaskSource } from "./sources/TaskSource";
 import { taskSourceManager } from "../../core/TaskSourceManager";
+
+/**
+ * EntityDataProvider for Obsidian extension
+ * Handles reading/writing task data to/from Obsidian files
+ */
+class ObsidianEntityDataProvider implements EntityDataProvider {
+  extensionId = "obsidian";
+
+  constructor(private extension: ObsidianExtension) {}
+
+  async readEntityData(entityId: string): Promise<Partial<Task> | null> {
+    // For cross-source entities (like imported GitHub tasks), we need to find the task
+    // by its Obsidian file path, not by ID, since the task may have different IDs
+    // in different stores
+    const mainStoreState = get(taskStore);
+    const mainTask = mainStoreState.tasks.find((t) => t.id === entityId);
+
+    if (mainTask && mainTask.source.keys.obsidian) {
+      // Find the corresponding task in Obsidian entity store by file path
+      const obsidianTasks = get(this.extension.getEntityStore()) as Task[];
+      const obsidianTask = obsidianTasks.find(
+        (t) => t.source.keys.obsidian === mainTask.source.keys.obsidian
+      );
+
+      if (obsidianTask) {
+        return obsidianTask;
+      }
+    }
+
+    // Fallback: try to find by ID in Obsidian entity store (for Obsidian-only tasks)
+    const obsidianTasks = get(this.extension.getEntityStore()) as Task[];
+    const task = obsidianTasks.find((t) => t.id === entityId);
+
+    if (task && task.source.keys.obsidian) {
+      return task;
+    }
+
+    return null;
+  }
+
+  async writeEntityData(entityId: string, data: Partial<Task>): Promise<void> {
+    console.log(
+      `[ObsidianEntityDataProvider] writeEntityData called for entity ${entityId}`
+    );
+    console.log(`[ObsidianEntityDataProvider] Data to write:`, {
+      title: data.title,
+      source: data.source,
+    });
+
+    // For cross-source entities (like imported GitHub tasks), we need to find the task
+    // by its Obsidian file path, not by ID, since the task may have different IDs
+    // in different stores
+    const mainStoreState = get(taskStore);
+    const mainTask = mainStoreState.tasks.find((t) => t.id === entityId);
+
+    let obsidianTask: Task | undefined;
+
+    if (mainTask && mainTask.source.keys.obsidian) {
+      // Find the corresponding task in Obsidian entity store by file path
+      const obsidianTasks = get(this.extension.getEntityStore()) as Task[];
+      obsidianTask = obsidianTasks.find(
+        (t) => t.source.keys.obsidian === mainTask.source.keys.obsidian
+      );
+    }
+
+    // Fallback: try to find by ID in Obsidian entity store (for Obsidian-only tasks)
+    if (!obsidianTask) {
+      const obsidianTasks = get(this.extension.getEntityStore()) as Task[];
+      obsidianTask = obsidianTasks.find((t) => t.id === entityId);
+    }
+
+    if (obsidianTask && obsidianTask.source.keys.obsidian) {
+      console.log(
+        `[ObsidianEntityDataProvider] Found Obsidian task, updating file: ${obsidianTask.source.keys.obsidian}`
+      );
+      // Update the task file with the merged data
+      const mergedTask = { ...obsidianTask, ...data };
+      console.log(`[ObsidianEntityDataProvider] Merged task data:`, {
+        title: mergedTask.title,
+        source: mergedTask.source,
+      });
+      await this.extension.taskOperations.updateNote(mergedTask);
+      console.log(`[ObsidianEntityDataProvider] File update completed`);
+    } else {
+      console.log(
+        `[ObsidianEntityDataProvider] No Obsidian task found for entity ${entityId}`
+      );
+    }
+  }
+
+  canHandle(entity: Task): boolean {
+    return !!entity.source.keys.obsidian;
+  }
+}
 
 /**
  * Obsidian Extension Settings
@@ -70,6 +165,23 @@ export class ObsidianExtension implements Extension {
   private baseManager: ObsidianBaseManager;
   private dailyNoteFeature: DailyNoteFeature;
 
+  // Extension's own entity store - contains Obsidian tasks owned by this extension
+  private entityStore = writable<Task[]>([]);
+
+  /**
+   * Get the extension's entity store (read-only)
+   */
+  getEntityStore(): Readable<Task[]> {
+    return this.entityStore;
+  }
+
+  /**
+   * Update the extension's entity store
+   */
+  updateEntityStore(tasks: Task[]): void {
+    this.entityStore.set(tasks);
+  }
+
   private taskTodoMarkdownProcessor?: TaskTodoMarkdownProcessor;
   private markdownProcessor?: MarkdownPostProcessor;
 
@@ -78,6 +190,9 @@ export class ObsidianExtension implements Extension {
   readonly taskOperations: ObsidianTaskOperations;
   readonly todoPromotionOperations: Obsidian.TodoPromotionOperations;
   readonly typeNote: TypeNote;
+
+  // SyncManager provider
+  private entityDataProvider?: ObsidianEntityDataProvider;
 
   constructor(
     private app: App,
@@ -167,9 +282,15 @@ export class ObsidianExtension implements Extension {
 
       // Register ObsidianTaskSource with TaskSourceManager
       console.log("Registering ObsidianTaskSource with TaskSourceManager...");
-      const taskSource = new ObsidianTaskSource(this.app, this.settings);
+      const taskSource = new ObsidianTaskSource(this.app, this.settings, this);
       taskSourceManager.registerSource(taskSource);
       console.log("ObsidianTaskSource registered successfully");
+
+      // Register EntityDataProvider with SyncManager
+      console.log("Registering ObsidianEntityDataProvider with SyncManager...");
+      this.entityDataProvider = new ObsidianEntityDataProvider(this);
+      syncManager.registerProvider(this.entityDataProvider);
+      console.log("ObsidianEntityDataProvider registered successfully");
 
       this.initialized = true;
       console.log("ObsidianExtension initialized successfully");
@@ -187,10 +308,11 @@ export class ObsidianExtension implements Extension {
     try {
       console.log("Loading ObsidianExtension - scanning existing tasks...");
 
-      // Load tasks from ObsidianTaskSource via TaskSourceManager
+      // Refresh tasks from ObsidianTaskSource via TaskSourceManager
       // This runs after Obsidian's layout is ready and vault is fully loaded
-      await taskSourceManager.loadSource("obsidian");
-      console.log("Tasks loaded from ObsidianTaskSource");
+      // Use refreshSource instead of loadSource to trigger SyncManager for cross-source tasks
+      await taskSourceManager.refreshSource("obsidian");
+      console.log("Tasks refreshed from ObsidianTaskSource");
 
       // Set up vault event listeners for file deletions
       this.setupVaultEventListeners();
@@ -595,10 +717,10 @@ export class ObsidianExtension implements Extension {
   /**
    * Set up vault event listeners to handle file changes and deletions
    *
-   * NOTE: Task file changes are handled by ObsidianTaskSource.watch() which is
-   * registered with TaskSourceManager. This method only handles:
+   * NOTE: Task file changes AND deletions are handled by ObsidianTaskSource.watch()
+   * which is registered with TaskSourceManager. This method only handles:
    * - Project and Area file changes (no DataSources for these yet)
-   * - Entity deletions (triggers Operations.delete())
+   * - Project and Area deletions (triggers Operations.delete())
    * - Todo checkbox changes (syncs checkbox state with task files)
    */
   private setupVaultEventListeners(): void {
@@ -624,15 +746,16 @@ export class ObsidianExtension implements Extension {
     );
 
     // Listen for file deletions in the vault
+    // NOTE: Task deletions are handled by ObsidianTaskSource.watch()
+    // Only handle Project and Area deletions here
     const deleteRef = this.app.vault.on("delete", (file) => {
       if (!(file instanceof TFile)) return;
 
       const filePath = file.path;
 
-      // Check if the deleted file is in one of our entity folders
-      if (filePath.startsWith(this.settings.tasksFolder + "/")) {
-        this.handleTaskFileDeletion(filePath);
-      } else if (filePath.startsWith(this.settings.projectsFolder + "/")) {
+      // Check if the deleted file is a Project or Area
+      // Task deletions are handled by ObsidianTaskSource
+      if (filePath.startsWith(this.settings.projectsFolder + "/")) {
         this.handleProjectFileDeletion(filePath);
       } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
         this.handleAreaFileDeletion(filePath);
@@ -641,21 +764,6 @@ export class ObsidianExtension implements Extension {
 
     this.vaultEventRefs.push(metadataChangeRef);
     this.vaultEventRefs.push(deleteRef);
-  }
-
-  /**
-   * Handle task file deletion by finding and deleting the corresponding entity
-   */
-  private async handleTaskFileDeletion(filePath: string): Promise<void> {
-    const storeState = get(taskStore);
-    const task = TaskQueryService.findByFilePath(storeState.tasks, filePath);
-    if (!task) {
-      console.warn(`Task file deleted but entity not found: ${filePath}`);
-      return;
-    }
-    console.log(`Task file deleted: ${filePath}, deleting entity: ${task.id}`);
-    const taskOps = new Tasks.Operations(this.settings);
-    await taskOps.delete(task.id);
   }
 
   /**

@@ -31,6 +31,74 @@ import { GitHub } from "./entities/GitHub";
 import type { TaskSyncSettings } from "../../types/settings";
 import { GitHubTaskSource } from "./sources/TaskSource";
 import { taskSourceManager } from "../../core/TaskSourceManager";
+import { syncManager, type EntityDataProvider } from "../../core/SyncManager";
+import { extractRepositoryFromGitHubUrl } from "./utils/GitHubUrlUtils";
+
+/**
+ * EntityDataProvider for GitHub extension
+ * Handles reading/writing GitHub task data for cross-source synchronization
+ */
+class GitHubEntityDataProvider implements EntityDataProvider {
+  extensionId = "github";
+
+  constructor(private extension: GitHubExtension) {}
+
+  async readEntityData(entityId: string): Promise<Partial<Task> | null> {
+    // For cross-source entities (like imported GitHub tasks), we need to read from
+    // the main task store to get the complete task with all source keys preserved
+    console.log(
+      `[GitHubEntityDataProvider] Reading GitHub data for entity ${entityId}`
+    );
+
+    // First, try to find the task in the main task store
+    // This ensures we get the complete task with all source keys (github + obsidian)
+    const mainStoreState = get(taskStore);
+    const mainTask = mainStoreState.tasks.find((t) => t.id === entityId);
+
+    if (mainTask) {
+      console.log(
+        `[GitHubEntityDataProvider] Found GitHub task in main store:`,
+        {
+          title: mainTask.title,
+          sourceKeys: mainTask.source.keys,
+        }
+      );
+      return mainTask;
+    }
+
+    // Fallback: Read from the extension's entity store for non-imported tasks
+    const githubTasks = get(this.extension.getEntityStore()) as Task[];
+    const task = githubTasks.find((t) => t.id === entityId);
+
+    if (task) {
+      console.log(
+        `[GitHubEntityDataProvider] Found GitHub task in entity store:`,
+        {
+          title: task.title,
+          description: task.description,
+        }
+      );
+      return task;
+    }
+
+    console.log(
+      `[GitHubEntityDataProvider] No GitHub task found for ${entityId}`
+    );
+    return null;
+  }
+
+  async writeEntityData(entityId: string, _data: Partial<Task>): Promise<void> {
+    // GitHub extension doesn't write data back to GitHub
+    // It's a read-only source - GitHub API is the source of truth
+    console.log(
+      `[GitHubEntityDataProvider] GitHub is read-only, ignoring write for entity ${entityId}`
+    );
+  }
+
+  canHandle(entity: Task): boolean {
+    return entity.source.extension === "github";
+  }
+}
 
 export class GitHubExtension implements Extension {
   readonly id = "github";
@@ -49,6 +117,9 @@ export class GitHubExtension implements Extension {
   private labelsCache?: SchemaCache<GitHubLabelList>;
   private repositoriesCache?: SchemaCache<GitHubRepositoryList>;
   private organizationsCache?: SchemaCache<GitHubOrganizationList>;
+
+  // SyncManager provider
+  private entityDataProvider?: GitHubEntityDataProvider;
 
   constructor(settings: TaskSyncSettings, plugin: Plugin) {
     this.settings = settings;
@@ -98,9 +169,15 @@ export class GitHubExtension implements Extension {
 
       // Register GitHubTaskSource with TaskSourceManager
       console.log("Registering GitHubTaskSource with TaskSourceManager...");
-      const taskSource = new GitHubTaskSource();
+      const taskSource = new GitHubTaskSource(this);
       taskSourceManager.registerSource(taskSource);
       console.log("GitHubTaskSource registered successfully");
+
+      // Register EntityDataProvider with SyncManager
+      console.log("Registering GitHubEntityDataProvider with SyncManager...");
+      this.entityDataProvider = new GitHubEntityDataProvider(this);
+      syncManager.registerProvider(this.entityDataProvider);
+      console.log("GitHubEntityDataProvider registered successfully");
 
       this.initialized = true;
       console.log("GitHubExtension initialized successfully");
@@ -159,12 +236,62 @@ export class GitHubExtension implements Extension {
   // REACTIVE STATE - Extension-level state that components can observe
   // ============================================================================
 
-  // Cache for fetched GitHub API data (issues/PRs) - reactive writable store
-  private githubApiDataCache = writable<Map<string, any[]>>(new Map());
+  // Extension's own entity store - contains GitHub tasks owned by this extension
+  private entityStore = writable<Task[]>([]);
 
-  // Cache for non-imported task objects to ensure stable IDs
-  // Maps GitHub URL -> Task object
-  private taskObjectCache = new Map<string, Task>();
+  /**
+   * Get the extension's entity store (read-only)
+   */
+  getEntityStore(): Readable<Task[]> {
+    return this.entityStore;
+  }
+
+  /**
+   * Update the extension's entity store by merging new tasks
+   *
+   * This accumulates tasks in the store, replacing tasks with the same GitHub URL
+   * while preserving all other tasks. This allows the extension to build up a cache
+   * of GitHub data across multiple fetches.
+   *
+   * @param tasks - Tasks to add/update in the store
+   */
+  updateEntityStore(tasks: Task[]): void {
+    this.entityStore.update((currentTasks) => {
+      console.log(
+        `[GitHubExtension] updateEntityStore called with ${tasks.length} tasks, current store has ${currentTasks.length} tasks`
+      );
+
+      // Create a map of existing tasks by GitHub URL for efficient lookup
+      const taskMap = new Map<string, Task>();
+
+      // Add all current tasks to the map
+      for (const task of currentTasks) {
+        const url = task.source?.keys?.github;
+        if (url) {
+          taskMap.set(url, task);
+        }
+      }
+
+      console.log(
+        `[GitHubExtension] Added ${taskMap.size} existing tasks to map`
+      );
+
+      // Update/add new tasks
+      for (const task of tasks) {
+        const url = task.source?.keys?.github;
+        if (url) {
+          taskMap.set(url, task);
+        }
+      }
+
+      console.log(
+        `[GitHubExtension] After adding new tasks, map has ${taskMap.size} tasks`
+      );
+
+      // Return all tasks from the map
+      return Array.from(taskMap.values());
+    });
+  }
 
   // Current active filters - components should read/write these
   private currentFilters = writable<{
@@ -192,6 +319,8 @@ export class GitHubExtension implements Extension {
     repository?: string | null;
     type?: "issues" | "pull-requests";
   }): void {
+    console.log("[GitHubExtension] setFilters called with:", filters);
+
     this.currentFilters.update((current) => ({
       repository:
         filters.repository !== undefined
@@ -200,15 +329,51 @@ export class GitHubExtension implements Extension {
       type: filters.type !== undefined ? filters.type : current.type,
     }));
 
-    // Trigger data fetch if repository is set
+    // Trigger data fetch if repository is set and we don't have data for it
     const { repository, type } = get(this.currentFilters);
+    console.log(
+      `[GitHubExtension] Current filters after update: repository=${repository}, type=${type}`
+    );
+
     if (repository) {
-      const cacheKey = `${repository}:${type}`;
-      const currentCache = get(this.githubApiDataCache);
-      if (!currentCache.has(cacheKey)) {
-        this.fetchGitHubApiData(repository, type);
+      // Check if we have data in the entity store for this repository/type
+      const entityTasks = get(this.getEntityStore()) as Task[];
+      console.log(
+        `[GitHubExtension] Checking if we have data for ${repository}/${type}, entity store has ${entityTasks.length} tasks`
+      );
+
+      const hasDataForRepo = entityTasks.some((task) => {
+        const url = task.source?.keys?.github;
+        if (!url) return false;
+        const taskRepository = extractRepositoryFromGitHubUrl(url);
+        const typeMatches =
+          (type === "issues" && url.includes("/issues/")) ||
+          (type === "pull-requests" && url.includes("/pull/"));
+        return taskRepository === repository && typeMatches;
+      });
+
+      console.log(
+        `[GitHubExtension] hasDataForRepo=${hasDataForRepo}, will ${
+          hasDataForRepo ? "NOT" : ""
+        } trigger refresh`
+      );
+
+      if (!hasDataForRepo) {
+        // Trigger refresh to fetch data for this repository
+        // The refresh will accumulate data in entity store and return ALL imported tasks
+        taskSourceManager.refreshSource("github");
       }
     }
+  }
+
+  /**
+   * Get the current filter state (for TaskSource to use)
+   */
+  getCurrentFilters(): {
+    repository: string | null;
+    type: "issues" | "pull-requests";
+  } {
+    return get(this.currentFilters);
   }
 
   /**
@@ -227,15 +392,15 @@ export class GitHubExtension implements Extension {
     });
 
     // Create a derived store that combines:
-    // 1. Imported GitHub tasks
-    // 2. GitHub API data cache
+    // 1. Imported GitHub tasks (from main taskStore)
+    // 2. GitHub tasks from extension's entity store (authoritative GitHub data)
     // 3. Current filter state
     return derived(
-      [importedGitHubTasks, this.githubApiDataCache, this.currentFilters],
-      ([$importedTasks, $cache, $filters]) => {
+      [importedGitHubTasks, this.getEntityStore(), this.currentFilters],
+      ([$importedTasks, $githubTasks, $filters]) => {
         console.log("[GitHubExtension.getTasks] Derived store updating:", {
           importedCount: $importedTasks.length,
-          cacheSize: $cache.size,
+          githubTasksCount: $githubTasks.length,
           filters: $filters,
         });
 
@@ -245,80 +410,62 @@ export class GitHubExtension implements Extension {
         }
 
         const { repository, type } = $filters;
-        const cacheKey = `${repository}:${type}`;
 
-        // Get fetched GitHub API data from reactive cache
-        const githubItems = $cache.get(cacheKey) || [];
+        // Filter GitHub tasks from entity store for this repository and type
+        const githubTasksForRepo = $githubTasks.filter((task) => {
+          const url = task.source?.keys?.github;
+          if (!url) return false;
+          const taskRepository = extractRepositoryFromGitHubUrl(url);
+
+          // Check repository match and type match
+          const repoMatches = taskRepository === repository;
+          const typeMatches =
+            (type === "issues" && url.includes("/issues/")) ||
+            (type === "pull-requests" && url.includes("/pull/"));
+
+          return repoMatches && typeMatches;
+        });
 
         // Filter imported tasks for this repository
         const importedForRepo = $importedTasks.filter((task) => {
           const url = task.source?.keys?.github;
           if (!url) return false;
-          const match = url.match(/github\.com\/([^\/]+\/[^\/]+)\//);
-          const taskRepository = match ? match[1] : null;
+          const taskRepository = extractRepositoryFromGitHubUrl(url);
           return taskRepository === repository;
         });
 
-        console.log("[GitHubExtension.getTasks] Imported for repo:", {
+        console.log("[GitHubExtension.getTasks] GitHub tasks for repo:", {
           repository,
-          count: importedForRepo.length,
+          githubTasksCount: githubTasksForRepo.length,
+          importedCount: importedForRepo.length,
         });
 
-        // Combine GitHub API data with imported tasks
-        const tasks = githubItems.map((item: any) => {
-          // Check if this item is already imported
-          const existingTask = importedForRepo.find(
-            (task: Task) => task.source?.keys?.github === item.html_url
+        // Combine tasks: use imported tasks (with user modifications) when available,
+        // otherwise use GitHub tasks (fresh API data)
+        const tasks = githubTasksForRepo.map((githubTask) => {
+          // Check if this GitHub task is imported (exists in main taskStore)
+          const importedTask = importedForRepo.find(
+            (task) =>
+              task.source?.keys?.github === githubTask.source?.keys?.github
           );
 
-          if (existingTask) {
-            // Return the imported task from the store with updated GitHub data
+          if (importedTask) {
+            // Use the imported task from main store (has user modifications like doDate)
+            // but ensure source.data is fresh from GitHub API
             return {
-              ...existingTask,
+              ...importedTask,
               source: {
-                ...existingTask.source,
-                data: item, // Update with latest GitHub data
+                ...importedTask.source,
+                data: githubTask.source.data, // Fresh GitHub API data
               },
-            } as Task;
+              imported: true,
+            } as Task & { imported: boolean };
           } else {
-            // Check if we already have a cached task object for this URL
-            const cachedTask = this.taskObjectCache.get(item.html_url);
-            if (cachedTask) {
-              // Return cached task with updated source.data
-              return {
-                ...cachedTask,
-                source: {
-                  ...cachedTask.source,
-                  data: item,
-                },
-              } as Task;
-            }
-
-            // Create a new task representation with GitHub data in source.data
-            const taskData =
-              type === "issues"
-                ? this.githubOperations.tasks.transformIssueToTask(
-                    item,
-                    repository
-                  )
-                : this.githubOperations.tasks.transformPullRequestToTask(
-                    item,
-                    repository
-                  );
-
-            // Use buildEntity to generate proper ID and timestamps
-            const task = this.githubOperations.tasks.buildEntity({
-              ...taskData,
-              source: {
-                ...taskData.source,
-                data: item, // Store the raw GitHub data
-              },
-            }) as Task;
-
-            // Cache the task object for future renders
-            this.taskObjectCache.set(item.html_url, task);
-
-            return task;
+            // Use the GitHub task from entity store (fresh API data)
+            return {
+              ...githubTask,
+              imported: false,
+            } as Task & { imported: boolean };
           }
         });
 
@@ -328,81 +475,37 @@ export class GitHubExtension implements Extension {
   }
 
   /**
-   * Fetch GitHub API data and cache it
-   */
-  private async fetchGitHubApiData(
-    repository: string,
-    type: "issues" | "pull-requests"
-  ): Promise<void> {
-    const cacheKey = `${repository}:${type}`;
-
-    try {
-      // Set empty array while fetching to prevent multiple fetches
-      this.githubApiDataCache.update((cache) => {
-        const newCache = new Map(cache);
-        newCache.set(cacheKey, []);
-        return newCache;
-      });
-
-      // Fetch GitHub data
-      const githubItems =
-        type === "issues"
-          ? await this.fetchIssues(repository)
-          : await this.fetchPullRequests(repository);
-
-      // Store in cache - this triggers reactivity
-      this.githubApiDataCache.update((cache) => {
-        const newCache = new Map(cache);
-        newCache.set(cacheKey, githubItems);
-        return newCache;
-      });
-    } catch (error) {
-      console.error(
-        `Failed to fetch GitHub ${type} for repository ${repository}:`,
-        error
-      );
-      // Keep empty array on error
-      this.githubApiDataCache.update((cache) => {
-        const newCache = new Map(cache);
-        newCache.set(cacheKey, []);
-        return newCache;
-      });
-    }
-  }
-
-  /**
-   * Refresh GitHub data by clearing caches and reloading from source
-   * Updated to use TaskSourceManager which handles store updates
+   * Refresh GitHub data by reloading from source
+   * Updated to use TaskSourceManager which handles store updates and API fetching
    */
   async refresh(): Promise<void> {
     try {
+      console.log(
+        "[GitHubExtension] refresh() called - starting GitHub refresh..."
+      );
       console.log("Refreshing GitHub data via TaskSourceManager...");
 
       // Clear all caches to force fresh data fetch
+      console.log("[GitHubExtension] Clearing cache...");
       await this.clearCache();
-
-      // Clear GitHub API data cache - this triggers reactivity
-      this.githubApiDataCache.set(new Map());
-
-      // DON'T clear taskObjectCache - we want stable IDs across refreshes
-      // The cache ensures the same GitHub issue always gets the same ULID
+      console.log("[GitHubExtension] Cache cleared");
 
       // Use TaskSourceManager to refresh tasks from GitHubTaskSource
-      // This will:
-      // 1. Call GitHubTaskSource.refresh()
-      // 2. Dispatch LOAD_SOURCE_START action
-      // 3. Dispatch LOAD_SOURCE_SUCCESS with fresh tasks
-      // 4. Store reducer handles replacing old tasks with fresh ones
+      // The GitHubTaskSource will now:
+      // 1. Get current filters from this extension
+      // 2. Fetch fresh data from GitHub API based on filters
+      // 3. Update this extension's reactive cache for UI reactivity
+      // 4. Transform GitHub items into tasks
+      // 5. Return all tasks (both imported and non-imported)
+      // 6. TaskSourceManager dispatches LOAD_SOURCE_SUCCESS with fresh tasks
+      // 7. Store reducer handles replacing old tasks with fresh ones
+      console.log(
+        "[GitHubExtension] Calling taskSourceManager.refreshSource('github')..."
+      );
       await taskSourceManager.refreshSource("github");
-
-      // Re-fetch GitHub API data for current filter
-      const currentFilter = get(this.currentFilters);
-      if (currentFilter.repository) {
-        await this.fetchGitHubApiData(
-          currentFilter.repository,
-          currentFilter.type
-        );
-      }
+      console.log(
+        "[GitHubExtension] taskSourceManager.refreshSource completed"
+      );
 
       console.log(
         "GitHub refresh completed successfully via TaskSourceManager"
@@ -709,22 +812,39 @@ export class GitHubExtension implements Extension {
    * Clear all GitHub-specific caches
    */
   async clearCache(): Promise<void> {
+    console.log("[GitHubExtension] clearCache() starting...");
     // Clear all cache instances
     if (this.issuesCache) {
+      console.log("[GitHubExtension] Clearing issues cache...");
       await this.issuesCache.clear();
+      console.log("[GitHubExtension] Issues cache cleared");
     }
 
     if (this.labelsCache) {
+      console.log("[GitHubExtension] Clearing labels cache...");
       await this.labelsCache.clear();
+      console.log("[GitHubExtension] Labels cache cleared");
     }
 
     if (this.repositoriesCache) {
+      console.log("[GitHubExtension] Clearing repositories cache...");
       await this.repositoriesCache.clear();
+      console.log("[GitHubExtension] Repositories cache cleared");
     }
 
     if (this.organizationsCache) {
-      await this.organizationsCache.clear();
+      try {
+        console.log("[GitHubExtension] Clearing organizations cache...");
+        await this.organizationsCache.clear();
+        console.log("[GitHubExtension] Organizations cache cleared");
+      } catch (error) {
+        console.error(
+          "[GitHubExtension] Failed to clear organizations cache:",
+          error
+        );
+      }
     }
+    console.log("[GitHubExtension] clearCache() completed");
   }
 
   /**

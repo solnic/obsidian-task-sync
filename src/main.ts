@@ -21,6 +21,7 @@ import { areaStore, type AreaStore } from "./app/stores/areaStore";
 import type { ObsidianExtension } from "./app/extensions/obsidian/ObsidianExtension";
 import { Obsidian } from "./app/extensions/obsidian/entities/Obsidian";
 import { extensionRegistry } from "./app/core/extension";
+import { taskSourceManager } from "./app/core/TaskSourceManager";
 import { get } from "svelte/store";
 import type { Task, Project, Area } from "./app/core/entities";
 // Singleton operations removed - use operations from ObsidianExtension instance
@@ -780,18 +781,18 @@ export default class TaskSyncPlugin extends Plugin {
         return;
       }
 
-      // Don't clear the store - let each extension refresh use its reconciler
-      // to properly preserve source metadata (e.g., GitHub extensions)
+      // Refresh each registered source via TaskSourceManager to ensure proper SyncManager integration
+      // This ensures cross-source synchronization happens correctly
+      const registeredSources = taskSourceManager.getRegisteredSources();
 
-      // Refresh each extension - they will use reconcilers to merge data properly
-      for (const extension of extensions) {
+      for (const sourceId of registeredSources) {
         try {
-          console.log(`Rebuilding tasks from extension: ${extension.id}`);
-          await extension.refresh();
+          console.log(`Rebuilding tasks from source: ${sourceId}`);
+          await taskSourceManager.refreshSource(sourceId);
           results.tasksRefreshed++;
         } catch (error) {
           results.errors.push(
-            `Failed to refresh ${extension.id}: ${error.message}`
+            `Failed to refresh ${sourceId}: ${error.message}`
           );
         }
       }
