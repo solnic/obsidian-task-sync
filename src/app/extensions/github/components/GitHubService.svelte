@@ -5,7 +5,7 @@
    */
 
   import { onMount, onDestroy } from "svelte";
-  import { get } from "svelte/store";
+  import { derived } from "svelte/store";
   import SearchInput from "../../../components/SearchInput.svelte";
   import SortDropdown from "../../../components/SortDropdown.svelte";
   import FilterButton from "../../../components/FilterButton.svelte";
@@ -636,13 +636,22 @@
     }
   }
 
+  // Derived store: Set of imported GitHub URLs for O(1) lookup
+  // This avoids O(n*m) complexity from calling get(taskStore) in the render loop
+  const importedGitHubUrls = derived(taskStore, ($taskStore) => {
+    const urls = new Set<string>();
+    for (const task of $taskStore.tasks) {
+      const githubUrl = task.source.keys.github;
+      if (githubUrl) {
+        urls.add(githubUrl);
+      }
+    }
+    return urls;
+  });
+
   // Helper to check if a task is imported (exists in main task store)
   function isTaskImported(task: Task): boolean {
-    // A task is imported when it exists in the main task store
-    const mainStoreTasks = get(taskStore).tasks;
-    return mainStoreTasks.some(
-      (t) => t.source.keys.github === task.source.keys.github
-    );
+    return $importedGitHubUrls.has(task.source.keys.github);
   }
 
   async function importTask(task: Task): Promise<void> {
