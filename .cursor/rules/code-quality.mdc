@@ -1,0 +1,21 @@
+---
+description: "Enforce confident, fail-fast code (validate at entry, no fallback chains, no defensive code). Applies everywhere."
+globs: ["src/**/*", "tests/**/*"]
+alwaysApply: false
+---
+
+# Code Quality: Confident, Non-Defensive Coding
+
+- **NEVER** use fallback chains like `foo || bar || 'default'` — Trust your data contracts; fail fast if violated.
+- **NEVER** wrap business logic, utility, or internal functions in unnecessary try/catch.
+  - Only catch errors at boundaries (UI/API, external, background jobs) and provide meaningful, user-facing feedback if needed.
+- **ALWAYS** validate at boundaries (API handler, form) and then trust that data everywhere in internal code.
+- **NO** silent error swallowing or pointless catch-and-rethrow.
+- **Explicit validation/fail-fast strategy:** At the boundary, e.g. `if (!data.foo) throw Error('foo required')`; after that, treat as safe and avoid duplicate validation.
+- **Null/undefined handling:** Fallbacks only for _truly_ optional fields, never for expected or contract-mandated ones.
+
+---
+
+<!--
+Origin: .augment/rules/2-confident-code.md, .augment/rules/0-critical-summary.md
+-->
