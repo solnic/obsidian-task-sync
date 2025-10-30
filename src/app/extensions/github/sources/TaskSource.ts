@@ -236,12 +236,20 @@ export class GitHubTaskSource implements DataSource<Task> {
       }))
     );
 
+    // Create Map for O(1) lookup instead of O(n) find() in loop
+    // This avoids O(n*m) complexity when transforming GitHub items
+    const importedTasksByUrl = new Map<string, Task>();
+    for (const task of importedTasks) {
+      const githubUrl = task.source.keys.github;
+      if (githubUrl) {
+        importedTasksByUrl.set(githubUrl, task);
+      }
+    }
+
     // Transform GitHub items into tasks
     const tasks = githubItems.map((item: GitHubIssue | GitHubPullRequest) => {
-      // Check if this item is already imported
-      const existingTask = importedTasks.find(
-        (task: Task) => task.source.keys.github === item.html_url
-      );
+      // Check if this item is already imported using O(1) Map lookup
+      const existingTask = importedTasksByUrl.get(item.html_url);
 
       if (existingTask) {
         // Create fresh task from GitHub API data, preserving only ID and timestamps
