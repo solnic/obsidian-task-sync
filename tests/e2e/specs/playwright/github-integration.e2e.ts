@@ -473,10 +473,13 @@ test.describe("GitHub Integration", () => {
     });
 
     // Wait for GitHub service to be enabled
-    await page.waitForSelector('[data-testid="service-github"]:not([disabled])', {
-      state: "visible",
-      timeout: 10000,
-    });
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
 
     await switchToTaskService(page, "github");
     await selectFromDropdown(page, "organization-filter", "solnic");
@@ -488,7 +491,9 @@ test.describe("GitHub Integration", () => {
 
     // Start Daily Planning wizard and go to step 2
     await executeCommand(page, "Task Sync: Start Daily Planning");
-    await expect(page.locator('[data-testid="daily-planning-view"]')).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 10000 });
     await page.click('[data-testid="next-button"]');
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
 
@@ -505,7 +510,9 @@ test.describe("GitHub Integration", () => {
     await importedIssue.hover();
 
     // Verify the wizard-specific action is visible for imported items (scoped to this item)
-    const scheduleBtn = importedIssue.locator('[data-testid="schedule-for-today-button"]');
+    const scheduleBtn = importedIssue.locator(
+      '[data-testid="schedule-for-today-button"]'
+    );
     await expect(scheduleBtn).toBeVisible();
     await expect(scheduleBtn).toHaveText("Schedule for today");
 
@@ -517,7 +524,9 @@ test.describe("GitHub Integration", () => {
 
     // The scheduled list should now include the imported issue title
     const scheduledItems = page.locator('[data-testid="scheduled-task"]');
-    await expect(scheduledItems.filter({ hasText: "First test issue" })).toHaveCount(1);
+    await expect(
+      scheduledItems.filter({ hasText: "First test issue" })
+    ).toHaveCount(1);
   });
 
   test("should clear cache and reload data when refresh button is clicked", async ({
