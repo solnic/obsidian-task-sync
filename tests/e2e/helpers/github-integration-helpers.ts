@@ -629,15 +629,51 @@ export async function clickIssueImportButton(
   // Hover over the issue to make the import button appear
   await issueLocator.hover();
 
-  // Give a small delay for the action overlay to render
-  await page.waitForTimeout(100);
+  // Ensure the overlay has time to render and is within viewport
+  await issueLocator.scrollIntoViewIfNeeded();
 
-  // Wait for the import button to appear and click it
-  const importButton = issueLocator.locator(
-    '[data-testid="issue-import-button"]'
-  );
-  await importButton.waitFor({ state: "visible", timeout: 5000 });
-  await importButton.click();
+  // Wait explicitly for action overlay to appear; retry hover if needed
+  const overlay = issueLocator.locator(".task-sync-action-overlay");
+  try {
+    await overlay.waitFor({ state: "visible", timeout: 1500 });
+  } catch (_) {
+    // Retry one more hover and wait
+    await issueLocator.hover();
+    await page.waitForTimeout(200);
+    await overlay.waitFor({ state: "visible", timeout: 1500 });
+  }
+
+  // Wait for any valid import action button to appear and click it.
+  // Depending on the planning modes, the button's test id varies.
+  const candidateSelectors = [
+    '[data-testid="issue-import-button"]',
+    '[data-testid="add-to-today-button"]',
+    '[data-testid="schedule-for-today-button"]',
+  ];
+
+  // Try to find the first visible candidate
+  let clicked = false;
+  for (const selector of candidateSelectors) {
+    const button = issueLocator.locator(selector);
+    try {
+      // Wait for the button to be attached first, then visible
+      await button.waitFor({ state: "attached", timeout: 2000 });
+      await button.waitFor({ state: "visible", timeout: 2000 });
+      await button.click();
+      clicked = true;
+      break;
+    } catch (_) {
+      // Try next selector
+    }
+  }
+
+  if (!clicked) {
+    throw new Error(
+      `Import action button not visible for issue #${issueNumber} (tried ${candidateSelectors.join(
+        ", "
+      )})`
+    );
+  }
 }
 
 /**
