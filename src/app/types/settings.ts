@@ -116,8 +116,6 @@ export interface TaskSyncSettings {
   areaBasesEnabled: boolean;
   projectBasesEnabled: boolean;
   autoSyncAreaProjectBases: boolean;
-  // Task property ordering
-  taskPropertyOrder: string[];
   // Integrations
   integrations: {
     github: GitHubIntegrationSettings;
@@ -196,18 +194,6 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   areaBasesEnabled: true,
   projectBasesEnabled: true,
   autoSyncAreaProjectBases: true,
-  // Task property ordering defaults - simplified for now
-  taskPropertyOrder: [
-    "title",
-    "status",
-    "priority",
-    "type",
-    "area",
-    "project",
-    "due",
-    "created",
-    "updated",
-  ],
   // Integration defaults
   integrations: {
     github: {

@@ -187,8 +187,8 @@ export default class TaskSyncPlugin extends Plugin {
       return new DailyPlanningView(leaf);
     });
 
-    // Add ribbon icon for main view
-    this.addRibbonIcon("checkbox", "Task Sync", () => {
+    // Add ribbon icon for main view (use valid Obsidian icon)
+    this.addRibbonIcon("list-todo", "Task Sync", () => {
       this.activateView();
     });
 
@@ -596,7 +596,61 @@ export default class TaskSyncPlugin extends Plugin {
     const { CreateEntityModal } = await import(
       "./app/modals/CreateEntityModal"
     );
-    new CreateEntityModal(this.app, this, noteTypeId).open();
+
+    // Derive contextual defaults for Task creation
+    let initialPropertyValues: Record<string, any> | undefined;
+    let contextualTitle: string | undefined;
+
+    try {
+      const activeFile = this.app.workspace.getActiveFile();
+      const activePath = activeFile?.path || "";
+
+      // Only attempt context for tasks
+      if (noteTypeId === "task") {
+        const areaFolder = this.settings.areasFolder + "/";
+        const projectFolder = this.settings.projectsFolder + "/";
+
+        // Basic inference from path: if under Projects/ or Areas/ use that as default
+        if (activePath.startsWith(projectFolder)) {
+          const parts = activePath.substring(projectFolder.length).split("/");
+          const projectName = parts[0] || "";
+          if (projectName) {
+            initialPropertyValues = { ...(initialPropertyValues || {}), Project: projectName };
+            contextualTitle = `Create Task for Project: ${projectName}`;
+          }
+        } else if (activePath.startsWith(areaFolder)) {
+          const parts = activePath.substring(areaFolder.length).split("/");
+          const areaName = parts[0] || "";
+          if (areaName) {
+            initialPropertyValues = { ...(initialPropertyValues || {}), Areas: [areaName] };
+            contextualTitle = `Create Task for Area: ${areaName}`;
+          }
+        }
+
+        // If opening from within a task file, set Parent Task
+        const tasksFolder = this.settings.tasksFolder + "/";
+        if (activePath.startsWith(tasksFolder)) {
+          const parentTitle = activeFile?.basename;
+          if (parentTitle) {
+            initialPropertyValues = {
+              ...(initialPropertyValues || {}),
+              ["Parent Task"]: parentTitle,
+            };
+            // If no prior context title, reflect parent task
+            if (!contextualTitle) {
+              contextualTitle = `Create Subtask of: ${parentTitle}`;
+            }
+          }
+        }
+      }
+    } catch (_) {
+      // Best-effort context; ignore errors
+    }
+
+    new CreateEntityModal(this.app, this, noteTypeId, {
+      initialPropertyValues,
+      contextualTitle,
+    }).open();
   }
 
   /**
@@ -894,7 +948,7 @@ class TaskSyncView extends ItemView {
   }
 
   getIcon(): string {
-    return "checkbox";
+    return "list-todo";
   }
 
   async onOpen() {

@@ -22,7 +22,6 @@
     { id: "templates", title: "Templates" },
     { id: "bases", title: "Bases" },
     { id: "type-note", title: "TypeNote" },
-    { id: "task-properties", title: "Task Properties" },
     { id: "integrations", title: "Integrations" },
   ];
 </script>

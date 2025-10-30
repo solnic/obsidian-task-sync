@@ -7,7 +7,6 @@
   import GeneralSettings from "./GeneralSettings.svelte";
   import TemplatesSettings from "./TemplatesSettings.svelte";
   import BasesSettings from "./BasesSettings.svelte";
-  import TaskPropertiesSettings from "./TaskPropertiesSettings.svelte";
   import IntegrationsSettings from "./IntegrationsSettings.svelte";
   import TypeNoteSettings from "./TypeNoteSettings.svelte";
 
@@ -47,8 +46,6 @@
     <BasesSettings bind:settings {saveSettings} {section} {app} {plugin} />
   {:else if section.id === "type-note"}
     <TypeNoteSettings bind:settings {saveSettings} {section} {plugin} />
-  {:else if section.id === "task-properties"}
-    <TaskPropertiesSettings bind:settings {saveSettings} {section} {plugin} />
   {:else if section.id === "integrations"}
     <IntegrationsSettings
       bind:settings
