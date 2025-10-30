@@ -458,6 +458,68 @@ test.describe("GitHub Integration", () => {
     ).toHaveText("Schedule for today");
   });
 
+  test("should show 'Schedule for today' for already imported issue during wizard and stage it", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service to be enabled
+    await page.waitForSelector('[data-testid="service-github"]:not([disabled])', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Import issue #111 so it becomes an already-imported item
+    await clickIssueImportButton(page, 111);
+    await waitForIssueImportComplete(page, 111);
+
+    // Start Daily Planning wizard and go to step 2
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(page.locator('[data-testid="daily-planning-view"]')).toBeVisible({ timeout: 10000 });
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Switch back to GitHub service in Tasks view (wizard stays open)
+    await page.click('[data-testid="tasks-view-tab"]');
+    await switchToTaskService(page, "github");
+
+    // Find the already-imported issue and hover to reveal actions
+    const importedIssue = page
+      .locator('[data-testid="github-issue-item"]')
+      .filter({ hasText: "#111" })
+      .first();
+    await importedIssue.waitFor({ state: "visible" });
+    await importedIssue.hover();
+
+    // Verify the wizard-specific action is visible for imported items (scoped to this item)
+    const scheduleBtn = importedIssue.locator('[data-testid="schedule-for-today-button"]');
+    await expect(scheduleBtn).toBeVisible();
+    await expect(scheduleBtn).toHaveText("Schedule for today");
+
+    // Click to stage scheduling for today
+    await scheduleBtn.click();
+
+    // Go back to the wizard (step 2 should still be shown)
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // The scheduled list should now include the imported issue title
+    const scheduledItems = page.locator('[data-testid="scheduled-task"]');
+    await expect(scheduledItems.filter({ hasText: "First test issue" })).toHaveCount(1);
+  });
+
   test("should clear cache and reload data when refresh button is clicked", async ({
     page,
   }) => {

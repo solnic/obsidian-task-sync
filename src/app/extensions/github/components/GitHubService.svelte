@@ -5,7 +5,7 @@
    */
 
   import { onMount, onDestroy } from "svelte";
-  import { derived } from "svelte/store";
+  import { derived, get } from "svelte/store";
   import SearchInput from "../../../components/SearchInput.svelte";
   import SortDropdown from "../../../components/SortDropdown.svelte";
   import FilterButton from "../../../components/FilterButton.svelte";
@@ -656,6 +656,40 @@
     return githubUrl ? $importedGitHubUrls.has(githubUrl) : false;
   }
 
+  // Schedule an issue/PR for today. If already imported, schedule existing task.
+  async function scheduleForToday(task: Task): Promise<void> {
+    const githubUrl = task.source?.keys?.github;
+
+    if (!dailyPlanningExtension) {
+      return;
+    }
+
+    // If the task is already imported, find it and schedule it
+    if (githubUrl && isTaskImported(task)) {
+      const state = get(taskStore);
+      const existing = state.tasks.find(
+        (t) => t.source?.keys?.github === githubUrl
+      );
+      if (existing) {
+        try {
+          if (dailyPlanningWizardMode) {
+            dailyPlanningExtension.scheduleTaskForToday(existing.id);
+          } else if (dayPlanningMode) {
+            await dailyPlanningExtension.addTasksToTodayDailyNote([
+              { id: existing.id, title: existing.title } as Task,
+            ]);
+          }
+        } catch (err) {
+          console.error("Error scheduling existing task for today:", err);
+        }
+        return;
+      }
+    }
+
+    // Otherwise, import then schedule via existing flow
+    await importTask(task);
+  }
+
   async function importTask(task: Task): Promise<void> {
     try {
       importingTasks.add(task.id);
@@ -924,7 +958,7 @@
                 {dayPlanningMode}
                 {dailyPlanningWizardMode}
                 onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
-                onImport={() => importTask(task)}
+                onImport={() => scheduleForToday(task)}
                 {host}
                 {settings}
                 testId="pr-item"
@@ -941,7 +975,7 @@
                 {dayPlanningMode}
                 {dailyPlanningWizardMode}
                 onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
-                onImport={() => importTask(task)}
+                onImport={() => scheduleForToday(task)}
                 {host}
                 {settings}
                 testId="github-issue-item"

@@ -118,7 +118,16 @@
 </script>
 
 {#snippet actionSnippet()}
-  {#if isImported}
+  {#if dailyPlanningWizardMode && !isScheduled}
+    <ImportButton
+      isImported={false}
+      {isImporting}
+      {dayPlanningMode}
+      {dailyPlanningWizardMode}
+      testId="schedule-for-today-button"
+      onImport={handleImport}
+    />
+  {:else if isImported}
     <button
       class="open-task-button"
       title="Open task"
@@ -133,15 +142,11 @@
       {isImporting}
       {dayPlanningMode}
       {dailyPlanningWizardMode}
-      testId={dailyPlanningWizardMode
-        ? "schedule-for-today-button"
-        : dayPlanningMode
-          ? "add-to-today-button"
-          : isImported
-            ? "imported-indicator"
-            : isImporting
-              ? "importing-indicator"
-              : "issue-import-button"}
+      testId={dayPlanningMode
+        ? "add-to-today-button"
+        : isImporting
+          ? "importing-indicator"
+          : "issue-import-button"}
       onImport={handleImport}
     />
   {/if}
