@@ -1,9 +1,7 @@
 ---
 description: "Ensures test suite integrity: E2E/Playwright primacy, forbid fake/weakened/removed tests. Applies to tests and src."
-globs: ["src/**/*", "tests/**/*"]
 alwaysApply: false
 ---
-
 # Testing & Integrity
 
 - **E2E (Playwright) are PRIMARY** — Unit tests are only for simple utility functions

@@ -1,9 +1,6 @@
 ---
-description: "Enforce confident, fail-fast code (validate at entry, no fallback chains, no defensive code). Applies everywhere."
-globs: ["src/**/*", "tests/**/*"]
-alwaysApply: false
+alwaysApply: true
 ---
-
 # Code Quality: Confident, Non-Defensive Coding
 
 - **NEVER** use fallback chains like `foo || bar || 'default'` — Trust your data contracts; fail fast if violated.

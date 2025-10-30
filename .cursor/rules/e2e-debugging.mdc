@@ -1,9 +1,6 @@
 ---
-description: "Prescribes how to debug Playwright E2E tests (Docker: use artifacts, not UI tools). Applies to all test/dev code."
-globs: ["src/**/*", "tests/**/*"]
-alwaysApply: false
+alwaysApply: true
 ---
-
 # E2E Debugging with Playwright (Docker)
 
 - **NEVER** run Playwright UI commands (e.g., `npx playwright show-trace`) — they do NOT work in Docker containers
@@ -15,9 +12,3 @@ alwaysApply: false
   1. Read output carefully
   2. Analyze screenshots, logs, DOM, and trace data (programmatically)
   3. Add more debug output/reduce the scenario until the cause is clear
-
----
-
-<!--
-Origin: .augment/rules/3-e2e-docker-debugging.md, .augment/rules/0-critical-summary.md
--->

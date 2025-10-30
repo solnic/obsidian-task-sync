@@ -1,9 +1,7 @@
 ---
 description: "Unified UI component/design system rules (composition, reuse, styling, structure). Applies to src/components and all UI code."
-globs: ["src/**/*", "tests/**/*"]
 alwaysApply: false
 ---
-
 # UI Component & Design Guidelines
 
 ## General Principles

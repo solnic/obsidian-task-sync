@@ -1,18 +1,7 @@
 ---
-id: cursor-rule-svelte
-title: Svelte 5 Guidelines
-scope: project
-severity: suggestion
 description: "Svelte 5 best practices (state, runes, effects, context, props, bindings), applies to all Svelte code in src/tests."
-globs: ["src/**/*", "tests/**/*"]
 alwaysApply: false
-tags:
-  - svelte
-  - state
-  - effects
-  - props
 ---
-
 # Svelte 5 Guidelines (Stores, Runes, Effects)
 
 ## State Management

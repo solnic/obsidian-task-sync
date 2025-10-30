@@ -1,9 +1,6 @@
 ---
-description: "Enforces task system workflow, strict commit/test sequencing—must use real tasks, not text lists. Applies to src & tests."
-globs: ["src/**/*", "tests/**/*"]
-alwaysApply: false
+alwaysApply: true
 ---
-
 # Workflow & Task Management
 
 > **MANDATORY:** Use the task system, not text lists. One task at a time. Mark complete only after squashing/merging all commits.
@@ -28,7 +25,3 @@ alwaysApply: false
 - The test expectations seem wrong, or don't fit the real requirement
 - A failing test isn't obvious or conflicts with code patterns
 - Unsure whether to extend or create a new test
-
-<!--
-Origin: .augment/rules/1-tdd-workflow-strict.md, .augment/rules/0-critical-summary.md
--->
