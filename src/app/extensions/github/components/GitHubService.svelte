@@ -57,6 +57,20 @@
   // Get the reactive context store
   const contextStore = getContextStore();
 
+  // Derived store: Set of imported GitHub URLs for O(1) lookup
+  // This avoids O(n*m) complexity from calling get(taskStore) in the render loop
+  // Created here (not at module level) so it's only active when component is mounted
+  const importedGitHubUrls = derived(taskStore, ($taskStore) => {
+    const urls = new Set<string>();
+    for (const task of $taskStore.tasks) {
+      // Only process tasks that have source.keys defined
+      if (task.source?.keys?.github) {
+        urls.add(task.source.keys.github);
+      }
+    }
+    return urls;
+  });
+
   // Computed daily planning modes
   let dayPlanningMode = $derived.by(() => {
     const context = $contextStore;
@@ -636,22 +650,10 @@
     }
   }
 
-  // Derived store: Set of imported GitHub URLs for O(1) lookup
-  // This avoids O(n*m) complexity from calling get(taskStore) in the render loop
-  const importedGitHubUrls = derived(taskStore, ($taskStore) => {
-    const urls = new Set<string>();
-    for (const task of $taskStore.tasks) {
-      const githubUrl = task.source.keys.github;
-      if (githubUrl) {
-        urls.add(githubUrl);
-      }
-    }
-    return urls;
-  });
-
   // Helper to check if a task is imported (exists in main task store)
   function isTaskImported(task: Task): boolean {
-    return $importedGitHubUrls.has(task.source.keys.github);
+    const githubUrl = task.source.keys.github;
+    return githubUrl ? $importedGitHubUrls.has(githubUrl) : false;
   }
 
   async function importTask(task: Task): Promise<void> {
