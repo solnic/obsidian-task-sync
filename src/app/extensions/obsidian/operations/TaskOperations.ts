@@ -64,10 +64,17 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
     const tasks: Task[] = [];
 
+    // Get existing tasks once to avoid N+1 pattern
+    const existingTasks = get(taskStore).tasks;
+
     for (const file of taskFiles) {
       try {
         console.log(`Parsing task file: ${file.path}`);
-        const taskData = await this.parseFileToTaskData(file);
+        const taskData = await this.parseFileToTaskData(
+          file,
+          undefined,
+          existingTasks
+        );
         if (taskData) {
           console.log(`Successfully parsed task: ${taskData.title}`);
           tasks.push(taskData);
@@ -223,7 +230,11 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
    * }
    * ```
    */
-  async parseFileToTaskData(file: TFile, cache?: any): Promise<Task | null> {
+  async parseFileToTaskData(
+    file: TFile,
+    cache?: any,
+    existingTasks?: readonly Task[]
+  ): Promise<Task | null> {
     // If cache is provided (from changed event), use it directly
     // Otherwise wait for metadata cache to be ready
     const frontMatter =
@@ -317,7 +328,9 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     };
 
     // Check if this task already exists in taskStore (for imported tasks)
-    const existingTask = get(taskStore).tasks.find(
+    // Use provided existingTasks to avoid N+1 pattern, fallback to get(taskStore) if not provided
+    const tasksToSearch = existingTasks || get(taskStore).tasks;
+    const existingTask = tasksToSearch.find(
       (task) => task.source.keys.obsidian === file.path
     );
 
