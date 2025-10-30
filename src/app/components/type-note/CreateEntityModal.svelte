@@ -9,6 +9,8 @@
     noteProcessor: NoteProcessor;
     preselectedNoteTypeId?: string;
     validationErrors?: string[];
+    initialPropertyValues?: Record<string, any>;
+    contextualTitle?: string;
     onsubmit?: (data: {
       noteType: NoteType;
       properties: Record<string, any>;
@@ -22,6 +24,8 @@
     noteProcessor,
     preselectedNoteTypeId,
     validationErrors = [],
+    initialPropertyValues,
+    contextualTitle,
     onsubmit,
     oncancel,
   }: Props = $props();
@@ -40,6 +44,13 @@
   const selectedNoteType = $derived(
     noteTypes.find((nt) => nt.id === selectedNoteTypeId) || null
   );
+
+  $effect(() => {
+    // When a note type is preselected and initial values provided, seed the form
+    if (selectedNoteTypeId && initialPropertyValues) {
+      propertyValues = { ...initialPropertyValues };
+    }
+  });
 
   function handlePropertyValuesChange(values: Record<string, any>) {
     propertyValues = values;
@@ -82,7 +93,9 @@
 <div class="task-sync-modal-container note-create-modal">
   <!-- Header -->
   <div class="task-sync-modal-header">
-    <h2>Create New {selectedNoteType?.name || "Note"}</h2>
+    <h2>
+      {contextualTitle || `Create New ${selectedNoteType?.name || "Note"}`}
+    </h2>
     {#if selectedNoteType?.metadata?.description}
       <p class="task-sync-modal-description">
         {selectedNoteType.metadata.description}

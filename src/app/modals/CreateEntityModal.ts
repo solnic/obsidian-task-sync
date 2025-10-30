@@ -18,17 +18,25 @@ export class CreateEntityModal extends Modal {
   private operations: Record<string, EntitiesOperations>;
   private settings: TaskSyncSettings;
   private preselectedNoteTypeId?: string;
+  private initialPropertyValues?: Record<string, any>;
+  private contextualTitle?: string;
 
   constructor(
     app: App,
     plugin: TaskSyncPlugin,
-    preselectedNoteTypeId?: string
+    preselectedNoteTypeId?: string,
+    options?: {
+      initialPropertyValues?: Record<string, any>;
+      contextualTitle?: string;
+    }
   ) {
     super(app);
     this.plugin = plugin;
     this.operations = plugin.operations;
     this.settings = plugin.settings;
     this.preselectedNoteTypeId = preselectedNoteTypeId;
+    this.initialPropertyValues = options?.initialPropertyValues;
+    this.contextualTitle = options?.contextualTitle;
   }
 
   onOpen() {
@@ -53,6 +61,8 @@ export class CreateEntityModal extends Modal {
           typeRegistry: this.plugin.typeNote.registry,
           noteProcessor: this.plugin.typeNote.noteProcessor,
           preselectedNoteTypeId: this.preselectedNoteTypeId,
+          initialPropertyValues: this.initialPropertyValues,
+          contextualTitle: this.contextualTitle,
           onsubmit: async (data: {
             noteType: NoteType;
             properties: Record<string, any>;

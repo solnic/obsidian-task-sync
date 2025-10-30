@@ -615,14 +615,14 @@ export default class TaskSyncPlugin extends Plugin {
           const parts = activePath.substring(projectFolder.length).split("/");
           const projectName = parts[0] || "";
           if (projectName) {
-            initialPropertyValues = { ...(initialPropertyValues || {}), Project: projectName };
+            initialPropertyValues = { ...(initialPropertyValues || {}), project: projectName };
             contextualTitle = `Create Task for Project: ${projectName}`;
           }
         } else if (activePath.startsWith(areaFolder)) {
           const parts = activePath.substring(areaFolder.length).split("/");
           const areaName = parts[0] || "";
           if (areaName) {
-            initialPropertyValues = { ...(initialPropertyValues || {}), Areas: [areaName] };
+            initialPropertyValues = { ...(initialPropertyValues || {}), areas: [areaName] };
             contextualTitle = `Create Task for Area: ${areaName}`;
           }
         }
@@ -634,7 +634,7 @@ export default class TaskSyncPlugin extends Plugin {
           if (parentTitle) {
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              ["Parent Task"]: parentTitle,
+              parentTask: parentTitle,
             };
             // If no prior context title, reflect parent task
             if (!contextualTitle) {
