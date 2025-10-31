@@ -3,7 +3,7 @@
 {
   "name": "Obsidian Task Sync",
   // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {}
