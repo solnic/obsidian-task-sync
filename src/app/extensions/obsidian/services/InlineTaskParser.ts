@@ -379,6 +379,92 @@ export class InlineTaskParser {
   }
 
   /**
+   * Find all direct child todo items for a given todo
+   * @param file The note file
+   * @param parentTodo The parent todo item to find children for
+   * @param tasksFolderOverride Optional override for tasks folder (defaults to instance tasksFolder)
+   * @returns Array of child todo items (only direct children, not nested descendants)
+   */
+  async findChildTodos(
+    file: TFile,
+    parentTodo: InlineTodoItem,
+    tasksFolderOverride?: string
+  ): Promise<InlineTodoItem[]> {
+    const todos = await this.parseInlineTodos(file, tasksFolderOverride);
+    return todos.filter(
+      (todo) => todo.parentLineNumber === parentTodo.lineNumber
+    );
+  }
+
+  /**
+   * Check if a todo item has any child todos
+   * @param file The note file
+   * @param todo The todo item to check
+   * @param tasksFolderOverride Optional override for tasks folder (defaults to instance tasksFolder)
+   * @returns True if the todo has at least one child todo
+   */
+  async hasChildren(
+    file: TFile,
+    todo: InlineTodoItem,
+    tasksFolderOverride?: string
+  ): Promise<boolean> {
+    const children = await this.findChildTodos(file, todo, tasksFolderOverride);
+    return children.length > 0;
+  }
+
+  /**
+   * Check if a todo item is a parent (has children)
+   * Alias for hasChildren for better readability in some contexts
+   * @param file The note file
+   * @param todo The todo item to check
+   * @param tasksFolderOverride Optional override for tasks folder (defaults to instance tasksFolder)
+   * @returns True if the todo is a parent (has at least one child)
+   */
+  async isParent(
+    file: TFile,
+    todo: InlineTodoItem,
+    tasksFolderOverride?: string
+  ): Promise<boolean> {
+    return this.hasChildren(file, todo, tasksFolderOverride);
+  }
+
+  /**
+   * Find all direct child inline tasks for a given inline task
+   * Only returns children that are also linked to task files
+   * @param file The note file
+   * @param parentTask The parent inline task to find children for
+   * @param tasksFolderOverride Optional override for tasks folder (defaults to instance tasksFolder)
+   * @returns Array of child inline tasks (only direct children that have task links)
+   */
+  async findChildTasks(
+    file: TFile,
+    parentTask: InlineTask,
+    tasksFolderOverride?: string
+  ): Promise<InlineTask[]> {
+    const tasks = await this.parseInlineTasks(file, tasksFolderOverride);
+    return tasks.filter(
+      (task) => task.parentLineNumber === parentTask.lineNumber
+    );
+  }
+
+  /**
+   * Check if an inline task has any child inline tasks
+   * Only checks for children that are also linked to task files
+   * @param file The note file
+   * @param task The inline task to check
+   * @param tasksFolderOverride Optional override for tasks folder (defaults to instance tasksFolder)
+   * @returns True if the task has at least one child inline task
+   */
+  async hasChildTasks(
+    file: TFile,
+    task: InlineTask,
+    tasksFolderOverride?: string
+  ): Promise<boolean> {
+    const children = await this.findChildTasks(file, task, tasksFolderOverride);
+    return children.length > 0;
+  }
+
+  /**
    * Get all task sections from a note
    * Finds sections like "## Tasks" and returns tasks within those sections
    * @param file The note file to parse

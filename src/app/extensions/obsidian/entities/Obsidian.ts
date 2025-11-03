@@ -384,7 +384,6 @@ export namespace Obsidian {
       };
     }
 
-
     /**
      * Create task data from todo item
      */
@@ -404,22 +403,22 @@ export namespace Obsidian {
         areas = [context.name];
       }
 
-        // Determine parent task if this is a nested todo
-        let parentTask = "";
-        if (todoItem.parentLineNumber !== undefined) {
-          const parentTodo = await this.inlineTaskParser.findParentTodo(
-            file,
-            todoItem
-          );
-          if (parentTodo) {
-            // Check if parent todo text is a link to an existing task
-            const linkMatch = parentTodo.text.match(/^\[\[(.+)\]\]$/);
-            if (linkMatch) {
-              // Parent is already promoted to a task, keep the wiki link format
-              parentTask = `[[${linkMatch[1]}]]`;
-            }
+      // Determine parent task if this is a nested todo
+      let parentTask = "";
+      if (todoItem.parentLineNumber !== undefined) {
+        const parentTodo = await this.inlineTaskParser.findParentTodo(
+          file,
+          todoItem
+        );
+        if (parentTodo) {
+          // Check if parent todo text is a link to an existing task
+          const linkMatch = parentTodo.text.match(/^\[\[(.+)\]\]$/);
+          if (linkMatch) {
+            // Parent is already promoted to a task, keep the wiki link format
+            parentTask = `[[${linkMatch[1]}]]`;
           }
         }
+      }
 
       // Build minimal task data - buildEntity will set defaults
       // Status will be determined by buildEntity based on done field and settings
@@ -501,9 +500,10 @@ export namespace Obsidian {
       const linkContent = wikiLinkMatch[1];
       // Extract path (before | if present) and display text (after | if present)
       const pipeIndex = linkContent.indexOf("|");
-      const taskPath = pipeIndex !== -1
-        ? linkContent.substring(0, pipeIndex).trim()
-        : linkContent.trim();
+      const taskPath =
+        pipeIndex !== -1
+          ? linkContent.substring(0, pipeIndex).trim()
+          : linkContent.trim();
 
       // Full task path with folder
       const fullTaskPath = taskPath.startsWith(this.settings.tasksFolder + "/")
@@ -519,12 +519,15 @@ export namespace Obsidian {
       }
 
       // Extract original text - use display text if available, otherwise use path
-      const originalText = pipeIndex !== -1
-        ? linkContent.substring(pipeIndex + 1).trim()
-        : taskPath.split("/").pop()?.replace(/\.md$/, "") || taskPath;
+      const originalText =
+        pipeIndex !== -1
+          ? linkContent.substring(pipeIndex + 1).trim()
+          : taskPath.split("/").pop()?.replace(/\.md$/, "") || taskPath;
 
       return {
-        taskPath: fullTaskPath.endsWith(".md") ? fullTaskPath : `${fullTaskPath}.md`,
+        taskPath: fullTaskPath.endsWith(".md")
+          ? fullTaskPath
+          : `${fullTaskPath}.md`,
         originalText,
         lineNumber: todoItem.lineNumber,
         todoItem,
