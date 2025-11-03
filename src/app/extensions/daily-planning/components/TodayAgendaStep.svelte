@@ -102,7 +102,7 @@
     </div>
   {/if}
 
-  <!-- Today's Tasks -->
+  <!-- Tasks -->
   {#if allTodayTasks.length > 0}
     <div class="agenda-section">
       <h5>📋 Today's tasks ({allTodayTasks.length})</h5>

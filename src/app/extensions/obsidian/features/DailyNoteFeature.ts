@@ -97,23 +97,6 @@ export class DailyNoteFeature {
   }
 
   /**
-   * Generate content for a new daily note
-   */
-  private generateDailyNoteContent(): string {
-    const today = new Date();
-    const dateString = this.getDateString(today);
-
-    return `# ${dateString}
-
-## Today's Tasks
-
-## Notes
-
-## Reflections
-`;
-  }
-
-  /**
    * Get the path for today's daily note
    */
   async getTodayDailyNotePath(): Promise<string> {
@@ -195,9 +178,9 @@ export class DailyNoteFeature {
       }
     }
 
-    // Create the daily note
-    const content = this.generateDailyNoteContent();
-    const file = await this.app.vault.create(dailyNotePath, content);
+    // Create the daily note as an empty file
+    // Obsidian's template system will handle content when the user opens the note
+    const file = await this.app.vault.create(dailyNotePath, "");
 
     return {
       path: dailyNotePath,
@@ -306,14 +289,14 @@ export class DailyNoteFeature {
    * Insert task links into daily note content
    */
   private insertTasksIntoContent(content: string, taskLinks: string[]): string {
-    if (content.includes("## Today's Tasks")) {
+    if (content.includes("## Tasks")) {
       // Add new tasks to existing Tasks section
-      const tasksRegex = /(## Today's Tasks\n)/;
+      const tasksRegex = /(## Tasks\n)/;
       const newTasksToAdd = taskLinks.join("\n") + "\n";
       return content.replace(tasksRegex, `$1${newTasksToAdd}`);
     } else {
       // Add Tasks section if it doesn't exist
-      const newTasksSection = `\n## Today's Tasks\n${taskLinks.join("\n")}\n`;
+      const newTasksSection = `\n## Tasks\n${taskLinks.join("\n")}\n`;
       return content + newTasksSection;
     }
   }

@@ -421,7 +421,7 @@ test.describe("Daily Planning Wizard", () => {
 
     // Create multiple tasks scheduled for yesterday using the proper helper
     // Note: Daily planning uses doDate, not dueDate
-    const tasks = [];
+    const tasks: any[] = [];
     for (let i = 1; i <= 3; i++) {
       const task = await createTask(page, {
         title: `Yesterday Task ${i}`,
@@ -753,7 +753,7 @@ test.describe("Daily Planning Wizard", () => {
     expect(dailyNoteContent).toBeTruthy();
 
     // Verify daily note contains task links for task1 and task2
-    expect(dailyNoteContent).toContain("## Today's Tasks");
+    expect(dailyNoteContent).toContain("## Tasks");
     expect(dailyNoteContent).toContain("Daily Note Task 1");
     expect(dailyNoteContent).toContain("Daily Note Task 2");
 
@@ -1179,7 +1179,7 @@ test.describe("Daily Planning Wizard", () => {
     expect(hasTestIssue).toBe(true);
 
     // Verify the task link format is correct
-    expect(dailyNoteContent).toContain("## Today's Tasks");
+    expect(dailyNoteContent).toContain("## Tasks");
     expect(dailyNoteContent).toContain("- [ ] [[Tasks/");
   });
 
@@ -1377,7 +1377,7 @@ test.describe("Daily Planning Wizard", () => {
     // MANUALLY create daily note with existing task links to simulate the bug scenario
     const preExistingContent = `# ${todayString}
 
-## Today's Tasks
+## Tasks
 - [ ] [[Tasks/Pre-existing Task 1|Pre-existing Task 1]]
 - [ ] [[Tasks/Pre-existing Task 2|Pre-existing Task 2]]
 
@@ -1504,7 +1504,7 @@ test.describe("Daily Planning Wizard", () => {
     // Let's test with the DailyPlanningExtension format to see if DailyNoteFeature detects it
     const preExistingContent = `# ${todayString}
 
-## Today's Tasks
+## Tasks
 - [ ] [[Format Test Task 1]]
 - [ ] [[Format Test Task 2]]
 
@@ -1650,7 +1650,7 @@ test.describe("Daily Planning Wizard", () => {
     // Create daily note with simple link format (like DailyPlanningExtension creates)
     const preExistingContent = `# ${todayString}
 
-## Today's Tasks
+## Tasks
 - [ ] [[Cache Test Task 1]]
 - [ ] [[Cache Test Task 2]]
 
@@ -1776,7 +1776,7 @@ test.describe("Daily Planning Wizard", () => {
     const dailyNotePath = `Daily Notes/${todayString}.md`;
 
     // Create daily note with "## Tasks" header (like DailyPlanningExtension creates)
-    // This is different from "## Today's Tasks" that DailyNoteFeature expects
+    // This is different from "## Tasks" that DailyNoteFeature expects
     const preExistingContent = `# ${todayString}
 
 ## Tasks
@@ -1830,8 +1830,8 @@ test.describe("Daily Planning Wizard", () => {
     expect(initialTask1Count).toBe(1);
     expect(initialTask2Count).toBe(1);
 
-    // NOW run daily planning - DailyNoteFeature might not detect tasks under "## Tasks"
-    // and could create a new "## Today's Tasks" section with duplicates
+    // NOW run daily planning - DailyNoteFeature should detect existing tasks under "## Tasks"
+    // and not create duplicates
     await executeCommand(page, "Task Sync: Start Daily Planning");
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
@@ -1859,15 +1859,9 @@ test.describe("Daily Planning Wizard", () => {
 
     expect(finalContent).toBeTruthy();
 
-    // Check if both section headers exist (which would indicate the bug)
-    const hasTasksSection = finalContent!.includes("## Tasks");
-    const hasTodaysTasksSection = finalContent!.includes("## Today's Tasks");
-
-    // Count tasks under each section
+    // Count tasks in the Tasks section (now unified header)
     const tasksUnderTasksSection =
       finalContent!.match(/## Tasks[\s\S]*?(?=\n## |$)/)?.[0] || "";
-    const tasksUnderTodaysTasksSection =
-      finalContent!.match(/## Today's Tasks[\s\S]*?(?=\n## |$)/)?.[0] || "";
 
     const task1InTasksSection = (
       tasksUnderTasksSection.match(
@@ -1880,27 +1874,16 @@ test.describe("Daily Planning Wizard", () => {
       ) || []
     ).length;
 
-    const task1InTodaysTasksSection = (
-      tasksUnderTodaysTasksSection.match(
-        /^- \[ \] \[\[.*Section Header Test Task 1.*\]\]$/gm
-      ) || []
-    ).length;
-    const task2InTodaysTasksSection = (
-      tasksUnderTodaysTasksSection.match(
-        /^- \[ \] \[\[.*Section Header Test Task 2.*\]\]$/gm
-      ) || []
-    ).length;
-
-    // Total count should be 1 per task (no duplication across sections)
-    const totalTask1Count = task1InTasksSection + task1InTodaysTasksSection;
-    const totalTask2Count = task2InTasksSection + task2InTodaysTasksSection;
+    // Total count should be 1 per task (no duplication)
+    const totalTask1Count = task1InTasksSection;
+    const totalTask2Count = task2InTasksSection;
 
     expect(totalTask1Count).toBe(1);
     expect(totalTask2Count).toBe(1);
 
-    // Ideally, we should only have one section with all tasks
-    expect(totalTask1Count).toBe(1);
-    expect(totalTask2Count).toBe(1);
+    // Verify there's only one "## Tasks" section
+    const tasksSectionMatches = finalContent!.match(/^## Tasks$/gm) || [];
+    expect(tasksSectionMatches.length).toBe(1);
   });
 
   test("should detect existing tasks when links don't resolve to task files immediately", async ({
@@ -1936,13 +1919,9 @@ test.describe("Daily Planning Wizard", () => {
     // Use the exact format that might cause resolution issues
     const preExistingContent = `# ${todayString}
 
-## Today's Tasks
+## Tasks
 - [ ] [[Resolution Test Task 1]]
 - [ ] [[Resolution Test Task 2]]
-
-## Notes
-
-## Reflections
 `;
 
     // Create the daily note manually
