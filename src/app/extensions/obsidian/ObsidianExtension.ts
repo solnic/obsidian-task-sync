@@ -235,8 +235,8 @@ export class ObsidianExtension implements Extension {
     // after wikiLinkOperations is available
 
     // Initialize daily note feature
-    this.dailyNoteFeature = new DailyNoteFeature(app, plugin, {
-      dailyNotesFolder: settings.dailyNotesFolder || "Daily Notes",
+    this.dailyNoteFeature = new DailyNoteFeature(app, settings, {
+      dailyNotesFolder: settings.dailyNotesFolder,
     });
   }
 

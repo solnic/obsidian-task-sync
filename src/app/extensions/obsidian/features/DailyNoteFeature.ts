@@ -7,6 +7,7 @@
 import { App, Plugin, TFile } from "obsidian";
 import { eventBus, type DomainEvent } from "../../../core/events";
 import type { Schedule, Task } from "../../../core/entities";
+import { TaskSyncSettings } from "../../../types/settings";
 import {
   discoverDailyNoteSettings,
   getDailyNotePath,
@@ -37,13 +38,14 @@ export class DailyNoteFeature {
 
   constructor(
     private app: App,
-    private plugin: Plugin,
+    private pluginSettings: TaskSyncSettings,
     private settings: DailyNoteFeatureSettings
   ) {
-    // Get tasksFolder from plugin settings
-    const tasksFolder = (this.plugin as any).settings?.tasksFolder || "Tasks";
+    const tasksFolder = this.pluginSettings.tasksFolder;
+
     this.inlineTaskParser = new InlineTaskParser(app, tasksFolder);
     this.inlineTaskEditor = new InlineTaskEditor(tasksFolder);
+
     this.setupEventListeners();
   }
 
@@ -171,8 +173,7 @@ export class DailyNoteFeature {
       this.app,
       this.settings.dailyNotesFolder
     );
-    const dailyNotesFolder =
-      settings.folder || this.settings.dailyNotesFolder || "Daily Notes";
+    const dailyNotesFolder = settings.folder || this.settings.dailyNotesFolder;
 
     if (dailyNotesFolder) {
       const folderExists = await this.app.vault.adapter.exists(
