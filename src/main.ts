@@ -615,19 +615,25 @@ export default class TaskSyncPlugin extends Plugin {
           const parts = activePath.substring(projectFolder.length).split("/");
           const projectName = parts[0] || "";
           if (projectName) {
-            initialPropertyValues = { ...(initialPropertyValues || {}), project: projectName };
+            initialPropertyValues = {
+              ...(initialPropertyValues || {}),
+              project: projectName,
+            };
             contextualTitle = `Create Task for Project: ${projectName}`;
           }
         } else if (activePath.startsWith(areaFolder)) {
           const parts = activePath.substring(areaFolder.length).split("/");
           const areaName = parts[0] || "";
           if (areaName) {
-            initialPropertyValues = { ...(initialPropertyValues || {}), areas: [areaName] };
+            initialPropertyValues = {
+              ...(initialPropertyValues || {}),
+              areas: [areaName],
+            };
             contextualTitle = `Create Task for Area: ${areaName}`;
           }
         }
 
-        // If opening from within a task file, set Parent Task
+        // If opening from within a task file, set Parent task
         const tasksFolder = this.settings.tasksFolder + "/";
         if (activePath.startsWith(tasksFolder)) {
           const parentTitle = activeFile?.basename;
@@ -782,7 +788,7 @@ export default class TaskSyncPlugin extends Plugin {
               Project: frontMatter.Project || "",
               Done: frontMatter.Done || false,
               Status: frontMatter.Status || "Backlog",
-              "Parent Task": frontMatter["Parent Task"] || "",
+              "Parent task": frontMatter["Parent task"] || "",
               "Do Date": frontMatter["Do Date"] || "",
               "Due Date": frontMatter["Due Date"] || "",
               Tags: frontMatter.Tags || [],

@@ -165,19 +165,19 @@ test.describe("Todo Promotion", () => {
   test("should promote sub-todo with parent task set", async ({ page }) => {
     await createArea(page, {
       name: "Parent-Child",
-      description: `- [ ] Parent Task item
+      description: `- [ ] Parent task item
   - [ ] Child todo item`,
     });
 
     await openFile(page, "Areas/Parent-Child.md");
-    await goToLine(page, "Parent Task item");
+    await goToLine(page, "Parent task item");
 
     await executeCommand(page, "Promote Todo to Task");
 
     await waitForFileContentToContain(
       page,
-      "Tasks/Parent Task item.md",
-      "Parent Task item"
+      "Tasks/Parent task item.md",
+      "Parent task item"
     );
 
     await openFile(page, "Areas/Parent-Child.md");
@@ -195,7 +195,7 @@ test.describe("Todo Promotion", () => {
       page,
       "Tasks/Child todo item.md"
     );
-    expect(childTaskContent).toContain('Parent Task: "[[Parent Task item]]"');
+    expect(childTaskContent).toContain('Parent task: "[[Parent task item]]"');
   });
 
   test("should sync completion status between promoted todo and task", async ({

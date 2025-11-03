@@ -74,7 +74,7 @@ export const PROPERTY_REGISTRY: Record<string, PropertyDefinition> = {
   },
   PARENT_TASK: {
     key: "parentTask",
-    name: "Parent Task",
+    name: "Parent task",
     type: "string",
     link: true,
     frontmatter: true,

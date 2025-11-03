@@ -7,7 +7,7 @@
  * - file.inFolder("Tasks")
  * - note["Done"] == false
  * - note["Priority"] == "High"
- * - !note.hasProperty("Parent Task") || note["Parent Task"] == null
+ * - !note.hasProperty("Parent task") || note["Parent task"] == null
  */
 
 // ============================================================================
@@ -39,14 +39,19 @@ export class PropertyFilter implements FilterCondition {
   ) {}
 
   toFilterObject(): string {
+    // Special handling for "Done" property - use direct property access
+    if (this.property === "Done") {
+      return `Done ${this.operator} ${this.formatValue(this.value)}`;
+    }
+
     const propRef = `note["${this.property}"]`;
 
     if (this.operator === "isEmpty") {
-      // Check if property doesn't exist or is null/empty
-      return `!note.hasProperty("${this.property}") || ${propRef} == null`;
+      // Use .isEmpty() method like Bases expects
+      return `${propRef}.isEmpty()`;
     }
     if (this.operator === "isNotEmpty") {
-      return `note.hasProperty("${this.property}") && ${propRef} != null`;
+      return `!${propRef}.isEmpty()`;
     }
     if (this.operator === "contains") {
       // For array properties, use .contains()
@@ -166,14 +171,14 @@ export class FilterBuilder {
    * Create a filter for items without parent tasks
    */
   static noParentTask(): PropertyFilter {
-    return new PropertyFilter("Parent Task", "==", null);
+    return new PropertyFilter("Parent task", "isEmpty");
   }
 
   /**
    * Create a filter for items with a specific parent task
    */
   static childrenOf(parentTaskName: string): PropertyFilter {
-    return new PropertyFilter("Parent Task", "==", parentTaskName);
+    return new PropertyFilter("Parent task", "contains", parentTaskName);
   }
 
   /**
@@ -181,13 +186,11 @@ export class FilterBuilder {
    * @param projectName - The display name of the project
    * @param projectPath - The full path to the project file (e.g., "Projects/Foo Bar.md")
    */
-  static inProject(projectName: string, projectPath?: string): PropertyFilter {
-    // Use wiki link format: [[Projects/Foo Bar.md|Foo Bar]]
-    const wikiLink = projectPath
-      ? `[[${projectPath}|${projectName}]]`
-      : `[[${projectName}]]`;
-
-    return new PropertyFilter("Project", "==", wikiLink);
+  static inProject(projectName: string, projectPath?: string): CustomFilter {
+    // Based on user example: Project == link("Task Sync")
+    // Format: Project == link("displayName") - just the display name, no path needed
+    // Note: Uses Project directly (capital P), not note["Project"]
+    return new CustomFilter(`Project == link("${projectName}")`);
   }
 
   /**

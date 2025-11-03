@@ -10,8 +10,24 @@ import {
   waitForFileContentToContain,
   readVaultFile,
   waitForSyncComplete,
+  openFile,
 } from "../../helpers/global";
-import { createArea, createProject } from "../../helpers/entity-helpers";
+import {
+  createArea,
+  createProject,
+  createTask,
+} from "../../helpers/entity-helpers";
+import {
+  regenerateBases,
+  waitForBaseViewToLoad,
+  switchBaseView,
+  hasViewsDropdown,
+  getBaseTaskTitles,
+  expectBaseTasksContain,
+  expectBaseTasksNotContain,
+  openNoteWithBases,
+  openBaseNoteStable,
+} from "../../helpers/bases-helpers";
 
 test.describe("Base Synchronization", () => {
   test("should sync area bases when new task type is added", async ({
@@ -44,11 +60,53 @@ test.describe("Base Synchronization", () => {
     // Wait for base to be created
     await waitForBaseFile(page, "Bases/Technology.base");
 
-    // Verify initial content doesn't have "Epic" view
-    let baseContent = await readVaultFile(page, "Bases/Technology.base");
-    expect(baseContent).not.toContain("name: All Epics");
+    // Create some initial tasks (Bug and Feature)
+    await createTask(page, {
+      title: "Bug Task",
+      category: "Bug",
+      priority: "High",
+      areas: ["Technology"],
+      done: false,
+    });
 
-    // Add a new task type
+    await createTask(page, {
+      title: "Feature Task",
+      category: "Feature",
+      priority: "Medium",
+      areas: ["Technology"],
+      done: false,
+    });
+
+    // Regenerate bases to include tasks
+    await regenerateBases(page);
+
+    // Open area file to verify initial state
+    await openFile(page, "Areas/Technology.md");
+
+    // Wait a bit for the bases view to fully initialize
+    await page.waitForTimeout(1000);
+
+    await waitForBaseViewToLoad(page, 5000);
+
+    // Verify "All Epics" view is NOT available yet
+    const allEpicsViewExists = await page.evaluate(() => {
+      const viewsButton = document.querySelector(
+        ".query-toolbar .mod-views .text-icon-button"
+      ) as HTMLElement;
+      if (!viewsButton) return false;
+      viewsButton.click();
+      const menuItems = Array.from(document.querySelectorAll(".menu-item"));
+      const hasEpics = menuItems.some((item) =>
+        item.textContent?.includes("All Epics")
+      );
+      // Close menu
+      viewsButton.click();
+      return hasEpics;
+    });
+
+    expect(allEpicsViewExists).toBe(false);
+
+    // Add a new task type "Epic"
     await page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -71,10 +129,31 @@ test.describe("Base Synchronization", () => {
       "name: All Epics"
     );
 
-    // Verify base was updated
-    baseContent = await readVaultFile(page, "Bases/Technology.base");
-    expect(baseContent).toContain("name: All Epics");
-    expect(baseContent).toContain('note["Category"] == "Epic"');
+    // Create an Epic task
+    await createTask(page, {
+      title: "Epic Task",
+      category: "Epic",
+      priority: "Urgent",
+      areas: ["Technology"],
+      done: false,
+    });
+
+    // Regenerate bases to include new task
+    await regenerateBases(page);
+
+    // Re-open area file to see updated base
+    await openFile(page, "Areas/Technology.md");
+    await waitForBaseViewToLoad(page, 3000);
+
+    // Verify "All Epics" view is now available and functional
+    await switchBaseView(page, "All Epics");
+    const epicTitles = await getBaseTaskTitles(page);
+
+    // Should see the Epic task
+    expect(epicTitles).toContain("Epic Task");
+    // Should NOT see Bug or Feature tasks in Epic view
+    expect(epicTitles).not.toContain("Bug Task");
+    expect(epicTitles).not.toContain("Feature Task");
   });
 
   test("should sync project bases when task type is removed", async ({
@@ -94,10 +173,46 @@ test.describe("Base Synchronization", () => {
     // Wait for base to be created
     await waitForBaseFile(page, "Bases/Documentation.base");
 
-    // Verify initial content has "Chores" view
-    let baseContent = await readVaultFile(page, "Bases/Documentation.base");
-    expect(baseContent).toContain("name: All Chores");
-    expect(baseContent).toContain('note["Category"] == "Chore"');
+    // Create tasks with different categories including Chore
+    await createTask(page, {
+      title: "Chore Task One",
+      category: "Chore",
+      priority: "Low",
+      project: "Documentation",
+      done: false,
+    });
+
+    await createTask(page, {
+      title: "Bug Task One",
+      category: "Bug",
+      priority: "High",
+      project: "Documentation",
+      done: false,
+    });
+
+    await createTask(page, {
+      title: "Feature Task One",
+      category: "Feature",
+      priority: "Medium",
+      project: "Documentation",
+      done: false,
+    });
+
+    // Regenerate bases to include tasks
+    await regenerateBases(page);
+
+    // Open project file to verify initial state
+    await openFile(page, "Projects/Documentation.md");
+
+    // Wait a bit for the bases view to fully initialize
+    await page.waitForTimeout(1000);
+
+    await waitForBaseViewToLoad(page, 5000);
+
+    // Verify "All Chores" view is available and functional
+    await switchBaseView(page, "All Chores");
+    const choreTitles = await getBaseTaskTitles(page);
+    expect(choreTitles).toContain("Chore Task One");
 
     // Remove "Chore" task type
     await page.evaluate(async () => {
@@ -134,10 +249,14 @@ test.describe("Base Synchronization", () => {
       { timeout: 5000 }
     );
 
-    // Verify base was updated
-    baseContent = await readVaultFile(page, "Bases/Documentation.base");
+    // Verify base file content confirms removal
+    const baseContent = await readVaultFile(page, "Bases/Documentation.base");
     expect(baseContent).not.toContain("name: All Chores");
     expect(baseContent).not.toContain('note["Category"] == "Chore"');
+
+    // Verify "All Bugs" view is still in the base
+    expect(baseContent).toContain("name: All Bugs");
+    expect(baseContent).toContain('note["Category"] == "Bug"');
   });
 
   test("should sync both area and project bases together", async ({ page }) => {
@@ -147,15 +266,17 @@ test.describe("Base Synchronization", () => {
       projectBasesEnabled: true,
     });
 
-    // Create an area and a project
+    // Create an area
     await createArea(page, {
       name: "Work",
       description: "Work area",
     });
 
+    // Create a project
     await createProject(page, {
       name: "API Development",
       description: "REST API project",
+      areas: ["Work"],
     });
 
     // Generate both bases
@@ -175,23 +296,66 @@ test.describe("Base Synchronization", () => {
     await waitForBaseFile(page, "Bases/Work.base");
     await waitForBaseFile(page, "Bases/API Development.base");
 
-    // Verify both bases exist
-    const workBaseContent = await readVaultFile(page, "Bases/Work.base");
-    const apiBaseContent = await readVaultFile(
-      page,
-      "Bases/API Development.base"
-    );
+    // Create tasks for the area (not assigned to project)
+    await createTask(page, {
+      title: "Area Only Task",
+      category: "Task",
+      priority: "Medium",
+      areas: ["Work"],
+      done: false,
+    });
 
-    expect(workBaseContent).toBeTruthy();
-    expect(apiBaseContent).toBeTruthy();
+    // Create tasks for the project (also in the area)
+    await createTask(page, {
+      title: "Project Task One",
+      category: "Feature",
+      priority: "High",
+      project: "API Development",
+      areas: ["Work"],
+      done: false,
+    });
 
-    // Verify area base has area-specific filtering
-    expect(workBaseContent).toContain('note["Areas"].contains("Work")');
+    await createTask(page, {
+      title: "Project Task Two",
+      category: "Bug",
+      priority: "Urgent",
+      project: "API Development",
+      areas: ["Work"],
+      done: false,
+    });
 
-    // Verify project base has project-specific filtering
-    expect(apiBaseContent).toContain(
-      'note["Project"] == "[[API Development]]"'
-    );
+    // Regenerate bases to include tasks
+    await regenerateBases(page);
+
+    // Test Area base
+    await openFile(page, "Areas/Work.md");
+    await waitForBaseViewToLoad(page, 3000);
+
+    // Area base should show all tasks in the area (both project and non-project)
+    await expectBaseTasksContain(page, [
+      "Area Only Task",
+      "Project Task One",
+      "Project Task Two",
+    ]);
+
+    // Test Project base
+    await openFile(page, "Projects/API Development.md");
+    await waitForBaseViewToLoad(page, 3000);
+
+    // Project base should only show project tasks
+    await expectBaseTasksContain(page, [
+      "Project Task One",
+      "Project Task Two",
+    ]);
+    await expectBaseTasksNotContain(page, ["Area Only Task"]);
+
+    // Verify both bases have correct filtering across different views
+    await openFile(page, "Projects/API Development.md");
+    await waitForBaseViewToLoad(page, 3000);
+    await switchBaseView(page, "All Features");
+    const projectFeatures = await getBaseTaskTitles(page);
+    expect(projectFeatures).toContain("Project Task One");
+    expect(projectFeatures).not.toContain("Area Only Task");
   });
 
   test("should respect areaBasesEnabled setting", async ({ page }) => {
@@ -290,15 +454,35 @@ test.describe("Base Synchronization", () => {
     // Wait for base to be created
     await waitForBaseFile(page, "Bases/Website.base");
 
-    // Verify initial structure
-    let baseContent = await readVaultFile(page, "Bases/Website.base");
-    expect(baseContent).toContain("properties:");
-    expect(baseContent).toContain("views:");
-    expect(baseContent).toContain("filters:");
-    expect(baseContent).toContain("and:");
+    // Create initial tasks with standard categories
+    await createTask(page, {
+      title: "Initial Bug",
+      category: "Bug",
+      priority: "High",
+      project: "Website",
+      done: false,
+    });
+
+    await createTask(page, {
+      title: "Initial Feature",
+      category: "Feature",
+      priority: "Medium",
+      project: "Website",
+      done: false,
+    });
+
+    // Regenerate bases to include initial tasks
+    await regenerateBases(page);
+
+    // Open project file and verify initial views work
+    await openFile(page, "Projects/Website.md");
+    await waitForBaseViewToLoad(page, 3000);
+
+    await switchBaseView(page, "All Bugs");
+    let bugTitles = await getBaseTaskTitles(page);
+    expect(bugTitles).toContain("Initial Bug");
 
     // Add multiple task types and manually trigger sync
-    // (This test specifically tests the sync functionality)
     await page.evaluate(async () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
@@ -325,19 +509,57 @@ test.describe("Base Synchronization", () => {
       "name: All Documentations"
     );
 
-    // Verify structure is maintained
-    baseContent = await readVaultFile(page, "Bases/Website.base");
-    expect(baseContent).toContain("properties:");
-    expect(baseContent).toContain("views:");
-    expect(baseContent).toContain("filters:");
-    expect(baseContent).toContain("and:");
+    // Create tasks with new categories
+    await createTask(page, {
+      title: "Documentation Task",
+      category: "Documentation",
+      priority: "Low",
+      project: "Website",
+      done: false,
+    });
 
-    // Verify new views were added
-    expect(baseContent).toContain("name: All Documentations");
-    expect(baseContent).toContain("name: All Reviews");
+    await createTask(page, {
+      title: "Review Task",
+      category: "Review",
+      priority: "High",
+      project: "Website",
+      done: false,
+    });
 
-    // Verify filtering is still correct
-    expect(baseContent).toContain('note["Project"] == "[[Website]]"');
-    expect(baseContent).toContain('note["Done"] == false');
+    // Regenerate bases to include new tasks
+    await regenerateBases(page);
+
+    // Re-open project file to see updated base
+    await openFile(page, "Projects/Website.md");
+    await waitForBaseViewToLoad(page, 3000);
+
+    // Verify old views still work correctly
+    await switchBaseView(page, "All Bugs");
+    bugTitles = await getBaseTaskTitles(page);
+    expect(bugTitles).toContain("Initial Bug");
+    expect(bugTitles).not.toContain("Documentation Task");
+    expect(bugTitles).not.toContain("Review Task");
+
+    // Verify new "All Documentations" view works
+    await switchBaseView(page, "All Documentations");
+    const docTitles = await getBaseTaskTitles(page);
+    expect(docTitles).toContain("Documentation Task");
+    expect(docTitles).not.toContain("Initial Bug");
+    expect(docTitles).not.toContain("Review Task");
+
+    // Verify new "All Reviews" view works
+    await switchBaseView(page, "All Reviews");
+    const reviewTitles = await getBaseTaskTitles(page);
+    expect(reviewTitles).toContain("Review Task");
+    expect(reviewTitles).not.toContain("Initial Bug");
+    expect(reviewTitles).not.toContain("Documentation Task");
+
+    // Verify main Tasks view shows all not-done tasks
+    await switchBaseView(page, "Tasks");
+    const allTitles = await getBaseTaskTitles(page);
+    expect(allTitles).toContain("Initial Bug");
+    expect(allTitles).toContain("Initial Feature");
+    expect(allTitles).toContain("Documentation Task");
+    expect(allTitles).toContain("Review Task");
   });
 });

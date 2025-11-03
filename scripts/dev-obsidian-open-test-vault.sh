@@ -2,6 +2,22 @@
 
 # Development script to open Obsidian with a test vault
 # This creates a test vault similar to e2e tests and opens it in Obsidian
+#
+# Usage:
+#   npm run dev:obsidian:open_test_vault
+#     - Creates a fresh test vault with sample data
+#
+#   npm run dev:obsidian:open_test_vault -- <path-to-vault-snapshot>
+#     - Opens a vault using a debug snapshot from E2E test failures
+#     - Example: npm run dev:obsidian:open_test_vault -- tests/e2e/debug/test-failure-*/vault-snapshot
+#
+#   npm run dev:obsidian:open_test_vault -- --snapshot=<path-to-vault-snapshot>
+#     - Alternative syntax for specifying snapshot path
+#
+# The snapshot path can be:
+#   - Absolute: /full/path/to/vault-snapshot
+#   - Relative to current directory: ./tests/e2e/debug/.../vault-snapshot
+#   - Relative to project root: tests/e2e/debug/.../vault-snapshot
 
 set -e
 
@@ -12,6 +28,73 @@ TEST_VAULT_DIR="./tmp/dev-test-vault"
 OBSIDIAN_DATA_DIR="./tmp/dev-test-vault/.obsidian"
 PLUGIN_NAME="obsidian-task-sync"
 
+# Parse command line arguments
+VAULT_SNAPSHOT_PATH=""
+FORCE_SNAPSHOT=false
+
+# Check for --snapshot flag
+for arg in "$@"; do
+    case "$arg" in
+        --snapshot=*)
+            VAULT_SNAPSHOT_PATH="${arg#*=}"
+            FORCE_SNAPSHOT=true
+            ;;
+        --snapshot)
+            echo "❌ Error: --snapshot flag requires a value. Use --snapshot=<path>"
+            exit 1
+            ;;
+        -*)
+            echo "❌ Error: Unknown option: $arg"
+            echo "Usage: $0 [--snapshot=<path>] [<path-to-vault-snapshot>]"
+            exit 1
+            ;;
+        *)
+            # First non-flag argument is treated as snapshot path
+            if [ -z "$VAULT_SNAPSHOT_PATH" ]; then
+                VAULT_SNAPSHOT_PATH="$arg"
+                FORCE_SNAPSHOT=true
+            fi
+            ;;
+    esac
+done
+
+# Validate snapshot path if provided
+if [ -n "$VAULT_SNAPSHOT_PATH" ]; then
+    # Convert relative paths to absolute
+    # If path starts with /, it's already absolute
+    if [ "${VAULT_SNAPSHOT_PATH#/}" != "$VAULT_SNAPSHOT_PATH" ]; then
+        # Already absolute
+        ABS_SNAPSHOT_PATH="$VAULT_SNAPSHOT_PATH"
+    else
+        # Relative path - try to resolve it
+        # First, try relative to current working directory
+        if [ -d "$VAULT_SNAPSHOT_PATH" ]; then
+            ABS_SNAPSHOT_PATH="$(cd "$VAULT_SNAPSHOT_PATH" && pwd)"
+        else
+            # Try relative to project root (where package.json is)
+            PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+            TEST_PATH="$PROJECT_ROOT/$VAULT_SNAPSHOT_PATH"
+            if [ -d "$TEST_PATH" ]; then
+                ABS_SNAPSHOT_PATH="$(cd "$TEST_PATH" && pwd)"
+            else
+                echo "❌ Error: Could not resolve vault snapshot path: $VAULT_SNAPSHOT_PATH"
+                echo "   Tried: $VAULT_SNAPSHOT_PATH"
+                echo "   Tried: $TEST_PATH"
+                exit 1
+            fi
+        fi
+    fi
+
+    if [ ! -d "$ABS_SNAPSHOT_PATH" ]; then
+        echo "❌ Error: Vault snapshot path does not exist: $ABS_SNAPSHOT_PATH"
+        echo "   Original path provided: $VAULT_SNAPSHOT_PATH"
+        exit 1
+    fi
+
+    echo "📸 Using vault snapshot: $ABS_SNAPSHOT_PATH"
+    VAULT_SNAPSHOT_PATH="$ABS_SNAPSHOT_PATH"
+fi
+
 # Check if test vault exists and is properly set up
 VAULT_EXISTS=false
 VAULT_NEEDS_BOOTSTRAP=false
@@ -20,8 +103,11 @@ if [ -d "$TEST_VAULT_DIR" ]; then
     echo "📂 Test vault directory exists: $TEST_VAULT_DIR"
     VAULT_EXISTS=true
 
+    if [ "$FORCE_SNAPSHOT" = true ]; then
+        echo "🔄 Snapshot path provided - will replace vault contents"
+        VAULT_NEEDS_BOOTSTRAP=true
     # Check if vault has basic structure
-    if [ ! -d "$TEST_VAULT_DIR/Tasks" ] || [ ! -d "$TEST_VAULT_DIR/Projects" ] || [ ! -d "$TEST_VAULT_DIR/Areas" ]; then
+    elif [ ! -d "$TEST_VAULT_DIR/Tasks" ] || [ ! -d "$TEST_VAULT_DIR/Projects" ] || [ ! -d "$TEST_VAULT_DIR/Areas" ]; then
         echo "⚠️  Vault exists but missing basic folder structure - will bootstrap"
         VAULT_NEEDS_BOOTSTRAP=true
     elif [ ! -f "$TEST_VAULT_DIR/Tasks"/*.md ] 2>/dev/null && [ ! -f "$TEST_VAULT_DIR/Projects"/*.md ] 2>/dev/null; then
@@ -40,14 +126,36 @@ fi
 mkdir -p "$TEST_VAULT_DIR"
 mkdir -p "$OBSIDIAN_DATA_DIR"
 
-if [ "$VAULT_NEEDS_BOOTSTRAP" = true ]; then
+# Handle vault snapshot if provided
+if [ "$FORCE_SNAPSHOT" = true ] && [ -n "$VAULT_SNAPSHOT_PATH" ]; then
+    echo "📋 Copying vault snapshot contents..."
+    echo "   Source: $VAULT_SNAPSHOT_PATH"
+    echo "   Destination: $TEST_VAULT_DIR"
+
+    # Copy all contents from snapshot to test vault
+    # Exclude .obsidian if it exists in snapshot (we'll set up our own)
+    rsync -a --exclude='.obsidian' "$VAULT_SNAPSHOT_PATH/" "$TEST_VAULT_DIR/" 2>/dev/null || \
+    cp -r "$VAULT_SNAPSHOT_PATH"/* "$TEST_VAULT_DIR/" 2>/dev/null || true
+
+    # Also copy hidden files if any (like .gitkeep, etc.)
+    shopt -s dotglob
+    for file in "$VAULT_SNAPSHOT_PATH"/.*; do
+        if [ -f "$file" ] && [ "$(basename "$file")" != ".obsidian" ] && [ "$(basename "$file")" != "." ] && [ "$(basename "$file")" != ".." ]; then
+            cp "$file" "$TEST_VAULT_DIR/" 2>/dev/null || true
+        fi
+    done
+    shopt -u dotglob
+
+    echo "✅ Vault snapshot copied successfully"
+    VAULT_NEEDS_BOOTSTRAP=false
+elif [ "$VAULT_NEEDS_BOOTSTRAP" = true ]; then
     echo "📋 Bootstrapping test vault structure..."
 else
     echo "📋 Vault already set up, skipping content creation..."
 fi
 
-# Bootstrap vault content only if needed
-if [ "$VAULT_NEEDS_BOOTSTRAP" = true ]; then
+# Bootstrap vault content only if needed (and not using snapshot)
+if [ "$VAULT_NEEDS_BOOTSTRAP" = true ] && [ "$FORCE_SNAPSHOT" != true ]; then
     # Copy pristine vault if it exists (for basic structure and welcome files)
     PRISTINE_VAULT_PATH="./tests/vault/Test.pristine"
     if [ -d "$PRISTINE_VAULT_PATH" ]; then
@@ -573,12 +681,18 @@ OBSIDIAN_DATA_ABS_PATH=$(cd "$OBSIDIAN_DATA_DIR" && pwd)
 
 echo "🎉 Obsidian should now open directly with your test vault!"
 echo ""
+if [ "$FORCE_SNAPSHOT" = true ]; then
+    echo "📸 Vault snapshot loaded from: $VAULT_SNAPSHOT_PATH"
+    echo ""
+fi
 echo "💡 Tips:"
 echo "   - The plugin is already installed, enabled, and configured"
-echo "   - Sample content includes 6 tasks, 2 projects, and 2 areas"
-echo "   - Tasks have different types (Bug, Feature, Task, Chore) and statuses"
+if [ "$FORCE_SNAPSHOT" != true ]; then
+    echo "   - Sample content includes 6 tasks, 2 projects, and 2 areas"
+    echo "   - Tasks have different types (Bug, Feature, Task, Chore) and statuses"
+    echo "   - Templates are available for creating new content"
+fi
 echo "   - The vault preserves existing content on subsequent runs"
-echo "   - Templates are available for creating new content"
 echo "   - You can test all plugin features immediately"
 echo ""
 echo "ℹ️  Expected behavior:"
@@ -586,6 +700,11 @@ echo "   - You may see some harmless warnings in the terminal (this is normal)"
 echo "   - Obsidian should open directly to the test vault without prompting"
 echo "   - If prompted to select a vault, choose 'test-vault' from the list"
 echo ""
+if [ "$FORCE_SNAPSHOT" != true ]; then
+    echo "📸 To open a debug vault snapshot from E2E test failures:"
+    echo "   npm run dev:obsidian:open_test_vault -- tests/e2e/debug/<test-name>/vault-snapshot"
+    echo ""
+fi
 echo "🔄 To rebuild and update the plugin:"
 echo "   npm run dev:obsidian:install --vault=\"$TEST_VAULT_ABS_PATH\""
 echo ""
