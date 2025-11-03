@@ -1128,7 +1128,7 @@ test.describe("GitHub Integration", () => {
       // Find the GitHub task
       const githubTask = currentTasks.find(
         (t: any) =>
-          t.source?.keys?.github ===
+          t.source.keys.github ===
           "https://github.com/solnic/obsidian-task-sync/issues/111"
       );
 

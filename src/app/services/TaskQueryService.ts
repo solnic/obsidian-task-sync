@@ -321,7 +321,7 @@ export class TaskQueryService {
     tasks: readonly Task[],
     filePath: string
   ): Task | undefined {
-    return tasks.find((task) => task.source?.keys?.obsidian === filePath);
+    return tasks.find((task) => task.source.keys.obsidian === filePath);
   }
 
   /**
@@ -337,7 +337,7 @@ export class TaskQueryService {
     extension: string,
     key: string
   ): Task | undefined {
-    return tasks.find((task) => task.source?.keys?.[extension] === key);
+    return tasks.find((task) => task.source.keys[extension] === key);
   }
 
   /**
@@ -351,7 +351,7 @@ export class TaskQueryService {
     tasks: readonly Task[],
     url: string
   ): Task | undefined {
-    return tasks.find((task) => task.source?.keys?.github === url);
+    return tasks.find((task) => task.source.keys.github === url);
   }
 
   /**

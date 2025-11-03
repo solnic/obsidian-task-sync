@@ -141,7 +141,7 @@ export class RefreshTasksCommand extends Command {
         try {
           // Find the task entity for this file
           const taskEntity = allTaskEntities.find(
-            (task) => task.source.keys?.obsidian === file.path
+            (task) => task.source.keys.obsidian === file.path
           );
 
           if (taskEntity) {
@@ -173,7 +173,7 @@ export class RefreshTasksCommand extends Command {
         }
 
         // If the entity has a file path, check if the file exists
-        const filePath = task.source.keys?.obsidian;
+        const filePath = task.source.keys.obsidian;
         if (filePath) {
           const file = this.app.vault.getAbstractFileByPath(filePath);
           return !file; // Include if file doesn't exist

@@ -198,7 +198,7 @@ export class ObsidianHost extends Host {
    * @throws Error if file cannot be opened or found
    */
   async openFile(entity: Area | Project | Task): Promise<void> {
-    const filePath = entity.source?.keys?.obsidian;
+    const filePath = entity.source.keys.obsidian;
     if (!filePath) {
       throw new Error(
         `Entity ${entity.id} does not have an Obsidian file path`

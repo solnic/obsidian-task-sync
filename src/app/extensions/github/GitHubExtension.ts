@@ -266,7 +266,7 @@ export class GitHubExtension implements Extension {
 
       // Add all current tasks to the map
       for (const task of currentTasks) {
-        const url = task.source?.keys?.github;
+        const url = task.source.keys.github;
         if (url) {
           taskMap.set(url, task);
         }
@@ -278,7 +278,7 @@ export class GitHubExtension implements Extension {
 
       // Update/add new tasks
       for (const task of tasks) {
-        const url = task.source?.keys?.github;
+        const url = task.source.keys.github;
         if (url) {
           taskMap.set(url, task);
         }
@@ -343,7 +343,7 @@ export class GitHubExtension implements Extension {
       );
 
       const hasDataForRepo = entityTasks.some((task) => {
-        const url = task.source?.keys?.github;
+        const url = task.source.keys.github;
         if (!url) return false;
         const taskRepository = extractRepositoryFromGitHubUrl(url);
         const typeMatches =
@@ -413,7 +413,7 @@ export class GitHubExtension implements Extension {
 
         // Filter GitHub tasks from entity store for this repository and type
         const githubTasksForRepo = $githubTasks.filter((task) => {
-          const url = task.source?.keys?.github;
+          const url = task.source.keys.github;
           if (!url) return false;
           const taskRepository = extractRepositoryFromGitHubUrl(url);
 
@@ -428,7 +428,7 @@ export class GitHubExtension implements Extension {
 
         // Filter imported tasks for this repository
         const importedForRepo = $importedTasks.filter((task) => {
-          const url = task.source?.keys?.github;
+          const url = task.source.keys.github;
           if (!url) return false;
           const taskRepository = extractRepositoryFromGitHubUrl(url);
           return taskRepository === repository;
@@ -445,8 +445,7 @@ export class GitHubExtension implements Extension {
         const tasks = githubTasksForRepo.map((githubTask) => {
           // Check if this GitHub task is imported (exists in main taskStore)
           const importedTask = importedForRepo.find(
-            (task) =>
-              task.source?.keys?.github === githubTask.source?.keys?.github
+            (task) => task.source.keys.github === githubTask.source.keys.github
           );
 
           if (importedTask) {

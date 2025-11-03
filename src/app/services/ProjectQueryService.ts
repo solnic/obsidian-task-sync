@@ -18,7 +18,7 @@ export class ProjectQueryService {
     filePath: string
   ): Project | undefined {
     return projects.find(
-      (project) => project.source?.keys?.obsidian === filePath
+      (project) => project.source.keys.obsidian === filePath
     );
   }
 
