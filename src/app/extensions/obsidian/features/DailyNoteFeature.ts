@@ -11,7 +11,8 @@ import {
   discoverDailyNoteSettings,
   getDailyNotePath,
 } from "../../../utils/dailyNoteDiscovery";
-import { DailyNoteParser } from "../../daily-planning/services/DailyNoteParser";
+import { InlineTaskParser } from "../services/InlineTaskParser";
+import { InlineTaskEditor } from "../services/InlineTaskEditor";
 
 export interface DailyNoteFeatureSettings {
   dailyNotesFolder: string;
@@ -31,14 +32,18 @@ export interface AddTaskResult {
 
 export class DailyNoteFeature {
   private unsubscribeFunctions: (() => void)[] = [];
-  private dailyNoteParser: DailyNoteParser;
+  private inlineTaskParser: InlineTaskParser;
+  private inlineTaskEditor: InlineTaskEditor;
 
   constructor(
     private app: App,
     private plugin: Plugin,
     private settings: DailyNoteFeatureSettings
   ) {
-    this.dailyNoteParser = new DailyNoteParser(app);
+    // Get tasksFolder from plugin settings
+    const tasksFolder = (this.plugin as any).settings?.tasksFolder || "Tasks";
+    this.inlineTaskParser = new InlineTaskParser(app, tasksFolder);
+    this.inlineTaskEditor = new InlineTaskEditor(tasksFolder);
     this.setupEventListeners();
   }
 
@@ -211,8 +216,8 @@ export class DailyNoteFeature {
     // Ensure today's daily note exists
     const dailyNoteResult = await this.ensureTodayDailyNote();
 
-    // Extract existing task links from the Daily Note using DailyNoteParser
-    const existingTaskPaths = await this.extractTaskPathsFromDailyNote(
+    // Extract existing task paths from the Daily Note using InlineTaskParser
+    const existingTaskPaths = await this.inlineTaskParser.getTaskFilePaths(
       dailyNoteResult.file!
     );
 
@@ -232,9 +237,9 @@ export class DailyNoteFeature {
       }
     }
 
-    // Remove unscheduled tasks from daily note
+    // Remove unscheduled tasks from daily note using InlineTaskEditor
     if (tasksToRemove.length > 0) {
-      currentContent = this.removeTasksFromContent(
+      currentContent = this.inlineTaskEditor.removeTasks(
         currentContent,
         tasksToRemove
       );
@@ -242,18 +247,20 @@ export class DailyNoteFeature {
 
     // Find tasks to add (in schedule but not in daily note)
     let tasksToAdd: Task[] = [];
+    const existingTaskPathsSet = new Set(existingTaskPaths);
     for (const task of schedule.tasks) {
-      if (!existingTaskPaths.has(task.source.keys.obsidian!)) {
+      if (!existingTaskPathsSet.has(task.source.keys.obsidian!)) {
         tasksToAdd.push(task);
       }
     }
 
-    // Add new tasks to daily note
+    // Add new tasks to daily note using InlineTaskEditor
     if (tasksToAdd.length > 0) {
-      const taskLinks = tasksToAdd.map(
-        (task) => `- [ ] [[${task.source.keys.obsidian}|${task.title}]]`
+      currentContent = this.inlineTaskEditor.addTasks(
+        currentContent,
+        tasksToAdd,
+        { section: "Tasks" }
       );
-      currentContent = this.insertTasksIntoContent(currentContent, taskLinks);
     }
 
     // Only update if content actually changed
@@ -264,90 +271,6 @@ export class DailyNoteFeature {
         `Updated daily note: removed ${tasksToRemove.length} tasks, added ${tasksToAdd.length} tasks`
       );
     }
-  }
-
-  /**
-   * Extract task file paths from daily note using DailyNoteParser
-   */
-  private async extractTaskPathsFromDailyNote(
-    dailyNoteFile: TFile
-  ): Promise<Set<string>> {
-    // Get tasksFolder from plugin settings
-    const tasksFolder = (this.plugin as any).settings?.tasksFolder || "Tasks";
-    const taskLinks = await this.dailyNoteParser.parseTaskLinks(
-      dailyNoteFile,
-      tasksFolder
-    );
-    return new Set(
-      taskLinks
-        .map((link) => link.filePath)
-        .filter((path) => path !== undefined) as string[]
-    );
-  }
-
-  /**
-   * Insert task links into daily note content
-   */
-  private insertTasksIntoContent(content: string, taskLinks: string[]): string {
-    if (content.includes("## Tasks")) {
-      // Add new tasks to existing Tasks section
-      const tasksRegex = /(## Tasks\n)/;
-      const newTasksToAdd = taskLinks.join("\n") + "\n";
-      return content.replace(tasksRegex, `$1${newTasksToAdd}`);
-    } else {
-      // Add Tasks section if it doesn't exist
-      const newTasksSection = `\n## Tasks\n${taskLinks.join("\n")}\n`;
-      return content + newTasksSection;
-    }
-  }
-
-  /**
-   * Remove task links from daily note content
-   */
-  private removeTasksFromContent(content: string, taskPaths: string[]): string {
-    let updatedContent = content;
-
-    // For each task path to remove, find and remove the corresponding task link
-    for (const taskPath of taskPaths) {
-      // Extract the task title from the file path (remove .md extension and path)
-      const taskTitle = taskPath.split("/").pop()?.replace(/\.md$/, "") || "";
-
-      // Remove task links in various formats:
-      // - [ ] [[Tasks/Task Name|Task Name]]
-      // - [ ] [[Task Name]]
-      // - [x] [[Tasks/Task Name|Task Name]]
-      // - [x] [[Task Name]]
-
-      // Pattern 1: - [ ] or - [x] followed by [[path|title]] or [[title]]
-      const patterns = [
-        // Full path with pipe separator
-        new RegExp(
-          `^\\s*-\\s*\\[[ x]\\]\\s*\\[\\[${taskPath}\\|[^\\]]*\\]\\]\\s*$`,
-          "m"
-        ),
-        // Just title with pipe separator
-        new RegExp(
-          `^\\s*-\\s*\\[[ x]\\]\\s*\\[\\[[^|]*\\|${taskTitle}\\]\\]\\s*$`,
-          "m"
-        ),
-        // Full path without pipe separator
-        new RegExp(`^\\s*-\\s*\\[[ x]\\]\\s*\\[\\[${taskPath}\\]\\]\\s*$`, "m"),
-        // Just title without pipe separator
-        new RegExp(
-          `^\\s*-\\s*\\[[ x]\\]\\s*\\[\\[${taskTitle}\\]\\]\\s*$`,
-          "m"
-        ),
-      ];
-
-      for (const pattern of patterns) {
-        updatedContent = updatedContent.replace(pattern, "");
-      }
-    }
-
-    // Clean up any extra blank lines left behind
-    updatedContent = updatedContent.replace(/\n\n\n+/g, "\n\n");
-
-    return updatedContent;
   }
 
   /**

@@ -32,7 +32,8 @@ import {
   getTodayTasksGrouped,
 } from "../../utils/dateFiltering";
 import { getDailyNotePath } from "../../utils/dailyNoteDiscovery";
-import { DailyNoteParser } from "./services/DailyNoteParser";
+import { InlineTaskParser } from "../obsidian/services/InlineTaskParser";
+import { InlineTaskEditor } from "../obsidian/services/InlineTaskEditor";
 import { ObsidianHost } from "../../hosts/ObsidianHost";
 
 export interface DailyPlanningExtensionSettings {
@@ -61,8 +62,9 @@ export class DailyPlanningExtension implements Extension {
   // Calendar extension for events
   private calendarExtension?: CalendarExtension;
 
-  // Daily note parser for extracting task links
-  private dailyNoteParser: DailyNoteParser;
+  // Inline task parser for extracting task links from notes
+  private inlineTaskParser: InlineTaskParser;
+  private inlineTaskEditor: InlineTaskEditor;
 
   // Note: Planning state is now managed by contextStore
 
@@ -81,7 +83,11 @@ export class DailyPlanningExtension implements Extension {
     this.host = host;
     this.schedules = new Schedules.Operations();
     this.taskOperations = new Tasks.Operations(settings);
-    this.dailyNoteParser = new DailyNoteParser(host.plugin.app);
+    this.inlineTaskParser = new InlineTaskParser(
+      host.plugin.app,
+      settings.tasksFolder
+    );
+    this.inlineTaskEditor = new InlineTaskEditor(settings.tasksFolder);
 
     // Calendar extension will be set during initialization
     this.calendarExtension = undefined;
@@ -456,9 +462,8 @@ export class DailyPlanningExtension implements Extension {
       }
 
       // Parse the Daily Note to get task file paths
-      const taskFilePaths = await this.dailyNoteParser.getTaskFilePaths(
-        dailyNoteFile,
-        this.settings.tasksFolder
+      const taskFilePaths = await this.inlineTaskParser.getTaskFilePaths(
+        dailyNoteFile
       );
 
       // Get all tasks and filter to those in the Daily Note
@@ -863,42 +868,30 @@ export class DailyPlanningExtension implements Extension {
         dailyNoteFile as any
       );
 
-      // Add task links to the daily note
-      const taskLinks: string[] = [];
-      for (const task of tasks) {
+      // Filter tasks that already exist in the daily note to avoid duplicates
+      const existingTaskPaths = await this.inlineTaskParser.getTaskFilePaths(
+        dailyNoteFile as any
+      );
+      const existingTaskPathsSet = new Set(existingTaskPaths);
+
+      // Filter out tasks that are already in the daily note
+      const tasksToAdd = tasks.filter((task) => {
         const filePath = task.source?.keys?.obsidian;
-        if (filePath) {
-          // Extract task title from file path (remove .md extension and path)
-          const taskTitle =
-            filePath.split("/").pop()?.replace(/\.md$/, "") || task.title;
-          const taskLink = `- [ ] [[${taskTitle}]]`;
+        return filePath && !existingTaskPathsSet.has(filePath);
+      });
 
-          // Check if task already exists to avoid duplicates
-          if (!currentContent.includes(taskLink)) {
-            taskLinks.push(taskLink);
-          }
-
-          // Set the Do Date property in the task's front-matter to today's date
-          await this.setTaskDoDate(task, today);
-        }
+      // Set the Do Date property for all tasks
+      for (const task of tasks) {
+        await this.setTaskDoDate(task, today);
       }
 
-      // Add new task links to the daily note if any
-      if (taskLinks.length > 0) {
-        const tasksSection = "\n## Tasks\n" + taskLinks.join("\n") + "\n";
-
-        // Find the Tasks section and add the links
-        let updatedContent = currentContent;
-        if (currentContent.includes("## Tasks")) {
-          // Insert after the Tasks header
-          updatedContent = currentContent.replace(
-            /## Tasks\n(<!-- Tasks scheduled for today will appear here -->\n)?/,
-            `## Tasks\n${taskLinks.join("\n")}\n`
-          );
-        } else {
-          // Add Tasks section if it doesn't exist
-          updatedContent = currentContent + tasksSection;
-        }
+      // Add new tasks to the daily note using InlineTaskEditor
+      if (tasksToAdd.length > 0) {
+        const updatedContent = this.inlineTaskEditor.addTasks(
+          currentContent,
+          tasksToAdd,
+          { section: "Tasks" }
+        );
 
         await this.host.plugin.app.vault.modify(
           dailyNoteFile as any,
