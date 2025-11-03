@@ -287,3 +287,82 @@ export async function createProject(
 
   return createdProject;
 }
+
+/**
+ * Create a task entity directly in the store and data.json WITHOUT creating a file
+ * This is useful for testing file recreation scenarios where an entity exists but its file is missing
+ */
+export async function createTaskEntityWithoutFile(
+  page: ExtendedPage,
+  taskData: {
+    title: string;
+    description?: string;
+    category?: string;
+    priority?: string;
+    areas?: string[];
+    project?: string;
+    done?: boolean;
+    status?: string;
+    filePath: string; // The file path to set in source.keys.obsidian (file won't be created)
+  }
+): Promise<any> {
+  // Generate ID in Node.js context
+  const { ulid } = await import("ulid");
+  const taskId = ulid();
+
+  return await page.evaluate(
+    async ({ taskData, taskId }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Create the task entity
+      const task = {
+        id: taskId,
+        title: taskData.title,
+        description: taskData.description || "",
+        category: taskData.category || "Task",
+        priority: taskData.priority || "",
+        areas: taskData.areas || [],
+        project: taskData.project || "",
+        done: taskData.done || false,
+        status: taskData.status || "Backlog",
+        tags: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        source: {
+          extension: "obsidian",
+          keys: {
+            obsidian: taskData.filePath,
+          },
+        },
+      };
+
+      // Load current data
+      const pluginData = (await plugin.loadData()) || {};
+      const entities = pluginData.entities || {};
+      const tasks = entities.tasks || [];
+
+      // Add the task to the entities
+      tasks.push(task);
+
+      // Save back to data.json
+      pluginData.entities = {
+        ...entities,
+        tasks,
+      };
+      await plugin.saveData(pluginData);
+
+      // Also add to the task store directly so it's immediately available
+      // Access the taskStore from the plugin's stores property
+      if (plugin.stores && plugin.stores.taskStore) {
+        plugin.stores.taskStore.dispatch({
+          type: "ADD_TASK",
+          task,
+        });
+      }
+
+      return task;
+    },
+    { taskData, taskId }
+  );
+}
