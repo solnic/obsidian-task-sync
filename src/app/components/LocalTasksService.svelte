@@ -138,7 +138,7 @@
    * Filter by source.keys.obsidian to get all tasks with Obsidian notes
    */
   let allTasks = $derived(
-    storeState.tasks.filter((task) => task.source?.keys?.obsidian !== undefined)
+    storeState.tasks.filter((task) => task.source.keys.obsidian !== undefined)
   );
 
   /**

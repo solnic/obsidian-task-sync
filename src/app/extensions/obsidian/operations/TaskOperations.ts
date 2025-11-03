@@ -154,7 +154,7 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     if (projectValue && !projectValue.startsWith("[[")) {
       // Look up the project to get its file path
       const project = this.findProjectByName(projectValue);
-      const projectFilePath = project?.source?.keys?.obsidian;
+      const projectFilePath = project?.source.keys.obsidian;
       if (project && projectFilePath) {
         // Format as [[Projects/Foo Bar.md|Foo Bar]]
         projectValue = `[[${projectFilePath}|${projectValue}]]`;

@@ -471,7 +471,7 @@ export class DailyPlanningExtension implements Extension {
       const allTasks = await taskQueries.getAll();
 
       return allTasks.filter((task) =>
-        taskFilePaths.includes(task.source?.keys?.obsidian || "")
+        taskFilePaths.includes(task.source.keys.obsidian)
       );
     } catch (error) {
       console.error("Error getting tasks from Daily Note:", error);
@@ -876,7 +876,7 @@ export class DailyPlanningExtension implements Extension {
 
       // Filter out tasks that are already in the daily note
       const tasksToAdd = tasks.filter((task) => {
-        const filePath = task.source?.keys?.obsidian;
+        const filePath = task.source.keys.obsidian;
         return filePath && !existingTaskPathsSet.has(filePath);
       });
 

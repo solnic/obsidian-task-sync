@@ -59,7 +59,7 @@ export class InlineTaskEditor {
     // Format task links using wiki link format with full path and display text
     // Format: [[Tasks/Task Name|Display Text]]
     const taskLinks = tasks.map((task) => {
-      const taskPath = task.source.keys.obsidian || "";
+      const taskPath = task.source.keys.obsidian;
       const displayText = task.title;
       const wikiLink = `[[${taskPath}|${displayText}]]`;
       return `- [ ] ${wikiLink}`;

@@ -20,11 +20,12 @@ import { projectStore, type ProjectStore } from "./app/stores/projectStore";
 import { areaStore, type AreaStore } from "./app/stores/areaStore";
 import type { ObsidianExtension } from "./app/extensions/obsidian/ObsidianExtension";
 import { Obsidian } from "./app/extensions/obsidian/entities/Obsidian";
-import { extensionRegistry } from "./app/core/extension";
-import { taskSourceManager } from "./app/core/TaskSourceManager";
 import { get } from "svelte/store";
 import type { Task, Project, Area } from "./app/core/entities";
 // Singleton operations removed - use operations from ObsidianExtension instance
+
+// Commands
+import { RefreshTasksCommand } from "./app/commands/core/RefreshTasksCommand";
 
 // TypeNote imports
 import {
@@ -224,14 +225,13 @@ export default class TaskSyncPlugin extends Plugin {
       },
     });
 
-    // Add command to refresh tasks
-    this.addCommand({
-      id: "refresh-tasks",
-      name: "Refresh Tasks",
-      callback: async () => {
-        await this.refreshTasks();
-      },
+    // Register Refresh Tasks command
+    const refreshTasksCommand = new RefreshTasksCommand({
+      plugin: this,
+      app: this.app,
+      settings: this.settings,
     });
+    refreshTasksCommand.register();
 
     // Add command to start daily planning
     this.addCommand({
@@ -692,210 +692,6 @@ export default class TaskSyncPlugin extends Plugin {
       `Registered ${noteTypes.length} note type commands:`,
       this.registeredNoteTypeCommands
     );
-  }
-
-  /**
-   * Comprehensive refresh operation - updates file properties, fixes corrupted files, and rebuilds all data
-   * This is a complete refresh that should fix any data inconsistencies or corruption
-   */
-  async refreshTasks() {
-    try {
-      new Notice("Starting comprehensive refresh...");
-
-      const results = {
-        filesScanned: 0,
-        filesRepaired: 0,
-        propertiesUpdated: 0,
-        tasksRefreshed: 0,
-        basesRegenerated: 0,
-        errors: [] as string[],
-      };
-
-      console.log("Task Sync: Starting comprehensive refresh operation...");
-
-      // Step 1: Update file properties and repair corrupted files
-      await this.updateFileProperties(results);
-
-      // Step 2: Clear task store and rebuild from all sources
-      await this.rebuildTaskData(results);
-
-      // Step 3: Regenerate bases to ensure consistency
-      await this.regenerateBases();
-      results.basesRegenerated = 1;
-
-      // Step 4: Show detailed results to user
-      this.showRefreshResults(results);
-
-      console.log("Task Sync: Comprehensive refresh completed successfully");
-    } catch (error) {
-      console.error("Failed to refresh tasks:", error);
-      new Notice(`❌ Failed to refresh tasks: ${error.message}`);
-    }
-  }
-
-  /**
-   * Update properties in all task files to match current schema and repair corrupted files
-   */
-  private async updateFileProperties(results: any): Promise<void> {
-    try {
-      console.log(
-        "Task Sync: Updating file properties and repairing corrupted files..."
-      );
-
-      // Get the ObsidianExtension to access file management capabilities
-      const obsidianExtension = taskSyncApp.getExtensionById("obsidian");
-      if (!obsidianExtension) {
-        results.errors.push(
-          "Obsidian extension not found - cannot update file properties"
-        );
-        return;
-      }
-
-      // Get all task files in the vault
-      const taskFiles = this.app.vault
-        .getMarkdownFiles()
-        .filter((file) =>
-          file.path.startsWith(this.settings.tasksFolder + "/")
-        );
-
-      results.filesScanned = taskFiles.length;
-
-      // Update properties for each task file
-      for (const file of taskFiles) {
-        try {
-          // Read current content
-          const content = await this.app.vault.read(file);
-
-          // Check if file has valid front-matter
-          const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-          if (!frontMatterMatch) {
-            // File is missing front-matter - this is corruption, skip for now
-            // Could be enhanced to add minimal front-matter
-            results.errors.push(`File missing front-matter: ${file.path}`);
-            continue;
-          }
-
-          // Use processFrontMatter to validate and update properties
-          let propertiesChanged = false;
-          await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
-            // Ensure required task properties exist with defaults
-            const requiredProperties = {
-              Title: frontMatter.Title || file.basename,
-              Type: "Task",
-              Category: frontMatter.Category || "Task",
-              Priority: frontMatter.Priority || "",
-              Areas: frontMatter.Areas || [],
-              Project: frontMatter.Project || "",
-              Done: frontMatter.Done || false,
-              Status: frontMatter.Status || "Backlog",
-              "Parent task": frontMatter["Parent task"] || "",
-              "Do Date": frontMatter["Do Date"] || "",
-              "Due Date": frontMatter["Due Date"] || "",
-              Tags: frontMatter.Tags || [],
-              Reminders: frontMatter.Reminders || [],
-            };
-
-            // Check if any properties need to be added or updated
-            for (const [key, defaultValue] of Object.entries(
-              requiredProperties
-            )) {
-              if (!(key in frontMatter)) {
-                frontMatter[key] = defaultValue;
-                propertiesChanged = true;
-              }
-            }
-          });
-
-          if (propertiesChanged) {
-            results.propertiesUpdated++;
-            results.filesRepaired++;
-          }
-        } catch (error) {
-          results.errors.push(
-            `Failed to update ${file.path}: ${error.message}`
-          );
-        }
-      }
-
-      console.log(
-        `Task Sync: Updated properties in ${results.propertiesUpdated} files`
-      );
-    } catch (error) {
-      console.error("Task Sync: Failed to update file properties:", error);
-      results.errors.push(`Failed to update file properties: ${error.message}`);
-    }
-  }
-
-  /**
-   * Clear task store and rebuild all task data from sources
-   */
-  private async rebuildTaskData(results: any): Promise<void> {
-    try {
-      console.log("Task Sync: Rebuilding task data from all sources...");
-
-      // Get all extensions that support tasks
-      const extensions = extensionRegistry.getByEntityType("task");
-
-      if (extensions.length === 0) {
-        results.errors.push("No task extensions found");
-        return;
-      }
-
-      // Refresh each registered source via TaskSourceManager to ensure proper SyncManager integration
-      // This ensures cross-source synchronization happens correctly
-      const registeredSources = taskSourceManager.getRegisteredSources();
-
-      for (const sourceId of registeredSources) {
-        try {
-          console.log(`Rebuilding tasks from source: ${sourceId}`);
-          await taskSourceManager.refreshSource(sourceId);
-          results.tasksRefreshed++;
-        } catch (error) {
-          results.errors.push(
-            `Failed to refresh ${sourceId}: ${error.message}`
-          );
-        }
-      }
-
-      console.log(
-        `Task Sync: Rebuilt data from ${results.tasksRefreshed} extensions`
-      );
-    } catch (error) {
-      console.error("Task Sync: Failed to rebuild task data:", error);
-      results.errors.push(`Failed to rebuild task data: ${error.message}`);
-    }
-  }
-
-  /**
-   * Show comprehensive refresh results to the user
-   */
-  private showRefreshResults(results: any): void {
-    const {
-      filesScanned,
-      filesRepaired,
-      propertiesUpdated,
-      tasksRefreshed,
-      basesRegenerated,
-      errors,
-    } = results;
-
-    let message = "🔄 Comprehensive Refresh Complete!\n\n";
-    message += `📁 Files scanned: ${filesScanned}\n`;
-    message += `🔧 Files repaired: ${filesRepaired}\n`;
-    message += `📝 Properties updated: ${propertiesUpdated}\n`;
-    message += `🔄 Data sources refreshed: ${tasksRefreshed}\n`;
-    message += `📋 Bases regenerated: ${basesRegenerated}\n`;
-
-    if (errors.length > 0) {
-      message += `\n⚠️ Errors encountered: ${errors.length}\n`;
-      message += "Check console for details.";
-
-      console.error("Task Sync: Refresh errors:", errors);
-    }
-
-    // Show a notice to the user
-    new Notice(message, 8000);
-    console.log("Task Sync: Comprehensive refresh results:", results);
   }
 
   /**

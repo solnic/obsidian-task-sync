@@ -138,9 +138,7 @@ test.describe("Automatic Sync During Refresh", () => {
             extension: "github",
             keys: {
               github: "https://github.com/test/repo/issues/123",
-              obsidian:
-                githubTask.source?.keys?.obsidian ||
-                "Tasks/GitHub Issue Task.md",
+              obsidian: githubTask.source.keys.obsidian,
             },
             data: {
               id: 123456,
@@ -185,7 +183,7 @@ test.describe("Automatic Sync During Refresh", () => {
 
       return (
         githubTask?.source?.extension === "github" &&
-        githubTask?.source?.keys?.github ===
+        githubTask?.source.keys.github ===
           "https://github.com/test/repo/issues/123" &&
         githubTask?.source?.data?.number === 123
       );

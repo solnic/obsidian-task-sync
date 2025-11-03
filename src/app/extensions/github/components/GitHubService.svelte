@@ -64,7 +64,7 @@
     const urls = new Set<string>();
     for (const task of $taskStore.tasks) {
       // Only process tasks that have source.keys defined
-      if (task.source?.keys?.github) {
+      if (task.source.keys.github) {
         urls.add(task.source.keys.github);
       }
     }
@@ -175,7 +175,7 @@
       tasks: extensionTasks.map((t: Task) => ({
         id: t.id,
         title: t.title,
-        imported: !!t.source?.keys?.obsidian,
+        imported: !!t.source.keys.obsidian,
       })),
     });
 
@@ -210,7 +210,7 @@
         id: t.id,
         title: t.title,
         doDate: t.doDate,
-        isImported: !!t.source?.keys?.obsidian,
+        isImported: !!t.source.keys.obsidian,
       })),
     });
 
@@ -662,7 +662,7 @@
    * If not, imports the task first, then schedules it.
    */
   async function scheduleForToday(task: Task): Promise<void> {
-    const githubUrl = task.source?.keys?.github;
+    const githubUrl = task.source.keys.github;
 
     if (!dailyPlanningExtension) {
       return;
@@ -672,7 +672,7 @@
     if (githubUrl && isTaskImported(task)) {
       const state = get(taskStore);
       const existing = state.tasks.find(
-        (t) => t.source?.keys?.github === githubUrl
+        (t) => t.source.keys.github === githubUrl
       );
       if (existing) {
         try {
