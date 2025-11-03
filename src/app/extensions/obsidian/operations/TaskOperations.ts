@@ -170,7 +170,7 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       [PROPERTY_REGISTRY.PROJECT.name]: projectValue, // Project in wiki link format
       [PROPERTY_REGISTRY.DONE.name]: task.done, // Done boolean
       [PROPERTY_REGISTRY.STATUS.name]: task.status, // Status
-      [PROPERTY_REGISTRY.PARENT_TASK.name]: task.parentTask || "", // Parent Task
+      [PROPERTY_REGISTRY.PARENT_TASK.name]: task.parentTask || "", // Parent task
       [PROPERTY_REGISTRY.DO_DATE.name]: task.doDate
         ? getDateString(task.doDate)
         : null, // Do Date
@@ -366,7 +366,7 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       done: frontMatter.Done,
       project: cleanLinkFormat(frontMatter.Project),
       areas: areas,
-      parentTask: cleanLinkFormat(frontMatter["Parent Task"]),
+      parentTask: cleanLinkFormat(frontMatter["Parent task"]),
       doDate: parseDate(frontMatter["Do Date"]),
       dueDate: parseDate(frontMatter["Due Date"]),
       tags: frontMatter.tags || [],

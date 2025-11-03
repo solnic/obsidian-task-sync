@@ -98,11 +98,11 @@ test.describe("Task Creation with Context Defaults", () => {
     expect(fm.Areas).toContain("Marketing");
   });
 
-  test("prefills Parent Task when invoked from within a task file", async ({
+  test("prefills Parent task when invoked from within a task file", async ({
     page,
   }) => {
     // Arrange: create a parent task file and open it
-    const parentTitle = "Parent Task For Subtask";
+    const parentTitle = "Parent task For Subtask";
     await createFile(
       page,
       `Tasks/${parentTitle}.md`,
@@ -133,10 +133,10 @@ test.describe("Task Creation with Context Defaults", () => {
     await expect(page.locator(".task-sync-modal-container")).toBeHidden();
     await expectNotice(page, "created successfully");
 
-    // Verify file and front-matter; Parent Task should be parentTitle
+    // Verify file and front-matter; Parent task should be parentTitle
     const expectedPath = `Tasks/${childTitle}.md`;
     await waitForFileCreation(page, expectedPath);
     const fm = await getFrontMatter(page, expectedPath);
-    expect(fm["Parent Task"]).toBe(parentTitle);
+    expect(fm["Parent task"]).toBe(parentTitle);
   });
 });

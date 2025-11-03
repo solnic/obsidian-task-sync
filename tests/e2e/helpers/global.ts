@@ -379,7 +379,7 @@ export async function createTestTaskFile(
         done: frontmatter.Done || frontmatter.done || false,
         status: frontmatter.Status || frontmatter.status || "Backlog",
         priority: frontmatter.Priority || frontmatter.priority,
-        parentTask: frontmatter["Parent Task"] || frontmatter.parentTask,
+        parentTask: frontmatter["Parent task"] || frontmatter.parentTask,
         tags: frontmatter.tags || [],
       };
 
@@ -928,10 +928,21 @@ export async function openFile(
  * Helper to wait for base view to load properly
  */
 export async function waitForBaseView(page: ExtendedPage, timeout = 5000) {
-  await page.waitForSelector(".bases-view", { timeout });
-  await page.waitForSelector(".bases-table-container", {
-    timeout: 5000,
+  // Wait for bases-view to exist in DOM (Bases plugin loads it)
+  await page.waitForSelector(".bases-view", {
+    timeout,
+    state: "attached" // Just needs to exist, visibility checked separately
   });
+
+  // Wait for table container structure
+  await page.waitForSelector(".bases-view .bases-table-container", {
+    timeout: 5000,
+    state: "attached"
+  });
+
+  // Give Bases time to query vault and render results
+  // This can take a few seconds as Bases processes filters
+  await page.waitForTimeout(3000);
 }
 
 export async function createFile(
@@ -1860,7 +1871,7 @@ export async function getAreaProperties(
  * Examples:
  * - createFullyQualifiedLink("Testing", "Areas") → "[[Areas/Testing|Testing]]"
  * - createFullyQualifiedLink("Task Sync", "Projects") → "[[Projects/Task Sync|Task Sync]]"
- * - createFullyQualifiedLink("Parent Task", "Tasks") → "[[Tasks/Parent Task|Parent Task]]"
+ * - createFullyQualifiedLink("Parent task", "Tasks") → "[[Tasks/Parent task|Parent task]]"
  */
 export function createFullyQualifiedLink(
   displayName: string,

@@ -6,7 +6,12 @@
 
 import { App, Vault, TFile } from "obsidian";
 import type { TaskSyncSettings } from "../types/settings";
-import type { Template, TemplateInfo, TemplateVariable, ValidationResult } from "../core/template-entities";
+import type {
+  Template,
+  TemplateInfo,
+  TemplateVariable,
+  ValidationResult,
+} from "../core/template-entities";
 import { templateOperations, templateQueries } from "../entities/Templates";
 import { generateId } from "../utils/idGenerator";
 
@@ -30,7 +35,10 @@ export class TemplateService {
   async ensureTemplatesExist(): Promise<void> {
     try {
       const templateTypes: Array<"task" | "area" | "project" | "parentTask"> = [
-        "task", "area", "project", "parentTask"
+        "task",
+        "area",
+        "project",
+        "parentTask",
       ];
 
       for (const templateType of templateTypes) {
@@ -47,7 +55,9 @@ export class TemplateService {
   /**
    * Ensure a specific template exists
    */
-  async ensureTemplateExists(templateType: "task" | "area" | "project" | "parentTask"): Promise<void> {
+  async ensureTemplateExists(
+    templateType: "task" | "area" | "project" | "parentTask"
+  ): Promise<void> {
     const templatePath = this.getTemplatePath(templateType);
     const templateExists = await this.vault.adapter.exists(templatePath);
 
@@ -59,7 +69,9 @@ export class TemplateService {
   /**
    * Read template content from file
    */
-  async readTemplate(templateType: "task" | "area" | "project" | "parentTask"): Promise<string | null> {
+  async readTemplate(
+    templateType: "task" | "area" | "project" | "parentTask"
+  ): Promise<string | null> {
     const templatePath = this.getTemplatePath(templateType);
 
     try {
@@ -77,10 +89,13 @@ export class TemplateService {
   /**
    * Create a template file with proper front-matter and content
    */
-  async createTemplate(templateType: "task" | "area" | "project" | "parentTask", filename?: string): Promise<void> {
-    const templatePath = filename ? 
-      `${this.settings.templateFolder}/${filename}` : 
-      this.getTemplatePath(templateType);
+  async createTemplate(
+    templateType: "task" | "area" | "project" | "parentTask",
+    filename?: string
+  ): Promise<void> {
+    const templatePath = filename
+      ? `${this.settings.templateFolder}/${filename}`
+      : this.getTemplatePath(templateType);
 
     // Check if file already exists
     const fileExists = await this.vault.adapter.exists(templatePath);
@@ -114,7 +129,9 @@ export class TemplateService {
   /**
    * Get template file path for a given type
    */
-  private getTemplatePath(templateType: "task" | "area" | "project" | "parentTask"): string {
+  private getTemplatePath(
+    templateType: "task" | "area" | "project" | "parentTask"
+  ): string {
     let templateFileName: string;
 
     switch (templateType) {
@@ -140,7 +157,9 @@ export class TemplateService {
   /**
    * Get display name for template type
    */
-  private getTemplateDisplayName(templateType: "task" | "area" | "project" | "parentTask"): string {
+  private getTemplateDisplayName(
+    templateType: "task" | "area" | "project" | "parentTask"
+  ): string {
     switch (templateType) {
       case "task":
         return "Task Template";
@@ -149,7 +168,7 @@ export class TemplateService {
       case "project":
         return "Project Template";
       case "parentTask":
-        return "Parent Task Template";
+        return "Parent task Template";
       default:
         return "Unknown Template";
     }
@@ -158,7 +177,9 @@ export class TemplateService {
   /**
    * Generate template content based on type
    */
-  private generateTemplateContent(templateType: "task" | "area" | "project" | "parentTask"): string {
+  private generateTemplateContent(
+    templateType: "task" | "area" | "project" | "parentTask"
+  ): string {
     switch (templateType) {
       case "task":
         return this.generateTaskTemplateContent();
@@ -260,7 +281,7 @@ DueDate: ""
 
     while ((match = variablePattern.exec(content)) !== null) {
       const variableName = match[1];
-      if (!variables.some(v => v.name === variableName)) {
+      if (!variables.some((v) => v.name === variableName)) {
         variables.push({
           name: variableName,
           type: "text",
@@ -275,7 +296,10 @@ DueDate: ""
   /**
    * Process template with variables
    */
-  async processTemplate(templatePath: string, variables: Record<string, any>): Promise<string> {
+  async processTemplate(
+    templatePath: string,
+    variables: Record<string, any>
+  ): Promise<string> {
     const content = await this.readTemplateByPath(templatePath);
     if (!content) {
       throw new Error(`Template not found: ${templatePath}`);
@@ -283,7 +307,7 @@ DueDate: ""
 
     let processedContent = content;
     for (const [key, value] of Object.entries(variables)) {
-      const pattern = new RegExp(`\\{\\{${key}\\}\\}`, 'g');
+      const pattern = new RegExp(`\\{\\{${key}\\}\\}`, "g");
       processedContent = processedContent.replace(pattern, String(value));
     }
 
@@ -293,7 +317,9 @@ DueDate: ""
   /**
    * Read template content by file path
    */
-  private async readTemplateByPath(templatePath: string): Promise<string | null> {
+  private async readTemplateByPath(
+    templatePath: string
+  ): Promise<string | null> {
     try {
       const templateFile = this.vault.getAbstractFileByPath(templatePath);
       if (templateFile instanceof TFile) {
@@ -309,7 +335,10 @@ DueDate: ""
   /**
    * Validate template variables
    */
-  validateTemplateVariables(variables: Record<string, any>, template: Template): ValidationResult {
+  validateTemplateVariables(
+    variables: Record<string, any>,
+    template: Template
+  ): ValidationResult {
     const errors: string[] = [];
 
     for (const templateVar of template.variables) {

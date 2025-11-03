@@ -88,10 +88,10 @@
       "Default template to use when creating new areas"
     );
 
-    // Default Parent Task Template
+    // Default Parent task Template
     createFileSetting(
       "defaultParentTaskTemplate",
-      "Default Parent Task Template",
+      "Default Parent task Template",
       "Default template to use when creating new parent tasks"
     );
 
