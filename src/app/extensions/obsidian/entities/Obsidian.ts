@@ -10,6 +10,9 @@ import { Projects } from "../../../entities/Projects";
 import { Areas } from "../../../entities/Areas";
 import { App, MarkdownView, TFile } from "obsidian";
 import { ContextService } from "../../../services/ContextService";
+import { InlineTaskParser } from "../services/InlineTaskParser";
+import { InlineTaskEditor } from "../services/InlineTaskEditor";
+import type { InlineTodoItem } from "../services/InlineTaskParser";
 
 import type { TaskSyncSettings } from "../../../types/settings";
 import type { FileContext } from "../../../types/context";
@@ -219,12 +222,18 @@ export namespace Obsidian {
    * Handles promoting todo items to tasks and reverting promoted todos
    */
   export class TodoPromotionOperations {
+    private inlineTaskParser: InlineTaskParser;
+    private inlineTaskEditor: InlineTaskEditor;
+
     constructor(
       private app: App,
       private settings: TaskSyncSettings,
       private contextService: ContextService,
       private taskOperations: TaskOperations
-    ) {}
+    ) {
+      this.inlineTaskParser = new InlineTaskParser(app, settings.tasksFolder);
+      this.inlineTaskEditor = new InlineTaskEditor(settings.tasksFolder);
+    }
 
     /**
      * Promote a todo item under cursor to a task
@@ -241,7 +250,10 @@ export namespace Obsidian {
 
         const { file: activeFile, cursor } = editorContext;
 
-        const todoItem = await this.getTodoAtLine(activeFile, cursor.line);
+        const todoItem = await this.inlineTaskParser.getTodoAtLine(
+          activeFile,
+          cursor.line
+        );
 
         if (!todoItem) {
           return {
@@ -373,79 +385,6 @@ export namespace Obsidian {
     }
 
     /**
-     * Get todo item at a specific line number
-     */
-    private async getTodoAtLine(
-      file: TFile,
-      lineNumber: number
-    ): Promise<NoteTodoItem | null> {
-      const content = await this.app.vault.read(file);
-      const lines = content.split("\n");
-      const line = lines[lineNumber];
-
-      if (!line) {
-        return null;
-      }
-
-      // Parse the line to extract todo components
-      const todoRegex = /^(\s*)([-*])\s*\[([xX\s])\]\s*(.+)$/;
-      const match = line.match(todoRegex);
-
-      if (!match) {
-        return null;
-      }
-
-      const [, indentation, listMarker, checkboxState, text] = match;
-
-      // Find parent line number if this is a nested todo
-      const parentLineNumber = this.findParentTodoLine(
-        lines,
-        lineNumber,
-        indentation
-      );
-
-      return {
-        text: text.trim(),
-        completed: checkboxState.toLowerCase() === "x",
-        indentation,
-        listMarker,
-        lineNumber,
-        originalLine: line,
-        parentLineNumber,
-      };
-    }
-
-    /**
-     * Find the parent todo line for a nested todo item
-     */
-    private findParentTodoLine(
-      lines: string[],
-      currentLineNumber: number,
-      currentIndentation: string
-    ): number | undefined {
-      // If no indentation, this is a top-level todo
-      if (currentIndentation.length === 0) {
-        return undefined;
-      }
-
-      // Look backwards from current line to find parent with less indentation
-      for (let i = currentLineNumber - 1; i >= 0; i--) {
-        const line = lines[i];
-        const todoMatch = line.match(/^(\s*)([-*])\s*\[([xX\s])\]\s*(.+)$/);
-
-        if (todoMatch) {
-          const [, lineIndentation] = todoMatch;
-          // Parent must have less indentation
-          if (lineIndentation.length < currentIndentation.length) {
-            return i;
-          }
-        }
-      }
-
-      return undefined;
-    }
-
-    /**
      * Create task data from todo item
      */
     private async createTaskFromTodo(
@@ -467,9 +406,9 @@ export namespace Obsidian {
       // Determine parent task if this is a nested todo
       let parentTask = "";
       if (todoItem.parentLineNumber !== undefined) {
-        const parentTodo = await this.getTodoAtLine(
+        const parentTodo = await this.inlineTaskParser.findParentTodo(
           file,
-          todoItem.parentLineNumber
+          todoItem
         );
         if (parentTodo) {
           // Check if parent todo text is a link to an existing task
@@ -517,15 +456,17 @@ export namespace Obsidian {
       taskTitle: string
     ): Promise<void> {
       const content = await this.app.vault.read(file);
-      const lines = content.split("\n");
 
-      // Generate replacement line preserving format
-      const checkboxPart = todoItem.completed ? "[x]" : "[ ]";
-      const replacementLine = `${todoItem.indentation}${todoItem.listMarker} ${checkboxPart} [[${taskTitle}]]`;
+      // For todo promotion, use just the task title (not the full path)
+      // This matches the original behavior and test expectations
+      const updatedContent = this.inlineTaskEditor.replaceTodoWithTaskLink(
+        content,
+        todoItem,
+        taskTitle, // Use just task name for promotion
+        taskTitle
+      );
 
-      lines[todoItem.lineNumber] = replacementLine;
-
-      await this.app.vault.modify(file, lines.join("\n"));
+      await this.app.vault.modify(file, updatedContent);
     }
 
     /**
@@ -538,38 +479,58 @@ export namespace Obsidian {
       taskPath: string;
       originalText: string;
       lineNumber: number;
+      todoItem: InlineTodoItem;
     } | null> {
-      const content = await this.app.vault.read(file);
-      const lines = content.split("\n");
-      const line = lines[lineNumber];
+      // Get the todo at this line - if it exists and has a task link, it's promoted
+      const todoItem = await this.inlineTaskParser.getTodoAtLine(
+        file,
+        lineNumber
+      );
 
-      if (!line) {
+      if (!todoItem) {
         return null;
       }
 
-      // Check if line contains a wiki link (promoted todo format)
-      const wikiLinkRegex =
-        /^(\s*)([-*])\s*(\[([xX\s])\])?\s*\[\[([^\]]+)\]\]$/;
-      const match = line.match(wikiLinkRegex);
-
-      if (!match) {
+      // Check if the todo text contains a wiki link (promoted format)
+      const wikiLinkMatch = todoItem.text.match(/^\[\[([^\]]+)\]\]$/);
+      if (!wikiLinkMatch) {
         return null;
       }
 
-      const [, , , , , taskTitle] = match;
-      const baseTitle = taskTitle.split("|")[0].trim();
-      const taskPath = `${this.settings.tasksFolder}/${baseTitle}.md`;
+      const linkContent = wikiLinkMatch[1];
+      // Extract path (before | if present) and display text (after | if present)
+      const pipeIndex = linkContent.indexOf("|");
+      const taskPath =
+        pipeIndex !== -1
+          ? linkContent.substring(0, pipeIndex).trim()
+          : linkContent.trim();
+
+      // Full task path with folder
+      const fullTaskPath = taskPath.startsWith(this.settings.tasksFolder + "/")
+        ? taskPath
+        : `${this.settings.tasksFolder}/${taskPath}`;
 
       // Verify the task file exists
-      const taskFile = this.app.vault.getAbstractFileByPath(taskPath);
+      const taskFile = this.app.vault.getAbstractFileByPath(
+        fullTaskPath.endsWith(".md") ? fullTaskPath : `${fullTaskPath}.md`
+      );
       if (!taskFile) {
         return null;
       }
 
+      // Extract original text - use display text if available, otherwise use path
+      const originalText =
+        pipeIndex !== -1
+          ? linkContent.substring(pipeIndex + 1).trim()
+          : taskPath.split("/").pop()?.replace(/\.md$/, "") || taskPath;
+
       return {
-        taskPath,
-        originalText: taskTitle,
-        lineNumber,
+        taskPath: fullTaskPath.endsWith(".md")
+          ? fullTaskPath
+          : `${fullTaskPath}.md`,
+        originalText,
+        lineNumber: todoItem.lineNumber,
+        todoItem,
       };
     }
 
@@ -582,27 +543,23 @@ export namespace Obsidian {
         taskPath: string;
         originalText: string;
         lineNumber: number;
+        todoItem: InlineTodoItem;
       }
     ): Promise<void> {
       const content = await this.app.vault.read(file);
-      const lines = content.split("\n");
-      const currentLine = lines[promotedTodoInfo.lineNumber];
 
-      // Parse current line to preserve format
-      const wikiLinkRegex =
-        /^(\s*)([-*])\s*(\[([xX\s])\])?\s*\[\[([^\]]+)\]\]$/;
-      const match = currentLine.match(wikiLinkRegex);
+      // Create a todo item with the original text restored
+      const restoredTodo: InlineTodoItem = {
+        ...promotedTodoInfo.todoItem,
+        text: promotedTodoInfo.originalText,
+      };
 
-      if (match) {
-        const [, indentation, listMarker, checkboxPart] = match;
-        const checkbox = checkboxPart || "[ ]";
+      const updatedContent = this.inlineTaskEditor.restoreOriginalTodo(
+        content,
+        restoredTodo
+      );
 
-        // Restore original todo format
-        const restoredLine = `${indentation}${listMarker} ${checkbox} ${promotedTodoInfo.originalText}`;
-        lines[promotedTodoInfo.lineNumber] = restoredLine;
-
-        await this.app.vault.modify(file, lines.join("\n"));
-      }
+      await this.app.vault.modify(file, updatedContent);
     }
   }
 
