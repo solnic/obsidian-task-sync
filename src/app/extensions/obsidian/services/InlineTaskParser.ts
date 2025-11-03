@@ -61,10 +61,7 @@ export interface TaskSection {
  * Works with any note from any folder, configurable task folder scope
  */
 export class InlineTaskParser {
-  constructor(
-    private app: App,
-    private tasksFolder: string = "Tasks"
-  ) {}
+  constructor(private app: App, private tasksFolder: string = "Tasks") {}
 
   /**
    * Parse a note and extract all inline todos (with or without task links)
@@ -110,11 +107,8 @@ export class InlineTaskParser {
         return [];
       }
 
-      const content = await this.app.vault.read(file);
-      const lines = content.split("\n");
-
       // Build a map of links by line number for quick lookup
-      const linksByLine = new Map<number, typeof cache.links[0]>();
+      const linksByLine = new Map<number, (typeof cache.links)[0]>();
       for (const link of cache.links) {
         const lineNumber = link.position.start.line;
         if (!linksByLine.has(lineNumber)) {
@@ -162,7 +156,10 @@ export class InlineTaskParser {
 
       return inlineTasks;
     } catch (error) {
-      console.error(`InlineTaskParser: Error parsing tasks ${file.path}:`, error);
+      console.error(
+        `InlineTaskParser: Error parsing tasks ${file.path}:`,
+        error
+      );
       return [];
     }
   }
@@ -241,10 +238,7 @@ export class InlineTaskParser {
    * Extract text content from a todo, handling wiki link formats
    * If the text contains a wiki link like [[path|display]] or [[path]], extract the display text or path
    */
-  private extractTextFromTodo(
-    text: string,
-    linkPath?: string
-  ): string {
+  private extractTextFromTodo(text: string, linkPath?: string): string {
     // Check if text is a wiki link format: [[path|display]] or [[path]]
     const wikiLinkMatch = text.match(/^\[\[([^\]]+)\]\]$/);
     if (wikiLinkMatch) {
@@ -340,7 +334,10 @@ export class InlineTaskParser {
     taskFilePath: string,
     tasksFolderOverride?: string
   ): Promise<boolean> {
-    const taskPaths = await this.getTaskFilePaths(noteFile, tasksFolderOverride);
+    const taskPaths = await this.getTaskFilePaths(
+      noteFile,
+      tasksFolderOverride
+    );
     return taskPaths.includes(taskFilePath);
   }
 
@@ -395,7 +392,10 @@ export class InlineTaskParser {
     try {
       const content = await this.app.vault.read(file);
       const lines = content.split("\n");
-      const inlineTasks = await this.parseInlineTasks(file, tasksFolderOverride);
+      const inlineTasks = await this.parseInlineTasks(
+        file,
+        tasksFolderOverride
+      );
 
       const sections: TaskSection[] = [];
       let currentSection: TaskSection | null = null;
@@ -436,9 +436,11 @@ export class InlineTaskParser {
 
       return sections;
     } catch (error) {
-      console.error(`InlineTaskParser: Error getting task sections ${file.path}:`, error);
+      console.error(
+        `InlineTaskParser: Error getting task sections ${file.path}:`,
+        error
+      );
       return [];
     }
   }
 }
-

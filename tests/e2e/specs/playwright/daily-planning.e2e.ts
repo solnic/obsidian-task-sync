@@ -1776,7 +1776,7 @@ test.describe("Daily Planning Wizard", () => {
     const dailyNotePath = `Daily Notes/${todayString}.md`;
 
     // Create daily note with "## Tasks" header (like DailyPlanningExtension creates)
-    // This is different from "## Tasks" that DailyNoteFeature expects
+    // Both DailyPlanningExtension and DailyNoteFeature now use the same "## Tasks" header
     const preExistingContent = `# ${todayString}
 
 ## Tasks

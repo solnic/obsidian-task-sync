@@ -217,9 +217,10 @@ export class DailyNoteFeature {
     const dailyNoteResult = await this.ensureTodayDailyNote();
 
     // Extract existing task paths from the Daily Note using InlineTaskParser
-    const existingTaskPaths = await this.inlineTaskParser.getTaskFilePaths(
+    const existingTaskPathsArray = await this.inlineTaskParser.getTaskFilePaths(
       dailyNoteResult.file!
     );
+    const existingTaskPaths = new Set(existingTaskPathsArray);
 
     // Read current daily note content for modification
     let currentContent = await this.app.vault.read(dailyNoteResult.file!);
@@ -247,9 +248,8 @@ export class DailyNoteFeature {
 
     // Find tasks to add (in schedule but not in daily note)
     let tasksToAdd: Task[] = [];
-    const existingTaskPathsSet = new Set(existingTaskPaths);
     for (const task of schedule.tasks) {
-      if (!existingTaskPathsSet.has(task.source.keys.obsidian!)) {
+      if (!existingTaskPaths.has(task.source.keys.obsidian!)) {
         tasksToAdd.push(task);
       }
     }

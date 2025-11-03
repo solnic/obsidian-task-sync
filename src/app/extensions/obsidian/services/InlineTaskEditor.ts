@@ -4,7 +4,6 @@
  * Supports both section-aware and position-based operations
  */
 
-import { TFile } from "obsidian";
 import type { Task } from "../../../core/entities";
 import type {
   InlineTodoItem,
@@ -44,20 +43,17 @@ export class InlineTaskEditor {
    * @param content The note content
    * @param tasks Array of tasks to add
    * @param options Options for adding tasks
-   * @param tasksFolderOverride Optional override for tasks folder (defaults to instance tasksFolder)
    * @returns Updated content with tasks added
    */
   addTasks(
     content: string,
     tasks: Task[],
-    options: AddTasksOptions = {},
-    tasksFolderOverride?: string
+    options: AddTasksOptions = {}
   ): string {
     if (tasks.length === 0) {
       return content;
     }
 
-    const tasksFolder = tasksFolderOverride || this.tasksFolder;
     const { section, mode = "section", lineNumber } = options;
 
     // Format task links using wiki link format with full path and display text
@@ -194,10 +190,7 @@ export class InlineTaskEditor {
     let updatedContent = content;
 
     for (const pattern of patterns) {
-      updatedContent = updatedContent.replace(
-        pattern,
-        `$1${checkboxState} $3`
-      );
+      updatedContent = updatedContent.replace(pattern, `$1${checkboxState} $3`);
     }
 
     return updatedContent;
@@ -233,9 +226,10 @@ export class InlineTaskEditor {
     // Format: [[Tasks/Task Name|Display Text]] or [[Task Name]] if path equals name
     // If taskPath doesn't contain "/" and doesn't end with ".md", treat it as just a name
     const isSimpleName = !taskPath.includes("/") && !taskPath.endsWith(".md");
-    const wikiLink = isSimpleName || taskPath === taskName
-      ? `[[${taskName}]]`
-      : `[[${taskPath}|${taskName}]]`;
+    const wikiLink =
+      isSimpleName || taskPath === taskName
+        ? `[[${taskName}]]`
+        : `[[${taskPath}|${taskName}]]`;
 
     // Replace the todo with a link, preserving indentation, list marker, and checkbox state
     const checkboxState = todo.completed ? "[x]" : "[ ]";
@@ -324,8 +318,8 @@ export class InlineTaskEditor {
       // Add new tasks to existing section (after the heading)
       const lines = content.split("\n");
       const insertLine = section.startLine + 1;
-      const newTasksToAdd = taskLinks.join("\n") + "\n";
-      lines.splice(insertLine, 0, ...newTasksToAdd.split("\n"));
+      // Directly splice taskLinks to avoid extra empty line
+      lines.splice(insertLine, 0, ...taskLinks);
       return lines.join("\n");
     } else {
       // Add section if it doesn't exist
@@ -362,4 +356,3 @@ export class InlineTaskEditor {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 }
-
