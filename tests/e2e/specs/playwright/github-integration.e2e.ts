@@ -1205,6 +1205,113 @@ test.describe("GitHub Integration", () => {
     expect(issueCount).toBeGreaterThan(0);
   });
 
+  test("should persist recently used organizations and repositories across plugin reload", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    // Switch to GitHub service
+    await switchToTaskService(page, "github");
+
+    // Select an organization and repository to add them to recently used
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Wait for the selection to be saved
+    await page.waitForTimeout(1000);
+
+    // Reload the plugin to test persistence
+    await reloadPlugin(page);
+
+    // Re-stub GitHub API after reload
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Open the view again after reload
+    await openView(page, "task-sync-main");
+
+    // Switch to GitHub tasks
+    await switchToTaskService(page, "github");
+
+    // Wait for GitHub service to be ready
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    // Wait for data to load
+    await page.waitForTimeout(2000);
+
+    // Now check that recently used items appear at the top of dropdowns after reload
+    // Wait for the GitHub service to load data and compute options
+    await page.waitForTimeout(3000);
+
+    // Click organization dropdown
+    await page.locator('[data-testid="organization-filter"]').click();
+
+    // Wait for dropdown to appear
+    await page.waitForSelector('[data-testid="organization-filter-dropdown"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Get all dropdown items
+    const orgItems = await page
+      .locator(
+        '[data-testid="organization-filter-dropdown"] .task-sync-selector-item'
+      )
+      .allTextContents();
+
+    // The recently used "solnic" should be at index 1 (after "Select organization")
+    expect(orgItems[1]).toContain("solnic");
+
+    // Close the dropdown
+    await page.keyboard.press("Escape");
+
+    // Check repository dropdown as well
+    await page.locator('[data-testid="repository-filter"]').click();
+
+    await page.waitForSelector('[data-testid="repository-filter-dropdown"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    const repoItems = await page
+      .locator(
+        '[data-testid="repository-filter-dropdown"] .task-sync-selector-item'
+      )
+      .allTextContents();
+
+    // The recently used "obsidian-task-sync" should be at index 1 (after "Select repository")
+    expect(repoItems[1]).toContain("obsidian-task-sync");
+  });
+
   test("should restore last used org and repo filters after plugin reload", async ({
     page,
   }) => {
@@ -1266,6 +1373,9 @@ test.describe("GitHub Integration", () => {
         timeout: 10000,
       }
     );
+
+    // Wait for data to load and filters to be restored
+    await page.waitForTimeout(2000);
 
     // Verify that the org and repo filters are restored
     const orgButton = page.locator('[data-testid="organization-filter"]');

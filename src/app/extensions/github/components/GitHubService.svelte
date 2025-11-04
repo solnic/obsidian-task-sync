@@ -166,18 +166,8 @@
    */
   let tasks = $derived.by((): Task[] => {
     if (!filters.repository) {
-      console.log("[GitHubService] No repository selected, returning empty");
       return [];
     }
-
-    console.log("[GitHubService] Extension tasks:", {
-      count: extensionTasks.length,
-      tasks: extensionTasks.map((t: Task) => ({
-        id: t.id,
-        title: t.title,
-        imported: !!t.source.keys.obsidian,
-      })),
-    });
 
     // Apply GitHub-specific filters using extension
     let processed: readonly Task[] = githubExtension.filterTasks(
@@ -190,12 +180,9 @@
       }
     );
 
-    console.log("[GitHubService] After filtering:", processed.length);
-
     // Apply search using extension
     if (searchQuery) {
       processed = githubExtension.searchTasks(searchQuery, processed);
-      console.log("[GitHubService] After search:", processed.length);
     }
 
     // Apply sort using extension
@@ -203,18 +190,7 @@
       processed = githubExtension.sortTasks(processed, sort);
     }
 
-    const result = [...processed];
-    console.log("[GitHubService] Final tasks:", {
-      count: result.length,
-      tasks: result.map((t) => ({
-        id: t.id,
-        title: t.title,
-        doDate: t.doDate,
-        isImported: !!t.source.keys.obsidian,
-      })),
-    });
-
-    return result;
+    return [...processed];
   });
 
   // ============================================================================
@@ -293,7 +269,7 @@
     const recentOrgs = recentlyUsedOrgs.filter((org) => allOrgs.includes(org));
     const otherOrgs = allOrgs.filter((org) => !recentOrgs.includes(org));
 
-    const options: string[] = [];
+    const options: string[] = ["Select organization"];
 
     if (recentOrgs.length > 0) {
       options.push(...recentOrgs);
@@ -305,13 +281,13 @@
     } else {
       options.push(...otherOrgs);
     }
-
     return options;
   });
 
   // Computed - repository options with recently used at the top
   let repositoryOptionsWithRecent = $derived.by(() => {
     const allOptions = repositoryDisplayOptions;
+
     const recentRepos = recentlyUsedRepos
       .filter((repo) => {
         if (filters.organization) {
@@ -333,7 +309,8 @@
       (option) => !recentRepos.includes(option)
     );
 
-    const options: string[] = [];
+    const options: string[] = ["Select repository"];
+
     if (recentRepos.length > 0) {
       options.push(...recentRepos);
       if (otherOptions.length > 0) {
@@ -349,6 +326,7 @@
 
   // Track if we've done initial load
   let hasLoadedInitialData = $state(false);
+  let hasLoadedRecentlyUsedData = $state(false);
 
   // ============================================================================
   // INITIALIZATION AND LIFECYCLE
@@ -366,6 +344,19 @@
 
     if (isEnabled && !hasLoadedInitialData) {
       loadInitialData();
+    }
+  });
+
+  // Save recently used filters when they change
+  $effect(() => {
+    // React to changes in recently used arrays
+    recentlyUsedOrgs;
+    recentlyUsedRepos;
+
+    // Only save if we've loaded initial data AND recently used data
+    // This prevents overwriting saved data with empty arrays on initial load
+    if (hasLoadedInitialData && hasLoadedRecentlyUsedData) {
+      saveRecentlyUsedFilters();
     }
   });
 
@@ -626,8 +617,11 @@
           sort = data.githubCurrentFilters.sortFields;
         }
       }
+
+      hasLoadedRecentlyUsedData = true;
     } catch (err: any) {
       console.warn("Failed to load recently used filters:", err.message);
+      hasLoadedRecentlyUsedData = true; // Set to true even on error to prevent infinite loops
     }
   }
 

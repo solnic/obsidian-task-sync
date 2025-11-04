@@ -261,7 +261,9 @@ export class TaskSourceManager {
       // For now, we trust the store state as authoritative after refresh
       // The store has already reconciled the fresh source data with existing data
       // We just need to persist the current state
+      // IMPORTANT: Preserve existing data fields that other components manage
       const data = {
+        ...persistedData, // Preserve existing data like githubRecentlyUsed, localTasksFilters, etc.
         tasks: storeState.tasks,
         projects: get(projectStore).projects,
         areas: get(areaStore).areas,

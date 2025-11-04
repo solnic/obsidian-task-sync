@@ -220,27 +220,9 @@
     return Array.from(orgSet).sort();
   });
 
-  let organizationOptions = $derived.by(() => {
-    const allOrgs = availableOrganizations;
-    const recentOrgs = recentlyUsedOrgs.filter((org) => allOrgs.includes(org));
-    const otherOrgs = allOrgs.filter((org) => !recentOrgs.includes(org));
-
-    const options: string[] = [];
-    if (recentOrgs.length > 0) {
-      options.push(...recentOrgs);
-      if (otherOrgs.length > 0) {
-        options.push("---");
-        options.push(...otherOrgs);
-      }
-    } else {
-      options.push(...otherOrgs);
-    }
-    return options;
-  });
-
-  let repositoryOptionsWithRecent = $derived.by(() => {
-    const allOptions = repositoryDisplayOptions;
-    const recentRepos = recentlyUsedRepos
+  // Convert recently used repos to display format for FilterButton
+  let recentlyUsedReposDisplay = $derived.by(() => {
+    return recentlyUsedRepos
       .filter((repo) => {
         if (currentOrganization) {
           return sortedRepositories.some(
@@ -256,22 +238,6 @@
         }
         return repo;
       });
-
-    const otherOptions = allOptions.filter(
-      (option) => !recentRepos.includes(option)
-    );
-
-    const options: string[] = [];
-    if (recentRepos.length > 0) {
-      options.push(...recentRepos);
-      if (otherOptions.length > 0) {
-        options.push("---");
-        options.push(...otherOptions);
-      }
-    } else {
-      options.push(...otherOptions);
-    }
-    return options;
   });
 
   // ============================================================================
@@ -296,9 +262,15 @@
   async function loadRecentlyUsedFilters(): Promise<void> {
     try {
       const data = await host.loadData();
+      console.log(
+        "Loading recently used filters from data:",
+        data?.githubRecentlyUsed
+      );
       if (data?.githubRecentlyUsed) {
         recentlyUsedOrgs = data.githubRecentlyUsed.organizations || [];
         recentlyUsedRepos = data.githubRecentlyUsed.repositories || [];
+        console.log("Loaded recently used orgs:", recentlyUsedOrgs);
+        console.log("Loaded recently used repos:", recentlyUsedRepos);
       }
 
       if (data?.githubCurrentFilters) {
@@ -308,6 +280,10 @@
         if (data.githubCurrentFilters.repository !== undefined) {
           currentRepository = data.githubCurrentFilters.repository;
         }
+        console.log("Loaded current filters:", {
+          organization: currentOrganization,
+          repository: currentRepository,
+        });
       }
     } catch (err: any) {
       console.warn("Failed to load recently used filters:", err.message);
@@ -316,6 +292,12 @@
 
   async function saveRecentlyUsedFilters(): Promise<void> {
     try {
+      console.log("Saving recently used filters:", {
+        organizations: recentlyUsedOrgs,
+        repositories: recentlyUsedRepos,
+        currentOrganization,
+        currentRepository,
+      });
       const data = (await host.loadData()) || {};
       data.githubRecentlyUsed = {
         organizations: recentlyUsedOrgs,
@@ -326,17 +308,20 @@
         repository: currentRepository,
       };
       await host.saveData(data);
+      console.log("Successfully saved recently used filters");
     } catch (err: any) {
       console.warn("Failed to save recently used filters:", err.message);
     }
   }
 
-  // Save recently used filters when organization or repository changes
+  // Save recently used filters when organization, repository, or recently used lists change
   // Only save after initial data has been loaded to avoid overwriting saved filters
   $effect(() => {
-    // React to changes in current filters
+    // React to changes in current filters and recently used lists
     currentOrganization;
     currentRepository;
+    recentlyUsedOrgs;
+    recentlyUsedRepos;
 
     // Only save if we've loaded initial data
     if (hasLoadedInitialData) {
@@ -350,18 +335,22 @@
 
   function addRecentlyUsedOrg(org: string): void {
     if (!org || recentlyUsedOrgs.includes(org)) return;
+    console.log("Adding recently used org:", org);
     recentlyUsedOrgs = [
       org,
       ...recentlyUsedOrgs.filter((o) => o !== org),
     ].slice(0, 5);
+    console.log("Recently used orgs after add:", recentlyUsedOrgs);
   }
 
   function addRecentlyUsedRepo(repo: string): void {
     if (!repo || recentlyUsedRepos.includes(repo)) return;
+    console.log("Adding recently used repo:", repo);
     recentlyUsedRepos = [
       repo,
       ...recentlyUsedRepos.filter((r) => r !== repo),
     ].slice(0, 5);
+    console.log("Recently used repos after add:", recentlyUsedRepos);
   }
 
   function removeRecentlyUsedOrg(org: string): void {
@@ -409,13 +398,12 @@
   <FilterButton
     label="Organization"
     currentValue={currentOrganization || "Select organization"}
-    options={organizationOptions}
+    allOptions={availableOrganizations}
+    defaultOption="Select organization"
     placeholder="Select organization"
     onselect={(value) =>
       setOrganizationFilter(
-        value === "---" || value === "" || value === "Select organization"
-          ? null
-          : value
+        value === "Select organization" || value === "" ? null : value
       )}
     testId="organization-filter"
     autoSuggest={true}
@@ -428,11 +416,11 @@
   <FilterButton
     label="Repository"
     currentValue={currentRepositoryDisplay}
-    options={repositoryOptionsWithRecent}
+    allOptions={repositoryDisplayOptions}
+    defaultOption="Select repository"
     placeholder="Select repository"
     onselect={(value) => {
-      if (value === "---") return;
-      if (value === "" || value === "Select repository") {
+      if (value === "Select repository" || value === "") {
         setRepository(null);
         return;
       }
@@ -446,7 +434,7 @@
     autoSuggest={true}
     allowClear={true}
     isActive={!!currentRepository}
-    recentlyUsedItems={recentlyUsedRepos}
+    recentlyUsedItems={recentlyUsedReposDisplay}
     onRemoveRecentItem={removeRecentlyUsedRepo}
   />
 </div>
