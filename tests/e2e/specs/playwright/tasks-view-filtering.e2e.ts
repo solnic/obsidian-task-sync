@@ -21,8 +21,10 @@ import {
   openView,
   enableIntegration,
   switchToTaskService,
+  executeCommand,
 } from "../../helpers/global";
 import { stubGitHubWithFixtures } from "../../helpers/github-integration-helpers";
+import { createTask } from "../../helpers/entity-helpers";
 
 test.describe("TasksView Filtering and Sorting", () => {
   test.beforeEach(async ({ page }) => {
@@ -388,5 +390,73 @@ test.describe("TasksView Filtering and Sorting", () => {
       },
       { timeout: 5000 }
     );
+  });
+
+  test("should clear filter when clicking clear button", async ({ page }) => {
+    // Create tasks with different projects
+    await createTask(page, {
+      title: "Task 1",
+      project: "Alpha Project",
+    });
+    await createTask(page, {
+      title: "Task 2",
+      project: "Beta Project",
+    });
+    await createTask(page, {
+      title: "Task 3",
+      project: "Gamma Project",
+    });
+
+    // Open Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    // Ensure we're on Local tab
+    const localTab = page.locator('[data-testid="service-local"]');
+    await localTab.click();
+    await expect(localTab).toHaveClass(/active/);
+
+    // Wait for tasks to load - there should be multiple tasks including our 3 new ones
+    await expect(page.locator('[data-testid^="local-task-item-"]')).toHaveCount(
+      8
+    );
+
+    // Apply project filter
+    await filterTasks(page, "project", "Alpha Project");
+
+    // Verify filter is applied - should show only 1 task (Task 1 with Alpha Project)
+    await expect(page.locator('[data-testid^="local-task-item-"]')).toHaveCount(
+      1
+    );
+    await expect(
+      page.locator('[data-testid^="local-task-item-"]')
+    ).toContainText("Task 1");
+
+    // Verify filter button shows active state and clear button is visible
+    const projectFilterButton = page.locator('[data-testid="project-filter"]');
+    await expect(projectFilterButton).toHaveClass(/active/);
+    await expect(
+      projectFilterButton.locator(".filter-clear-button")
+    ).toBeVisible();
+
+    // Click the clear button
+    await projectFilterButton.locator(".filter-clear-button").click();
+
+    // BUG: Filter should be cleared and all tasks should be visible
+    // This test will fail until the clear functionality is fixed
+    await expect(page.locator('[data-testid^="local-task-item-"]')).toHaveCount(
+      8
+    );
+
+    // Verify filter button is no longer active
+    await expect(projectFilterButton).not.toHaveClass(/active/);
+
+    // Verify clear button is no longer visible
+    await expect(
+      projectFilterButton.locator(".filter-clear-button")
+    ).not.toBeVisible();
+
+    // Verify button text shows default value
+    await expect(projectFilterButton).toContainText("All projects");
   });
 });
