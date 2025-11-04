@@ -164,8 +164,6 @@
           <div class="context-tab-content" data-testid="context-tab-content">
             <ContextWidget
               context={$currentFileContext}
-              serviceName={services.find((s: any) => s.id === activeService)
-                ?.name}
               isNonLocalService={activeService !== "local"}
               dayPlanningMode={$isPlanningActive}
             />

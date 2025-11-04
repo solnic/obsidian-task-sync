@@ -7,6 +7,10 @@
   import type { Task, Project, Area } from "../core/entities";
   import type { FileContext } from "../types/context";
   import { setIcon } from "obsidian";
+  import StatusBadge from "./badges/StatusBadge.svelte";
+  import PriorityBadge from "./badges/PriorityBadge.svelte";
+  import CategoryBadge from "./badges/CategoryBadge.svelte";
+  import LabelBadge from "./badges/LabelBadge.svelte";
 
   interface Props {
     context: FileContext;
@@ -133,14 +137,6 @@
     }).format(date);
   }
 
-  function formatTags(tags: string[]): string {
-    return tags.map((tag) => `#${tag}`).join(" ");
-  }
-
-  function formatAreas(areas: string[]): string {
-    return areas.join(", ");
-  }
-
   // Get entity display name
   function getEntityName(entity: Task | Project | Area): string {
     if (isTask(entity)) {
@@ -196,82 +192,73 @@
           </div>
         {/if}
 
+        <!-- Badges for key properties -->
+        <div class="entity-badges">
+          {#if context.type === "task" && isTask(currentEntity)}
+            <!-- Task-specific badges -->
+            {#if currentEntity.category}
+              <CategoryBadge category={currentEntity.category} size="medium" />
+            {/if}
+            {#if currentEntity.status}
+              <StatusBadge status={currentEntity.status} size="medium" />
+            {/if}
+            {#if currentEntity.priority}
+              <PriorityBadge priority={currentEntity.priority} size="medium" />
+            {/if}
+          {/if}
+        </div>
+
+        <!-- Additional properties -->
         <div class="entity-properties">
           {#if context.type === "task" && isTask(currentEntity)}
             <!-- Task-specific properties -->
-            {#if currentEntity.status}
-              <div class="property-row">
-                <span class="property-label">Status:</span>
-                <span
-                  class="property-value status-{currentEntity.status.toLowerCase()}"
-                  >{currentEntity.status}</span
-                >
-              </div>
-            {/if}
-            {#if currentEntity.priority}
-              <div class="property-row">
-                <span class="property-label">Priority:</span>
-                <span
-                  class="property-value priority-{currentEntity.priority.toLowerCase()}"
-                  >{currentEntity.priority}</span
-                >
-              </div>
-            {/if}
             {#if currentEntity.project}
-              <div class="property-row">
-                <span class="property-label">Project:</span>
-                <span class="property-value">{currentEntity.project}</span>
-              </div>
+              <LabelBadge
+                label="Project"
+                value={currentEntity.project}
+                size="medium"
+              />
             {/if}
             {#if currentEntity.areas && currentEntity.areas.length > 0}
-              <div class="property-row">
-                <span class="property-label">Areas:</span>
-                <span class="property-value"
-                  >{formatAreas(currentEntity.areas)}</span
-                >
-              </div>
+              {#each currentEntity.areas as area}
+                <LabelBadge label="Area" value={area} size="medium" />
+              {/each}
             {/if}
             {#if currentEntity.doDate}
-              <div class="property-row">
-                <span class="property-label">Do Date:</span>
-                <span class="property-value"
-                  >{formatDate(currentEntity.doDate)}</span
-                >
-              </div>
+              <LabelBadge
+                label="Do Date"
+                value={formatDate(currentEntity.doDate)}
+                size="medium"
+              />
             {/if}
             {#if currentEntity.dueDate}
-              <div class="property-row">
-                <span class="property-label">Due Date:</span>
-                <span class="property-value"
-                  >{formatDate(currentEntity.dueDate)}</span
-                >
-              </div>
+              <LabelBadge
+                label="Due Date"
+                value={formatDate(currentEntity.dueDate)}
+                size="medium"
+              />
             {/if}
           {:else if context.type === "project" && isProject(currentEntity)}
             <!-- Project-specific properties -->
             {#if currentEntity.areas && currentEntity.areas.length > 0}
-              <div class="property-row">
-                <span class="property-label">Areas:</span>
-                <span class="property-value"
-                  >{formatAreas(currentEntity.areas)}</span
-                >
-              </div>
+              {#each currentEntity.areas as area}
+                <LabelBadge label="Area" value={area} size="medium" />
+              {/each}
             {/if}
           {/if}
 
           {#if currentEntity.tags && currentEntity.tags.length > 0}
-            <div class="property-row">
-              <span class="property-label">Tags:</span>
-              <span class="property-value tags"
-                >{formatTags(currentEntity.tags)}</span
-              >
+            <div class="entity-tags">
+              {#each currentEntity.tags as tag}
+                <span class="tag-item">#{tag}</span>
+              {/each}
             </div>
           {/if}
 
           {#if currentEntity.updatedAt}
-            <div class="property-row">
-              <span class="property-label">Updated:</span>
-              <span class="property-value"
+            <div class="entity-meta">
+              <span class="meta-label">Updated:</span>
+              <span class="meta-value"
                 >{formatDate(currentEntity.updatedAt)}</span
               >
             </div>
@@ -297,78 +284,159 @@
 <style>
   .context-widget {
     display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 0;
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+    background: var(--background-primary);
   }
 
   .context-action-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
     background: var(--interactive-accent);
     color: var(--text-on-accent);
     cursor: pointer;
-    transition: opacity 0.2s ease;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   .context-action-icon:hover {
-    opacity: 0.8;
+    opacity: 0.9;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
 
   .context-icon {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
   .context-content {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 16px;
     flex: 1;
   }
 
-  .context-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .context-row-primary {
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .context-row-secondary {
-    font-size: 14px;
-    color: var(--text-muted);
+  .context-header {
+    margin-bottom: 8px;
   }
 
   .service-name {
+    font-size: 18px;
+    font-weight: 600;
     color: var(--text-normal);
   }
 
+  .entity-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .entity-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+  }
+
   .context-type {
+    font-size: 13px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     color: var(--text-muted);
   }
 
   .context-separator {
-    color: var(--text-muted);
+    color: var(--text-faint);
     font-weight: normal;
   }
 
   .context-name {
+    font-size: 18px;
     color: var(--text-normal);
+    font-weight: 600;
+  }
+
+  .entity-description {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    padding: 12px;
+    background: var(--background-secondary);
+    border-radius: 6px;
+    border-left: 3px solid var(--interactive-accent);
+  }
+
+  .entity-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .entity-properties {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .entity-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .tag-item {
+    font-size: 12px;
+    color: var(--text-accent);
+    background: var(--background-secondary);
+    padding: 4px 8px;
+    border-radius: 4px;
     font-weight: 500;
   }
 
+  .entity-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--background-modifier-border);
+  }
+
+  .meta-label {
+    font-weight: 500;
+  }
+
+  .meta-value {
+    color: var(--text-faint);
+  }
+
+  .no-context-message {
+    padding: 20px;
+    text-align: center;
+  }
+
   .no-context {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: 14px;
+  }
+
+  .muted {
     color: var(--text-muted);
     font-style: italic;
   }

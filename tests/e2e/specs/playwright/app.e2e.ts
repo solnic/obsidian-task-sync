@@ -518,29 +518,30 @@ Task for testing timestamp preservation.`;
       taskName
     );
 
-    // Check for task-specific properties
-    await expect(contextWidget.locator(".entity-properties")).toBeVisible();
+    // Check for task-specific badges (new badge-based UI)
+    await expect(contextWidget.locator(".entity-badges")).toBeVisible();
 
-    // Should show status
-    await expect(contextWidget).toContainText("Status:");
+    // Should show status badge
     await expect(contextWidget).toContainText("In Progress");
 
-    // Should show priority
-    await expect(contextWidget).toContainText("Priority:");
+    // Should show priority badge
     await expect(contextWidget).toContainText("High");
 
-    // Should show project
-    await expect(contextWidget).toContainText("Project:");
+    // Check for additional properties
+    await expect(contextWidget.locator(".entity-properties")).toBeVisible();
+
+    // Should show project (as LabelBadge)
+    await expect(contextWidget).toContainText("Project");
     await expect(contextWidget).toContainText("Alpha Project");
 
-    // Should show areas
-    await expect(contextWidget).toContainText("Areas:");
+    // Should show areas (as LabelBadge)
+    await expect(contextWidget).toContainText("Area");
     await expect(contextWidget).toContainText("Development");
     await expect(contextWidget).toContainText("Testing");
 
-    // Should show dates
-    await expect(contextWidget).toContainText("Do Date:");
-    await expect(contextWidget).toContainText("Due Date:");
+    // Should show dates (as LabelBadge)
+    await expect(contextWidget).toContainText("Do Date");
+    await expect(contextWidget).toContainText("Due Date");
 
     // Tags are optional and may not always be displayed
     // The main entity properties (status, priority, project, areas, dates) are verified above
