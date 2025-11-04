@@ -22,13 +22,13 @@
   interface Props {
     // Current filter values (bindable for two-way sync)
     filters: $bindable<LocalTaskFilters>;
-    
+
     // Settings object (passed as entire object)
     settings: TaskSyncSettings;
-    
+
     // Host for persistence
     host: Host;
-    
+
     // Extension to get available filter options
     extension: Extension;
   }
@@ -38,32 +38,35 @@
   // ============================================================================
   // INTERNAL STATE - Managed by this component
   // ============================================================================
-  
+
   let selectedProject = $state<string | null>(null);
   let selectedArea = $state<string | null>(null);
   let selectedSource = $state<string | null>(null);
   let showCompleted = $state(false);
-  
+
   // Recently used items
   let recentlyUsedProjects = $state<string[]>([]);
   let recentlyUsedAreas = $state<string[]>([]);
   let recentlyUsedSources = $state<string[]>([]);
-  
+
   // Available options (derived from all tasks)
   let allTasks = $state<Task[]>([]);
-  
+
+  // Track whether initial settings have been loaded
+  let hasLoadedInitialSettings = $state(false);
+
   // ============================================================================
   // LOAD SETTINGS ON MOUNT
   // ============================================================================
-  
+
   $effect(() => {
     loadSettings();
   });
-  
+
   // ============================================================================
   // SUBSCRIBE TO EXTENSION TASKS FOR FILTER OPTIONS
   // ============================================================================
-  
+
   $effect(() => {
     const tasksStore = extension.getTasks();
     const unsubscribe = tasksStore.subscribe((tasks) => {
@@ -71,11 +74,11 @@
     });
     return unsubscribe;
   });
-  
+
   // ============================================================================
   // DERIVE FILTER OPTIONS FROM TASKS
   // ============================================================================
-  
+
   let filterOptions = $derived.by(() => getFilterOptions(allTasks));
   let projectOptions = $derived(filterOptions.projects);
   let areaOptions = $derived(filterOptions.areas);
@@ -84,7 +87,7 @@
   // ============================================================================
   // UPDATE FILTERS WHEN INTERNAL STATE CHANGES
   // ============================================================================
-  
+
   $effect(() => {
     filters = {
       project: selectedProject,
@@ -93,11 +96,11 @@
       showCompleted,
     };
   });
-  
+
   // ============================================================================
   // SAVE SETTINGS WHEN STATE CHANGES
   // ============================================================================
-  
+
   $effect(() => {
     // Save when any filter or recently-used changes
     selectedProject;
@@ -107,14 +110,17 @@
     recentlyUsedProjects;
     recentlyUsedAreas;
     recentlyUsedSources;
-    
-    saveSettings();
+
+    // Only save if we've loaded initial settings
+    if (hasLoadedInitialSettings) {
+      saveSettings();
+    }
   });
 
   // ============================================================================
   // SETTINGS PERSISTENCE
   // ============================================================================
-  
+
   async function loadSettings(): Promise<void> {
     try {
       const data = await host.loadData();
@@ -123,15 +129,18 @@
         selectedArea = data.localTasksFilters.selectedArea ?? null;
         selectedSource = data.localTasksFilters.selectedSource ?? null;
         showCompleted = data.localTasksFilters.showCompleted ?? false;
-        recentlyUsedProjects = data.localTasksFilters.recentlyUsedProjects ?? [];
+        recentlyUsedProjects =
+          data.localTasksFilters.recentlyUsedProjects ?? [];
         recentlyUsedAreas = data.localTasksFilters.recentlyUsedAreas ?? [];
         recentlyUsedSources = data.localTasksFilters.recentlyUsedSources ?? [];
       }
     } catch (err: any) {
       console.warn("Failed to load local tasks filter settings:", err.message);
+    } finally {
+      hasLoadedInitialSettings = true;
     }
   }
-  
+
   async function saveSettings(): Promise<void> {
     try {
       const data = (await host.loadData()) || {};
@@ -153,7 +162,7 @@
   // ============================================================================
   // RECENTLY USED MANAGEMENT
   // ============================================================================
-  
+
   function addRecentlyUsedProject(project: string): void {
     if (!project || recentlyUsedProjects.includes(project)) return;
     recentlyUsedProjects = [
@@ -161,7 +170,7 @@
       ...recentlyUsedProjects.filter((p) => p !== project),
     ].slice(0, 5);
   }
-  
+
   function addRecentlyUsedArea(area: string): void {
     if (!area || recentlyUsedAreas.includes(area)) return;
     recentlyUsedAreas = [
@@ -169,7 +178,7 @@
       ...recentlyUsedAreas.filter((a) => a !== area),
     ].slice(0, 5);
   }
-  
+
   function addRecentlyUsedSource(source: string): void {
     if (!source || recentlyUsedSources.includes(source)) return;
     recentlyUsedSources = [
@@ -177,15 +186,15 @@
       ...recentlyUsedSources.filter((s) => s !== source),
     ].slice(0, 5);
   }
-  
+
   function removeRecentlyUsedProject(project: string): void {
     recentlyUsedProjects = recentlyUsedProjects.filter((p) => p !== project);
   }
-  
+
   function removeRecentlyUsedArea(area: string): void {
     recentlyUsedAreas = recentlyUsedAreas.filter((a) => a !== area);
   }
-  
+
   function removeRecentlyUsedSource(source: string): void {
     recentlyUsedSources = recentlyUsedSources.filter((s) => s !== source);
   }
@@ -199,7 +208,8 @@
     allOptions={projectOptions}
     defaultOption="All projects"
     onselect={(value: string) => {
-      const newProject = value === "All projects" || value === "" ? null : value;
+      const newProject =
+        value === "All projects" || value === "" ? null : value;
       selectedProject = newProject;
       if (newProject) {
         addRecentlyUsedProject(newProject);
@@ -270,4 +280,3 @@
     Show completed
   </button>
 </div>
-

@@ -75,6 +75,7 @@
 
   // Loading state
   let isLoadingData = $state(false);
+  let hasLoadedInitialData = $state(false);
 
   // ============================================================================
   // LOAD INITIAL DATA
@@ -97,6 +98,7 @@
       }
     } finally {
       isLoadingData = false;
+      hasLoadedInitialData = true;
     }
   }
 
@@ -330,13 +332,16 @@
   }
 
   // Save recently used filters when organization or repository changes
+  // Only save after initial data has been loaded to avoid overwriting saved filters
   $effect(() => {
     // React to changes in current filters
     currentOrganization;
     currentRepository;
 
-    // Save current filters to storage
-    saveRecentlyUsedFilters();
+    // Only save if we've loaded initial data
+    if (hasLoadedInitialData) {
+      saveRecentlyUsedFilters();
+    }
   });
 
   // ============================================================================
