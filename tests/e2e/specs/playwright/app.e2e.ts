@@ -4,7 +4,12 @@
  */
 
 import { test, expect } from "../../helpers/setup";
-import { executeCommand, waitForFileProcessed } from "../../helpers/global";
+import {
+  executeCommand,
+  waitForFileProcessed,
+  createFile,
+  openFile,
+} from "../../helpers/global";
 
 test.describe("Svelte App Initialization", () => {
   test("should load plugin and render main view with tasks view", async ({
@@ -247,6 +252,110 @@ Task for testing timestamp preservation.`;
     // Service content should be hidden
     const serviceContent = page.locator('[data-testid="service-content"]');
     await expect(serviceContent).not.toBeVisible();
+  });
+
+  test("should display enhanced context widget with project entity details", async ({
+    page,
+  }) => {
+    // Create a project file with proper structure
+    const projectName = "Alpha Project";
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const folderPath = "Projects";
+      const exists = await app.vault.adapter.exists(folderPath);
+      if (!exists) {
+        await app.vault.createFolder(folderPath);
+      }
+    });
+
+    await createFile(
+      page,
+      `Projects/${projectName}.md`,
+      {
+        Title: projectName,
+        Areas: ["Development", "Testing"],
+        Tags: ["important", "active"],
+      },
+      `# ${projectName}\n\nThis is a test project for context widget testing.`
+    );
+
+    // Open the project file to establish context
+    await openFile(page, `Projects/${projectName}.md`);
+
+    // Manually add the project to the store since project scanning is not implemented
+    // This simulates what would happen if project scanning was working
+    await page.evaluate(
+      async ({ projectName }) => {
+        // Access the project store through the plugin
+        const plugin = (window as any).app.plugins.plugins[
+          "obsidian-task-sync"
+        ];
+
+        if (!plugin || !plugin.stores || !plugin.stores.projectStore) {
+          console.error("Project store not found on plugin object");
+          return;
+        }
+
+        // Create a project entity that matches what would be scanned from the file
+        const project = {
+          id: `project-${Date.now()}`,
+          name: projectName,
+          description: "This is a test project for context widget testing.",
+          areas: ["Development", "Testing"],
+          tags: ["important", "active"],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          source: {
+            extension: "obsidian",
+            keys: {
+              obsidian: `Projects/${projectName}.md`,
+            },
+          },
+        };
+
+        // Add to project store
+        plugin.stores.projectStore.dispatch({ type: "ADD_PROJECT", project });
+
+        console.log("Manually added project to store:", project);
+      },
+      { projectName }
+    );
+
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    // Click context tab button
+    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
+    await contextTabButton.click();
+    await expect(contextTabButton).toHaveClass(/active/);
+
+    // Wait for context widget to be visible
+    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    await expect(contextWidget).toBeVisible();
+
+    // BUG: Should show enhanced entity details, not "Entity details not available"
+    // This test will fail until the context widget entity lookup is fixed
+
+    // Check for entity information display (this should work after fix)
+    await expect(contextWidget.locator(".entity-title")).toBeVisible();
+    await expect(contextWidget.locator(".context-type")).toContainText(
+      "Project"
+    );
+    await expect(contextWidget.locator(".context-name")).toContainText(
+      projectName
+    );
+
+    // Check for entity properties
+    await expect(contextWidget.locator(".entity-properties")).toBeVisible();
+
+    // Should show areas
+    await expect(contextWidget).toContainText("Development");
+    await expect(contextWidget).toContainText("Testing");
+
+    // Should show tags
+    await expect(contextWidget).toContainText("#important");
+    await expect(contextWidget).toContainText("#active");
   });
 
   test("should hide context tab when service tab is clicked", async ({
