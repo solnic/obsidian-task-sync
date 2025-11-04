@@ -91,6 +91,38 @@
     showScheduled: localTasksSettings?.showScheduled ?? false,
   });
 
+  // Update filters when localTasksSettings props change (but avoid loops)
+  let lastPropsUpdate = $state(0);
+  $effect(() => {
+    if (localTasksSettings) {
+      const newProject = localTasksSettings.selectedProject ?? null;
+      const newArea = localTasksSettings.selectedArea ?? null;
+      const newSource = localTasksSettings.selectedSource ?? null;
+      const newShowCompleted = localTasksSettings.showCompleted ?? false;
+      const newShowScheduled = localTasksSettings.showScheduled ?? false;
+
+      // Only update if values actually changed to avoid loops
+      if (
+        filters.project !== newProject ||
+        filters.area !== newArea ||
+        filters.source !== newSource ||
+        filters.showCompleted !== newShowCompleted ||
+        filters.showScheduled !== newShowScheduled
+      ) {
+        filters.project = newProject;
+        filters.area = newArea;
+        filters.source = newSource;
+        filters.showCompleted = newShowCompleted;
+        filters.showScheduled = newShowScheduled;
+        lastPropsUpdate = Date.now();
+        console.log(
+          "🔧 LocalTasksService: Updated filters from props:",
+          filters
+        );
+      }
+    }
+  });
+
   // Sort - currently applied sorting logic (UI state)
   let sort = $state<SortField[]>(
     localTasksSettings?.sortFields ?? [
@@ -232,6 +264,34 @@
 
   function handleFilterChange(key: keyof typeof filters, value: any): void {
     filters = { ...filters, [key]: value };
+    // Persist filter changes (but not if this was triggered by props update)
+    const now = Date.now();
+    if (now - lastPropsUpdate > 100) {
+      // 100ms debounce to avoid prop update loops
+      saveFilterSettings();
+    }
+  }
+
+  async function saveFilterSettings(): Promise<void> {
+    try {
+      const data = (await host.loadData()) || {};
+      data.localTasksFilters = {
+        selectedProject: filters.project,
+        selectedArea: filters.area,
+        selectedSource: filters.source,
+        showCompleted: filters.showCompleted,
+        recentlyUsedProjects,
+        recentlyUsedAreas,
+        recentlyUsedSources,
+      };
+      await host.saveData(data);
+      console.log(
+        "🔧 Saved local tasks filter settings:",
+        data.localTasksFilters
+      );
+    } catch (err: any) {
+      console.warn("Failed to save local tasks filter settings:", err.message);
+    }
   }
 
   // ============================================================================
@@ -244,6 +304,7 @@
       project,
       ...recentlyUsedProjects.filter((p) => p !== project),
     ].slice(0, 5);
+    saveFilterSettings();
   }
 
   function addRecentlyUsedArea(area: string): void {
@@ -252,6 +313,7 @@
       area,
       ...recentlyUsedAreas.filter((a) => a !== area),
     ].slice(0, 5);
+    saveFilterSettings();
   }
 
   function addRecentlyUsedSource(source: string): void {
@@ -260,6 +322,7 @@
       source,
       ...recentlyUsedSources.filter((s) => s !== source),
     ].slice(0, 5);
+    saveFilterSettings();
   }
 
   function removeRecentlyUsedProject(project: string): void {

@@ -17,6 +17,8 @@ import {
   openSortDropdown,
   closeSortDropdown,
 } from "../../helpers/tasks-view-helpers";
+import { openView, enableIntegration } from "../../helpers/global";
+import { stubGitHubWithFixtures } from "../../helpers/github-integration-helpers";
 
 test.describe("TasksView Filtering and Sorting", () => {
   test.beforeEach(async ({ page }) => {
@@ -287,5 +289,91 @@ test.describe("TasksView Filtering and Sorting", () => {
 
     const allTasks = await getVisibleTaskItems(page);
     expect(allTasks.length).toBe(initialCount);
+  });
+
+  test("should preserve filter state when switching between Local and GitHub tabs", async ({
+    page,
+  }) => {
+    // Setup GitHub integration for tab switching
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Go to tasks view and wait for local tasks to load
+    await openTasksView(page);
+    await waitForLocalTasksToLoad(page);
+
+    // Create test tasks with different projects
+    await createTestTask(page, {
+      title: "Alpha Project Task",
+      project: "Alpha Project",
+      area: "Development",
+    });
+
+    await createTestTask(page, {
+      title: "Beta Project Task",
+      project: "Beta Project",
+      area: "Testing",
+    });
+
+    // Apply project filter to "Alpha Project"
+    await filterTasks(page, "project", "Alpha Project");
+
+    // Verify filter is applied - should only see Alpha Project task
+    await page.waitForFunction(
+      () => {
+        const taskItems = document.querySelectorAll(
+          '[data-testid^="local-task-item-"]'
+        );
+        const taskTexts = Array.from(taskItems).map(
+          (item) => item.textContent || ""
+        );
+        return (
+          taskTexts.some((text) => text.includes("Alpha Project Task")) &&
+          !taskTexts.some((text) => text.includes("Beta Project Task"))
+        );
+      },
+      { timeout: 5000 }
+    );
+
+    // Verify the filter button shows "Alpha Project"
+    const projectFilterButton = page.locator('[data-testid="project-filter"]');
+    await expect(projectFilterButton).toContainText("Alpha Project");
+
+    // Switch to GitHub tab
+    await page.getByTestId("github-tab").click();
+    await page.waitForTimeout(1000); // Wait for tab switch
+
+    // Switch back to Local tab
+    await page.getByTestId("local-tab").click();
+    await waitForLocalTasksToLoad(page);
+
+    // BUG: The project filter should still be "Alpha Project" but it gets reset
+    // This test will FAIL until the bug is fixed
+    await expect(projectFilterButton).toContainText("Alpha Project");
+
+    // Verify the filtered results are still showing
+    await page.waitForFunction(
+      () => {
+        const taskItems = document.querySelectorAll(
+          '[data-testid^="local-task-item-"]'
+        );
+        const taskTexts = Array.from(taskItems).map(
+          (item) => item.textContent || ""
+        );
+        return (
+          taskTexts.some((text) => text.includes("Alpha Project Task")) &&
+          !taskTexts.some((text) => text.includes("Beta Project Task"))
+        );
+      },
+      { timeout: 5000 }
+    );
   });
 });

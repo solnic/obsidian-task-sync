@@ -61,25 +61,65 @@
 
   // Get the component to render based on serviceId
   let ServiceComponent = $derived(serviceComponents[serviceId]);
+
+  // Load persisted local tasks settings
+  let localTasksSettings = $state({
+    recentlyUsedProjects: [],
+    recentlyUsedAreas: [],
+    recentlyUsedSources: [],
+    selectedProject: null,
+    selectedArea: null,
+    selectedSource: null,
+    showCompleted: false,
+    sortFields: [
+      { key: "updatedAt", label: "Updated", direction: "desc" },
+      { key: "title", label: "Title", direction: "asc" },
+    ],
+  });
+
+  let settingsLoaded = $state(false);
+
+  // Load settings when component mounts or when serviceId changes to local
+  $effect(() => {
+    if (serviceId === "local") {
+      loadLocalTasksSettings();
+    } else {
+      settingsLoaded = true; // For non-local services, no need to wait
+    }
+  });
+
+  async function loadLocalTasksSettings(): Promise<void> {
+    try {
+      const data = await host.loadData();
+      if (data?.localTasksFilters) {
+        localTasksSettings = {
+          recentlyUsedProjects:
+            data.localTasksFilters.recentlyUsedProjects ?? [],
+          recentlyUsedAreas: data.localTasksFilters.recentlyUsedAreas ?? [],
+          recentlyUsedSources: data.localTasksFilters.recentlyUsedSources ?? [],
+          selectedProject: data.localTasksFilters.selectedProject ?? null,
+          selectedArea: data.localTasksFilters.selectedArea ?? null,
+          selectedSource: data.localTasksFilters.selectedSource ?? null,
+          showCompleted: data.localTasksFilters.showCompleted ?? false,
+          sortFields: [
+            { key: "updatedAt", label: "Updated", direction: "desc" },
+            { key: "title", label: "Title", direction: "asc" },
+          ],
+        };
+      }
+    } catch (err: any) {
+      console.warn("Failed to load local tasks settings:", err.message);
+    } finally {
+      settingsLoaded = true;
+    }
+  }
 </script>
 
 <!-- Render the service component dynamically -->
-{#if ServiceComponent && extension && settings}
+{#if ServiceComponent && extension && settings && settingsLoaded}
   <ServiceComponent
     {settings}
-    localTasksSettings={{
-      recentlyUsedProjects: [],
-      recentlyUsedAreas: [],
-      recentlyUsedSources: [],
-      selectedProject: null,
-      selectedArea: null,
-      selectedSource: null,
-      showCompleted: false,
-      sortFields: [
-        { key: "updatedAt", label: "Updated", direction: "desc" },
-        { key: "title", label: "Title", direction: "asc" },
-      ],
-    }}
+    {localTasksSettings}
     {extension}
     {host}
     isPlanningActive={$isPlanningActive}
