@@ -931,13 +931,13 @@ export async function waitForBaseView(page: ExtendedPage, timeout = 5000) {
   // Wait for bases-view to exist in DOM (Bases plugin loads it)
   await page.waitForSelector(".bases-view", {
     timeout,
-    state: "attached" // Just needs to exist, visibility checked separately
+    state: "attached", // Just needs to exist, visibility checked separately
   });
 
   // Wait for table container structure
   await page.waitForSelector(".bases-view .bases-table-container", {
     timeout: 5000,
-    state: "attached"
+    state: "attached",
   });
 
   // Give Bases time to query vault and render results
@@ -2077,9 +2077,22 @@ export async function selectFromDropdown(
 ): Promise<void> {
   await page.locator(`[data-testid="${dropdown}"]`).click();
 
-  await page
-    .locator(`[data-testid="${dropdown}-dropdown-item"]:has-text("${option}")`)
-    .click();
+  // Use a more specific selector to avoid strict mode violations
+  // when multiple items contain the same text (e.g., "repo" in both "Select repository" and "✓ repo")
+  const itemLocator = page.locator(`[data-testid="${dropdown}-dropdown-item"]`);
+
+  // Find the item that exactly matches the option text (not just contains it)
+  const matchingItem = itemLocator.filter({
+    hasText: new RegExp(`^${option}$|^✓ ${option}$`),
+  });
+
+  // If no exact match, fall back to the original behavior for backward compatibility
+  const finalLocator =
+    (await matchingItem.count()) > 0
+      ? matchingItem.first()
+      : itemLocator.filter({ hasText: option }).first();
+
+  await finalLocator.click();
 }
 
 /**
