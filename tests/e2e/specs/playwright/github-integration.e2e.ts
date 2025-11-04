@@ -1149,4 +1149,136 @@ test.describe("GitHub Integration", () => {
     expect(fileContent).toContain("Title: First test issue"); // Should be GitHub title, not "Modified GitHub Issue Title"
     expect(fileContent).not.toContain("Title: Modified GitHub Issue Title"); // Local changes should be overwritten
   });
+
+  test("should restore last used org and repo filters when reopening GitHub tab", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+
+    // Select org and repo
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Wait for issues to load
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Switch to local tasks
+    await switchToTaskService(page, "local");
+
+    // Switch back to GitHub tasks
+    await switchToTaskService(page, "github");
+
+    // Verify that the org and repo filters are still set
+    const orgButton = page.locator('[data-testid="organization-filter"]');
+    const repoButton = page.locator('[data-testid="repository-filter"]');
+
+    await expect(orgButton).toContainText("solnic");
+    await expect(repoButton).toContainText("obsidian-task-sync");
+
+    // Verify issues are still visible (filters are applied)
+    await expect(
+      page.locator('[data-testid="github-issue-item"]')
+    ).toBeVisible();
+  });
+
+  test("should restore last used org and repo filters after plugin reload", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+
+    // Select org and repo
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Wait for issues to load
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Reload the plugin
+    await reloadPlugin(page);
+
+    // Re-stub GitHub API after reload
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for view to be ready
+    await page.waitForSelector('[data-testid="task-sync-main"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Switch to GitHub tasks
+    await switchToTaskService(page, "github");
+
+    // Wait for GitHub service to be ready
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    // Verify that the org and repo filters are restored
+    const orgButton = page.locator('[data-testid="organization-filter"]');
+    const repoButton = page.locator('[data-testid="repository-filter"]');
+
+    await expect(orgButton).toContainText("solnic");
+    await expect(repoButton).toContainText("obsidian-task-sync");
+
+    // Verify issues are visible (filters are applied)
+    await expect(
+      page.locator('[data-testid="github-issue-item"]')
+    ).toBeVisible();
+  });
 });
