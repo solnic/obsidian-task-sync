@@ -6,6 +6,7 @@
 
   import Service from "./Service.svelte";
   import TabView from "./TabView.svelte";
+  import ContextWidget from "./ContextWidget.svelte";
   import type { TaskSyncSettings } from "../types/settings";
   import { setIcon } from "obsidian";
   import { extensionRegistry } from "../core/extension";
@@ -30,6 +31,7 @@
 
   // State - simplified to only support local tasks initially
   let activeService = $state<string>("local");
+  let showContextTab = $state<boolean>(false);
 
   // Get daily planning extension - simple, direct lookup
   let dailyPlanningExtension = $derived(
@@ -143,28 +145,54 @@
       <TabView
         className="tasks-view-tab"
         testId="tasks-view-tab"
-        showContextWidget={true}
-        serviceName={services.find((s: any) => s.id === activeService)?.name}
-        isNonLocalService={activeService !== "local"}
-        dayPlanningMode={$isPlanningActive}
+        showContextWidget={false}
       >
-        <!-- Service Content -->
-        <div class="service-content" data-testid="service-content">
-          <Service
-            serviceId={activeService}
-            {settings}
-            {host}
-            {dailyPlanningExtension}
-            {stagedTaskIds}
-            onStageTask={handleStageTask}
-            testId="{activeService}-service"
-          />
-        </div>
+        <!-- Content based on active tab -->
+        {#if showContextTab}
+          <!-- Context Widget Content -->
+          <div class="context-tab-content" data-testid="context-tab-content">
+            <ContextWidget
+              serviceName={services.find((s: any) => s.id === activeService)
+                ?.name}
+              isNonLocalService={activeService !== "local"}
+              dayPlanningMode={$isPlanningActive}
+            />
+          </div>
+        {:else}
+          <!-- Service Content -->
+          <div class="service-content" data-testid="service-content">
+            <Service
+              serviceId={activeService}
+              {settings}
+              {host}
+              {dailyPlanningExtension}
+              {stagedTaskIds}
+              onStageTask={handleStageTask}
+              testId="{activeService}-service"
+            />
+          </div>
+        {/if}
       </TabView>
     </div>
 
-    <!-- Vertical Service Switcher on the right -->
+    <!-- Vertical Tab Switcher on the right -->
     <div class="service-switcher-vertical" data-testid="service-switcher">
+      <!-- Context Tab Button (above service tabs) -->
+      <button
+        class="service-button-vertical context-tab-button {showContextTab
+          ? 'active'
+          : ''}"
+        title="Context Information"
+        data-testid="context-tab-button"
+        aria-label="Show context information"
+        onclick={() => {
+          showContextTab = !showContextTab;
+        }}
+      >
+        <span class="service-icon-vertical" data-icon="info"></span>
+      </button>
+
+      <!-- Service Tab Buttons -->
       {#each services as service}
         <button
           class="service-button-vertical {activeService === service.id
@@ -176,6 +204,7 @@
           aria-label="Switch to {service.name}"
           onclick={() => {
             activeService = service.id;
+            showContextTab = false; // Hide context tab when switching to service
           }}
         >
           <span class="service-icon-vertical" data-icon={service.icon}></span>

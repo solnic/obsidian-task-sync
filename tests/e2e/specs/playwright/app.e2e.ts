@@ -201,4 +201,83 @@ Task for testing timestamp preservation.`;
     expect(finalTimestamps.createdAt).toBe(initialTimestamps.createdAt);
     expect(finalTimestamps.updatedAt).toBe(initialTimestamps.updatedAt);
   });
+
+  test("should show context tab button above service tabs", async ({
+    page,
+  }) => {
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+
+    // Wait for the view to be visible
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    // Context tab button should be visible above service tabs
+    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
+    await expect(contextTabButton).toBeVisible();
+
+    // Should have info icon
+    await expect(contextTabButton.locator('[data-icon="info"]')).toBeVisible();
+
+    // Should not be active by default
+    await expect(contextTabButton).not.toHaveClass(/active/);
+  });
+
+  test("should show context widget when context tab is clicked", async ({
+    page,
+  }) => {
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+
+    // Wait for the view to be visible
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    // Click context tab button
+    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
+    await contextTabButton.click();
+
+    // Context tab should be active
+    await expect(contextTabButton).toHaveClass(/active/);
+
+    // Context widget content should be visible
+    const contextTabContent = page.locator(
+      '[data-testid="context-tab-content"]'
+    );
+    await expect(contextTabContent).toBeVisible();
+
+    // Service content should be hidden
+    const serviceContent = page.locator('[data-testid="service-content"]');
+    await expect(serviceContent).not.toBeVisible();
+  });
+
+  test("should hide context tab when service tab is clicked", async ({
+    page,
+  }) => {
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+
+    // Wait for the view to be visible
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    // Click context tab first
+    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
+    await contextTabButton.click();
+    await expect(contextTabButton).toHaveClass(/active/);
+
+    // Click a service tab (local service)
+    const localServiceButton = page.locator('[data-testid="service-local"]');
+    await localServiceButton.click();
+
+    // Context tab should no longer be active
+    await expect(contextTabButton).not.toHaveClass(/active/);
+
+    // Service content should be visible
+    const serviceContent = page.locator('[data-testid="service-content"]');
+    await expect(serviceContent).toBeVisible();
+
+    // Context tab content should be hidden
+    const contextTabContent = page.locator(
+      '[data-testid="context-tab-content"]'
+    );
+    await expect(contextTabContent).not.toBeVisible();
+  });
 });

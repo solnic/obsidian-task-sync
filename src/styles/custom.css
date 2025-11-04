@@ -2787,6 +2787,12 @@ Provides consistent styling for all UI components
   cursor: not-allowed;
 }
 
+/* Context Tab Button - positioned above service buttons */
+.service-button-vertical.context-tab-button {
+  margin-bottom: 8px;
+  border-bottom: 2px solid var(--background-modifier-border);
+}
+
 .service-icon-vertical {
   width: 16px;
   height: 16px;
