@@ -1394,4 +1394,207 @@ test.describe("GitHub Integration", () => {
       .count();
     expect(issueCount).toBeGreaterThan(0);
   });
+
+  test("should map GitHub labels to categories case-insensitively when importing", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Import issue #111 which has "bug" label (should map to "Bug" category)
+    await clickIssueImportButton(page, 111);
+    await waitForIssueImportComplete(page, 111);
+
+    // Verify task file was created
+    const taskExists = await fileExists(page, "Tasks/First test issue.md");
+    expect(taskExists).toBe(true);
+
+    // Verify the task has the correct category mapped from GitHub label
+    const task = await getTaskByTitle(page, "First test issue");
+    expect(task).toBeDefined();
+    expect(task.category).toBe("Bug"); // "bug" label should map to "Bug" category
+
+    // Verify the category is also in the file frontmatter
+    const fileContent = await readVaultFile(page, "Tasks/First test issue.md");
+    expect(fileContent).toContain("Category: Bug");
+  });
+
+  test("should map 'improvement' label to 'Improvement' category case-insensitively", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Import issue #333 which has "improvement" label (should map to "Improvement" category)
+    await clickIssueImportButton(page, 333);
+    await waitForIssueImportComplete(page, 333);
+
+    // Verify task file was created
+    const taskExists = await fileExists(page, "Tasks/Third test issue.md");
+    expect(taskExists).toBe(true);
+
+    // Verify the task has the default "Task" category since "improvement" doesn't match any available category
+    const task = await getTaskByTitle(page, "Third test issue");
+    expect(task).toBeDefined();
+    expect(task.category).toBe("Improvement"); // "improvement" label should map to "Improvement" category
+
+    // Verify the category is also in the file frontmatter
+    const fileContent = await readVaultFile(page, "Tasks/Third test issue.md");
+    expect(fileContent).toContain("Category: Improvement");
+  });
+
+  test("should map 'feature' label to 'Feature' category case-insensitively", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Import issue #222 which has "feature" label (should map to "Feature" category)
+    await clickIssueImportButton(page, 222);
+    await waitForIssueImportComplete(page, 222);
+
+    // Verify task file was created
+    const taskExists = await fileExists(page, "Tasks/Second test issue.md");
+    expect(taskExists).toBe(true);
+
+    // Verify the task has the correct category mapped from GitHub label
+    const task = await getTaskByTitle(page, "Second test issue");
+    expect(task).toBeDefined();
+    expect(task.category).toBe("Feature"); // "feature" label should map to "Feature" category
+
+    // Verify the category is also in the file frontmatter
+    const fileContent = await readVaultFile(page, "Tasks/Second test issue.md");
+    expect(fileContent).toContain("Category: Feature");
+  });
+
+  test("should default to 'Task' category when GitHub label doesn't match any available category", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Override with custom issue that has a non-matching label
+    await page.evaluate(() => {
+      (window as any).__githubApiStubs.issues = [
+        {
+          id: 999888,
+          number: 999,
+          title: "Issue with non-matching label",
+          body: "This issue has a label that doesn't match any configured category",
+          state: "open",
+          html_url: "https://github.com/solnic/obsidian-task-sync/issues/999",
+          labels: [{ name: "wontfix", color: "ffffff" }], // This doesn't match any default category
+          assignee: null,
+          created_at: "2024-01-01T00:00:00Z",
+          updated_at: "2024-01-01T00:00:00Z",
+        },
+      ];
+    });
+
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Import issue #999 which has "wontfix" label (should default to "Task" category)
+    await clickIssueImportButton(page, 999);
+    await waitForIssueImportComplete(page, 999);
+
+    // Verify task file was created
+    const taskExists = await fileExists(
+      page,
+      "Tasks/Issue with non-matching label.md"
+    );
+    expect(taskExists).toBe(true);
+
+    // Verify the task defaults to "Task" category since "wontfix" doesn't match any configured category
+    const task = await getTaskByTitle(page, "Issue with non-matching label");
+    expect(task).toBeDefined();
+    expect(task.category).toBe("Task"); // Should default to "Task" category
+
+    // Verify the category is also in the file frontmatter
+    const fileContent = await readVaultFile(
+      page,
+      "Tasks/Issue with non-matching label.md"
+    );
+    expect(fileContent).toContain("Category: Task");
+  });
 });

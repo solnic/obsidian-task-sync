@@ -157,18 +157,26 @@ export namespace GitHub {
 
     /**
      * Extract category from GitHub labels
-     * Looks for labels that match common category patterns
+     * Maps GitHub labels to available task categories case-insensitively
      */
     private extractCategoryFromLabels(
       labels: Array<{ name: string; color?: string }>
     ): string {
-      const categoryLabels = ["bug", "feature", "enhancement", "documentation"];
+      // Get available categories from user's configured task types
+      const availableCategories = this.settings.taskTypes.map(
+        (taskType) => taskType.name
+      );
 
       for (const label of labels) {
-        const labelName = label.name.toLowerCase();
-        if (categoryLabels.includes(labelName)) {
-          // Capitalize first letter
-          return labelName.charAt(0).toUpperCase() + labelName.slice(1);
+        const labelName = label.name.trim().toLowerCase();
+
+        // Find matching category (case-insensitive)
+        const matchedCategory = availableCategories.find(
+          (category) => category.toLowerCase() === labelName
+        );
+
+        if (matchedCategory) {
+          return matchedCategory; // Return with proper casing
         }
       }
 
