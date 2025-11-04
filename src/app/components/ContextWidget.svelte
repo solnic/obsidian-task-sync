@@ -4,64 +4,59 @@
    * Shows rich information about tasks, projects, and areas based on current context
    */
 
-  import { getContextStore } from "../stores/contextStore";
-  import { projectStore } from "../stores/projectStore";
-  import { areaStore } from "../stores/areaStore";
-  import { ProjectQueryService } from "../services/ProjectQueryService";
-  import { AreaQueryService } from "../services/AreaQueryService";
   import type { Task, Project, Area } from "../core/entities";
+  import type { FileContext } from "../types/context";
   import { setIcon } from "obsidian";
 
   interface Props {
+    context: FileContext;
     dayPlanningMode?: boolean;
     serviceName?: string; // For consistent header format across services
     isNonLocalService?: boolean; // Whether this is a non-local service (GitHub, Apple Reminders, etc.)
   }
 
   let {
+    context,
     dayPlanningMode = false,
     serviceName,
     isNonLocalService = false,
   }: Props = $props();
 
-  // Get the reactive context store
-  const contextStore = getContextStore();
+  // Get current entity from context (resolved by ContextService)
+  let currentEntity = $derived(context?.entity || null);
 
-  // Reactive context value - directly from store using $ prefix
-  let context = $derived($contextStore || { type: "none" as const });
+  // Debug logging
+  $effect(() => {
+    console.log("ContextWidget - Context received:", {
+      type: context?.type,
+      name: context?.name,
+      path: context?.path,
+      hasEntity: !!context?.entity,
+      entityId: context?.entity?.id,
+      currentEntity: currentEntity
+        ? {
+            id: currentEntity.id,
+            name:
+              "title" in currentEntity
+                ? currentEntity.title
+                : currentEntity.name,
+          }
+        : null,
+    });
+  });
 
-  // Get current entity data based on context
-  let currentEntity = $derived.by(() => {
-    if (!context || context.type === "none" || context.type === "daily") {
-      return null;
-    }
-
-    // For local entities, try to find by file path first, then by name
-    if (context.path) {
-      switch (context.type) {
-        case "project": {
-          const projects = $projectStore.projects;
-          return (
-            ProjectQueryService.findByFilePath(projects, context.path) ||
-            ProjectQueryService.findByName(projects, context.name || "")
-          );
-        }
-        case "area": {
-          const areas = $areaStore.areas;
-          return (
-            AreaQueryService.findByFilePath(areas, context.path) ||
-            AreaQueryService.findByName(areas, context.name || "")
-          );
-        }
-        case "task": {
-          // For tasks, we'll need to get data from the extension differently
-          // For now, return null - we'll implement task lookup later
-          return null;
-        }
-      }
-    }
-
-    return null;
+  // Debug: Log when currentEntity changes
+  $effect(() => {
+    console.log("ContextWidget - currentEntity changed:", {
+      hasEntity: !!currentEntity,
+      entityId: currentEntity?.id,
+      entityName:
+        currentEntity && "title" in currentEntity
+          ? currentEntity.title
+          : currentEntity && "name" in currentEntity
+            ? currentEntity.name
+            : "unknown",
+    });
   });
 
   // Computed properties for display
@@ -202,7 +197,7 @@
         {/if}
 
         <div class="entity-properties">
-          {#if isTask(currentEntity)}
+          {#if context.type === "task" && isTask(currentEntity)}
             <!-- Task-specific properties -->
             {#if currentEntity.status}
               <div class="property-row">
@@ -252,7 +247,7 @@
                 >
               </div>
             {/if}
-          {:else if isProject(currentEntity)}
+          {:else if context.type === "project" && isProject(currentEntity)}
             <!-- Project-specific properties -->
             {#if currentEntity.areas && currentEntity.areas.length > 0}
               <div class="property-row">
@@ -302,10 +297,9 @@
 <style>
   .context-widget {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 12px;
     padding: 0;
-    width: 100%;
   }
 
   .context-action-icon {
@@ -319,8 +313,6 @@
     color: var(--text-on-accent);
     cursor: pointer;
     transition: opacity 0.2s ease;
-    flex-shrink: 0;
-    margin-top: 2px;
   }
 
   .context-action-icon:hover {
@@ -338,144 +330,47 @@
   .context-content {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
     flex: 1;
-    min-width: 0;
   }
 
-  .context-header {
+  .context-row {
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .context-row-primary {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .context-row-secondary {
+    font-size: 14px;
+    color: var(--text-muted);
   }
 
   .service-name {
-    font-size: 16px;
-    font-weight: 600;
     color: var(--text-normal);
   }
 
-  .no-context-message {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .no-context {
-    color: var(--text-muted);
-    font-style: italic;
-    font-size: 14px;
-  }
-
-  .entity-info {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .entity-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
   .context-type {
-    font-size: 14px;
-    font-weight: 500;
     color: var(--text-muted);
   }
 
   .context-separator {
     color: var(--text-muted);
     font-weight: normal;
-    font-size: 14px;
   }
 
   .context-name {
-    font-size: 14px;
     color: var(--text-normal);
-    font-weight: 600;
-    word-break: break-word;
-  }
-
-  .entity-description {
-    font-size: 13px;
-    color: var(--text-muted);
-    line-height: 1.4;
-    margin-top: 4px;
-    word-break: break-word;
-  }
-
-  .entity-description.muted {
-    font-style: italic;
-  }
-
-  .entity-properties {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-top: 4px;
-  }
-
-  .property-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 8px;
-    font-size: 12px;
-    line-height: 1.3;
-  }
-
-  .property-label {
-    color: var(--text-muted);
     font-weight: 500;
-    min-width: 60px;
-    flex-shrink: 0;
   }
 
-  .property-value {
-    color: var(--text-normal);
-    word-break: break-word;
-    flex: 1;
-  }
-
-  .property-value.tags {
-    color: var(--text-accent);
-  }
-
-  /* Status-specific styling */
-  .property-value.status-todo {
+  .no-context {
     color: var(--text-muted);
-  }
-
-  .property-value.status-doing {
-    color: var(--color-blue);
-  }
-
-  .property-value.status-done {
-    color: var(--color-green);
-  }
-
-  .property-value.status-blocked {
-    color: var(--color-red);
-  }
-
-  /* Priority-specific styling */
-  .property-value.priority-low {
-    color: var(--text-muted);
-  }
-
-  .property-value.priority-medium {
-    color: var(--color-orange);
-  }
-
-  .property-value.priority-high {
-    color: var(--color-red);
-  }
-
-  .property-value.priority-urgent {
-    color: var(--color-red);
-    font-weight: 600;
+    font-style: italic;
   }
 
   /* Context type specific styling */
@@ -498,27 +393,5 @@
   /* Action type specific styling */
   .action-type-planning .context-action-icon {
     background: var(--color-purple);
-  }
-
-  /* Responsive adjustments */
-  @media (max-width: 400px) {
-    .context-widget {
-      gap: 8px;
-    }
-
-    .entity-title {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 4px;
-    }
-
-    .property-row {
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .property-label {
-      min-width: auto;
-    }
   }
 </style>

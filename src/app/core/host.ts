@@ -17,6 +17,7 @@
 import { TaskSyncSettings } from "../types/settings";
 import { Area, Project, Task } from "./entities";
 import { Extension } from "./extension";
+import type { FileContext } from "../types/context";
 
 /**
  * Abstract Host class that defines the required interface for mounting and operating
@@ -115,6 +116,21 @@ export abstract class Host {
    * @returns The extension instance, or undefined if not found
    */
   abstract getExtensionById(id: string): Extension | undefined;
+
+  /**
+   * Get the current file context from the ContextExtension.
+   * This provides a clean interface for components to access context without
+   * directly depending on the ContextExtension or context store.
+   *
+   * @returns The current file context
+   */
+  getCurrentContext(): FileContext {
+    const contextExtension = this.getExtensionById("context") as any;
+    if (contextExtension && contextExtension.getCurrentContext) {
+      return contextExtension.getCurrentContext();
+    }
+    return { type: "none" };
+  }
 
   /**
    * Get the TaskSync application instance.

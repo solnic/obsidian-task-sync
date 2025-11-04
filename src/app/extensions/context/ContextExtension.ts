@@ -16,7 +16,14 @@ import type { FileContext } from "../../types/context";
 import { extensionRegistry } from "../../core/extension";
 import { eventBus } from "../../core/events";
 import { readable, type Readable } from "svelte/store";
-import type { Task } from "../../core/entities";
+import type { Task, Project, Area } from "../../core/entities";
+import { TaskQueryService } from "../../services/TaskQueryService";
+import { ProjectQueryService } from "../../services/ProjectQueryService";
+import { AreaQueryService } from "../../services/AreaQueryService";
+import { taskStore } from "../../stores/taskStore";
+import { projectStore } from "../../stores/projectStore";
+import { areaStore } from "../../stores/areaStore";
+import { get } from "svelte/store";
 
 export class ContextExtension implements Extension {
   readonly id = "context";
@@ -28,6 +35,7 @@ export class ContextExtension implements Extension {
   private host: Host;
   private contextService: ContextService;
   private isInitialized = false;
+  private storeUnsubscribers: (() => void)[] = [];
 
   constructor(app: App, host: Host, settings: TaskSyncSettings) {
     this.app = app;
@@ -50,6 +58,9 @@ export class ContextExtension implements Extension {
 
       // Set up context tracking
       this.setupContextTracking();
+
+      // Set up store subscriptions to react to entity changes
+      this.setupStoreSubscriptions();
 
       // Set initial context
       this.updateCurrentContext();
@@ -78,6 +89,10 @@ export class ContextExtension implements Extension {
   }
 
   async shutdown(): Promise<void> {
+    // Cleanup store subscriptions
+    this.storeUnsubscribers.forEach((unsubscribe) => unsubscribe());
+    this.storeUnsubscribers = [];
+
     // Context tracking cleanup is handled by Obsidian's event system
     this.isInitialized = false;
   }
@@ -104,10 +119,10 @@ export class ContextExtension implements Extension {
   }
 
   /**
-   * Get the current file context
+   * Get the current file context with resolved entity
    */
   getCurrentContext(): FileContext {
-    return this.contextService.detectCurrentFileContext();
+    return this.contextService.getCurrentContext();
   }
 
   /**
@@ -153,11 +168,85 @@ export class ContextExtension implements Extension {
   }
 
   /**
+   * Set up store subscriptions to react to entity changes
+   */
+  private setupStoreSubscriptions(): void {
+    // Subscribe to task store changes
+    const taskUnsubscribe = taskStore.subscribe(() => {
+      // Re-evaluate context when tasks change
+      this.updateCurrentContext();
+    });
+    this.storeUnsubscribers.push(taskUnsubscribe);
+
+    // Subscribe to project store changes
+    const projectUnsubscribe = projectStore.subscribe(() => {
+      // Re-evaluate context when projects change
+      this.updateCurrentContext();
+    });
+    this.storeUnsubscribers.push(projectUnsubscribe);
+
+    // Subscribe to area store changes
+    const areaUnsubscribe = areaStore.subscribe(() => {
+      // Re-evaluate context when areas change
+      this.updateCurrentContext();
+    });
+    this.storeUnsubscribers.push(areaUnsubscribe);
+  }
+
+  /**
    * Update the current context and notify store
    */
   private updateCurrentContext(): void {
-    const newContext = this.contextService.detectCurrentFileContext();
-    updateFileContext(newContext);
+    const baseContext = this.contextService.detectCurrentFileContext();
+
+    // Resolve entity based on context type
+    let entity: Task | Project | Area | undefined = undefined;
+
+    if (
+      baseContext.path &&
+      baseContext.type !== "none" &&
+      baseContext.type !== "daily"
+    ) {
+      switch (baseContext.type) {
+        case "task": {
+          const tasks = get(taskStore).tasks;
+          entity =
+            TaskQueryService.findByFilePath(tasks, baseContext.path) ||
+            TaskQueryService.findByTitle(tasks, baseContext.name || "");
+          break;
+        }
+        case "project": {
+          const projects = get(projectStore).projects;
+          entity =
+            ProjectQueryService.findByFilePath(projects, baseContext.path) ||
+            ProjectQueryService.findByName(projects, baseContext.name || "");
+          break;
+        }
+        case "area": {
+          const areas = get(areaStore).areas;
+          entity =
+            AreaQueryService.findByFilePath(areas, baseContext.path) ||
+            AreaQueryService.findByName(areas, baseContext.name || "");
+          break;
+        }
+      }
+    }
+
+    // Create enriched context with resolved entity
+    const enrichedContext: FileContext = {
+      ...baseContext,
+      entity,
+    };
+
+    console.log("ContextExtension - Updating context:", {
+      type: enrichedContext.type,
+      path: enrichedContext.path,
+      name: enrichedContext.name,
+      hasEntity: !!enrichedContext.entity,
+      entityId: enrichedContext.entity?.id,
+    });
+
+    updateFileContext(enrichedContext);
   }
 
   // ExtensionDataAccess interface methods

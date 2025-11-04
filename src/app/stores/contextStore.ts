@@ -74,15 +74,51 @@ export function updateFileContext(newContext: FileContext): void {
   const currentContext = get(currentFileContext);
 
   // Only update if context actually changed (preserve dailyPlanningMode)
-  if (
+  const entityChanged =
+    (currentContext.entity?.id || null) !== (newContext.entity?.id || null);
+
+  const shouldUpdate =
     currentContext.type !== newContext.type ||
     currentContext.name !== newContext.name ||
-    currentContext.path !== newContext.path
-  ) {
-    currentFileContext.update((context) => ({
+    currentContext.path !== newContext.path ||
+    entityChanged;
+
+  console.log("updateFileContext called:", {
+    currentType: currentContext.type,
+    newType: newContext.type,
+    currentEntityId: currentContext.entity?.id,
+    newEntityId: newContext.entity?.id,
+    entityChanged,
+    shouldUpdate,
+  });
+
+  if (shouldUpdate) {
+    const updatedContext = {
       ...newContext,
-      dailyPlanningMode: context.dailyPlanningMode || false,
-    }));
+      dailyPlanningMode: currentContext.dailyPlanningMode || false,
+    };
+
+    console.log("About to update store with:", {
+      type: updatedContext.type,
+      name: updatedContext.name,
+      hasEntity: !!updatedContext.entity,
+      entityId: updatedContext.entity?.id,
+      entityTitle:
+        updatedContext.entity && "title" in updatedContext.entity
+          ? updatedContext.entity.title
+          : updatedContext.entity && "name" in updatedContext.entity
+          ? updatedContext.entity.name
+          : "unknown",
+    });
+
+    currentFileContext.update((context) => updatedContext);
+
+    console.log("Context store updated with:", {
+      type: newContext.type,
+      name: newContext.name,
+      hasEntity: !!newContext.entity,
+      entityId: newContext.entity?.id,
+    });
   }
 }
 

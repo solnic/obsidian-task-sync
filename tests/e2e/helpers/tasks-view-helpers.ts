@@ -36,6 +36,10 @@ export async function waitForLocalTasksToLoad(
   page: Page,
   timeout: number = 5000
 ): Promise<void> {
+  // Click on the local service tab to make it visible (context tab is default)
+  const localServiceButton = page.locator('[data-testid="service-local"]');
+  await localServiceButton.click();
+
   // Wait for the local tasks service to be visible
   await page.waitForSelector('[data-testid="local-service"]', {
     state: "visible",
@@ -365,6 +369,9 @@ export async function waitForFilteredTaskCount(
 
 /**
  * Create a test task using the new entity system
+ * Note: This function creates the task but does NOT wait for it to appear in the UI.
+ * If you need to verify the task appears in the UI, call waitForLocalTasksToLoad() first
+ * to ensure the Local Tasks tab is active, then use getTaskItemByTitle() or similar.
  */
 export async function createTestTask(
   page: Page,
@@ -399,24 +406,19 @@ export async function createTestTask(
     });
   }, props);
 
-  // Wait for the task to be created and appear in the UI
-  await page.waitForFunction(
-    (taskTitle) => {
-      const taskElements = document.querySelectorAll(
-        '[data-testid^="local-task-item-"]'
-      );
-      return Array.from(taskElements).some((el) =>
-        el.textContent?.includes(taskTitle)
-      );
-    },
-    props.title,
-    { timeout: 5000 }
-  );
+  // Note: We no longer wait for UI elements here because:
+  // 1. The view might not be open yet
+  // 2. The Context tab might be active instead of Local Tasks tab
+  // Tests should explicitly switch to Local Tasks tab using waitForLocalTasksToLoad()
+  // before trying to interact with task UI elements
 }
 
 /**
  * Create a task file directly and add it to the store
  * This is useful for tests that need to create files with specific content
+ * Note: This function creates the task file but does NOT wait for it to appear in the UI.
+ * If you need to verify the task appears in the UI, call waitForLocalTasksToLoad() first
+ * to ensure the Local Tasks tab is active, then use getTaskItemByTitle() or similar.
  */
 export async function createTaskFileAndAddToStore(
   page: Page,
@@ -454,17 +456,9 @@ export async function createTaskFileAndAddToStore(
     { fileName, content }
   );
 
-  // Wait for the task to appear in the UI
-  await page.waitForFunction(
-    (taskTitle) => {
-      const taskElements = document.querySelectorAll(
-        '[data-testid^="local-task-item-"]'
-      );
-      return Array.from(taskElements).some((el) =>
-        el.textContent?.includes(taskTitle)
-      );
-    },
-    taskProps.title,
-    { timeout: 5000 }
-  );
+  // Note: We no longer wait for UI elements here because:
+  // 1. The view might not be open yet
+  // 2. The Context tab might be active instead of Local Tasks tab
+  // Tests should explicitly switch to Local Tasks tab using waitForLocalTasksToLoad()
+  // before trying to interact with task UI elements
 }

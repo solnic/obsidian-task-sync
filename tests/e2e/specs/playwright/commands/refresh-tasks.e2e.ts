@@ -94,6 +94,16 @@ test.describe("Commands / Task Refresh", () => {
     // Verify the task still appears in the UI
     await openView(page, "task-sync-main");
 
+    // Switch to Local Tasks tab (Context tab is default)
+    const localServiceButton = page.locator('[data-testid="service-local"]');
+    await localServiceButton.click();
+
+    // Wait for local service to be visible
+    await page.waitForSelector('[data-testid="local-service"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
     // Wait for tasks to load by checking for the task to appear
     await page.waitForSelector(
       '.task-sync-item-title:has-text("Test Refresh Task")',

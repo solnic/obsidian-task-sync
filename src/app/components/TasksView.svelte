@@ -12,7 +12,7 @@
   import { extensionRegistry } from "../core/extension";
   import type { DailyPlanningExtension } from "../extensions/daily-planning/DailyPlanningExtension";
   import type { Host } from "../core/host";
-  import { isPlanningActive } from "../stores/contextStore";
+  import { isPlanningActive, currentFileContext } from "../stores/contextStore";
   import { untrack } from "svelte";
   import { eventBus } from "../core/events";
 
@@ -31,7 +31,17 @@
 
   // State - simplified to only support local tasks initially
   let activeService = $state<string>("local");
-  let showContextTab = $state<boolean>(false);
+  let showContextTab = $state<boolean>(true); // Default to showing context tab
+
+  // Debug logging for context changes - use $derived to access store reactively
+  $effect(() => {
+    console.log("TasksView - Context from store:", {
+      type: $currentFileContext?.type,
+      name: $currentFileContext?.name,
+      hasEntity: !!$currentFileContext?.entity,
+      entityId: $currentFileContext?.entity?.id,
+    });
+  });
 
   // Get daily planning extension - simple, direct lookup
   let dailyPlanningExtension = $derived(
@@ -153,6 +163,7 @@
           <!-- Context Widget Content -->
           <div class="context-tab-content" data-testid="context-tab-content">
             <ContextWidget
+              context={$currentFileContext}
               serviceName={services.find((s: any) => s.id === activeService)
                 ?.name}
               isNonLocalService={activeService !== "local"}
