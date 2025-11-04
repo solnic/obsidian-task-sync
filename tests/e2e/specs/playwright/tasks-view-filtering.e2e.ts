@@ -17,7 +17,11 @@ import {
   openSortDropdown,
   closeSortDropdown,
 } from "../../helpers/tasks-view-helpers";
-import { openView, enableIntegration } from "../../helpers/global";
+import {
+  openView,
+  enableIntegration,
+  switchToTaskService,
+} from "../../helpers/global";
 import { stubGitHubWithFixtures } from "../../helpers/github-integration-helpers";
 
 test.describe("TasksView Filtering and Sorting", () => {
@@ -306,6 +310,15 @@ test.describe("TasksView Filtering and Sorting", () => {
       labels: "labels-basic",
     });
 
+    // Wait for GitHub service button to appear and be enabled
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
     // Go to tasks view and wait for local tasks to load
     await openTasksView(page);
     await waitForLocalTasksToLoad(page);
@@ -347,12 +360,12 @@ test.describe("TasksView Filtering and Sorting", () => {
     const projectFilterButton = page.locator('[data-testid="project-filter"]');
     await expect(projectFilterButton).toContainText("Alpha Project");
 
-    // Switch to GitHub tab
-    await page.getByTestId("github-tab").click();
+    // Switch to GitHub service
+    await switchToTaskService(page, "github");
     await page.waitForTimeout(1000); // Wait for tab switch
 
-    // Switch back to Local tab
-    await page.getByTestId("local-tab").click();
+    // Switch back to Local service
+    await switchToTaskService(page, "local");
     await waitForLocalTasksToLoad(page);
 
     // BUG: The project filter should still be "Alpha Project" but it gets reset

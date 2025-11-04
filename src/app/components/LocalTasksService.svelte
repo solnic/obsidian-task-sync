@@ -82,45 +82,30 @@
   // REACTIVE STATE - UI state only (data comes from store)
   // ============================================================================
 
-  // Filters - currently applied filters (UI state)
-  let filters = $state({
-    project: localTasksSettings?.selectedProject ?? null,
-    area: localTasksSettings?.selectedArea ?? null,
-    source: localTasksSettings?.selectedSource ?? null,
-    showCompleted: localTasksSettings?.showCompleted ?? false,
-    showScheduled: localTasksSettings?.showScheduled ?? false,
-  });
+  // Filters - derived from localTasksSettings prop, with local overrides
+  let filterOverrides = $state<{
+    project?: string | null;
+    area?: string | null;
+    source?: string | null;
+    showCompleted?: boolean;
+    showScheduled?: boolean;
+  }>({});
 
-  // Update filters when localTasksSettings props change (but avoid loops)
-  let lastPropsUpdate = $state(0);
-  $effect(() => {
-    if (localTasksSettings) {
-      const newProject = localTasksSettings.selectedProject ?? null;
-      const newArea = localTasksSettings.selectedArea ?? null;
-      const newSource = localTasksSettings.selectedSource ?? null;
-      const newShowCompleted = localTasksSettings.showCompleted ?? false;
-      const newShowScheduled = localTasksSettings.showScheduled ?? false;
-
-      // Only update if values actually changed to avoid loops
-      if (
-        filters.project !== newProject ||
-        filters.area !== newArea ||
-        filters.source !== newSource ||
-        filters.showCompleted !== newShowCompleted ||
-        filters.showScheduled !== newShowScheduled
-      ) {
-        filters.project = newProject;
-        filters.area = newArea;
-        filters.source = newSource;
-        filters.showCompleted = newShowCompleted;
-        filters.showScheduled = newShowScheduled;
-        lastPropsUpdate = Date.now();
-        console.log(
-          "🔧 LocalTasksService: Updated filters from props:",
-          filters
-        );
-      }
-    }
+  // Derived filters that combine prop values with local overrides
+  let filters = $derived({
+    project:
+      filterOverrides.project ?? localTasksSettings?.selectedProject ?? null,
+    area: filterOverrides.area ?? localTasksSettings?.selectedArea ?? null,
+    source:
+      filterOverrides.source ?? localTasksSettings?.selectedSource ?? null,
+    showCompleted:
+      filterOverrides.showCompleted ??
+      localTasksSettings?.showCompleted ??
+      false,
+    showScheduled:
+      filterOverrides.showScheduled ??
+      localTasksSettings?.showScheduled ??
+      false,
   });
 
   // Sort - currently applied sorting logic (UI state)
@@ -263,13 +248,10 @@
   }
 
   function handleFilterChange(key: keyof typeof filters, value: any): void {
-    filters = { ...filters, [key]: value };
-    // Persist filter changes (but not if this was triggered by props update)
-    const now = Date.now();
-    if (now - lastPropsUpdate > 100) {
-      // 100ms debounce to avoid prop update loops
-      saveFilterSettings();
-    }
+    // Update the override for this filter
+    filterOverrides = { ...filterOverrides, [key]: value };
+    // Persist filter changes
+    saveFilterSettings();
   }
 
   async function saveFilterSettings(): Promise<void> {
@@ -285,10 +267,6 @@
         recentlyUsedSources,
       };
       await host.saveData(data);
-      console.log(
-        "🔧 Saved local tasks filter settings:",
-        data.localTasksFilters
-      );
     } catch (err: any) {
       console.warn("Failed to save local tasks filter settings:", err.message);
     }
