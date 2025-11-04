@@ -1199,9 +1199,10 @@ test.describe("GitHub Integration", () => {
     await expect(repoButton).toContainText("obsidian-task-sync");
 
     // Verify issues are still visible (filters are applied)
-    await expect(
-      page.locator('[data-testid="github-issue-item"]')
-    ).toBeVisible();
+    const issueCount = await page
+      .locator('[data-testid="github-issue-item"]')
+      .count();
+    expect(issueCount).toBeGreaterThan(0);
   });
 
   test("should restore last used org and repo filters after plugin reload", async ({
@@ -1251,11 +1252,8 @@ test.describe("GitHub Integration", () => {
       labels: "labels-basic",
     });
 
-    // Wait for view to be ready
-    await page.waitForSelector('[data-testid="task-sync-main"]', {
-      state: "visible",
-      timeout: 10000,
-    });
+    // Open the view again after reload
+    await openView(page, "task-sync-main");
 
     // Switch to GitHub tasks
     await switchToTaskService(page, "github");
@@ -1273,12 +1271,17 @@ test.describe("GitHub Integration", () => {
     const orgButton = page.locator('[data-testid="organization-filter"]');
     const repoButton = page.locator('[data-testid="repository-filter"]');
 
+    const orgText = await orgButton.textContent();
+    const repoText = await repoButton.textContent();
+
+    // The filters should be restored
     await expect(orgButton).toContainText("solnic");
     await expect(repoButton).toContainText("obsidian-task-sync");
 
     // Verify issues are visible (filters are applied)
-    await expect(
-      page.locator('[data-testid="github-issue-item"]')
-    ).toBeVisible();
+    const issueCount = await page
+      .locator('[data-testid="github-issue-item"]')
+      .count();
+    expect(issueCount).toBeGreaterThan(0);
   });
 });
