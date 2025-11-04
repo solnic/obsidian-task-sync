@@ -145,10 +145,8 @@
       <TabView
         className="tasks-view-tab"
         testId="tasks-view-tab"
-        showContextWidget={!showContextTab}
-        serviceName={services.find((s: any) => s.id === activeService)?.name}
-        isNonLocalService={activeService !== "local"}
-        dayPlanningMode={$isPlanningActive}
+        showHeader={!showContextTab}
+        headerTitle={services.find((s: any) => s.id === activeService)?.name}
       >
         <!-- Content based on active tab -->
         {#if showContextTab}
