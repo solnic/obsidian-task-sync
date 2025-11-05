@@ -79,7 +79,13 @@
       <span class="no-context">No context</span>
     </div>
   {:else if context.type === "task" && currentEntity && isTask(currentEntity)}
-    <TaskContext task={currentEntity} {settings} {allProjects} {allAreas} />
+    <TaskContext
+      task={currentEntity}
+      {host}
+      {settings}
+      {allProjects}
+      {allAreas}
+    />
   {:else if context.type === "project" && currentEntity && isProject(currentEntity)}
     <ProjectContext project={currentEntity} {settings} {allAreas} />
   {:else if context.type === "area" && currentEntity && isArea(currentEntity)}

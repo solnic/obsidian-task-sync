@@ -746,6 +746,124 @@ Task for testing timestamp preservation.`;
     await expect(contextTabContent).not.toBeVisible();
   });
 
+  test("should use registered note type properties for dropdown options", async ({
+    page,
+  }) => {
+    // Create a task
+    const taskName = "Note Type Properties Test";
+    const taskPath = `Tasks/${taskName}.md`;
+    await createTask(page, {
+      title: taskName,
+      status: "Backlog",
+      priority: "Low",
+      category: "Task",
+    });
+
+    // Wait for the file to be processed
+    await waitForFileProcessed(page, taskPath);
+
+    // Open the task file
+    await openFile(page, taskPath);
+
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    // Wait for context widget to show task properties
+    await page.waitForSelector('[data-testid="context-status-button"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Get the registered Task note type properties from TypeNote registry
+    const noteTypeProperties = await page.evaluate(() => {
+      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+      const obsidianExtension = plugin?.host?.getExtensionById("obsidian");
+
+      if (!obsidianExtension || !obsidianExtension.typeNote) {
+        return { error: "TypeNote not accessible" };
+      }
+
+      const taskNoteType = obsidianExtension.typeNote.registry.get("task");
+
+      if (!taskNoteType) {
+        return { error: "Task note type not registered" };
+      }
+
+      return {
+        statusOptions: taskNoteType.properties.status.selectOptions,
+        priorityOptions: taskNoteType.properties.priority.selectOptions,
+        categoryOptions: taskNoteType.properties.category.selectOptions,
+      };
+    });
+
+    // Verify we got the note type properties
+    expect(noteTypeProperties).not.toHaveProperty("error");
+    expect(noteTypeProperties.statusOptions).toBeDefined();
+    expect(noteTypeProperties.priorityOptions).toBeDefined();
+    expect(noteTypeProperties.categoryOptions).toBeDefined();
+
+    // Click status button to open dropdown
+    const statusButton = page.locator('[data-testid="context-status-button"]');
+    await statusButton.click();
+
+    const statusDropdown = page.locator(
+      '[data-testid="context-status-dropdown"]'
+    );
+    await expect(statusDropdown).toBeVisible();
+
+    // Verify dropdown contains all status options from note type
+    for (const option of noteTypeProperties.statusOptions) {
+      await expect(
+        statusDropdown.locator(`text="${option.value}"`)
+      ).toBeVisible();
+    }
+
+    // Close status dropdown
+    await page.keyboard.press("Escape");
+    await expect(statusDropdown).not.toBeVisible();
+
+    // Click priority button to open dropdown
+    const priorityButton = page.locator(
+      '[data-testid="context-priority-button"]'
+    );
+    await priorityButton.click();
+
+    const priorityDropdown = page.locator(
+      '[data-testid="context-priority-dropdown"]'
+    );
+    await expect(priorityDropdown).toBeVisible();
+
+    // Verify dropdown contains all priority options from note type
+    for (const option of noteTypeProperties.priorityOptions) {
+      await expect(
+        priorityDropdown.locator(`text="${option.value}"`)
+      ).toBeVisible();
+    }
+
+    // Close priority dropdown
+    await page.keyboard.press("Escape");
+    await expect(priorityDropdown).not.toBeVisible();
+
+    // Click category button to open dropdown
+    const categoryButton = page.locator(
+      '[data-testid="context-category-button"]'
+    );
+    await categoryButton.click();
+
+    const categoryDropdown = page.locator(
+      '[data-testid="context-category-dropdown"]'
+    );
+    await expect(categoryDropdown).toBeVisible();
+
+    // Verify dropdown contains all category options from note type
+    for (const option of noteTypeProperties.categoryOptions) {
+      await expect(
+        categoryDropdown.locator(`text="${option.value}"`)
+      ).toBeVisible();
+    }
+  });
+
   test("should update task properties through context widget interactions", async ({
     page,
   }) => {

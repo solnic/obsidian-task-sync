@@ -5,18 +5,20 @@
    */
 
   import type { Task, Project, Area } from "../../core/entities";
+  import type { Host } from "../../core/host";
   import Dropdown from "../Dropdown.svelte";
   import { Tasks } from "../../entities/Tasks";
   import SourceContext from "./source/SourceContext.svelte";
 
   interface Props {
     task: Task;
+    host: Host;
     settings: any;
     allProjects: Project[];
     allAreas: Area[];
   }
 
-  let { task, settings, allProjects, allAreas }: Props = $props();
+  let { task, host, settings, allProjects, allAreas }: Props = $props();
 
   // State for dropdowns
   let showStatusDropdown = $state(false);
@@ -36,30 +38,48 @@
   let doDateInputEl = $state<HTMLInputElement | null>(null);
   let dueDateInputEl = $state<HTMLInputElement | null>(null);
 
-  // Get options from settings
-  const statusOptions = $derived(
-    settings?.taskStatuses?.map((s: any) => ({
-      value: s.name,
-      label: s.name,
-      customContent: `<span class="task-sync-color-dot" style="background-color: ${s.color}"></span><span>${s.name}</span>`,
-    })) || []
-  );
+  // Get options from registered Task note type
+  const statusOptions = $derived.by(() => {
+    const obsidianExtension = host.getExtensionById("obsidian") as any;
+    if (!obsidianExtension?.typeNote) return [];
 
-  const priorityOptions = $derived(
-    settings?.taskPriorities?.map((p: any) => ({
-      value: p.name,
-      label: p.name,
-      customContent: `<span class="task-sync-color-dot" style="background-color: ${p.color}"></span><span>${p.name}</span>`,
-    })) || []
-  );
+    const taskNoteType = obsidianExtension.typeNote.registry.get("task");
+    if (!taskNoteType?.properties?.status?.selectOptions) return [];
 
-  const categoryOptions = $derived(
-    settings?.taskCategories?.map((t: any) => ({
-      value: t.name,
-      label: t.name,
-      customContent: `<span class="task-sync-color-dot" style="background-color: ${t.color}"></span><span>${t.name}</span>`,
-    })) || []
-  );
+    return taskNoteType.properties.status.selectOptions.map((s: any) => ({
+      value: s.value,
+      label: s.value,
+      customContent: `<span class="task-sync-color-dot" style="background-color: ${s.color}"></span><span>${s.value}</span>`,
+    }));
+  });
+
+  const priorityOptions = $derived.by(() => {
+    const obsidianExtension = host.getExtensionById("obsidian") as any;
+    if (!obsidianExtension?.typeNote) return [];
+
+    const taskNoteType = obsidianExtension.typeNote.registry.get("task");
+    if (!taskNoteType?.properties?.priority?.selectOptions) return [];
+
+    return taskNoteType.properties.priority.selectOptions.map((p: any) => ({
+      value: p.value,
+      label: p.value,
+      customContent: `<span class="task-sync-color-dot" style="background-color: ${p.color}"></span><span>${p.value}</span>`,
+    }));
+  });
+
+  const categoryOptions = $derived.by(() => {
+    const obsidianExtension = host.getExtensionById("obsidian") as any;
+    if (!obsidianExtension?.typeNote) return [];
+
+    const taskNoteType = obsidianExtension.typeNote.registry.get("task");
+    if (!taskNoteType?.properties?.category?.selectOptions) return [];
+
+    return taskNoteType.properties.category.selectOptions.map((c: any) => ({
+      value: c.value,
+      label: c.value,
+      customContent: `<span class="task-sync-color-dot" style="background-color: ${c.color}"></span><span>${c.value}</span>`,
+    }));
+  });
 
   const projectOptions = $derived([
     { value: "", label: "No project" },
