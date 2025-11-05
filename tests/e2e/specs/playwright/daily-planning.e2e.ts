@@ -10,8 +10,6 @@ import {
   enableIntegration,
   switchToTaskService,
   selectFromDropdown,
-  waitForNotice,
-  waitForFileUpdate,
   waitForDailyPlanningUpdate,
   waitForTaskScheduled,
   waitForTaskUnscheduled,

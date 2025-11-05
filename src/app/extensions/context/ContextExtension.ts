@@ -179,28 +179,22 @@ export class ContextExtension implements Extension {
 
   /**
    * Set up store subscriptions to react to entity changes
+   *
+   * DISABLED: These subscriptions were causing infinite loops because:
+   * 1. Store emits → updateCurrentContext() called
+   * 2. updateCurrentContext() fetches entity from store (new object reference)
+   * 3. Context store updates → ContextWidget re-renders
+   * 4. ContextWidget $effect re-subscribes to stores → stores emit again
+   * 5. Back to step 1 → infinite loop
+   *
+   * Instead, we rely on:
+   * - File change events (active-leaf-change, file-open, metadata changed)
+   * - These are sufficient to keep context in sync
+   * - Entity updates are reflected through the stores that ContextWidget subscribes to directly
    */
   private setupStoreSubscriptions(): void {
-    // Subscribe to task store changes
-    const taskUnsubscribe = taskStore.subscribe(() => {
-      // Re-evaluate context when tasks change
-      this.updateCurrentContext();
-    });
-    this.storeUnsubscribers.push(taskUnsubscribe);
-
-    // Subscribe to project store changes
-    const projectUnsubscribe = projectStore.subscribe(() => {
-      // Re-evaluate context when projects change
-      this.updateCurrentContext();
-    });
-    this.storeUnsubscribers.push(projectUnsubscribe);
-
-    // Subscribe to area store changes
-    const areaUnsubscribe = areaStore.subscribe(() => {
-      // Re-evaluate context when areas change
-      this.updateCurrentContext();
-    });
-    this.storeUnsubscribers.push(areaUnsubscribe);
+    // No store subscriptions - rely on file change events only
+    // This prevents infinite loops while still keeping context up-to-date
   }
 
   /**

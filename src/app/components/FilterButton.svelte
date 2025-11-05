@@ -82,7 +82,7 @@
   });
 
   // Convert options to dropdown items
-  let dropdownItems = $derived(
+  let dropdownItems = $derived.by(() =>
     optionsWithRecent.map((option) => ({
       value: option,
       label: option,

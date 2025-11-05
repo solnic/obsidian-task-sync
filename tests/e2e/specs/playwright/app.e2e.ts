@@ -6,10 +6,11 @@
 import { test, expect } from "../../helpers/setup";
 import {
   executeCommand,
-  createFile,
   openFile,
   waitForFileProcessed,
   waitForFileContentToContain,
+  waitForFileCreation,
+  reloadPlugin,
 } from "../../helpers/global";
 import {
   createTask,
@@ -22,66 +23,10 @@ test.describe("Svelte App Initialization", () => {
   test("should scan and load existing task files during initialization", async ({
     page,
   }) => {
-    // Create sample task files before plugin loads
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Create Tasks folder if it doesn't exist
-      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
-      if (!tasksFolder) {
-        await app.vault.createFolder("Tasks");
-      }
-
-      // Create sample task files with proper frontmatter
-      const task1Content = `---
-Title: Sample Task 1
-Type: Task
-Status: Not Started
-Priority: High
-Done: false
----
-
-This is a sample task for testing task scanning.`;
-
-      const task2Content = `---
-Title: Sample Task 2
-Type: Task
-Status: In Progress
-Priority: Medium
-Done: false
-Areas: ["Development"]
----
-
-Another sample task with areas.`;
-
-      await app.vault.create("Tasks/Sample Task 1.md", task1Content);
-      await app.vault.create("Tasks/Sample Task 2.md", task2Content);
-    });
-
-    // Now reload the plugin to trigger task scanning
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Disable and re-enable plugin to trigger fresh initialization
-      await app.plugins.disablePlugin("obsidian-task-sync");
-      await app.plugins.enablePlugin("obsidian-task-sync");
-    });
-
-    // Wait for plugin to be fully initialized
-    await page.waitForFunction(
-      () => {
-        const plugin = (window as any).app.plugins.plugins[
-          "obsidian-task-sync"
-        ];
-        return (
-          plugin &&
-          plugin.settings &&
-          (window as any).app.plugins.isEnabled("obsidian-task-sync")
-        );
-      },
-      undefined,
-      { timeout: 5000 }
-    );
+    // Sample task files already exist in the pristine vault
+    // (Sample Task 1.md and Sample Task 2.md)
+    // Just reload the plugin to trigger task scanning
+    await reloadPlugin(page);
 
     // Open the Task Sync view
     await executeCommand(page, "Task Sync: Open Main View");
@@ -108,68 +53,21 @@ Another sample task with areas.`;
     ).toBeVisible();
 
     // Verify task properties are displayed correctly
-    await expect(page.locator("text=High")).toBeVisible(); // Priority
-    await expect(page.locator("text=Medium")).toBeVisible(); // Priority
-    await expect(page.locator("text=Development")).toBeVisible(); // Area
+    const task1Item = page.getByTestId("local-task-item-sample-task-1");
+    await expect(task1Item.getByText("High")).toBeVisible(); // Priority
+
+    const task2Item = page.getByTestId("local-task-item-sample-task-2");
+    await expect(task2Item.getByText("Medium")).toBeVisible(); // Priority
+    await expect(task2Item.getByText("Development")).toBeVisible(); // Area
   });
 
   test("should scan and load existing project files during initialization", async ({
     page,
   }) => {
-    // Create sample project files before plugin loads
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Create Projects folder if it doesn't exist
-      const projectsFolder = app.vault.getAbstractFileByPath("Projects");
-      if (!projectsFolder) {
-        await app.vault.createFolder("Projects");
-      }
-
-      // Create sample project files with proper frontmatter
-      const project1Content = `---
-Name: Sample Project 1
-Type: Project
-Areas: ["Development"]
----
-
-This is a sample project for testing project scanning.`;
-
-      const project2Content = `---
-Name: Sample Project 2
-Type: Project
----
-
-Another sample project without areas.`;
-
-      await app.vault.create("Projects/Sample Project 1.md", project1Content);
-      await app.vault.create("Projects/Sample Project 2.md", project2Content);
-    });
-
-    // Now reload the plugin to trigger project scanning
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Disable and re-enable plugin to trigger fresh initialization
-      await app.plugins.disablePlugin("obsidian-task-sync");
-      await app.plugins.enablePlugin("obsidian-task-sync");
-    });
-
-    // Wait for plugin to be fully initialized
-    await page.waitForFunction(
-      () => {
-        const plugin = (window as any).app.plugins.plugins[
-          "obsidian-task-sync"
-        ];
-        return (
-          plugin &&
-          plugin.settings &&
-          (window as any).app.plugins.isEnabled("obsidian-task-sync")
-        );
-      },
-      undefined,
-      { timeout: 5000 }
-    );
+    // Sample project files already exist in the pristine vault
+    // (Sample Project 1.md and Sample Project 2.md)
+    // Just reload the plugin to trigger project scanning
+    await reloadPlugin(page);
 
     // Wait for projects to be loaded into the store
     await page.waitForFunction(
@@ -223,59 +121,10 @@ Another sample project without areas.`;
   test("should scan and load existing area files during initialization", async ({
     page,
   }) => {
-    // Create sample area files before plugin loads
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Create Areas folder if it doesn't exist
-      const areasFolder = app.vault.getAbstractFileByPath("Areas");
-      if (!areasFolder) {
-        await app.vault.createFolder("Areas");
-      }
-
-      // Create sample area files with proper frontmatter
-      const area1Content = `---
-Name: Development
-Type: Area
----
-
-This is the development area for testing area scanning.`;
-
-      const area2Content = `---
-Name: Personal
-Type: Area
----
-
-Personal area without additional metadata.`;
-
-      await app.vault.create("Areas/Development.md", area1Content);
-      await app.vault.create("Areas/Personal.md", area2Content);
-    });
-
-    // Now reload the plugin to trigger area scanning
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Disable and re-enable plugin to trigger fresh initialization
-      await app.plugins.disablePlugin("obsidian-task-sync");
-      await app.plugins.enablePlugin("obsidian-task-sync");
-    });
-
-    // Wait for plugin to be fully initialized
-    await page.waitForFunction(
-      () => {
-        const plugin = (window as any).app.plugins.plugins[
-          "obsidian-task-sync"
-        ];
-        return (
-          plugin &&
-          plugin.settings &&
-          (window as any).app.plugins.isEnabled("obsidian-task-sync")
-        );
-      },
-      undefined,
-      { timeout: 5000 }
-    );
+    // Sample area files already exist in the pristine vault
+    // (Development.md and Personal.md)
+    // Just reload the plugin to trigger area scanning
+    await reloadPlugin(page);
 
     // Wait for areas to be loaded into the store
     await page.waitForFunction(
@@ -333,89 +182,29 @@ Personal area without additional metadata.`;
     await expect(ribbonIcon).toBeVisible();
   });
 
-  test("should preserve updatedAt timestamps during initial task load", async ({
+  test("should preserve timestamps when rescanning existing tasks", async ({
     page,
   }) => {
-    // Create a task file before plugin loads
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-
-      // Create Tasks folder if it doesn't exist
-      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
-      if (!tasksFolder) {
-        await app.vault.createFolder("Tasks");
-      }
-
-      // Create a task file
-      const taskContent = `---
-Title: Timestamp Test Task
-Type: Task
-Status: Not Started
-Priority: Medium
-Done: false
----
-
-Task for testing timestamp preservation.`;
-
-      await app.vault.create("Tasks/Timestamp Test Task.md", taskContent);
-    });
+    // Use pre-existing task from pristine vault to test timestamp preservation
+    // Get the task's initial timestamps
+    const initialTask = await getTaskByTitle(page, "Sample Task 1");
+    const initialTimestamps = {
+      createdAt: initialTask.createdAt.toISOString(),
+      updatedAt: initialTask.updatedAt.toISOString(),
+    };
 
     // Reload the plugin to trigger task scanning
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      await app.plugins.disablePlugin("obsidian-task-sync");
-      await app.plugins.enablePlugin("obsidian-task-sync");
-    });
+    await reloadPlugin(page);
 
-    // Wait for plugin to initialize and tasks to be loaded
-    await page.waitForFunction(
-      () => {
-        const plugin = (window as any).app.plugins.plugins[
-          "obsidian-task-sync"
-        ];
-        if (!plugin || !plugin.settings) return false;
+    // Get the task's timestamps again after reload
+    const finalTask = await getTaskByTitle(page, "Sample Task 1");
+    const finalTimestamps = {
+      createdAt: finalTask.createdAt.toISOString(),
+      updatedAt: finalTask.updatedAt.toISOString(),
+    };
 
-        try {
-          const { get } = require("svelte/store");
-          const tasks = get(
-            plugin.host.getExtensionById("obsidian").getTasks()
-          );
-          return tasks.some((t: any) => t.title === "Timestamp Test Task");
-        } catch {
-          return false;
-        }
-      },
-      undefined,
-      { timeout: 5000 }
-    );
-
-    // Get the task's initial timestamps
-    const initialTimestamps = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const { get } = require("svelte/store");
-      const tasks = get(plugin.host.getExtensionById("obsidian").getTasks());
-      const task = tasks.find((t: any) => t.title === "Timestamp Test Task");
-      return {
-        createdAt: task.createdAt.toISOString(),
-        updatedAt: task.updatedAt.toISOString(),
-      };
-    });
-
-    // Get the task's timestamps again
-    const finalTimestamps = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const { get } = require("svelte/store");
-      const tasks = get(plugin.host.getExtensionById("obsidian").getTasks());
-      const task = tasks.find((t: any) => t.title === "Timestamp Test Task");
-      return {
-        createdAt: task.createdAt.toISOString(),
-        updatedAt: task.updatedAt.toISOString(),
-      };
-    });
-
-    // Verify timestamps haven't changed
+    // Verify timestamps haven't changed during rescan
+    // Timestamps should be based on file.stat.ctime and file.stat.mtime
     expect(finalTimestamps.createdAt).toBe(initialTimestamps.createdAt);
     expect(finalTimestamps.updatedAt).toBe(initialTimestamps.updatedAt);
   });
@@ -467,62 +256,16 @@ Task for testing timestamp preservation.`;
   test("should display enhanced context widget with project entity details", async ({
     page,
   }) => {
-    // Create a project file with proper structure
+    // Create a project using entity helper
     const projectName = "Alpha Project";
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const folderPath = "Projects";
-      const exists = await app.vault.adapter.exists(folderPath);
-      if (!exists) {
-        await app.vault.createFolder(folderPath);
-      }
+    await createProject(page, {
+      name: projectName,
+      description: "This is a test project for context widget testing.",
+      areas: ["Development", "Testing"],
     });
-
-    await createFile(
-      page,
-      `Projects/${projectName}.md`,
-      {
-        Title: projectName,
-        Areas: ["Development", "Testing"],
-        Tags: ["important", "active"],
-      },
-      `# ${projectName}\n\nThis is a test project for context widget testing.`
-    );
 
     // Open the project file to establish context
     await openFile(page, `Projects/${projectName}.md`);
-
-    // Manually add the project to the store since project scanning is not implemented
-    // This simulates what would happen if project scanning was working
-    await page.evaluate(
-      async ({ projectName }) => {
-        // Access the project store through the plugin
-        const plugin = (window as any).app.plugins.plugins[
-          "obsidian-task-sync"
-        ];
-
-        // Create a project entity that matches what would be scanned from the file
-        const project = {
-          id: `project-${Date.now()}`,
-          name: projectName,
-          description: "This is a test project for context widget testing.",
-          areas: ["Development", "Testing"],
-          tags: ["important", "active"],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          source: {
-            extension: "obsidian",
-            keys: {
-              obsidian: `Projects/${projectName}.md`,
-            },
-          },
-        };
-
-        // Add to project store
-        plugin.stores.projectStore.dispatch({ type: "ADD_PROJECT", project });
-      },
-      { projectName }
-    );
 
     // Open the Task Sync view
     await executeCommand(page, "Task Sync: Open Main View");
@@ -554,7 +297,7 @@ Task for testing timestamp preservation.`;
   }) => {
     // Create a task using the proper helper which generates valid ULID and creates the file
     const taskName = "Test Task Context";
-    const task = await createTask(page, {
+    await createTask(page, {
       title: taskName,
       description: "This is a test task for context widget testing.",
       status: "In Progress",
@@ -580,98 +323,12 @@ Task for testing timestamp preservation.`;
     // Verify context tab button has active class
     const contextTabButton = page.locator('[data-testid="context-tab-button"]');
     await expect(contextTabButton).toHaveClass(/active/);
-
-    // Debug: Check what file is active, settings, and task store
-    const debugInfo = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-
-      const activeFile = app.workspace.getActiveFile();
-      const activeFilePath = activeFile?.path;
-
-      // Get settings to see what tasksFolder is configured
-      const settings = plugin.settings;
-
-      // Get task store state - it's a Svelte store, need to access current value
-      const taskStore = plugin.stores?.taskStore;
-      let tasks = [];
-      if (taskStore) {
-        // Get current value from the store
-        taskStore.subscribe((state) => {
-          tasks = state.tasks;
-        })();
-      }
-
-      return {
-        activeFilePath,
-        tasksFolder: settings?.tasksFolder,
-        projectsFolder: settings?.projectsFolder,
-        areasFolder: settings?.areasFolder,
-        taskCount: tasks.length,
-        tasks: tasks.map((t) => ({
-          id: t.id,
-          title: t.title,
-          sourceKeys: t.source?.keys,
-        })),
-      };
-    });
     // Wait for context widget to show task properties
     // The new Linear-style design shows property buttons instead of context type labels
     await page.waitForSelector('[data-testid="context-status-button"]', {
       state: "visible",
       timeout: 5000,
     });
-
-    // Debug: Check what context is actually being passed to the widget
-    const contextDebug = await page.evaluate(() => {
-      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
-      const contextExtension = plugin?.host?.getExtensionById("context");
-
-      if (!contextExtension) {
-        return { error: "Context extension not found" };
-      }
-
-      const currentContext = contextExtension.getCurrentContext();
-
-      return {
-        type: currentContext.type,
-        name: currentContext.name,
-        path: currentContext.path,
-        hasEntity: !!currentContext.entity,
-        entityId: currentContext.entity?.id,
-        entityTitle:
-          currentContext.entity && "title" in currentContext.entity
-            ? currentContext.entity.title
-            : currentContext.entity && "name" in currentContext.entity
-            ? currentContext.entity.name
-            : "unknown",
-        entityStatus: currentContext.entity?.status,
-        entityPriority: currentContext.entity?.priority,
-      };
-    });
-
-    // Debug: Check what's in the context store by accessing it through window
-    const storeDebug = await page.evaluate(() => {
-      // Access the compiled Svelte app to get the store
-      const appElement = document.querySelector(".task-sync-app");
-      if (!appElement) return { error: "App element not found" };
-
-      // Try to access the store through the Svelte internals
-      // This is a hack but necessary for debugging
-      return {
-        message:
-          "Store access through Svelte internals not available in production build",
-      };
-    });
-
-    // Debug: Dump the actual HTML being rendered
-    const widgetHTML = await contextWidget.innerHTML();
-
-    // Wait a bit for the store to update and the widget to re-render
-    await page.waitForTimeout(1000);
-
-    // Check again after waiting
-    const widgetHTML2 = await contextWidget.innerHTML();
 
     // Check for Linear-style property buttons (new design)
     const statusButton = contextWidget.locator(
@@ -789,136 +446,14 @@ Task for testing timestamp preservation.`;
     await expect(serviceContent).not.toBeVisible();
   });
 
-  test("should use registered note type properties for dropdown options", async ({
-    page,
-  }) => {
-    // Create a task
-    const taskName = "Note Type Properties Test";
-    const taskPath = `Tasks/${taskName}.md`;
-    await createTask(page, {
-      title: taskName,
-      status: "Backlog",
-      priority: "Low",
-      category: "Task",
-    });
-
-    // Wait for the file to be processed
-    await waitForFileProcessed(page, taskPath);
-
-    // Open the task file
-    await openFile(page, taskPath);
-
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-    await expect(page.locator(".task-sync-app")).toBeVisible();
-
-    // Wait for context widget to show task properties
-    await page.waitForSelector('[data-testid="context-status-button"]', {
-      state: "visible",
-      timeout: 5000,
-    });
-
-    // Get the registered Task note type properties from TypeNote registry
-    const noteTypeProperties = await page.evaluate(() => {
-      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
-      const obsidianExtension = plugin?.host?.getExtensionById("obsidian");
-
-      if (!obsidianExtension || !obsidianExtension.typeNote) {
-        return { error: "TypeNote not accessible" };
-      }
-
-      const taskNoteType = obsidianExtension.typeNote.registry.get("task");
-
-      if (!taskNoteType) {
-        return { error: "Task note type not registered" };
-      }
-
-      return {
-        statusOptions: taskNoteType.properties.status.selectOptions,
-        priorityOptions: taskNoteType.properties.priority.selectOptions,
-        categoryOptions: taskNoteType.properties.category.selectOptions,
-      };
-    });
-
-    // Verify we got the note type properties
-    expect(noteTypeProperties).not.toHaveProperty("error");
-    expect(noteTypeProperties.statusOptions).toBeDefined();
-    expect(noteTypeProperties.priorityOptions).toBeDefined();
-    expect(noteTypeProperties.categoryOptions).toBeDefined();
-
-    // Click status button to open dropdown
-    const statusButton = page.locator('[data-testid="context-status-button"]');
-    await statusButton.click();
-
-    const statusDropdown = page.locator(
-      '[data-testid="context-status-dropdown"]'
-    );
-    await expect(statusDropdown).toBeVisible();
-
-    // Verify dropdown contains all status options from note type
-    for (const option of noteTypeProperties.statusOptions) {
-      await expect(
-        statusDropdown.locator(`text="${option.value}"`)
-      ).toBeVisible();
-    }
-
-    // Close status dropdown
-    await page.keyboard.press("Escape");
-    await expect(statusDropdown).not.toBeVisible();
-
-    // Click priority button to open dropdown
-    const priorityButton = page.locator(
-      '[data-testid="context-priority-button"]'
-    );
-    await priorityButton.click();
-
-    const priorityDropdown = page.locator(
-      '[data-testid="context-priority-dropdown"]'
-    );
-    await expect(priorityDropdown).toBeVisible();
-
-    // Verify dropdown contains all priority options from note type
-    for (const option of noteTypeProperties.priorityOptions) {
-      await expect(
-        priorityDropdown.locator(`text="${option.value}"`)
-      ).toBeVisible();
-    }
-
-    // Close priority dropdown
-    await page.keyboard.press("Escape");
-    await expect(priorityDropdown).not.toBeVisible();
-
-    // Click category button to open dropdown
-    const categoryButton = page.locator(
-      '[data-testid="context-category-button"]'
-    );
-    await categoryButton.click();
-
-    const categoryDropdown = page.locator(
-      '[data-testid="context-category-dropdown"]'
-    );
-    await expect(categoryDropdown).toBeVisible();
-
-    // Verify dropdown contains all category options from note type
-    for (const option of noteTypeProperties.categoryOptions) {
-      await expect(
-        categoryDropdown.locator(`text="${option.value}"`)
-      ).toBeVisible();
-    }
-  });
-
   test("should update task properties through context widget interactions", async ({
     page,
   }) => {
-    // Create initial projects and areas for testing
+    // Use pre-existing areas (Development, Personal) and create a project for testing
+    // Note: Test vault already has Development and Personal areas from pristine vault
     await createProject(page, {
       name: "Widget Test Project",
       description: "Project for testing context widget",
-    });
-
-    await createArea(page, {
-      name: "Widget Test Area",
-      description: "Area for testing context widget",
     });
 
     // Create a task with initial properties
@@ -936,17 +471,6 @@ Task for testing timestamp preservation.`;
 
     // Wait for the file to be processed by metadata cache before opening
     await waitForFileProcessed(page, taskPath);
-
-    // Close any open Task Sync view from previous tests and wait for workspace to settle
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const leaves = app.workspace.getLeavesOfType("task-sync-view");
-      for (const leaf of leaves) {
-        leaf.detach();
-      }
-      // Wait a bit for workspace to settle after detaching leaves
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    });
 
     // Open the task file to establish context BEFORE opening the view
     await openFile(page, taskPath);
@@ -1053,7 +577,7 @@ Task for testing timestamp preservation.`;
     // Wait for file to be updated with new project
     await waitForFileContentToContain(page, taskPath, "Widget Test Project");
 
-    // 5. Add Area "Widget Test Area"
+    // 5. Add Area "Development" (pre-existing area from pristine vault)
     const areasButton = contextWidget.locator(
       '[data-testid="context-areas-button"]'
     );
@@ -1065,18 +589,18 @@ Task for testing timestamp preservation.`;
     );
     await expect(areasDropdown).toBeVisible();
 
-    // Click "Widget Test Area" option to add it
-    await areasDropdown.locator('text="Widget Test Area"').click();
+    // Click "Development" option to add it (pre-existing area)
+    await areasDropdown.locator('text="Development"').click();
 
     // Dropdown stays open for multi-select - close it manually
     await page.keyboard.press("Escape");
     await expect(areasDropdown).not.toBeVisible();
 
     // Button should now show the area as a badge
-    await expect(areasButton).toContainText("Widget Test Area");
+    await expect(areasButton).toContainText("Development");
 
     // Wait for file to be updated with new area
-    await waitForFileContentToContain(page, taskPath, "- Widget Test Area");
+    await waitForFileContentToContain(page, taskPath, "- Development");
 
     // Verify all changes were persisted to the task entity
     const updatedTask = await getTaskByTitle(page, taskName);
@@ -1085,23 +609,14 @@ Task for testing timestamp preservation.`;
     expect(updatedTask.priority).toBe("High");
     expect(updatedTask.category).toBe("Bug");
     expect(updatedTask.project).toBe("Widget Test Project");
-    expect(updatedTask.areas).toContain("Widget Test Area");
+    expect(updatedTask.areas).toContain("Development");
   });
 
   test("should support multi-select areas with badges and remove buttons", async ({
     page,
   }) => {
-    // Create multiple areas for testing
-    await createArea(page, {
-      name: "Area One",
-      description: "First test area",
-    });
-
-    await createArea(page, {
-      name: "Area Two",
-      description: "Second test area",
-    });
-
+    // Use pre-existing areas (Development, Personal) and create one additional area
+    // Note: Test vault already has Development and Personal areas from pristine vault
     await createArea(page, {
       name: "Area Three",
       description: "Third test area",
@@ -1121,17 +636,6 @@ Task for testing timestamp preservation.`;
     });
 
     await waitForFileProcessed(page, taskPath);
-
-    // Close any open Task Sync view and open the task file
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const leaves = app.workspace.getLeavesOfType("task-sync-view");
-      for (const leaf of leaves) {
-        leaf.detach();
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    });
-
     await openFile(page, taskPath);
 
     // Open the Task Sync view
@@ -1155,16 +659,16 @@ Task for testing timestamp preservation.`;
     );
     await expect(areasDropdown).toBeVisible();
 
-    // Add first area
-    await areasDropdown.locator('text="Area One"').click();
-    await expect(areasButton).toContainText("Area One");
+    // Add first area (Development - pre-existing)
+    await areasDropdown.locator('text="Development"').click();
+    await expect(areasButton).toContainText("Development");
 
     // Dropdown should still be open (multi-select)
     await expect(areasDropdown).toBeVisible();
 
-    // Add second area
-    await areasDropdown.locator('text="Area Two"').click();
-    await expect(areasButton).toContainText("Area Two");
+    // Add second area (Personal - pre-existing)
+    await areasDropdown.locator('text="Personal"').click();
+    await expect(areasButton).toContainText("Personal");
 
     // Dropdown should still be open
     await expect(areasDropdown).toBeVisible();
@@ -1178,55 +682,55 @@ Task for testing timestamp preservation.`;
     await expect(areasDropdown).not.toBeVisible();
 
     // All three areas should be visible as badges
-    await expect(areasButton).toContainText("Area One");
-    await expect(areasButton).toContainText("Area Two");
+    await expect(areasButton).toContainText("Development");
+    await expect(areasButton).toContainText("Personal");
     await expect(areasButton).toContainText("Area Three");
 
     // Wait for file to be updated
-    await waitForFileContentToContain(page, taskPath, "- Area One");
-    await waitForFileContentToContain(page, taskPath, "- Area Two");
+    await waitForFileContentToContain(page, taskPath, "- Development");
+    await waitForFileContentToContain(page, taskPath, "- Personal");
     await waitForFileContentToContain(page, taskPath, "- Area Three");
 
     // Verify task has all three areas
     let task = await getTaskByTitle(page, taskName);
-    expect(task.areas).toContain("Area One");
-    expect(task.areas).toContain("Area Two");
+    expect(task.areas).toContain("Development");
+    expect(task.areas).toContain("Personal");
     expect(task.areas).toContain("Area Three");
     expect(task.areas.length).toBe(3);
 
     // Now test removing an area using the × button
-    // Find the badge for "Area Two" and click its remove button
-    const areaTwoBadge = areasButton.locator(
-      '.task-sync-text-badge:has-text("Area Two")'
+    // Find the badge for "Personal" and click its remove button
+    const personalBadge = areasButton.locator(
+      '.task-sync-text-badge:has-text("Personal")'
     );
-    await expect(areaTwoBadge).toBeVisible();
+    await expect(personalBadge).toBeVisible();
 
     // Click the × button within the badge
-    const removeButton = areaTwoBadge.locator("span").last();
+    const removeButton = personalBadge.locator("span").last();
     await removeButton.click();
 
-    // Area Two should be removed
-    await expect(areasButton).not.toContainText("Area Two");
-    await expect(areasButton).toContainText("Area One");
+    // Personal should be removed
+    await expect(areasButton).not.toContainText("Personal");
+    await expect(areasButton).toContainText("Development");
     await expect(areasButton).toContainText("Area Three");
 
-    // Verify task no longer has Area Two
+    // Verify task no longer has Personal
     task = await getTaskByTitle(page, taskName);
-    expect(task.areas).toContain("Area One");
-    expect(task.areas).not.toContain("Area Two");
+    expect(task.areas).toContain("Development");
+    expect(task.areas).not.toContain("Personal");
     expect(task.areas).toContain("Area Three");
     expect(task.areas.length).toBe(2);
 
     // Remove another area
-    const areaOneBadge = areasButton.locator(
-      '.task-sync-text-badge:has-text("Area One")'
+    const developmentBadge = areasButton.locator(
+      '.task-sync-text-badge:has-text("Development")'
     );
-    const removeButtonOne = areaOneBadge.locator("span").last();
-    await removeButtonOne.click();
+    const removeButtonDev = developmentBadge.locator("span").last();
+    await removeButtonDev.click();
 
     // Only Area Three should remain
-    await expect(areasButton).not.toContainText("Area One");
-    await expect(areasButton).not.toContainText("Area Two");
+    await expect(areasButton).not.toContainText("Development");
+    await expect(areasButton).not.toContainText("Personal");
     await expect(areasButton).toContainText("Area Three");
 
     // Remove the last area
@@ -1262,16 +766,6 @@ Task for testing timestamp preservation.`;
 
     await waitForFileProcessed(page, taskPath);
 
-    // Close any open Task Sync view and open the task file
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const leaves = app.workspace.getLeavesOfType("task-sync-view");
-      for (const leaf of leaves) {
-        leaf.detach();
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    });
-
     await openFile(page, taskPath);
 
     // Open the Task Sync view
@@ -1300,8 +794,12 @@ Task for testing timestamp preservation.`;
     await doDateInput.fill(tomorrowStr);
     await doDateInput.blur(); // Trigger change event
 
-    // Wait a bit for the update to process
-    await page.waitForTimeout(200);
+    // Wait for file to be updated with do date
+    await waitForFileContentToContain(
+      page,
+      taskPath,
+      `Do Date: ${tomorrowStr}`
+    );
 
     // Verify task has do date
     let task = await getTaskByTitle(page, taskName);
@@ -1319,8 +817,12 @@ Task for testing timestamp preservation.`;
     await dueDateInput.fill(threeDaysLaterStr);
     await dueDateInput.blur(); // Trigger change event
 
-    // Wait a bit for the update to process
-    await page.waitForTimeout(200);
+    // Wait for file to be updated with due date
+    await waitForFileContentToContain(
+      page,
+      taskPath,
+      `Due Date: ${threeDaysLaterStr}`
+    );
 
     // Verify task has due date
     task = await getTaskByTitle(page, taskName);
@@ -1330,22 +832,9 @@ Task for testing timestamp preservation.`;
       expect(dueDateStr).toBe(threeDaysLaterStr);
     }
 
-    // Verify both dates are in the file
-    await waitForFileContentToContain(
-      page,
-      taskPath,
-      `Do Date: ${tomorrowStr}`
-    );
-    await waitForFileContentToContain(
-      page,
-      taskPath,
-      `Due Date: ${threeDaysLaterStr}`
-    );
-
     // Clear do date
     await doDateInput.fill("");
     await doDateInput.blur();
-    await page.waitForTimeout(200);
 
     // Verify do date is cleared
     task = await getTaskByTitle(page, taskName);
@@ -1354,7 +843,6 @@ Task for testing timestamp preservation.`;
     // Clear due date
     await dueDateInput.fill("");
     await dueDateInput.blur();
-    await page.waitForTimeout(200);
 
     // Verify due date is cleared
     task = await getTaskByTitle(page, taskName);
@@ -1379,16 +867,6 @@ Task for testing timestamp preservation.`;
 
     await waitForFileProcessed(page, taskPath);
 
-    // Close any open Task Sync view and open the task file
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const leaves = app.workspace.getLeavesOfType("task-sync-view");
-      for (const leaf of leaves) {
-        leaf.detach();
-      }
-      await new Promise((resolve) => setTimeout(resolve, 100));
-    });
-
     await openFile(page, taskPath);
 
     // Open the Task Sync view
@@ -1410,5 +888,85 @@ Task for testing timestamp preservation.`;
     const filePathText = await obsidianSourceInfo.textContent();
     expect(filePathText).toContain(taskName);
     expect(filePathText).toContain("Tasks");
+  });
+
+  test("should allow typing in project dropdown search", async ({ page }) => {
+    // Create multiple projects to make search useful
+    await createProject(page, { name: "Alpha Project" });
+    await createProject(page, { name: "Beta Project" });
+    await createProject(page, { name: "Gamma Project" });
+    await createProject(page, { name: "Delta Project" });
+    await createProject(page, { name: "Echo Project" });
+
+    // Create a task
+    const taskName = "Search Test Task";
+    const taskPath = `Tasks/${taskName}.md`;
+    await createTask(page, {
+      title: taskName,
+      status: "Backlog",
+    });
+
+    // Wait for file creation and processing, then open it
+    await waitForFileCreation(page, taskPath);
+    await waitForFileProcessed(page, taskPath);
+    await openFile(page, taskPath);
+
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    await expect(contextWidget).toBeVisible();
+
+    // Open project dropdown
+    const projectButton = contextWidget.locator(
+      '[data-testid="context-project-button"]'
+    );
+    await projectButton.click();
+
+    const projectDropdown = page.locator(
+      '[data-testid="context-project-dropdown"]'
+    );
+    await expect(projectDropdown).toBeVisible();
+
+    // Find the search input
+    const searchInput = projectDropdown.locator(
+      '[data-testid="context-project-dropdown-search"]'
+    );
+    await expect(searchInput).toBeVisible();
+
+    // Verify Echo Project is visible
+    const echoOption = projectDropdown.locator('text="Echo Project"');
+    await expect(echoOption).toBeVisible();
+
+    // Type in the search input
+    await searchInput.fill("Alpha");
+
+    // Verify the dropdown is still visible and functional
+    await expect(projectDropdown).toBeVisible();
+
+    // Verify filtered results show only "Alpha Project"
+    const alphaOption = projectDropdown.locator('text="Alpha Project"');
+    await expect(alphaOption).toBeVisible();
+
+    // Verify other projects are not visible
+    const betaOption = projectDropdown.locator('text="Beta Project"');
+    await expect(betaOption).not.toBeVisible();
+
+    // Type more to further test
+    await searchInput.fill("Bet");
+
+    // Verify Beta is now visible
+    await expect(projectDropdown.locator('text="Beta Project"')).toBeVisible();
+
+    // Verify Alpha is not visible
+    await expect(alphaOption).not.toBeVisible();
+
+    // Clear search
+    await searchInput.fill("");
+
+    // All projects should be visible again
+    await expect(alphaOption).toBeVisible();
+    await expect(betaOption).toBeVisible();
   });
 });

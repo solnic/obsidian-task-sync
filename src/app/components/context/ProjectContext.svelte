@@ -22,7 +22,7 @@
   // Button ref for dropdown anchoring
   let areasButtonEl = $state<HTMLButtonElement | null>(null);
 
-  const areaOptions = $derived(
+  const areaOptions = $derived.by(() =>
     allAreas.map((a) => ({
       value: a.name,
       label: a.name,

@@ -12,6 +12,7 @@ import {
   waitForFileUpdate,
   waitForFileCreation,
   waitForFileContentToContain,
+  replaceFileFrontmatter,
 } from "../../../helpers/global";
 import {
   createTask,
@@ -22,52 +23,10 @@ test.describe("Commands / Task Refresh", () => {
   test("should rebuild all task data and fix missing properties", async ({
     page,
   }) => {
-    // Create a task first
-    const task = await createTask(page, {
-      title: "Test Refresh Task",
-      description: "A task to test the comprehensive refresh",
-      status: "Not Started",
-      priority: "Medium",
-      done: false,
+    await replaceFileFrontmatter(page, "Tasks/Sample Task 1.md", {
+      Title: "Sample Task 1",
+      Type: "Task"
     });
-
-    expect(task).toBeTruthy();
-    expect(task.title).toBe("Test Refresh Task");
-
-    // Verify task file was created
-    const taskExists = await fileExists(page, "Tasks/Test Refresh Task.md");
-    expect(taskExists).toBe(true);
-
-    // Read the initial file content
-    const initialContent = await readVaultFile(
-      page,
-      "Tasks/Test Refresh Task.md"
-    );
-    expect(initialContent).toBeTruthy();
-    expect(initialContent).toContain("Test Refresh Task");
-    expect(initialContent).toContain(
-      "A task to test the comprehensive refresh"
-    );
-
-    // Simulate file corruption by removing a required property
-    await page.evaluate(async (filePath) => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(filePath);
-
-      if (file) {
-        const content = await app.vault.read(file);
-        // Remove the "Status" property to simulate corruption
-        const corruptedContent = content.replace(/^Status:.*$/m, "");
-        await app.vault.modify(file, corruptedContent);
-      }
-    }, "Tasks/Test Refresh Task.md");
-
-    // Verify the property was removed
-    const corruptedContent = await readVaultFile(
-      page,
-      "Tasks/Test Refresh Task.md"
-    );
-    expect(corruptedContent).not.toContain("Status:");
 
     // Execute the comprehensive refresh command
     await executeCommand(page, "Refresh Tasks");
@@ -75,21 +34,18 @@ test.describe("Commands / Task Refresh", () => {
     // Wait for the refresh to complete by waiting for file to be updated
     await waitForFileUpdate(
       page,
-      "Tasks/Test Refresh Task.md",
+      "Tasks/Sample Task 1.md",
       "Status: Backlog"
     );
 
     // Verify the file was repaired
     const repairedContent = await readVaultFile(
       page,
-      "Tasks/Test Refresh Task.md"
+      "Tasks/Sample Task 1.md"
     );
     expect(repairedContent).toBeTruthy();
     expect(repairedContent).toContain("Status:");
-    expect(repairedContent).toContain("Test Refresh Task");
-    expect(repairedContent).toContain(
-      "A task to test the comprehensive refresh"
-    );
+    expect(repairedContent).toContain("Sample Task 1");
 
     // Verify the task still appears in the UI
     await openView(page, "task-sync-main");
@@ -106,7 +62,7 @@ test.describe("Commands / Task Refresh", () => {
 
     // Wait for tasks to load by checking for the task to appear
     await page.waitForSelector(
-      '.task-sync-item-title:has-text("Test Refresh Task")',
+      '.task-sync-item-title:has-text("Sample Task 1")',
       {
         timeout: 5000,
       }
@@ -114,7 +70,7 @@ test.describe("Commands / Task Refresh", () => {
 
     // Check that the task appears in the local tasks view
     const taskInUI = await page
-      .locator('.task-sync-item-title:has-text("Test Refresh Task")')
+      .locator('.task-sync-item-title:has-text("Sample Task 1")')
       .count();
     expect(taskInUI).toBe(1);
   });

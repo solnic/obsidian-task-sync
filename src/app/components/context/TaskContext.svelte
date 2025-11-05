@@ -81,7 +81,7 @@
     }));
   });
 
-  const projectOptions = $derived([
+  const projectOptions = $derived.by(() => [
     { value: "", label: "No project" },
     ...allProjects.map((p) => ({
       value: p.name,
@@ -89,7 +89,7 @@
     })),
   ]);
 
-  const areaOptions = $derived(
+  const areaOptions = $derived.by(() =>
     allAreas.map((a) => ({
       value: a.name,
       label: a.name,

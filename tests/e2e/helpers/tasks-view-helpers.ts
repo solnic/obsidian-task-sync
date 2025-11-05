@@ -173,18 +173,29 @@ export async function clearAllFilters(page: Page): Promise<void> {
   // First clear search filter if it exists
   await clearSearch(page);
 
-  // Look for clear filter buttons (×) and click them
-  const clearButtons = page.locator(".filter-clear-button");
-  const count = await clearButtons.count();
+  // Keep clicking clear buttons until none remain
+  // Re-query after each click to avoid stale element references
+  let attempts = 0;
+  const maxAttempts = 10;
 
-  for (let i = count - 1; i >= 0; i--) {
-    // Click from last to first to avoid index shifting issues
-    await clearButtons.nth(i).click();
-    // Wait a bit for the filter to be cleared
-    await page.waitForTimeout(200);
+  while (attempts < maxAttempts) {
+    const clearButtons = page.locator(".filter-clear-button");
+    const count = await clearButtons.count();
+
+    if (count === 0) {
+      break; // All filters cleared
+    }
+
+    // Click the first clear button (always index 0 since we re-query)
+    await clearButtons.first().click();
+
+    // Wait for the button to disappear
+    await page.waitForTimeout(300);
+
+    attempts++;
   }
 
-  // Wait for all filters to be cleared by checking that no clear buttons remain
+  // Final verification: no clear buttons should remain
   await page.waitForFunction(
     () => {
       const buttons = document.querySelectorAll(".filter-clear-button");

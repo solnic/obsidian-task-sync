@@ -390,6 +390,14 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
         createdAt: existingTask.createdAt,
         updatedAt: existingTask.updatedAt,
       };
+    } else {
+      // For new tasks, use file system timestamps instead of current time
+      // This ensures timestamps are stable across plugin reloads
+      task = {
+        ...task,
+        createdAt: new Date(file.stat.ctime),
+        updatedAt: new Date(file.stat.mtime),
+      };
     }
 
     return task;

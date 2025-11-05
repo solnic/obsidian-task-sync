@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
+  import { Scope } from "obsidian";
 
   interface DropdownItem {
     value: string;
@@ -41,6 +42,7 @@
   let searchInput: HTMLInputElement | null = $state(null);
   let searchQuery = $state("");
   let menuPosition = $state({ top: 0, left: 0 });
+  let dropdownScope: Scope | null = null;
 
   // Filter items based on search query
   let filteredItems = $derived(
@@ -80,7 +82,7 @@
 
   onDestroy(() => {
     document.removeEventListener("click", handleClickOutside);
-    document.removeEventListener("keydown", handleKeydown);
+    document.removeEventListener("keydown", handleKeydown, { capture: true });
 
     // Remove menu from document.body
     if (menuEl && menuEl.parentNode === document.body) {
@@ -161,6 +163,8 @@
         placeholder={searchPlaceholder}
         class="task-sync-selector-search-input"
         onkeydown={handleKeydown}
+        onkeyup={(e) => e.stopPropagation()}
+        onkeypress={(e) => e.stopPropagation()}
         data-testid="{testId}-search"
       />
     </div>

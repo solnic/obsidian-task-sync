@@ -29,13 +29,14 @@ import { createTask } from "../../helpers/entity-helpers";
 test.describe("TasksView Filtering and Sorting", () => {
   test.beforeEach(async ({ page }) => {
     // Create a diverse set of test tasks for filtering/sorting tests
+    // Note: Test vault already has pre-existing tasks and areas (Development, Personal)
     const testTasks = [
       {
         title: "High Priority Feature",
         category: "Feature",
         priority: "High",
         status: "In Progress",
-        areas: ["Development"],
+        areas: ["Development"], // Uses pre-existing Development area
       },
       {
         title: "Low Priority Bug",
@@ -56,7 +57,7 @@ test.describe("TasksView Filtering and Sorting", () => {
         category: "Bug",
         priority: "Critical",
         status: "In Progress",
-        areas: ["Development", "Testing"],
+        areas: ["Development", "Testing"], // Uses pre-existing Development area
       },
       {
         title: "Documentation Task",
@@ -82,7 +83,8 @@ test.describe("TasksView Filtering and Sorting", () => {
     const initialCount = initialTasks.length;
     expect(initialCount).toBeGreaterThan(0);
 
-    // Filter by Development area (which contains "High Priority Feature" and "Critical Bug Fix")
+    // Filter by Development area
+    // Should show: "High Priority Feature", "Critical Bug Fix" (from beforeEach), and "Sample Task 2" (pre-existing)
     await filterTasks(page, "area", "Development");
 
     // Wait for filtering to apply using condition-based wait
@@ -91,7 +93,7 @@ test.describe("TasksView Filtering and Sorting", () => {
         const taskItems = document.querySelectorAll(
           '[data-testid^="local-task-item-"]'
         );
-        return taskItems.length > 0 && taskItems.length <= 2; // Should have filtered results
+        return taskItems.length > 0 && taskItems.length <= 3; // Should have 3 filtered results
       },
       { timeout: 5000 }
     );
@@ -104,6 +106,7 @@ test.describe("TasksView Filtering and Sorting", () => {
     // Verify specific tasks are shown
     await getTaskItemByTitle(page, "High Priority Feature");
     await getTaskItemByTitle(page, "Critical Bug Fix");
+    await getTaskItemByTitle(page, "Sample Task 2");
 
     // Clear filter and verify all tasks are shown again
     await clearAllFilters(page);
@@ -222,13 +225,14 @@ test.describe("TasksView Filtering and Sorting", () => {
     const initialCount = initialTasks.length;
 
     // Apply area filter first (Development area)
+    // Should show: "High Priority Feature", "Critical Bug Fix" (from beforeEach), and "Sample Task 2" (pre-existing)
     await filterTasks(page, "area", "Development");
     await page.waitForFunction(
       () => {
         const taskItems = document.querySelectorAll(
           '[data-testid^="local-task-item-"]'
         );
-        return taskItems.length > 0 && taskItems.length <= 2; // Should have Development area tasks
+        return taskItems.length > 0 && taskItems.length <= 3; // Should have 3 Development area tasks
       },
       { timeout: 5000 }
     );
@@ -329,13 +333,13 @@ test.describe("TasksView Filtering and Sorting", () => {
     await createTestTask(page, {
       title: "Alpha Project Task",
       project: "Alpha Project",
-      area: "Development",
+      areas: ["Development"], // Uses pre-existing Development area
     });
 
     await createTestTask(page, {
       title: "Beta Project Task",
       project: "Beta Project",
-      area: "Testing",
+      areas: ["Testing"],
     });
 
     // Apply project filter to "Alpha Project"
@@ -416,9 +420,13 @@ test.describe("TasksView Filtering and Sorting", () => {
     await localTab.click();
     await expect(localTab).toHaveClass(/active/);
 
-    // Wait for tasks to load - there should be multiple tasks including our 3 new ones
+    // Wait for tasks to load
+    // Pre-existing tasks: Sample Task 1, Sample Task 2 (2)
+    // Tasks from beforeEach: 5 tasks
+    // Tasks created in this test: 3 tasks
+    // Total: 10 tasks
     await expect(page.locator('[data-testid^="local-task-item-"]')).toHaveCount(
-      8
+      10
     );
 
     // Apply project filter
@@ -445,7 +453,7 @@ test.describe("TasksView Filtering and Sorting", () => {
     // BUG: Filter should be cleared and all tasks should be visible
     // This test will fail until the clear functionality is fixed
     await expect(page.locator('[data-testid^="local-task-item-"]')).toHaveCount(
-      8
+      10
     );
 
     // Verify filter button is no longer active

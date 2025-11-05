@@ -19,6 +19,18 @@ export function projectReducer(
 ): ProjectStoreState {
   switch (action.type) {
     case "ADD_PROJECT":
+      // Check if project already exists to prevent duplicates
+      const exists = state.projects.some((p) => p.id === action.project.id);
+      if (exists) {
+        // Project already exists, update it instead
+        return {
+          ...state,
+          projects: state.projects.map((p) =>
+            p.id === action.project.id ? action.project : p
+          ),
+          lastSync: new Date(),
+        };
+      }
       return {
         ...state,
         projects: [...state.projects, action.project],
@@ -57,4 +69,3 @@ export function projectReducer(
       return state;
   }
 }
-

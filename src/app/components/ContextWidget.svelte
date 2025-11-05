@@ -23,26 +23,11 @@
   let { context, settings, host }: Props = $props();
 
   // Get projects and areas from stores
-  let allProjects = $state<Project[]>([]);
-  let allAreas = $state<Area[]>([]);
-  let allTasks = $state<Task[]>([]);
-
-  $effect(() => {
-    const unsubProjects = projectStore.subscribe((state) => {
-      allProjects = [...state.projects];
-    });
-    const unsubAreas = areaStore.subscribe((state) => {
-      allAreas = [...state.areas];
-    });
-    const unsubTasks = taskStore.subscribe((state) => {
-      allTasks = [...state.tasks];
-    });
-    return () => {
-      unsubProjects();
-      unsubAreas();
-      unsubTasks();
-    };
-  });
+  // Use $derived to read from stores without creating subscription loops
+  // Convert readonly arrays to mutable arrays for component props
+  let allProjects = $derived([...$projectStore.projects]);
+  let allAreas = $derived([...$areaStore.areas]);
+  let allTasks = $derived([...$taskStore.tasks]);
 
   // Get current entity from context (resolved by ContextService)
   // If it's a task, get the latest version from the task store

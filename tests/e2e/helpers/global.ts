@@ -750,13 +750,33 @@ export async function updateFileFrontmatter(
     async ({ path, updates }) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(path);
-      if (file) {
-        await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
-          Object.assign(frontmatter, updates);
-        });
-      }
+
+      await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
+        Object.assign(frontmatter, updates);
+      });
     },
     { path: filePath, updates }
+  );
+}
+
+/**
+ * Replace file frontmatter using Obsidian's processFrontMatter API
+ */
+export async function replaceFileFrontmatter(
+  page: Page,
+  filePath: string,
+  frontmatter: Record<string, any>
+): Promise<void> {
+  await page.evaluate(
+    async ({ path, frontmatter }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+
+      await app.fileManager.processFrontMatter(file, () => {
+        return frontmatter;
+      });
+    },
+    { path: filePath, frontmatter }
   );
 }
 
