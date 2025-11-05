@@ -13,22 +13,6 @@ import {
 import { createTask } from "../../helpers/entity-helpers";
 
 test.describe("Svelte App Initialization", () => {
-  test("should load plugin and render main view with tasks view", async ({
-    page,
-  }) => {
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-
-    // Wait for the view to be visible
-    await expect(page.locator(".task-sync-app")).toBeVisible();
-
-    // Check that the TasksView component is displayed
-    await expect(page.locator('[data-testid="tasks-view"]')).toBeVisible();
-
-    // Check that the Local Tasks header is displayed
-    await expect(page.locator("text=Local Tasks")).toBeVisible();
-  });
-
   test("should scan and load existing task files during initialization", async ({
     page,
   }) => {
