@@ -83,8 +83,8 @@
       .setDesc("Default task type for imported reminders")
       .addDropdown((dropdown) => {
         // Add task types from settings
-        settings.taskTypes.forEach((taskType) => {
-          dropdown.addOption(taskType.name, taskType.name);
+        settings.taskCategories.forEach((taskCategory) => {
+          dropdown.addOption(taskCategory.name, taskCategory.name);
         });
 
         dropdown

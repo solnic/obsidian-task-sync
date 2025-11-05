@@ -314,9 +314,11 @@ export class TaskTodoMarkdownProcessor {
    * Get color for category from settings
    */
   private getCategoryColor(category: string): string | null {
-    const taskType = this.settings.taskTypes.find((t) => t.name === category);
-    if (taskType) {
-      return this.getColorValue(taskType.color);
+    const taskCategory = this.settings.taskCategories.find(
+      (t) => t.name === category
+    );
+    if (taskCategory) {
+      return this.getColorValue(taskCategory.color);
     }
 
     // Default colors for common categories

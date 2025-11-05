@@ -54,7 +54,7 @@
   );
 
   const categoryOptions = $derived(
-    settings?.taskTypes?.map((t: any) => ({
+    settings?.taskCategories?.map((t: any) => ({
       value: t.name,
       label: t.name,
       customContent: `<span class="task-sync-color-dot" style="background-color: ${t.color}"></span><span>${t.name}</span>`,
@@ -239,7 +239,7 @@
 
     const category = task.category;
     if (category) {
-      const categoryConfig = settings?.taskTypes?.find(
+      const categoryConfig = settings?.taskCategories?.find(
         (t: any) => t.name === category
       );
       if (categoryConfig) {
@@ -255,7 +255,7 @@
       }
     } else {
       const label = document.createElement("span");
-      label.textContent = "Set type";
+      label.textContent = "Set category";
       label.style.color = "var(--text-muted)";
       categoryButtonEl.appendChild(label);
     }
@@ -367,7 +367,7 @@
         onclick={() => (showCategoryDropdown = true)}
         class="task-sync-property-button mod-minimal"
         data-testid="context-category-button"
-        aria-label="Change type"
+        aria-label="Change category"
       ></button>
     </li>
     <li>

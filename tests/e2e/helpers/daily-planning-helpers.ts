@@ -263,14 +263,14 @@ export async function completeDailyPlanningWorkflow(
 export async function createMultipleTestTasks(
   page: ExtendedPage,
   count: number,
-  taskType: "yesterday" | "today" | "unscheduled" = "today"
+  taskCategory: "yesterday" | "today" | "unscheduled" = "today"
 ): Promise<any[]> {
   const tasks: any[] = [];
 
   for (let i = 1; i <= count; i++) {
     let task: any;
 
-    switch (taskType) {
+    switch (taskCategory) {
       case "yesterday":
         task = await createYesterdayTask(page, `Yesterday Task ${i}`);
         break;

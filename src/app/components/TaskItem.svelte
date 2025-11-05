@@ -90,7 +90,7 @@
 
     switch (type) {
       case "category":
-        return settings.taskTypes.find((t) => t.name === text)?.color;
+        return settings.taskCategories.find((t) => t.name === text)?.color;
       case "status":
         return settings.taskStatuses.find((s) => s.name === text)?.color;
       case "priority":

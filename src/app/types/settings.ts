@@ -109,7 +109,7 @@ export interface TaskSyncSettings {
   autoGenerateBases: boolean;
   autoUpdateBaseViews: boolean;
   // Legacy properties for backward compatibility (will be removed in future)
-  taskTypes: TaskType[];
+  taskCategories: TaskType[];
   taskPriorities: TaskPriority[];
   taskStatuses: TaskStatus[];
   // Individual area/project bases
@@ -167,7 +167,7 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
   autoGenerateBases: true,
   autoUpdateBaseViews: true,
   // Legacy properties for backward compatibility (will be removed in future)
-  taskTypes: [
+  taskCategories: [
     { name: "Task", color: "#3b82f6" },
     { name: "Bug", color: "#ef4444" },
     { name: "Feature", color: "#10b981" },

@@ -365,26 +365,26 @@ export function generateTasksBase(
         },
       },
       // All task types views
-      ...settings.taskTypes.map((taskType) => ({
+      ...settings.taskCategories.map((taskCategory) => ({
         type: "table" as const,
-        name: `All ${pluralize(taskType.name)}`,
+        name: `All ${pluralize(taskCategory.name)}`,
         filters: FilterBuilder.and(
           FilterBuilder.inFolder(settings.tasksFolder),
           FilterBuilder.notDone(),
-          FilterBuilder.ofCategory(taskType.name),
+          FilterBuilder.ofCategory(taskCategory.name),
           FilterBuilder.noParentTask()
         ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
         sort: resolveSortConfig(SORT_CONFIGS.TASK),
       })),
       // Priority-based views for each type
-      ...settings.taskTypes.flatMap((taskType) =>
+      ...settings.taskCategories.flatMap((taskCategory) =>
         settings.taskPriorities.map((priority) => ({
           type: "table" as const,
-          name: `${pluralize(taskType.name)} • ${priority.name} priority`,
+          name: `${pluralize(taskCategory.name)} • ${priority.name} priority`,
           filters: FilterBuilder.and(
             FilterBuilder.inFolder(settings.tasksFolder),
-            FilterBuilder.ofCategory(taskType.name),
+            FilterBuilder.ofCategory(taskCategory.name),
             FilterBuilder.withPriority(priority.name)
           ).toFilterObject(),
           order: resolveViewOrder(VIEW_ORDERS.TASKS_TYPE),
@@ -433,29 +433,29 @@ export function generateAreaBase(
         },
       },
       // All task types views
-      ...settings.taskTypes.map((taskType) => ({
+      ...settings.taskCategories.map((taskCategory) => ({
         type: "table" as const,
-        name: `All ${pluralize(taskType.name)}`,
+        name: `All ${pluralize(taskCategory.name)}`,
         filters: FilterBuilder.and(
           FilterBuilder.inFolder(settings.tasksFolder),
           FilterBuilder.notDone(),
           FilterBuilder.inArea(area.name),
-          FilterBuilder.ofCategory(taskType.name),
+          FilterBuilder.ofCategory(taskCategory.name),
           FilterBuilder.noParentTask()
         ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.AREA_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.AREA),
       })),
       // Priority-based views for each type
-      ...settings.taskTypes.flatMap((taskType) =>
+      ...settings.taskCategories.flatMap((taskCategory) =>
         settings.taskPriorities.map((priority) => ({
           type: "table" as const,
-          name: `${pluralize(taskType.name)} • ${priority.name} priority`,
+          name: `${pluralize(taskCategory.name)} • ${priority.name} priority`,
           filters: FilterBuilder.and(
             FilterBuilder.inFolder(settings.tasksFolder),
             FilterBuilder.notDone(),
             FilterBuilder.inArea(area.name),
-            FilterBuilder.ofCategory(taskType.name),
+            FilterBuilder.ofCategory(taskCategory.name),
             FilterBuilder.withPriority(priority.name),
             FilterBuilder.noParentTask()
           ).toFilterObject(),
@@ -506,29 +506,29 @@ export function generateProjectBase(
         },
       },
       // All task types views
-      ...settings.taskTypes.map((taskType) => ({
+      ...settings.taskCategories.map((taskCategory) => ({
         type: "table" as const,
-        name: `All ${pluralize(taskType.name)}`,
+        name: `All ${pluralize(taskCategory.name)}`,
         filters: FilterBuilder.and(
           FilterBuilder.inFolder(settings.tasksFolder),
           FilterBuilder.notDone(),
           FilterBuilder.inProject(project.name, project.path),
-          FilterBuilder.ofCategory(taskType.name),
+          FilterBuilder.ofCategory(taskCategory.name),
           FilterBuilder.noParentTask()
         ).toFilterObject(),
         order: resolveViewOrder(VIEW_ORDERS.PROJECT_MAIN),
         sort: resolveSortConfig(SORT_CONFIGS.PROJECT),
       })),
       // Priority-based views for each type
-      ...settings.taskTypes.flatMap((taskType) =>
+      ...settings.taskCategories.flatMap((taskCategory) =>
         settings.taskPriorities.map((priority) => ({
           type: "table" as const,
-          name: `${pluralize(taskType.name)} • ${priority.name} priority`,
+          name: `${pluralize(taskCategory.name)} • ${priority.name} priority`,
           filters: FilterBuilder.and(
             FilterBuilder.inFolder(settings.tasksFolder),
             FilterBuilder.notDone(),
             FilterBuilder.inProject(project.name, project.path),
-            FilterBuilder.ofCategory(taskType.name),
+            FilterBuilder.ofCategory(taskCategory.name),
             FilterBuilder.withPriority(priority.name),
             FilterBuilder.noParentTask()
           ).toFilterObject(),

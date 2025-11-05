@@ -12,7 +12,7 @@
   "tasksBaseFile": "Tasks.base",
   "autoGenerateBases": true,
   "autoUpdateBaseViews": true,
-  "taskTypes": [
+  "taskCategories": [
     {
       "name": "Task",
       "color": "#3b82f6"

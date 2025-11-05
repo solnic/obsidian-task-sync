@@ -111,7 +111,7 @@ test.describe("Base Synchronization", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        plugin.settings.taskTypes.push({ name: "Epic", color: "orange" });
+        plugin.settings.taskCategories.push({ name: "Epic", color: "orange" });
         await plugin.saveSettings();
         // Trigger sync
         const extension = plugin.host.getExtensionById("obsidian");
@@ -219,11 +219,11 @@ test.describe("Base Synchronization", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        const choreIndex = plugin.settings.taskTypes.findIndex(
+        const choreIndex = plugin.settings.taskCategories.findIndex(
           (t: any) => t.name === "Chore"
         );
         if (choreIndex > -1) {
-          plugin.settings.taskTypes.splice(choreIndex, 1);
+          plugin.settings.taskCategories.splice(choreIndex, 1);
         }
         await plugin.saveSettings();
         // Trigger sync
@@ -487,7 +487,7 @@ test.describe("Base Synchronization", () => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       if (plugin) {
-        plugin.settings.taskTypes.push(
+        plugin.settings.taskCategories.push(
           { name: "Documentation", color: "yellow" },
           { name: "Review", color: "pink" }
         );

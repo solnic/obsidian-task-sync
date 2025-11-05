@@ -163,8 +163,8 @@ export namespace GitHub {
       labels: Array<{ name: string; color?: string }>
     ): string {
       // Get available categories from user's configured task types
-      const availableCategories = this.settings.taskTypes.map(
-        (taskType) => taskType.name
+      const availableCategories = this.settings.taskCategories.map(
+        (taskCategory) => taskCategory.name
       );
 
       for (const label of labels) {

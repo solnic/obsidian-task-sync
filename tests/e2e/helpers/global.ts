@@ -1396,7 +1396,7 @@ export async function addTaskCategory(
     ({ categoryName }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return plugin.settings.taskTypes.some(
+      return plugin.settings.taskCategories.some(
         (type: any) => type.name === categoryName
       );
     },
@@ -1461,7 +1461,7 @@ export async function deleteTaskCategory(
     ({ categoryName }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return !plugin.settings.taskTypes.some(
+      return !plugin.settings.taskCategories.some(
         (type: any) => type.name === categoryName
       );
     },
