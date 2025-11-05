@@ -7,6 +7,7 @@
   import type { Task, Project, Area } from "../../core/entities";
   import Dropdown from "../Dropdown.svelte";
   import { Tasks } from "../../entities/Tasks";
+  import SourceContext from "./source/SourceContext.svelte";
 
   interface Props {
     task: Task;
@@ -442,6 +443,9 @@
       />
     </li>
   </ul>
+
+  <!-- Source information -->
+  <SourceContext {task} />
 
   <!-- Dropdowns -->
   {#if showStatusDropdown && statusButtonEl}

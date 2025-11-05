@@ -1199,4 +1199,55 @@ Task for testing timestamp preservation.`;
     task = await getTaskByTitle(page, taskName);
     expect(task.dueDate).toBeUndefined();
   });
+
+  test("should display source information in context widget", async ({
+    page,
+  }) => {
+    // Create a task
+    const taskName = "Source Info Test Task";
+    const taskPath = `Tasks/${taskName}.md`;
+    await createTask(page, {
+      title: taskName,
+      description: "Testing source info display",
+      status: "Backlog",
+      priority: "Low",
+      category: "Task",
+      project: "",
+      areas: [],
+    });
+
+    await waitForFileProcessed(page, taskPath);
+
+    // Close any open Task Sync view and open the task file
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const leaves = app.workspace.getLeavesOfType("task-sync-view");
+      for (const leaf of leaves) {
+        leaf.detach();
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    await openFile(page, taskPath);
+
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    await expect(contextWidget).toBeVisible();
+
+    // Verify source context is visible
+    const sourceContext = contextWidget.locator(".source-context");
+    await expect(sourceContext).toBeVisible();
+
+    // Verify it shows Obsidian as the source
+    const obsidianSourceInfo = sourceContext.locator(".obsidian-source-info");
+    await expect(obsidianSourceInfo).toBeVisible();
+
+    // Verify it shows the file path
+    const filePathText = await obsidianSourceInfo.textContent();
+    expect(filePathText).toContain(taskName);
+    expect(filePathText).toContain("Tasks");
+  });
 });
