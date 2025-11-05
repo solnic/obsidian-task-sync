@@ -113,6 +113,113 @@ Another sample task with areas.`;
     await expect(page.locator("text=Development")).toBeVisible(); // Area
   });
 
+  test("should scan and load existing project files during initialization", async ({
+    page,
+  }) => {
+    // Create sample project files before plugin loads
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Create Projects folder if it doesn't exist
+      const projectsFolder = app.vault.getAbstractFileByPath("Projects");
+      if (!projectsFolder) {
+        await app.vault.createFolder("Projects");
+      }
+
+      // Create sample project files with proper frontmatter
+      const project1Content = `---
+Name: Sample Project 1
+Type: Project
+Areas: ["Development"]
+---
+
+This is a sample project for testing project scanning.`;
+
+      const project2Content = `---
+Name: Sample Project 2
+Type: Project
+---
+
+Another sample project without areas.`;
+
+      await app.vault.create("Projects/Sample Project 1.md", project1Content);
+      await app.vault.create("Projects/Sample Project 2.md", project2Content);
+    });
+
+    // Now reload the plugin to trigger project scanning
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Disable and re-enable plugin to trigger fresh initialization
+      await app.plugins.disablePlugin("obsidian-task-sync");
+      await app.plugins.enablePlugin("obsidian-task-sync");
+    });
+
+    // Wait for plugin to be fully initialized
+    await page.waitForFunction(
+      () => {
+        const plugin = (window as any).app.plugins.plugins[
+          "obsidian-task-sync"
+        ];
+        return (
+          plugin &&
+          plugin.settings &&
+          (window as any).app.plugins.isEnabled("obsidian-task-sync")
+        );
+      },
+      undefined,
+      { timeout: 5000 }
+    );
+
+    // Wait for projects to be loaded into the store
+    await page.waitForFunction(
+      () => {
+        const plugin = (window as any).app.plugins.plugins[
+          "obsidian-task-sync"
+        ];
+        if (!plugin || !plugin.stores || !plugin.stores.projectStore) {
+          return false;
+        }
+
+        const projectStore = plugin.stores.projectStore;
+        let projectCount = 0;
+        projectStore.subscribe((state: any) => {
+          projectCount = state.projects.length;
+        })();
+
+        return projectCount >= 2;
+      },
+      undefined,
+      { timeout: 5000 }
+    );
+
+    // Verify projects are loaded in the store
+    const projectsLoaded = await page.evaluate(() => {
+      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+      const projectStore = plugin.stores.projectStore;
+
+      // Get current value from the store using subscribe
+      let projects: any[] = [];
+      projectStore.subscribe((state: any) => {
+        projects = state.projects;
+      })();
+
+      return {
+        count: projects.length,
+        project1: projects.find((p: any) => p.name === "Sample Project 1"),
+        project2: projects.find((p: any) => p.name === "Sample Project 2"),
+      };
+    });
+
+    // Verify both projects were scanned and loaded
+    expect(projectsLoaded.count).toBeGreaterThanOrEqual(2);
+    expect(projectsLoaded.project1).toBeTruthy();
+    expect(projectsLoaded.project1.name).toBe("Sample Project 1");
+    expect(projectsLoaded.project1.areas).toContain("Development");
+    expect(projectsLoaded.project2).toBeTruthy();
+    expect(projectsLoaded.project2.name).toBe("Sample Project 2");
+  });
+
   test("should show plugin is loaded in ribbon", async ({ page }) => {
     // Look for the Task Sync ribbon icon (checkbox icon)
     const ribbonIcon = page.locator(

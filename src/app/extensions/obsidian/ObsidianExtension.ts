@@ -306,13 +306,27 @@ export class ObsidianExtension implements Extension {
     }
 
     try {
-      console.log("Loading ObsidianExtension - scanning existing tasks...");
+      console.log("Loading ObsidianExtension - scanning existing entities...");
 
       // Refresh tasks from ObsidianTaskSource via TaskSourceManager
       // This runs after Obsidian's layout is ready and vault is fully loaded
       // Use refreshSource instead of loadSource to trigger SyncManager for cross-source tasks
       await taskSourceManager.refreshSource("obsidian");
       console.log("Tasks refreshed from ObsidianTaskSource");
+
+      // Scan and load existing projects
+      console.log("Scanning existing projects...");
+      const projects = await this.projectOperations.scanExistingProjects();
+      console.log(`Found ${projects.length} projects in vault`);
+
+      // Add each project to the store
+      for (const project of projects) {
+        projectStore.dispatch({
+          type: "ADD_PROJECT",
+          project,
+        });
+      }
+      console.log(`Loaded ${projects.length} projects into store`);
 
       // Set up vault event listeners for file deletions
       this.setupVaultEventListeners();
