@@ -220,6 +220,111 @@ Another sample project without areas.`;
     expect(projectsLoaded.project2.name).toBe("Sample Project 2");
   });
 
+  test("should scan and load existing area files during initialization", async ({
+    page,
+  }) => {
+    // Create sample area files before plugin loads
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Create Areas folder if it doesn't exist
+      const areasFolder = app.vault.getAbstractFileByPath("Areas");
+      if (!areasFolder) {
+        await app.vault.createFolder("Areas");
+      }
+
+      // Create sample area files with proper frontmatter
+      const area1Content = `---
+Name: Development
+Type: Area
+---
+
+This is the development area for testing area scanning.`;
+
+      const area2Content = `---
+Name: Personal
+Type: Area
+---
+
+Personal area without additional metadata.`;
+
+      await app.vault.create("Areas/Development.md", area1Content);
+      await app.vault.create("Areas/Personal.md", area2Content);
+    });
+
+    // Now reload the plugin to trigger area scanning
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Disable and re-enable plugin to trigger fresh initialization
+      await app.plugins.disablePlugin("obsidian-task-sync");
+      await app.plugins.enablePlugin("obsidian-task-sync");
+    });
+
+    // Wait for plugin to be fully initialized
+    await page.waitForFunction(
+      () => {
+        const plugin = (window as any).app.plugins.plugins[
+          "obsidian-task-sync"
+        ];
+        return (
+          plugin &&
+          plugin.settings &&
+          (window as any).app.plugins.isEnabled("obsidian-task-sync")
+        );
+      },
+      undefined,
+      { timeout: 5000 }
+    );
+
+    // Wait for areas to be loaded into the store
+    await page.waitForFunction(
+      () => {
+        const plugin = (window as any).app.plugins.plugins[
+          "obsidian-task-sync"
+        ];
+        if (!plugin || !plugin.stores || !plugin.stores.areaStore) {
+          return false;
+        }
+
+        const areaStore = plugin.stores.areaStore;
+        let areaCount = 0;
+        areaStore.subscribe((state: any) => {
+          areaCount = state.areas.length;
+        })();
+
+        return areaCount >= 2;
+      },
+      undefined,
+      { timeout: 5000 }
+    );
+
+    // Verify areas are loaded in the store
+    const areasLoaded = await page.evaluate(() => {
+      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+      const areaStore = plugin.stores.areaStore;
+
+      // Get current value from the store using subscribe
+      let areas: any[] = [];
+      areaStore.subscribe((state: any) => {
+        areas = state.areas;
+      })();
+
+      return {
+        count: areas.length,
+        area1: areas.find((a: any) => a.name === "Development"),
+        area2: areas.find((a: any) => a.name === "Personal"),
+      };
+    });
+
+    // Verify both areas were scanned and loaded
+    expect(areasLoaded.count).toBeGreaterThanOrEqual(2);
+    expect(areasLoaded.area1).toBeTruthy();
+    expect(areasLoaded.area1.name).toBe("Development");
+    expect(areasLoaded.area2).toBeTruthy();
+    expect(areasLoaded.area2.name).toBe("Personal");
+  });
+
   test("should show plugin is loaded in ribbon", async ({ page }) => {
     // Look for the Task Sync ribbon icon (checkbox icon)
     const ribbonIcon = page.locator(

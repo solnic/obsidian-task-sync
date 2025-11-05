@@ -328,6 +328,20 @@ export class ObsidianExtension implements Extension {
       }
       console.log(`Loaded ${projects.length} projects into store`);
 
+      // Scan and load existing areas
+      console.log("Scanning existing areas...");
+      const areas = await this.areaOperations.scanExistingAreas();
+      console.log(`Found ${areas.length} areas in vault`);
+
+      // Add each area to the store
+      for (const area of areas) {
+        areaStore.dispatch({
+          type: "ADD_AREA",
+          area,
+        });
+      }
+      console.log(`Loaded ${areas.length} areas into store`);
+
       // Set up vault event listeners for file deletions
       this.setupVaultEventListeners();
 

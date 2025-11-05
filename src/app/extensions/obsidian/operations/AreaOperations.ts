@@ -3,18 +3,24 @@
  * Reactive note manager that responds to area domain events by managing corresponding Obsidian notes
  */
 
-import { App } from "obsidian";
+import { App, TFile } from "obsidian";
+import { get } from "svelte/store";
 import { Area } from "../../../core/entities";
 import { ObsidianEntityOperations } from "./EntityOperations";
 import { PROPERTY_REGISTRY } from "../utils/PropertyRegistry";
 import type { TaskSyncSettings } from "../../../types/settings";
 import type { TypeNote } from "../../../core/type-note/TypeNote";
+import { areaStore } from "../../../stores/areaStore";
+import { Areas } from "../../../entities/Areas";
+import { EntitiesOperations } from "../../../core/entities-base";
 
 export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
   private typeNote?: TypeNote;
+  private areaOperations: EntitiesOperations;
 
-  constructor(app: App, settings: TaskSyncSettings) {
+  constructor(app: App, private settings: TaskSyncSettings) {
     super(app, settings.areasFolder);
+    this.areaOperations = new Areas.Operations(settings);
   }
 
   /**
@@ -110,5 +116,167 @@ export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
       tags: area.tags || [],
       description: area.description || "",
     };
+  }
+
+  /**
+   * Scan existing area files in the vault
+   * Returns array of Area entities parsed from markdown files
+   */
+  async scanExistingAreas(): Promise<readonly Area[]> {
+    console.log(`Scanning areas folder: ${this.folder}`);
+    const folder = this.app.vault.getFolderByPath(this.folder);
+
+    if (!folder) {
+      console.warn(
+        `Areas folder '${this.folder}' does not exist, returning empty array`
+      );
+      return [];
+    }
+
+    const areaFiles = folder.children
+      .filter((child) => child instanceof TFile && child.extension === "md")
+      .map((child) => child as TFile);
+
+    console.log(
+      `Found ${areaFiles.length} .md files in areas folder: ${areaFiles.map(
+        (f) => f.path
+      )}`
+    );
+
+    const areas: Area[] = [];
+    const existingAreas = get(areaStore).areas;
+
+    for (const file of areaFiles) {
+      try {
+        console.log(`Parsing area file: ${file.path}`);
+        const areaData = await this.parseFileToAreaData(
+          file,
+          undefined,
+          existingAreas
+        );
+        if (areaData) {
+          console.log(`Successfully parsed area: ${areaData.name}`);
+          areas.push(areaData);
+        } else {
+          console.log(`Skipped file (not an area): ${file.path}`);
+        }
+      } catch (error) {
+        console.error(`Failed to parse area file ${file.path}:`, error);
+      }
+    }
+
+    console.log(`Scan complete. Found ${areas.length} valid areas`);
+    return areas;
+  }
+
+  /**
+   * Parse a file to Area entity data
+   * Returns null if file is not a valid area
+   */
+  async parseFileToAreaData(
+    file: TFile,
+    cache?: any,
+    existingAreas?: readonly Area[]
+  ): Promise<Area | null> {
+    const frontMatter =
+      cache?.frontmatter || (await this.waitForMetadataCache(file));
+
+    if (frontMatter.Type !== "Area") {
+      return null;
+    }
+
+    const existingArea = existingAreas?.find(
+      (a) => a.source.keys.obsidian === file.path
+    );
+
+    const areaData: Omit<Area, "id" | "createdAt" | "updatedAt"> = {
+      name: frontMatter.Name || file.basename,
+      description: frontMatter.Description || "",
+      tags: Array.isArray(frontMatter.Tags) ? frontMatter.Tags : [],
+      source: {
+        extension: "obsidian",
+        keys: {
+          obsidian: file.path,
+        },
+      },
+    };
+
+    if (existingArea) {
+      return {
+        ...this.areaOperations.buildEntity(areaData),
+        id: existingArea.id,
+        createdAt: existingArea.createdAt,
+      } as Area;
+    }
+
+    return this.areaOperations.buildEntity(areaData) as Area;
+  }
+
+  /**
+   * Wait for metadata cache to have front-matter for the given file
+   * Uses event-driven approach with fallback polling for better performance
+   */
+  private async waitForMetadataCache(file: TFile): Promise<any> {
+    // Helper function to check if frontmatter is complete (has non-null values)
+    const isCompleteFrontmatter = (frontmatter: any): boolean => {
+      if (!frontmatter || Object.keys(frontmatter).length === 0) {
+        return false;
+      }
+      // Check if essential properties have non-null values
+      // For areas, we expect at least Name and Type to have values
+      if (frontmatter.Type === "Area") {
+        return frontmatter.Name !== null && frontmatter.Name !== undefined;
+      }
+      // For other entity types, just check that we have some non-null values
+      return Object.values(frontmatter).some(
+        (value) => value !== null && value !== undefined
+      );
+    };
+
+    // First check if metadata is already available and complete
+    const existingCache = this.app.metadataCache.getFileCache(file);
+    if (
+      existingCache?.frontmatter &&
+      isCompleteFrontmatter(existingCache.frontmatter)
+    ) {
+      return existingCache.frontmatter;
+    }
+
+    // Use event-driven approach with timeout
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.app.metadataCache.off("changed", onMetadataChanged);
+        reject(new Error(`Metadata cache timeout for file: ${file.path}`));
+      }, 5000); // 5 second timeout
+
+      const onMetadataChanged = (
+        changedFile: TFile,
+        _data: string,
+        cache: any
+      ) => {
+        if (
+          changedFile.path === file.path &&
+          cache?.frontmatter &&
+          isCompleteFrontmatter(cache.frontmatter)
+        ) {
+          clearTimeout(timeout);
+          this.app.metadataCache.off("changed", onMetadataChanged);
+          resolve(cache.frontmatter);
+        }
+      };
+
+      // Listen for metadata changes
+      this.app.metadataCache.on("changed", onMetadataChanged);
+
+      // Fallback: check again after a short delay in case the event was missed
+      setTimeout(() => {
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (cache?.frontmatter && isCompleteFrontmatter(cache.frontmatter)) {
+          clearTimeout(timeout);
+          this.app.metadataCache.off("changed", onMetadataChanged);
+          resolve(cache.frontmatter);
+        }
+      }, 100);
+    });
   }
 }
