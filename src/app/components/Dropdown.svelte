@@ -71,14 +71,16 @@
       searchInput.focus();
     }
 
-    // Add click outside listener
+    // Add click outside listener and keydown listener
     setTimeout(() => {
       document.addEventListener("click", handleClickOutside);
+      document.addEventListener("keydown", handleKeydown);
     }, 0);
   });
 
   onDestroy(() => {
     document.removeEventListener("click", handleClickOutside);
+    document.removeEventListener("keydown", handleKeydown);
 
     // Remove menu from document.body
     if (menuEl && menuEl.parentNode === document.body) {

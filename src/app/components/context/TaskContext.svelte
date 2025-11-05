@@ -120,7 +120,18 @@
       ...task,
       areas: newAreas,
     });
-    showAreasDropdown = false;
+    // Don't close dropdown - allow multi-select
+  }
+
+  async function handleRemoveArea(areaToRemove: string) {
+    const taskOps = new Tasks.Operations(settings);
+    const currentAreas = task.areas || [];
+    const newAreas = currentAreas.filter((a) => a !== areaToRemove);
+
+    await taskOps.update({
+      ...task,
+      areas: newAreas,
+    });
   }
 
   // Update button content with color dots
@@ -226,12 +237,62 @@
     areasButtonEl.innerHTML = "";
 
     const areas = task.areas || [];
-    const label = document.createElement("span");
-    label.textContent = areas.length > 0 ? areas.join(", ") : "Add to area";
+
     if (areas.length === 0) {
+      const label = document.createElement("span");
+      label.textContent = "Add to area";
       label.style.color = "var(--text-muted)";
+      areasButtonEl.appendChild(label);
+    } else {
+      // Create container for badges
+      const container = document.createElement("div");
+      container.style.display = "flex";
+      container.style.flexWrap = "wrap";
+      container.style.gap = "4px";
+      container.style.alignItems = "center";
+
+      areas.forEach((area) => {
+        // Create badge
+        const badge = document.createElement("span");
+        badge.className = "task-sync-text-badge";
+        badge.style.display = "inline-flex";
+        badge.style.alignItems = "center";
+        badge.style.gap = "4px";
+        badge.style.paddingRight = "4px";
+
+        // Area name
+        const areaName = document.createElement("span");
+        areaName.textContent = area;
+        badge.appendChild(areaName);
+
+        // Remove button
+        const removeBtn = document.createElement("span");
+        removeBtn.textContent = "×";
+        removeBtn.style.cursor = "pointer";
+        removeBtn.style.fontSize = "14px";
+        removeBtn.style.fontWeight = "bold";
+        removeBtn.style.opacity = "0.7";
+        removeBtn.style.transition = "opacity 0.2s";
+        removeBtn.title = `Remove ${area}`;
+
+        removeBtn.onmouseenter = () => {
+          removeBtn.style.opacity = "1";
+        };
+        removeBtn.onmouseleave = () => {
+          removeBtn.style.opacity = "0.7";
+        };
+
+        removeBtn.onclick = async (e) => {
+          e.stopPropagation();
+          await handleRemoveArea(area);
+        };
+
+        badge.appendChild(removeBtn);
+        container.appendChild(badge);
+      });
+
+      areasButtonEl.appendChild(container);
     }
-    areasButtonEl.appendChild(label);
   }
 
   // Update buttons when task changes
@@ -360,11 +421,12 @@
     <Dropdown
       anchor={areasButtonEl}
       items={areaOptions}
-      selectedValue={task.areas?.[0]}
+      selectedValues={task.areas || []}
       onSelect={handleAreasSelect}
       onClose={() => (showAreasDropdown = false)}
       searchable={true}
       searchPlaceholder="Search areas..."
+      keepOpenOnSelect={true}
       testId="context-areas-dropdown"
     />
   {/if}

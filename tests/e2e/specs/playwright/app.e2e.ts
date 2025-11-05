@@ -907,8 +907,11 @@ Task for testing timestamp preservation.`;
     // Click "Widget Test Area" option to add it
     await areasDropdown.locator('text="Widget Test Area"').click();
 
-    // Wait for dropdown to close and button to update
+    // Dropdown stays open for multi-select - close it manually
+    await page.keyboard.press("Escape");
     await expect(areasDropdown).not.toBeVisible();
+
+    // Button should now show the area as a badge
     await expect(areasButton).toContainText("Widget Test Area");
 
     // Wait for file to be updated with new area
@@ -922,5 +925,161 @@ Task for testing timestamp preservation.`;
     expect(updatedTask.category).toBe("Bug");
     expect(updatedTask.project).toBe("Widget Test Project");
     expect(updatedTask.areas).toContain("Widget Test Area");
+  });
+
+  test("should support multi-select areas with badges and remove buttons", async ({
+    page,
+  }) => {
+    // Create multiple areas for testing
+    await createArea(page, {
+      name: "Area One",
+      description: "First test area",
+    });
+
+    await createArea(page, {
+      name: "Area Two",
+      description: "Second test area",
+    });
+
+    await createArea(page, {
+      name: "Area Three",
+      description: "Third test area",
+    });
+
+    // Create a task with no areas initially
+    const taskName = "Multi-Area Test Task";
+    const taskPath = `Tasks/${taskName}.md`;
+    await createTask(page, {
+      title: taskName,
+      description: "Testing multi-select areas",
+      status: "Backlog",
+      priority: "Low",
+      category: "Task",
+      project: "",
+      areas: [],
+    });
+
+    await waitForFileProcessed(page, taskPath);
+
+    // Close any open Task Sync view and open the task file
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const leaves = app.workspace.getLeavesOfType("task-sync-view");
+      for (const leaf of leaves) {
+        leaf.detach();
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    await openFile(page, taskPath);
+
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    await expect(contextWidget).toBeVisible();
+
+    const areasButton = contextWidget.locator(
+      '[data-testid="context-areas-button"]'
+    );
+
+    // Initially should show "Add to area"
+    await expect(areasButton).toContainText("Add to area");
+
+    // Open areas dropdown
+    await areasButton.click();
+    const areasDropdown = page.locator(
+      '[data-testid="context-areas-dropdown"]'
+    );
+    await expect(areasDropdown).toBeVisible();
+
+    // Add first area
+    await areasDropdown.locator('text="Area One"').click();
+    await expect(areasButton).toContainText("Area One");
+
+    // Dropdown should still be open (multi-select)
+    await expect(areasDropdown).toBeVisible();
+
+    // Add second area
+    await areasDropdown.locator('text="Area Two"').click();
+    await expect(areasButton).toContainText("Area Two");
+
+    // Dropdown should still be open
+    await expect(areasDropdown).toBeVisible();
+
+    // Add third area
+    await areasDropdown.locator('text="Area Three"').click();
+    await expect(areasButton).toContainText("Area Three");
+
+    // Close dropdown
+    await page.keyboard.press("Escape");
+    await expect(areasDropdown).not.toBeVisible();
+
+    // All three areas should be visible as badges
+    await expect(areasButton).toContainText("Area One");
+    await expect(areasButton).toContainText("Area Two");
+    await expect(areasButton).toContainText("Area Three");
+
+    // Wait for file to be updated
+    await waitForFileContentToContain(page, taskPath, "- Area One");
+    await waitForFileContentToContain(page, taskPath, "- Area Two");
+    await waitForFileContentToContain(page, taskPath, "- Area Three");
+
+    // Verify task has all three areas
+    let task = await getTaskByTitle(page, taskName);
+    expect(task.areas).toContain("Area One");
+    expect(task.areas).toContain("Area Two");
+    expect(task.areas).toContain("Area Three");
+    expect(task.areas.length).toBe(3);
+
+    // Now test removing an area using the × button
+    // Find the badge for "Area Two" and click its remove button
+    const areaTwoBadge = areasButton.locator(
+      '.task-sync-text-badge:has-text("Area Two")'
+    );
+    await expect(areaTwoBadge).toBeVisible();
+
+    // Click the × button within the badge
+    const removeButton = areaTwoBadge.locator("span").last();
+    await removeButton.click();
+
+    // Area Two should be removed
+    await expect(areasButton).not.toContainText("Area Two");
+    await expect(areasButton).toContainText("Area One");
+    await expect(areasButton).toContainText("Area Three");
+
+    // Verify task no longer has Area Two
+    task = await getTaskByTitle(page, taskName);
+    expect(task.areas).toContain("Area One");
+    expect(task.areas).not.toContain("Area Two");
+    expect(task.areas).toContain("Area Three");
+    expect(task.areas.length).toBe(2);
+
+    // Remove another area
+    const areaOneBadge = areasButton.locator(
+      '.task-sync-text-badge:has-text("Area One")'
+    );
+    const removeButtonOne = areaOneBadge.locator("span").last();
+    await removeButtonOne.click();
+
+    // Only Area Three should remain
+    await expect(areasButton).not.toContainText("Area One");
+    await expect(areasButton).not.toContainText("Area Two");
+    await expect(areasButton).toContainText("Area Three");
+
+    // Remove the last area
+    const areaThreeBadge = areasButton.locator(
+      '.task-sync-text-badge:has-text("Area Three")'
+    );
+    const removeButtonThree = areaThreeBadge.locator("span").last();
+    await removeButtonThree.click();
+
+    // Should show "Add to area" again
+    await expect(areasButton).toContainText("Add to area");
+
+    // Verify task has no areas
+    task = await getTaskByTitle(page, taskName);
+    expect(task.areas.length).toBe(0);
   });
 });
