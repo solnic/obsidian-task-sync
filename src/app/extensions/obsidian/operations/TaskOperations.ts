@@ -392,7 +392,7 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
   /**
    * Wait for metadata cache to have front-matter for the given file
-   * Uses event-driven approach with fallback polling for better performance
+   * Uses event-driven approach with periodic polling fallback for robustness
    * Based on the old FileManager.waitForMetadataCache implementation
    */
   private async waitForMetadataCache(file: TFile): Promise<any> {
@@ -421,25 +421,42 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       return existingCache.frontmatter;
     }
 
-    // Use event-driven approach with timeout
+    // Use event-driven approach with periodic polling fallback
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
+      let resolved = false;
+      const pollInterval = 200; // Poll every 200ms
+      const maxWaitTime = 10000; // 10 second timeout
+      const startTime = Date.now();
+
+      const cleanup = () => {
+        resolved = true;
         this.app.metadataCache.off("changed", onMetadataChanged);
-        reject(new Error(`Metadata cache timeout for file: ${file.path}`));
-      }, 5000); // 5 second timeout
+        if (pollingTimer) clearInterval(pollingTimer);
+      };
+
+      const checkCache = (): boolean => {
+        const cache = this.app.metadataCache.getFileCache(file);
+        if (cache?.frontmatter && isCompleteFrontmatter(cache.frontmatter)) {
+          cleanup();
+          resolve(cache.frontmatter);
+          return true;
+        }
+        return false;
+      };
 
       const onMetadataChanged = (
         changedFile: TFile,
         _data: string,
         cache: any
       ) => {
+        if (resolved) return;
+
         if (
           changedFile.path === file.path &&
           cache?.frontmatter &&
           isCompleteFrontmatter(cache.frontmatter)
         ) {
-          clearTimeout(timeout);
-          this.app.metadataCache.off("changed", onMetadataChanged);
+          cleanup();
           resolve(cache.frontmatter);
         }
       };
@@ -447,14 +464,24 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       // Listen for metadata changes
       this.app.metadataCache.on("changed", onMetadataChanged);
 
-      // Fallback: check again after a short delay in case the event was missed
-      setTimeout(() => {
-        const cache = this.app.metadataCache.getFileCache(file);
-        if (cache?.frontmatter && isCompleteFrontmatter(cache.frontmatter)) {
-          clearTimeout(timeout);
-          this.app.metadataCache.off("changed", onMetadataChanged);
-          resolve(cache.frontmatter);
+      // Periodic polling as fallback
+      const pollingTimer = setInterval(() => {
+        if (resolved) return;
+
+        // Check if we've exceeded max wait time
+        if (Date.now() - startTime > maxWaitTime) {
+          cleanup();
+          reject(new Error(`Metadata cache timeout for file: ${file.path}`));
+          return;
         }
+
+        // Try to get the cache
+        checkCache();
+      }, pollInterval);
+
+      // Initial check after a short delay
+      setTimeout(() => {
+        if (!resolved) checkCache();
       }, 100);
     });
   }
