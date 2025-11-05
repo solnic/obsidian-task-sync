@@ -31,6 +31,10 @@
   let projectButtonEl = $state<HTMLButtonElement | null>(null);
   let areasButtonEl = $state<HTMLButtonElement | null>(null);
 
+  // Date input refs
+  let doDateInputEl = $state<HTMLInputElement | null>(null);
+  let dueDateInputEl = $state<HTMLInputElement | null>(null);
+
   // Get options from settings
   const statusOptions = $derived(
     settings?.taskStatuses?.map((s: any) => ({
@@ -131,6 +135,43 @@
     await taskOps.update({
       ...task,
       areas: newAreas,
+    });
+  }
+
+  // Date formatting and handling
+  function formatDate(date: Date | undefined): string {
+    if (!date) return "";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function parseDate(dateString: string): Date | undefined {
+    if (!dateString) return undefined;
+    // Parse YYYY-MM-DD in local timezone
+    const [year, month, day] = dateString.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    return isNaN(date.getTime()) ? undefined : date;
+  }
+
+  async function handleDoDateChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const newDate = parseDate(target.value);
+    const taskOps = new Tasks.Operations(settings);
+    await taskOps.update({
+      ...task,
+      doDate: newDate,
+    });
+  }
+
+  async function handleDueDateChange(event: Event) {
+    const target = event.target as HTMLInputElement;
+    const newDate = parseDate(target.value);
+    const taskOps = new Tasks.Operations(settings);
+    await taskOps.update({
+      ...task,
+      dueDate: newDate,
     });
   }
 
@@ -370,6 +411,38 @@
     </li>
   </ul>
 
+  <!-- Do Date property -->
+  <ul class="property-group">
+    <li>
+      <div class="property-label">Do Date</div>
+      <input
+        bind:this={doDateInputEl}
+        type="date"
+        value={formatDate(task.doDate)}
+        onchange={handleDoDateChange}
+        class="task-sync-date-input"
+        data-testid="context-dodate-input"
+        aria-label="Change do date"
+      />
+    </li>
+  </ul>
+
+  <!-- Due Date property -->
+  <ul class="property-group">
+    <li>
+      <div class="property-label">Due Date</div>
+      <input
+        bind:this={dueDateInputEl}
+        type="date"
+        value={formatDate(task.dueDate)}
+        onchange={handleDueDateChange}
+        class="task-sync-date-input"
+        data-testid="context-duedate-input"
+        aria-label="Change due date"
+      />
+    </li>
+  </ul>
+
   <!-- Dropdowns -->
   {#if showStatusDropdown && statusButtonEl}
     <Dropdown
@@ -473,5 +546,40 @@
   :global(.task-sync-property-button-full) {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .task-sync-date-input {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-normal);
+    font-family: inherit;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+
+  .task-sync-date-input:hover {
+    background: var(--background-modifier-hover);
+    border-color: var(--background-modifier-border);
+  }
+
+  .task-sync-date-input:focus {
+    outline: none;
+    background: var(--background-primary);
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 1px var(--interactive-accent-hover);
+  }
+
+  .task-sync-date-input::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+  }
+
+  .task-sync-date-input::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
   }
 </style>

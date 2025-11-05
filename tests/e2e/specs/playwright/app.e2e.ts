@@ -1082,4 +1082,121 @@ Task for testing timestamp preservation.`;
     task = await getTaskByTitle(page, taskName);
     expect(task.areas.length).toBe(0);
   });
+
+  test("should update task do date and due date through context widget", async ({
+    page,
+  }) => {
+    // Create a task with no dates initially
+    const taskName = "Date Test Task";
+    const taskPath = `Tasks/${taskName}.md`;
+    await createTask(page, {
+      title: taskName,
+      description: "Testing date fields",
+      status: "Backlog",
+      priority: "Low",
+      category: "Task",
+      project: "",
+      areas: [],
+    });
+
+    await waitForFileProcessed(page, taskPath);
+
+    // Close any open Task Sync view and open the task file
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const leaves = app.workspace.getLeavesOfType("task-sync-view");
+      for (const leaf of leaves) {
+        leaf.detach();
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    await openFile(page, taskPath);
+
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    await expect(contextWidget).toBeVisible();
+
+    // Find the date inputs
+    const doDateInput = contextWidget.locator(
+      '[data-testid="context-dodate-input"]'
+    );
+    const dueDateInput = contextWidget.locator(
+      '[data-testid="context-duedate-input"]'
+    );
+
+    await expect(doDateInput).toBeVisible();
+    await expect(dueDateInput).toBeVisible();
+
+    // Set do date to tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split("T")[0];
+
+    await doDateInput.fill(tomorrowStr);
+    await doDateInput.blur(); // Trigger change event
+
+    // Wait a bit for the update to process
+    await page.waitForTimeout(200);
+
+    // Verify task has do date
+    let task = await getTaskByTitle(page, taskName);
+    expect(task.doDate).toBeDefined();
+    if (task.doDate) {
+      const doDateStr = new Date(task.doDate).toISOString().split("T")[0];
+      expect(doDateStr).toBe(tomorrowStr);
+    }
+
+    // Set due date to 3 days from now
+    const threeDaysLater = new Date();
+    threeDaysLater.setDate(threeDaysLater.getDate() + 3);
+    const threeDaysLaterStr = threeDaysLater.toISOString().split("T")[0];
+
+    await dueDateInput.fill(threeDaysLaterStr);
+    await dueDateInput.blur(); // Trigger change event
+
+    // Wait a bit for the update to process
+    await page.waitForTimeout(200);
+
+    // Verify task has due date
+    task = await getTaskByTitle(page, taskName);
+    expect(task.dueDate).toBeDefined();
+    if (task.dueDate) {
+      const dueDateStr = new Date(task.dueDate).toISOString().split("T")[0];
+      expect(dueDateStr).toBe(threeDaysLaterStr);
+    }
+
+    // Verify both dates are in the file
+    await waitForFileContentToContain(
+      page,
+      taskPath,
+      `Do Date: ${tomorrowStr}`
+    );
+    await waitForFileContentToContain(
+      page,
+      taskPath,
+      `Due Date: ${threeDaysLaterStr}`
+    );
+
+    // Clear do date
+    await doDateInput.fill("");
+    await doDateInput.blur();
+    await page.waitForTimeout(200);
+
+    // Verify do date is cleared
+    task = await getTaskByTitle(page, taskName);
+    expect(task.doDate).toBeUndefined();
+
+    // Clear due date
+    await dueDateInput.fill("");
+    await dueDateInput.blur();
+    await page.waitForTimeout(200);
+
+    // Verify due date is cleared
+    task = await getTaskByTitle(page, taskName);
+    expect(task.dueDate).toBeUndefined();
+  });
 });
