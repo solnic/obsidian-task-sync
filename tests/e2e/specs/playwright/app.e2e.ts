@@ -501,11 +501,6 @@ Task for testing timestamp preservation.`;
           "obsidian-task-sync"
         ];
 
-        if (!plugin || !plugin.stores || !plugin.stores.projectStore) {
-          console.error("Project store not found on plugin object");
-          return;
-        }
-
         // Create a project entity that matches what would be scanned from the file
         const project = {
           id: `project-${Date.now()}`,
@@ -525,8 +520,6 @@ Task for testing timestamp preservation.`;
 
         // Add to project store
         plugin.stores.projectStore.dispatch({ type: "ADD_PROJECT", project });
-
-        console.log("Manually added project to store:", project);
       },
       { projectName }
     );
@@ -622,8 +615,6 @@ Task for testing timestamp preservation.`;
         })),
       };
     });
-    console.log("Debug info:", JSON.stringify(debugInfo, null, 2));
-
     // Wait for context widget to show task properties
     // The new Linear-style design shows property buttons instead of context type labels
     await page.waitForSelector('[data-testid="context-status-button"]', {
@@ -658,10 +649,6 @@ Task for testing timestamp preservation.`;
         entityPriority: currentContext.entity?.priority,
       };
     });
-    console.log(
-      "Context from extension:",
-      JSON.stringify(contextDebug, null, 2)
-    );
 
     // Debug: Check what's in the context store by accessing it through window
     const storeDebug = await page.evaluate(() => {
@@ -676,21 +663,15 @@ Task for testing timestamp preservation.`;
           "Store access through Svelte internals not available in production build",
       };
     });
-    console.log("Store debug:", JSON.stringify(storeDebug, null, 2));
 
     // Debug: Dump the actual HTML being rendered
     const widgetHTML = await contextWidget.innerHTML();
-    console.log("Widget HTML (first 500 chars):", widgetHTML.substring(0, 500));
 
     // Wait a bit for the store to update and the widget to re-render
     await page.waitForTimeout(1000);
 
     // Check again after waiting
     const widgetHTML2 = await contextWidget.innerHTML();
-    console.log(
-      "Widget HTML after wait (first 500 chars):",
-      widgetHTML2.substring(0, 500)
-    );
 
     // Check for Linear-style property buttons (new design)
     const statusButton = contextWidget.locator(
