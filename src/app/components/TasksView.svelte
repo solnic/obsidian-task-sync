@@ -202,7 +202,8 @@
         data-testid="context-tab-button"
         aria-label="Show context information"
         onclick={() => {
-          showContextTab = !showContextTab;
+          showContextTab = true;
+          activeService = ""; // Deactivate service tabs when context tab is clicked
         }}
       >
         <span class="service-icon-vertical" data-icon="info"></span>

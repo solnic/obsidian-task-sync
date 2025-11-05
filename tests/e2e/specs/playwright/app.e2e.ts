@@ -746,6 +746,49 @@ Task for testing timestamp preservation.`;
     await expect(contextTabContent).not.toBeVisible();
   });
 
+  test("should deactivate service tab when context tab is clicked", async ({
+    page,
+  }) => {
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+
+    // Wait for the view to be visible
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    // Context tab should be active by default
+    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
+    await expect(contextTabButton).toHaveClass(/active/);
+
+    // Click a service tab (local service)
+    const localServiceButton = page.locator('[data-testid="service-local"]');
+    await localServiceButton.click();
+
+    // Service tab should be active
+    await expect(localServiceButton).toHaveClass(/active/);
+
+    // Context tab should not be active
+    await expect(contextTabButton).not.toHaveClass(/active/);
+
+    // Now click the context tab button
+    await contextTabButton.click();
+
+    // Context tab should be active again
+    await expect(contextTabButton).toHaveClass(/active/);
+
+    // BUG: Service tab should no longer be active
+    await expect(localServiceButton).not.toHaveClass(/active/);
+
+    // Context tab content should be visible
+    const contextTabContent = page.locator(
+      '[data-testid="context-tab-content"]'
+    );
+    await expect(contextTabContent).toBeVisible();
+
+    // Service content should be hidden
+    const serviceContent = page.locator('[data-testid="service-content"]');
+    await expect(serviceContent).not.toBeVisible();
+  });
+
   test("should use registered note type properties for dropdown options", async ({
     page,
   }) => {
