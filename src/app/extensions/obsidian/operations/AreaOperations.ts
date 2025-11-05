@@ -178,8 +178,15 @@ export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
     cache?: any,
     existingAreas?: readonly Area[]
   ): Promise<Area | null> {
-    const frontMatter =
-      cache?.frontmatter || (await this.waitForMetadataCache(file));
+    // If cache is provided (from changed event), use it directly
+    // Otherwise get it from metadata cache (synchronous)
+    const fileCache = cache || this.app.metadataCache.getFileCache(file);
+    const frontMatter = fileCache?.frontmatter;
+
+    // If no frontmatter available, skip this file
+    if (!frontMatter) {
+      return null;
+    }
 
     if (frontMatter.Type !== "Area") {
       return null;
@@ -210,100 +217,5 @@ export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
     }
 
     return this.areaOperations.buildEntity(areaData) as Area;
-  }
-
-  /**
-   * Wait for metadata cache to have front-matter for the given file
-   * Uses event-driven approach with periodic polling fallback for robustness
-   */
-  private async waitForMetadataCache(file: TFile): Promise<any> {
-    // Helper function to check if frontmatter is complete (has non-null values)
-    const isCompleteFrontmatter = (frontmatter: any): boolean => {
-      if (!frontmatter || Object.keys(frontmatter).length === 0) {
-        return false;
-      }
-      // Check if essential properties have non-null values
-      // For areas, we expect at least Name and Type to have values
-      if (frontmatter.Type === "Area") {
-        return frontmatter.Name !== null && frontmatter.Name !== undefined;
-      }
-      // For other entity types, just check that we have some non-null values
-      return Object.values(frontmatter).some(
-        (value) => value !== null && value !== undefined
-      );
-    };
-
-    // First check if metadata is already available and complete
-    const existingCache = this.app.metadataCache.getFileCache(file);
-    if (
-      existingCache?.frontmatter &&
-      isCompleteFrontmatter(existingCache.frontmatter)
-    ) {
-      return existingCache.frontmatter;
-    }
-
-    // Use event-driven approach with periodic polling fallback
-    return new Promise((resolve, reject) => {
-      let resolved = false;
-      const pollInterval = 200; // Poll every 200ms
-      const maxWaitTime = 10000; // 10 second timeout
-      const startTime = Date.now();
-
-      const cleanup = () => {
-        resolved = true;
-        this.app.metadataCache.off("changed", onMetadataChanged);
-        if (pollingTimer) clearInterval(pollingTimer);
-      };
-
-      const checkCache = (): boolean => {
-        const cache = this.app.metadataCache.getFileCache(file);
-        if (cache?.frontmatter && isCompleteFrontmatter(cache.frontmatter)) {
-          cleanup();
-          resolve(cache.frontmatter);
-          return true;
-        }
-        return false;
-      };
-
-      const onMetadataChanged = (
-        changedFile: TFile,
-        _data: string,
-        cache: any
-      ) => {
-        if (resolved) return;
-
-        if (
-          changedFile.path === file.path &&
-          cache?.frontmatter &&
-          isCompleteFrontmatter(cache.frontmatter)
-        ) {
-          cleanup();
-          resolve(cache.frontmatter);
-        }
-      };
-
-      // Listen for metadata changes
-      this.app.metadataCache.on("changed", onMetadataChanged);
-
-      // Periodic polling as fallback
-      const pollingTimer = setInterval(() => {
-        if (resolved) return;
-
-        // Check if we've exceeded max wait time
-        if (Date.now() - startTime > maxWaitTime) {
-          cleanup();
-          reject(new Error(`Metadata cache timeout for file: ${file.path}`));
-          return;
-        }
-
-        // Try to get the cache
-        checkCache();
-      }, pollInterval);
-
-      // Initial check after a short delay
-      setTimeout(() => {
-        if (!resolved) checkCache();
-      }, 100);
-    });
   }
 }
