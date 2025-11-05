@@ -8,9 +8,15 @@ import {
   executeCommand,
   createFile,
   openFile,
-  waitForContextUpdate,
+  waitForFileProcessed,
+  waitForFileContentToContain,
 } from "../../helpers/global";
-import { createTask } from "../../helpers/entity-helpers";
+import {
+  createTask,
+  createProject,
+  createArea,
+  getTaskByTitle,
+} from "../../helpers/entity-helpers";
 
 test.describe("Svelte App Initialization", () => {
   test("should scan and load existing task files during initialization", async ({
@@ -325,28 +331,17 @@ Task for testing timestamp preservation.`;
     const contextWidget = page.locator('[data-testid="context-tab-content"]');
     await expect(contextWidget).toBeVisible();
 
-    // BUG: Should show enhanced entity details, not "Entity details not available"
-    // This test will fail until the context widget entity lookup is fixed
-
-    // Check for entity information display (this should work after fix)
-    await expect(contextWidget.locator(".entity-title")).toBeVisible();
-    await expect(contextWidget.locator(".context-type")).toContainText(
-      "Project"
+    // Check for Linear-style property buttons (new design)
+    // Project context should show Areas button
+    const areasButton = contextWidget.locator(
+      '[data-testid="context-areas-button"]'
     );
-    await expect(contextWidget.locator(".context-name")).toContainText(
-      projectName
-    );
+    await expect(areasButton).toBeVisible();
 
-    // Check for entity properties
-    await expect(contextWidget.locator(".entity-properties")).toBeVisible();
-
-    // Should show areas
-    await expect(contextWidget).toContainText("Development");
-    await expect(contextWidget).toContainText("Testing");
-
-    // Should show tags
-    await expect(contextWidget).toContainText("#important");
-    await expect(contextWidget).toContainText("#active");
+    // The areas button should show the project's current areas
+    // (Development and Testing from the frontmatter)
+    await expect(areasButton).toContainText("Development");
+    await expect(areasButton).toContainText("Testing");
   });
 
   test("should display enhanced context widget with task entity details", async ({
@@ -417,21 +412,11 @@ Task for testing timestamp preservation.`;
     });
     console.log("Debug info:", JSON.stringify(debugInfo, null, 2));
 
-    // Wait for context to be detected properly
-    await waitForContextUpdate(page, "Task");
-
-    // Manually trigger context update to ensure store is updated
-    await page.evaluate(() => {
-      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
-      const contextExtension = plugin?.host?.getExtensionById("context");
-      if (
-        contextExtension &&
-        typeof contextExtension.updateCurrentContext === "function"
-      ) {
-        // Force a context update
-        (contextExtension as any).updateCurrentContext();
-        console.log("Manually triggered context update");
-      }
+    // Wait for context widget to show task properties
+    // The new Linear-style design shows property buttons instead of context type labels
+    await page.waitForSelector('[data-testid="context-status-button"]', {
+      state: "visible",
+      timeout: 5000,
     });
 
     // Debug: Check what context is actually being passed to the widget
@@ -495,40 +480,46 @@ Task for testing timestamp preservation.`;
       widgetHTML2.substring(0, 500)
     );
 
-    // Check for entity information display
-    await expect(contextWidget.locator(".entity-title")).toBeVisible();
-    await expect(contextWidget.locator(".context-type")).toContainText("Task");
-    await expect(contextWidget.locator(".context-name")).toContainText(
-      taskName
+    // Check for Linear-style property buttons (new design)
+    const statusButton = contextWidget.locator(
+      '[data-testid="context-status-button"]'
     );
+    await expect(statusButton).toBeVisible();
 
-    // Check for task-specific badges (new badge-based UI)
-    await expect(contextWidget.locator(".entity-badges")).toBeVisible();
+    const priorityButton = contextWidget.locator(
+      '[data-testid="context-priority-button"]'
+    );
+    await expect(priorityButton).toBeVisible();
 
-    // Should show status badge
-    await expect(contextWidget).toContainText("In Progress");
+    const categoryButton = contextWidget.locator(
+      '[data-testid="context-category-button"]'
+    );
+    await expect(categoryButton).toBeVisible();
 
-    // Should show priority badge
-    await expect(contextWidget).toContainText("High");
+    const projectButton = contextWidget.locator(
+      '[data-testid="context-project-button"]'
+    );
+    await expect(projectButton).toBeVisible();
 
-    // Check for additional properties
-    await expect(contextWidget.locator(".entity-properties")).toBeVisible();
+    const areasButton = contextWidget.locator(
+      '[data-testid="context-areas-button"]'
+    );
+    await expect(areasButton).toBeVisible();
 
-    // Should show project (as LabelBadge)
-    await expect(contextWidget).toContainText("Project");
-    await expect(contextWidget).toContainText("Alpha Project");
+    // Verify status button shows current status
+    await expect(statusButton).toContainText("In Progress");
 
-    // Should show areas (as LabelBadge)
-    await expect(contextWidget).toContainText("Area");
-    await expect(contextWidget).toContainText("Development");
-    await expect(contextWidget).toContainText("Testing");
+    // Verify priority button shows current priority
+    await expect(priorityButton).toContainText("High");
 
-    // Should show dates (as LabelBadge)
-    await expect(contextWidget).toContainText("Do Date");
-    await expect(contextWidget).toContainText("Due Date");
+    // Click project button to verify it opens dropdown
+    await projectButton.click();
 
-    // Tags are optional and may not always be displayed
-    // The main entity properties (status, priority, project, areas, dates) are verified above
+    // Should show project dropdown
+    const projectDropdown = page.locator(
+      '[data-testid="context-project-dropdown"]'
+    );
+    await expect(projectDropdown).toBeVisible();
   });
 
   test("should hide context tab when service tab is clicked", async ({
@@ -560,5 +551,183 @@ Task for testing timestamp preservation.`;
       '[data-testid="context-tab-content"]'
     );
     await expect(contextTabContent).not.toBeVisible();
+  });
+
+  test("should update task properties through context widget interactions", async ({
+    page,
+  }) => {
+    // Create initial projects and areas for testing
+    await createProject(page, {
+      name: "Widget Test Project",
+      description: "Project for testing context widget",
+    });
+
+    await createArea(page, {
+      name: "Widget Test Area",
+      description: "Area for testing context widget",
+    });
+
+    // Create a task with initial properties
+    const taskName = "Context Widget Test Task";
+    const taskPath = `Tasks/${taskName}.md`;
+    await createTask(page, {
+      title: taskName,
+      description: "Testing context widget interactions",
+      status: "Backlog",
+      priority: "Low",
+      category: "Task",
+      project: "",
+      areas: [],
+    });
+
+    // Wait for the file to be processed by metadata cache before opening
+    await waitForFileProcessed(page, taskPath);
+
+    // Close any open Task Sync view from previous tests and wait for workspace to settle
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const leaves = app.workspace.getLeavesOfType("task-sync-view");
+      for (const leaf of leaves) {
+        leaf.detach();
+      }
+      // Wait a bit for workspace to settle after detaching leaves
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+
+    // Open the task file to establish context BEFORE opening the view
+    await openFile(page, taskPath);
+
+    // Open the Task Sync view
+    await executeCommand(page, "Task Sync: Open Main View");
+    await expect(page.locator(".task-sync-app")).toBeVisible();
+
+    // Context tab should be active by default
+    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    await expect(contextWidget).toBeVisible();
+
+    // Wait for context widget to show task properties
+    await page.waitForSelector('[data-testid="context-status-button"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // 1. Change Status from "Backlog" to "In Progress"
+    const statusButton = contextWidget.locator(
+      '[data-testid="context-status-button"]'
+    );
+    await expect(statusButton).toContainText("Backlog");
+    await statusButton.click();
+
+    const statusDropdown = page.locator(
+      '[data-testid="context-status-dropdown"]'
+    );
+    await expect(statusDropdown).toBeVisible();
+
+    // Click "In Progress" option
+    await statusDropdown.locator('text="In Progress"').click();
+
+    // Wait for dropdown to close and button to update
+    await expect(statusDropdown).not.toBeVisible();
+    await expect(statusButton).toContainText("In Progress");
+
+    // Wait for file to be updated with new status
+    await waitForFileContentToContain(page, taskPath, "Status: In Progress");
+
+    // 2. Change Priority from "Low" to "High"
+    const priorityButton = contextWidget.locator(
+      '[data-testid="context-priority-button"]'
+    );
+    await expect(priorityButton).toContainText("Low");
+    await priorityButton.click();
+
+    const priorityDropdown = page.locator(
+      '[data-testid="context-priority-dropdown"]'
+    );
+    await expect(priorityDropdown).toBeVisible();
+
+    // Click "High" option
+    await priorityDropdown.locator('text="High"').click();
+
+    // Wait for dropdown to close and button to update
+    await expect(priorityDropdown).not.toBeVisible();
+    await expect(priorityButton).toContainText("High");
+
+    // Wait for file to be updated with new priority
+    await waitForFileContentToContain(page, taskPath, "Priority: High");
+
+    // 3. Change Category from "Task" to "Bug"
+    const categoryButton = contextWidget.locator(
+      '[data-testid="context-category-button"]'
+    );
+    await expect(categoryButton).toContainText("Task");
+    await categoryButton.click();
+
+    const categoryDropdown = page.locator(
+      '[data-testid="context-category-dropdown"]'
+    );
+    await expect(categoryDropdown).toBeVisible();
+
+    // Click "Bug" option
+    await categoryDropdown.locator('text="Bug"').click();
+
+    // Wait for dropdown to close and button to update
+    await expect(categoryDropdown).not.toBeVisible();
+    await expect(categoryButton).toContainText("Bug");
+
+    // Wait for file to be updated with new category
+    await waitForFileContentToContain(page, taskPath, "Category: Bug");
+
+    // 4. Set Project to "Widget Test Project"
+    const projectButton = contextWidget.locator(
+      '[data-testid="context-project-button"]'
+    );
+    await expect(projectButton).toContainText("Add to project");
+    await projectButton.click();
+
+    const projectDropdown = page.locator(
+      '[data-testid="context-project-dropdown"]'
+    );
+    await expect(projectDropdown).toBeVisible();
+
+    // Click "Widget Test Project" option
+    await projectDropdown.locator('text="Widget Test Project"').click();
+
+    // Wait for dropdown to close and button to update
+    await expect(projectDropdown).not.toBeVisible();
+    await expect(projectButton).toContainText("Widget Test Project");
+
+    // Wait for file to be updated with new project
+    await waitForFileContentToContain(page, taskPath, "Widget Test Project");
+
+    // 5. Add Area "Widget Test Area"
+    const areasButton = contextWidget.locator(
+      '[data-testid="context-areas-button"]'
+    );
+    await expect(areasButton).toContainText("Add to area");
+    await areasButton.click();
+
+    const areasDropdown = page.locator(
+      '[data-testid="context-areas-dropdown"]'
+    );
+    await expect(areasDropdown).toBeVisible();
+
+    // Click "Widget Test Area" option to add it
+    await areasDropdown.locator('text="Widget Test Area"').click();
+
+    // Wait for dropdown to close and button to update
+    await expect(areasDropdown).not.toBeVisible();
+    await expect(areasButton).toContainText("Widget Test Area");
+
+    // Wait for file to be updated with new area
+    await waitForFileContentToContain(page, taskPath, "- Widget Test Area");
+
+    // Verify all changes were persisted to the task entity
+    const updatedTask = await getTaskByTitle(page, taskName);
+
+    expect(updatedTask.status).toBe("In Progress");
+    expect(updatedTask.priority).toBe("High");
+    expect(updatedTask.category).toBe("Bug");
+    expect(updatedTask.project).toBe("Widget Test Project");
+    expect(updatedTask.areas).toContain("Widget Test Area");
   });
 });

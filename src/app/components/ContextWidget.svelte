@@ -1,121 +1,62 @@
 <script lang="ts">
   /**
-   * Enhanced ContextWidget - Displays detailed entity information
-   * Shows rich information about tasks, projects, and areas based on current context
+   * ContextWidget - Linear-style properties panel
+   * Shows interactive property controls for the current context entity
    */
 
   import type { Task, Project, Area } from "../core/entities";
   import type { FileContext } from "../types/context";
-  import { setIcon } from "obsidian";
-  import StatusBadge from "./badges/StatusBadge.svelte";
-  import PriorityBadge from "./badges/PriorityBadge.svelte";
-  import CategoryBadge from "./badges/CategoryBadge.svelte";
-  import LabelBadge from "./badges/LabelBadge.svelte";
+  import type { Host } from "../core/host";
+  import Dropdown from "./Dropdown.svelte";
+  import { projectStore } from "../stores/projectStore";
+  import { areaStore } from "../stores/areaStore";
+  import { taskStore } from "../stores/taskStore";
+  import { Tasks } from "../entities/Tasks";
+  import { Projects } from "../entities/Projects";
 
   interface Props {
     context: FileContext;
-    dayPlanningMode?: boolean;
-    serviceName?: string; // For consistent header format across services
-    isNonLocalService?: boolean; // Whether this is a non-local service (GitHub, Apple Reminders, etc.)
+    settings?: any; // TaskSyncSettings for colors and options
+    host: Host;
   }
 
-  let {
-    context,
-    dayPlanningMode = false,
-    serviceName,
-    isNonLocalService = false,
-  }: Props = $props();
+  let { context, settings, host }: Props = $props();
+
+  // Get projects and areas from stores
+  let allProjects = $state<Project[]>([]);
+  let allAreas = $state<Area[]>([]);
+  let allTasks = $state<Task[]>([]);
+
+  $effect(() => {
+    const unsubProjects = projectStore.subscribe((state) => {
+      allProjects = [...state.projects];
+    });
+    const unsubAreas = areaStore.subscribe((state) => {
+      allAreas = [...state.areas];
+    });
+    const unsubTasks = taskStore.subscribe((state) => {
+      allTasks = [...state.tasks];
+    });
+    return () => {
+      unsubProjects();
+      unsubAreas();
+      unsubTasks();
+    };
+  });
 
   // Get current entity from context (resolved by ContextService)
-  let currentEntity = $derived(context?.entity || null);
+  // If it's a task, get the latest version from the task store
+  let currentEntity = $derived.by(() => {
+    const contextEntity = context?.entity || null;
+    if (!contextEntity) return null;
 
-  // Debug logging
-  $effect(() => {
-    console.log("ContextWidget - Context received:", {
-      type: context?.type,
-      name: context?.name,
-      path: context?.path,
-      hasEntity: !!context?.entity,
-      entityId: context?.entity?.id,
-      currentEntity: currentEntity
-        ? {
-            id: currentEntity.id,
-            name:
-              "title" in currentEntity
-                ? currentEntity.title
-                : currentEntity.name,
-          }
-        : null,
-    });
-  });
-
-  // Debug: Log when currentEntity changes
-  $effect(() => {
-    console.log("ContextWidget - currentEntity changed:", {
-      hasEntity: !!currentEntity,
-      entityId: currentEntity?.id,
-      entityName:
-        currentEntity && "title" in currentEntity
-          ? currentEntity.title
-          : currentEntity && "name" in currentEntity
-            ? currentEntity.name
-            : "unknown",
-    });
-  });
-
-  // Computed properties for display
-  let actionType = $derived.by(() => {
-    return dayPlanningMode && context.type === "daily" ? "planning" : "import";
-  });
-
-  let contextTypeLabel = $derived.by(() => {
-    switch (context.type) {
-      case "project":
-        return "Project";
-      case "area":
-        return "Area";
-      case "task":
-        return "Task";
-      case "daily":
-        return "Daily Note";
-      case "none":
-        return "No context";
-      default:
-        return "Unknown";
+    // If it's a task, get the latest version from the store
+    if (isTask(contextEntity)) {
+      const latestTask = allTasks.find((t) => t.id === contextEntity.id);
+      return latestTask || contextEntity;
     }
-  });
 
-  let contextClass = $derived.by(() => {
-    return `context-widget context-type-${context.type} action-type-${actionType}`;
-  });
-
-  // Always show action icon (for both local and non-local services)
-  let showActionIcon = $derived.by(() => {
-    return true; // Always show the icon
-  });
-
-  let actionIconName = $derived.by(() => {
-    if (actionType === "planning") {
-      return "calendar-plus";
-    }
-    return isNonLocalService ? "download" : "plus";
-  });
-
-  let actionTooltip = $derived.by(() => {
-    if (actionType === "planning") {
-      return "Add to today's plan";
-    }
-    return isNonLocalService ? "Import to vault" : "Create new task";
-  });
-
-  // Icon element for action button
-  let actionIconElement = $state<HTMLElement>();
-
-  // Set the icon when the element is mounted or icon name changes
-  $effect(() => {
-    if (actionIconElement && actionIconName) {
-      setIcon(actionIconElement, actionIconName);
-    }
+    return contextEntity;
   });
 
   // Type guards for entity types
@@ -127,302 +68,487 @@
     return "name" in entity && !("title" in entity);
   }
 
-  // Helper functions for formatting
-  function formatDate(date: Date | undefined): string {
-    if (!date) return "";
-    return new Intl.DateTimeFormat("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    }).format(date);
+  // State for dropdowns
+  let showStatusDropdown = $state(false);
+  let showPriorityDropdown = $state(false);
+  let showCategoryDropdown = $state(false);
+  let showProjectDropdown = $state(false);
+  let showAreasDropdown = $state(false);
+
+  // Button refs for dropdown anchoring
+  let statusButtonEl = $state<HTMLButtonElement | null>(null);
+  let priorityButtonEl = $state<HTMLButtonElement | null>(null);
+  let categoryButtonEl = $state<HTMLButtonElement | null>(null);
+  let projectButtonEl = $state<HTMLButtonElement | null>(null);
+  let areasButtonEl = $state<HTMLButtonElement | null>(null);
+
+  // Get options from settings
+  const statusOptions = $derived(
+    settings?.taskStatuses?.map((s: any) => ({
+      value: s.name,
+      label: s.name,
+      customContent: `<span class="task-sync-color-dot" style="background-color: ${s.color}"></span><span>${s.name}</span>`,
+    })) || []
+  );
+
+  const priorityOptions = $derived(
+    settings?.taskPriorities?.map((p: any) => ({
+      value: p.name,
+      label: p.name,
+      customContent: `<span class="task-sync-color-dot" style="background-color: ${p.color}"></span><span>${p.name}</span>`,
+    })) || []
+  );
+
+  const categoryOptions = $derived(
+    settings?.taskTypes?.map((t: any) => ({
+      value: t.name,
+      label: t.name,
+      customContent: `<span class="task-sync-color-dot" style="background-color: ${t.color}"></span><span>${t.name}</span>`,
+    })) || []
+  );
+
+  // Project and area options from stores
+  const projectOptions = $derived([
+    { value: "", label: "No project" },
+    ...allProjects.map((p) => ({
+      value: p.name,
+      label: p.name,
+    })),
+  ]);
+
+  const areaOptions = $derived(
+    allAreas.map((a) => ({
+      value: a.name,
+      label: a.name,
+    }))
+  );
+
+  // Handlers for property changes
+  function handleStatusClick() {
+    showStatusDropdown = true;
   }
 
-  // Get entity display name
-  function getEntityName(entity: Task | Project | Area): string {
-    if (isTask(entity)) {
-      return entity.title;
-    }
-    return entity.name;
+  function handlePriorityClick() {
+    showPriorityDropdown = true;
   }
+
+  function handleCategoryClick() {
+    showCategoryDropdown = true;
+  }
+
+  function handleProjectClick() {
+    showProjectDropdown = true;
+  }
+
+  function handleAreasClick() {
+    showAreasDropdown = true;
+  }
+
+  async function handleStatusSelect(value: string) {
+    if (!currentEntity || !isTask(currentEntity)) return;
+
+    const taskOps = new Tasks.Operations(settings);
+    await taskOps.update({
+      ...currentEntity,
+      status: value,
+      done: value === "Done",
+    });
+
+    showStatusDropdown = false;
+  }
+
+  async function handlePrioritySelect(value: string) {
+    if (!currentEntity || !isTask(currentEntity)) return;
+
+    const taskOps = new Tasks.Operations(settings);
+    await taskOps.update({
+      ...currentEntity,
+      priority: value,
+    });
+
+    showPriorityDropdown = false;
+  }
+
+  async function handleCategorySelect(value: string) {
+    if (!currentEntity || !isTask(currentEntity)) return;
+
+    const taskOps = new Tasks.Operations(settings);
+    await taskOps.update({
+      ...currentEntity,
+      category: value,
+    });
+
+    showCategoryDropdown = false;
+  }
+
+  async function handleProjectSelect(value: string) {
+    if (!currentEntity || !isTask(currentEntity)) return;
+
+    const taskOps = new Tasks.Operations(settings);
+    await taskOps.update({
+      ...currentEntity,
+      project: value || "",
+    });
+
+    showProjectDropdown = false;
+  }
+
+  async function handleAreasSelect(value: string) {
+    if (!currentEntity) return;
+
+    if (isTask(currentEntity)) {
+      const taskOps = new Tasks.Operations(settings);
+      const currentAreas = currentEntity.areas || [];
+
+      // Toggle area - add if not present, remove if present
+      const newAreas = currentAreas.includes(value)
+        ? currentAreas.filter((a) => a !== value)
+        : [...currentAreas, value];
+
+      await taskOps.update({
+        ...currentEntity,
+        areas: newAreas,
+      });
+    } else if (isProject(currentEntity)) {
+      const projectOps = new Projects.Operations(settings);
+      const currentAreas = currentEntity.areas || [];
+
+      // Toggle area - add if not present, remove if present
+      const newAreas = currentAreas.includes(value)
+        ? currentAreas.filter((a) => a !== value)
+        : [...currentAreas, value];
+
+      await projectOps.update({
+        ...currentEntity,
+        areas: newAreas,
+      });
+    }
+
+    showAreasDropdown = false;
+  }
+
+  // Update button content with color dots
+  function updateStatusButton() {
+    if (!statusButtonEl || !currentEntity || !isTask(currentEntity)) return;
+    statusButtonEl.innerHTML = "";
+
+    const status = currentEntity.status;
+    if (status) {
+      const statusConfig = settings?.taskStatuses?.find(
+        (s: any) => s.name === status
+      );
+      if (statusConfig) {
+        const dot = document.createElement("span");
+        dot.className = "task-sync-color-dot";
+        dot.style.backgroundColor = statusConfig.color;
+
+        const label = document.createElement("span");
+        label.textContent = status;
+
+        statusButtonEl.appendChild(dot);
+        statusButtonEl.appendChild(label);
+      }
+    } else {
+      const label = document.createElement("span");
+      label.textContent = "Set status";
+      label.style.color = "var(--text-muted)";
+      statusButtonEl.appendChild(label);
+    }
+  }
+
+  function updatePriorityButton() {
+    if (!priorityButtonEl || !currentEntity || !isTask(currentEntity)) return;
+    priorityButtonEl.innerHTML = "";
+
+    const priority = currentEntity.priority;
+    if (priority) {
+      const priorityConfig = settings?.taskPriorities?.find(
+        (p: any) => p.name === priority
+      );
+      if (priorityConfig) {
+        const dot = document.createElement("span");
+        dot.className = "task-sync-color-dot";
+        dot.style.backgroundColor = priorityConfig.color;
+
+        const label = document.createElement("span");
+        label.textContent = priority;
+
+        priorityButtonEl.appendChild(dot);
+        priorityButtonEl.appendChild(label);
+      }
+    } else {
+      const label = document.createElement("span");
+      label.textContent = "Set priority";
+      label.style.color = "var(--text-muted)";
+      priorityButtonEl.appendChild(label);
+    }
+  }
+
+  function updateCategoryButton() {
+    if (!categoryButtonEl || !currentEntity || !isTask(currentEntity)) return;
+    categoryButtonEl.innerHTML = "";
+
+    const category = currentEntity.category;
+    if (category) {
+      const categoryConfig = settings?.taskTypes?.find(
+        (t: any) => t.name === category
+      );
+      if (categoryConfig) {
+        const dot = document.createElement("span");
+        dot.className = "task-sync-color-dot";
+        dot.style.backgroundColor = categoryConfig.color;
+
+        const label = document.createElement("span");
+        label.textContent = category;
+
+        categoryButtonEl.appendChild(dot);
+        categoryButtonEl.appendChild(label);
+      }
+    } else {
+      const label = document.createElement("span");
+      label.textContent = "Set type";
+      label.style.color = "var(--text-muted)";
+      categoryButtonEl.appendChild(label);
+    }
+  }
+
+  function updateProjectButton() {
+    if (!projectButtonEl || !currentEntity || !isTask(currentEntity)) return;
+    projectButtonEl.innerHTML = "";
+
+    const project = currentEntity.project;
+    const label = document.createElement("span");
+    label.textContent = project || "Add to project";
+    if (!project) {
+      label.style.color = "var(--text-muted)";
+    }
+    projectButtonEl.appendChild(label);
+  }
+
+  function updateAreasButton() {
+    if (!areasButtonEl || !currentEntity) return;
+    areasButtonEl.innerHTML = "";
+
+    const areas = isTask(currentEntity)
+      ? currentEntity.areas
+      : isProject(currentEntity)
+        ? currentEntity.areas
+        : [];
+
+    const label = document.createElement("span");
+    label.textContent =
+      areas && areas.length > 0 ? areas.join(", ") : "Add to area";
+    if (!areas || areas.length === 0) {
+      label.style.color = "var(--text-muted)";
+    }
+    areasButtonEl.appendChild(label);
+  }
+
+  // Update buttons when entity changes
+  $effect(() => {
+    if (currentEntity && isTask(currentEntity)) {
+      updateStatusButton();
+      updatePriorityButton();
+      updateCategoryButton();
+      updateProjectButton();
+      updateAreasButton();
+    } else if (currentEntity && isProject(currentEntity)) {
+      updateAreasButton();
+    }
+  });
 </script>
 
-<div class={contextClass} data-testid="context-widget">
-  <!-- Action Icon -->
-  {#if showActionIcon}
-    <div class="context-action-icon" title={actionTooltip}>
-      <span bind:this={actionIconElement} class="context-icon"></span>
+<div class="context-widget-properties" data-testid="context-widget">
+  {#if context.type === "none"}
+    <div class="no-context-message">
+      <span class="no-context">No context</span>
+    </div>
+  {:else if context.type === "task" && currentEntity && isTask(currentEntity)}
+    <!-- Task Properties - Linear style -->
+    <div class="properties-list">
+      <!-- Status -->
+      <button
+        bind:this={statusButtonEl}
+        type="button"
+        onclick={handleStatusClick}
+        class="task-sync-property-button"
+        data-testid="context-status-button"
+        aria-label="Change status"
+      ></button>
+
+      <!-- Priority -->
+      <button
+        bind:this={priorityButtonEl}
+        type="button"
+        onclick={handlePriorityClick}
+        class="task-sync-property-button"
+        data-testid="context-priority-button"
+        aria-label="Change priority"
+      ></button>
+
+      <!-- Category/Type -->
+      <button
+        bind:this={categoryButtonEl}
+        type="button"
+        onclick={handleCategoryClick}
+        class="task-sync-property-button"
+        data-testid="context-category-button"
+        aria-label="Change type"
+      ></button>
+
+      <!-- Project -->
+      <div class="property-section">
+        <div class="property-label">Project</div>
+        <button
+          bind:this={projectButtonEl}
+          type="button"
+          onclick={handleProjectClick}
+          class="task-sync-property-button task-sync-property-button-full"
+          data-testid="context-project-button"
+          aria-label="Change project"
+        ></button>
+      </div>
+
+      <!-- Areas -->
+      <div class="property-section">
+        <div class="property-label">Areas</div>
+        <button
+          bind:this={areasButtonEl}
+          type="button"
+          onclick={handleAreasClick}
+          class="task-sync-property-button task-sync-property-button-full"
+          data-testid="context-areas-button"
+          aria-label="Change areas"
+        ></button>
+      </div>
+    </div>
+
+    <!-- Dropdowns -->
+    {#if showStatusDropdown && statusButtonEl}
+      <Dropdown
+        anchor={statusButtonEl}
+        items={statusOptions}
+        selectedValue={currentEntity.status}
+        onSelect={handleStatusSelect}
+        onClose={() => (showStatusDropdown = false)}
+        testId="context-status-dropdown"
+      />
+    {/if}
+
+    {#if showPriorityDropdown && priorityButtonEl}
+      <Dropdown
+        anchor={priorityButtonEl}
+        items={priorityOptions}
+        selectedValue={currentEntity.priority}
+        onSelect={handlePrioritySelect}
+        onClose={() => (showPriorityDropdown = false)}
+        testId="context-priority-dropdown"
+      />
+    {/if}
+
+    {#if showCategoryDropdown && categoryButtonEl}
+      <Dropdown
+        anchor={categoryButtonEl}
+        items={categoryOptions}
+        selectedValue={currentEntity.category}
+        onSelect={handleCategorySelect}
+        onClose={() => (showCategoryDropdown = false)}
+        testId="context-category-dropdown"
+      />
+    {/if}
+
+    {#if showProjectDropdown && projectButtonEl}
+      <Dropdown
+        anchor={projectButtonEl}
+        items={projectOptions}
+        selectedValue={currentEntity.project}
+        onSelect={handleProjectSelect}
+        onClose={() => (showProjectDropdown = false)}
+        searchable={true}
+        searchPlaceholder="Search projects..."
+        testId="context-project-dropdown"
+      />
+    {/if}
+
+    {#if showAreasDropdown && areasButtonEl}
+      <Dropdown
+        anchor={areasButtonEl}
+        items={areaOptions}
+        selectedValue={currentEntity.areas?.[0]}
+        onSelect={handleAreasSelect}
+        onClose={() => (showAreasDropdown = false)}
+        searchable={true}
+        searchPlaceholder="Search areas..."
+        testId="context-areas-dropdown"
+      />
+    {/if}
+  {:else if context.type === "project" && currentEntity && isProject(currentEntity)}
+    <!-- Project Properties -->
+    <div class="properties-list">
+      <!-- Areas -->
+      <div class="property-section">
+        <div class="property-label">Areas</div>
+        <button
+          bind:this={areasButtonEl}
+          type="button"
+          onclick={handleAreasClick}
+          class="task-sync-property-button task-sync-property-button-full"
+          data-testid="context-areas-button"
+          aria-label="Change areas"
+        ></button>
+      </div>
+    </div>
+
+    {#if showAreasDropdown && areasButtonEl}
+      <Dropdown
+        anchor={areasButtonEl}
+        items={areaOptions}
+        selectedValue={currentEntity.areas?.[0]}
+        onSelect={handleAreasSelect}
+        onClose={() => (showAreasDropdown = false)}
+        searchable={true}
+        searchPlaceholder="Search areas..."
+        testId="context-areas-dropdown"
+      />
+    {/if}
+  {:else if context.type === "daily"}
+    <div class="no-context-message">
+      <span class="context-type-label">Daily Note</span>
+    </div>
+  {:else}
+    <div class="no-context-message">
+      <span class="no-context">Entity details not available</span>
     </div>
   {/if}
-
-  <div class="context-content">
-    <!-- Service name header -->
-    {#if serviceName}
-      <div class="context-header">
-        <span class="service-name">{serviceName}</span>
-      </div>
-    {/if}
-
-    <!-- Entity information -->
-    {#if context.type === "none"}
-      <div class="no-context-message">
-        <span class="no-context">No context</span>
-      </div>
-    {:else if context.type === "daily"}
-      <div class="entity-info daily-info">
-        <div class="entity-title">
-          <span class="context-type">{contextTypeLabel}</span>
-          {#if context.name}
-            <span class="context-separator">•</span>
-            <span class="context-name">{context.name}</span>
-          {/if}
-        </div>
-      </div>
-    {:else if currentEntity}
-      <!-- Rich entity information -->
-      <div class="entity-info">
-        <div class="entity-title">
-          <span class="context-type">{contextTypeLabel}</span>
-          <span class="context-separator">•</span>
-          <span class="context-name">{getEntityName(currentEntity)}</span>
-        </div>
-
-        {#if currentEntity.description}
-          <div class="entity-description">
-            {currentEntity.description}
-          </div>
-        {/if}
-
-        <!-- Badges for key properties -->
-        <div class="entity-badges">
-          {#if context.type === "task" && isTask(currentEntity)}
-            <!-- Task-specific badges -->
-            {#if currentEntity.category}
-              <CategoryBadge category={currentEntity.category} size="medium" />
-            {/if}
-            {#if currentEntity.status}
-              <StatusBadge status={currentEntity.status} size="medium" />
-            {/if}
-            {#if currentEntity.priority}
-              <PriorityBadge priority={currentEntity.priority} size="medium" />
-            {/if}
-          {/if}
-        </div>
-
-        <!-- Additional properties -->
-        <div class="entity-properties">
-          {#if context.type === "task" && isTask(currentEntity)}
-            <!-- Task-specific properties -->
-            {#if currentEntity.project}
-              <LabelBadge
-                label="Project"
-                value={currentEntity.project}
-                size="medium"
-              />
-            {/if}
-            {#if currentEntity.areas && currentEntity.areas.length > 0}
-              {#each currentEntity.areas as area}
-                <LabelBadge label="Area" value={area} size="medium" />
-              {/each}
-            {/if}
-            {#if currentEntity.doDate}
-              <LabelBadge
-                label="Do Date"
-                value={formatDate(currentEntity.doDate)}
-                size="medium"
-              />
-            {/if}
-            {#if currentEntity.dueDate}
-              <LabelBadge
-                label="Due Date"
-                value={formatDate(currentEntity.dueDate)}
-                size="medium"
-              />
-            {/if}
-          {:else if context.type === "project" && isProject(currentEntity)}
-            <!-- Project-specific properties -->
-            {#if currentEntity.areas && currentEntity.areas.length > 0}
-              {#each currentEntity.areas as area}
-                <LabelBadge label="Area" value={area} size="medium" />
-              {/each}
-            {/if}
-          {/if}
-
-          {#if currentEntity.tags && currentEntity.tags.length > 0}
-            <div class="entity-tags">
-              {#each currentEntity.tags as tag}
-                <span class="tag-item">#{tag}</span>
-              {/each}
-            </div>
-          {/if}
-
-          {#if currentEntity.updatedAt}
-            <div class="entity-meta">
-              <span class="meta-label">Updated:</span>
-              <span class="meta-value"
-                >{formatDate(currentEntity.updatedAt)}</span
-              >
-            </div>
-          {/if}
-        </div>
-      </div>
-    {:else}
-      <!-- Fallback for when entity data is not available -->
-      <div class="entity-info">
-        <div class="entity-title">
-          <span class="context-type">{contextTypeLabel}</span>
-          {#if context.name}
-            <span class="context-separator">•</span>
-            <span class="context-name">{context.name}</span>
-          {/if}
-        </div>
-        <div class="entity-description muted">Entity details not available</div>
-      </div>
-    {/if}
-  </div>
 </div>
 
 <style>
-  .context-widget {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    padding: 20px;
-    background: var(--background-primary);
-  }
-
-  .context-action-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    border-radius: 6px;
-    background: var(--interactive-accent);
-    color: var(--text-on-accent);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-
-  .context-action-icon:hover {
-    opacity: 0.9;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-  }
-
-  .context-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-  }
-
-  .context-content {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    flex: 1;
-  }
-
-  .context-header {
-    margin-bottom: 8px;
-  }
-
-  .service-name {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-normal);
-  }
-
-  .entity-info {
+  .context-widget-properties {
     display: flex;
     flex-direction: column;
     gap: 12px;
-  }
-
-  .entity-title {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 16px;
-  }
-
-  .context-type {
-    font-size: 13px;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: var(--text-muted);
-  }
-
-  .context-separator {
-    color: var(--text-faint);
-    font-weight: normal;
-  }
-
-  .context-name {
-    font-size: 18px;
-    color: var(--text-normal);
-    font-weight: 600;
-  }
-
-  .entity-description {
-    font-size: 14px;
-    color: var(--text-muted);
-    line-height: 1.5;
     padding: 12px;
-    background: var(--background-secondary);
-    border-radius: 6px;
-    border-left: 3px solid var(--interactive-accent);
+    background: var(--background-primary);
   }
 
-  .entity-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    align-items: center;
-  }
-
-  .entity-properties {
+  .properties-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
   }
 
-  .entity-tags {
+  .property-section {
     display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 4px;
+    flex-direction: column;
+    gap: 4px;
   }
 
-  .tag-item {
+  .property-label {
     font-size: 12px;
-    color: var(--text-accent);
-    background: var(--background-secondary);
-    padding: 4px 8px;
-    border-radius: 4px;
     font-weight: 500;
-  }
-
-  .entity-meta {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
     color: var(--text-muted);
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid var(--background-modifier-border);
-  }
-
-  .meta-label {
-    font-weight: 500;
-  }
-
-  .meta-value {
-    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .no-context-message {
@@ -436,30 +562,15 @@
     font-size: 14px;
   }
 
-  .muted {
+  .context-type-label {
+    font-size: 13px;
+    font-weight: 500;
     color: var(--text-muted);
-    font-style: italic;
   }
 
-  /* Context type specific styling */
-  .context-type-project .context-type {
-    color: var(--color-blue);
-  }
-
-  .context-type-area .context-type {
-    color: var(--color-green);
-  }
-
-  .context-type-task .context-type {
-    color: var(--color-orange);
-  }
-
-  .context-type-daily .context-type {
-    color: var(--color-purple);
-  }
-
-  /* Action type specific styling */
-  .action-type-planning .context-action-icon {
-    background: var(--color-purple);
+  /* Full-width property buttons */
+  :global(.task-sync-property-button-full) {
+    width: 100%;
+    justify-content: flex-start;
   }
 </style>

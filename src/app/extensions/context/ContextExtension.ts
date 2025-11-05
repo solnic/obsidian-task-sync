@@ -161,6 +161,16 @@ export class ContextExtension implements Extension {
       this.updateCurrentContext();
     });
 
+    // Listen for metadata cache changes - this fires AFTER file is fully indexed
+    // This ensures context updates happen after Obsidian has processed the file
+    this.app.metadataCache.on("changed", (file) => {
+      // Only update context if this is the active file
+      const activeFile = this.app.workspace.getActiveFile();
+      if (activeFile && activeFile.path === file.path) {
+        this.updateCurrentContext();
+      }
+    });
+
     // Listen for file renames/moves that might affect context
     this.app.vault.on("rename", (file, oldPath) => {
       this.updateCurrentContext();

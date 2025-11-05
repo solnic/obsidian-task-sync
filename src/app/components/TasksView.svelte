@@ -162,11 +162,7 @@
         {#if showContextTab}
           <!-- Context Widget Content -->
           <div class="context-tab-content" data-testid="context-tab-content">
-            <ContextWidget
-              context={$currentFileContext}
-              isNonLocalService={activeService !== "local"}
-              dayPlanningMode={$isPlanningActive}
-            />
+            <ContextWidget context={$currentFileContext} {settings} {host} />
           </div>
         {:else}
           <!-- Service Content -->
