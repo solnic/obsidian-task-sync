@@ -366,38 +366,38 @@
   {:else if context.type === "task" && currentEntity && isTask(currentEntity)}
     <!-- Task Properties -->
     <div class="properties-list">
-      <!-- Status -->
-      <button
-        bind:this={statusButtonEl}
-        type="button"
-        onclick={handleStatusClick}
-        class="task-sync-property-button mod-minimal"
-        data-testid="context-status-button"
-        aria-label="Change status"
-      ></button>
+      <!-- Group 1: Status, Category, Priority -->
+      <div class="property-group property-group-inline">
+        <button
+          bind:this={statusButtonEl}
+          type="button"
+          onclick={handleStatusClick}
+          class="task-sync-property-button mod-minimal"
+          data-testid="context-status-button"
+          aria-label="Change status"
+        ></button>
 
-      <!-- Priority -->
-      <button
-        bind:this={priorityButtonEl}
-        type="button"
-        onclick={handlePriorityClick}
-        class="task-sync-property-button mod-minimal"
-        data-testid="context-priority-button"
-        aria-label="Change priority"
-      ></button>
+        <button
+          bind:this={categoryButtonEl}
+          type="button"
+          onclick={handleCategoryClick}
+          class="task-sync-property-button mod-minimal"
+          data-testid="context-category-button"
+          aria-label="Change type"
+        ></button>
 
-      <!-- Category/Type -->
-      <button
-        bind:this={categoryButtonEl}
-        type="button"
-        onclick={handleCategoryClick}
-        class="task-sync-property-button mod-minimal"
-        data-testid="context-category-button"
-        aria-label="Change type"
-      ></button>
+        <button
+          bind:this={priorityButtonEl}
+          type="button"
+          onclick={handlePriorityClick}
+          class="task-sync-property-button mod-minimal"
+          data-testid="context-priority-button"
+          aria-label="Change priority"
+        ></button>
+      </div>
 
-      <!-- Project -->
-      <div class="property-section">
+      <!-- Group 2: Project -->
+      <div class="property-group">
         <div class="property-label">Project</div>
         <button
           bind:this={projectButtonEl}
@@ -409,8 +409,8 @@
         ></button>
       </div>
 
-      <!-- Areas -->
-      <div class="property-section">
+      <!-- Group 3: Areas -->
+      <div class="property-group">
         <div class="property-label">Areas</div>
         <button
           bind:this={areasButtonEl}
@@ -420,6 +420,12 @@
           data-testid="context-areas-button"
           aria-label="Change areas"
         ></button>
+      </div>
+
+      <!-- Group 4: Source-specific info (placeholder) -->
+      <div class="property-group">
+        <div class="property-label">GitHub</div>
+        <div class="property-placeholder">No GitHub integration</div>
       </div>
     </div>
 
@@ -485,8 +491,8 @@
   {:else if context.type === "project" && currentEntity && isProject(currentEntity)}
     <!-- Project Properties -->
     <div class="properties-list">
-      <!-- Areas -->
-      <div class="property-section">
+      <!-- Group 1: Areas -->
+      <div class="property-group">
         <div class="property-label">Areas</div>
         <button
           bind:this={areasButtonEl}
@@ -496,6 +502,12 @@
           data-testid="context-areas-button"
           aria-label="Change areas"
         ></button>
+      </div>
+
+      <!-- Group 2: Source-specific info (placeholder) -->
+      <div class="property-group">
+        <div class="property-label">GitHub</div>
+        <div class="property-placeholder">No GitHub integration</div>
       </div>
     </div>
 
@@ -532,20 +544,33 @@
   .context-widget-properties {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0;
   }
 
   .properties-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0;
   }
 
-  .property-section {
+  /* Property groups with spacing between them */
+  .property-group {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    margin-top: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
+  }
+
+  .property-group:last-child {
+    border-bottom: none;
+  }
+
+  /* Inline variant for buttons that should flow horizontally */
+  .property-group-inline {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 
   .property-label {
@@ -554,7 +579,14 @@
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    padding: 0 8px 4px 8px;
+    margin-bottom: 4px;
+  }
+
+  .property-placeholder {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 6px 8px;
   }
 
   .no-context-message {

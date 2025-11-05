@@ -100,15 +100,17 @@
 
   /* Minimal variant - completely transparent, shows styling only on hover (Linear-style) */
   .task-sync-property-button.mod-minimal {
-    border: none !important;
+    border: 1px solid transparent !important;
     background: transparent !important;
     padding: 6px 8px;
     border-radius: 6px;
+    width: auto !important;
+    box-sizing: border-box;
   }
 
   .task-sync-property-button.mod-minimal:hover:not(:disabled) {
     background: var(--background-modifier-hover) !important;
-    border: 1px solid var(--background-modifier-border) !important;
+    border-color: var(--background-modifier-border) !important;
   }
 
   .task-sync-property-button.mod-minimal:focus {
