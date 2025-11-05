@@ -92,10 +92,11 @@
   );
 
   function handleButtonClick(event: MouseEvent) {
-    // Check if the click was on the clear button
-    if (
-      (event.target as HTMLElement).classList.contains("filter-clear-button")
-    ) {
+    // Check if the click was on the clear button or inside it
+    const target = event.target as HTMLElement;
+    const clearButton = target.closest(".filter-clear-button");
+
+    if (clearButton) {
       event.stopPropagation();
       onselect("");
       return;
