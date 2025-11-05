@@ -7,6 +7,7 @@
     icon?: string;
     active?: boolean;
     disabled?: boolean;
+    minimal?: boolean; // Linear-style: show styling only on hover
     testId?: string;
     ariaLabel?: string;
     title?: string;
@@ -21,6 +22,7 @@
     icon = "",
     active = false,
     disabled = false,
+    minimal = false,
     testId = "",
     ariaLabel = "",
     title = "",
@@ -42,6 +44,7 @@
   class="task-sync-property-button"
   class:active
   class:disabled
+  class:mod-minimal={minimal}
   data-testid={testId}
   aria-label={ariaLabel}
   {title}
@@ -67,15 +70,21 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    padding: 8px 12px;
+    padding: 6px 8px;
     border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
+    font-size: 14px;
+    font-weight: 400;
     cursor: pointer;
     transition: all 0.15s ease;
     border: 1px solid var(--background-modifier-border);
-    background: var(--background-primary);
+    background: var(--background-secondary);
     color: var(--text-normal);
+    height: auto;
+    min-height: 28px;
+    box-sizing: border-box;
+    white-space: nowrap;
+    width: auto;
+    justify-content: flex-start;
   }
 
   .task-sync-property-button:hover:not(:disabled) {
@@ -87,6 +96,24 @@
     outline: none;
     border-color: var(--interactive-accent);
     box-shadow: 0 0 0 1px var(--interactive-accent-hover);
+  }
+
+  /* Minimal variant - completely transparent, shows styling only on hover (Linear-style) */
+  .task-sync-property-button.mod-minimal {
+    border: none !important;
+    background: transparent !important;
+    padding: 6px 8px;
+    border-radius: 6px;
+  }
+
+  .task-sync-property-button.mod-minimal:hover:not(:disabled) {
+    background: var(--background-modifier-hover) !important;
+    border: 1px solid var(--background-modifier-border) !important;
+  }
+
+  .task-sync-property-button.mod-minimal:focus {
+    outline: none;
+    box-shadow: none;
   }
 
   .task-sync-property-button.active {

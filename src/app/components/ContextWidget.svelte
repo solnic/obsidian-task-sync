@@ -364,14 +364,14 @@
       <span class="no-context">No context</span>
     </div>
   {:else if context.type === "task" && currentEntity && isTask(currentEntity)}
-    <!-- Task Properties - Linear style -->
+    <!-- Task Properties -->
     <div class="properties-list">
       <!-- Status -->
       <button
         bind:this={statusButtonEl}
         type="button"
         onclick={handleStatusClick}
-        class="task-sync-property-button"
+        class="task-sync-property-button mod-minimal"
         data-testid="context-status-button"
         aria-label="Change status"
       ></button>
@@ -381,7 +381,7 @@
         bind:this={priorityButtonEl}
         type="button"
         onclick={handlePriorityClick}
-        class="task-sync-property-button"
+        class="task-sync-property-button mod-minimal"
         data-testid="context-priority-button"
         aria-label="Change priority"
       ></button>
@@ -391,7 +391,7 @@
         bind:this={categoryButtonEl}
         type="button"
         onclick={handleCategoryClick}
-        class="task-sync-property-button"
+        class="task-sync-property-button mod-minimal"
         data-testid="context-category-button"
         aria-label="Change type"
       ></button>
@@ -403,7 +403,7 @@
           bind:this={projectButtonEl}
           type="button"
           onclick={handleProjectClick}
-          class="task-sync-property-button task-sync-property-button-full"
+          class="task-sync-property-button mod-minimal task-sync-property-button-full"
           data-testid="context-project-button"
           aria-label="Change project"
         ></button>
@@ -416,7 +416,7 @@
           bind:this={areasButtonEl}
           type="button"
           onclick={handleAreasClick}
-          class="task-sync-property-button task-sync-property-button-full"
+          class="task-sync-property-button mod-minimal task-sync-property-button-full"
           data-testid="context-areas-button"
           aria-label="Change areas"
         ></button>
@@ -492,7 +492,7 @@
           bind:this={areasButtonEl}
           type="button"
           onclick={handleAreasClick}
-          class="task-sync-property-button task-sync-property-button-full"
+          class="task-sync-property-button mod-minimal task-sync-property-button-full"
           data-testid="context-areas-button"
           aria-label="Change areas"
         ></button>
@@ -511,9 +511,15 @@
         testId="context-areas-dropdown"
       />
     {/if}
-  {:else if context.type === "daily"}
+  {:else if context.type === "area" && currentEntity}
+    <!-- Area has no editable properties yet -->
     <div class="no-context-message">
-      <span class="context-type-label">Daily Note</span>
+      <span class="no-context">No editable properties</span>
+    </div>
+  {:else if context.type === "daily"}
+    <!-- Daily Note has no editable properties -->
+    <div class="no-context-message">
+      <span class="no-context">No editable properties</span>
     </div>
   {:else}
     <div class="no-context-message">
@@ -526,29 +532,29 @@
   .context-widget-properties {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 12px;
-    background: var(--background-primary);
+    gap: 4px;
   }
 
   .properties-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 4px;
   }
 
   .property-section {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    margin-top: 12px;
   }
 
   .property-label {
-    font-size: 12px;
-    font-weight: 500;
+    font-size: 11px;
+    font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    padding: 0 8px 4px 8px;
   }
 
   .no-context-message {
@@ -560,12 +566,6 @@
     color: var(--text-muted);
     font-style: italic;
     font-size: 14px;
-  }
-
-  .context-type-label {
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-muted);
   }
 
   /* Full-width property buttons */

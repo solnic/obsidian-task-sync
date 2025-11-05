@@ -3598,26 +3598,45 @@ button.tab-item.active {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 12px;
+  padding: 6px 8px;
   border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 400;
   cursor: pointer;
   transition: all 0.15s ease;
   border: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
   color: var(--text-normal);
-  height: 32px;
+  height: auto;
+  min-height: 28px;
   box-sizing: border-box;
   white-space: nowrap;
-  max-width: 250px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  width: auto;
+  justify-content: flex-start;
 }
 
 .task-sync-property-button:hover {
   background: var(--background-modifier-hover);
   border-color: var(--background-modifier-border-hover);
+}
+
+/* Minimal/ghost variant - completely transparent, shows styling only on hover (Linear-style) */
+.task-sync-property-button.mod-minimal {
+  border: none !important;
+  background: transparent !important;
+  padding: 6px 8px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.task-sync-property-button.mod-minimal:hover:not(:disabled) {
+  background: var(--background-modifier-hover) !important;
+  border: 1px solid var(--background-modifier-border) !important;
+}
+
+.task-sync-property-button.mod-minimal:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .task-sync-property-button:focus {
@@ -3870,7 +3889,6 @@ button.tab-item.active {
   flex-direction: column;
   height: 100%;
   padding: 0;
-  background: var(--background-primary);
 }
 
 .context-tab-view {
@@ -3888,7 +3906,6 @@ button.tab-item.active {
 .context-tab-content {
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
 }
 
 /* Loading State */

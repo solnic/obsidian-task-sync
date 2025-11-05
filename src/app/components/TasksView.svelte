@@ -155,8 +155,18 @@
       <TabView
         className="tasks-view-tab"
         testId="tasks-view-tab"
-        showHeader={!showContextTab}
-        headerTitle={services.find((s: any) => s.id === activeService)?.name}
+        showHeader={showContextTab || !showContextTab}
+        headerTitle={showContextTab
+          ? $currentFileContext?.type === "task"
+            ? "Task"
+            : $currentFileContext?.type === "project"
+              ? "Project"
+              : $currentFileContext?.type === "area"
+                ? "Area"
+                : $currentFileContext?.type === "daily"
+                  ? "Daily Note"
+                  : "Context"
+          : services.find((s: any) => s.id === activeService)?.name}
       >
         <!-- Content based on active tab -->
         {#if showContextTab}
