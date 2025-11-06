@@ -735,19 +735,7 @@ export async function captureFullDebugInfo(
 
   // Copy vault directory to allow debugging test vault state
   if (context.vaultPath && fs.existsSync(context.vaultPath)) {
-    try {
-      const vaultSnapshotPath = path.join(debugDir, "vault-snapshot");
-      await copyDirectory(context.vaultPath, vaultSnapshotPath);
-      console.log(`✅ Vault snapshot copied to: ${vaultSnapshotPath}`);
-    } catch (error) {
-      console.warn(
-        `⚠️ Failed to copy vault snapshot from ${context.vaultPath}:`,
-        error
-      );
-    }
-  } else {
-    console.warn(
-      `⚠️ Vault path not available or does not exist: ${context.vaultPath}`
-    );
+    const vaultSnapshotPath = path.join(debugDir, "vault-snapshot");
+    await copyDirectory(context.vaultPath, vaultSnapshotPath);
   }
 }
