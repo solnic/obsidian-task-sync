@@ -47,13 +47,13 @@ export default defineConfig({
     // baseURL: undefined,
 
     // Trace configuration for debugging
-    trace: "retain-on-failure",
+    trace: "off",
 
     // Screenshot configuration
-    screenshot: "only-on-failure",
+    screenshot: "off",
 
     // Video configuration
-    video: "retain-on-failure",
+    video: "off",
 
     // Action timeout
     actionTimeout: 5000,
@@ -66,7 +66,7 @@ export default defineConfig({
   // Global helpers are imported directly in test files
 
   // Output directory for test artifacts
-  outputDir: "./tests/e2e/debug/test-results",
+  outputDir: undefined,
 
   // Projects configuration (we only need one for Electron)
   projects: [
