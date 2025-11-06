@@ -36,7 +36,6 @@
     extension: Extension;
     host: Host;
     isPlanningActive?: boolean;
-    currentSchedule?: any;
     dailyPlanningExtension?: DailyPlanningExtension;
     testId?: string;
   }
@@ -46,7 +45,6 @@
     extension,
     host,
     isPlanningActive = false,
-    currentSchedule,
     dailyPlanningExtension,
     testId,
   }: Props = $props();
@@ -63,7 +61,6 @@
   const importedGitHubUrls = derived(taskStore, ($taskStore) => {
     const urls = new Set<string>();
     for (const task of $taskStore.tasks) {
-      // Only process tasks that have source.keys defined
       if (task.source.keys.github) {
         urls.add(task.source.keys.github);
       }

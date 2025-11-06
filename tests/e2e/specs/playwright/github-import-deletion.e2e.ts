@@ -93,6 +93,42 @@ test.describe("GitHub Import and Deletion Sync", () => {
 
     expect(taskInStore).toBeUndefined();
 
+    // Wait a bit for the event to be processed
+    await page.waitForTimeout(500);
+
+    // Verify GitHub entity store still has the issue but without Obsidian key
+    const githubStoreCheck = await page.evaluate((url) => {
+      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
+      const githubExtension = plugin.taskSyncApp.githubExtension;
+
+      if (!githubExtension) {
+        return { error: "GitHub extension not found" };
+      }
+
+      let githubTasks: any[] = [];
+      const unsubscribe = githubExtension
+        .getEntityStore()
+        .subscribe((tasks: any) => {
+          githubTasks = tasks;
+        });
+      unsubscribe();
+
+      const task = githubTasks.find((t: any) => t.source?.keys?.github === url);
+      return {
+        taskFound: !!task,
+        taskCount: githubTasks.length,
+        taskId: task?.id,
+        hasObsidianKey: task?.source?.keys?.obsidian ? true : false,
+      };
+    }, githubUrl);
+
+    // GitHub issue should be removed from entity store after deletion
+    // (reactive cleanup removes deleted tasks from GitHub entity store)
+    expect(githubStoreCheck.taskFound).toBe(false);
+    console.log(
+      "✓ Task removed from GitHub entity store after deletion (reactive cleanup)"
+    );
+
     // Run "Refresh Tasks" command
     await executeCommand(page, "Refresh Tasks");
 
@@ -123,9 +159,12 @@ test.describe("GitHub Import and Deletion Sync", () => {
     );
     await expect(importedBadge).not.toBeVisible();
 
+    // Hover over the item to make the import button appear
+    await taskItemAfterRefresh.hover();
+
     // Should have import button available again
     const importButton = taskItemAfterRefresh.locator(
-      '[data-testid="import-task-button"]'
+      '[data-testid="issue-import-button"]'
     );
     await expect(importButton).toBeVisible();
   });

@@ -195,6 +195,9 @@ export class GitHubExtension implements Extension {
     try {
       console.log("Loading GitHubExtension - preloading caches...");
 
+      // Set up reactive cleanup of entity store
+      this.setupReactiveCleanup();
+
       // Preload caches from persistent storage
       await this.preloadCaches();
 
@@ -232,18 +235,76 @@ export class GitHubExtension implements Extension {
     return this.initialized && this.octokit !== undefined;
   }
 
+  // Event handler methods required by Extension interface
+  // GitHub extension uses reactive stores instead of event handlers
+  async onEntityCreated(_event: any): Promise<void> {
+    // No-op: GitHub entity store is managed reactively
+  }
+
+  async onEntityUpdated(_event: any): Promise<void> {
+    // No-op: GitHub entity store is managed reactively
+  }
+
+  async onEntityDeleted(_event: any): Promise<void> {
+    // No-op: GitHub entity store is managed reactively
+  }
+
   // ============================================================================
   // REACTIVE STATE - Extension-level state that components can observe
   // ============================================================================
 
-  // Extension's own entity store - contains GitHub tasks owned by this extension
-  private entityStore = writable<Task[]>([]);
+  // Raw entity store - contains GitHub tasks fetched from API
+  private rawEntityStore = writable<Task[]>([]);
+
+  // Track GitHub URLs that exist in main store (for reactive cleanup)
+  private mainStoreGitHubUrls = new Set<string>();
 
   /**
    * Get the extension's entity store (read-only)
+   * Returns the raw entity store directly.
+   *
+   * Reactive cleanup is handled by subscribing to taskStore changes in activate().
    */
   getEntityStore(): Readable<Task[]> {
-    return this.entityStore;
+    return this.rawEntityStore;
+  }
+
+  /**
+   * Set up reactive cleanup of entity store based on main task store changes.
+   * This removes tasks from the GitHub entity store when they're deleted from main store.
+   */
+  private setupReactiveCleanup(): void {
+    // Subscribe to main task store changes
+    taskStore.subscribe(($mainStore) => {
+      // Build set of GitHub URLs currently in main store
+      const currentGitHubUrls = new Set<string>();
+      for (const task of $mainStore.tasks) {
+        if (task.source.keys.github) {
+          currentGitHubUrls.add(task.source.keys.github);
+        }
+      }
+
+      // Find URLs that were in main store but are no longer there (deleted)
+      const deletedUrls = new Set<string>();
+      for (const url of this.mainStoreGitHubUrls) {
+        if (!currentGitHubUrls.has(url)) {
+          deletedUrls.add(url);
+        }
+      }
+
+      // If any tasks were deleted, remove them from raw entity store
+      if (deletedUrls.size > 0) {
+        this.rawEntityStore.update((tasks) => {
+          return tasks.filter((task) => {
+            const url = task.source.keys.github;
+            return !url || !deletedUrls.has(url);
+          });
+        });
+      }
+
+      // Update tracking
+      this.mainStoreGitHubUrls = currentGitHubUrls;
+    });
   }
 
   /**
@@ -256,7 +317,7 @@ export class GitHubExtension implements Extension {
    * @param tasks - Tasks to add/update in the store
    */
   updateEntityStore(tasks: Task[]): void {
-    this.entityStore.update((currentTasks) => {
+    this.rawEntityStore.update((currentTasks) => {
       console.log(
         `[GitHubExtension] updateEntityStore called with ${tasks.length} tasks, current store has ${currentTasks.length} tasks`
       );
@@ -398,12 +459,6 @@ export class GitHubExtension implements Extension {
     return derived(
       [importedGitHubTasks, this.getEntityStore(), this.currentFilters],
       ([$importedTasks, $githubTasks, $filters]) => {
-        console.log("[GitHubExtension.getTasks] Derived store updating:", {
-          importedCount: $importedTasks.length,
-          githubTasksCount: $githubTasks.length,
-          filters: $filters,
-        });
-
         // If no repository filter, return all imported tasks
         if (!$filters.repository) {
           return $importedTasks;
@@ -432,12 +487,6 @@ export class GitHubExtension implements Extension {
           if (!url) return false;
           const taskRepository = extractRepositoryFromGitHubUrl(url);
           return taskRepository === repository;
-        });
-
-        console.log("[GitHubExtension.getTasks] GitHub tasks for repo:", {
-          repository,
-          githubTasksCount: githubTasksForRepo.length,
-          importedCount: importedForRepo.length,
         });
 
         // Combine tasks: use imported tasks (with user modifications) when available,
@@ -634,19 +683,6 @@ export class GitHubExtension implements Extension {
 
       return true;
     });
-  }
-
-  // Event handler methods required by Extension interface
-  async onEntityCreated(_event: any): Promise<void> {
-    // GitHub extension doesn't create entities in response to events
-  }
-
-  async onEntityUpdated(_event: any): Promise<void> {
-    // GitHub extension doesn't update entities in response to events
-  }
-
-  async onEntityDeleted(_event: any): Promise<void> {
-    // GitHub extension doesn't delete entities in response to events
   }
 
   /**
