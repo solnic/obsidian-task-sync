@@ -48,25 +48,35 @@ export class GitHubTaskSource implements DataSource<Task> {
   }
 
   /**
-   * Load initial data by returning imported GitHub tasks from the store
+   * Load initial data by returning imported GitHub tasks from the extension's entity store
+   *
+   * The extension's entity store contains GitHub tasks that have been:
+   * 1. Imported from GitHub (have both github and obsidian source keys)
+   * 2. Fetched from GitHub API (cached in the entity store)
+   *
+   * This method is used during refresh operations to reload GitHub tasks
+   * without hitting the GitHub API.
    *
    * @returns Promise resolving to array of GitHub tasks
    */
   async loadInitialData(): Promise<readonly Task[]> {
     console.log("[GitHubTaskSource] Loading initial data...");
 
-    // Return imported GitHub tasks from the main task store
-    // These are tasks that have source.extension = "github"
-    const storeState = get(taskStore);
-    const githubTasks = storeState.tasks.filter(
-      (task) => task.source.extension === "github"
+    // Return GitHub tasks from the extension's entity store
+    // This store persists GitHub tasks across refreshes
+    const entityStore = get(this.githubExtension.getEntityStore()) as Task[];
+
+    // Filter to only include imported tasks (those with obsidian key)
+    // Non-imported tasks are just cached API data and shouldn't be in the main store
+    const importedGitHubTasks = entityStore.filter(
+      (task) => task.source.keys.obsidian !== undefined
     );
 
     console.log(
-      `[GitHubTaskSource] Returning ${githubTasks.length} imported GitHub tasks from main taskStore`
+      `[GitHubTaskSource] Returning ${importedGitHubTasks.length} imported GitHub tasks from entity store (${entityStore.length} total in cache)`
     );
 
-    return githubTasks;
+    return importedGitHubTasks;
   }
 
   /**

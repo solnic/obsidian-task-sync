@@ -5,7 +5,7 @@ import { taskStore } from "../../stores/taskStore";
 import type { ObsidianExtension } from "../../extensions/obsidian/ObsidianExtension";
 import type { NoteType } from "../../core/type-note";
 import type TaskSyncPlugin from "../../../main";
-import { extensionRegistry } from "../../core/extension";
+import { taskSourceManager } from "../../core/TaskSourceManager";
 import type { Task } from "../../core/entities";
 import { ObsidianTaskOperations } from "../../extensions/obsidian/operations/TaskOperations";
 import { ObsidianBaseManager } from "../../extensions/obsidian/utils/BaseManager";
@@ -212,6 +212,11 @@ export class RefreshTasksCommand extends Command {
 
   /**
    * Clear task store and rebuild from all sources
+   *
+   * This method:
+   * 1. Clears the main task store completely
+   * 2. Re-imports tasks from all registered sources using TaskSourceManager
+   * 3. Each source re-scans/re-fetches its data based on source information
    */
   private async rebuildTaskData(results: {
     tasksRefreshed: number;
@@ -220,30 +225,42 @@ export class RefreshTasksCommand extends Command {
     try {
       console.log("Task Sync: Rebuilding task data from all sources...");
 
-      // Clear the task store
+      // Clear the task store completely
+      console.log("Task Sync: Clearing task store...");
       taskStore.dispatch({ type: "CLEAR_ALL_TASKS" });
 
-      // Reload tasks from all registered sources
-      const sources = extensionRegistry.getAll();
+      // Get all registered source IDs from TaskSourceManager
+      const sourceIds = taskSourceManager.getRegisteredSources();
+      console.log(`Task Sync: Found ${sourceIds.length} registered sources: ${sourceIds.join(", ")}`);
 
-      for (const source of sources) {
+      // Reload tasks from each registered source
+      // Each source will re-scan/re-fetch based on its source information
+      for (const sourceId of sourceIds) {
         try {
-          const tasksReadable = source.getTasks();
-          const tasks = get(tasksReadable) as readonly Task[];
-          console.log(`Loading ${tasks.length} tasks from ${source.id}`);
+          console.log(`Task Sync: Loading tasks from source: ${sourceId}`);
 
-          for (const task of tasks) {
-            taskStore.dispatch({ type: "ADD_TASK", task });
-          }
+          // Use TaskSourceManager to load tasks from this source
+          // This will:
+          // 1. Call source.loadInitialData() or source.refresh()
+          // 2. Dispatch LOAD_SOURCE_SUCCESS to taskStore
+          // 3. Store reducer will add tasks from this source
+          await taskSourceManager.loadSource(sourceId);
 
-          results.tasksRefreshed += tasks.length;
+          // Count tasks from this source
+          const storeState = get(taskStore);
+          const tasksFromSource = storeState.tasks.filter(
+            (task) => task.source.extension === sourceId
+          );
+
+          console.log(`Task Sync: Loaded ${tasksFromSource.length} tasks from ${sourceId}`);
+          results.tasksRefreshed += tasksFromSource.length;
         } catch (error) {
-          console.error(`Failed to load tasks from ${source.id}:`, error);
-          results.errors.push(`${source.id}: ${error.message}`);
+          console.error(`Failed to load tasks from ${sourceId}:`, error);
+          results.errors.push(`${sourceId}: ${error.message}`);
         }
       }
 
-      console.log("Task Sync: Task data rebuilt successfully");
+      console.log(`Task Sync: Task data rebuilt successfully - ${results.tasksRefreshed} tasks loaded`);
     } catch (error) {
       console.error("Task Sync: Failed to rebuild task data:", error);
       throw error;
