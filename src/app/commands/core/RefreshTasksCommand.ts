@@ -217,11 +217,21 @@ export class RefreshTasksCommand extends Command {
   /**
    * Refresh task data from all sources while preserving source metadata
    *
-   * This method:
-   * 1. Refreshes tasks from all registered sources using TaskSourceManager
-   * 2. Each source refreshes its data, preserving source.extension and other metadata
-   * 3. SyncManager handles cross-source synchronization automatically
-   * 4. Files are updated/recreated as needed through the sync process
+   * This method uses TaskSourceManager.refreshAll() which:
+   * 1. Calls refreshSource() for each registered source
+   * 2. Each refreshSource() call:
+   *    a. Fetches fresh data from the source
+   *    b. Dispatches LOAD_SOURCE_SUCCESS to update the store
+   *    c. Calls SyncManager.syncAllCrossSourceEntities()
+   * 3. SyncManager merges cross-source tasks using "source-wins" strategy
+   * 4. source.extension is preserved because the merge uses the original source extension
+   *
+   * Example: A GitHub task with a file in Obsidian:
+   * - Task has source.extension="github" and source.keys={github:"...", obsidian:"..."}
+   * - When Obsidian refreshes, it creates a new task with source.extension="obsidian"
+   * - SyncManager detects both tasks reference the same file
+   * - SyncManager merges them, preserving source.extension="github" (source-wins)
+   * - Result: Task maintains GitHub attribution while file is updated
    */
   private async rebuildTaskData(results: {
     tasksRefreshed: number;
@@ -230,36 +240,13 @@ export class RefreshTasksCommand extends Command {
     try {
       console.log("Task Sync: Refreshing task data from all sources...");
 
-      // Get all registered source IDs from TaskSourceManager
-      const sourceIds = taskSourceManager.getRegisteredSources();
-      console.log(`Task Sync: Found ${sourceIds.length} registered sources: ${sourceIds.join(", ")}`);
+      // Refresh all sources - this automatically handles source metadata preservation
+      // through the SyncManager's "source-wins" merge strategy
+      await taskSourceManager.refreshAll();
 
-      // Refresh tasks from each registered source
-      // refreshSource() preserves source metadata and triggers SyncManager for cross-source tasks
-      for (const sourceId of sourceIds) {
-        try {
-          console.log(`Task Sync: Refreshing tasks from source: ${sourceId}`);
-
-          // Use TaskSourceManager.refreshSource() which:
-          // 1. Calls source.refresh() to get fresh data
-          // 2. Dispatches LOAD_SOURCE_SUCCESS to taskStore
-          // 3. Triggers SyncManager.syncAllCrossSourceEntities()
-          // 4. Preserves source.extension throughout the process
-          await taskSourceManager.refreshSource(sourceId);
-
-          // Count tasks from this source
-          const storeState = get(taskStore);
-          const tasksFromSource = storeState.tasks.filter(
-            (task) => task.source.extension === sourceId
-          );
-
-          console.log(`Task Sync: Refreshed ${tasksFromSource.length} tasks from ${sourceId}`);
-          results.tasksRefreshed += tasksFromSource.length;
-        } catch (error) {
-          console.error(`Failed to refresh tasks from ${sourceId}:`, error);
-          results.errors.push(`${sourceId}: ${error.message}`);
-        }
-      }
+      // Count refreshed tasks
+      const storeState = get(taskStore);
+      results.tasksRefreshed = storeState.tasks.length;
 
       console.log(`Task Sync: Task data refreshed successfully - ${results.tasksRefreshed} tasks refreshed`);
     } catch (error) {
