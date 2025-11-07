@@ -14,6 +14,9 @@ import {
   getTaskByTitle,
   getProjectByName,
   getAreaByName,
+  waitForTaskToBeRemoved,
+  waitForProjectToBeRemoved,
+  waitForAreaToBeRemoved,
 } from "../../helpers/entity-helpers";
 
 test.describe("Entity Deletion on Note Deletion", () => {
@@ -35,6 +38,9 @@ test.describe("Entity Deletion on Note Deletion", () => {
 
     // Delete the task file
     await deleteVaultFile(page, taskFilePath);
+
+    // Wait for the task entity to be removed from the store
+    await waitForTaskToBeRemoved(page, taskTitle);
 
     const task = await getTaskByTitle(page, taskTitle);
     expect(task).toBeUndefined();
@@ -59,6 +65,9 @@ test.describe("Entity Deletion on Note Deletion", () => {
     // Delete the project file
     await deleteVaultFile(page, projectFilePath);
 
+    // Wait for the project entity to be removed from the store
+    await waitForProjectToBeRemoved(page, projectName);
+
     const project = await getProjectByName(page, projectName);
     expect(project).toBeUndefined();
   });
@@ -81,6 +90,9 @@ test.describe("Entity Deletion on Note Deletion", () => {
 
     // Delete the area file
     await deleteVaultFile(page, areaFilePath);
+
+    // Wait for the area entity to be removed from the store
+    await waitForAreaToBeRemoved(page, areaName);
 
     const area = await getAreaByName(page, areaName);
     expect(area).toBeUndefined();

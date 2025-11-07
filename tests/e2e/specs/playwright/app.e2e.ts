@@ -801,6 +801,20 @@ test.describe("Svelte App Initialization", () => {
       `Do Date: ${tomorrowStr}`
     );
 
+    // Wait for task entity to be updated with the new do date
+    await page.waitForFunction(
+      ({ title, expectedDate }) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const task = plugin.query.findTaskByTitle(title);
+        if (!task || !task.doDate) return false;
+        const doDateStr = new Date(task.doDate).toISOString().split("T")[0];
+        return doDateStr === expectedDate;
+      },
+      { title: taskName, expectedDate: tomorrowStr },
+      { timeout: 5000 }
+    );
+
     // Verify task has do date
     let task = await getTaskByTitle(page, taskName);
     expect(task.doDate).toBeDefined();
@@ -824,6 +838,20 @@ test.describe("Svelte App Initialization", () => {
       `Due Date: ${threeDaysLaterStr}`
     );
 
+    // Wait for task entity to be updated with the new due date
+    await page.waitForFunction(
+      ({ title, expectedDate }) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const task = plugin.query.findTaskByTitle(title);
+        if (!task || !task.dueDate) return false;
+        const dueDateStr = new Date(task.dueDate).toISOString().split("T")[0];
+        return dueDateStr === expectedDate;
+      },
+      { title: taskName, expectedDate: threeDaysLaterStr },
+      { timeout: 5000 }
+    );
+
     // Verify task has due date
     task = await getTaskByTitle(page, taskName);
     expect(task.dueDate).toBeDefined();
@@ -836,6 +864,18 @@ test.describe("Svelte App Initialization", () => {
     await doDateInput.fill("");
     await doDateInput.blur();
 
+    // Wait for task entity to have do date cleared
+    await page.waitForFunction(
+      ({ title }) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const task = plugin.query.findTaskByTitle(title);
+        return task && task.doDate === undefined;
+      },
+      { title: taskName },
+      { timeout: 5000 }
+    );
+
     // Verify do date is cleared
     task = await getTaskByTitle(page, taskName);
     expect(task.doDate).toBeUndefined();
@@ -843,6 +883,18 @@ test.describe("Svelte App Initialization", () => {
     // Clear due date
     await dueDateInput.fill("");
     await dueDateInput.blur();
+
+    // Wait for task entity to have due date cleared
+    await page.waitForFunction(
+      ({ title }) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const task = plugin.query.findTaskByTitle(title);
+        return task && task.dueDate === undefined;
+      },
+      { title: taskName },
+      { timeout: 5000 }
+    );
 
     // Verify due date is cleared
     task = await getTaskByTitle(page, taskName);

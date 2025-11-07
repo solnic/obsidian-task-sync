@@ -222,6 +222,56 @@ export async function waitForTaskUpdated(
 }
 
 /**
+ * Wait for a project to be removed from the store
+ * This is useful for testing deletion operations where we expect the project to be deleted
+ */
+export async function waitForProjectToBeRemoved(
+  page: ExtendedPage,
+  name: string,
+  timeout: number = 5000
+) {
+  await page.waitForFunction(
+    ({ name }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Use the public query API for consistency
+      const project = plugin.query.findProjectByName(name);
+
+      // Return true when project is NOT found (removed)
+      return project === undefined;
+    },
+    { name },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for an area to be removed from the store
+ * This is useful for testing deletion operations where we expect the area to be deleted
+ */
+export async function waitForAreaToBeRemoved(
+  page: ExtendedPage,
+  name: string,
+  timeout: number = 5000
+) {
+  await page.waitForFunction(
+    ({ name }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Use the public query API for consistency
+      const area = plugin.query.findAreaByName(name);
+
+      // Return true when area is NOT found (removed)
+      return area === undefined;
+    },
+    { name },
+    { timeout }
+  );
+}
+
+/**
  * Create an area using the TypeNote system
  * Returns the created entity directly from the plugin
  */
