@@ -6,7 +6,6 @@ import type { ObsidianExtension } from "../../extensions/obsidian/ObsidianExtens
 import type { NoteType } from "../../core/type-note";
 import type TaskSyncPlugin from "../../../main";
 import { taskSourceManager } from "../../core/TaskSourceManager";
-import type { Task } from "../../core/entities";
 import { ObsidianTaskOperations } from "../../extensions/obsidian/operations/TaskOperations";
 import { ObsidianBaseManager } from "../../extensions/obsidian/utils/BaseManager";
 
