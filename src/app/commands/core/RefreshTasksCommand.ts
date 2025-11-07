@@ -16,8 +16,12 @@ import { ObsidianBaseManager } from "../../extensions/obsidian/utils/BaseManager
  * Comprehensive refresh operation that:
  * 1. Updates file properties and removes obsolete front-matter keys
  * 2. Recreates missing task files for entities that exist in the store
- * 3. Clears and rebuilds task data from all sources
+ * 3. Refreshes task data from all sources while preserving source metadata
  * 4. Regenerates bases to ensure consistency
+ *
+ * IMPORTANT: This command preserves source.extension throughout the refresh process.
+ * Tasks imported from external sources (GitHub, etc.) maintain their original source
+ * attribution after refresh.
  */
 export class RefreshTasksCommand extends Command {
   getId(): string {
@@ -47,7 +51,7 @@ export class RefreshTasksCommand extends Command {
       // Step 1: Update file properties, remove obsolete keys, and recreate missing files
       await this.updateFileProperties(results);
 
-      // Step 2: Clear task store and rebuild from all sources
+      // Step 2: Refresh task data from all sources while preserving source metadata
       await this.rebuildTaskData(results);
 
       // Step 3: Regenerate bases to ensure consistency
@@ -211,40 +215,37 @@ export class RefreshTasksCommand extends Command {
   }
 
   /**
-   * Clear task store and rebuild from all sources
+   * Refresh task data from all sources while preserving source metadata
    *
    * This method:
-   * 1. Clears the main task store completely
-   * 2. Re-imports tasks from all registered sources using TaskSourceManager
-   * 3. Each source re-scans/re-fetches its data based on source information
+   * 1. Refreshes tasks from all registered sources using TaskSourceManager
+   * 2. Each source refreshes its data, preserving source.extension and other metadata
+   * 3. SyncManager handles cross-source synchronization automatically
+   * 4. Files are updated/recreated as needed through the sync process
    */
   private async rebuildTaskData(results: {
     tasksRefreshed: number;
     errors: string[];
   }): Promise<void> {
     try {
-      console.log("Task Sync: Rebuilding task data from all sources...");
-
-      // Clear the task store completely
-      console.log("Task Sync: Clearing task store...");
-      taskStore.dispatch({ type: "CLEAR_ALL_TASKS" });
+      console.log("Task Sync: Refreshing task data from all sources...");
 
       // Get all registered source IDs from TaskSourceManager
       const sourceIds = taskSourceManager.getRegisteredSources();
       console.log(`Task Sync: Found ${sourceIds.length} registered sources: ${sourceIds.join(", ")}`);
 
-      // Reload tasks from each registered source
-      // Each source will re-scan/re-fetch based on its source information
+      // Refresh tasks from each registered source
+      // refreshSource() preserves source metadata and triggers SyncManager for cross-source tasks
       for (const sourceId of sourceIds) {
         try {
-          console.log(`Task Sync: Loading tasks from source: ${sourceId}`);
+          console.log(`Task Sync: Refreshing tasks from source: ${sourceId}`);
 
-          // Use TaskSourceManager to load tasks from this source
-          // This will:
-          // 1. Call source.loadInitialData() or source.refresh()
-          // 2. Dispatch LOAD_SOURCE_SUCCESS to taskStore
-          // 3. Store reducer will add tasks from this source
-          await taskSourceManager.loadSource(sourceId);
+          // Use TaskSourceManager.refreshSource() which:
+          // 1. Calls source.refresh() to get fresh data
+          // 2. Dispatches LOAD_SOURCE_SUCCESS to taskStore
+          // 3. Triggers SyncManager.syncAllCrossSourceEntities()
+          // 4. Preserves source.extension throughout the process
+          await taskSourceManager.refreshSource(sourceId);
 
           // Count tasks from this source
           const storeState = get(taskStore);
@@ -252,17 +253,17 @@ export class RefreshTasksCommand extends Command {
             (task) => task.source.extension === sourceId
           );
 
-          console.log(`Task Sync: Loaded ${tasksFromSource.length} tasks from ${sourceId}`);
+          console.log(`Task Sync: Refreshed ${tasksFromSource.length} tasks from ${sourceId}`);
           results.tasksRefreshed += tasksFromSource.length;
         } catch (error) {
-          console.error(`Failed to load tasks from ${sourceId}:`, error);
+          console.error(`Failed to refresh tasks from ${sourceId}:`, error);
           results.errors.push(`${sourceId}: ${error.message}`);
         }
       }
 
-      console.log(`Task Sync: Task data rebuilt successfully - ${results.tasksRefreshed} tasks loaded`);
+      console.log(`Task Sync: Task data refreshed successfully - ${results.tasksRefreshed} tasks refreshed`);
     } catch (error) {
-      console.error("Task Sync: Failed to rebuild task data:", error);
+      console.error("Task Sync: Failed to refresh task data:", error);
       throw error;
     }
   }

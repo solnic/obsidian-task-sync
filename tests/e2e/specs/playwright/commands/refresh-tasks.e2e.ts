@@ -17,6 +17,8 @@ import {
 import {
   createTask,
   createTaskEntityWithoutFile,
+  createTaskWithSource,
+  getTaskByTitle,
 } from "../../../helpers/entity-helpers";
 
 test.describe("Commands / Task Refresh", () => {
@@ -102,8 +104,15 @@ test.describe("Commands / Task Refresh", () => {
     // Execute the refresh tasks command
     await executeCommand(page, "Refresh Tasks");
 
-    // Wait for the file to be created
-    await waitForFileCreation(page, "Tasks/Task Without File.md");
+    // Wait for the file to be created with proper timeout
+    await waitForFileCreation(page, "Tasks/Task Without File.md", 10000);
+
+    // Wait for the file content to be fully written
+    await waitForFileContentToContain(
+      page,
+      "Tasks/Task Without File.md",
+      "Task Without File"
+    );
 
     // Verify the file was created
     const fileExistsAfter = await fileExists(
@@ -188,5 +197,85 @@ test.describe("Commands / Task Refresh", () => {
     expect(cleanedContent).toContain("Task With Obsolete Props");
     expect(cleanedContent).toContain("Status: Backlog");
     expect(cleanedContent).toContain("Priority: Low");
+  });
+
+  test("should preserve source.extension for GitHub tasks during refresh", async ({
+    page,
+  }) => {
+    // Create a task with GitHub source extension
+    const githubTask = await createTaskWithSource(page, {
+      title: "GitHub Task for Refresh Test",
+      description: "This task is from GitHub",
+      category: "Bug",
+      status: "In Progress",
+      priority: "High",
+      source: {
+        extension: "github",
+        keys: {
+          github: "https://github.com/test/repo/issues/123",
+        },
+        data: {
+          id: 123,
+          number: 123,
+          html_url: "https://github.com/test/repo/issues/123",
+          title: "GitHub Task for Refresh Test",
+          state: "open",
+        },
+      },
+    });
+
+    expect(githubTask).toBeTruthy();
+    expect(githubTask.title).toBe("GitHub Task for Refresh Test");
+    expect(githubTask.source.extension).toBe("github");
+
+    // Verify task file was created
+    const taskExists = await fileExists(
+      page,
+      "Tasks/GitHub Task for Refresh Test.md"
+    );
+    expect(taskExists).toBe(true);
+
+    // Verify initial source.extension is 'github'
+    const initialTask = await getTaskByTitle(
+      page,
+      "GitHub Task for Refresh Test"
+    );
+    expect(initialTask).toBeDefined();
+    expect(initialTask.source.extension).toBe("github");
+    expect(initialTask.source.keys.github).toBe(
+      "https://github.com/test/repo/issues/123"
+    );
+
+    // Execute the refresh tasks command
+    await executeCommand(page, "Refresh Tasks");
+
+    // Wait for the refresh to complete by waiting for file to be updated
+    await waitForFileUpdate(
+      page,
+      "Tasks/GitHub Task for Refresh Test.md",
+      "Status: In Progress"
+    );
+
+    // Verify the task still has source.extension set to 'github' after refresh
+    const refreshedTask = await getTaskByTitle(
+      page,
+      "GitHub Task for Refresh Test"
+    );
+    expect(refreshedTask).toBeDefined();
+    expect(refreshedTask.source.extension).toBe("github");
+    expect(refreshedTask.source.keys.github).toBe(
+      "https://github.com/test/repo/issues/123"
+    );
+
+    // Verify the file still exists and has correct content
+    const content = await readVaultFile(
+      page,
+      "Tasks/GitHub Task for Refresh Test.md"
+    );
+    expect(content).toBeTruthy();
+    expect(content).toContain("GitHub Task for Refresh Test");
+    expect(content).toContain("This task is from GitHub");
+    expect(content).toContain("Status: In Progress");
+    expect(content).toContain("Priority: High");
   });
 });
