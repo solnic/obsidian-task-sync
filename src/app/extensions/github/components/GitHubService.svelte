@@ -37,7 +37,6 @@
     host: Host;
     isPlanningActive?: boolean;
     dailyPlanningExtension?: DailyPlanningExtension;
-    testId?: string;
   }
 
   let {
@@ -46,7 +45,6 @@
     host,
     isPlanningActive = false,
     dailyPlanningExtension,
-    testId,
   }: Props = $props();
 
   // Cast extension to GitHubExtension for type safety
@@ -55,17 +53,9 @@
   // Get the reactive context store
   const contextStore = getContextStore();
 
-  // Derived store: Set of imported GitHub URLs for O(1) lookup
-  // This avoids O(n*m) complexity from calling get(taskStore) in the render loop
-  // Created here (not at module level) so it's only active when component is mounted
-  const importedGitHubUrls = derived(taskStore, ($taskStore) => {
-    const urls = new Set<string>();
-    for (const task of $taskStore.tasks) {
-      if (task.source.keys.github) {
-        urls.add(task.source.keys.github);
-      }
-    }
-    return urls;
+  // Derived store: List of imported GitHub tasks
+  const importedTasks = derived(taskStore, ($taskStore) => {
+    return $taskStore.tasks.filter((task) => task.source.extension === "github");
   });
 
   // Computed daily planning modes
@@ -121,9 +111,6 @@
   let recentlyUsedOrgs = $state<string[]>([]);
   let recentlyUsedRepos = $state<string[]>([]);
   let hoveredTask = $state<string | null>(null);
-
-  // Import tracking state
-  let importingTasks = $state<Set<string>>(new Set());
 
   // Available sort fields for GitHub issues/PRs
   const availableSortFields = [
@@ -643,8 +630,7 @@
 
   // Helper to check if a task is imported (exists in main task store)
   function isTaskImported(task: Task): boolean {
-    const githubUrl = task.source.keys.github;
-    return githubUrl ? $importedGitHubUrls.has(githubUrl) : false;
+    return $importedTasks.some((t) => t.source.keys.github === task.source.keys.github);
   }
 
   /**
@@ -684,68 +670,52 @@
   }
 
   async function importTask(task: Task): Promise<void> {
-    try {
-      importingTasks.add(task.id);
-      importingTasks = new Set(importingTasks);
+    const githubData = task.source.data;
 
-      const githubData = task.source.data;
-      if (!githubData) {
-        console.error("Task has no GitHub data");
-        return;
-      }
+    // Determine if it's an issue or PR and import accordingly
+    const isPR = "head" in githubData && "base" in githubData;
+    const result = isPR
+      ? await githubExtension.importPullRequestAsTask(
+          githubData,
+          filters.repository || ""
+        )
+      : await githubExtension.importIssueAsTask(
+          githubData,
+          filters.repository || ""
+        );
 
-      // Determine if it's an issue or PR and import accordingly
-      const isPR = "head" in githubData && "base" in githubData;
-      const result = isPR
-        ? await githubExtension.importPullRequestAsTask(
-            githubData,
-            filters.repository || ""
-          )
-        : await githubExtension.importIssueAsTask(
-            githubData,
-            filters.repository || ""
+    if (result.success) {
+      console.log(
+        `Successfully imported ${isPR ? "PR" : "issue"} #${githubData.number} as task ${result.taskId}`
+      );
+
+      // Handle Daily Planning integration
+      if (dailyPlanningWizardMode && dailyPlanningExtension) {
+        // In wizard mode, stage the task for today
+        try {
+          dailyPlanningExtension.scheduleTaskForToday(result.taskId);
+          console.log(
+            `Staged task ${result.taskId} for today in Daily Planning`
           );
-
-      if (result.success) {
-        console.log(
-          `Successfully imported ${isPR ? "PR" : "issue"} #${githubData.number} as task ${result.taskId}`
-        );
-
-        // Handle Daily Planning integration
-        if (dailyPlanningWizardMode && dailyPlanningExtension) {
-          // In wizard mode, stage the task for today
-          try {
-            dailyPlanningExtension.scheduleTaskForToday(result.taskId);
-            console.log(
-              `Staged task ${result.taskId} for today in Daily Planning`
-            );
-          } catch (err: any) {
-            console.error("Error staging task for today:", err);
-          }
-        } else if (dayPlanningMode && dailyPlanningExtension) {
-          // In regular day planning mode, add to today's daily note immediately
-          try {
-            await dailyPlanningExtension.addTasksToTodayDailyNote([
-              { id: result.taskId, title: githubData.title } as Task,
-            ]);
-            console.log(`Added task ${result.taskId} to today's daily note`);
-          } catch (err: any) {
-            console.error("Error adding to today's daily note:", err);
-          }
+        } catch (err: any) {
+          console.error("Error staging task for today:", err);
         }
-
-        // Tasks are now reactive and will automatically update
-      } else {
-        console.error(
-          `Failed to import ${isPR ? "PR" : "issue"} #${githubData.number}:`,
-          result.error
-        );
+      } else if (dayPlanningMode && dailyPlanningExtension) {
+        // In regular day planning mode, add to today's daily note immediately
+        try {
+          await dailyPlanningExtension.addTasksToTodayDailyNote([
+            { id: result.taskId, title: githubData.title } as Task,
+          ]);
+          console.log(`Added task ${result.taskId} to today's daily note`);
+        } catch (err: any) {
+          console.error("Error adding to today's daily note:", err);
+        }
       }
-    } catch (error: any) {
-      console.error("Failed to import task:", error);
-    } finally {
-      importingTasks.delete(task.id);
-      importingTasks = new Set(importingTasks);
+    } else {
+      console.error(
+        `Failed to import ${isPR ? "PR" : "issue"} #${githubData.number}:`,
+        result.error
+      );
     }
   }
 </script>
@@ -932,7 +902,6 @@
           </div>
         {:else}
           {#each tasks as task (task.id)}
-            {@const isImporting = importingTasks.has(task.id)}
             {@const isImported = isTaskImported(task)}
             {@const isScheduled = task.doDate != null}
             {@const scheduledDate = task.doDate}
@@ -945,7 +914,6 @@
                 repository={filters.repository}
                 isHovered={hoveredTask === task.id}
                 {isImported}
-                {isImporting}
                 {isScheduled}
                 {scheduledDate}
                 {dayPlanningMode}
@@ -962,7 +930,6 @@
                 repository={filters.repository}
                 isHovered={hoveredTask === task.id}
                 {isImported}
-                {isImporting}
                 {isScheduled}
                 {scheduledDate}
                 {dayPlanningMode}
