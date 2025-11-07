@@ -96,6 +96,10 @@ export namespace Obsidian {
 
       const filePath = `${folder}/${sanitizedTitle}.md`;
 
+      // Only set obsidian key if it doesn't already exist
+      // This prevents overwriting the actual file path when title changes
+      const obsidianKey = taskDataWithSource.source.keys?.obsidian || filePath;
+
       const result = {
         ...baseEntity,
         status: finalStatus || baseEntity.status,
@@ -104,7 +108,7 @@ export namespace Obsidian {
           extension: taskDataWithSource.source.extension || "obsidian", // Preserve original extension
           keys: {
             ...taskDataWithSource.source.keys, // Preserve existing keys
-            obsidian: filePath, // Set/update Obsidian key
+            obsidian: obsidianKey, // Preserve existing path or set new one
           },
         },
       };

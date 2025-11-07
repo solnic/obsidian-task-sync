@@ -41,10 +41,20 @@ export abstract class ObsidianEntityOperations<
 
   // Common note management methods for reactive updates (called by ObsidianExtension)
   async createNote(entity: T): Promise<string> {
-    // Use polymorphic approach to get entity display name
-    const entityName = this.getEntityDisplayName(entity);
-    const fileName = this.sanitizeFileName(entityName);
-    const filePath = `${this.folder}/${fileName}.md`;
+    // Use existing obsidian key if available, otherwise generate from entity name
+    // This prevents creating duplicate files when title changes
+    const existingObsidianKey = (entity as any).source?.keys?.obsidian;
+    let filePath: string;
+
+    if (existingObsidianKey) {
+      // Use existing file path to update the file in place
+      filePath = existingObsidianKey;
+    } else {
+      // Generate new file path from entity display name
+      const entityName = this.getEntityDisplayName(entity);
+      const fileName = this.sanitizeFileName(entityName);
+      filePath = `${this.folder}/${fileName}.md`;
+    }
 
     // Generate entity-specific front-matter
     const frontMatter = this.generateFrontMatter(entity);

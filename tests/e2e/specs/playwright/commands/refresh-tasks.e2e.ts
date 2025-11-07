@@ -19,6 +19,7 @@ import {
   createTaskEntityWithoutFile,
   createTaskWithSource,
   getTaskByTitle,
+  getAllTasks,
 } from "../../../helpers/entity-helpers";
 
 test.describe("Commands / Task Refresh", () => {
@@ -286,5 +287,97 @@ test.describe("Commands / Task Refresh", () => {
     expect(content).toContain("This task is from GitHub");
     expect(content).toContain("Status: In Progress");
     expect(content).toContain("Priority: High");
+  });
+
+  test("should not create duplicate task when GitHub task title is changed in Obsidian", async ({
+    page,
+  }) => {
+    // Create a GitHub task
+    const githubTask = await createTaskWithSource(page, {
+      title: "Original GitHub Task Title",
+      description: "This is a GitHub task",
+      category: "Feature",
+      status: "Backlog",
+      priority: "Medium",
+      source: {
+        extension: "github",
+        keys: {
+          github: "https://github.com/test/repo/issues/456",
+        },
+        data: {
+          id: 456,
+          number: 456,
+          html_url: "https://github.com/test/repo/issues/456",
+          title: "Original GitHub Task Title",
+          state: "open",
+        },
+      },
+    });
+
+    expect(githubTask).toBeTruthy();
+    expect(githubTask.title).toBe("Original GitHub Task Title");
+    expect(githubTask.source.extension).toBe("github");
+
+    // Verify the file was created with the original title
+    const originalFileExists = await fileExists(
+      page,
+      "Tasks/Original GitHub Task Title.md"
+    );
+    expect(originalFileExists).toBe(true);
+
+    // Change the title in the frontmatter (simulating user editing the file in Obsidian)
+    await page.evaluate(async (filePath) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(filePath);
+
+      if (file) {
+        await app.fileManager.processFrontMatter(file, (frontMatter: any) => {
+          frontMatter.Title = "Updated GitHub Task Title";
+        });
+      }
+    }, "Tasks/Original GitHub Task Title.md");
+
+    // Wait for the file to be updated
+    await waitForFileContentToContain(
+      page,
+      "Tasks/Original GitHub Task Title.md",
+      "Updated GitHub Task Title"
+    );
+
+    // Execute refresh tasks command
+    await executeCommand(page, "Refresh Tasks");
+
+    // Wait for refresh to complete
+    await page.waitForTimeout(2000);
+
+    // Verify that only ONE task exists with the updated title
+    const allTasks = await getAllTasks(page);
+
+    // Filter tasks related to our GitHub issue
+    const relatedTasks = allTasks.filter(
+      (t: any) =>
+        t.source.keys.github === "https://github.com/test/repo/issues/456" ||
+        t.title === "Updated GitHub Task Title" ||
+        t.title === "Original GitHub Task Title"
+    );
+
+    // Should have exactly ONE task, not two
+    expect(relatedTasks.length).toBe(1);
+
+    // The task should have the updated title
+    expect(relatedTasks[0].title).toBe("Updated GitHub Task Title");
+
+    // The task should still have GitHub as the source extension
+    expect(relatedTasks[0].source.extension).toBe("github");
+
+    // The task should still have the GitHub URL
+    expect(relatedTasks[0].source.keys.github).toBe(
+      "https://github.com/test/repo/issues/456"
+    );
+
+    // The task should have the Obsidian file path (still the old file name)
+    expect(relatedTasks[0].source.keys.obsidian).toBe(
+      "Tasks/Original GitHub Task Title.md"
+    );
   });
 });

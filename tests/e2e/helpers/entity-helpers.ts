@@ -76,6 +76,19 @@ export async function getTaskByTitle(page: ExtendedPage, title: string) {
 }
 
 /**
+ * Get all tasks from the task store
+ */
+export async function getAllTasks(page: ExtendedPage) {
+  return await page.evaluate(() => {
+    const app = (window as any).app;
+    const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+    // Use the public query API
+    return plugin.query.getAllTasks();
+  });
+}
+
+/**
  * Get persisted task data by title from plugin storage
  */
 export async function getPersistedTaskByTitle(
