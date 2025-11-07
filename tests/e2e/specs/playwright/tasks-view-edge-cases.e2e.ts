@@ -9,14 +9,11 @@ import {
   waitForLocalTasksToLoad,
   getVisibleTaskItems,
   searchTasks,
-  refreshTasks,
   getTaskItemByTitle,
   verifyEmptyState,
   verifyTaskCount,
   createTestTask,
-  createTaskFileAndAddToStore,
 } from "../../helpers/tasks-view-helpers";
-import { readVaultFile } from "../../helpers/global";
 
 test.describe("TasksView Edge Cases and Error Handling", () => {
   test("should handle missing Tasks folder gracefully", async ({ page }) => {
@@ -85,38 +82,31 @@ This task has corrupted front-matter.`;
     expect(taskItems.length).toBeGreaterThanOrEqual(1);
   });
 
-  test("should handle tasks with missing required properties", async ({
+  test("should handle tasks with missing optional properties", async ({
     page,
   }) => {
-    // Create a task file with minimal front-matter using our helper
-    const minimalContent = `---
-Title: Minimal Task
-Type: Task
----
-
-This task has minimal properties.`;
-
-    await createTaskFileAndAddToStore(
-      page,
-      "Tasks/Minimal Task.md",
-      minimalContent,
-      {
-        title: "Minimal Task",
-        description: "This task has minimal properties.",
-      }
-    );
+    // Create a task with only required properties (title)
+    // All optional properties (category, priority, status, etc.) will use defaults
+    await createTestTask(page, {
+      title: "Minimal Task",
+    });
 
     // Open Tasks view
     await openTasksView(page);
     await waitForLocalTasksToLoad(page);
 
     // Should display the task with default values
-    await getTaskItemByTitle(page, "Minimal Task");
-
-    // Verify the task is displayed even without all properties
     const taskItem = await getTaskItemByTitle(page, "Minimal Task");
     const taskText = await taskItem.textContent();
+
+    // Verify the task is displayed
     expect(taskText).toContain("Minimal Task");
+
+    // Verify default values are applied
+    // createTestTask applies defaults: category="Feature", priority="Medium", status="Backlog"
+    expect(taskText).toContain("Feature");
+    expect(taskText).toContain("Medium");
+    expect(taskText).toContain("Backlog");
   });
 
   test("should handle very long task titles gracefully", async ({ page }) => {
