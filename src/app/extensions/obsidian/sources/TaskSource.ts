@@ -83,16 +83,67 @@ export class ObsidianTaskSource implements DataSource<Task> {
   }
 
   /**
-   * Refresh data by re-scanning the vault
+   * Refresh data by re-scanning the vault and ensuring file integrity
+   *
+   * CRITICAL: This method scans FIRST, then updates files. This order is important because:
+   * 1. Scanning with existing tasks in the store preserves source.extension for GitHub tasks
+   * 2. After scanning, we update/recreate files based on the scanned tasks
    *
    * @returns Promise resolving to array of tasks with IDs
    */
   async refresh(): Promise<readonly Task[]> {
     console.log("[ObsidianTaskSource] Refreshing data...");
 
-    // Re-scan vault and update entity store
-    // This is the same as loadInitialData - we just re-scan everything
-    return this.loadInitialData();
+    // Step 1: Re-scan the vault FIRST
+    // This preserves source.extension by looking up existing tasks in the store
+    const scannedTasks = await this.loadInitialData();
+
+    // Step 2: Now ensure files exist and have correct properties
+    // Get all tasks from the store that should have Obsidian files
+    const currentTasks = get(taskStore).tasks;
+    const tasksWithObsidianKeys = currentTasks.filter(
+      (task) => task.source.keys.obsidian
+    );
+
+    console.log(
+      `[ObsidianTaskSource] Ensuring file integrity for ${tasksWithObsidianKeys.length} tasks with Obsidian files`
+    );
+
+    // Ensure files exist and have correct properties
+    for (const task of tasksWithObsidianKeys) {
+      const filePath = task.source.keys.obsidian;
+      const file = this.app.vault.getAbstractFileByPath(filePath);
+
+      if (!file) {
+        // File is missing - recreate it
+        console.log(
+          `[ObsidianTaskSource] Recreating missing file for task: ${task.title}`
+        );
+        try {
+          await this.taskOperations.createNote(task);
+        } catch (error) {
+          console.error(
+            `[ObsidianTaskSource] Failed to recreate file for task ${task.title}:`,
+            error
+          );
+        }
+      } else {
+        // File exists - update it to ensure correct properties
+        console.log(
+          `[ObsidianTaskSource] Updating file properties for task: ${task.title}`
+        );
+        try {
+          await this.taskOperations.updateNote(task);
+        } catch (error) {
+          console.error(
+            `[ObsidianTaskSource] Failed to update file for task ${task.title}:`,
+            error
+          );
+        }
+      }
+    }
+
+    return scannedTasks;
   }
 
   /**

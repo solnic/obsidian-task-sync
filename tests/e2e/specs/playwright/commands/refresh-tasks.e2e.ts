@@ -247,25 +247,34 @@ test.describe("Commands / Task Refresh", () => {
     );
 
     // Execute the refresh tasks command
+    // The bug: RefreshTasksCommand calls refreshAll() which triggers refreshSource("obsidian")
+    // refreshSource dispatches LOAD_SOURCE_SUCCESS which removes tasks with source.extension="obsidian"
+    // Then Obsidian scans and creates tasks from files
+    // The GitHub task's file gets scanned, and since the GitHub task is still in the store,
+    // parseFileToTaskData should preserve source.extension="github"
+    // But if there's any issue with the lookup, it will create a new task with source.extension="obsidian"
     await executeCommand(page, "Refresh Tasks");
 
-    // Wait for the refresh to complete by waiting for file to be updated
+    // Wait for the refresh to complete
     await waitForFileUpdate(
       page,
       "Tasks/GitHub Task for Refresh Test.md",
       "Status: In Progress"
     );
 
-    // Verify the task still has source.extension set to 'github' after refresh
+    // THE BUG: After refresh, the task should still have source.extension="github"
+    // but currently it gets changed to "obsidian" because the store was empty
     const refreshedTask = await getTaskByTitle(
       page,
       "GitHub Task for Refresh Test"
     );
     expect(refreshedTask).toBeDefined();
-    expect(refreshedTask.source.extension).toBe("github");
+    expect(refreshedTask.source.extension).toBe("github"); // THIS WILL FAIL - shows the bug!
     expect(refreshedTask.source.keys.github).toBe(
       "https://github.com/test/repo/issues/123"
     );
+    expect(refreshedTask.source.data).toBeDefined();
+    expect(refreshedTask.source.data.id).toBe(123);
 
     // Verify the file still exists and has correct content
     const content = await readVaultFile(
