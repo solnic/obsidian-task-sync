@@ -279,7 +279,6 @@ export async function toggleGitHubIntegration(
 
   // Wait for additional settings to appear/disappear
   if (enabled) {
-    await page.waitForTimeout(1000);
     await waitForGitHubTokenSettings(page, 10000); // Increase timeout to 10 seconds
   }
 }
@@ -616,9 +615,6 @@ export async function waitForGitHubIssuesLoaded(
   page: Page,
   timeout: number = 10000
 ): Promise<void> {
-  // First, wait a tiny bit for any loading state to appear
-  await page.waitForTimeout(50);
-
   // Wait for the issues list to be in a stable state
   // Either we have issues loaded, or we have an empty state, or we're loading
   await page.waitForFunction(
@@ -639,8 +635,19 @@ export async function waitForGitHubIssuesLoaded(
     { timeout }
   );
 
-  // Give a small buffer for any final rendering (hover states, etc.)
-  await page.waitForTimeout(150);
+  // Wait for hover states to be ready by checking that issue items are fully interactive
+  await page.waitForFunction(
+    () => {
+      const issues = document.querySelectorAll('[data-testid="github-issue-item"]');
+      if (issues.length === 0) return true; // Empty state is fine
+
+      // Check that at least one issue is fully rendered and interactive
+      const firstIssue = issues[0] as HTMLElement;
+      return firstIssue && firstIssue.offsetHeight > 0 && firstIssue.offsetWidth > 0;
+    },
+    undefined,
+    { timeout: 5000 }
+  );
 }
 
 /**
@@ -664,21 +671,21 @@ export async function clickIssueImportButton(
   // Wait for the issue to be visible
   await issueLocator.waitFor({ state: "visible", timeout: 10000 });
 
+  // Ensure the issue is within viewport before hovering
+  await issueLocator.scrollIntoViewIfNeeded();
+
   // Hover over the issue to make the import button appear
   await issueLocator.hover();
-
-  // Ensure the overlay has time to render and is within viewport
-  await issueLocator.scrollIntoViewIfNeeded();
 
   // Wait explicitly for action overlay to appear; retry hover if needed
   const overlay = issueLocator.locator(".task-sync-action-overlay");
   try {
-    await overlay.waitFor({ state: "visible", timeout: 1500 });
+    await overlay.waitFor({ state: "visible", timeout: 2000 });
   } catch (_) {
-    // Retry one more hover and wait
+    // Retry: scroll, hover, and wait for overlay
+    await issueLocator.scrollIntoViewIfNeeded();
     await issueLocator.hover();
-    await page.waitForTimeout(200);
-    await overlay.waitFor({ state: "visible", timeout: 1500 });
+    await overlay.waitFor({ state: "visible", timeout: 2000 });
   }
 
   // Wait for any valid import action button to appear and click it.

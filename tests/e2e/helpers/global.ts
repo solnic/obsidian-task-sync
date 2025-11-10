@@ -1020,9 +1020,23 @@ export async function waitForBaseView(page: ExtendedPage, timeout = 10000) {
     state: "attached",
   });
 
-  // Give Bases time to query vault and render results
-  // This can take a few seconds as Bases processes filters
-  await page.waitForTimeout(3000);
+  // Wait for Bases to finish querying vault and rendering results
+  // Check for either table rows or empty state message
+  await page.waitForFunction(
+    () => {
+      const tableContainer = document.querySelector(".bases-view .bases-table-container");
+      if (!tableContainer) return false;
+
+      // Check if we have rows or an empty state
+      const hasRows = tableContainer.querySelectorAll("tr").length > 0;
+      const hasEmptyState = tableContainer.textContent?.includes("No results") ||
+                           tableContainer.textContent?.includes("No items");
+
+      return hasRows || hasEmptyState;
+    },
+    undefined,
+    { timeout: 10000 }
+  );
 }
 
 export async function createFile(
