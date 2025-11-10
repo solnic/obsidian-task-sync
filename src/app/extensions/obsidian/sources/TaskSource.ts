@@ -69,7 +69,7 @@ export class ObsidianTaskSource implements DataSource<Task> {
     );
 
     // Update the extension's entity store with scanned tasks
-    // Convert readonly array to mutable array for updateEntityStore
+    // scanExistingTasks returns readonly array, spread to convert to mutable
     this.extension.updateEntityStore([...allTasks]);
     console.log(
       `[ObsidianTaskSource] Updated extension entity store with ${allTasks.length} tasks`

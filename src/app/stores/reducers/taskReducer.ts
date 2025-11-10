@@ -104,9 +104,14 @@ export function taskReducer(
       // Merge-by-key strategy: Index tasks by source keys, merge matching tasks
       // This handles cross-source tasks correctly (e.g., GitHub task with Obsidian file)
       const taskMap = new Map<string, Task>();
+      const taskIdMap = new Map<string, Task>(); // Track all tasks by ID
 
-      // Step 1: Index existing tasks by ALL their source keys
+      // Step 1: Index existing tasks by ALL their source keys AND by ID
       for (const task of state.tasks) {
+        // Always preserve task by ID
+        taskIdMap.set(task.id, task);
+
+        // Also index by source keys for matching
         if (task.source.keys) {
           for (const [sourceId, key] of Object.entries(task.source.keys)) {
             if (key) {
@@ -121,14 +126,17 @@ export function taskReducer(
       for (const newTask of newTasks) {
         const sourceKey = newTask.source.keys?.[action.sourceId];
 
+        let lookupKey: string;
         if (!sourceKey) {
           console.warn(
-            `Task ${newTask.id} missing source key for ${action.sourceId}`
+            `Task ${newTask.id} missing source key for ${action.sourceId}, using fallback key`
           );
-          continue;
+          // Use fallback key based on task ID to prevent data loss
+          lookupKey = `${action.sourceId}:fallback:${newTask.id}`;
+        } else {
+          lookupKey = `${action.sourceId}:${sourceKey}`;
         }
 
-        const lookupKey = `${action.sourceId}:${sourceKey}`;
         const existing = taskMap.get(lookupKey);
 
         if (existing) {
@@ -161,16 +169,33 @@ export function taskReducer(
               taskMap.set(`${sid}:${key}`, merged);
             }
           }
+
+          // Update ID map with merged task
+          taskIdMap.set(merged.id, merged);
         } else {
-          // Step 4: New task - add to map
+          // Step 4: New task - add to both maps
           taskMap.set(lookupKey, newTask);
+          taskIdMap.set(newTask.id, newTask);
         }
       }
 
-      // Step 5: Extract unique tasks by ID
-      const uniqueTasks = Array.from(
-        new Map(Array.from(taskMap.values()).map((t) => [t.id, t])).values()
-      );
+      // Step 5: Extract unique tasks by ID with duplicate detection
+      const seenIds = new Set<string>();
+      const uniqueTasks: Task[] = [];
+      for (const task of taskIdMap.values()) {
+        if (!seenIds.has(task.id)) {
+          seenIds.add(task.id);
+          uniqueTasks.push(task);
+        } else {
+          // Check if it's a different object with same ID (shouldn't happen)
+          const existing = uniqueTasks.find(t => t.id === task.id);
+          if (existing && existing !== task) {
+            console.warn(
+              `Duplicate task ID detected with different objects: ${task.id}`
+            );
+          }
+        }
+      }
 
       return {
         ...state,
