@@ -101,7 +101,7 @@ test.describe("GitHub Organization/Repository Mapping", () => {
 
     // Verify the task was imported successfully
     const taskItem = page.locator(
-      ".task-sync-item-title:has-text('Alpha Issue')"
+      '[data-testid="service-content-local"]:not(.tab-hidden) .task-sync-item-title:has-text(\'Alpha Issue\')'
     );
     await expect(taskItem).toBeVisible();
 
@@ -206,7 +206,7 @@ test.describe("GitHub Organization/Repository Mapping", () => {
     await switchToTaskService(page, "local");
 
     const taskItem = page.locator(
-      ".task-sync-item-title:has-text('Microsoft Issue')"
+      '[data-testid="service-content-local"]:not(.tab-hidden) .task-sync-item-title:has-text(\'Microsoft Issue\')'
     );
     await expect(taskItem).toBeVisible();
 
@@ -264,7 +264,7 @@ test.describe("GitHub Organization/Repository Mapping", () => {
     await switchToTaskService(page, "local");
 
     const taskItem = page.locator(
-      ".task-sync-item-title:has-text('Unknown Issue')"
+      '[data-testid="service-content-local"]:not(.tab-hidden) .task-sync-item-title:has-text(\'Unknown Issue\')'
     );
     await expect(taskItem).toBeVisible();
 

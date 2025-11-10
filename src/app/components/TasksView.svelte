@@ -33,6 +33,10 @@
   let activeService = $state<string>("local");
   let showContextTab = $state<boolean>(true); // Default to showing context tab
 
+  // Track which services have been mounted (visited at least once)
+  // Context tab and local service are mounted by default
+  let mountedServices = $state<Set<string>>(new Set(["local"]));
+
   // Debug logging for context changes - use $derived to access store reactively
   $effect(() => {
     console.log("TasksView - Context from store:", {
@@ -168,26 +172,35 @@
                   : "Context"
           : services.find((s: any) => s.id === activeService)?.name}
       >
-        <!-- Content based on active tab -->
-        {#if showContextTab}
-          <!-- Context Widget Content -->
-          <div class="context-tab-content" data-testid="context-tab-content">
-            <ContextWidget context={$currentFileContext} {settings} {host} />
-          </div>
-        {:else}
-          <!-- Service Content -->
-          <div class="service-content" data-testid="service-content">
-            <Service
-              serviceId={activeService}
-              {settings}
-              {host}
-              {dailyPlanningExtension}
-              {stagedTaskIds}
-              onStageTask={handleStageTask}
-              testId="{activeService}-service"
-            />
-          </div>
-        {/if}
+        <!-- Context Widget Content - Always mounted, visibility controlled by CSS -->
+        <div
+          class="context-tab-content"
+          class:tab-hidden={!showContextTab}
+          data-testid="context-tab-content"
+        >
+          <ContextWidget context={$currentFileContext} {settings} {host} />
+        </div>
+
+        <!-- Service Content - Only mount services that have been visited, keep them mounted -->
+        {#each services as service}
+          {#if mountedServices.has(service.id)}
+            <div
+              class="service-content"
+              class:tab-hidden={showContextTab || activeService !== service.id}
+              data-testid="service-content-{service.id}"
+            >
+              <Service
+                serviceId={service.id}
+                {settings}
+                {host}
+                {dailyPlanningExtension}
+                {stagedTaskIds}
+                onStageTask={handleStageTask}
+                testId="{service.id}-service"
+              />
+            </div>
+          {/if}
+        {/each}
       </TabView>
     </div>
 
@@ -222,6 +235,11 @@
           onclick={() => {
             activeService = service.id;
             showContextTab = false; // Hide context tab when switching to service
+            // Mark this service as mounted so it stays loaded
+            // Create a new Set to trigger reactivity
+            if (!mountedServices.has(service.id)) {
+              mountedServices = new Set([...mountedServices, service.id]);
+            }
           }}
         >
           <span class="service-icon-vertical" data-icon={service.icon}></span>

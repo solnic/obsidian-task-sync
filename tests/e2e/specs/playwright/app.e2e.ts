@@ -257,8 +257,8 @@ test.describe("Svelte App Initialization", () => {
     );
     await expect(contextTabContent).toBeVisible();
 
-    // Service content should be hidden
-    const serviceContent = page.locator('[data-testid="service-content"]');
+    // Service content should be hidden (check local service specifically)
+    const serviceContent = page.locator('[data-testid="service-content-local"]');
     await expect(serviceContent).not.toBeVisible();
   });
 
@@ -401,8 +401,8 @@ test.describe("Svelte App Initialization", () => {
     // Context tab should no longer be active
     await expect(contextTabButton).not.toHaveClass(/active/);
 
-    // Service content should be visible
-    const serviceContent = page.locator('[data-testid="service-content"]');
+    // Service content should be visible (check local service specifically)
+    const serviceContent = page.locator('[data-testid="service-content-local"]');
     await expect(serviceContent).toBeVisible();
 
     // Context tab content should be hidden
@@ -450,8 +450,8 @@ test.describe("Svelte App Initialization", () => {
     );
     await expect(contextTabContent).toBeVisible();
 
-    // Service content should be hidden
-    const serviceContent = page.locator('[data-testid="service-content"]');
+    // Service content should be hidden (check local service specifically)
+    const serviceContent = page.locator('[data-testid="service-content-local"]');
     await expect(serviceContent).not.toBeVisible();
   });
 

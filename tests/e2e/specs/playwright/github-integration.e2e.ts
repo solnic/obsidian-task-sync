@@ -71,7 +71,7 @@ test.describe("GitHub Integration", () => {
     await switchToTaskService(page, "local");
     expect(
       await page
-        .locator(".task-sync-item-title:has-text('First test issue')")
+        .locator('[data-testid="service-content-local"]:not(.tab-hidden) .task-sync-item-title:has-text(\'First test issue\')')
         .count()
     ).toBe(1);
 
@@ -147,7 +147,7 @@ test.describe("GitHub Integration", () => {
     // Verify task appears in Local Tasks view
     await switchToTaskService(page, "local");
     const localTaskCount = await page
-      .locator(".task-sync-item-title:has-text('First test issue')")
+      .locator('[data-testid="service-content-local"]:not(.tab-hidden) .task-sync-item-title:has-text(\'First test issue\')')
       .count();
     expect(localTaskCount).toBe(1);
 
@@ -164,12 +164,12 @@ test.describe("GitHub Integration", () => {
 
     // Wait for the task to appear
     await page.waitForSelector(
-      ".task-sync-item-title:has-text('First test issue')",
+      '[data-testid="service-content-local"]:not(.tab-hidden) .task-sync-item-title:has-text(\'First test issue\')',
       { timeout: 5000 }
     );
 
     const taskStillExists = await page
-      .locator(".task-sync-item-title:has-text('First test issue')")
+      .locator('[data-testid="service-content-local"]:not(.tab-hidden) .task-sync-item-title:has-text(\'First test issue\')')
       .count();
     expect(taskStillExists).toBe(1);
 
@@ -345,32 +345,34 @@ test.describe("GitHub Integration", () => {
 
     // Should only show 2 issues, not 4 (2 issues + 2 pull requests)
     // BUG: Currently this will fail because pull requests are included
-    const issueCount = await page.locator(".task-sync-item-title").count();
+    const issueCount = await page
+      .locator('[data-testid="service-content-github"]:not(.tab-hidden) .task-sync-item-title')
+      .count();
     expect(issueCount).toBe(2); // Should be 2 issues, not 4
 
     // Verify that only actual issues are displayed (not pull requests)
     expect(
       await page
-        .locator(".task-sync-item-title:has-text('First test issue')")
+        .locator('[data-testid="service-content-github"]:not(.tab-hidden) .task-sync-item-title:has-text(\'First test issue\')')
         .count()
     ).toBe(1);
 
     expect(
       await page
-        .locator(".task-sync-item-title:has-text('Second test issue')")
+        .locator('[data-testid="service-content-github"]:not(.tab-hidden) .task-sync-item-title:has-text(\'Second test issue\')')
         .count()
     ).toBe(1);
 
     // Should NOT contain the 2 pull requests
     expect(
       await page
-        .locator(".task-sync-item-title:has-text('Add new feature')")
+        .locator('[data-testid="service-content-github"]:not(.tab-hidden) .task-sync-item-title:has-text(\'Add new feature\')')
         .count()
     ).toBe(0);
 
     expect(
       await page
-        .locator(".task-sync-item-title:has-text('Fix critical bug')")
+        .locator('[data-testid="service-content-github"]:not(.tab-hidden) .task-sync-item-title:has-text(\'Fix critical bug\')')
         .count()
     ).toBe(0);
   });

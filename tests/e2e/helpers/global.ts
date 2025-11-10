@@ -2148,6 +2148,12 @@ export async function switchToTaskService(page: Page, service: string) {
     service,
     { timeout: 5000 }
   );
+
+  // Wait for the service content to be mounted and visible
+  await page.waitForSelector(
+    `[data-testid="service-content-${service}"]:not(.tab-hidden)`,
+    { timeout: 5000 }
+  );
 }
 
 export async function selectFromDropdown(

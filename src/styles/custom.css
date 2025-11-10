@@ -2901,6 +2901,11 @@ Provides consistent styling for all UI components
   padding: 0;
 }
 
+/* Tab visibility control - hide tabs without unmounting */
+.tab-hidden {
+  display: none !important;
+}
+
 /* Generic service container for all service views */
 .task-sync-service-container {
   display: flex;
@@ -3907,7 +3912,10 @@ button.tab-item.active {
 
 .context-tab-content {
   flex: 1;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Loading State */
