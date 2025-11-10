@@ -340,16 +340,17 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     );
 
     // Determine source information based on existing task
+    // If task exists in store, preserve its source.extension and merge keys
+    // The reducer will also handle this, but we do it here for consistency
     let sourceInfo;
     if (existingTask) {
-      // Preserve existing source information for imported tasks
+      // Preserve existing source information
       sourceInfo = {
         extension: existingTask.source.extension,
         keys: {
           ...existingTask.source.keys,
-          obsidian: file.path, // Update obsidian key in case file moved
+          obsidian: file.path, // Update obsidian key
         },
-        // Preserve source.data (e.g., GitHub issue/PR data) for imported tasks
         ...(existingTask.source.data && { data: existingTask.source.data }),
       };
     } else {

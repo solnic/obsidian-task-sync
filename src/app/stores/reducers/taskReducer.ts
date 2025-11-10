@@ -101,41 +101,80 @@ export function taskReducer(
       };
 
     case "LOAD_SOURCE_SUCCESS": {
-      // Simple strategy: Remove all tasks from this source, then add new tasks
-      // Each source is authoritative for its own data
-      const filteredTasks = state.tasks.filter(
-        (task) => task.source.extension !== action.sourceId
-      );
+      // Merge-by-key strategy: Index tasks by source keys, merge matching tasks
+      // This handles cross-source tasks correctly (e.g., GitHub task with Obsidian file)
+      const taskMap = new Map<string, Task>();
 
-      // Preserve existing task IDs and timestamps for tasks that already exist
-      const newTasks = Array.isArray(action.tasks)
-        ? action.tasks.map((newTask) => {
-            // Find existing task by ID to preserve timestamps
-            const existingTask = state.tasks.find((t) => t.id === newTask.id);
-
-            if (existingTask) {
-              // Preserve ID and creation timestamp
-              const merged = {
-                ...newTask,
-                id: existingTask.id,
-                createdAt: existingTask.createdAt,
-              } as Task;
-
-              // Only update updatedAt if there is a meaningful change
-              const changed = isMeaningfullyDifferent(existingTask, merged);
-              return {
-                ...merged,
-                updatedAt: changed ? new Date() : existingTask.updatedAt,
-              };
+      // Step 1: Index existing tasks by ALL their source keys
+      for (const task of state.tasks) {
+        if (task.source.keys) {
+          for (const [sourceId, key] of Object.entries(task.source.keys)) {
+            if (key) {
+              taskMap.set(`${sourceId}:${key}`, task);
             }
+          }
+        }
+      }
 
-            return newTask;
-          })
-        : [];
+      // Step 2: Process new tasks from this source
+      const newTasks = Array.isArray(action.tasks) ? action.tasks : [];
+      for (const newTask of newTasks) {
+        const sourceKey = newTask.source.keys?.[action.sourceId];
+
+        if (!sourceKey) {
+          console.warn(
+            `Task ${newTask.id} missing source key for ${action.sourceId}`
+          );
+          continue;
+        }
+
+        const lookupKey = `${action.sourceId}:${sourceKey}`;
+        const existing = taskMap.get(lookupKey);
+
+        if (existing) {
+          // Step 3: Merge with existing task
+          const mergedBase: Task = {
+            ...existing, // Start with existing task
+            ...newTask, // Override with new data
+            id: existing.id, // Preserve ID
+            createdAt: existing.createdAt, // Preserve creation time
+            source: {
+              extension: existing.source.extension, // Preserve owner
+              keys: {
+                ...existing.source.keys, // Keep existing keys
+                ...newTask.source.keys, // Merge new keys
+              },
+              data: newTask.source.data || existing.source.data, // Prefer new data
+            },
+          };
+
+          // Check if meaningfully different for updatedAt
+          const changed = isMeaningfullyDifferent(existing, mergedBase);
+          const merged: Task = {
+            ...mergedBase,
+            updatedAt: changed ? new Date() : existing.updatedAt,
+          };
+
+          // Update all key mappings to point to merged task
+          for (const [sid, key] of Object.entries(merged.source.keys)) {
+            if (key) {
+              taskMap.set(`${sid}:${key}`, merged);
+            }
+          }
+        } else {
+          // Step 4: New task - add to map
+          taskMap.set(lookupKey, newTask);
+        }
+      }
+
+      // Step 5: Extract unique tasks by ID
+      const uniqueTasks = Array.from(
+        new Map(Array.from(taskMap.values()).map((t) => [t.id, t])).values()
+      );
 
       return {
         ...state,
-        tasks: [...filteredTasks, ...newTasks],
+        tasks: uniqueTasks,
         loading: false,
         lastSync: new Map(state.lastSync).set(action.sourceId, new Date()),
       };
