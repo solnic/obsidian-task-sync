@@ -17,6 +17,9 @@ import {
   readVaultFile,
   waitForFileUpdate,
   getFileContent,
+  waitForFileToExist,
+  waitForFileToBeActive,
+  waitForTaskBySourceUrl,
 } from "../../helpers/global";
 import {
   stubGitHubWithFixtures,
@@ -301,15 +304,7 @@ test.describe("GitHub Integration", () => {
 
     // Wait for the note to be created and opened
     // The note should be automatically opened after import
-    await page.waitForFunction(
-      () => {
-        const app = (window as any).app;
-        return (
-          app.workspace.getActiveFile()?.path === "Tasks/First test issue.md"
-        );
-      },
-      { timeout: 10000 }
-    );
+    await waitForFileToBeActive(page, "Tasks/First test issue.md");
 
     // Verify the note was automatically opened in Obsidian
     const activeFile = await getActiveFilePath(page);
@@ -915,24 +910,11 @@ test.describe("GitHub Integration", () => {
       },
     });
 
-    // Wait for the task file to be created
-    const taskFileExists = await fileExists(
-      page,
-      `Tasks/${issueData.title}.md`
-    );
-    expect(taskFileExists).toBe(true);
-
     // Wait for the task to be added to the task store and verify it has the correct source
-    await page.waitForFunction(
-      ({ url }) => {
-        const app = (window as any).app;
-        const plugin = app.plugins.plugins["obsidian-task-sync"];
-        const task = plugin.query.findTaskBySourceUrl(url);
-        return task;
-      },
-      { url: issueData.html_url },
-      { timeout: 5000 }
-    );
+    await waitForTaskBySourceUrl(page, issueData.html_url);
+
+    // Wait for the task file to be created (file creation is async)
+    await waitForFileToExist(page, `Tasks/${issueData.title}.md`);
 
     // Verify the issue is now marked as imported in the GitHub view
     const issueLocator = page

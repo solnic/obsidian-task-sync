@@ -424,6 +424,65 @@ export async function fileExists(
 }
 
 /**
+ * Wait for a file to be created in the vault
+ * This is useful after async operations that create files
+ */
+export async function waitForFileToExist(
+  page: Page,
+  filePath: string,
+  timeout: number = 5000
+): Promise<void> {
+  await page.waitForFunction(
+    async ({ path }) => {
+      const app = (window as any).app;
+      return await app.vault.adapter.exists(path);
+    },
+    { path: filePath },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for a file to become the active file in Obsidian
+ * This is useful after operations that should open a file
+ */
+export async function waitForFileToBeActive(
+  page: Page,
+  filePath: string,
+  timeout: number = 10000
+): Promise<void> {
+  await page.waitForFunction(
+    ({ path }) => {
+      const app = (window as any).app;
+      return app.workspace.getActiveFile()?.path === path;
+    },
+    { path: filePath },
+    { timeout }
+  );
+}
+
+/**
+ * Wait for a task to be found by its source URL
+ * This is useful after importing tasks from external sources
+ */
+export async function waitForTaskBySourceUrl(
+  page: Page,
+  sourceUrl: string,
+  timeout: number = 5000
+): Promise<void> {
+  await page.waitForFunction(
+    ({ url }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const task = plugin.query.findTaskBySourceUrl(url);
+      return task !== null && task !== undefined;
+    },
+    { url: sourceUrl },
+    { timeout }
+  );
+}
+
+/**
  * List files in a folder
  */
 export async function listFilesInFolder(
@@ -923,7 +982,8 @@ export async function openFile(
     const app = (window as any).app;
     const file = app.vault.getAbstractFileByPath(path);
 
-    const leaf = app.workspace.getLeaf();
+    // Get or create a leaf in the main workspace
+    const leaf = app.workspace.getLeaf(false);
     await leaf.openFile(file);
   }, filePath);
 
@@ -934,13 +994,13 @@ export async function openFile(
       return app.workspace.getActiveFile()?.path === path;
     },
     { path: filePath },
-    { timeout: 5000 }
+    { timeout }
   );
 
   // Wait for the editor view to be visible
   await page.waitForSelector(".markdown-source-view, .markdown-preview-view", {
     state: "visible",
-    timeout: 5000,
+    timeout,
   });
 }
 

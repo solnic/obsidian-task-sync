@@ -83,6 +83,14 @@ export async function cleanupPlaywrightTest(
   context: PlaywrightTestContext,
   testInfo: TestInfo
 ): Promise<void> {
+  // Reset UI state before cleanup to ensure clean state for next test
+  try {
+    await resetObsidianUI(context.page);
+  } catch (error) {
+    // Ignore errors during cleanup - page might already be closing
+    console.debug("Error resetting UI during cleanup:", error);
+  }
+
   if (testInfo.status !== "passed") {
     await captureFullDebugInfo(
       context,
