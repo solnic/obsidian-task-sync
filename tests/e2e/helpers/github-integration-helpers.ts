@@ -609,6 +609,41 @@ export async function hasGitHubToggle(page: Page): Promise<boolean> {
 }
 
 /**
+ * Wait for GitHub issues list to finish loading/reloading
+ * This should be called after switching to GitHub tab or changing filters
+ */
+export async function waitForGitHubIssuesLoaded(
+  page: Page,
+  timeout: number = 10000
+): Promise<void> {
+  // First, wait a tiny bit for any loading state to appear
+  await page.waitForTimeout(50);
+
+  // Wait for the issues list to be in a stable state
+  // Either we have issues loaded, or we have an empty state, or we're loading
+  await page.waitForFunction(
+    () => {
+      const issues = document.querySelectorAll('[data-testid="github-issue-item"]');
+      const emptyState = document.querySelector('[data-testid="github-empty-state"]');
+      const loadingIndicator = document.querySelector('[data-testid="github-loading"]');
+
+      // If we're loading, wait for it to finish
+      if (loadingIndicator) {
+        return false;
+      }
+
+      // Otherwise, we should have either issues or empty state
+      return issues.length > 0 || emptyState !== null;
+    },
+    undefined,
+    { timeout }
+  );
+
+  // Give a small buffer for any final rendering (hover states, etc.)
+  await page.waitForTimeout(150);
+}
+
+/**
  * Click import button for a specific GitHub issue in the UI
  * Note: Import buttons now appear on hover, so we need to hover first
  */
@@ -616,6 +651,9 @@ export async function clickIssueImportButton(
   page: Page,
   issueNumber: number
 ): Promise<void> {
+  // Wait for issues to finish loading first
+  await waitForGitHubIssuesLoaded(page);
+
   // Find the issue item and hover over it
   const issueLocator = page
     .locator('[data-testid="github-issue-item"]')
