@@ -1,4 +1,5 @@
 import { z } from "zod";
+// @ts-ignore - superjson types not resolving with current moduleResolution setting
 import superjson from "superjson";
 import { Plugin } from "obsidian";
 

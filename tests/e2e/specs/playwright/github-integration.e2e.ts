@@ -1217,8 +1217,11 @@ test.describe("GitHub Integration", () => {
     await selectFromDropdown(page, "organization-filter", "solnic");
     await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
 
-    // Wait for the selection to be saved
-    await page.waitForTimeout(1000);
+    // Wait for issues to load to ensure selection is complete
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 10000,
+    });
 
     // Reload the plugin to test persistence
     await reloadPlugin(page);
@@ -1247,12 +1250,9 @@ test.describe("GitHub Integration", () => {
       }
     );
 
-    // Wait for data to load
-    await page.waitForTimeout(2000);
-
-    // Now check that recently used items appear at the top of dropdowns after reload
-    // Wait for the GitHub service to load data and compute options
-    await page.waitForTimeout(3000);
+    // Wait for organization filter to be ready (indicates data has loaded)
+    await expect(page.locator('[data-testid="organization-filter"]')).toBeVisible();
+    await expect(page.locator('[data-testid="organization-filter"]')).not.toBeDisabled();
 
     // Click organization dropdown
     await page.locator('[data-testid="organization-filter"]').click();
@@ -1356,12 +1356,13 @@ test.describe("GitHub Integration", () => {
       }
     );
 
-    // Wait for data to load and filters to be restored
-    await page.waitForTimeout(2000);
-
-    // Verify that the org and repo filters are restored
+    // Wait for filters to be restored by checking their text content
     const orgButton = page.locator('[data-testid="organization-filter"]');
     const repoButton = page.locator('[data-testid="repository-filter"]');
+
+    // Wait for the filters to show the restored values
+    await expect(orgButton).toContainText("solnic", { timeout: 10000 });
+    await expect(repoButton).toContainText("obsidian-task-sync", { timeout: 10000 });
 
     const orgText = await orgButton.textContent();
     const repoText = await repoButton.textContent();
