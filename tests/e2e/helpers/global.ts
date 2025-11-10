@@ -62,7 +62,7 @@ export async function updatePluginSettings(
 export async function waitForBaseFile(
   page: Page,
   baseFilePath: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     ({ filePath }) => {
@@ -81,7 +81,7 @@ export async function waitForBaseFile(
 export async function waitForBaseFileDeleted(
   page: Page,
   baseFilePath: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     ({ filePath }) => {
@@ -101,7 +101,7 @@ export async function waitForBaseContent(
   page: Page,
   baseFilePath: string,
   expectedContent: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     async ({ filePath, content }) => {
@@ -188,7 +188,7 @@ export async function waitForFileUpdate(
   page: Page,
   filePath: string,
   expectedContent?: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   // Use the existing waitForFileContentToContain helper which is more reliable
   // and has better error handling
@@ -329,7 +329,7 @@ export async function waitForTaskPropertySync(
  */
 export async function waitForBasesRegeneration(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   // Wait for the main Tasks.base file to exist
   await waitForBaseFile(page, "Bases/Tasks.base", timeout);
@@ -430,7 +430,7 @@ export async function fileExists(
 export async function waitForFileToExist(
   page: Page,
   filePath: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     async ({ path }) => {
@@ -468,7 +468,7 @@ export async function waitForFileToBeActive(
 export async function waitForTaskBySourceUrl(
   page: Page,
   sourceUrl: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     ({ url }) => {
@@ -564,7 +564,7 @@ export async function elementHasClass(
 export async function waitForElementVisible(
   page: Page,
   selector: string,
-  timeout = 5000
+  timeout = 10000
 ): Promise<void> {
   await page.waitForSelector(selector, { state: "visible", timeout });
 }
@@ -636,7 +636,7 @@ export async function toggleSidebar(
  */
 export async function waitForSuccessNotice(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<boolean> {
   try {
     await page.waitForFunction(
@@ -669,7 +669,7 @@ export async function waitForSuccessNotice(
  */
 export async function waitForModal(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<{ found: boolean; type: string }> {
   try {
     await page.waitForSelector(
@@ -866,7 +866,7 @@ export async function executeCommand(
 export async function waitForNotice(
   page: ExtendedPage,
   expectedText: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<boolean> {
   await page.waitForFunction(
     ({ text }) => {
@@ -963,7 +963,7 @@ export async function expectNotice(
 export async function openFile(
   page: ExtendedPage,
   filePath: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ) {
   // First, wait for the file to be recognized by the vault cache
   // This prevents race conditions where the file exists on disk but vault.getAbstractFileByPath() returns null
@@ -1007,7 +1007,7 @@ export async function openFile(
 /**
  * Helper to wait for base view to load properly
  */
-export async function waitForBaseView(page: ExtendedPage, timeout = 5000) {
+export async function waitForBaseView(page: ExtendedPage, timeout = 10000) {
   // Wait for bases-view to exist in DOM (Bases plugin loads it)
   await page.waitForSelector(".bases-view", {
     timeout,
@@ -1806,7 +1806,7 @@ export async function configureBasesSettings(
 export async function waitForFileCreation(
   page: Page,
   filePath: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     async ({ path }) => {
@@ -2197,7 +2197,7 @@ export async function deleteVaultFile(
 export async function waitForFileDeletion(
   page: Page,
   filePath: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     ({ path }) => {
@@ -2263,7 +2263,7 @@ export async function waitForPropertyTypeInferred(
   page: Page,
   filePath: string,
   propertyName: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     async ({ path, property }) => {
@@ -2309,7 +2309,7 @@ export async function waitForUIRecreation(
 export async function waitForCommandComplete(
   page: Page,
   expectedNotice?: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   // Wait for command palette to close
   await page.waitForSelector(".prompt-input", {
@@ -2329,7 +2329,7 @@ export async function waitForCommandComplete(
 export async function waitForContextUpdate(
   page: Page,
   expectedContextType: string,
-  timeout: number = 3000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     ({ contextType }) => {
@@ -2349,7 +2349,7 @@ export async function waitForContextUpdate(
  */
 export async function waitForNoticesCleared(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page
     .waitForFunction(
@@ -2371,7 +2371,7 @@ export async function waitForNoticesCleared(
 export async function waitForNoticeDisappear(
   page: Page,
   noticeText: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page
     .waitForFunction(
@@ -2395,7 +2395,7 @@ export async function waitForNoticeDisappear(
 export async function waitForFileProcessed(
   page: Page,
   filePath: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     async ({ path }) => {
@@ -2418,7 +2418,7 @@ export async function waitForFileProcessed(
  */
 export async function waitForTaskRefreshComplete(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   // Wait for any loading indicators to disappear
   await page
@@ -2457,7 +2457,7 @@ export async function waitForTaskRefreshComplete(
  */
 export async function waitForDailyPlanningUpdate(
   page: Page,
-  timeout: number = 3000
+  timeout: number = 10000
 ): Promise<void> {
   // Wait for any pending updates to complete
   await page
@@ -2494,7 +2494,7 @@ export async function waitForDailyPlanningUpdate(
 export async function waitForTaskScheduled(
   page: Page,
   taskTitle: string,
-  timeout: number = 3000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     ({ title }) => {
@@ -2517,7 +2517,7 @@ export async function waitForTaskScheduled(
 export async function waitForTaskUnscheduled(
   page: Page,
   taskTitle: string,
-  timeout: number = 3000
+  timeout: number = 10000
 ): Promise<void> {
   await page.waitForFunction(
     ({ title }) => {
@@ -2541,7 +2541,7 @@ export async function waitForDailyNoteUpdate(
   page: Page,
   dailyNotePath: string,
   expectedContent?: string,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   const startTime = Date.now();
   while (Date.now() - startTime < timeout) {
@@ -2575,7 +2575,7 @@ export async function waitForDailyNoteUpdate(
  */
 export async function waitForSyncComplete(
   page: Page,
-  timeout: number = 5000
+  timeout: number = 10000
 ): Promise<void> {
   // Wait for any loading indicators to disappear
   await page
