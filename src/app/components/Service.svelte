@@ -4,6 +4,7 @@
   import type { DailyPlanningExtension } from "../extensions/daily-planning/DailyPlanningExtension";
   import LocalTasksService from "./LocalTasksService.svelte";
   import GitHubService from "../extensions/github/components/GitHubService.svelte";
+  import AppleRemindersService from "../extensions/apple-reminders/components/AppleRemindersService.svelte";
   import { Host } from "../core/host";
   import { isPlanningActive, currentSchedule } from "../stores/contextStore";
 
@@ -43,7 +44,7 @@
   const serviceToExtensionId: Record<string, string> = {
     local: "obsidian",
     github: "github",
-    // Future: apple-reminders: "apple-reminders",
+    "apple-reminders": "apple-reminders",
   };
 
   // Resolve the extension from the host using the mapped extension ID
@@ -56,7 +57,7 @@
   const serviceComponents: Record<string, any> = {
     local: LocalTasksService,
     github: GitHubService,
-    // Future: apple-reminders: AppleRemindersService,
+    "apple-reminders": AppleRemindersService,
   };
 
   // Get the component to render based on serviceId

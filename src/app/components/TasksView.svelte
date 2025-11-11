@@ -129,6 +129,17 @@
       });
     }
 
+    // Include Apple Reminders if extension is registered
+    const appleRemindersExt = extensionRegistry.getById("apple-reminders");
+    if (appleRemindersExt) {
+      allServices.push({
+        id: "apple-reminders",
+        name: "Apple Reminders",
+        icon: "apple",
+        enabled: true,
+      });
+    }
+
     return allServices;
   });
 
