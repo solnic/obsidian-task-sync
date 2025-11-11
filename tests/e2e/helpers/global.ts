@@ -2166,6 +2166,57 @@ export async function openView(page: Page, viewName: string) {
   }, viewName);
 
   await toggleSidebar(page, "right", true);
+
+  // Wait for the sidebar to be actually visible first
+  await page.waitForFunction(
+    () => {
+      const app = (window as any).app;
+      const rightSplit = app?.workspace?.rightSplit;
+      if (!rightSplit) return false;
+      if (rightSplit.collapsed) return false;
+      const sidebarEl = document.querySelector('.workspace-split.mod-right-split');
+      return sidebarEl !== null;
+    },
+    { timeout: 5000 }
+  );
+
+  // Set the sidebar width to a proper size (800px for full UI visibility)
+  await page.evaluate(() => {
+    const app = (window as any).app;
+    const rightSplit = app?.workspace?.rightSplit;
+    if (rightSplit) {
+      // Set a wide sidebar width (800px) to accommodate all content
+      rightSplit.containerEl.style.width = '800px';
+      rightSplit.containerEl.style.minWidth = '800px';
+      rightSplit.containerEl.style.maxWidth = '800px';
+    }
+  });
+
+  // Wait for the sidebar to actually be at the correct width and fully rendered
+  await page.waitForFunction(
+    () => {
+      const app = (window as any).app;
+      const rightSplit = app?.workspace?.rightSplit;
+      if (!rightSplit) return false;
+      if (rightSplit.collapsed) return false;
+
+      const sidebarEl = document.querySelector('.workspace-split.mod-right-split');
+      if (!sidebarEl) return false;
+
+      const rect = sidebarEl.getBoundingClientRect();
+      // Wait until sidebar is at least 600px wide (close to our 800px target)
+      return rect.width >= 600;
+    },
+    { timeout: 5000 }
+  );
+
+  // Wait for the task-sync-app to be visible (specific to task-sync-main view)
+  if (viewName === 'task-sync-main') {
+    await page.waitForSelector('.task-sync-app', {
+      state: 'visible',
+      timeout: 5000
+    });
+  }
 }
 
 export async function switchToTaskService(page: Page, service: string) {
@@ -2204,6 +2255,28 @@ export async function switchToTaskService(page: Page, service: string) {
     `[data-testid="service-content-${service}"]:not(.tab-hidden)`,
     { timeout: 5000 }
   );
+
+  // Re-enforce sidebar width after switching tabs (Obsidian might resize it)
+  await page.evaluate(() => {
+    const app = (window as any).app;
+    const rightSplit = app?.workspace?.rightSplit;
+    if (rightSplit) {
+      rightSplit.containerEl.style.width = '600px';
+      rightSplit.containerEl.style.minWidth = '600px';
+      rightSplit.containerEl.style.maxWidth = '600px';
+    }
+  });
+
+  // Wait for sidebar to be at correct width
+  await page.waitForFunction(
+    () => {
+      const sidebarEl = document.querySelector('.workspace-split.mod-right-split');
+      if (!sidebarEl) return false;
+      const rect = sidebarEl.getBoundingClientRect();
+      return rect.width >= 750;
+    },
+    { timeout: 5000 }
+  );
 }
 
 export async function selectFromDropdown(
@@ -2211,7 +2284,22 @@ export async function selectFromDropdown(
   dropdown: string,
   option: string
 ): Promise<void> {
+  // Click the dropdown button
   await page.locator(`[data-testid="${dropdown}"]`).click();
+
+  // Take a screenshot to debug
+  await page.screenshot({ path: `tests/e2e/debug/after-dropdown-click-${dropdown}.png` });
+
+  // Dump HTML to debug
+  const html = await page.content();
+  const fs = require('fs');
+  fs.writeFileSync(`tests/e2e/debug/after-dropdown-click-${dropdown}.html`, html);
+
+  // Wait for dropdown items to appear
+  await page.waitForSelector(`[data-testid="${dropdown}-dropdown-item"]`, {
+    state: 'visible',
+    timeout: 5000
+  });
 
   // Use a more specific selector to avoid strict mode violations
   // when multiple items contain the same text (e.g., "repo" in both "Select repository" and "✓ repo")

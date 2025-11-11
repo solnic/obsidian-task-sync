@@ -51,6 +51,13 @@ test.describe("Apple Reminders Integration", () => {
     );
 
     await switchToTaskService(page, "apple-reminders");
+
+    // Wait for the list filter button to be visible and enabled
+    await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
+      state: 'visible',
+      timeout: 10000
+    });
+
     await selectFromDropdown(page, "list-filter", "Work");
 
     // Click import button for first reminder

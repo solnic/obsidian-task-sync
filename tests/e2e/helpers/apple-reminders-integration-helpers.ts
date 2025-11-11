@@ -91,16 +91,22 @@ export async function stubAppleRemindersWithFixtures(
         console.log("🔧 Stubbed Apple Reminders executeAppleScript called with script:", script);
 
         // Return mock data based on the script content
-        if (script.includes('return name of lists') || script.includes('properties of lists')) {
+        if (script.includes('repeat with reminderList in lists') || script.includes('return listData')) {
+          // Lists fetching script
+          console.log("🔧 Returning lists data:", (window as any).__appleRemindersApiStubs?.lists);
           return (window as any).__appleRemindersApiStubs?.lists || [];
         } else if (script.includes('properties of reminders')) {
+          // Reminders fetching script
+          console.log("🔧 Returning reminders data:", (window as any).__appleRemindersApiStubs?.reminders);
           return (window as any).__appleRemindersApiStubs?.reminders || [];
         } else if (script.includes('get name of list 1') || script.includes('return "authorized"')) {
           // Permission check script
+          console.log("🔧 Returning permission: authorized");
           return "authorized";
         }
 
         // Default return for unknown scripts
+        console.log("🔧 Unknown script, returning empty array");
         return [];
       };
 
