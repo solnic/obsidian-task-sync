@@ -9,6 +9,7 @@
   import SearchInput from "../../../components/SearchInput.svelte";
   import SortDropdown from "../../../components/SortDropdown.svelte";
   import FilterButton from "../../../components/FilterButton.svelte";
+  import AppleReminderItem from "./AppleReminderItem.svelte";
   import { taskStore } from "../../../stores/taskStore";
   import type { Task } from "../../../core/entities";
   import type { TaskSyncSettings } from "../../../types/settings";
@@ -508,59 +509,17 @@
           </div>
         {:else}
           {#each tasks as task (task.id)}
-            {@const isImported = isTaskImported(task)}
-            {@const reminderData = task.source?.data}
-            <div
-              class="apple-reminder-item {isImported ? 'imported' : ''}"
-              data-testid="apple-reminder-item"
-              role="listitem"
-              onmouseenter={() => (hoveredTask = task.id)}
-              onmouseleave={() => (hoveredTask = null)}
-            >
-              <div class="reminder-content">
-                <div class="reminder-header">
-                  <h3 class="reminder-title">{task.title}</h3>
-                  {#if task.priority}
-                    <span class="reminder-priority priority-{task.priority}">
-                      {task.priority}
-                    </span>
-                  {/if}
-                  {#if task.done}
-                    <span class="reminder-status completed">✓</span>
-                  {/if}
-                </div>
-
-                {#if task.description}
-                  <p class="reminder-description">{task.description}</p>
-                {/if}
-
-                <div class="reminder-meta">
-                  {#if reminderData?.list?.name}
-                    <span class="reminder-list">📋 {reminderData.list.name}</span>
-                  {/if}
-                  {#if task.dueDate}
-                    <span class="reminder-due-date">📅 {task.dueDate.toLocaleDateString()}</span>
-                  {/if}
-                  {#if task.createdAt}
-                    <span class="reminder-created">Created {task.createdAt.toLocaleDateString()}</span>
-                  {/if}
-                </div>
-              </div>
-
-              <div class="reminder-actions">
-                {#if isImported}
-                  <span class="imported-indicator" title="Already imported">✓ Imported</span>
-                {:else}
-                  <button
-                    class="import-button"
-                    onclick={() => scheduleForToday(task)}
-                    data-testid="import-reminder-button"
-                  >
-                    {dailyPlanningWizardMode || dayPlanningMode ? 'Schedule for Today' : 'Import'}
-                  </button>
-                {/if}
-              </div>
-            </div>
+            <AppleReminderItem
+              {task}
+              isHovered={hoveredTask === task.id}
+              isImported={isTaskImported(task)}
+              onHover={(hovered) => (hoveredTask = hovered ? task.id : null)}
+              onImport={scheduleForToday}
+              {dayPlanningMode}
+              {dailyPlanningWizardMode}
+              {settings}
+              testId="apple-reminder-item"
+            />
           {/each}
         {/if}
       </div>

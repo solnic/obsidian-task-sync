@@ -111,6 +111,18 @@ export async function clickReminderImportButton(
   page: Page,
   reminderTitle: string
 ): Promise<void> {
+  // First, find and hover over the reminder item to show the action overlay
+  const reminderItem = page.locator(
+    `[data-testid="apple-reminder-item"]:has-text("${reminderTitle}")`
+  );
+
+  await reminderItem.waitFor({ state: "visible", timeout: 5000 });
+  await reminderItem.hover();
+
+  // Wait a bit for the hover state to trigger
+  await page.waitForTimeout(100);
+
+  // Now find and click the import button
   const importButton = page.locator(
     `[data-testid="apple-reminder-item"]:has-text("${reminderTitle}") [data-testid="import-reminder-button"]`
   );
