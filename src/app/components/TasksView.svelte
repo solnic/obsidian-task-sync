@@ -129,6 +129,18 @@
       });
     }
 
+    // Include Apple Reminders if extension is registered
+    const appleRemindersExt = extensionRegistry.getById("apple-reminders");
+    if (appleRemindersExt) {
+      allServices.push({
+        id: "apple-reminders",
+        name: "Apple Reminders",
+        icon: "calendar-check",
+        enabled: settings.integrations?.appleReminders?.enabled === true &&
+                 (appleRemindersExt as any).isPlatformSupported(),
+      });
+    }
+
     return allServices;
   });
 

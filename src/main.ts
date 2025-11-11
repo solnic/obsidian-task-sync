@@ -26,6 +26,8 @@ import type { Task, Project, Area } from "./app/core/entities";
 
 // Commands
 import { RefreshTasksCommand } from "./app/commands/core/RefreshTasksCommand";
+import { CheckAppleRemindersPermissionsCommand } from "./app/commands/apple-reminders/CheckAppleRemindersPermissionsCommand";
+import { ImportAppleRemindersCommand } from "./app/commands/apple-reminders/ImportAppleRemindersCommand";
 
 // NoteKit imports
 import {
@@ -233,6 +235,21 @@ export default class TaskSyncPlugin extends Plugin {
     });
     refreshTasksCommand.register();
 
+    // Register Apple Reminders commands
+    const checkAppleRemindersPermissionsCommand = new CheckAppleRemindersPermissionsCommand({
+      plugin: this,
+      app: this.app,
+      settings: this.settings,
+    });
+    checkAppleRemindersPermissionsCommand.register();
+
+    const importAppleRemindersCommand = new ImportAppleRemindersCommand({
+      plugin: this,
+      app: this.app,
+      settings: this.settings,
+    });
+    importAppleRemindersCommand.register();
+
     // Add command to start daily planning
     this.addCommand({
       id: "start-daily-planning",
@@ -419,6 +436,15 @@ export default class TaskSyncPlugin extends Plugin {
     await this.host.saveSettings(this.settings);
     // Notify app of settings change to reactively update extensions
     await taskSyncApp.updateSettings(this.settings);
+
+    // Update all open views with new settings
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      // Check if view has updateSettings method before calling it
+      const view = leaf.view as any;
+      if (view.updateSettings && typeof view.updateSettings === 'function') {
+        view.updateSettings(this.settings);
+      }
+    });
   }
 
   /**
@@ -786,6 +812,18 @@ class TaskSyncView extends ItemView {
       } catch (error) {
         console.error("Failed to unmount TaskSync Svelte app:", error);
       }
+    }
+  }
+
+  /**
+   * Update settings and refresh the Svelte component
+   * This method is called when settings change in the main plugin
+   */
+  updateSettings(settings: TaskSyncSettings): void {
+    // Update the Svelte component if it exists
+    if (this.appComponent) {
+      // Update the settings prop
+      this.appComponent.settings = settings;
     }
   }
 }

@@ -224,6 +224,18 @@ export async function setupObsidianElectron(
     { timeout: 90000 }
   );
 
+  // Set up test environment for Apple Reminders BEFORE any scripts run
+  await page.addInitScript(() => {
+    // Mark this as a test environment for Apple Reminders
+    (window as any).__APPLE_REMINDERS_TEST_MODE = true;
+    console.log('🔧 Apple Reminders test mode enabled');
+
+    // Also set it globally for immediate access
+    if (typeof global !== 'undefined') {
+      (global as any).__APPLE_REMINDERS_TEST_MODE = true;
+    }
+  });
+
   // Enable plugins
   await page.evaluate(() => {
     (window as any).app.plugins.setEnable(true);

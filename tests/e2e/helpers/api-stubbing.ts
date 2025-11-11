@@ -238,9 +238,9 @@ async function stubAppleRemindersAPI(
         throw new Error("Task Sync plugin not found");
       }
 
-      const appleRemindersService = plugin.appleRemindersService;
-      if (!appleRemindersService) {
-        throw new Error("Apple Reminders service not found");
+      const appleRemindersExtension = plugin.app?.appleRemindersExtension;
+      if (!appleRemindersExtension) {
+        throw new Error("Apple Reminders extension not found");
       }
 
       // Map method names to actual service methods
@@ -265,13 +265,13 @@ async function stubAppleRemindersAPI(
         mappedMethod.charAt(0).toUpperCase() + mappedMethod.slice(1)
       }`;
 
-      if (!appleRemindersService[originalMethodKey]) {
-        appleRemindersService[originalMethodKey] =
-          appleRemindersService[mappedMethod];
+      if (!appleRemindersExtension[originalMethodKey]) {
+        appleRemindersExtension[originalMethodKey] =
+          appleRemindersExtension[mappedMethod];
       }
 
       // Stub the method
-      appleRemindersService[mappedMethod] = async (...args: any[]) => {
+      appleRemindersExtension[mappedMethod] = async (...args: any[]) => {
         console.log(
           `🔧 Stubbed Apple Reminders ${methodName} called with args:`,
           args
@@ -387,8 +387,8 @@ async function restoreAppleRemindersAPI(page: Page): Promise<void> {
       return;
     }
 
-    const appleRemindersService = plugin.appleRemindersService;
-    if (!appleRemindersService) {
+    const appleRemindersExtension = plugin.app?.appleRemindersExtension;
+    if (!appleRemindersExtension) {
       return;
     }
 
@@ -405,10 +405,10 @@ async function restoreAppleRemindersAPI(page: Page): Promise<void> {
         methodName.charAt(0).toUpperCase() + methodName.slice(1)
       }`;
 
-      if (appleRemindersService[originalMethodKey]) {
-        appleRemindersService[methodName] =
-          appleRemindersService[originalMethodKey];
-        delete appleRemindersService[originalMethodKey];
+      if (appleRemindersExtension[originalMethodKey]) {
+        appleRemindersExtension[methodName] =
+          appleRemindersExtension[originalMethodKey];
+        delete appleRemindersExtension[originalMethodKey];
       }
     }
   });
@@ -759,26 +759,61 @@ export async function stubAppleRemindersAPIs(
       const app = (window as any).app;
       const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
 
-      const appleRemindersService = plugin?.appleRemindersService;
-      if (!appleRemindersService) {
+      // Access Apple Reminders extension through the new architecture
+      const appleRemindersExtension = plugin?.app?.appleRemindersExtension;
+      if (!appleRemindersExtension) {
+        console.log("🔧 Apple Reminders extension not found for stubbing");
         return false;
       }
 
+      console.log("🔧 Found Apple Reminders extension, installing stubs");
+
+      // Stub platform check to always return true for testing
+      if (!appleRemindersExtension.__originalIsPlatformSupported) {
+        appleRemindersExtension.__originalIsPlatformSupported = appleRemindersExtension.isPlatformSupported;
+        appleRemindersExtension.isPlatformSupported = () => true;
+
+        // Also stub isEnabled to return true for testing
+        if (!appleRemindersExtension.__originalIsEnabled) {
+          appleRemindersExtension.__originalIsEnabled = appleRemindersExtension.isEnabled;
+          appleRemindersExtension.isEnabled = () => true;
+        }
+      }
+
       // Only stub if not already stubbed
-      if (appleRemindersService.__isStubbed) {
+      if (appleRemindersExtension.__isStubbed) {
         return true;
       }
 
       // Store originals
-      appleRemindersService.__originals = {
-        fetchReminders: appleRemindersService.fetchReminders,
-        fetchLists: appleRemindersService.fetchLists,
-        checkPermissions: appleRemindersService.checkPermissions,
-        clearCache: appleRemindersService.clearCache,
+      appleRemindersExtension.__originals = {
+        executeAppleScript: appleRemindersExtension.executeAppleScript,
+        fetchReminders: appleRemindersExtension.fetchReminders,
+        fetchLists: appleRemindersExtension.fetchLists,
+        checkPermissions: appleRemindersExtension.checkPermissions,
+        clearCache: appleRemindersExtension.clearCache,
       };
 
-      // Install stubs
-      appleRemindersService.fetchReminders = async () => {
+      // Stub executeAppleScript - this is the core method that needs stubbing
+      appleRemindersExtension.executeAppleScript = async (script) => {
+        console.log("🔧 Stubbed Apple Reminders executeAppleScript called with script:", script);
+
+        // Return mock data based on the script content
+        if (script.includes('return name of lists') || script.includes('properties of lists')) {
+          return (window as any).__appleRemindersApiStubs?.lists || [];
+        } else if (script.includes('properties of reminders')) {
+          return (window as any).__appleRemindersApiStubs?.reminders || [];
+        } else if (script.includes('get name of list 1') || script.includes('return "authorized"')) {
+          // Permission check script
+          return "authorized";
+        }
+
+        // Default return for unknown scripts
+        return [];
+      };
+
+      // Install stubs for high-level methods too (for compatibility)
+      appleRemindersExtension.fetchReminders = async () => {
         console.log("🔧 Stubbed Apple Reminders fetchReminders called");
         return {
           success: true,
@@ -786,7 +821,7 @@ export async function stubAppleRemindersAPIs(
         };
       };
 
-      appleRemindersService.fetchLists = async () => {
+      appleRemindersExtension.fetchLists = async () => {
         console.log("🔧 Stubbed Apple Reminders fetchLists called");
         return {
           success: true,
@@ -794,23 +829,23 @@ export async function stubAppleRemindersAPIs(
         };
       };
 
-      appleRemindersService.checkPermissions = async () => {
+      appleRemindersExtension.checkPermissions = async () => {
         console.log("🔧 Stubbed Apple Reminders checkPermissions called");
         return {
           success: true,
           data:
             (window as any).__appleRemindersApiStubs?.permissions !== undefined
               ? (window as any).__appleRemindersApiStubs?.permissions
-              : "AUTHORIZED",
+              : "authorized",
         };
       };
 
-      appleRemindersService.clearCache = async () => {
+      appleRemindersExtension.clearCache = async () => {
         console.log("🔧 Stubbed Apple Reminders clearCache called");
         return;
       };
 
-      appleRemindersService.__isStubbed = true;
+      appleRemindersExtension.__isStubbed = true;
       return true;
     };
 

@@ -62,10 +62,43 @@
 
       // Position the menu below the anchor element
       const rect = anchor.getBoundingClientRect();
+
+      // Set initial position (will be adjusted after render)
       menuPosition = {
         top: rect.bottom + 5,
         left: rect.left,
       };
+
+      // Wait for next frame to get accurate menu dimensions after render
+      requestAnimationFrame(() => {
+        if (!menuEl) return;
+
+        const menuRect = menuEl.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+
+        // Calculate left position, ensuring dropdown stays within viewport
+        let left = rect.left;
+
+        // If dropdown would overflow right edge, align it to the right of the button
+        if (left + menuRect.width > viewportWidth) {
+          left = rect.right - menuRect.width;
+        }
+
+        // If still overflowing (button is very wide), align to right edge of viewport
+        if (left + menuRect.width > viewportWidth) {
+          left = viewportWidth - menuRect.width - 10; // 10px padding from edge
+        }
+
+        // Ensure it doesn't go off the left edge
+        if (left < 10) {
+          left = 10;
+        }
+
+        menuPosition = {
+          top: rect.bottom + 5,
+          left: left,
+        };
+      });
     }
 
     // Focus search input if searchable
