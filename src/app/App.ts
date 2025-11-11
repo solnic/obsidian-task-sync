@@ -5,6 +5,7 @@
 
 import { ObsidianExtension } from "./extensions/obsidian/ObsidianExtension";
 import { GitHubExtension } from "./extensions/github/GitHubExtension";
+import { AppleRemindersExtension } from "./extensions/apple-reminders/AppleRemindersExtension";
 import { CalendarExtension } from "./extensions/calendar/CalendarExtension";
 import { DailyPlanningExtension } from "./extensions/daily-planning/DailyPlanningExtension";
 import { ContextExtension } from "./extensions/context/ContextExtension";
@@ -20,6 +21,7 @@ export class TaskSyncApp {
   private initialized = false;
   public obsidianExtension?: ObsidianExtension;
   public githubExtension?: GitHubExtension;
+  public appleRemindersExtension?: AppleRemindersExtension;
   public calendarExtension?: CalendarExtension;
   public dailyPlanningExtension?: DailyPlanningExtension;
   public contextExtension?: ContextExtension;
@@ -68,6 +70,9 @@ export class TaskSyncApp {
       // Initialize GitHub extension if enabled
       await this.initializeGitHubExtension();
 
+      // Initialize Apple Reminders extension
+      await this.initializeAppleRemindersExtension();
+
       // Initialize Calendar extension if enabled
       await this.initializeCalendarExtension();
 
@@ -100,6 +105,10 @@ export class TaskSyncApp {
 
       if (this.githubExtension) {
         await this.githubExtension.load();
+      }
+
+      if (this.appleRemindersExtension) {
+        await this.appleRemindersExtension.load();
       }
 
       if (this.calendarExtension) {
@@ -353,6 +362,41 @@ export class TaskSyncApp {
     }
 
     console.log("GitHub extension initialized successfully");
+  }
+
+  /**
+   * Initialize Apple Reminders extension if enabled in settings
+   */
+  private async initializeAppleRemindersExtension(): Promise<void> {
+    if (!this.settings?.integrations?.appleReminders?.enabled) {
+      return;
+    }
+
+    const obsidianHost = this.host as any;
+    if (!obsidianHost.plugin) {
+      return;
+    }
+
+    // Don't reinitialize if already initialized
+    if (this.appleRemindersExtension) {
+      console.log("Apple Reminders extension already initialized");
+      return;
+    }
+
+    console.log("Initializing Apple Reminders extension...");
+    this.appleRemindersExtension = new AppleRemindersExtension(
+      obsidianHost.plugin,
+      this.settings
+    );
+
+    await this.appleRemindersExtension.initialize();
+
+    // If app is already loaded, load the extension too
+    if (this.initialized) {
+      await this.appleRemindersExtension.load();
+    }
+
+    console.log("Apple Reminders extension initialized successfully");
   }
 
   /**

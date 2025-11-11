@@ -461,7 +461,7 @@
         Apple Reminders integration is only available on macOS.
       </div>
     {:else if permissionStatus === "denied"}
-      <div class="task-sync-error-message">
+      <div class="task-sync-error-message" data-testid="permission-denied-message">
         Apple Reminders access denied. Please grant permission in System Preferences > Security & Privacy > Privacy > Reminders.
       </div>
     {:else if error}

@@ -2087,6 +2087,13 @@ const DEFAULT_INTEGRATION_CONFIGS: Record<string, any> = {
     enabled: true,
     personalAccessToken: "fake-token-for-testing",
   },
+  appleReminders: {
+    enabled: true,
+    includeCompletedReminders: false,
+    reminderLists: [],
+    syncInterval: 60,
+    excludeAllDayReminders: false,
+  },
 };
 
 export async function enableIntegration(
