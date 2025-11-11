@@ -213,7 +213,7 @@
       if (availableListsDiv) {
         availableListsDiv.remove();
       }
-      
+
       availableListsDiv = appleRemindersContainer.createDiv({
         cls: "task-sync-available-lists"
       });
