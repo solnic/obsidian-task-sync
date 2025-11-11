@@ -695,7 +695,7 @@ export class AppleRemindersExtension implements Extension {
         }
       );
 
-      // 60 second timeout (reminders can take time to load)
+      // 120 second timeout (reminders can take time to load)
       setTimeout(() => {
         if (completed) return;
         completed = true;
@@ -703,7 +703,7 @@ export class AppleRemindersExtension implements Extension {
         childProcess.stdin?.pause();
         childProcess.kill();
         reject(new Error("AppleScript execution timed out after 60 seconds"));
-      }, 60000);
+      }, 120000);
     });
   }
 
