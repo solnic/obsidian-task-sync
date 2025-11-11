@@ -634,19 +634,44 @@ export class AppleRemindersExtension implements Extension {
 
       // Return mock data based on the script content
       if (script.includes('repeat with reminderList in lists') || script.includes('return listData')) {
-
+        console.log("🔧 Returning lists data:", (window as any).__appleRemindersApiStubs?.lists);
         return (window as any).__appleRemindersApiStubs?.lists || [];
       } else if (script.includes('properties of reminders')) {
+        // Reminders fetching script - extract list name from script
+        const listMatch = script.match(/in list "([^"]+)"/);
+        const includeCompleted = !script.includes('whose completed is false');
 
-        return (window as any).__appleRemindersApiStubs?.reminders || [];
+        if (listMatch && listMatch[1]) {
+          const listName = listMatch[1];
+          const remindersData = (window as any).__appleRemindersApiStubs?.reminders || {};
+          let listReminders = remindersData[listName] || [];
+
+          // Filter out completed reminders if script specifies "whose completed is false"
+          if (!includeCompleted) {
+            listReminders = listReminders.filter((r: any) => !r.completed);
+          }
+
+          console.log(`🔧 Returning ${includeCompleted ? 'all' : 'incomplete'} reminders for list "${listName}":`, listReminders);
+          return listReminders;
+        }
+        // If no list specified, return all reminders
+        let allReminders = Object.values((window as any).__appleRemindersApiStubs?.reminders || {}).flat();
+
+        // Filter out completed reminders if script specifies "whose completed is false"
+        if (!includeCompleted) {
+          allReminders = allReminders.filter((r: any) => !r.completed);
+        }
+
+        console.log(`🔧 Returning ${includeCompleted ? 'all' : 'incomplete'} reminders:`, allReminders);
+        return allReminders;
       } else if (script.includes('get name of list 1') || script.includes('return "authorized"')) {
         // Permission check script
-
+        console.log("🔧 Returning permission: authorized");
         return "authorized";
       }
 
       // Default return for unknown scripts
-
+      console.log("🔧 Unknown script, returning empty array");
       return [];
     }
 
@@ -673,15 +698,15 @@ export class AppleRemindersExtension implements Extension {
         }
       );
 
-      // 20 second timeout
+      // 60 second timeout (reminders can take time to load)
       setTimeout(() => {
         if (completed) return;
         completed = true;
 
         childProcess.stdin?.pause();
         childProcess.kill();
-        reject(new Error("AppleScript execution timed out after 20 seconds"));
-      }, 20000);
+        reject(new Error("AppleScript execution timed out after 60 seconds"));
+      }, 60000);
     });
   }
 

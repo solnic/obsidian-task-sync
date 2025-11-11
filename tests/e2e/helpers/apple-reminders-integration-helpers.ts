@@ -86,29 +86,9 @@ export async function stubAppleRemindersWithFixtures(
         clearCache: appleRemindersExtension.clearCache,
       };
 
-      // Stub executeAppleScript - this is the core method that needs stubbing
-      appleRemindersExtension.executeAppleScript = async (script: string) => {
-        console.log("🔧 Stubbed Apple Reminders executeAppleScript called with script:", script);
-
-        // Return mock data based on the script content
-        if (script.includes('repeat with reminderList in lists') || script.includes('return listData')) {
-          // Lists fetching script
-          console.log("🔧 Returning lists data:", (window as any).__appleRemindersApiStubs?.lists);
-          return (window as any).__appleRemindersApiStubs?.lists || [];
-        } else if (script.includes('properties of reminders')) {
-          // Reminders fetching script
-          console.log("🔧 Returning reminders data:", (window as any).__appleRemindersApiStubs?.reminders);
-          return (window as any).__appleRemindersApiStubs?.reminders || [];
-        } else if (script.includes('get name of list 1') || script.includes('return "authorized"')) {
-          // Permission check script
-          console.log("🔧 Returning permission: authorized");
-          return "authorized";
-        }
-
-        // Default return for unknown scripts
-        console.log("🔧 Unknown script, returning empty array");
-        return [];
-      };
+      // Note: The stub logic is now in AppleRemindersExtension.executeAppleScript
+      // We just need to ensure the stub data is available on window
+      console.log("🔧 Apple Reminders stub data installed on window.__appleRemindersApiStubs");
 
       // Mark as stubbed
       appleRemindersExtension.__isStubbed = true;
