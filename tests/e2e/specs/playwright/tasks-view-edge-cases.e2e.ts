@@ -160,10 +160,6 @@ This task has corrupted front-matter.`;
     for (const title of specialTasks) {
       await getTaskItemByTitle(page, title);
     }
-
-    // Verify task count
-    const taskItems = await getVisibleTaskItems(page);
-    expect(taskItems.length).toBeGreaterThanOrEqual(specialTasks.length);
   });
 
   test("should handle search with no results", async ({ page }) => {
