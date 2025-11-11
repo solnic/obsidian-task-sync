@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { TypeRegistry } from "../../core/type-note/registry";
-  import type { NoteType } from "../../core/type-note/types";
+  import type { TypeRegistry } from "../../core/note-kit/registry";
+  import type { NoteType } from "../../core/note-kit/types";
 
   interface Props {
     typeRegistry: TypeRegistry;

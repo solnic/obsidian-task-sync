@@ -1,12 +1,12 @@
 /**
- * E2E tests for TypeNote Select Property Type
+ * E2E tests for NoteKit Select Property Type
  * Tests that the Select property type appears in the dropdown and works correctly
  */
 
 import { test, expect } from "../../helpers/setup";
 import { openTaskSyncSettings } from "../../helpers/global";
 
-test.describe("TypeNote Select Property Type", () => {
+test.describe("NoteKit Select Property Type", () => {
   test("should show Select type in property type dropdown", async ({
     page,
   }) => {
@@ -14,7 +14,7 @@ test.describe("TypeNote Select Property Type", () => {
 
     // Navigate to Note Types section
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 
@@ -71,7 +71,7 @@ test.describe("TypeNote Select Property Type", () => {
 
     // Navigate to Note Types section
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 
@@ -174,7 +174,7 @@ test.describe("TypeNote Select Property Type", () => {
     await openTaskSyncSettings(page);
 
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 

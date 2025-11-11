@@ -128,9 +128,9 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
 
   /**
    * Override createNote to use parent implementation
-   * TypeNote integration is disabled for entity notes because:
+   * NoteKit integration is disabled for entity notes because:
    * 1. Entity notes need description in content, not front-matter
-   * 2. TypeNote validation expects front-matter keys but templates use property keys
+   * 2. NoteKit validation expects front-matter keys but templates use property keys
    * 3. ObsidianEntityOperations already handles front-matter correctly
    */
   async createNote(task: Task): Promise<string> {

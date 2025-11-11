@@ -1,5 +1,5 @@
 /**
- * Unit tests for TypeNote version utilities
+ * Unit tests for NoteKit version utilities
  */
 
 import { describe, test, expect } from "vitest";
@@ -18,8 +18,8 @@ import {
   getLatestVersion,
   satisfiesRange,
   formatVersion,
-} from "../../../src/app/core/type-note/version";
-import { VersionComparison } from "../../../src/app/core/type-note/types";
+} from "../../../src/app/core/note-kit/version";
+import { VersionComparison } from "../../../src/app/core/note-kit/types";
 
 describe("parseVersion", () => {
   test("parses valid semantic versions", () => {

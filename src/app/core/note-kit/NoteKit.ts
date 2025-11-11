@@ -1,6 +1,6 @@
 /**
- * TypeNote - Main TypeNote API encapsulation
- * Provides a single entry point for all TypeNote functionality
+ * NoteKit - Main NoteKit API encapsulation
+ * Provides a single entry point for all NoteKit functionality
  */
 
 import type { App } from "obsidian";
@@ -18,10 +18,10 @@ import { BackupManager } from "./backup-manager";
 import { BasesIntegration } from "./bases-integration";
 
 /**
- * TypeNote main class that encapsulates all TypeNote functionality
- * Provides a clean API for integrating TypeNote with Obsidian plugins
+ * NoteKit main class that encapsulates all NoteKit functionality
+ * Provides a clean API for integrating NoteKit with Obsidian plugins
  */
-export class TypeNote {
+export class NoteKit {
   public readonly registry: TypeRegistry;
   public readonly propertyProcessor: PropertyProcessor;
   public readonly templateEngine: TemplateEngine;
@@ -88,7 +88,7 @@ export class TypeNote {
   }
 
   /**
-   * Initialize TypeNote system
+   * Initialize NoteKit system
    * Can be used for any async initialization if needed in the future
    */
   async initialize(): Promise<void> {
@@ -100,7 +100,7 @@ export class TypeNote {
   }
 
   /**
-   * Cleanup TypeNote system
+   * Cleanup NoteKit system
    * Can be used for cleanup when plugin is unloaded
    */
   async cleanup(): Promise<void> {

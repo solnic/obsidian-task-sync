@@ -4,7 +4,7 @@
   import type {
     PropertyDefinition,
     PropertyType,
-  } from "../../core/type-note/types";
+  } from "../../core/note-kit/types";
   import {
     stringSchema,
     numberSchema,
@@ -12,7 +12,7 @@
     dateSchema,
     enumSchema,
     stringArraySchema,
-  } from "../../core/type-note/schemas";
+  } from "../../core/note-kit/schemas";
 
   interface Props {
     properties: Record<string, PropertyDefinition>;

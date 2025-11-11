@@ -1,12 +1,12 @@
 /**
- * Task Note Type Definition for TypeNote Integration
+ * Task Note Type Definition for NoteKit Integration
  * Defines the Task note type with all required properties and validation
  */
 
 import type {
   NoteType,
   PropertyDefinition,
-} from "../../../core/type-note/types";
+} from "../../../core/note-kit/types";
 import {
   stringSchema,
   optionalStringSchema,
@@ -15,7 +15,7 @@ import {
   optionalDateSchema,
   stringArraySchema,
   enumSchema,
-} from "../../../core/type-note/schemas";
+} from "../../../core/note-kit/schemas";
 
 /**
  * Default task categories with colors

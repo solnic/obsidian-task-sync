@@ -1,19 +1,19 @@
 <!--
-  String Property Component
-  Handles text input for string properties using base PropertyInput
+  Number Property Component
+  Handles number input for numeric properties using base PropertyInput
 -->
 <script lang="ts">
   import PropertyInput from "./PropertyInput.svelte";
   import type {
     PropertyDefinition,
     ValidationResult,
-  } from "../../../core/type-note/types";
+  } from "../../../core/note-kit/types";
 
   interface Props {
     property: PropertyDefinition;
     propertyKey: string;
-    value?: string;
-    onvaluechange?: (value: string | undefined) => void;
+    value?: number;
+    onvaluechange?: (value: number | undefined) => void;
     validationResult?: ValidationResult;
     compact?: boolean;
   }
@@ -29,7 +29,7 @@
 
   function handleInput(event: Event) {
     const target = event.target as HTMLInputElement;
-    const newValue = target.value || undefined;
+    const newValue = parseFloat(target.value) || undefined;
     value = newValue;
     onvaluechange?.(newValue);
   }
@@ -42,12 +42,12 @@
   {onvaluechange}
   {validationResult}
   {compact}
-  inputType="text"
+  inputType="number"
 >
   {#snippet children()}
     <input
       id="prop-{propertyKey}"
-      type="text"
+      type="number"
       value={value || ""}
       oninput={handleInput}
       placeholder={compact

@@ -1,19 +1,19 @@
 <!--
-  Number Property Component
-  Handles number input for numeric properties using base PropertyInput
+  Date Property Component
+  Handles date input for date properties using base PropertyInput
 -->
 <script lang="ts">
   import PropertyInput from "./PropertyInput.svelte";
   import type {
     PropertyDefinition,
     ValidationResult,
-  } from "../../../core/type-note/types";
+  } from "../../../core/note-kit/types";
 
   interface Props {
     property: PropertyDefinition;
     propertyKey: string;
-    value?: number;
-    onvaluechange?: (value: number | undefined) => void;
+    value?: Date | string;
+    onvaluechange?: (value: Date | undefined) => void;
     validationResult?: ValidationResult;
     compact?: boolean;
   }
@@ -27,9 +27,21 @@
     compact = false,
   }: Props = $props();
 
-  function handleInput(event: Event) {
+  function formatDate(date: Date | string | undefined): string {
+    if (!date) return "";
+    if (typeof date === "string") return date;
+    return date.toISOString().split("T")[0]; // YYYY-MM-DD format
+  }
+
+  function parseDate(dateString: string): Date | undefined {
+    if (!dateString) return undefined;
+    const date = new Date(dateString);
+    return isNaN(date.getTime()) ? undefined : date;
+  }
+
+  function handleChange(event: Event) {
     const target = event.target as HTMLInputElement;
-    const newValue = parseFloat(target.value) || undefined;
+    const newValue = parseDate(target.value);
     value = newValue;
     onvaluechange?.(newValue);
   }
@@ -42,19 +54,14 @@
   {onvaluechange}
   {validationResult}
   {compact}
-  inputType="number"
+  inputType="date"
 >
   {#snippet children()}
     <input
       id="prop-{propertyKey}"
-      type="number"
-      value={value || ""}
-      oninput={handleInput}
-      placeholder={compact
-        ? property.required
-          ? `${property.name.toUpperCase()} *`
-          : property.name.toUpperCase()
-        : property.description || `Enter ${property.name.toLowerCase()}...`}
+      type="date"
+      value={formatDate(value)}
+      onchange={handleChange}
       required={property.required}
       class={compact ? "task-sync-title-input" : "property-input"}
       class:task-sync-input-error={compact &&

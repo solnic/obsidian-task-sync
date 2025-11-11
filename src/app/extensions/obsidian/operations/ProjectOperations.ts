@@ -161,7 +161,7 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
 
   /**
    * Override createNote to use parent implementation
-   * TypeNote integration is disabled for entity notes because:
+   * NoteKit integration is disabled for entity notes because:
    * 1. Entity notes need description in content, not front-matter
    * 2. ObsidianEntityOperations already handles front-matter correctly
    */

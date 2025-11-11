@@ -133,7 +133,7 @@ export class BackupManager {
   constructor(
     app: App,
     registry: TypeRegistry,
-    backupFolder: string = ".obsidian/type-note-backups"
+    backupFolder: string = ".obsidian/note-kit-backups"
   ) {
     this.app = app;
     this.vault = app.vault;

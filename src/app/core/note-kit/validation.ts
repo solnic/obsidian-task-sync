@@ -1,5 +1,5 @@
 /**
- * Validation utilities for TypeNote
+ * Validation utilities for NoteKit
  * Provides validation helpers and result builders
  */
 

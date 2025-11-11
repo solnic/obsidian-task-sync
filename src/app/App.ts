@@ -53,13 +53,13 @@ export class TaskSyncApp {
       // TODO: This will need to be refactored when we make the app truly host-agnostic
       const obsidianHost = host as any; // Cast to access underlying plugin
       if (obsidianHost.plugin && obsidianHost.plugin.app) {
-        // Pass the plugin's TypeNote instance to share the same registry
+        // Pass the plugin's NoteKit instance to share the same registry
         // This ensures Task note type is visible in settings UI
         this.obsidianExtension = new ObsidianExtension(
           obsidianHost.plugin.app,
           obsidianHost.plugin,
           this.settings,
-          obsidianHost.plugin.typeNote // Share TypeNote instance with plugin
+          obsidianHost.plugin.typeNote // Share NoteKit instance with plugin
         );
 
         await this.obsidianExtension.initialize();

@@ -1,6 +1,6 @@
 /**
  * ObsidianPropertyManager - Obsidian Property System Integration
- * Integrates TypeNote with Obsidian's property API, including property type mapping
+ * Integrates NoteKit with Obsidian's property API, including property type mapping
  * and support for built-in property types (date, number, text, etc.)
  */
 
@@ -9,7 +9,7 @@ import type { NoteType, PropertyDefinition } from "./types";
 import { z } from "zod";
 
 /**
- * Mapping between TypeNote property types and Obsidian property types
+ * Mapping between NoteKit property types and Obsidian property types
  */
 export const TYPE_NOTE_TO_OBSIDIAN_TYPE_MAP = {
   string: "text",
@@ -45,7 +45,7 @@ export interface PropertyTypeInfo {
 }
 
 /**
- * ObsidianPropertyManager handles integration between TypeNote and Obsidian's property system
+ * ObsidianPropertyManager handles integration between NoteKit and Obsidian's property system
  * Note: Obsidian doesn't have an API to "register" property types - they are inferred automatically
  * This manager provides utilities for type mapping and validation
  */
@@ -57,7 +57,7 @@ export class ObsidianPropertyManager {
   }
 
   /**
-   * Map TypeNote property type to Obsidian property type
+   * Map NoteKit property type to Obsidian property type
    */
   mapTypeNoteTypeToObsidian(typeNoteType: string): ObsidianPropertyType {
     // Handle Zod schema types
@@ -86,7 +86,7 @@ export class ObsidianPropertyManager {
   }
 
   /**
-   * Infer TypeNote type from Zod schema
+   * Infer NoteKit type from Zod schema
    */
   private inferTypeFromZodSchema(schema: z.ZodType<any>): string {
     const typeName = schema.constructor.name;
@@ -101,7 +101,7 @@ export class ObsidianPropertyManager {
   }
 
   /**
-   * Get property type information for TypeNote properties
+   * Get property type information for NoteKit properties
    * Note: Obsidian infers property types automatically, so this provides mapping info
    */
   getNoteTypePropertyInfo(noteType: NoteType): PropertyTypeInfo[] {
@@ -256,7 +256,7 @@ export class ObsidianPropertyManager {
   }
 
   /**
-   * Check if TypeNote property types are compatible with Obsidian
+   * Check if NoteKit property types are compatible with Obsidian
    */
   validateTypeNoteCompatibility(noteType: NoteType): {
     compatible: boolean;
@@ -270,7 +270,7 @@ export class ObsidianPropertyManager {
 
       if (obsidianType && obsidianType !== info.obsidianType) {
         issues.push(
-          `Property "${info.name}" type mismatch: TypeNote expects "${info.obsidianType}" but Obsidian has "${obsidianType}"`
+          `Property "${info.name}" type mismatch: NoteKit expects "${info.obsidianType}" but Obsidian has "${obsidianType}"`
         );
       }
     }
@@ -283,7 +283,7 @@ export class ObsidianPropertyManager {
 
   /**
    * Get UI-friendly type mapping for property type selection
-   * Returns a mapping of TypeNote types to their display names
+   * Returns a mapping of NoteKit types to their display names
    */
   static getTypeMapping(): Record<string, string> {
     return {

@@ -8,7 +8,7 @@
   import type {
     PropertyDefinition,
     ValidationResult,
-  } from "../../../core/type-note/types";
+  } from "../../../core/note-kit/types";
 
   interface Props {
     property: PropertyDefinition;
@@ -37,7 +37,7 @@
       !validationResult.valid &&
       validationResult.errors.length > 0
   );
-  
+
   const errorMessage = $derived(
     hasError ? validationResult!.errors[0].message : undefined
   );

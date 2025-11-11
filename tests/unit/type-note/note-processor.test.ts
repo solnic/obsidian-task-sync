@@ -9,17 +9,17 @@ import {
   type NoteProcessingResult,
   type FrontMatterExtractionResult,
   type NoteTypeDetectionResult,
-} from "../../../src/app/core/type-note/note-processor";
-import type { TemplateProcessingResult } from "../../../src/app/core/type-note/types";
-import type { NoteType } from "../../../src/app/core/type-note/types";
+} from "../../../src/app/core/note-kit/note-processor";
+import type { TemplateProcessingResult } from "../../../src/app/core/note-kit/types";
+import type { NoteType } from "../../../src/app/core/note-kit/types";
 import {
   stringSchema,
   numberSchema,
   optionalStringSchema,
-} from "../../../src/app/core/type-note/schemas";
-import { PropertyProcessor } from "../../../src/app/core/type-note/property-processor";
-import { TemplateEngine } from "../../../src/app/core/type-note/template-engine";
-import { TypeRegistry } from "../../../src/app/core/type-note/registry";
+} from "../../../src/app/core/note-kit/schemas";
+import { PropertyProcessor } from "../../../src/app/core/note-kit/property-processor";
+import { TemplateEngine } from "../../../src/app/core/note-kit/template-engine";
+import { TypeRegistry } from "../../../src/app/core/note-kit/registry";
 
 describe("NoteProcessor", () => {
   let processor: NoteProcessor;

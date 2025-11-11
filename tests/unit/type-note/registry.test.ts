@@ -7,12 +7,12 @@ import { z } from "zod";
 import {
   TypeRegistry,
   RegistryError,
-} from "../../../src/app/core/type-note/registry";
-import type { NoteType } from "../../../src/app/core/type-note/types";
+} from "../../../src/app/core/note-kit/registry";
+import type { NoteType } from "../../../src/app/core/note-kit/types";
 import {
   stringSchema,
   dateSchema,
-} from "../../../src/app/core/type-note/schemas";
+} from "../../../src/app/core/note-kit/schemas";
 
 describe("TypeRegistry", () => {
   let registry: TypeRegistry;

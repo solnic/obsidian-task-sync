@@ -6,13 +6,13 @@ import { describe, test, expect, beforeEach } from "vitest";
 import {
   TemplateEngine,
   TemplateEngineError,
-} from "../../../src/app/core/type-note/template-engine";
+} from "../../../src/app/core/note-kit/template-engine";
 import type {
   Template,
   TemplateContext,
   NoteType,
-} from "../../../src/app/core/type-note/types";
-import { stringSchema } from "../../../src/app/core/type-note/schemas";
+} from "../../../src/app/core/note-kit/types";
+import { stringSchema } from "../../../src/app/core/note-kit/schemas";
 
 describe("TemplateEngine", () => {
   let engine: TemplateEngine;

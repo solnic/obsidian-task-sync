@@ -1,5 +1,5 @@
 /**
- * E2E tests for TypeNote Settings Property Management
+ * E2E tests for NoteKit Settings Property Management
  * Tests the property management interface in the settings editor
  */
 
@@ -10,13 +10,13 @@ import {
   readVaultFile,
 } from "../../helpers/global";
 
-test.describe("TypeNote Settings - Property Management", () => {
+test.describe("NoteKit Settings - Property Management", () => {
   test.beforeEach(async ({ page }) => {
     await openTaskSyncSettings(page);
 
     // Navigate to Note Types section
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 
@@ -318,7 +318,7 @@ test.describe("TypeNote Settings - Property Management", () => {
   });
 });
 
-test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
+test.describe("NoteKit Settings - Complete Note Type Lifecycle", () => {
   test("should create a new note type and verify it appears in the list", async ({
     page,
   }) => {
@@ -326,7 +326,7 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
 
     // Navigate to Note Types section
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 
@@ -409,7 +409,7 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
     await openTaskSyncSettings(page);
 
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 
@@ -512,7 +512,7 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
     await openTaskSyncSettings(page);
 
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 
@@ -590,7 +590,7 @@ test.describe("TypeNote Settings - Complete Note Type Lifecycle", () => {
     await openTaskSyncSettings(page);
 
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 

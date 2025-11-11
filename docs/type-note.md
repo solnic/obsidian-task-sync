@@ -1,14 +1,14 @@
-# TypeNote Mini-Library Implementation Plan
+# NoteKit Mini-Library Implementation Plan
 
 A comprehensive typed note management system for Obsidian with template versioning, front-matter validation, and seamless integration with Obsidian's property and base systems.
 
 ## Architecture Overview
 
-TypeNote consists of two main layers:
+NoteKit consists of two main layers:
 1. **Core Layer**: Platform-agnostic note type definitions, validation, and templating system
 2. **Obsidian Integration Layer**: Obsidian-specific implementations for file management, properties, and UI
 
-This separation ensures TypeNote can eventually be extracted as a standalone Obsidian plugin while maintaining clean boundaries between generic functionality and Obsidian-specific features.
+This separation ensures NoteKit can eventually be extracted as a standalone Obsidian plugin while maintaining clean boundaries between generic functionality and Obsidian-specific features.
 
 ---
 
@@ -85,7 +85,7 @@ interface PropertyDefinition {
 
 ### 3.1 Property System Integration
 - [x] Implement `ObsidianPropertyManager` using Obsidian's property API
-- [x] Create property type mapping between TypeNote and Obsidian
+- [x] Create property type mapping between NoteKit and Obsidian
 - [x] Add support for Obsidian's built-in property types (date, number, text, etc.)
 
 ### 3.2 Bases Integration
@@ -179,7 +179,7 @@ interface PropertyDefinition {
 ## Integration Points with Existing TaskSync
 
 ### TaskSync Integration Tasks
-- [ ] Implement `TaskNoteType` using TypeNote foundation
+- [ ] Implement `TaskNoteType` using NoteKit foundation
 - [ ] Create task-specific property definitions and validation
 - [ ] Integrate task note creation with TaskSync's command system
 - [ ] Add task note templates with proper versioning
@@ -240,4 +240,4 @@ interface PropertyDefinition {
 - [ ] Clear documentation and examples for extending the system
 - [ ] Robust error handling and debugging tools
 
-This implementation plan provides a solid foundation for TypeNote while ensuring it integrates seamlessly with your existing TaskSync infrastructure and can be easily extracted as a standalone plugin in the future.
+This implementation plan provides a solid foundation for NoteKit while ensuring it integrates seamlessly with your existing TaskSync infrastructure and can be easily extracted as a standalone plugin in the future.

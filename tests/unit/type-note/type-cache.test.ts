@@ -8,13 +8,13 @@ import {
   type TypeCacheOptions,
   type TypeCacheStatistics,
   type CachePersistenceAdapter,
-} from "../../../src/app/core/type-note/type-cache";
-import type { NoteType } from "../../../src/app/core/type-note/types";
+} from "../../../src/app/core/note-kit/type-cache";
+import type { NoteType } from "../../../src/app/core/note-kit/types";
 import {
   stringSchema,
   numberSchema,
   optionalStringSchema,
-} from "../../../src/app/core/type-note/schemas";
+} from "../../../src/app/core/note-kit/schemas";
 
 describe("TypeCache", () => {
   let cache: TypeCache;

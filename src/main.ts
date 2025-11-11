@@ -27,19 +27,19 @@ import type { Task, Project, Area } from "./app/core/entities";
 // Commands
 import { RefreshTasksCommand } from "./app/commands/core/RefreshTasksCommand";
 
-// TypeNote imports
+// NoteKit imports
 import {
-  TypeNote,
+  NoteKit,
   TypeCache,
   type CachePersistenceAdapter,
-} from "./app/core/type-note";
+} from "./app/core/note-kit";
 
 export default class TaskSyncPlugin extends Plugin {
   settings: TaskSyncSettings;
   public host: ObsidianHost;
 
-  // TypeNote API
-  public typeNote: TypeNote;
+  // NoteKit API
+  public typeNote: NoteKit;
 
   // Track registered note type commands for cleanup
   private registeredNoteTypeCommands: string[] = [];
@@ -159,8 +159,8 @@ export default class TaskSyncPlugin extends Plugin {
     // Load settings through host
     this.settings = await this.host.loadSettings();
 
-    // Initialize TypeNote API with persistence BEFORE taskSyncApp.initialize
-    // This is critical because ObsidianExtension needs to use this TypeNote instance
+    // Initialize NoteKit API with persistence BEFORE taskSyncApp.initialize
+    // This is critical because ObsidianExtension needs to use this NoteKit instance
     this.typeNote = await this.createTypeNoteWithPersistence();
 
     // Initialize the TaskSync app with Host abstraction
@@ -276,9 +276,9 @@ export default class TaskSyncPlugin extends Plugin {
   }
 
   /**
-   * Create TypeNote instance with proper persistence adapter
+   * Create NoteKit instance with proper persistence adapter
    */
-  private async createTypeNoteWithPersistence(): Promise<TypeNote> {
+  private async createTypeNoteWithPersistence(): Promise<NoteKit> {
     // Create persistence adapter that uses plugin storage
     const persistenceAdapter: CachePersistenceAdapter = {
       load: async () => {
@@ -315,13 +315,13 @@ export default class TaskSyncPlugin extends Plugin {
     // Create TypeCache with persistence
     const typeCache = new TypeCache(persistenceAdapter);
 
-    // Create TypeNote instance
-    const typeNote = new TypeNote(this.app);
+    // Create NoteKit instance
+    const typeNote = new NoteKit(this.app);
 
     // Connect the cache to the registry
     await this.connectCacheToRegistry(typeNote, typeCache);
 
-    // Initialize TypeNote
+    // Initialize NoteKit
     await typeNote.initialize();
 
     return typeNote;
@@ -331,7 +331,7 @@ export default class TaskSyncPlugin extends Plugin {
    * Connect TypeCache to TypeRegistry for persistence
    */
   private async connectCacheToRegistry(
-    typeNote: TypeNote,
+    typeNote: NoteKit,
     typeCache: TypeCache
   ): Promise<void> {
     // Load existing note types from cache
@@ -344,7 +344,7 @@ export default class TaskSyncPlugin extends Plugin {
       if (noteType) {
         // Reconstruct schemas from serialized note type
         const { reconstructNoteTypeSchemas } = await import(
-          "./app/core/type-note/schema-utils"
+          "./app/core/note-kit/schema-utils"
         );
         const reconstructedNoteType = reconstructNoteTypeSchemas(noteType);
 
@@ -405,7 +405,7 @@ export default class TaskSyncPlugin extends Plugin {
     await this.host.onunload();
     await taskSyncApp.shutdown();
 
-    // Cleanup TypeNote
+    // Cleanup NoteKit
     if (this.typeNote) {
       await this.typeNote.cleanup();
     }

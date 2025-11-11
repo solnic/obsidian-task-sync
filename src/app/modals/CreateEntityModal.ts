@@ -6,9 +6,9 @@
 
 import { App, Modal, Notice } from "obsidian";
 import { mount, unmount } from "svelte";
-import CreateEntityModalSvelte from "../components/type-note/CreateEntityModal.svelte";
+import CreateEntityModalSvelte from "../components/note-kit/CreateEntityModal.svelte";
 import type TaskSyncPlugin from "../../main";
-import type { NoteType } from "../core/type-note/types";
+import type { NoteType } from "../core/note-kit/types";
 import type { TaskSyncSettings } from "../types/settings";
 import type { EntitiesOperations, Entity } from "../core/entities-base";
 

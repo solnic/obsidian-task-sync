@@ -7,19 +7,19 @@ import {
   PropertyProcessor,
   type PropertyDependency,
   type ConditionalValidation,
-} from "../../../src/app/core/type-note/property-processor";
-import type { NoteType } from "../../../src/app/core/type-note/types";
+} from "../../../src/app/core/note-kit/property-processor";
+import type { NoteType } from "../../../src/app/core/note-kit/types";
 import {
   stringSchema,
   numberSchema,
   dateSchema,
   optionalStringSchema,
-} from "../../../src/app/core/type-note/schemas";
+} from "../../../src/app/core/note-kit/schemas";
 import {
   createValidResult,
   createInvalidResult,
   createValidationError,
-} from "../../../src/app/core/type-note/validation";
+} from "../../../src/app/core/note-kit/validation";
 
 describe("PropertyProcessor", () => {
   let processor: PropertyProcessor;

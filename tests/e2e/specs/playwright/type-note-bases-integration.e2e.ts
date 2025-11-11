@@ -1,5 +1,5 @@
 /**
- * E2E tests for TypeNote BasesIntegration
+ * E2E tests for NoteKit BasesIntegration
  * Tests automatic base creation from note types
  */
 
@@ -10,15 +10,15 @@ import {
   readVaultFile,
 } from "../../helpers/global";
 
-test.describe("TypeNote BasesIntegration", () => {
-  test("should create Obsidian base from TypeNote note type", async ({
+test.describe("NoteKit BasesIntegration", () => {
+  test("should create Obsidian base from NoteKit note type", async ({
     page,
   }) => {
     // Open settings and navigate to Note Types section
     await openTaskSyncSettings(page);
 
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 
@@ -171,7 +171,7 @@ test.describe("TypeNote BasesIntegration", () => {
     await openTaskSyncSettings(page);
 
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 
@@ -316,7 +316,7 @@ test.describe("TypeNote BasesIntegration", () => {
     await openTaskSyncSettings(page);
 
     const noteTypesSection = page.locator(
-      '[data-testid="settings-section-type-note"]'
+      '[data-testid="settings-section-note-kit"]'
     );
     await noteTypesSection.click();
 

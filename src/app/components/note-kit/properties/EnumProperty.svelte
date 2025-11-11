@@ -9,7 +9,7 @@
   import type {
     PropertyDefinition,
     ValidationResult,
-  } from "../../../core/type-note/types";
+  } from "../../../core/note-kit/types";
 
   interface Props {
     property: PropertyDefinition;

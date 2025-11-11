@@ -1,10 +1,10 @@
 /**
- * TypeNote Helper Utilities
- * Provides utilities to extract task types, priorities, and statuses from TypeNote system
+ * NoteKit Helper Utilities
+ * Provides utilities to extract task types, priorities, and statuses from NoteKit system
  * instead of relying on obsolete settings properties
  */
 
-import type { TypeNote } from "../core/type-note/TypeNote";
+import type { NoteKit } from "../core/note-kit/NoteKit";
 
 // Task category interface with color support
 export interface TaskType {
@@ -29,7 +29,7 @@ export interface TaskStatus {
 /**
  * Extract task categories from the Task note type
  */
-export function getTaskCategoriesFromTypeNote(typeNote: TypeNote): TaskType[] {
+export function getTaskCategoriesFromTypeNote(typeNote: NoteKit): TaskType[] {
   try {
     const taskNoteType = typeNote.registry.get("task");
     if (!taskNoteType) {
@@ -46,7 +46,7 @@ export function getTaskCategoriesFromTypeNote(typeNote: TypeNote): TaskType[] {
       color: option.color || "#3b82f6",
     }));
   } catch (error) {
-    console.warn("Failed to get task categories from TypeNote:", error);
+    console.warn("Failed to get task categories from NoteKit:", error);
     return getDefaultTaskCategories();
   }
 }
@@ -55,7 +55,7 @@ export function getTaskCategoriesFromTypeNote(typeNote: TypeNote): TaskType[] {
  * Extract task priorities from the Task note type
  */
 export function getTaskPrioritiesFromTypeNote(
-  typeNote: TypeNote
+  typeNote: NoteKit
 ): TaskPriority[] {
   try {
     const taskNoteType = typeNote.registry.get("task");
@@ -73,7 +73,7 @@ export function getTaskPrioritiesFromTypeNote(
       color: option.color || "#f59e0b",
     }));
   } catch (error) {
-    console.warn("Failed to get task priorities from TypeNote:", error);
+    console.warn("Failed to get task priorities from NoteKit:", error);
     return getDefaultTaskPriorities();
   }
 }
@@ -81,7 +81,7 @@ export function getTaskPrioritiesFromTypeNote(
 /**
  * Extract task statuses from the Task note type
  */
-export function getTaskStatusesFromTypeNote(typeNote: TypeNote): TaskStatus[] {
+export function getTaskStatusesFromTypeNote(typeNote: NoteKit): TaskStatus[] {
   try {
     const taskNoteType = typeNote.registry.get("task");
     if (!taskNoteType) {
@@ -100,7 +100,7 @@ export function getTaskStatusesFromTypeNote(typeNote: TypeNote): TaskStatus[] {
       isInProgress: option.isInProgress || false,
     }));
   } catch (error) {
-    console.warn("Failed to get task statuses from TypeNote:", error);
+    console.warn("Failed to get task statuses from NoteKit:", error);
     return getDefaultTaskStatuses();
   }
 }
@@ -150,7 +150,7 @@ function getDefaultTaskStatuses(): TaskStatus[] {
  * Get task category color by name
  */
 export function getTaskCategoryColor(
-  typeNote: TypeNote,
+  typeNote: NoteKit,
   categoryName: string
 ): string {
   const categories = getTaskCategoriesFromTypeNote(typeNote);
@@ -162,7 +162,7 @@ export function getTaskCategoryColor(
  * Get task priority color by name
  */
 export function getTaskPriorityColor(
-  typeNote: TypeNote,
+  typeNote: NoteKit,
   priorityName: string
 ): string {
   const priorities = getTaskPrioritiesFromTypeNote(typeNote);
@@ -174,7 +174,7 @@ export function getTaskPriorityColor(
  * Get task status color by name
  */
 export function getTaskStatusColor(
-  typeNote: TypeNote,
+  typeNote: NoteKit,
   statusName: string
 ): string {
   const statuses = getTaskStatusesFromTypeNote(typeNote);

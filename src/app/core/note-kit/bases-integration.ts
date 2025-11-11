@@ -1,6 +1,6 @@
 /**
- * BasesIntegration - Obsidian Bases Integration for TypeNote
- * Automatically creates Obsidian Bases from TypeNote note types
+ * BasesIntegration - Obsidian Bases Integration for NoteKit
+ * Automatically creates Obsidian Bases from NoteKit note types
  */
 
 import type { App, Vault } from "obsidian";
@@ -10,7 +10,7 @@ import type { TypeRegistry } from "./registry";
 import * as yaml from "js-yaml";
 
 /**
- * Mapping between TypeNote property types and Obsidian Base property types
+ * Mapping between NoteKit property types and Obsidian Base property types
  */
 export const TYPE_NOTE_TO_BASE_TYPE_MAP: Record<
   PropertyType,
@@ -84,7 +84,7 @@ export interface BaseCreationResult {
 }
 
 /**
- * BasesIntegration handles automatic creation of Obsidian Bases from TypeNote note types
+ * BasesIntegration handles automatic creation of Obsidian Bases from NoteKit note types
  */
 export class BasesIntegration {
   private vault: Vault;
@@ -96,14 +96,14 @@ export class BasesIntegration {
   }
 
   /**
-   * Map TypeNote property type to Base property type
+   * Map NoteKit property type to Base property type
    */
   mapTypeNoteTypeToBaseType(typeNoteType: PropertyType): BasePropertyType {
     return TYPE_NOTE_TO_BASE_TYPE_MAP[typeNoteType];
   }
 
   /**
-   * Create Obsidian Base from TypeNote note type
+   * Create Obsidian Base from NoteKit note type
    */
   async createBaseFromNoteType(
     noteTypeId: string,
@@ -175,7 +175,7 @@ export class BasesIntegration {
       };
     }
 
-    // Convert TypeNote properties to base properties
+    // Convert NoteKit properties to base properties
     for (const [, propertyDef] of Object.entries(noteType.properties)) {
       const baseType = this.mapTypeNoteTypeToBaseType(propertyDef.type);
 

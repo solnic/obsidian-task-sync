@@ -12,8 +12,8 @@
   import type {
     PropertyDefinition,
     ValidationResult,
-  } from "../../core/type-note/types";
-  import { validateProperty } from "../../core/type-note/validation";
+  } from "../../core/note-kit/types";
+  import { validateProperty } from "../../core/note-kit/validation";
 
   interface Props {
     properties: Record<string, PropertyDefinition>;

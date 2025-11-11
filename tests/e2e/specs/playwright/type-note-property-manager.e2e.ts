@@ -1,6 +1,6 @@
 /**
- * E2E tests for TypeNote Phase 3: ObsidianPropertyManager
- * Tests property system integration between TypeNote and Obsidian's property API
+ * E2E tests for NoteKit Phase 3: ObsidianPropertyManager
+ * Tests property system integration between NoteKit and Obsidian's property API
  */
 
 import { test, expect } from "../../helpers/setup";
@@ -15,8 +15,8 @@ import {
   getObsidianApp,
 } from "../../helpers/global";
 
-test.describe("TypeNote ObsidianPropertyManager", () => {
-  test("should provide property type mapping between TypeNote and Obsidian", async ({
+test.describe("NoteKit ObsidianPropertyManager", () => {
+  test("should provide property type mapping between NoteKit and Obsidian", async ({
     page,
   }) => {
     // Test the ObsidianPropertyManager type mapping functionality
@@ -33,10 +33,10 @@ test.describe("TypeNote ObsidianPropertyManager", () => {
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-        // Access TypeNote API
+        // Access NoteKit API
         const typeNote = plugin.typeNote;
         if (!typeNote) {
-          throw new Error("TypeNote not available");
+          throw new Error("NoteKit not available");
         }
 
         // Test type mapping
@@ -75,10 +75,10 @@ This is a test article to verify property type reading.
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-      // Access TypeNote API
+      // Access NoteKit API
       const typeNote = plugin.typeNote;
       if (!typeNote) {
-        throw new Error("TypeNote not available");
+        throw new Error("NoteKit not available");
       }
 
       // Get all property types from Obsidian
@@ -106,10 +106,10 @@ This is a test article to verify property type reading.
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
 
-        // Access TypeNote API
+        // Access NoteKit API
         const typeNote = plugin.typeNote;
         if (!typeNote) {
-          throw new Error("TypeNote not available");
+          throw new Error("NoteKit not available");
         }
 
         // Test property validation

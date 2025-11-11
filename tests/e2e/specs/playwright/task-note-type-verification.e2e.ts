@@ -14,7 +14,7 @@ test.describe("Task Note Type Verification", () => {
       const plugin = app.plugins.plugins["obsidian-task-sync"];
 
       if (!plugin || !plugin.typeNote) {
-        return { success: false, error: "Plugin or TypeNote not found" };
+        return { success: false, error: "Plugin or NoteKit not found" };
       }
 
       // Get all note types

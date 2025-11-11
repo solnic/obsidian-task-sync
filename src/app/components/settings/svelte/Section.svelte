@@ -44,7 +44,7 @@
     <TemplatesSettings bind:settings {saveSettings} {section} {app} {plugin} />
   {:else if section.id === "bases"}
     <BasesSettings bind:settings {saveSettings} {section} {app} {plugin} />
-  {:else if section.id === "type-note"}
+  {:else if section.id === "note-kit"}
     <TypeNoteSettings bind:settings {saveSettings} {section} {plugin} />
   {:else if section.id === "integrations"}
     <IntegrationsSettings

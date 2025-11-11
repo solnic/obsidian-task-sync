@@ -9,18 +9,18 @@
   import type {
     NoteType,
     PropertyDefinition,
-  } from "../../../core/type-note/types";
+  } from "../../../core/note-kit/types";
   import {
     stringSchema,
     numberSchema,
     booleanSchema,
     dateSchema,
     enumSchema,
-  } from "../../../core/type-note/schemas";
-  import { createSchemaFromType } from "../../../core/type-note/schema-utils";
+  } from "../../../core/note-kit/schemas";
+  import { createSchemaFromType } from "../../../core/note-kit/schema-utils";
   import PropertySettings from "./PropertySettings.svelte";
   import { camelize } from "inflection";
-  import { ObsidianPropertyManager } from "../../../core/type-note/obsidian-property-manager";
+  import { ObsidianPropertyManager } from "../../../core/note-kit/obsidian-property-manager";
 
   let container: HTMLElement;
 
@@ -302,7 +302,7 @@
   function createNoteTypesSettings(): void {
     if (!plugin?.typeNote?.registry) {
       container.createEl("p", {
-        text: "TypeNote registry not available",
+        text: "NoteKit registry not available",
         cls: "task-sync-settings-error",
       });
       return;
@@ -675,7 +675,7 @@
   }
 </script>
 
-<div bind:this={container} data-testid="type-note-settings"></div>
+<div bind:this={container} data-testid="note-kit-settings"></div>
 
 <style>
   /* Fix visual glitches in embedded components */

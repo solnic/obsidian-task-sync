@@ -1,14 +1,14 @@
 /**
- * Project Note Type Definition for TypeNote Integration
+ * Project Note Type Definition for NoteKit Integration
  * Defines the Project note type with all required properties and validation
  */
 
-import type { NoteType, PropertyDefinition } from "../../../core/type-note/types";
+import type { NoteType, PropertyDefinition } from "../../../core/note-kit/types";
 import {
   stringSchema,
   optionalStringSchema,
   stringArraySchema,
-} from "../../../core/type-note/schemas";
+} from "../../../core/note-kit/schemas";
 
 /**
  * Create the Project note type definition

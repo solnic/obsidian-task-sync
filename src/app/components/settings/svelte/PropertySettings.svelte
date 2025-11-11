@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Setting } from "obsidian";
   import { onMount } from "svelte";
-  import type { PropertySettingsData } from "../../../core/type-note/types";
+  import type { PropertySettingsData } from "../../../core/note-kit/types";
 
   interface Props {
     propertyKey: string;

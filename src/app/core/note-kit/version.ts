@@ -1,5 +1,5 @@
 /**
- * Version comparison utilities for TypeNote
+ * Version comparison utilities for NoteKit
  * Implements semantic versioning comparison and validation
  */
 

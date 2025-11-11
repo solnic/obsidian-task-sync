@@ -1,8 +1,8 @@
 <script lang="ts">
   import PropertyFormBuilder from "./PropertyFormBuilder.svelte";
-  import type { NoteType } from "../../core/type-note/types";
-  import type { TypeRegistry } from "../../core/type-note/registry";
-  import type { NoteProcessor } from "../../core/type-note/note-processor";
+  import type { NoteType } from "../../core/note-kit/types";
+  import type { TypeRegistry } from "../../core/note-kit/registry";
+  import type { NoteProcessor } from "../../core/note-kit/note-processor";
 
   interface Props {
     typeRegistry: TypeRegistry;

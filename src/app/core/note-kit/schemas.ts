@@ -1,5 +1,5 @@
 /**
- * Common Zod schemas for TypeNote properties
+ * Common Zod schemas for NoteKit properties
  * Provides reusable schemas for common property types
  */
 

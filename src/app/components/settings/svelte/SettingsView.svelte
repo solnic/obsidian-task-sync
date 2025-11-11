@@ -21,7 +21,7 @@
     { id: "general", title: "General" },
     { id: "templates", title: "Templates" },
     { id: "bases", title: "Bases" },
-    { id: "type-note", title: "TypeNote" },
+    { id: "note-kit", title: "NoteKit" },
     { id: "integrations", title: "Integrations" },
   ];
 </script>

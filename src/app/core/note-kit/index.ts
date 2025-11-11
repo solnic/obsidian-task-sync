@@ -1,5 +1,5 @@
 /**
- * TypeNote Core Module
+ * NoteKit Core Module
  * Platform-agnostic note type definitions, validation, and templating system
  *
  * This module provides the foundation for typed notes with:
@@ -226,8 +226,8 @@ export {
   TYPE_NOTE_TO_BASE_TYPE_MAP,
 } from "./bases-integration";
 
-// Export main TypeNote API
-export { TypeNote } from "./TypeNote";
+// Export main NoteKit API
+export { NoteKit } from "./NoteKit";
 
 // Export type cache
 export {

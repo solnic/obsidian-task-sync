@@ -36,7 +36,7 @@ import { ObsidianBaseManager } from "./utils/BaseManager";
 import { DailyNoteFeature } from "./features/DailyNoteFeature";
 import { derived, get, writable, type Readable } from "svelte/store";
 import { syncManager, type EntityDataProvider } from "../../core/SyncManager";
-import { TypeNote } from "../../core/type-note/TypeNote";
+import { NoteKit } from "../../core/note-kit/NoteKit";
 import { buildTaskNoteType } from "./types/TaskNoteType";
 import { createProjectNoteType } from "./types/ProjectNoteType";
 import { createAreaNoteType } from "./types/AreaNoteType";
@@ -189,7 +189,7 @@ export class ObsidianExtension implements Extension {
   readonly projectOperations: ObsidianProjectOperations;
   readonly taskOperations: ObsidianTaskOperations;
   readonly todoPromotionOperations: Obsidian.TodoPromotionOperations;
-  readonly typeNote: TypeNote;
+  readonly typeNote: NoteKit;
 
   // SyncManager provider
   private entityDataProvider?: ObsidianEntityDataProvider;
@@ -198,7 +198,7 @@ export class ObsidianExtension implements Extension {
     private app: App,
     private plugin: Plugin,
     private settings: ObsidianExtensionSettings,
-    typeNote: TypeNote
+    typeNote: NoteKit
   ) {
     // Initialize base manager first so it can be passed to operations
     this.baseManager = new ObsidianBaseManager(app, app.vault, settings);
@@ -257,11 +257,11 @@ export class ObsidianExtension implements Extension {
       // Set up event listeners for domain events
       this.setupEventListeners();
 
-      // Note: TypeNote initialization is handled by the plugin
-      // We're using a shared TypeNote instance passed from the plugin
+      // Note: NoteKit initialization is handled by the plugin
+      // We're using a shared NoteKit instance passed from the plugin
 
-      // Register note types with TypeNote
-      console.log("Registering note types with TypeNote...");
+      // Register note types with NoteKit
+      console.log("Registering note types with NoteKit...");
       await this.registerTaskNoteType();
       await this.registerProjectNoteType();
       await this.registerAreaNoteType();
@@ -375,7 +375,7 @@ export class ObsidianExtension implements Extension {
     // Cleanup daily note feature
     this.dailyNoteFeature.cleanup();
 
-    // Cleanup TypeNote system
+    // Cleanup NoteKit system
     await this.typeNote.cleanup();
 
     eventBus.trigger({
@@ -974,7 +974,7 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
-   * Register Task note type with TypeNote
+   * Register Task note type with NoteKit
    * This creates and registers the Task note type based on current settings
    */
   private async registerTaskNoteType(): Promise<void> {
@@ -990,7 +990,7 @@ export class ObsidianExtension implements Extension {
       // Build Task note type with default configuration
       const taskNoteType = buildTaskNoteType();
 
-      // Register with TypeNote registry
+      // Register with NoteKit registry
       const result = this.typeNote.registry.register(taskNoteType, {
         allowOverwrite: false, // Don't overwrite persisted note types
         validate: true,
@@ -1006,7 +1006,7 @@ export class ObsidianExtension implements Extension {
         );
       }
 
-      console.log("Task note type registered successfully with TypeNote");
+      console.log("Task note type registered successfully with NoteKit");
     } catch (error) {
       console.error("Error registering Task note type:", error);
       throw error;
@@ -1022,7 +1022,7 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
-   * Register Project note type with TypeNote
+   * Register Project note type with NoteKit
    * This creates and registers the Project note type
    */
   private async registerProjectNoteType(): Promise<void> {
@@ -1038,7 +1038,7 @@ export class ObsidianExtension implements Extension {
       // Create Project note type
       const projectNoteType = createProjectNoteType();
 
-      // Register with TypeNote registry
+      // Register with NoteKit registry
       const result = this.typeNote.registry.register(projectNoteType, {
         allowOverwrite: false, // Don't overwrite persisted note types
         validate: true,
@@ -1054,7 +1054,7 @@ export class ObsidianExtension implements Extension {
         );
       }
 
-      console.log("Project note type registered successfully with TypeNote");
+      console.log("Project note type registered successfully with NoteKit");
     } catch (error) {
       console.error("Error registering Project note type:", error);
       throw error;
@@ -1062,7 +1062,7 @@ export class ObsidianExtension implements Extension {
   }
 
   /**
-   * Register Area note type with TypeNote
+   * Register Area note type with NoteKit
    * This creates and registers the Area note type
    */
   private async registerAreaNoteType(): Promise<void> {
@@ -1078,7 +1078,7 @@ export class ObsidianExtension implements Extension {
       // Create Area note type
       const areaNoteType = createAreaNoteType();
 
-      // Register with TypeNote registry
+      // Register with NoteKit registry
       const result = this.typeNote.registry.register(areaNoteType, {
         allowOverwrite: false, // Don't overwrite persisted note types
         validate: true,
@@ -1094,7 +1094,7 @@ export class ObsidianExtension implements Extension {
         );
       }
 
-      console.log("Area note type registered successfully with TypeNote");
+      console.log("Area note type registered successfully with NoteKit");
     } catch (error) {
       console.error("Error registering Area note type:", error);
       throw error;

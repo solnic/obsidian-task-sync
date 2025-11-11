@@ -272,7 +272,7 @@ export async function waitForAreaToBeRemoved(
 }
 
 /**
- * Create an area using the TypeNote system
+ * Create an area using the NoteKit system
  * Returns the created entity directly from the plugin
  */
 export async function createArea(
@@ -308,7 +308,7 @@ export async function createArea(
 }
 
 /**
- * Create a project using the TypeNote system
+ * Create a project using the NoteKit system
  * Returns the created entity directly from the plugin
  */
 export async function createProject(

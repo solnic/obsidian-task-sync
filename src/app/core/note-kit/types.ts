@@ -1,5 +1,5 @@
 /**
- * Core TypeNote types and interfaces
+ * Core NoteKit types and interfaces
  * Platform-agnostic note type definitions, validation, and templating system
  */
 
@@ -12,7 +12,7 @@ export type SemanticVersion = string;
 
 /**
  * Property type enumeration
- * Defines the supported property types in TypeNote
+ * Defines the supported property types in NoteKit
  */
 export type PropertyType =
   | "string"

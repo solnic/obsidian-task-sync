@@ -9,13 +9,13 @@ import { Area } from "../../../core/entities";
 import { ObsidianEntityOperations } from "./EntityOperations";
 import { PROPERTY_REGISTRY } from "../utils/PropertyRegistry";
 import type { TaskSyncSettings } from "../../../types/settings";
-import type { TypeNote } from "../../../core/type-note/TypeNote";
+import type { NoteKit } from "../../../core/note-kit/NoteKit";
 import { areaStore } from "../../../stores/areaStore";
 import { Areas } from "../../../entities/Areas";
 import { EntitiesOperations } from "../../../core/entities-base";
 
 export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
-  private typeNote?: TypeNote;
+  private typeNote?: NoteKit;
   private areaOperations: EntitiesOperations;
 
   constructor(app: App, private settings: TaskSyncSettings) {
@@ -24,10 +24,10 @@ export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
   }
 
   /**
-   * Set TypeNote instance for creating typed notes
-   * This is called by ObsidianExtension after TypeNote is initialized
+   * Set NoteKit instance for creating typed notes
+   * This is called by ObsidianExtension after NoteKit is initialized
    */
-  setTypeNote(typeNote: TypeNote): void {
+  setTypeNote(typeNote: NoteKit): void {
     this.typeNote = typeNote;
   }
 
@@ -52,7 +52,7 @@ export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
 
   /**
    * Override createNote to use parent implementation
-   * TypeNote integration is disabled for entity notes because:
+   * NoteKit integration is disabled for entity notes because:
    * 1. Entity notes need description in content, not front-matter
    * 2. ObsidianEntityOperations already handles front-matter correctly
    */
@@ -62,16 +62,16 @@ export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
   }
 
   /**
-   * Create an area note using TypeNote
+   * Create an area note using NoteKit
    */
   private async createNoteWithTypeNote(area: Area): Promise<string> {
     const fileName = this.sanitizeFileName(area.name);
     const filePath = `${this.folder}/${fileName}.md`;
 
-    // Prepare properties for TypeNote
+    // Prepare properties for NoteKit
     const properties = this.prepareTypeNoteProperties(area);
 
-    // Create the note using TypeNote
+    // Create the note using NoteKit
     const result = await this.typeNote!.fileManager.createTypedNote("area", {
       folder: this.folder,
       fileName: area.name,
@@ -106,8 +106,8 @@ export class ObsidianAreaOperations extends ObsidianEntityOperations<Area> {
   }
 
   /**
-   * Prepare area properties for TypeNote
-   * Converts Area entity to TypeNote property format
+   * Prepare area properties for NoteKit
+   * Converts Area entity to NoteKit property format
    */
   private prepareTypeNoteProperties(area: Area): Record<string, any> {
     return {

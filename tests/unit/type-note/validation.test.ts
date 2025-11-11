@@ -1,5 +1,5 @@
 /**
- * Unit tests for TypeNote validation utilities
+ * Unit tests for NoteKit validation utilities
  */
 
 import { describe, test, expect } from "vitest";
@@ -14,11 +14,11 @@ import {
   validateProperties,
   validateNoteType,
   mergeValidationResults,
-} from "../../../src/app/core/type-note/validation";
+} from "../../../src/app/core/note-kit/validation";
 import type {
   PropertyDefinition,
   NoteType,
-} from "../../../src/app/core/type-note/types";
+} from "../../../src/app/core/note-kit/types";
 
 describe("createValidResult", () => {
   test("creates valid result with data", () => {

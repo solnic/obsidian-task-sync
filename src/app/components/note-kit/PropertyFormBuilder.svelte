@@ -20,9 +20,9 @@
     PropertyDefinition,
     ValidationResult,
     NoteType,
-  } from "../../core/type-note/types";
-  import { validateProperty } from "../../core/type-note/validation";
-  import type { NoteProcessor } from "../../core/type-note/note-processor";
+  } from "../../core/note-kit/types";
+  import { validateProperty } from "../../core/note-kit/validation";
+  import type { NoteProcessor } from "../../core/note-kit/note-processor";
 
   interface Props {
     properties: Record<string, PropertyDefinition>;

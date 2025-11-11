@@ -1,5 +1,5 @@
 /**
- * TemplateManager - Advanced Template Management for TypeNote
+ * TemplateManager - Advanced Template Management for NoteKit
  * Handles core Templates and Templater support, template detection, preference system,
  * template folder management, and template application with property pre-filling
  */

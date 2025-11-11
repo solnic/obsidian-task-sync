@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import type { Template } from "../../core/type-note/types";
+  import type { Template } from "../../core/note-kit/types";
 
   interface Props {
     template: Template;
