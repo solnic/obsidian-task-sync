@@ -2118,11 +2118,30 @@ export async function enableIntegration(
       // Install Apple Reminders stubs if this is the Apple Reminders integration
       if (name === "appleReminders" && (window as any).__installAppleRemindersStubs) {
         console.log("🔧 Installing Apple Reminders stubs after enabling integration");
-        const stubsInstalled = (window as any).__installAppleRemindersStubs();
-        console.log("🔧 Apple Reminders stubs installed:", stubsInstalled);
 
-        // Wait a bit for the extension to be fully initialized with stubs
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Wait for the Apple Reminders extension to be initialized and registered
+        let attempts = 0;
+        const maxAttempts = 20; // 10 seconds max
+        while (attempts < maxAttempts) {
+          const app = (window as any).app;
+          const plugin = app.plugins.plugins["obsidian-task-sync"];
+          const appleRemindersExtension = plugin?.taskSyncApp?.appleRemindersExtension;
+
+          if (appleRemindersExtension) {
+            console.log("🔧 Apple Reminders extension found, installing stubs");
+            const stubsInstalled = (window as any).__installAppleRemindersStubs();
+            console.log("🔧 Apple Reminders stubs installed:", stubsInstalled);
+            break;
+          }
+
+          console.log(`🔧 Waiting for Apple Reminders extension to be initialized (attempt ${attempts + 1}/${maxAttempts})`);
+          await new Promise(resolve => setTimeout(resolve, 500));
+          attempts++;
+        }
+
+        if (attempts >= maxAttempts) {
+          console.warn("🔧 Timed out waiting for Apple Reminders extension to be initialized");
+        }
       }
     },
     { name, integration_config }

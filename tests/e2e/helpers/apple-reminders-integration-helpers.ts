@@ -52,7 +52,7 @@ export async function stubAppleRemindersWithFixtures(
       const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
 
       // Access Apple Reminders extension through the new architecture
-      const appleRemindersExtension = plugin?.app?.appleRemindersExtension;
+      const appleRemindersExtension = plugin?.taskSyncApp?.appleRemindersExtension;
       if (!appleRemindersExtension) {
         console.log("🔧 Apple Reminders extension not found for stubbing");
         return false;
@@ -143,9 +143,17 @@ export async function waitForReminderImportComplete(
   // Wait for the import button to show "Imported" state or disappear
   await page.waitForFunction(
     (title) => {
-      const reminderItem = document.querySelector(
-        `[data-testid="apple-reminder-item"]:has-text("${title}")`
-      );
+      // Find all reminder items and check their text content
+      const reminderItems = document.querySelectorAll('[data-testid="apple-reminder-item"]');
+      let reminderItem = null;
+
+      for (const item of reminderItems) {
+        if (item.textContent && item.textContent.includes(title)) {
+          reminderItem = item;
+          break;
+        }
+      }
+
       if (!reminderItem) return false;
 
       const importButton = reminderItem.querySelector(

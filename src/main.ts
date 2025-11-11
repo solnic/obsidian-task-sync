@@ -436,6 +436,16 @@ export default class TaskSyncPlugin extends Plugin {
     await this.host.saveSettings(this.settings);
     // Notify app of settings change to reactively update extensions
     await taskSyncApp.updateSettings(this.settings);
+
+    // Update all open views with new settings
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view instanceof TaskSyncView) {
+        leaf.view.updateSettings(this.settings);
+      }
+      if (leaf.view.getViewType() === DAY_VIEW_TYPE) {
+        (leaf.view as DayView).updateSettings(this.settings);
+      }
+    });
   }
 
   /**
@@ -803,6 +813,18 @@ class TaskSyncView extends ItemView {
       } catch (error) {
         console.error("Failed to unmount TaskSync Svelte app:", error);
       }
+    }
+  }
+
+  /**
+   * Update settings and refresh the Svelte component
+   * This method is called when settings change in the main plugin
+   */
+  updateSettings(settings: TaskSyncSettings): void {
+    // Update the Svelte component if it exists
+    if (this.appComponent) {
+      // Update the settings prop
+      this.appComponent.settings = settings;
     }
   }
 }
