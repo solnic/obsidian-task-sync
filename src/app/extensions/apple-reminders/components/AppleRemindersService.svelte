@@ -105,8 +105,11 @@
   /**
    * Get tasks from extension's getTasks() method
    * The extension handles combining imported tasks with Apple Reminders API data
+   * Note: getTasks() returns a store, so we call it once and subscribe to it
    */
-  let extensionTasksStore = $derived(appleRemindersExtension.getTasks());
+  const extensionTasksStore = appleRemindersExtension.getTasks();
+
+  // Subscribe to the store using Svelte's auto-subscription
   let extensionTasks = $derived($extensionTasksStore);
 
   /**
@@ -190,9 +193,13 @@
   // ============================================================================
 
   onMount(async () => {
+    console.log('🍎 AppleRemindersService onMount called');
     if (appleRemindersExtension.isEnabled() && !hasLoadedInitialData) {
+      console.log('🍎 Loading initial data...');
       await loadInitialData();
+      console.log('🍎 Initial data loaded');
     }
+    console.log('🍎 AppleRemindersService onMount complete');
   });
 
   // React to settings changes (specifically the enabled flag)
@@ -346,33 +353,54 @@
   }
 
   async function importTask(task: Task): Promise<void> {
-    // For now, Apple Reminders tasks are read-only
-    // This would be implemented when write support is added
-    console.log("Importing Apple Reminders task:", task.title);
+    try {
+      console.log("Importing Apple Reminders task:", task.title);
 
-    // Add the task to the main task store
-    taskStore.dispatch({
-      type: "ADD_TASK",
-      task: task,
-    });
+      // Get the Apple Reminder data from the task
+      const reminderData = task.source.data;
+      if (!reminderData) {
+        console.error("Task has no Apple Reminder data");
+        return;
+      }
 
-    // Handle Daily Planning integration
-    if (dailyPlanningWizardMode && dailyPlanningExtension) {
-      // In wizard mode, stage the task for today
-      try {
-        dailyPlanningExtension.scheduleTaskForToday(task.id);
-        console.log(`Staged task ${task.id} for today in Daily Planning`);
-      } catch (err: any) {
-        console.error("Error staging task for today:", err);
+      // Import the reminder as a task (creates file in vault)
+      const result = await appleRemindersExtension.importReminderAsTask(reminderData);
+
+      if (result.success) {
+        console.log(
+          `Successfully imported Apple Reminder "${task.title}" as task ${result.taskId}`
+        );
+
+        // Handle Daily Planning integration
+        if (result.taskId) {
+          if (dailyPlanningWizardMode && dailyPlanningExtension) {
+            // In wizard mode, stage the task for today
+            try {
+              dailyPlanningExtension.scheduleTaskForToday(result.taskId);
+              console.log(`Staged task ${result.taskId} for today in Daily Planning`);
+            } catch (err: any) {
+              console.error("Error staging task for today:", err);
+            }
+          } else if (dayPlanningMode && dailyPlanningExtension) {
+            // In regular day planning mode, add to today's daily note immediately
+            try {
+              // Get the imported task from the store
+              const state = get(taskStore);
+              const importedTask = state.tasks.find((t) => t.id === result.taskId);
+              if (importedTask) {
+                await dailyPlanningExtension.addTasksToTodayDailyNote([importedTask]);
+                console.log(`Added task ${result.taskId} to today's daily note`);
+              }
+            } catch (err: any) {
+              console.error("Error adding to today's daily note:", err);
+            }
+          }
+        }
+      } else {
+        console.error(`Failed to import Apple Reminder: ${result.error}`);
       }
-    } else if (dayPlanningMode && dailyPlanningExtension) {
-      // In regular day planning mode, add to today's daily note immediately
-      try {
-        await dailyPlanningExtension.addTasksToTodayDailyNote([task]);
-        console.log(`Added task ${task.id} to today's daily note`);
-      } catch (err: any) {
-        console.error("Error adding to today's daily note:", err);
-      }
+    } catch (error) {
+      console.error("Error importing Apple Reminder:", error);
     }
   }
 </script>

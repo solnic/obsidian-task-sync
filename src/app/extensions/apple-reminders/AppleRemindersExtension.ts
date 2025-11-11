@@ -8,7 +8,7 @@ import { Extension, extensionRegistry, EntityType } from "../../core/extension";
 import { eventBus } from "../../core/events";
 import { taskStore } from "../../stores/taskStore";
 import { derived, get, writable, type Readable } from "svelte/store";
-import type { Task } from "../../core/entities";
+import { Task } from "../../core/entities";
 import { SchemaCache } from "../../cache/SchemaCache";
 import {
   AppleRemindersListsSchema,
@@ -32,6 +32,8 @@ import {
   type AppleRemindersFilter,
 } from "../../types/apple-reminders";
 import moment from "moment";
+import { Tasks } from "../../entities/Tasks";
+import { EntitiesOperations } from "../../core/entities-base";
 
 /**
  * EntityDataProvider for Apple Reminders extension
@@ -120,19 +122,32 @@ export class AppleRemindersExtension implements Extension {
   // Entity data provider for sync manager
   private entityDataProvider?: AppleRemindersEntityDataProvider;
 
+  // Cached platform support check result
+  private platformSupported?: boolean;
+
+  // Task operations for creating task files
+  private taskOperations: EntitiesOperations;
+
   constructor(plugin: Plugin, settings: TaskSyncSettings) {
     this.plugin = plugin;
     this.settings = settings;
+    this.taskOperations = new Tasks.Operations(settings);
   }
 
   /**
    * Check if the current platform supports Apple Reminders
+   * Result is cached after first check to avoid repeated platform checks
+   * Note: Cache is bypassed in test environments to allow stubbing
    */
   isPlatformSupported(): boolean {
-    // Check if we're in a test environment with stubs
+    // Check if we're in a test environment with stubs - bypass cache for tests
     if (typeof window !== 'undefined' && (window as any).__appleRemindersApiStubs) {
-      console.log('🔧 Test environment with Apple Reminders stubs detected, allowing on any platform');
       return true;
+    }
+
+    // Return cached result if available (non-test environments only)
+    if (this.platformSupported !== undefined) {
+      return this.platformSupported;
     }
 
     // Check if we're in a test environment by looking at the vault path
@@ -140,20 +155,15 @@ export class AppleRemindersExtension implements Extension {
     const vaultPath = obsidianHost?.vault?.adapter?.basePath || '';
     const isTestVault = vaultPath.includes('test-environments') || vaultPath.includes('e2e');
 
-    console.log('🔧 Platform check debug:', {
-      platform: process.platform,
-      vaultPath,
-      isTestVault,
-      nodeEnv: process.env.NODE_ENV
-    });
-
     // In test environment, always return true to allow testing on non-macOS platforms
     if (isTestVault) {
-      console.log('🔧 Test environment detected, bypassing platform check');
+      this.platformSupported = true;
       return true;
     }
 
-    return process.platform === "darwin";
+    // Cache and return the platform check result
+    this.platformSupported = process.platform === "darwin";
+    return this.platformSupported;
   }
 
   /**
@@ -310,6 +320,79 @@ export class AppleRemindersExtension implements Extension {
     } catch (error) {
       console.error("Failed to refresh Apple Reminders data:", error);
     }
+  }
+
+  /**
+   * Import an Apple Reminder as a task
+   * Creates a task file in the vault with Apple Reminders source metadata
+   */
+  async importReminderAsTask(
+    reminder: AppleReminder
+  ): Promise<{ success: boolean; taskId?: string; error?: string }> {
+    try {
+      console.log(`Importing Apple Reminder: ${reminder.title}`);
+
+      // Transform Apple Reminder to task data
+      const taskData = this.transformReminderToTask(reminder);
+
+      // Use task operations to create the task (which creates the file and triggers events)
+      const task = await this.taskOperations.create(taskData);
+
+      console.log(
+        `Successfully imported Apple Reminder "${reminder.title}" as task ${task.id}`
+      );
+
+      return {
+        success: true,
+        taskId: task.id,
+      };
+    } catch (error: any) {
+      console.error(`Failed to import Apple Reminder:`, error);
+      return {
+        success: false,
+        error: error.message || "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Transform an Apple Reminder to a Task object (without persisting)
+   * Used for importing Apple Reminders as tasks
+   */
+  transformReminderToTask(
+    reminder: AppleReminder
+  ): Omit<Task, "id" | "createdAt" | "updatedAt"> {
+    // Map Apple Reminders priority (0-9) to task priority
+    const priorityMap: Record<number, string> = {
+      1: "High",
+      5: "Medium",
+      9: "Low",
+    };
+
+    return {
+      title: reminder.title,
+      description: reminder.notes || "",
+      category: "reminder",
+      status: reminder.completed ? "Done" : "Backlog",
+      priority: priorityMap[reminder.priority] || "",
+      done: reminder.completed,
+      project: "",
+      areas: [],
+      parentTask: "",
+      doDate: undefined,
+      dueDate: reminder.dueDate || undefined,
+      tags: [
+        "apple-reminders",
+        `list:${reminder.list.name.toLowerCase().replace(/\s+/g, "-")}`,
+      ],
+      source: {
+        extension: "apple-reminders",
+        keys: {
+          "apple-reminders": reminder.id,
+        },
+        data: reminder, // Store original Apple Reminder data
+      },
+    };
   }
 
   /**

@@ -2256,27 +2256,8 @@ export async function switchToTaskService(page: Page, service: string) {
     { timeout: 5000 }
   );
 
-  // Re-enforce sidebar width after switching tabs (Obsidian might resize it)
-  await page.evaluate(() => {
-    const app = (window as any).app;
-    const rightSplit = app?.workspace?.rightSplit;
-    if (rightSplit) {
-      rightSplit.containerEl.style.width = '600px';
-      rightSplit.containerEl.style.minWidth = '600px';
-      rightSplit.containerEl.style.maxWidth = '600px';
-    }
-  });
-
-  // Wait for sidebar to be at correct width
-  await page.waitForFunction(
-    () => {
-      const sidebarEl = document.querySelector('.workspace-split.mod-right-split');
-      if (!sidebarEl) return false;
-      const rect = sidebarEl.getBoundingClientRect();
-      return rect.width >= 750;
-    },
-    { timeout: 5000 }
-  );
+  // Give the component a moment to fully render
+  await page.waitForTimeout(500);
 }
 
 export async function selectFromDropdown(
