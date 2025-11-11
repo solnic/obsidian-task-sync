@@ -2,6 +2,8 @@
   import type { TaskSyncSettings } from "../../../types/settings";
   import { Setting } from "obsidian";
   import { onMount } from "svelte";
+  import { extensionRegistry } from "../../../core/extension";
+  import type { AppleRemindersExtension } from "../../../extensions/apple-reminders/AppleRemindersExtension";
 
   let appleRemindersContainer: HTMLElement;
 
@@ -17,9 +19,37 @@
   // Platform check for Apple integrations
   const isPlatformSupported = process.platform === "darwin";
 
+  // State for available reminder lists
+  let availableReminderLists = $state<string[]>([]);
+  let loadingLists = $state(false);
+
   onMount(() => {
     createAppleRemindersSection();
   });
+
+  // Load available reminder lists from Apple Reminders
+  async function loadReminderLists(): Promise<void> {
+    if (!isPlatformSupported || !enabled) {
+      return;
+    }
+
+    const extension = extensionRegistry.getById("apple-reminders") as AppleRemindersExtension;
+    if (!extension) {
+      return;
+    }
+
+    try {
+      loadingLists = true;
+      const result = await extension.fetchLists();
+      if (result.success && result.data) {
+        availableReminderLists = result.data.map(list => list.name).sort();
+      }
+    } catch (error) {
+      console.error("Failed to load reminder lists:", error);
+    } finally {
+      loadingLists = false;
+    }
+  }
 
   function createAppleRemindersSection(): void {
     if (!isPlatformSupported) {
@@ -142,18 +172,66 @@
             }
           });
       });
+
+    // Reminder Lists Selection
+    const reminderListsSetting = new Setting(appleRemindersContainer)
+      .setName("Reminder Lists")
+      .setDesc("Select which reminder lists to sync (leave empty to sync all lists)")
+      .addButton((button) => {
+        button
+          .setButtonText(loadingLists ? "Loading..." : "Load Lists")
+          .setDisabled(loadingLists)
+          .onClick(async () => {
+            await loadReminderLists();
+          });
+      });
+
+    // Add text area for selected lists
+    reminderListsSetting.addTextArea((textArea) => {
+      textArea
+        .setPlaceholder("Enter reminder list names, one per line")
+        .setValue(settings.integrations.appleReminders.reminderLists.join('\n'))
+        .onChange(async (value) => {
+          const lists = value
+            .split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
+          settings.integrations.appleReminders.reminderLists = lists;
+          await saveSettings(settings);
+        });
+
+      // Style the text area
+      textArea.inputEl.rows = 4;
+      textArea.inputEl.style.width = "100%";
+      textArea.inputEl.style.resize = "vertical";
+    });
+
+    // Show available lists if loaded
+    if (availableReminderLists.length > 0) {
+      const availableListsDiv = appleRemindersContainer.createDiv({
+        cls: "task-sync-available-lists"
+      });
+      availableListsDiv.createEl("small", {
+        text: `Available lists: ${availableReminderLists.join(', ')}`,
+        cls: "task-sync-hint"
+      });
+    }
   }
 
   // Reactive statement to create/destroy settings based on toggle state
   $effect(() => {
     if (enabled && isPlatformSupported) {
       createAppleRemindersSettings();
+      // Load reminder lists when integration is enabled
+      loadReminderLists();
     } else {
       // Clear Apple Reminders settings when disabled
       const children = Array.from(appleRemindersContainer.children);
       children
         .slice(isPlatformSupported ? 1 : 2)
         .forEach((child) => child.remove()); // Keep the warning and toggle
+      // Clear loaded lists
+      availableReminderLists = [];
     }
   });
 </script>

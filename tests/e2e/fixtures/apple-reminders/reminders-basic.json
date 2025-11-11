@@ -1,87 +1,57 @@
 [
   {
     "id": "reminder-1",
-    "title": "Complete project proposal",
-    "notes": "Need to finish the Q1 project proposal by end of week",
+    "name": "Complete project proposal",
+    "body": "Need to finish the Q1 project proposal by end of week",
     "completed": false,
     "creationDate": "2024-01-10T09:00:00.000Z",
     "modificationDate": "2024-01-12T14:30:00.000Z",
     "dueDate": "2024-01-15T17:00:00.000Z",
     "priority": 5,
-    "list": {
-      "id": "work-list",
-      "name": "Work",
-      "color": "#007AFF"
-    },
-    "allDay": false,
-    "url": "reminder://reminder-1"
+    "allDay": false
   },
   {
     "id": "reminder-2",
-    "title": "Buy groceries",
-    "notes": "Milk, bread, eggs, and vegetables",
+    "name": "Buy groceries",
+    "body": "Milk, bread, eggs, and vegetables",
     "completed": false,
     "creationDate": "2024-01-12T08:00:00.000Z",
     "modificationDate": "2024-01-12T08:00:00.000Z",
     "dueDate": "2024-01-13T18:00:00.000Z",
     "priority": 3,
-    "list": {
-      "id": "personal-list",
-      "name": "Personal",
-      "color": "#FF6B6B"
-    },
-    "allDay": false,
-    "url": "reminder://reminder-2"
+    "allDay": false
   },
   {
     "id": "reminder-3",
-    "title": "Call dentist",
-    "notes": "Schedule annual cleaning appointment",
+    "name": "Call dentist",
+    "body": "Schedule annual cleaning appointment",
     "completed": true,
     "creationDate": "2024-01-08T10:00:00.000Z",
     "modificationDate": "2024-01-11T16:45:00.000Z",
     "completionDate": "2024-01-11T16:45:00.000Z",
     "priority": 2,
-    "list": {
-      "id": "personal-list",
-      "name": "Personal",
-      "color": "#FF6B6B"
-    },
-    "allDay": false,
-    "url": "reminder://reminder-3"
+    "allDay": false
   },
   {
     "id": "reminder-4",
-    "title": "Team meeting preparation",
-    "notes": "Prepare slides for weekly team meeting",
+    "name": "Team meeting preparation",
+    "body": "Prepare slides for weekly team meeting",
     "completed": false,
     "creationDate": "2024-01-13T07:30:00.000Z",
     "modificationDate": "2024-01-13T07:30:00.000Z",
     "dueDate": "2024-01-14T09:00:00.000Z",
     "priority": 7,
-    "list": {
-      "id": "work-list",
-      "name": "Work",
-      "color": "#007AFF"
-    },
-    "allDay": false,
-    "url": "reminder://reminder-4"
+    "allDay": false
   },
   {
     "id": "reminder-5",
-    "title": "Weekend hiking trip",
-    "notes": "Plan route and pack gear for weekend hiking",
+    "name": "Weekend hiking trip",
+    "body": "Plan route and pack gear for weekend hiking",
     "completed": false,
     "creationDate": "2024-01-09T19:00:00.000Z",
     "modificationDate": "2024-01-09T19:00:00.000Z",
     "dueDate": "2024-01-20T08:00:00.000Z",
     "priority": 1,
-    "list": {
-      "id": "personal-list",
-      "name": "Personal",
-      "color": "#FF6B6B"
-    },
-    "allDay": true,
-    "url": "reminder://reminder-5"
+    "allDay": true
   }
 ]

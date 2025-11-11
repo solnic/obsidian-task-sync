@@ -39,59 +39,82 @@ export async function stubAppleRemindersWithFixtures(
     readFileSync(join(fixturesPath, `${fixtures.reminders}.json`), "utf-8")
   );
 
-  // Stub Apple Reminders APIs by intercepting AppleScript execution
-  await page.route("**", async (route) => {
-    const request = route.request();
-    
-    // Only intercept requests that would trigger AppleScript execution
-    if (request.url().includes("apple-reminders") || 
-        request.method() === "POST" && request.postData()?.includes("osascript")) {
-      
-      const postData = request.postData();
-      
-      // Check permissions request
-      if (postData?.includes("authorization status")) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ success: true, data: permissionsData }),
-        });
-        return;
-      }
-      
-      // Check lists request
-      if (postData?.includes("get every list")) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ success: true, data: listsData }),
-        });
-        return;
-      }
-      
-      // Check reminders request
-      if (postData?.includes("get every reminder")) {
-        await route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ success: true, data: remindersData }),
-        });
-        return;
-      }
-    }
-    
-    // Continue with original request for non-Apple Reminders requests
-    await route.continue();
-  });
+  // Set up stubs using page.evaluate instead of addInitScript
+  await page.evaluate((fixtureData) => {
+    console.log("🔧 Setting up Apple Reminders stub data...");
 
-  // Mock the node-osascript module at the extension level
-  await page.addInitScript(() => {
-    // Mock the AppleScript execution in the extension
-    (window as any).__mockAppleScript = {
-      permissions: permissionsData,
-      lists: listsData,
-      reminders: remindersData,
+    // Store fixture data globally
+    (window as any).__appleRemindersApiStubs = fixtureData;
+
+    // Create a global stub installer that can be called after plugin reloads
+    (window as any).__installAppleRemindersStubs = () => {
+      const app = (window as any).app;
+      const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+
+      // Access Apple Reminders extension through the new architecture
+      const appleRemindersExtension = plugin?.app?.appleRemindersExtension;
+      if (!appleRemindersExtension) {
+        console.log("🔧 Apple Reminders extension not found for stubbing");
+        return false;
+      }
+
+      console.log("🔧 Found Apple Reminders extension, installing stubs");
+
+      // Stub platform check to always return true for testing
+      if (!appleRemindersExtension.__originalIsPlatformSupported) {
+        appleRemindersExtension.__originalIsPlatformSupported = appleRemindersExtension.isPlatformSupported;
+        appleRemindersExtension.isPlatformSupported = () => true;
+
+        // Also stub isEnabled to return true for testing
+        if (!appleRemindersExtension.__originalIsEnabled) {
+          appleRemindersExtension.__originalIsEnabled = appleRemindersExtension.isEnabled;
+          appleRemindersExtension.isEnabled = () => true;
+        }
+      }
+
+      // Only stub if not already stubbed
+      if (appleRemindersExtension.__isStubbed) {
+        return true;
+      }
+
+      // Store originals
+      appleRemindersExtension.__originals = {
+        executeAppleScript: appleRemindersExtension.executeAppleScript,
+        fetchReminders: appleRemindersExtension.fetchReminders,
+        fetchLists: appleRemindersExtension.fetchLists,
+        checkPermissions: appleRemindersExtension.checkPermissions,
+        clearCache: appleRemindersExtension.clearCache,
+      };
+
+      // Stub executeAppleScript - this is the core method that needs stubbing
+      appleRemindersExtension.executeAppleScript = async (script: string) => {
+        console.log("🔧 Stubbed Apple Reminders executeAppleScript called with script:", script);
+
+        // Return mock data based on the script content
+        if (script.includes('return name of lists') || script.includes('properties of lists')) {
+          return (window as any).__appleRemindersApiStubs?.lists || [];
+        } else if (script.includes('properties of reminders')) {
+          return (window as any).__appleRemindersApiStubs?.reminders || [];
+        } else if (script.includes('get name of list 1') || script.includes('return "authorized"')) {
+          // Permission check script
+          return "authorized";
+        }
+
+        // Default return for unknown scripts
+        return [];
+      };
+
+      // Mark as stubbed
+      appleRemindersExtension.__isStubbed = true;
+      console.log("🔧 Apple Reminders stubs installed successfully");
+      return true;
     };
+
+    console.log("🔧 Apple Reminders stub data and installer set up successfully");
+  }, {
+    permissions: permissionsData,
+    lists: listsData,
+    reminders: remindersData,
   });
 }
 
@@ -105,7 +128,7 @@ export async function clickReminderImportButton(
   const importButton = page.locator(
     `[data-testid="apple-reminder-item"]:has-text("${reminderTitle}") [data-testid="import-reminder-button"]`
   );
-  
+
   await importButton.waitFor({ state: "visible", timeout: 5000 });
   await importButton.click();
 }
@@ -124,11 +147,11 @@ export async function waitForReminderImportComplete(
         `[data-testid="apple-reminder-item"]:has-text("${title}")`
       );
       if (!reminderItem) return false;
-      
+
       const importButton = reminderItem.querySelector(
         '[data-testid="import-reminder-button"]'
       );
-      
+
       // Button should either be disabled with "Imported" text or not visible
       return (
         !importButton ||

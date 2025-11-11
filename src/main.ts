@@ -26,6 +26,8 @@ import type { Task, Project, Area } from "./app/core/entities";
 
 // Commands
 import { RefreshTasksCommand } from "./app/commands/core/RefreshTasksCommand";
+import { CheckAppleRemindersPermissionsCommand } from "./app/commands/apple-reminders/CheckAppleRemindersPermissionsCommand";
+import { ImportAppleRemindersCommand } from "./app/commands/apple-reminders/ImportAppleRemindersCommand";
 
 // NoteKit imports
 import {
@@ -232,6 +234,21 @@ export default class TaskSyncPlugin extends Plugin {
       settings: this.settings,
     });
     refreshTasksCommand.register();
+
+    // Register Apple Reminders commands
+    const checkAppleRemindersPermissionsCommand = new CheckAppleRemindersPermissionsCommand({
+      plugin: this,
+      app: this.app,
+      settings: this.settings,
+    });
+    checkAppleRemindersPermissionsCommand.register();
+
+    const importAppleRemindersCommand = new ImportAppleRemindersCommand({
+      plugin: this,
+      app: this.app,
+      settings: this.settings,
+    });
+    importAppleRemindersCommand.register();
 
     // Add command to start daily planning
     this.addCommand({

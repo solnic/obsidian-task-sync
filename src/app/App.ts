@@ -218,6 +218,28 @@ export class TaskSyncApp {
         this.githubExtension = undefined;
       }
     }
+
+    // Check if Apple Reminders integration was enabled/disabled
+    const wasAppleRemindersEnabled = oldSettings?.integrations?.appleReminders?.enabled;
+    const isAppleRemindersEnabled = newSettings.integrations?.appleReminders?.enabled;
+
+    if (!wasAppleRemindersEnabled && isAppleRemindersEnabled) {
+      // Apple Reminders was just enabled - initialize it
+      console.log("Apple Reminders integration enabled, initializing...");
+      await this.initializeAppleRemindersExtension();
+
+      // If app is already loaded, load the extension too
+      if (this.initialized && this.appleRemindersExtension) {
+        await this.appleRemindersExtension.load();
+      }
+    } else if (wasAppleRemindersEnabled && !isAppleRemindersEnabled) {
+      // Apple Reminders was just disabled - shutdown
+      console.log("Apple Reminders integration disabled, shutting down...");
+      if (this.appleRemindersExtension) {
+        await this.appleRemindersExtension.shutdown();
+        this.appleRemindersExtension = undefined;
+      }
+    }
   }
 
   /**

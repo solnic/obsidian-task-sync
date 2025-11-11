@@ -22,16 +22,26 @@ import {
 
 test.describe("Apple Reminders Integration", () => {
   test("should import Apple Reminder as task", async ({ page }) => {
-    await openView(page, "task-sync-main");
-    await enableIntegration(page, "appleReminders");
-
+    // Set up stubs BEFORE enabling integration
     await stubAppleRemindersWithFixtures(page, {
       permissions: "permissions-authorized",
       lists: "lists-basic",
       reminders: "reminders-basic",
     });
 
-    // Wait for Apple Reminders service button to appear and be enabled
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "appleReminders");
+
+    // Wait for Apple Reminders service button to appear first
+    await page.waitForSelector('[data-testid="service-apple-reminders"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Wait a bit for data to load and button to be enabled
+    await page.waitForTimeout(2000);
+
+    // Now wait for it to be enabled
     await page.waitForSelector(
       '[data-testid="service-apple-reminders"]:not([disabled])',
       {
@@ -87,14 +97,15 @@ test.describe("Apple Reminders Integration", () => {
   });
 
   test("should handle permission denied gracefully", async ({ page }) => {
-    await openView(page, "task-sync-main");
-    await enableIntegration(page, "appleReminders");
-
+    // Set up stubs BEFORE enabling integration
     await stubAppleRemindersWithFixtures(page, {
       permissions: "permissions-denied",
       lists: "lists-basic",
       reminders: "reminders-empty",
     });
+
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "appleReminders");
 
     // Wait for Apple Reminders service button to appear
     await page.waitForSelector(
@@ -119,14 +130,15 @@ test.describe("Apple Reminders Integration", () => {
   });
 
   test("should filter reminders by list", async ({ page }) => {
-    await openView(page, "task-sync-main");
-    await enableIntegration(page, "appleReminders");
-
+    // Set up stubs BEFORE enabling integration
     await stubAppleRemindersWithFixtures(page, {
       permissions: "permissions-authorized",
       lists: "lists-basic",
       reminders: "reminders-basic",
     });
+
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "appleReminders");
 
     await switchToTaskService(page, "apple-reminders");
 

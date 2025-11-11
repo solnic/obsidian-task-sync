@@ -2114,6 +2114,16 @@ export async function enableIntegration(
       Object.assign(plugin.settings.integrations[name], integration_config);
 
       await plugin.saveSettings();
+
+      // Install Apple Reminders stubs if this is the Apple Reminders integration
+      if (name === "appleReminders" && (window as any).__installAppleRemindersStubs) {
+        console.log("🔧 Installing Apple Reminders stubs after enabling integration");
+        const stubsInstalled = (window as any).__installAppleRemindersStubs();
+        console.log("🔧 Apple Reminders stubs installed:", stubsInstalled);
+
+        // Wait a bit for the extension to be fully initialized with stubs
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     },
     { name, integration_config }
   );

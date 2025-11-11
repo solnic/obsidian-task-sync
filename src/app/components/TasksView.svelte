@@ -135,8 +135,9 @@
       allServices.push({
         id: "apple-reminders",
         name: "Apple Reminders",
-        icon: "apple",
-        enabled: true,
+        icon: "calendar-check",
+        enabled: settings.integrations?.appleReminders?.enabled === true &&
+                 (appleRemindersExt as any).isPlatformSupported(),
       });
     }
 
