@@ -2268,13 +2268,13 @@ export async function selectFromDropdown(
   // Click the dropdown button
   await page.locator(`[data-testid="${dropdown}"]`).click();
 
-  // Take a screenshot to debug
-  await page.screenshot({ path: `tests/e2e/debug/after-dropdown-click-${dropdown}.png` });
-
-  // Dump HTML to debug
-  const html = await page.content();
-  const fs = require('fs');
-  fs.writeFileSync(`tests/e2e/debug/after-dropdown-click-${dropdown}.html`, html);
+  // Take a screenshot and dump HTML to debug, if enabled
+  if (process.env.DEBUG_E2E === 'true') {
+    await page.screenshot({ path: `tests/e2e/debug/after-dropdown-click-${dropdown}.png` });
+    const html = await page.content();
+    const fs = require('fs');
+    fs.writeFileSync(`tests/e2e/debug/after-dropdown-click-${dropdown}.html`, html);
+  }
 
   // Wait for dropdown items to appear
   await page.waitForSelector(`[data-testid="${dropdown}-dropdown-item"]`, {

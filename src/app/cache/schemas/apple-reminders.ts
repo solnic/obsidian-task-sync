@@ -58,9 +58,9 @@ export const AppleRemindersConfigSchema = z.object({
   reminderLists: z.array(z.string()),
   syncInterval: z.number(),
   excludeAllDayReminders: z.boolean(),
-  defaultTaskType: z.string(),
-  importNotesAsDescription: z.boolean(),
-  preservePriority: z.boolean(),
+  defaultTaskType: z.string().optional(),
+  importNotesAsDescription: z.boolean().optional(),
+  preservePriority: z.boolean().optional(),
 });
 
 // Schema for AppleRemindersFilter

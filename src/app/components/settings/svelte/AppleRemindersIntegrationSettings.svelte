@@ -22,6 +22,7 @@
   // State for available reminder lists
   let availableReminderLists = $state<string[]>([]);
   let loadingLists = $state(false);
+  let availableListsDiv: HTMLElement | null = null;
 
   onMount(() => {
     createAppleRemindersSection();
@@ -208,7 +209,12 @@
 
     // Show available lists if loaded
     if (availableReminderLists.length > 0) {
-      const availableListsDiv = appleRemindersContainer.createDiv({
+      // Remove existing div if it exists to avoid duplicates
+      if (availableListsDiv) {
+        availableListsDiv.remove();
+      }
+      
+      availableListsDiv = appleRemindersContainer.createDiv({
         cls: "task-sync-available-lists"
       });
       availableListsDiv.createEl("small", {
@@ -232,6 +238,7 @@
         .forEach((child) => child.remove()); // Keep the warning and toggle
       // Clear loaded lists
       availableReminderLists = [];
+      availableListsDiv = null;
     }
   });
 </script>

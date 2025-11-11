@@ -455,7 +455,6 @@ export class AppleRemindersExtension implements Extension {
    * Check Apple Reminders permissions
    */
   async checkPermissions(): Promise<AppleRemindersResult<AppleRemindersPermission>> {
-
     try {
       const script = `
         tell application "Reminders"
@@ -493,7 +492,6 @@ export class AppleRemindersExtension implements Extension {
    * Fetch reminder lists from Apple Reminders
    */
   async fetchLists(): Promise<AppleRemindersResult<AppleRemindersList[]>> {
-
     try {
       const script = `
         tell application "Reminders"
@@ -545,7 +543,6 @@ export class AppleRemindersExtension implements Extension {
    * Fetch reminders from Apple Reminders with filtering support
    */
   async fetchReminders(filter?: AppleRemindersFilter): Promise<AppleRemindersResult<AppleReminder[]>> {
-
     try {
       // Check permissions first
       const permissionResult = await this.checkPermissions();

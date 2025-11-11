@@ -1,4 +1,4 @@
-import { test, expect } from "../../helpers/setup";
+import { test } from "../../helpers/setup";
 import { openView, enableIntegration } from "../../helpers/global";
 import { stubAppleRemindersWithFixtures } from "../../helpers/apple-reminders-integration-helpers";
 
