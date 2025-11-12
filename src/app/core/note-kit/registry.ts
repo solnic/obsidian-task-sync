@@ -9,6 +9,7 @@ import type {
   PropertyType,
   SemanticVersion,
   ValidationResult,
+  PropertyDefinition,
 } from "./types";
 import { VersionComparison } from "./types";
 import { compareVersions } from "./version";
@@ -18,6 +19,7 @@ import {
   createValidationError,
 } from "./validation";
 import { reconstructNoteTypeSchemas } from "./schema-utils";
+import { PropertyAccessor } from "./PropertyAccessor";
 
 /**
  * Registry error types
@@ -105,11 +107,33 @@ export interface SerializedTemplate {
 }
 
 /**
+ * Enhance a NoteType by wrapping its properties with PropertyAccessor
+ * This provides convenient .default and .options accessors on properties
+ *
+ * This function is called automatically by TypeRegistry.get() and TypeRegistry.getAll(),
+ * so any properties accessed through the registry will be PropertyAccessor instances.
+ * Direct access to this.noteTypes bypasses this enhancement.
+ */
+function enhanceNoteType(noteType: NoteType): NoteType {
+  const enhancedProperties: Record<string, PropertyDefinition> = {};
+
+  for (const [key, prop] of Object.entries(noteType.properties)) {
+    enhancedProperties[key] = new PropertyAccessor(prop);
+  }
+
+  return {
+    ...noteType,
+    properties: enhancedProperties,
+  };
+}
+
+/**
  * TypeRegistry manages note type definitions
  */
 export class TypeRegistry {
   private noteTypes: Map<string, NoteType> = new Map();
   private versionHistory: Map<string, SemanticVersion[]> = new Map();
+  private enhancedNoteTypes: Map<string, NoteType> = new Map();
 
   /**
    * Register a new note type
@@ -160,6 +184,9 @@ export class TypeRegistry {
     // Register the note type
     this.noteTypes.set(noteType.id, noteType);
 
+    // Invalidate cache for this note type
+    this.enhancedNoteTypes.delete(noteType.id);
+
     // Update version history
     const versions = this.versionHistory.get(noteType.id) || [];
     if (!versions.includes(noteType.version)) {
@@ -185,17 +212,45 @@ export class TypeRegistry {
     const deleted = this.noteTypes.delete(noteTypeId);
     if (deleted) {
       this.versionHistory.delete(noteTypeId);
+      this.enhancedNoteTypes.delete(noteTypeId);
     }
     return deleted;
   }
 
   /**
    * Get a note type by ID
+   * Returns an enhanced note type with PropertyAccessor wrappers on properties
+   * Returns undefined if the note type is not registered
    */
   get(noteTypeId: string): NoteType | undefined {
+    // Check cache first
+    if (this.enhancedNoteTypes.has(noteTypeId)) {
+      return this.enhancedNoteTypes.get(noteTypeId);
+    }
+
     const noteType = this.noteTypes.get(noteTypeId);
-    // Reconstruct schemas before returning
-    return noteType ? reconstructNoteTypeSchemas(noteType) : undefined;
+    if (!noteType) return undefined;
+
+    // Reconstruct schemas and enhance properties
+    const reconstructed = reconstructNoteTypeSchemas(noteType);
+    const enhanced = enhanceNoteType(reconstructed);
+
+    // Cache the result
+    this.enhancedNoteTypes.set(noteTypeId, enhanced);
+    return enhanced;
+  }
+
+  /**
+   * Get a note type by ID, throwing an error if not found
+   * Returns an enhanced note type with PropertyAccessor wrappers on properties
+   * @throws {Error} if the note type is not registered
+   */
+  getOrThrow(noteTypeId: string): NoteType {
+    const noteType = this.get(noteTypeId);
+    if (!noteType) {
+      throw new Error(`Note type "${noteTypeId}" is not registered in the TypeRegistry`);
+    }
+    return noteType;
   }
 
   /**
@@ -231,8 +286,8 @@ export class TypeRegistry {
       });
     }
 
-    // Reconstruct schemas for all note types before returning
-    return noteTypes.map((nt) => reconstructNoteTypeSchemas(nt));
+    // Reconstruct schemas and enhance all note types before returning
+    return noteTypes.map((nt) => enhanceNoteType(reconstructNoteTypeSchemas(nt)));
   }
 
   /**

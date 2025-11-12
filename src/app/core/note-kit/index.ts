@@ -17,6 +17,7 @@
 export type {
   SemanticVersion,
   PropertyDefinition,
+  SelectOption,
   TemplateVariable,
   Template,
   NoteType,
@@ -196,6 +197,9 @@ export {
   type PropertyDependency,
   type ConditionalValidation,
 } from "./property-processor";
+
+// Export property accessor
+export { PropertyAccessor, createPropertyAccessor } from "./PropertyAccessor";
 
 // Export note processor
 export {
