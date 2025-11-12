@@ -25,7 +25,7 @@
   let availableListsDiv: HTMLElement | null = null;
   let settingsCreated = $state(false);
   let loadListsButton: HTMLButtonElement | null = null;
-  
+
   // Derived state for button text
   const loadListsButtonText = $derived(loadingLists ? "Loading..." : "Load Lists");
 
@@ -88,7 +88,7 @@
     const children = Array.from(appleRemindersContainer.children);
     const keepCount = isPlatformSupported ? 1 : 2; // Keep toggle (and warning on non-macOS)
     children.slice(keepCount).forEach((child) => child.remove());
-    
+
     // Clear available lists div reference
     if (availableListsDiv) {
       availableListsDiv = null;
@@ -98,7 +98,7 @@
   function createAppleRemindersSettings(): void {
     // Clear existing settings first to avoid duplicates
     clearAppleRemindersSettings();
-    
+
     // Include completed reminders
     new Setting(appleRemindersContainer)
       .setName("Include Completed Reminders")
@@ -262,7 +262,7 @@
     if (!settingsCreated) {
       return;
     }
-    
+
     // Show available lists if loaded
     if (availableReminderLists.length > 0) {
       // Remove existing div if it exists to avoid duplicates
