@@ -110,7 +110,32 @@ test.describe("Apple Reminders Integration", () => {
 
     await openView(page, "task-sync-main");
     await enableIntegration(page, "appleReminders");
+
+    // Wait for Apple Reminders service button to appear first
+    await page.waitForSelector('[data-testid="service-apple-reminders"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Now wait for it to be enabled
+    await page.waitForSelector(
+      '[data-testid="service-apple-reminders"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
     await switchToTaskService(page, "apple-reminders");
+
+    // Wait for the list filter button to be visible and enabled
+    await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
+      state: 'visible',
+      timeout: 10000
+    });
+
+    // Select the first list to load reminders
+    await selectFromDropdown(page, "list-filter", "Work");
 
     // Wait for reminders to load
     await page.waitForSelector('[data-testid="apple-reminder-item"]', {
@@ -133,13 +158,17 @@ test.describe("Apple Reminders Integration", () => {
     // Filter by Personal list
     await selectFromDropdown(page, "list-filter", "Personal");
 
-    // Wait for filter to apply by waiting for a unique Personal reminder to appear
-    await page.waitForSelector('[data-testid="apple-reminder-item"][data-reminder-id="reminder-2"]', { state: "visible" });
+    // Wait for filter to apply - wait for reminders to update
+    await page.waitForTimeout(1000);
 
     // Should only show Personal reminders (2 incomplete reminders: reminder-2 and reminder-5)
     // Note: reminder-3 is completed and excluded
     const personalReminders = await page.locator('[data-testid="apple-reminder-item"]').count();
     expect(personalReminders).toBe(2);
+    
+    // Verify we have the expected Personal reminders by title
+    expect(await page.locator('[data-testid="apple-reminder-item"]:has-text("Buy groceries")').count()).toBe(1);
+    expect(await page.locator('[data-testid="apple-reminder-item"]:has-text("Weekend hiking trip")').count()).toBe(1);
   });
 
   test("should show progress indicator during refresh", async ({ page }) => {
@@ -152,7 +181,32 @@ test.describe("Apple Reminders Integration", () => {
 
     await openView(page, "task-sync-main");
     await enableIntegration(page, "appleReminders");
+
+    // Wait for Apple Reminders service button to appear first
+    await page.waitForSelector('[data-testid="service-apple-reminders"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Now wait for it to be enabled
+    await page.waitForSelector(
+      '[data-testid="service-apple-reminders"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
     await switchToTaskService(page, "apple-reminders");
+
+    // Wait for the list filter button to be visible and enabled
+    await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
+      state: 'visible',
+      timeout: 10000
+    });
+
+    // Select a list to load reminders
+    await selectFromDropdown(page, "list-filter", "Work");
 
     // Wait for initial load to complete
     await page.waitForSelector('[data-testid="apple-reminder-item"]', {
