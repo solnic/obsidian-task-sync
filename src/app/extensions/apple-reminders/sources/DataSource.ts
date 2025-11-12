@@ -9,7 +9,7 @@ import { generateId } from "../../../utils/idGenerator";
 import type { AppleReminder } from "../../../types/apple-reminders";
 import type { AppleRemindersExtension } from "../AppleRemindersExtension";
 import type { DataSource, DataSourceWatchCallbacks } from "../../../sources/DataSource";
-import { getTaskStatusesFromTypeNote, getTaskPrioritiesFromTypeNote } from "../../../utils/typeNoteHelpers";
+import { getTaskStatusesFromTypeNote, getTaskPrioritiesFromTypeNote, getTaskCategoriesFromTypeNote } from "../../../utils/typeNoteHelpers";
 
 /**
  * Data source for Apple Reminders
@@ -69,13 +69,17 @@ export class AppleRemindersDataSource implements DataSource<Task> {
       const plugin = (this.extension as any).plugin;
       const typeNote = plugin?.typeNote;
 
-      // Get configured task statuses and priorities from note type
+      // Get configured task statuses, priorities, and categories from note type
       const taskStatuses = typeNote ? getTaskStatusesFromTypeNote(typeNote) : [];
       const taskPriorities = typeNote ? getTaskPrioritiesFromTypeNote(typeNote) : [];
+      const taskCategories = typeNote ? getTaskCategoriesFromTypeNote(typeNote) : [];
 
       // Find the "done" status from configured statuses
       const doneStatus = taskStatuses.find(s => s.isDone);
-      const defaultStatus = taskStatuses[0]
+      const defaultStatus = taskStatuses[0];
+
+      // Get default category (first one in the list)
+      const defaultCategory = taskCategories.length > 0 ? taskCategories[0].name : "Task";
 
       // Map Apple Reminders priority (0-9) to configured task priority names
       // Priority mapping: 0=none, 1-3=low, 4-6=medium, 7-9=high
@@ -102,7 +106,7 @@ export class AppleRemindersDataSource implements DataSource<Task> {
         description: reminder.notes,
         status: reminder.completed ? doneStatus.name : defaultStatus.name,
         done: reminder.completed,
-        category: "reminder", // Default category for Apple Reminders
+        category: defaultCategory, // Use default category from note type configuration
         priority: priorityName,
         dueDate: reminder.dueDate || null,
         createdAt: reminder.creationDate || new Date(),
