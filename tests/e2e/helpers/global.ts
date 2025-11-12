@@ -2256,8 +2256,18 @@ export async function switchToTaskService(page: Page, service: string) {
     { timeout: 5000 }
   );
 
-  // Give the component a moment to fully render
-  await page.waitForTimeout(500);
+  // Wait for the service content to be fully rendered (e.g., non-empty)
+  await page.waitForFunction(
+    (serviceName) => {
+      const content = document.querySelector(
+        `[data-testid="service-content-${serviceName}"]:not(.tab-hidden)`
+      );
+      // Wait for content to be present and non-empty
+      return content && content.innerHTML.trim().length > 0;
+    },
+    service,
+    { timeout: 5000 }
+  );
 }
 
 export async function selectFromDropdown(
