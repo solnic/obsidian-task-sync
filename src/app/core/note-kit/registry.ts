@@ -109,6 +109,10 @@ export interface SerializedTemplate {
 /**
  * Enhance a NoteType by wrapping its properties with PropertyAccessor
  * This provides convenient .default and .options accessors on properties
+ *
+ * This function is called automatically by TypeRegistry.get() and TypeRegistry.getAll(),
+ * so any properties accessed through the registry will be PropertyAccessor instances.
+ * Direct access to this.noteTypes bypasses this enhancement.
  */
 function enhanceNoteType(noteType: NoteType): NoteType {
   const enhancedProperties: Record<string, PropertyDefinition> = {};
@@ -211,6 +215,7 @@ export class TypeRegistry {
   /**
    * Get a note type by ID
    * Returns an enhanced note type with PropertyAccessor wrappers on properties
+   * Returns undefined if the note type is not registered
    */
   get(noteTypeId: string): NoteType | undefined {
     const noteType = this.noteTypes.get(noteTypeId);
@@ -219,6 +224,19 @@ export class TypeRegistry {
     // Reconstruct schemas and enhance properties
     const reconstructed = reconstructNoteTypeSchemas(noteType);
     return enhanceNoteType(reconstructed);
+  }
+
+  /**
+   * Get a note type by ID, throwing an error if not found
+   * Returns an enhanced note type with PropertyAccessor wrappers on properties
+   * @throws {Error} if the note type is not registered
+   */
+  getOrThrow(noteTypeId: string): NoteType {
+    const noteType = this.get(noteTypeId);
+    if (!noteType) {
+      throw new Error(`Note type "${noteTypeId}" is not registered in the TypeRegistry`);
+    }
+    return noteType;
   }
 
   /**

@@ -1,9 +1,26 @@
 /**
  * PropertyAccessor - Enhanced property definition with convenient accessors
  *
- * This class wraps a PropertyDefinition and provides all its fields plus
- * convenient getters for defaults and options. It acts as a transparent
- * wrapper so you can use it anywhere a PropertyDefinition is expected.
+ * This class implements {@link PropertyDefinition} and adds convenience getters for
+ * working with defaults and select options. It is designed to be a transparent
+ * implementation, so it can be used anywhere a PropertyDefinition is expected.
+ *
+ * ## Design decisions:
+ * - Implements PropertyDefinition directly (rather than wrapping) so that all fields are accessible
+ *   and type compatibility is preserved.
+ * - The `.default` getter provides smart default value resolution:
+ *   - For select properties: returns the option marked with `isDefault: true`
+ *   - Falls back to the `defaultValue` field if no option is marked as default
+ * - The `.default` getter does not shadow a `default` field, as PropertyDefinition does not define one,
+ *   but if one were ever added, this getter would take precedence.
+ * - When retrieving a property from the registry (e.g., `TypeRegistry.get()`), you receive a PropertyAccessor.
+ *
+ * ## Example
+ * ```typescript
+ * const taskNoteType = registry.get("task");
+ * const statusProp = taskNoteType.properties.status; // This is a PropertyAccessor
+ * const defaultStatus = statusProp.default; // Gets the isDefault-marked option or defaultValue
+ * ```
  */
 
 import type { PropertyDefinition, SelectOption } from "./types";

@@ -6,6 +6,7 @@
 
   import type { Task, Project, Area } from "../../core/entities";
   import type { Host } from "../../core/host";
+  import type { SelectOption } from "../../core/note-kit";
   import Dropdown from "../Dropdown.svelte";
   import { Tasks } from "../../entities/Tasks";
   import SourceContext from "./source/SourceContext.svelte";
@@ -46,7 +47,7 @@
     const taskNoteType = obsidianExtension.typeNote.registry.get("task");
     if (!taskNoteType?.properties?.status?.selectOptions) return [];
 
-    return taskNoteType.properties.status.selectOptions.map((s) => ({
+    return taskNoteType.properties.status.selectOptions.map((s: SelectOption) => ({
       value: s.value,
       label: s.value,
       customContent: `<span class="task-sync-color-dot" style="background-color: ${s.color}"></span><span>${s.value}</span>`,
@@ -60,7 +61,7 @@
     const taskNoteType = obsidianExtension.typeNote.registry.get("task");
     if (!taskNoteType?.properties?.priority?.selectOptions) return [];
 
-    return taskNoteType.properties.priority.selectOptions.map((p) => ({
+    return taskNoteType.properties.priority.selectOptions.map((p: SelectOption) => ({
       value: p.value,
       label: p.value,
       customContent: `<span class="task-sync-color-dot" style="background-color: ${p.color}"></span><span>${p.value}</span>`,
@@ -74,7 +75,7 @@
     const taskNoteType = obsidianExtension.typeNote.registry.get("task");
     if (!taskNoteType?.properties?.category?.selectOptions) return [];
 
-    return taskNoteType.properties.category.selectOptions.map((c) => ({
+    return taskNoteType.properties.category.selectOptions.map((c: SelectOption) => ({
       value: c.value,
       label: c.value,
       customContent: `<span class="task-sync-color-dot" style="background-color: ${c.color}"></span><span>${c.value}</span>`,

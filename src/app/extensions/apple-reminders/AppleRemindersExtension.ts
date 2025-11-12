@@ -35,12 +35,7 @@ import {
 import moment from "moment";
 import { Tasks } from "../../entities/Tasks";
 import { EntitiesOperations } from "../../core/entities-base";
-import {
-  getTaskStatusesFromTypeNote,
-  getTaskPrioritiesFromTypeNote,
-  type TaskStatus,
-  type TaskPriority,
-} from "../../utils/typeNoteHelpers";
+import type { SelectOption } from "../../core/note-kit";
 
 /**
  * Progress tracking interface for Apple Reminders refresh operations
@@ -649,39 +644,43 @@ export class AppleRemindersExtension implements Extension {
   ): Omit<Task, "id" | "createdAt" | "updatedAt"> {
     // Get the plugin's typeNote instance to access task note type configuration
     const typeNote = (this.plugin as any).typeNote;
-    const taskNoteType = typeNote.registry.get("task");
+    const taskNoteType = typeNote.registry.getOrThrow("task");
 
-    if (!taskNoteType) {
-      throw new Error("Task note type not registered - cannot import reminders");
-    }
+    // Access properties directly via PropertyAccessor
+    const statusProp = taskNoteType.properties.status;
+    const priorityProp = taskNoteType.properties.priority;
+    const categoryProp = taskNoteType.properties.category;
 
-    // Get configured statuses and priorities from note type
-    const taskStatuses: TaskStatus[] = getTaskStatusesFromTypeNote(typeNote);
-    const taskPriorities: TaskPriority[] = getTaskPrioritiesFromTypeNote(typeNote);
+    // Get default values using PropertyAccessor's .default getter
+    const defaultStatus = statusProp.default;
+    const defaultCategory = categoryProp.default;
 
-    // Find the "done" status from configured statuses
-    const doneStatus = taskStatuses.find((s: TaskStatus) => s.isDone);
-
-    // Get default values directly from task note type properties
-    const defaultStatus = taskNoteType.properties.status.default;
-    const defaultCategory = taskNoteType.properties.category.default;
+    // Find the "done" status from the status options
+    const doneStatus = statusProp.doneOptions[0]; // Get first done status
+    const doneStatusValue = doneStatus?.value ?? "Done";
 
     // Map Apple Reminders priority (0-9) to configured task priority names
     // Priority mapping: 0=none, 1-3=low, 4-6=medium, 7-9=high
     let priorityName = "";
-    if (reminder.priority > 0 && taskPriorities.length > 0) {
+    if (reminder.priority > 0 && priorityProp.selectOptions) {
       if (reminder.priority >= 7) {
         // High priority (7-9)
-        const highPriority = taskPriorities.find((p: TaskPriority) => p.name.toLowerCase() === "high" || p.name.toLowerCase() === "urgent");
-        priorityName = highPriority?.name || "";
+        const highPriority = priorityProp.selectOptions.find(
+          (p: SelectOption) => p.value.toLowerCase() === "high" || p.value.toLowerCase() === "urgent"
+        );
+        priorityName = highPriority?.value || "";
       } else if (reminder.priority >= 4) {
         // Medium priority (4-6)
-        const mediumPriority = taskPriorities.find((p: TaskPriority) => p.name.toLowerCase() === "medium");
-        priorityName = mediumPriority?.name || "";
+        const mediumPriority = priorityProp.selectOptions.find(
+          (p: SelectOption) => p.value.toLowerCase() === "medium"
+        );
+        priorityName = mediumPriority?.value || "";
       } else {
         // Low priority (1-3)
-        const lowPriority = taskPriorities.find((p: TaskPriority) => p.name.toLowerCase() === "low");
-        priorityName = lowPriority?.name || "";
+        const lowPriority = priorityProp.selectOptions.find(
+          (p: SelectOption) => p.value.toLowerCase() === "low"
+        );
+        priorityName = lowPriority?.value || "";
       }
     }
 
@@ -689,7 +688,7 @@ export class AppleRemindersExtension implements Extension {
       title: reminder.title,
       description: reminder.notes || "",
       category: defaultCategory,
-      status: reminder.completed ? (doneStatus?.name || defaultStatus) : defaultStatus,
+      status: reminder.completed ? doneStatusValue : defaultStatus,
       priority: priorityName,
       done: reminder.completed,
       project: "",

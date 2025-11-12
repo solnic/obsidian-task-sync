@@ -17,6 +17,7 @@
 export type {
   SemanticVersion,
   PropertyDefinition,
+  SelectOption,
   TemplateVariable,
   Template,
   NoteType,
@@ -199,13 +200,6 @@ export {
 
 // Export property accessor
 export { PropertyAccessor, createPropertyAccessor } from "./PropertyAccessor";
-
-// Export note type accessor
-export {
-  NoteTypeAccessor,
-  createNoteTypeAccessor,
-  type PropertyAccessorMap,
-} from "./NoteTypeAccessor";
 
 // Export note processor
 export {
