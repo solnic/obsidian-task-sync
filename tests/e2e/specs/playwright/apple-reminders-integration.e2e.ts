@@ -38,9 +38,6 @@ test.describe("Apple Reminders Integration", () => {
       timeout: 10000,
     });
 
-    // Wait a bit for data to load and button to be enabled
-    await page.waitForTimeout(2000);
-
     // Now wait for it to be enabled
     await page.waitForSelector(
       '[data-testid="service-apple-reminders"]:not([disabled])',
