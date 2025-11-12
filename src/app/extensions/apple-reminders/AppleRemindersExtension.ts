@@ -362,7 +362,7 @@ export class AppleRemindersExtension implements Extension {
   ): Omit<Task, "id" | "createdAt" | "updatedAt"> {
     // Get the plugin's typeNote instance to access task note type configuration
     const typeNote = (this.plugin as any).typeNote;
-    
+
     // Get configured statuses and priorities from note type
     const taskStatuses: TaskStatus[] = typeNote ? getTaskStatusesFromTypeNote(typeNote) : [];
     const taskPriorities: TaskPriority[] = typeNote ? getTaskPrioritiesFromTypeNote(typeNote) : [];
@@ -370,7 +370,7 @@ export class AppleRemindersExtension implements Extension {
     // Find the "done" status from configured statuses
     const doneStatus = taskStatuses.find((s: TaskStatus) => s.isDone);
     const defaultStatus = taskStatuses.length > 0 ? taskStatuses[0] : undefined;
-    
+
     // Map Apple Reminders priority (0-9) to configured task priority names
     // Priority mapping: 0=none, 1-3=low, 4-6=medium, 7-9=high
     let priorityName = "";
@@ -720,7 +720,7 @@ export class AppleRemindersExtension implements Extension {
 
         childProcess.stdin?.pause();
         childProcess.kill();
-        reject(new Error("AppleScript execution timed out after 60 seconds"));
+        reject(new Error("AppleScript execution timed out after 120 seconds"));
       }, 120000);
     });
   }
