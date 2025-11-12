@@ -30,25 +30,15 @@ export interface TaskStatus {
  * Extract task categories from the Task note type
  */
 export function getTaskCategoriesFromTypeNote(typeNote: NoteKit): TaskType[] {
-  try {
-    const taskNoteType = typeNote.registry.get("task");
-    if (!taskNoteType) {
-      return getDefaultTaskCategories();
-    }
-
-    const categoryProperty = taskNoteType.properties.category;
-    if (!categoryProperty || !categoryProperty.selectOptions) {
-      return getDefaultTaskCategories();
-    }
-
-    return categoryProperty.selectOptions.map((option: any) => ({
-      name: option.value,
-      color: option.color || "#3b82f6",
-    }));
-  } catch (error) {
-    console.warn("Failed to get task categories from NoteKit:", error);
-    return getDefaultTaskCategories();
+  const taskNoteType = typeNote.registry.get("task");
+  if (!taskNoteType) {
+    throw new Error("Task note type not registered");
   }
+
+  return taskNoteType.properties.category.selectOptions!.map((option) => ({
+    name: option.value,
+    color: option.color!,
+  }));
 }
 
 /**
@@ -57,93 +47,32 @@ export function getTaskCategoriesFromTypeNote(typeNote: NoteKit): TaskType[] {
 export function getTaskPrioritiesFromTypeNote(
   typeNote: NoteKit
 ): TaskPriority[] {
-  try {
-    const taskNoteType = typeNote.registry.get("task");
-    if (!taskNoteType) {
-      return getDefaultTaskPriorities();
-    }
-
-    const priorityProperty = taskNoteType.properties.priority;
-    if (!priorityProperty || !priorityProperty.selectOptions) {
-      return getDefaultTaskPriorities();
-    }
-
-    return priorityProperty.selectOptions.map((option: any) => ({
-      name: option.value,
-      color: option.color || "#f59e0b",
-    }));
-  } catch (error) {
-    console.warn("Failed to get task priorities from NoteKit:", error);
-    return getDefaultTaskPriorities();
+  const taskNoteType = typeNote.registry.get("task");
+  if (!taskNoteType) {
+    throw new Error("Task note type not registered");
   }
+
+  return taskNoteType.properties.priority.selectOptions!.map((option) => ({
+    name: option.value,
+    color: option.color!,
+  }));
 }
 
 /**
  * Extract task statuses from the Task note type
  */
 export function getTaskStatusesFromTypeNote(typeNote: NoteKit): TaskStatus[] {
-  try {
-    const taskNoteType = typeNote.registry.get("task");
-    if (!taskNoteType) {
-      return getDefaultTaskStatuses();
-    }
-
-    const statusProperty = taskNoteType.properties.status;
-    if (!statusProperty || !statusProperty.selectOptions) {
-      return getDefaultTaskStatuses();
-    }
-
-    return statusProperty.selectOptions.map((option: any) => ({
-      name: option.value,
-      color: option.color || "#10b981",
-      isDone: option.isDone || false,
-      isInProgress: option.isInProgress || false,
-    }));
-  } catch (error) {
-    console.warn("Failed to get task statuses from NoteKit:", error);
-    return getDefaultTaskStatuses();
+  const taskNoteType = typeNote.registry.get("task");
+  if (!taskNoteType) {
+    throw new Error("Task note type not registered");
   }
-}
 
-/**
- * Default task categories (fallback)
- */
-function getDefaultTaskCategories(): TaskType[] {
-  return [
-    { name: "Task", color: "#3b82f6" },
-    { name: "Bug", color: "#ef4444" },
-    { name: "Feature", color: "#10b981" },
-    { name: "Improvement", color: "#8b5cf6" },
-    { name: "Chore", color: "#6b7280" },
-  ];
-}
-
-/**
- * Default task priorities (fallback)
- */
-function getDefaultTaskPriorities(): TaskPriority[] {
-  return [
-    { name: "Low", color: "#6b7280" },
-    { name: "Medium", color: "#f59e0b" },
-    { name: "High", color: "#ef4444" },
-    { name: "Critical", color: "#dc2626" },
-  ];
-}
-
-/**
- * Default task statuses (fallback)
- */
-function getDefaultTaskStatuses(): TaskStatus[] {
-  return [
-    { name: "Backlog", color: "#6b7280", isDone: false, isInProgress: false },
-    {
-      name: "In Progress",
-      color: "#f59e0b",
-      isDone: false,
-      isInProgress: true,
-    },
-    { name: "Done", color: "#10b981", isDone: true, isInProgress: false },
-  ];
+  return taskNoteType.properties.status.selectOptions!.map((option) => ({
+    name: option.value,
+    color: option.color!,
+    isDone: option.isDone!,
+    isInProgress: option.isInProgress!,
+  }));
 }
 
 /**
@@ -155,7 +84,10 @@ export function getTaskCategoryColor(
 ): string {
   const categories = getTaskCategoriesFromTypeNote(typeNote);
   const category = categories.find((c) => c.name === categoryName);
-  return category?.color || "#3b82f6";
+  if (!category) {
+    throw new Error(`Category ${categoryName} not found in task note type configuration`);
+  }
+  return category.color;
 }
 
 /**
@@ -167,7 +99,10 @@ export function getTaskPriorityColor(
 ): string {
   const priorities = getTaskPrioritiesFromTypeNote(typeNote);
   const priority = priorities.find((p) => p.name === priorityName);
-  return priority?.color || "#f59e0b";
+  if (!priority) {
+    throw new Error(`Priority ${priorityName} not found in task note type configuration`);
+  }
+  return priority.color;
 }
 
 /**
@@ -179,5 +114,8 @@ export function getTaskStatusColor(
 ): string {
   const statuses = getTaskStatusesFromTypeNote(typeNote);
   const status = statuses.find((s) => s.name === statusName);
-  return status?.color || "#10b981";
+  if (!status) {
+    throw new Error(`Status ${statusName} not found in task note type configuration`);
+  }
+  return status.color;
 }

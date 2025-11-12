@@ -46,7 +46,7 @@
     const taskNoteType = obsidianExtension.typeNote.registry.get("task");
     if (!taskNoteType?.properties?.status?.selectOptions) return [];
 
-    return taskNoteType.properties.status.selectOptions.map((s: any) => ({
+    return taskNoteType.properties.status.selectOptions.map((s) => ({
       value: s.value,
       label: s.value,
       customContent: `<span class="task-sync-color-dot" style="background-color: ${s.color}"></span><span>${s.value}</span>`,
@@ -60,7 +60,7 @@
     const taskNoteType = obsidianExtension.typeNote.registry.get("task");
     if (!taskNoteType?.properties?.priority?.selectOptions) return [];
 
-    return taskNoteType.properties.priority.selectOptions.map((p: any) => ({
+    return taskNoteType.properties.priority.selectOptions.map((p) => ({
       value: p.value,
       label: p.value,
       customContent: `<span class="task-sync-color-dot" style="background-color: ${p.color}"></span><span>${p.value}</span>`,
@@ -74,7 +74,7 @@
     const taskNoteType = obsidianExtension.typeNote.registry.get("task");
     if (!taskNoteType?.properties?.category?.selectOptions) return [];
 
-    return taskNoteType.properties.category.selectOptions.map((c: any) => ({
+    return taskNoteType.properties.category.selectOptions.map((c) => ({
       value: c.value,
       label: c.value,
       customContent: `<span class="task-sync-color-dot" style="background-color: ${c.color}"></span><span>${c.value}</span>`,

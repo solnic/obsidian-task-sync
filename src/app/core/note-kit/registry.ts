@@ -9,6 +9,7 @@ import type {
   PropertyType,
   SemanticVersion,
   ValidationResult,
+  PropertyDefinition,
 } from "./types";
 import { VersionComparison } from "./types";
 import { compareVersions } from "./version";
@@ -18,6 +19,7 @@ import {
   createValidationError,
 } from "./validation";
 import { reconstructNoteTypeSchemas } from "./schema-utils";
+import { PropertyAccessor } from "./PropertyAccessor";
 
 /**
  * Registry error types
@@ -102,6 +104,23 @@ export interface SerializedTemplate {
   variables: Record<string, any>;
   parentTemplateId?: string;
   metadata?: any;
+}
+
+/**
+ * Enhance a NoteType by wrapping its properties with PropertyAccessor
+ * This provides convenient .default and .options accessors on properties
+ */
+function enhanceNoteType(noteType: NoteType): NoteType {
+  const enhancedProperties: Record<string, PropertyDefinition> = {};
+
+  for (const [key, prop] of Object.entries(noteType.properties)) {
+    enhancedProperties[key] = new PropertyAccessor(prop);
+  }
+
+  return {
+    ...noteType,
+    properties: enhancedProperties,
+  };
 }
 
 /**
@@ -191,11 +210,15 @@ export class TypeRegistry {
 
   /**
    * Get a note type by ID
+   * Returns an enhanced note type with PropertyAccessor wrappers on properties
    */
   get(noteTypeId: string): NoteType | undefined {
     const noteType = this.noteTypes.get(noteTypeId);
-    // Reconstruct schemas before returning
-    return noteType ? reconstructNoteTypeSchemas(noteType) : undefined;
+    if (!noteType) return undefined;
+
+    // Reconstruct schemas and enhance properties
+    const reconstructed = reconstructNoteTypeSchemas(noteType);
+    return enhanceNoteType(reconstructed);
   }
 
   /**
@@ -231,8 +254,8 @@ export class TypeRegistry {
       });
     }
 
-    // Reconstruct schemas for all note types before returning
-    return noteTypes.map((nt) => reconstructNoteTypeSchemas(nt));
+    // Reconstruct schemas and enhance all note types before returning
+    return noteTypes.map((nt) => enhanceNoteType(reconstructNoteTypeSchemas(nt)));
   }
 
   /**

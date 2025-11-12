@@ -84,7 +84,7 @@ export interface PropertyDefinition {
 }
 
 /**
- * Select option with optional color
+ * Select option with optional color and metadata
  * Used for select property type
  */
 export interface SelectOption {
@@ -93,6 +93,15 @@ export interface SelectOption {
 
   /** Optional color for this option (hex code) */
   color?: string;
+
+  /** Whether this is the default option */
+  isDefault?: boolean;
+
+  /** For status properties: whether this status represents a completed/done state */
+  isDone?: boolean;
+
+  /** For status properties: whether this status represents an active/in-progress state */
+  isInProgress?: boolean;
 }
 
 /**

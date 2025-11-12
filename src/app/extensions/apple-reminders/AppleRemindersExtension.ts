@@ -35,7 +35,12 @@ import {
 import moment from "moment";
 import { Tasks } from "../../entities/Tasks";
 import { EntitiesOperations } from "../../core/entities-base";
-import { getTaskStatusesFromTypeNote, getTaskPrioritiesFromTypeNote, getTaskCategoriesFromTypeNote, type TaskStatus, type TaskPriority } from "../../utils/typeNoteHelpers";
+import {
+  getTaskStatusesFromTypeNote,
+  getTaskPrioritiesFromTypeNote,
+  type TaskStatus,
+  type TaskPriority,
+} from "../../utils/typeNoteHelpers";
 
 /**
  * Progress tracking interface for Apple Reminders refresh operations
@@ -644,18 +649,22 @@ export class AppleRemindersExtension implements Extension {
   ): Omit<Task, "id" | "createdAt" | "updatedAt"> {
     // Get the plugin's typeNote instance to access task note type configuration
     const typeNote = (this.plugin as any).typeNote;
+    const taskNoteType = typeNote.registry.get("task");
 
-    // Get configured statuses, priorities, and categories from note type
-    const taskStatuses: TaskStatus[] = typeNote ? getTaskStatusesFromTypeNote(typeNote) : [];
-    const taskPriorities: TaskPriority[] = typeNote ? getTaskPrioritiesFromTypeNote(typeNote) : [];
-    const taskCategories = typeNote ? getTaskCategoriesFromTypeNote(typeNote) : [];
+    if (!taskNoteType) {
+      throw new Error("Task note type not registered - cannot import reminders");
+    }
+
+    // Get configured statuses and priorities from note type
+    const taskStatuses: TaskStatus[] = getTaskStatusesFromTypeNote(typeNote);
+    const taskPriorities: TaskPriority[] = getTaskPrioritiesFromTypeNote(typeNote);
 
     // Find the "done" status from configured statuses
     const doneStatus = taskStatuses.find((s: TaskStatus) => s.isDone);
-    const defaultStatus = taskStatuses.length > 0 ? taskStatuses[0] : undefined;
 
-    // Get default category (first one in the list)
-    const defaultCategory = taskCategories.length > 0 ? taskCategories[0].name : "Task";
+    // Get default values directly from task note type properties
+    const defaultStatus = taskNoteType.properties.status.default;
+    const defaultCategory = taskNoteType.properties.category.default;
 
     // Map Apple Reminders priority (0-9) to configured task priority names
     // Priority mapping: 0=none, 1-3=low, 4-6=medium, 7-9=high
@@ -679,8 +688,8 @@ export class AppleRemindersExtension implements Extension {
     return {
       title: reminder.title,
       description: reminder.notes || "",
-      category: defaultCategory, // Use default category from note type configuration
-      status: reminder.completed ? (doneStatus?.name || "Done") : (defaultStatus?.name || "Backlog"),
+      category: defaultCategory,
+      status: reminder.completed ? (doneStatus?.name || defaultStatus) : defaultStatus,
       priority: priorityName,
       done: reminder.completed,
       project: "",

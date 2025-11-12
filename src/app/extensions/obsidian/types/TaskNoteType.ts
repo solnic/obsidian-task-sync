@@ -19,9 +19,10 @@ import {
 
 /**
  * Default task categories with colors
+ * The first item marked with isDefault will be used as the default value
  */
 const DEFAULT_CATEGORIES = [
-  { value: "Task", color: "#3b82f6" },
+  { value: "Task", color: "#3b82f6", isDefault: true },
   { value: "Bug", color: "#ef4444" },
   { value: "Feature", color: "#10b981" },
   { value: "Improvement", color: "#8b5cf6" },
@@ -30,24 +31,26 @@ const DEFAULT_CATEGORIES = [
 
 /**
  * Default task priorities with colors
+ * The first item marked with isDefault will be used as the default value
  */
 const DEFAULT_PRIORITIES = [
   { value: "Low", color: "#6b7280" },
-  { value: "Medium", color: "#f59e0b" },
+  { value: "Medium", color: "#f59e0b", isDefault: true },
   { value: "High", color: "#ef4444" },
   { value: "Urgent", color: "#dc2626" },
 ];
 
 /**
- * Default task statuses with colors
+ * Default task statuses with colors and state metadata
+ * The first item marked with isDefault will be used as the default value
  */
 const DEFAULT_STATUSES = [
-  { value: "Backlog", color: "#6b7280" },
-  { value: "Ready", color: "#3b82f6" },
-  { value: "In Progress", color: "#f59e0b" },
-  { value: "Review", color: "#8b5cf6" },
-  { value: "Done", color: "#10b981" },
-  { value: "Cancelled", color: "#ef4444" },
+  { value: "Backlog", color: "#6b7280", isDefault: true, isDone: false, isInProgress: false },
+  { value: "Ready", color: "#3b82f6", isDone: false, isInProgress: false },
+  { value: "In Progress", color: "#f59e0b", isDone: false, isInProgress: true },
+  { value: "Review", color: "#8b5cf6", isDone: false, isInProgress: false },
+  { value: "Done", color: "#10b981", isDone: true, isInProgress: false },
+  { value: "Cancelled", color: "#ef4444", isDone: false, isInProgress: false },
 ];
 
 /**
@@ -65,6 +68,12 @@ export function buildTaskNoteType(): NoteType {
   const categoryValues = categoryOptions.map((opt) => opt.value);
   const priorityValues = priorityOptions.map((opt) => opt.value);
   const statusValues = statusOptions.map((opt) => opt.value);
+
+  // Find default values from options marked as default
+  // These MUST exist - we have marked defaults in our option arrays
+  const defaultCategory = categoryOptions.find((opt) => opt.isDefault)!.value;
+  const defaultPriority = priorityOptions.find((opt) => opt.isDefault)!.value;
+  const defaultStatus = statusOptions.find((opt) => opt.isDefault)!.value;
 
   // Define properties for Task note type
   const properties: Record<string, PropertyDefinition> = {
@@ -108,7 +117,7 @@ export function buildTaskNoteType(): NoteType {
           : stringSchema,
       frontMatterKey: "Category",
       required: true,
-      defaultValue: categoryValues.length > 0 ? categoryValues[0] : "Task",
+      defaultValue: defaultCategory,
       selectOptions: categoryOptions,
       description: "Task category/type",
       visible: true,
@@ -124,7 +133,7 @@ export function buildTaskNoteType(): NoteType {
           : optionalStringSchema,
       frontMatterKey: "Priority",
       required: true,
-      defaultValue: priorityValues.length > 0 ? priorityValues[0] : "Medium",
+      defaultValue: defaultPriority,
       selectOptions: priorityOptions,
       description: "Task priority level",
       visible: true,
@@ -140,7 +149,7 @@ export function buildTaskNoteType(): NoteType {
           : stringSchema,
       frontMatterKey: "Status",
       required: true,
-      defaultValue: statusValues.length > 0 ? statusValues[0] : "Backlog",
+      defaultValue: defaultStatus,
       selectOptions: statusOptions,
       description: "Task status",
       visible: true,

@@ -197,6 +197,16 @@ export {
   type ConditionalValidation,
 } from "./property-processor";
 
+// Export property accessor
+export { PropertyAccessor, createPropertyAccessor } from "./PropertyAccessor";
+
+// Export note type accessor
+export {
+  NoteTypeAccessor,
+  createNoteTypeAccessor,
+  type PropertyAccessorMap,
+} from "./NoteTypeAccessor";
+
 // Export note processor
 export {
   NoteProcessor,
