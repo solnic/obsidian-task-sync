@@ -1,0 +1,46 @@
+[
+  {
+    "id": "google-event-1",
+    "title": "Team Meeting",
+    "description": "Weekly team sync meeting",
+    "location": "Conference Room A",
+    "startDate": "2024-01-15T10:00:00.000Z",
+    "endDate": "2024-01-15T11:00:00.000Z",
+    "allDay": false,
+    "calendar": {
+      "id": "work-calendar-id",
+      "name": "Work Calendar",
+      "description": "Work-related events and meetings",
+      "color": "#0B8043",
+      "visible": true,
+      "metadata": {
+        "account": "Google",
+        "type": "Google",
+        "primary": false
+      }
+    },
+    "url": "https://calendar.google.com/calendar/event?eid=google-event-1"
+  },
+  {
+    "id": "google-event-2",
+    "title": "Project Review",
+    "description": "Quarterly project review session",
+    "location": "Virtual - Google Meet",
+    "startDate": "2024-01-15T14:00:00.000Z",
+    "endDate": "2024-01-15T15:30:00.000Z",
+    "allDay": false,
+    "calendar": {
+      "id": "work-calendar-id",
+      "name": "Work Calendar",
+      "description": "Work-related events and meetings",
+      "color": "#0B8043",
+      "visible": true,
+      "metadata": {
+        "account": "Google",
+        "type": "Google",
+        "primary": false
+      }
+    },
+    "url": "https://calendar.google.com/calendar/event?eid=google-event-2"
+  }
+]

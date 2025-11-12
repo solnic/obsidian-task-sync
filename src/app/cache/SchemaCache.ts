@@ -11,6 +11,7 @@ export interface CacheEntry<T> {
 
 export interface CacheOptions {
   version?: string; // Schema version for cache invalidation
+  skipChangeDetection?: boolean; // Skip deep comparison for performance (default: false)
 }
 
 export class SchemaCache<T> {
@@ -64,7 +65,15 @@ export class SchemaCache<T> {
       version: this.options.version || "1.0.0",
     };
 
-    console.log(`🔧 Setting cache entry ${key} at ${now.toISOString()}`);
+    // Only log if data actually changed or this is a new entry (unless skipChangeDetection is enabled)
+    const existingEntry = this.memoryCache.get(key);
+    const isNewOrChanged = this.options.skipChangeDetection || 
+      !existingEntry ||
+      JSON.stringify(existingEntry.data) !== JSON.stringify(validatedData);
+
+    if (isNewOrChanged) {
+      console.log(`🔧 Cache updated: ${this.cacheKey}/${key}`);
+    }
 
     // Store in memory cache
     this.memoryCache.set(key, entry);
@@ -234,4 +243,3 @@ export class SchemaCache<T> {
     await this.plugin.saveData(pluginData);
   }
 }
-

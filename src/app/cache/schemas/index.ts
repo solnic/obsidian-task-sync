@@ -9,5 +9,8 @@ export * from "./github";
 // Apple Calendar schemas
 export * from "./apple-calendar";
 
+// Google Calendar schemas
+export * from "./google-calendar";
+
 // Apple Reminders schemas
 export * from "./apple-reminders";
