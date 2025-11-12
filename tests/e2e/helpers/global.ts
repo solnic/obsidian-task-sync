@@ -2099,6 +2099,11 @@ const DEFAULT_INTEGRATION_CONFIGS: Record<string, any> = {
     selectedCalendars: [],
     syncInterval: 60,
   },
+  googleCalendar: {
+    enabled: true,
+    selectedCalendars: [],
+    syncInterval: 60,
+  },
 };
 
 export async function enableIntegration(
@@ -2124,8 +2129,8 @@ export async function enableIntegration(
       // Manually trigger extension initialization if needed
       const taskSyncApp = plugin?.host?.getApp();
 
-      // Initialize Calendar extension if enabling Apple Calendar integration
-      if (name === "appleCalendar" && taskSyncApp && !taskSyncApp.calendarExtension) {
+      // Initialize Calendar extension if enabling Apple Calendar or Google Calendar integration
+      if ((name === "appleCalendar" || name === "googleCalendar") && taskSyncApp && !taskSyncApp.calendarExtension) {
         console.log("🔧 Calendar extension not initialized, initializing manually");
 
         try {

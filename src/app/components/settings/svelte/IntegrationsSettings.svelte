@@ -8,6 +8,7 @@
   import GitHubIntegrationSettings from "./GitHubIntegrationSettings.svelte";
   import AppleRemindersIntegrationSettings from "./AppleRemindersIntegrationSettings.svelte";
   import AppleCalendarIntegrationSettings from "./AppleCalendarIntegrationSettings.svelte";
+  import GoogleCalendarIntegrationSettings from "./GoogleCalendarIntegrationSettings.svelte";
 
   interface Props {
     section: SettingsSection;
@@ -20,12 +21,15 @@
   let { settings = $bindable(), saveSettings, app, plugin }: Props = $props();
 
   // Local state for integration toggles
-  let githubEnabled = $state(settings.integrations.github.enabled);
+  let githubEnabled = $state(settings.integrations.github?.enabled ?? false);
   let appleRemindersEnabled = $state(
-    settings.integrations.appleReminders.enabled
+    settings.integrations.appleReminders?.enabled ?? false
   );
   let appleCalendarEnabled = $state(
-    settings.integrations.appleCalendar.enabled
+    settings.integrations.appleCalendar?.enabled ?? false
+  );
+  let googleCalendarEnabled = $state(
+    settings.integrations.googleCalendar?.enabled ?? false
   );
 
   // Update settings when local state changes
@@ -44,6 +48,12 @@
   async function updateAppleCalendarEnabled(enabled: boolean) {
     appleCalendarEnabled = enabled;
     settings.integrations.appleCalendar.enabled = enabled;
+    await saveSettings(settings);
+  }
+
+  async function updateGoogleCalendarEnabled(enabled: boolean) {
+    googleCalendarEnabled = enabled;
+    settings.integrations.googleCalendar.enabled = enabled;
     await saveSettings(settings);
   }
 </script>
@@ -76,5 +86,15 @@
     {saveSettings}
     enabled={appleCalendarEnabled}
     onToggle={updateAppleCalendarEnabled}
+  />
+
+  <!-- Google Calendar Integration Section -->
+  <h3 class="task-sync-subsection-header">Google Calendar</h3>
+  <GoogleCalendarIntegrationSettings
+    {settings}
+    {saveSettings}
+    {plugin}
+    enabled={googleCalendarEnabled}
+    onToggle={updateGoogleCalendarEnabled}
   />
 </div>
