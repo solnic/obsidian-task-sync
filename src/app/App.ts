@@ -10,6 +10,7 @@ import { CalendarExtension } from "./extensions/calendar/CalendarExtension";
 import { DailyPlanningExtension } from "./extensions/daily-planning/DailyPlanningExtension";
 import { ContextExtension } from "./extensions/context/ContextExtension";
 import { AppleCalendarService } from "./extensions/calendar/services/AppleCalendarService";
+import { GoogleCalendarService } from "./extensions/calendar/services/GoogleCalendarService";
 import { Host } from "./core/host";
 import type { TaskSyncSettings } from "./types/settings";
 import { taskStore } from "./stores/taskStore";
@@ -425,7 +426,11 @@ export class TaskSyncApp {
    * Initialize Calendar extension if enabled in settings
    */
   private async initializeCalendarExtension(): Promise<void> {
-    if (!this.settings?.integrations?.appleCalendar?.enabled) {
+    // Initialize calendar extension if either Apple Calendar or Google Calendar is enabled
+    const appleCalendarEnabled = this.settings?.integrations?.appleCalendar?.enabled;
+    const googleCalendarEnabled = this.settings?.integrations?.googleCalendar?.enabled;
+
+    if (!appleCalendarEnabled && !googleCalendarEnabled) {
       return;
     }
 
@@ -448,14 +453,34 @@ export class TaskSyncApp {
 
     await this.calendarExtension.initialize();
 
-    // Create and register Apple Calendar service
-    const appleCalendarService = new AppleCalendarService(
-      this.settings,
-      obsidianHost.plugin
-    );
+    // Create and register Apple Calendar service if enabled
+    if (appleCalendarEnabled) {
+      const appleCalendarService = new AppleCalendarService(
+        this.settings,
+        obsidianHost.plugin
+      );
 
-    await appleCalendarService.initialize();
-    this.calendarExtension.registerCalendarService(appleCalendarService);
+      await appleCalendarService.initialize();
+      this.calendarExtension.registerCalendarService(appleCalendarService);
+      console.log("Apple Calendar service registered");
+    }
+
+    // Create and register Google Calendar service if enabled
+    if (googleCalendarEnabled) {
+      const googleCalendarService = new GoogleCalendarService(
+        this.settings,
+        obsidianHost.plugin,
+        async () => {
+          if (this.settings && this.host) {
+            await this.host.saveSettings(this.settings);
+          }
+        }
+      );
+
+      await googleCalendarService.initialize();
+      this.calendarExtension.registerCalendarService(googleCalendarService);
+      console.log("Google Calendar service registered");
+    }
 
     // If app is already loaded, load the extension too
     if (this.initialized) {
