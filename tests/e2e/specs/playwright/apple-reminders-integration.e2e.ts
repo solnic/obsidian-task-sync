@@ -165,7 +165,7 @@ test.describe("Apple Reminders Integration", () => {
     // Note: reminder-3 is completed and excluded
     const personalReminders = await page.locator('[data-testid="apple-reminder-item"]').count();
     expect(personalReminders).toBe(2);
-    
+
     // Verify we have the expected Personal reminders by title
     expect(await page.locator('[data-testid="apple-reminder-item"]:has-text("Buy groceries")').count()).toBe(1);
     expect(await page.locator('[data-testid="apple-reminder-item"]:has-text("Weekend hiking trip")').count()).toBe(1);
