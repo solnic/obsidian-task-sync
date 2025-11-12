@@ -46,7 +46,7 @@ tests/
 
 1. **Event-Driven Architecture**: The plugin uses an EventBus (`src/app/core/events.ts`) for loose coupling between components
 2. **Store Pattern**: State management follows Redux-like patterns with actions and reducers
-3. **TypeNote System**: A type-aware note processing system for structured data (tasks, projects, areas)
+3. **NoteKit System**: A type-aware note processing system for structured data (tasks, projects, areas)
 4. **Command Pattern**: Commands are implemented as separate classes extending a base Command class
 
 ## Development Workflow
@@ -57,9 +57,6 @@ tests/
 # Install dependencies (handles platform-specific packages)
 npm install
 
-# Build for development (with watch mode)
-npm run dev
-
 # Build for production
 npm run build
 ```
@@ -67,25 +64,25 @@ npm run build
 ### Testing
 
 ```bash
-# Run all tests
+# Run all tests (builds and runs both unit and e2e tests)
 npm test
 
-# Run only unit tests
-npm run test:unit
-
-# Run only e2e tests  
+# Run only e2e tests (recommended - most functionality is covered here)
 npm run test:e2e
 
 # Re-run failed e2e tests
 npm run test:e2e:failed
+
+# Run only unit tests (rarely needed - covers very little)
+npm run test:unit
 ```
 
 **Important Testing Notes:**
-- Unit tests use Vitest with jsdom environment
-- E2E tests use Playwright with actual Obsidian instances
+- **E2E tests are the primary testing method** - Use Playwright with actual Obsidian instances
+- **Unit tests cover very little** - Most functionality must be tested via e2e tests
 - Test timeout is 10 seconds for both unit and hook timeouts
 - Use `xvfb-maybe` for headless testing on Linux
-- Mock files are in `tests/__mocks__/`
+- E2E debug artifacts are saved to `tests/e2e/debug/*`
 
 ### Build System
 
@@ -182,16 +179,30 @@ this.addCommand({
 
 ## Testing Guidelines
 
-### Unit Tests
+### E2E Tests (Primary Testing Method)
 
-- Place tests adjacent to code: `tests/unit/` or `tests/app/`
+**All tests that require Obsidian MUST be implemented as e2e tests, not unit tests.**
+
+- Use Playwright to automate actual Obsidian instances
+- Tests run in real Obsidian environment for true integration testing
+- Use `tests/vault/` for test data
+- Debug artifacts are saved to `tests/e2e/debug/*` for troubleshooting
+- Clean up after tests
+- Handle async operations properly
+- Most plugin functionality is and must be covered by e2e tests
+
+### Unit Tests (Rarely Needed)
+
+**Unit tests cover very little in this project.** Use them only for isolated utility functions that don't require Obsidian.
+
+- Place tests in `tests/unit/` or `tests/app/`
 - Use descriptive test names
 - Follow Arrange-Act-Assert pattern
-- Mock Obsidian API using `tests/__mocks__/obsidian.ts`
 - Use Chai assertions (expect syntax)
+- **Never mock the Obsidian API for integration tests** - use e2e tests instead
 
 ```typescript
-describe('Component', () => {
+describe('Utility Function', () => {
   it('should do something specific', () => {
     // Arrange
     const input = createInput();
@@ -204,14 +215,6 @@ describe('Component', () => {
   });
 });
 ```
-
-### E2E Tests
-
-- Use Playwright to automate Obsidian
-- Tests run in actual Obsidian instances
-- Use `tests/vault/` for test data
-- Clean up after tests
-- Handle async operations properly
 
 ## Common Tasks
 
@@ -244,7 +247,7 @@ describe('Component', () => {
 - Templates are detected from vault folders
 - Support both native Obsidian templates and Templater
 - Template variables use Handlebars syntax
-- Template processing in `src/app/utils/` and TypeNote system
+- Template processing in `src/app/utils/` and NoteKit system
 
 ## Dependencies
 
@@ -290,10 +293,10 @@ Plugin generates three files for distribution:
 
 ### Debug Tips
 
-- Use `console.log()` for quick debugging
-- Check Obsidian's Developer Console (Ctrl+Shift+I)
-- Use `debugger` statements with browser dev tools
-- Check Obsidian logs in vault `.obsidian/` directory
+- **Run e2e tests** and check debug artifacts in `tests/e2e/debug/*` directory
+- E2E tests save screenshots, logs, and failure information for debugging
+- Check Obsidian's Developer Console (Ctrl+Shift+I) when running tests
+- Use `debugger` statements in e2e tests for step-by-step debugging
 
 ## Best Practices
 
