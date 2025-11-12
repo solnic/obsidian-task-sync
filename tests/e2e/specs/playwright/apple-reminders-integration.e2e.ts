@@ -270,6 +270,7 @@ test.describe("Apple Reminders Integration", () => {
 
   test("should respect selected lists in settings", async ({ page }) => {
     // Set up stubs BEFORE enabling integration
+    // Note: lists-basic fixture contains 4 lists: Work, Personal, Shopping, Projects
     await stubAppleRemindersWithFixtures(page, {
       permissions: "permissions-authorized",
       lists: "lists-basic",
@@ -280,7 +281,7 @@ test.describe("Apple Reminders Integration", () => {
 
     // Enable integration with specific lists selected in settings
     await enableIntegration(page, "appleReminders", {
-      reminderLists: ["Work", "Personal"], // Only sync these two lists
+      reminderLists: ["Work", "Personal"], // Only sync these two lists out of 4 available
     });
 
     // Wait for Apple Reminders service button to appear first
@@ -305,6 +306,35 @@ test.describe("Apple Reminders Integration", () => {
       state: "visible",
       timeout: 10000,
     });
+
+    // CRITICAL TEST: Verify the dropdown only shows selected lists from settings
+    // Click the list filter button to open the dropdown
+    const listFilterButton = page.locator('[data-testid="list-filter"]');
+    await listFilterButton.click();
+
+    // Wait for dropdown to appear
+    await page.waitForSelector('.task-sync-dropdown-item', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Get all dropdown items
+    const dropdownItems = await page.locator('.task-sync-dropdown-item').allTextContents();
+
+    // Filter out the "Select list" placeholder if it exists
+    const actualLists = dropdownItems.filter(item => item !== "Select list");
+
+    // Verify ONLY the selected lists from settings are shown (Work and Personal)
+    // Should NOT include Shopping or Projects
+    expect(actualLists).toHaveLength(2);
+    expect(actualLists).toContain("Work");
+    expect(actualLists).toContain("Personal");
+    expect(actualLists).not.toContain("Shopping");
+    expect(actualLists).not.toContain("Projects");
+
+    // Close the dropdown by clicking elsewhere
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(500);
 
     // First, check if extension is properly set up and stubs are installed
     const preRefreshCheck = await page.evaluate(() => {
@@ -342,7 +372,6 @@ test.describe("Apple Reminders Integration", () => {
     if (buttonExists > 0) {
       const isVisible = await refreshButton.isVisible();
       await refreshButton.click();
-    } else {
     }
 
     // Wait for refresh to complete
@@ -400,5 +429,88 @@ test.describe("Apple Reminders Integration", () => {
         )
         .count()
     ).toBe(1);
+
+    // Verify that attempting to select a non-selected list would fail
+    // This ensures the dropdown truly only contains the selected lists
+    await listFilterButton.click();
+    await page.waitForSelector('.task-sync-dropdown-item', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Verify Shopping and Projects are NOT available in the dropdown
+    const shoppingOption = page.locator('.task-sync-dropdown-item:has-text("Shopping")');
+    const projectsOption = page.locator('.task-sync-dropdown-item:has-text("Projects")');
+
+    expect(await shoppingOption.count()).toBe(0);
+    expect(await projectsOption.count()).toBe(0);
+
+    // Close dropdown
+    await page.keyboard.press('Escape');
+  });
+
+  test("should show all lists when no specific lists selected in settings", async ({ page }) => {
+    // Set up stubs with 4 available lists
+    await stubAppleRemindersWithFixtures(page, {
+      permissions: "permissions-authorized",
+      lists: "lists-basic",
+      reminders: "reminders-basic",
+    });
+
+    await openView(page, "task-sync-main");
+
+    // Enable integration with NO lists selected (empty array means sync all)
+    await enableIntegration(page, "appleReminders", {
+      reminderLists: [], // Empty array should show ALL available lists
+    });
+
+    // Wait for Apple Reminders service button to appear
+    await page.waitForSelector('[data-testid="service-apple-reminders"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Wait for it to be enabled
+    await page.waitForSelector(
+      '[data-testid="service-apple-reminders"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "apple-reminders");
+
+    // Wait for the list filter button to be visible and enabled
+    await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Click the list filter button to open the dropdown
+    const listFilterButton = page.locator('[data-testid="list-filter"]');
+    await listFilterButton.click();
+
+    // Wait for dropdown to appear
+    await page.waitForSelector('.task-sync-dropdown-item', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Get all dropdown items
+    const dropdownItems = await page.locator('.task-sync-dropdown-item').allTextContents();
+
+    // Filter out the "Select list" placeholder if it exists
+    const actualLists = dropdownItems.filter(item => item !== "Select list");
+
+    // Verify ALL 4 lists are shown when no specific lists are selected
+    expect(actualLists).toHaveLength(4);
+    expect(actualLists).toContain("Work");
+    expect(actualLists).toContain("Personal");
+    expect(actualLists).toContain("Shopping");
+    expect(actualLists).toContain("Projects");
+
+    // Close dropdown
+    await page.keyboard.press('Escape');
   });
 });

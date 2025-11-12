@@ -300,7 +300,13 @@
     try {
       const result = await appleRemindersExtension.fetchReminderLists();
       if (result.success && result.data) {
-        availableLists = result.data.map(list => list.name);
+        const allLists = result.data.map(list => list.name);
+
+        // Filter lists based on settings if specific lists are selected
+        const selectedLists = settings.integrations.appleReminders?.reminderLists ?? [];
+        availableLists = selectedLists.length > 0
+          ? allLists.filter(listName => selectedLists.includes(listName))
+          : allLists;
 
         // Don't auto-select a list - require user selection like GitHub does for repos
         // This ensures users are intentional about which list they're viewing
