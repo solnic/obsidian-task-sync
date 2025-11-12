@@ -57,5 +57,42 @@
       "priority": 1,
       "allDay": true
     }
+  ],
+  "Shopping": [
+    {
+      "id": "reminder-6",
+      "name": "Buy new laptop",
+      "body": "Research and purchase new development laptop",
+      "completed": false,
+      "creationDate": "2024-01-11T10:00:00.000Z",
+      "modificationDate": "2024-01-11T10:00:00.000Z",
+      "dueDate": "2024-01-25T17:00:00.000Z",
+      "priority": 8,
+      "allDay": false
+    },
+    {
+      "id": "reminder-7",
+      "name": "Order books",
+      "body": "Order programming books from Amazon",
+      "completed": false,
+      "creationDate": "2024-01-12T15:00:00.000Z",
+      "modificationDate": "2024-01-12T15:00:00.000Z",
+      "dueDate": "2024-01-18T12:00:00.000Z",
+      "priority": 4,
+      "allDay": false
+    }
+  ],
+  "Projects": [
+    {
+      "id": "reminder-8",
+      "name": "Setup CI/CD pipeline",
+      "body": "Configure GitHub Actions for automated testing",
+      "completed": false,
+      "creationDate": "2024-01-14T11:00:00.000Z",
+      "modificationDate": "2024-01-14T11:00:00.000Z",
+      "dueDate": "2024-01-22T16:00:00.000Z",
+      "priority": 6,
+      "allDay": false
+    }
   ]
 }

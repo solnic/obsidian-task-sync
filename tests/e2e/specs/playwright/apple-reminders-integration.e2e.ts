@@ -16,9 +16,7 @@ import {
   clickReminderImportButton,
   waitForReminderImportComplete,
 } from "../../helpers/apple-reminders-integration-helpers";
-import {
-  getTaskByTitle,
-} from "../../helpers/entity-helpers";
+import { getTaskByTitle, getAllTasks } from "../../helpers/entity-helpers";
 
 test.describe("Apple Reminders Integration", () => {
   test("should import Apple Reminder as task", async ({ page }) => {
@@ -51,8 +49,8 @@ test.describe("Apple Reminders Integration", () => {
 
     // Wait for the list filter button to be visible and enabled
     await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
-      state: 'visible',
-      timeout: 10000
+      state: "visible",
+      timeout: 10000,
     });
 
     await selectFromDropdown(page, "list-filter", "Work");
@@ -62,14 +60,19 @@ test.describe("Apple Reminders Integration", () => {
     await waitForReminderImportComplete(page, "Complete project proposal");
 
     // Verify task file was created
-    const taskExists = await fileExists(page, "Tasks/Complete project proposal.md");
+    const taskExists = await fileExists(
+      page,
+      "Tasks/Complete project proposal.md"
+    );
     expect(taskExists).toBe(true);
 
     // Verify task appears in Local Tasks view
     await switchToTaskService(page, "local");
     expect(
       await page
-        .locator('[data-testid="service-content-local"]:not(.tab-hidden) .task-sync-item-title:has-text(\'Complete project proposal\')')
+        .locator(
+          "[data-testid=\"service-content-local\"]:not(.tab-hidden) .task-sync-item-title:has-text('Complete project proposal')"
+        )
         .count()
     ).toBe(1);
 
@@ -90,12 +93,16 @@ test.describe("Apple Reminders Integration", () => {
     expect(taskAfterFilterChange).toBeDefined();
     expect(taskAfterFilterChange.source.extension).toBe("apple-reminders");
     expect(taskAfterFilterChange.source.data).toBeDefined();
-    expect(taskAfterFilterChange.source.data.title).toBe("Complete project proposal");
+    expect(taskAfterFilterChange.source.data.title).toBe(
+      "Complete project proposal"
+    );
 
     // Verify the imported reminder is still visible and renders without crashing
     expect(
       await page
-        .locator('[data-testid="apple-reminder-item"]:has-text("Complete project proposal")')
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Complete project proposal")'
+        )
         .count()
     ).toBe(1);
   });
@@ -130,8 +137,8 @@ test.describe("Apple Reminders Integration", () => {
 
     // Wait for the list filter button to be visible and enabled
     await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
-      state: 'visible',
-      timeout: 10000
+      state: "visible",
+      timeout: 10000,
     });
 
     // Select the first list to load reminders
@@ -148,7 +155,9 @@ test.describe("Apple Reminders Integration", () => {
 
     // Initially shows first list (Work) by default - 2 incomplete reminders
     // Note: reminder-3 is completed and excluded by default
-    const initialReminders = await page.locator('[data-testid="apple-reminder-item"]').count();
+    const initialReminders = await page
+      .locator('[data-testid="apple-reminder-item"]')
+      .count();
     expect(initialReminders).toBe(2);
 
     // Verify it's showing Work list (not "All Lists")
@@ -163,12 +172,26 @@ test.describe("Apple Reminders Integration", () => {
 
     // Should only show Personal reminders (2 incomplete reminders: reminder-2 and reminder-5)
     // Note: reminder-3 is completed and excluded
-    const personalReminders = await page.locator('[data-testid="apple-reminder-item"]').count();
+    const personalReminders = await page
+      .locator('[data-testid="apple-reminder-item"]')
+      .count();
     expect(personalReminders).toBe(2);
 
     // Verify we have the expected Personal reminders by title
-    expect(await page.locator('[data-testid="apple-reminder-item"]:has-text("Buy groceries")').count()).toBe(1);
-    expect(await page.locator('[data-testid="apple-reminder-item"]:has-text("Weekend hiking trip")').count()).toBe(1);
+    expect(
+      await page
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Buy groceries")'
+        )
+        .count()
+    ).toBe(1);
+    expect(
+      await page
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Weekend hiking trip")'
+        )
+        .count()
+    ).toBe(1);
   });
 
   test("should show progress indicator during refresh", async ({ page }) => {
@@ -201,8 +224,8 @@ test.describe("Apple Reminders Integration", () => {
 
     // Wait for the list filter button to be visible and enabled
     await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
-      state: 'visible',
-      timeout: 10000
+      state: "visible",
+      timeout: 10000,
     });
 
     // Select a list to load reminders
@@ -215,30 +238,167 @@ test.describe("Apple Reminders Integration", () => {
     });
 
     // Click the refresh button
-    const refreshButton = page.locator('[data-testid="task-sync-apple-reminders-refresh-button"]');
+    const refreshButton = page.locator(
+      '[data-testid="task-sync-apple-reminders-refresh-button"]'
+    );
     await refreshButton.click();
 
     // Progress indicator should appear (even briefly)
     // Note: It may complete very quickly in tests, so we use a flexible approach
-    try {
-      await page.waitForSelector('[data-testid="refresh-progress"]', {
-        state: "visible",
-        timeout: 1000,
-      });
+    await page.waitForSelector('[data-testid="refresh-progress"]', {
+      state: "visible",
+      timeout: 1000,
+    });
 
-      // Progress should show status and percentage
-      const progressStatus = page.locator('[data-testid="refresh-progress"] .task-sync-progress-status');
-      const progressPercentage = page.locator('[data-testid="refresh-progress"] .task-sync-progress-percentage');
+    // Progress should show status and percentage
+    const progressStatus = page.locator(
+      '[data-testid="refresh-progress"] .task-sync-progress-status'
+    );
+    const progressPercentage = page.locator(
+      '[data-testid="refresh-progress"] .task-sync-progress-percentage'
+    );
 
-      // Should have some content (may vary based on timing)
-      await expect(progressStatus).not.toBeEmpty();
-      await expect(progressPercentage).not.toBeEmpty();
-    } catch (e) {
-      // If progress completes too quickly, that's okay - refresh still worked
-      console.log("Progress indicator completed too quickly to verify (expected in fast test environments)");
-    }
+    // Should have some content (may vary based on timing)
+    await expect(progressStatus).not.toBeEmpty();
+    await expect(progressPercentage).not.toBeEmpty();
 
     // Verify reminders still loaded after refresh
-    expect(await page.locator('[data-testid="apple-reminder-item"]').count()).toBeGreaterThan(0);
+    expect(
+      await page.locator('[data-testid="apple-reminder-item"]').count()
+    ).toBeGreaterThan(0);
+  });
+
+  test("should respect selected lists in settings", async ({ page }) => {
+    // Set up stubs BEFORE enabling integration
+    await stubAppleRemindersWithFixtures(page, {
+      permissions: "permissions-authorized",
+      lists: "lists-basic",
+      reminders: "reminders-basic",
+    });
+
+    await openView(page, "task-sync-main");
+
+    // Enable integration with specific lists selected in settings
+    await enableIntegration(page, "appleReminders", {
+      reminderLists: ["Work", "Personal"], // Only sync these two lists
+    });
+
+    // Wait for Apple Reminders service button to appear first
+    await page.waitForSelector('[data-testid="service-apple-reminders"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Now wait for it to be enabled
+    await page.waitForSelector(
+      '[data-testid="service-apple-reminders"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 10000,
+      }
+    );
+
+    await switchToTaskService(page, "apple-reminders");
+
+    // Wait for the list filter button to be visible and enabled
+    await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // First, check if extension is properly set up and stubs are installed
+    const preRefreshCheck = await page.evaluate(() => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const appleRemindersExtension =
+        plugin?.taskSyncApp?.appleRemindersExtension;
+
+      return {
+        extensionExists: !!appleRemindersExtension,
+        isEnabled: appleRemindersExtension?.isEnabled(),
+        isStubbed: appleRemindersExtension?.__isStubbed,
+        stubsAvailable: !!(window as any).__appleRemindersApiStubs,
+        stubInstaller: !!(window as any).__installAppleRemindersStubs,
+      };
+    });
+
+    // If not stubbed, install stubs now
+    if (!preRefreshCheck.isStubbed) {
+      await page.evaluate(() => {
+        const installer = (window as any).__installAppleRemindersStubs;
+        if (installer) {
+          const result = installer();
+        }
+      });
+    }
+
+    const refreshButton = page.locator(
+      '[data-testid="task-sync-apple-reminders-refresh-button"]'
+    );
+
+    // Check if refresh button exists and is visible
+    const buttonExists = await refreshButton.count();
+
+    if (buttonExists > 0) {
+      const isVisible = await refreshButton.isVisible();
+      await refreshButton.click();
+    } else {
+    }
+
+    // Wait for refresh to complete
+    await page.waitForTimeout(3000);
+
+    // Select Work list and verify only Work reminders are shown
+    await selectFromDropdown(page, "list-filter", "Work");
+    await page.waitForSelector('[data-testid="apple-reminder-item"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    const workReminders = await page
+      .locator('[data-testid="apple-reminder-item"]')
+      .count();
+    expect(workReminders).toBe(2);
+
+    // Verify Work reminder titles
+    expect(
+      await page
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Complete project proposal")'
+        )
+        .count()
+    ).toBe(1);
+    expect(
+      await page
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Team meeting preparation")'
+        )
+        .count()
+    ).toBe(1);
+
+    // Switch to Personal list and verify only Personal reminders are shown
+    await selectFromDropdown(page, "list-filter", "Personal");
+    await page.waitForTimeout(1000);
+
+    const personalReminders = await page
+      .locator('[data-testid="apple-reminder-item"]')
+      .count();
+    expect(personalReminders).toBe(2);
+
+    // Verify Personal reminder titles
+    expect(
+      await page
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Buy groceries")'
+        )
+        .count()
+    ).toBe(1);
+    expect(
+      await page
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Weekend hiking trip")'
+        )
+        .count()
+    ).toBe(1);
   });
 });

@@ -414,14 +414,12 @@ export class AppleRemindersExtension implements Extension {
       this.isRefreshing = false;
       this.refreshPromise = undefined;
     }
-  }
-
-  /**
+  }  /**
    * Internal method that performs the actual refresh
    */
   private async performRefresh(): Promise<void> {
     try {
-      console.log("Refreshing Apple Reminders data...");
+      console.log("🍎 [performRefresh] Starting Apple Reminders data refresh...");
 
       // Update progress: checking permissions
       this.refreshProgress.update(p => ({
@@ -431,7 +429,10 @@ export class AppleRemindersExtension implements Extension {
       }));
 
       // Check permissions first
+      console.log("🍎 [performRefresh] Checking permissions...");
       const permissionResult = await this.checkPermissions();
+      console.log("🍎 [performRefresh] Permission result:", permissionResult);
+
       if (!permissionResult.success || permissionResult.data !== "authorized") {
         this.refreshProgress.update(p => ({
           ...p,
@@ -450,7 +451,10 @@ export class AppleRemindersExtension implements Extension {
       }));
 
       // Get all lists first
+      console.log("🍎 [performRefresh] Fetching reminder lists...");
       const listsResult = await this.fetchLists();
+      console.log("🍎 [performRefresh] Lists result:", listsResult);
+
       if (!listsResult.success || !listsResult.data) {
         this.refreshProgress.update(p => ({
           ...p,
@@ -462,9 +466,18 @@ export class AppleRemindersExtension implements Extension {
       }
 
       const lists = listsResult.data;
-      const totalLists = lists.length;
 
-      // Update progress: starting to fetch reminders
+      // Filter lists based on settings if specific lists are selected
+      const selectedLists = this.settings.integrations.appleReminders?.reminderLists ?? [];
+      console.log(`🍎 Selected lists from settings: ${selectedLists.length > 0 ? selectedLists.join(', ') : 'ALL (no filter)'}`);
+
+      const listsToProcess = selectedLists.length > 0
+        ? lists.filter(list => selectedLists.includes(list.name))
+        : lists;
+
+      console.log(`🍎 Processing ${listsToProcess.length} of ${lists.length} total lists`);
+
+      const totalLists = listsToProcess.length;      // Update progress: starting to fetch reminders
       this.refreshProgress.update(p => ({
         ...p,
         status: 'fetching-reminders',
@@ -480,7 +493,7 @@ export class AppleRemindersExtension implements Extension {
       let processedLists = 0;
 
       // Process each list with progress updates
-      for (const list of lists) {
+      for (const list of listsToProcess) {
         // Update progress: current list being processed
         this.refreshProgress.update(p => ({
           ...p,
