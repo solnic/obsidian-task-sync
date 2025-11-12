@@ -76,7 +76,7 @@ export class AppleRemindersDataSource implements DataSource<Task> {
       // Find the "done" status from configured statuses
       const doneStatus = taskStatuses.find(s => s.isDone);
       const defaultStatus = taskStatuses.length > 0 ? taskStatuses[0] : undefined;
-      
+
       // Map Apple Reminders priority (0-9) to configured task priority names
       // Priority mapping: 0=none, 1-3=low, 4-6=medium, 7-9=high
       let priorityName = "";
