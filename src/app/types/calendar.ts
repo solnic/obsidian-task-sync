@@ -22,6 +22,9 @@ export interface Calendar {
   /** Whether the calendar is currently visible/enabled */
   visible: boolean;
 
+  /** Provider name (e.g., "Apple Calendar", "Google Calendar") */
+  provider?: string;
+
   /** Provider-specific metadata */
   metadata?: Record<string, any>;
 }

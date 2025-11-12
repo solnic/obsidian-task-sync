@@ -10,7 +10,6 @@ import { TaskSyncSettings } from "./app/types/settings";
 import { taskSyncApp } from "./app/App";
 import { ObsidianHost } from "./app/hosts/ObsidianHost";
 import { TaskSyncSettingTab } from "./app/components/settings";
-import { DayView, DAY_VIEW_TYPE } from "./app/views/DayView";
 import {
   DailyPlanningView,
   DAILY_PLANNING_VIEW_TYPE,
@@ -180,11 +179,6 @@ export default class TaskSyncPlugin extends Plugin {
       return new TaskSyncView(leaf, this);
     });
 
-    // Register the Day View
-    this.registerView(DAY_VIEW_TYPE, (leaf) => {
-      return new DayView(leaf, this.host, this.settings);
-    });
-
     // Register the Daily Planning View
     this.registerView(DAILY_PLANNING_VIEW_TYPE, (leaf) => {
       return new DailyPlanningView(leaf);
@@ -195,26 +189,12 @@ export default class TaskSyncPlugin extends Plugin {
       this.activateView();
     });
 
-    // Add ribbon icon for Day View
-    this.addRibbonIcon("calendar", "Day View", () => {
-      this.activateDayView();
-    });
-
     // Add command to open main view
     this.addCommand({
       id: "open-main-view",
       name: "Open Main View",
       callback: () => {
         this.activateView();
-      },
-    });
-
-    // Add command to open Day View
-    this.addCommand({
-      id: "open-day-view",
-      name: "Open Day View",
-      callback: () => {
-        this.activateDayView();
       },
     });
 
@@ -589,18 +569,6 @@ export default class TaskSyncPlugin extends Plugin {
     if (!leaf) {
       leaf = workspace.getRightLeaf(false);
       await leaf.setViewState({ type: "task-sync-main", active: true });
-    }
-
-    workspace.revealLeaf(leaf);
-  }
-
-  async activateDayView() {
-    const { workspace } = this.app;
-    let leaf = workspace.getLeavesOfType(DAY_VIEW_TYPE)[0];
-
-    if (!leaf) {
-      leaf = workspace.getRightLeaf(false);
-      await leaf.setViewState({ type: DAY_VIEW_TYPE, active: true });
     }
 
     workspace.revealLeaf(leaf);

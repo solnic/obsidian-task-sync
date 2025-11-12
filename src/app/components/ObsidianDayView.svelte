@@ -175,6 +175,7 @@
     <div class="obsidian-day-view__date-navigation">
       <button
         class="obsidian-day-view__nav-btn"
+        data-testid="obsidian-day-view-prev-day-btn"
         onclick={goToPreviousDay}
         title="Previous day"
       >
@@ -186,6 +187,7 @@
       </div>
       <button
         class="obsidian-day-view__nav-btn"
+        data-testid="obsidian-day-view-next-day-btn"
         onclick={goToNextDay}
         title="Next day"
       >

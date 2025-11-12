@@ -2094,6 +2094,11 @@ const DEFAULT_INTEGRATION_CONFIGS: Record<string, any> = {
     syncInterval: 60,
     excludeAllDayReminders: false,
   },
+  appleCalendar: {
+    enabled: true,
+    selectedCalendars: [],
+    syncInterval: 60,
+  },
 };
 
 export async function enableIntegration(
@@ -2113,35 +2118,40 @@ export async function enableIntegration(
 
       Object.assign(plugin.settings.integrations[name], integration_config);
 
+      // Save settings first so they persist
       await plugin.saveSettings();
 
-      // Install Apple Reminders stubs if this is the Apple Reminders integration
-      if (name === "appleReminders" && (window as any).__installAppleRemindersStubs) {
-        console.log("🔧 Installing Apple Reminders stubs after enabling integration");
+      // Manually trigger extension initialization if needed
+      const taskSyncApp = plugin?.host?.getApp();
 
-        // Wait for the Apple Reminders extension to be initialized and registered
-        let attempts = 0;
-        const maxAttempts = 20; // 10 seconds max
-        while (attempts < maxAttempts) {
-          const app = (window as any).app;
-          const plugin = app.plugins.plugins["obsidian-task-sync"];
-          const appleRemindersExtension = plugin?.taskSyncApp?.appleRemindersExtension;
+      // Initialize Calendar extension if enabling Apple Calendar integration
+      if (name === "appleCalendar" && taskSyncApp && !taskSyncApp.calendarExtension) {
+        console.log("🔧 Calendar extension not initialized, initializing manually");
 
-          if (appleRemindersExtension) {
-            console.log("🔧 Apple Reminders extension found, installing stubs");
-            const stubsInstalled = (window as any).__installAppleRemindersStubs();
-            console.log("🔧 Apple Reminders stubs installed:", stubsInstalled);
-            break;
-          }
-
-          console.log(`🔧 Waiting for Apple Reminders extension to be initialized (attempt ${attempts + 1}/${maxAttempts})`);
-          await new Promise(resolve => setTimeout(resolve, 500));
-          attempts++;
+        try {
+          await taskSyncApp["initializeCalendarExtension"]();
+          console.log("🔧 Calendar extension manually initialized");
+        } catch (error) {
+          console.error("🔧 Failed to manually initialize calendar extension:", error);
         }
 
-        if (attempts >= maxAttempts) {
-          console.warn("🔧 Timed out waiting for Apple Reminders extension to be initialized");
+        // Wait a bit for initialization to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+
+      // Initialize Apple Reminders extension if enabling Apple Reminders integration
+      if (name === "appleReminders" && taskSyncApp && !taskSyncApp.appleRemindersExtension) {
+        console.log("🔧 Apple Reminders extension not initialized, initializing manually");
+
+        try {
+          await taskSyncApp["initializeAppleRemindersExtension"]();
+          console.log("🔧 Apple Reminders extension manually initialized");
+        } catch (error) {
+          console.error("🔧 Failed to manually initialize Apple Reminders extension:", error);
         }
+
+        // Wait a bit for initialization to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     },
     { name, integration_config }

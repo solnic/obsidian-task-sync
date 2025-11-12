@@ -5,12 +5,21 @@
    */
   import Dropdown from "./Dropdown.svelte";
 
+  interface DropdownGroup {
+    label: string;
+    items: Array<{
+      value: string;
+      label?: string;
+    }>;
+  }
+
   interface Props {
     label: string;
     currentValue: string;
     allOptions?: string[]; // All available options (will be combined with recently used)
     defaultOption?: string; // Default option (e.g., "All projects")
     options?: string[]; // Pre-built options list (for backward compatibility)
+    groups?: DropdownGroup[]; // Grouped options
     onselect: (value: string) => void;
     placeholder?: string;
     disabled?: boolean;
@@ -30,6 +39,7 @@
     allOptions,
     defaultOption,
     options,
+    groups,
     onselect,
     placeholder = "Select...",
     disabled = false,
@@ -48,6 +58,11 @@
 
   // Build options list with recently used items at the top
   let optionsWithRecent = $derived.by(() => {
+    // If groups are provided, don't build flat options
+    if (groups && groups.length > 0) {
+      return [];
+    }
+
     // If options are provided directly, use them (backward compatibility)
     if (options) {
       return options;
@@ -81,15 +96,32 @@
     return result;
   });
 
-  // Convert options to dropdown items
-  let dropdownItems = $derived.by(() =>
-    optionsWithRecent.map((option) => ({
+  // Convert options to dropdown items or groups
+  let dropdownItems = $derived.by(() => {
+    if (groups && groups.length > 0) {
+      return [];
+    }
+    return optionsWithRecent.map((option) => ({
       value: option,
       label: option,
       isSeparator: option === "---",
       isRecent: recentlyUsedItems.includes(option),
-    }))
-  );
+    }));
+  });
+
+  let dropdownGroups = $derived.by(() => {
+    if (!groups || groups.length === 0) {
+      return [];
+    }
+    return groups.map((group) => ({
+      label: group.label,
+      items: group.items.map((item) => ({
+        value: item.value,
+        label: item.label || item.value,
+        isRecent: recentlyUsedItems.includes(item.value),
+      })),
+    }));
+  });
 
   function handleButtonClick(event: MouseEvent) {
     // Check if the click was on the clear button or inside it
@@ -102,7 +134,8 @@
       return;
     }
 
-    if (!disabled && optionsWithRecent.length > 0) {
+    const hasOptions = groups && groups.length > 0 || optionsWithRecent.length > 0;
+    if (!disabled && hasOptions) {
       isMenuOpen = true;
     }
   }
@@ -142,6 +175,7 @@
   <Dropdown
     anchor={buttonEl}
     items={dropdownItems}
+    groups={dropdownGroups}
     selectedValue={currentValue}
     selectedValues={selectedOptions}
     searchable={autoSuggest}
