@@ -239,8 +239,8 @@
 
   async function loadInitialData(): Promise<void> {
     // Prevent multiple simultaneous loads
-    if (hasLoadedInitialData || appleRemindersExtension.getIsRefreshing()) {
-      console.log('🍎 Initial data already loaded or loading, skipping...');
+    if (hasLoadedInitialData) {
+      console.log('🍎 Initial data already loaded, skipping...');
       return;
     }
 
@@ -252,7 +252,7 @@
       await checkPermissions();
 
       if (permissionStatus === "granted") {
-        // Load available reminder lists
+        // Always load available reminder lists for the UI dropdown
         await loadReminderLists();
 
         // Trigger refresh if not already in progress

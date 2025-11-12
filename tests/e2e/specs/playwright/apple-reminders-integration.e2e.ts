@@ -118,14 +118,17 @@ test.describe("Apple Reminders Integration", () => {
       timeout: 10000,
     });
 
+    // Verify list filter dropdown is populated with list names
+    const listFilterButton = page.locator('[data-testid="list-filter"]');
+
     // Initially shows first list (Work) by default - 2 incomplete reminders
     // Note: reminder-3 is completed and excluded by default
     const initialReminders = await page.locator('[data-testid="apple-reminder-item"]').count();
     expect(initialReminders).toBe(2);
 
-    // Verify it's showing Work list
-    const listFilterButton = page.locator('[data-testid="list-filter"]');
+    // Verify it's showing Work list (not "All Lists")
     await expect(listFilterButton).toContainText("Work");
+    await expect(listFilterButton).not.toContainText("All Lists");
 
     // Filter by Personal list
     await selectFromDropdown(page, "list-filter", "Personal");
