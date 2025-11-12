@@ -775,6 +775,7 @@ export class AppleCalendarService implements CalendarService {
       description: calendar.description,
       color: calendar.color,
       visible: calendar.visible,
+      provider: "Apple Calendar",
       metadata: {
         account: calendar.account,
         type: calendar.type,

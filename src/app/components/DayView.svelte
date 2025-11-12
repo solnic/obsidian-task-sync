@@ -11,6 +11,10 @@
   import type { Host } from "../core/host";
   import type { TaskSyncSettings } from "../types/settings";
   import { isPlanningActive } from "../stores/contextStore";
+  import {
+    filterByCalendars,
+    searchEvents,
+  } from "../utils/calendarFiltering";
 
   // Props
   interface Props {
@@ -134,6 +138,37 @@
     ...availableCalendars.map((cal) => cal.name),
   ]);
 
+  // Group calendars by provider for the filter dropdown
+  let calendarFilterGroups = $derived.by(() => {
+    // Group calendars by provider
+    const groups: Record<string, typeof availableCalendars> = {};
+
+    availableCalendars.forEach((cal) => {
+      const provider = cal.provider || "Other";
+      if (!groups[provider]) {
+        groups[provider] = [];
+      }
+      groups[provider].push(cal);
+    });
+
+    // Add "All calendars" option at the top
+    const allCalendarsGroup = {
+      label: "",
+      items: [{ value: "All calendars", label: "All calendars" }],
+    };
+
+    // Convert to array of groups
+    const providerGroups = Object.entries(groups).map(([provider, calendars]) => ({
+      label: provider,
+      items: calendars.map((cal) => ({
+        value: cal.name,
+        label: cal.name,
+      })),
+    }));
+
+    return [allCalendarsGroup, ...providerGroups];
+  });
+
   // Selected calendar names for FilterButton
   let selectedCalendarNames = $derived(
     availableCalendars
@@ -166,7 +201,7 @@
         selectedCalendarIds.length === availableCalendars.length ||
         selectedCalendarIds.length === 0
       ) {
-        selectedCalendarIds = []; // Will be treated as "all calendars" in loadEvents
+        selectedCalendarIds = []; // Will be treated as "all calendars" in filtering
       } else {
         selectedCalendarIds = availableCalendars.map((cal) => cal.id);
       }
@@ -187,47 +222,31 @@
         }
       }
     }
-    loadEvents();
+    // No need to call loadEvents() - filtering is now reactive via $effect
   }
 
   // Zoom controls are now handled by ObsidianDayView
 
-  // Search functionality
-  function searchEvents(
-    query: string,
-    eventList: CalendarEvent[]
-  ): CalendarEvent[] {
-    if (!query.trim()) {
-      return eventList;
-    }
-
-    const lowerQuery = query.toLowerCase();
-    return eventList.filter(
-      (event) =>
-        event.title.toLowerCase().includes(lowerQuery) ||
-        (event.description &&
-          event.description.toLowerCase().includes(lowerQuery)) ||
-        (event.location && event.location.toLowerCase().includes(lowerQuery)) ||
-        (event.calendar?.name &&
-          event.calendar.name.toLowerCase().includes(lowerQuery))
-    );
-  }
-
-  // Reactive filtering
+  // Reactive filtering - apply both calendar and search filters
   $effect(() => {
-    filteredEvents = searchEvents(searchQuery, calendarEvents);
+    let events = calendarEvents;
+
+    // First filter by selected calendars
+    events = filterByCalendars(
+      events,
+      selectedCalendarIds,
+      availableCalendars.length
+    );
+
+    // Then apply search filter
+    events = searchEvents(searchQuery, events);
+
+    filteredEvents = events;
   });
 
   // Reactive effect to reload events when selectedDate changes
   $effect(() => {
     if (availableCalendars.length > 0) {
-      loadEvents(selectedDate);
-    }
-  });
-
-  // Separate effect to reload events when calendar selection changes
-  $effect(() => {
-    if (availableCalendars.length > 0 && selectedCalendarIds) {
       loadEvents(selectedDate);
     }
   });
@@ -402,7 +421,7 @@
               <FilterButton
                 label="Calendars"
                 currentValue={currentCalendarFilterValue}
-                options={calendarFilterOptions}
+                groups={calendarFilterGroups}
                 onselect={handleCalendarFilterSelect}
                 placeholder="All calendars"
                 testId="calendar-filter"

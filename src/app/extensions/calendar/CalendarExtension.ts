@@ -7,8 +7,8 @@
 import { Plugin } from "obsidian";
 import { Extension, extensionRegistry, EntityType } from "../../core/extension";
 import { eventBus } from "../../core/events";
-import { derived, writable, type Readable } from "svelte/store";
-import type { Task } from "../../core/entities";
+import { writable, type Readable } from "svelte/store";
+import { Task } from "../../core/entities";
 import {
   CalendarService,
   calendarServiceRegistry,
@@ -25,7 +25,7 @@ export class CalendarExtension implements Extension {
   readonly id = "calendar";
   readonly name = "Calendar";
   readonly version = "1.0.0";
-  readonly supportedEntities: readonly EntityType[] = []; // No task integration
+  readonly supportedEntities: readonly EntityType[] = ["task"]; // Support task entities
 
   private initialized = false;
   private plugin: Plugin;
@@ -37,6 +37,9 @@ export class CalendarExtension implements Extension {
   private eventsStore = writable<CalendarEvent[]>([]);
   private loadingStore = writable<boolean>(false);
   private errorStore = writable<string | null>(null);
+
+  // Entity store - holds Task entities mapped from calendar events
+  private rawEntityStore = writable<Task[]>([]);
 
   constructor(settings: TaskSyncSettings, plugin: Plugin) {
     this.settings = settings;
@@ -78,8 +81,8 @@ export class CalendarExtension implements Extension {
     try {
       console.log("Loading CalendarExtension...");
 
-      // Load initial calendar data if any services are enabled
-      await this.refreshCalendarData();
+      // Don't load calendar data immediately - let the view component trigger it when needed
+      // This allows for proper stubbing in tests and avoids unnecessary API calls
 
       // Trigger extension loaded event
       eventBus.trigger({
@@ -119,10 +122,71 @@ export class CalendarExtension implements Extension {
 
   /**
    * Get observable tasks for this extension
-   * Returns empty array since calendar extension doesn't provide tasks
+   * Returns tasks mapped from calendar events
    */
   getTasks(): Readable<readonly Task[]> {
-    return derived([], () => []);
+    return this.rawEntityStore;
+  }
+
+  /**
+   * Get the extension's entity store (read-only)
+   */
+  getEntityStore(): Readable<Task[]> {
+    return this.rawEntityStore;
+  }
+
+  /**
+   * Update the extension's entity store
+   */
+  updateEntityStore(tasks: Task[]): void {
+    this.rawEntityStore.set(tasks);
+  }
+
+  /**
+   * Transform a calendar event to a task entity
+   */
+  transformEventToTask(event: CalendarEvent): Task {
+    const now = new Date();
+
+    return {
+      id: `calendar-${event.calendar.id}-${event.id}`,
+      title: event.title,
+      description: event.description,
+      status: "scheduled", // Calendar events are considered scheduled
+      done: false,
+      category: undefined,
+      priority: undefined,
+      parentTask: undefined,
+      project: undefined,
+      areas: [],
+      tags: [],
+      doDate: event.startDate,
+      dueDate: event.allDay ? event.endDate : event.startDate,
+      source: {
+        extension: "calendar",
+        keys: {
+          calendar: event.id,
+        },
+        data: {
+          calendarEventId: event.id,
+          calendarId: event.calendar.id,
+          calendarName: event.calendar.name,
+          location: event.location,
+          allDay: event.allDay,
+          eventUrl: event.url,
+        },
+      },
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  /**
+   * Convert calendar events to tasks and update entity store
+   */
+  private updateTasksFromEvents(events: CalendarEvent[]): void {
+    const tasks = events.map((event) => this.transformEventToTask(event));
+    this.updateEntityStore(tasks);
   }
 
   /**
@@ -198,27 +262,99 @@ export class CalendarExtension implements Extension {
    */
   async refresh(): Promise<void> {
     await this.refreshCalendarData();
+
+    // Also fetch today's events and convert to tasks for the entity store
+    try {
+      const events = await this.getTodayEvents();
+      this.updateTasksFromEvents(events);
+    } catch (error) {
+      console.error("Failed to update task entities from calendar events:", error);
+    }
   }
 
   /**
-   * Search tasks by query string (not applicable for calendar extension)
+   * Search tasks by query string
    */
   searchTasks(query: string, tasks: readonly Task[]): readonly Task[] {
-    return [];
+    if (!query.trim()) {
+      return tasks;
+    }
+
+    const lowerQuery = query.toLowerCase();
+    return tasks.filter((task) => {
+      // Search in title
+      if (task.title.toLowerCase().includes(lowerQuery)) {
+        return true;
+      }
+
+      // Search in description
+      if (task.description && task.description.toLowerCase().includes(lowerQuery)) {
+        return true;
+      }
+
+      // Search in calendar event metadata
+      const eventData = task.source.data;
+      if (eventData) {
+        if (eventData.location && eventData.location.toLowerCase().includes(lowerQuery)) {
+          return true;
+        }
+        if (eventData.calendarName && eventData.calendarName.toLowerCase().includes(lowerQuery)) {
+          return true;
+        }
+      }
+
+      return false;
+    });
   }
 
   /**
-   * Sort tasks (not applicable for calendar extension)
+   * Sort tasks
    */
   sortTasks(
     tasks: readonly Task[],
     sortFields: Array<{ key: string; direction: "asc" | "desc" }>
   ): readonly Task[] {
-    return [];
+    const tasksCopy = [...tasks];
+
+    tasksCopy.sort((a, b) => {
+      for (const { key, direction } of sortFields) {
+        let comparison = 0;
+
+        switch (key) {
+          case "title":
+            comparison = a.title.localeCompare(b.title);
+            break;
+          case "doDate":
+          case "startDate":
+            comparison = (a.doDate?.getTime() || 0) - (b.doDate?.getTime() || 0);
+            break;
+          case "dueDate":
+          case "endDate":
+            comparison = (a.dueDate?.getTime() || 0) - (b.dueDate?.getTime() || 0);
+            break;
+          case "createdAt":
+            comparison = (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0);
+            break;
+          case "updatedAt":
+            comparison = (a.updatedAt?.getTime() || 0) - (b.updatedAt?.getTime() || 0);
+            break;
+          default:
+            comparison = 0;
+        }
+
+        if (comparison !== 0) {
+          return direction === "asc" ? comparison : -comparison;
+        }
+      }
+
+      return 0;
+    });
+
+    return tasksCopy;
   }
 
   /**
-   * Filter tasks (not applicable for calendar extension)
+   * Filter tasks
    */
   filterTasks(
     tasks: readonly Task[],
@@ -227,9 +363,22 @@ export class CalendarExtension implements Extension {
       area?: string | null;
       source?: string | null;
       showCompleted?: boolean;
+      calendarId?: string | null;
     }
   ): readonly Task[] {
-    return [];
+    return tasks.filter((task) => {
+      // Filter by calendar ID if specified
+      if (criteria.calendarId && task.source.data?.calendarId !== criteria.calendarId) {
+        return false;
+      }
+
+      // Filter by completion status
+      if (!criteria.showCompleted && task.done) {
+        return false;
+      }
+
+      return true;
+    });
   }
 
   /**
