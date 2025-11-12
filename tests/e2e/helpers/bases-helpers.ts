@@ -244,6 +244,7 @@ export async function openBaseNoteStable(
 /**
  * Wait for the bases view to load and have data rendered.
  * This waits for the table structure and at least one task row to appear.
+ * In Obsidian 1.10.3+, also waits for the toolbar to be visible.
  */
 export async function waitForBaseViewToLoad(
   page: Page,
@@ -258,6 +259,13 @@ export async function waitForBaseViewToLoad(
   // Wait for table structure
   await page.waitForSelector(".bases-view .bases-table-container", {
     state: "visible",
+    timeout,
+  });
+
+  // Wait for toolbar to be visible (critical in Obsidian 1.10.3+)
+  // In Obsidian 1.10.3, the class changed from .query-toolbar to .bases-toolbar
+  await page.waitForSelector(".internal-embed.bases-embed .bases-toolbar", {
+    state: "attached",
     timeout,
   });
 
@@ -332,23 +340,38 @@ export async function switchBaseView(
   // Wait for bases view to be fully loaded first
   await waitForBaseViewToLoad(page, 3000);
 
+  // CRITICAL: Wait for the toolbar to be visible in embedded bases
+  // In Obsidian 1.10.3+, embedded bases render asynchronously and the toolbar
+  // may not be immediately available even after the table is present
+  // In Obsidian 1.10.3, the class changed from .query-toolbar to .bases-toolbar
+  await page.waitForSelector(".internal-embed.bases-embed .bases-toolbar", {
+    state: "visible",
+    timeout: 5000,
+  });
+
+  // Give the toolbar additional time to fully initialize
+  await page.waitForTimeout(300);
+
   // Find the views dropdown button in the toolbar
-  // The .query-toolbar and .bases-view are siblings, not parent-child
-  // Look for the specific button inside the .mod-views toolbar item
-  let viewsButton = page
-    .locator(".query-toolbar .query-toolbar-item.mod-views .text-icon-button")
+  // Scope to the embedded bases view to avoid conflicts with other UI elements
+  // In Obsidian 1.10.3, the views menu is now .bases-toolbar-views-menu
+  const embedScope = page.locator(".internal-embed.bases-embed");
+
+  // Try to find the views button using the new class structure (1.10.3+)
+  let viewsButton = embedScope
+    .locator(".bases-toolbar .bases-toolbar-views-menu .text-icon-button")
     .first();
 
-  // If not found, try without the specific toolbar item class
+  // Fallback to less specific selector
   if ((await viewsButton.count()) === 0) {
-    viewsButton = page
-      .locator(".query-toolbar .mod-views .text-icon-button")
+    viewsButton = embedScope
+      .locator(".bases-toolbar .bases-toolbar-views-menu")
       .first();
   }
 
-  // If still not found, try any text-icon-button in query-toolbar (less specific)
+  // Another fallback for any button in the views menu area
   if ((await viewsButton.count()) === 0) {
-    viewsButton = page.locator(".query-toolbar .text-icon-button").first();
+    viewsButton = embedScope.locator(".bases-toolbar-views-menu").first();
   }
 
   if ((await viewsButton.count()) === 0) {
@@ -357,6 +380,9 @@ export async function switchBaseView(
       const app = (window as any).app;
       const activeFile = app.workspace.getActiveFile();
       if (activeFile?.path.startsWith("Projects/")) {
+        return activeFile.basename;
+      }
+      if (activeFile?.path.startsWith("Areas/")) {
         return activeFile.basename;
       }
       return null;
