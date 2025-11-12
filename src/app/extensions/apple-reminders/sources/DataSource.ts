@@ -9,6 +9,7 @@ import { generateId } from "../../../utils/idGenerator";
 import type { AppleReminder } from "../../../types/apple-reminders";
 import type { AppleRemindersExtension } from "../AppleRemindersExtension";
 import type { DataSource, DataSourceWatchCallbacks } from "../../../sources/DataSource";
+import { getTaskStatusesFromTypeNote, getTaskPrioritiesFromTypeNote } from "../../../utils/typeNoteHelpers";
 
 /**
  * Data source for Apple Reminders
@@ -64,32 +65,49 @@ export class AppleRemindersDataSource implements DataSource<Task> {
    */
   private async transformToTask(reminder: AppleReminder): Promise<Task | null> {
     try {
-      // Map Apple Reminders priority (0-9) to task priority strings
-      const priorityMap: Record<number, string> = {
-        0: "", // No priority
-        1: "low",
-        2: "low",
-        3: "low",
-        4: "medium",
-        5: "medium",
-        6: "medium",
-        7: "high",
-        8: "high",
-        9: "high",
-      };
+      // Get the plugin's typeNote instance to access task note type configuration
+      const plugin = (this.extension as any).plugin;
+      const typeNote = plugin?.typeNote;
+
+      // Get configured task statuses and priorities from note type
+      const taskStatuses = typeNote ? getTaskStatusesFromTypeNote(typeNote) : [];
+      const taskPriorities = typeNote ? getTaskPrioritiesFromTypeNote(typeNote) : [];
+
+      // Find the "done" status from configured statuses
+      const doneStatus = taskStatuses.find(s => s.isDone);
+      const defaultStatus = taskStatuses.length > 0 ? taskStatuses[0] : undefined;
+      
+      // Map Apple Reminders priority (0-9) to configured task priority names
+      // Priority mapping: 0=none, 1-3=low, 4-6=medium, 7-9=high
+      let priorityName = "";
+      if (reminder.priority > 0 && taskPriorities.length > 0) {
+        if (reminder.priority >= 7) {
+          // High priority (7-9)
+          const highPriority = taskPriorities.find(p => p.name.toLowerCase() === "high" || p.name.toLowerCase() === "urgent");
+          priorityName = highPriority?.name || "";
+        } else if (reminder.priority >= 4) {
+          // Medium priority (4-6)
+          const mediumPriority = taskPriorities.find(p => p.name.toLowerCase() === "medium");
+          priorityName = mediumPriority?.name || "";
+        } else {
+          // Low priority (1-3)
+          const lowPriority = taskPriorities.find(p => p.name.toLowerCase() === "low");
+          priorityName = lowPriority?.name || "";
+        }
+      }
 
       // Create task data
       const taskData = {
         title: reminder.title,
         description: reminder.notes || "",
-        status: reminder.completed ? "done" : "todo",
+        status: reminder.completed ? (doneStatus?.name || "Done") : (defaultStatus?.name || "Backlog"),
         done: reminder.completed,
         category: "reminder", // Default category for Apple Reminders
-        priority: priorityMap[reminder.priority] || "",
+        priority: priorityName,
         parentTask: "",
         project: "",
         areas: [] as string[],
-        tags: [`apple-reminders`, `list:${reminder.list.name.toLowerCase().replace(/\s+/g, "-")}`],
+        tags: [] as string[], // Don't set tags for Apple Reminders
         doDate: null as Date | null,
         dueDate: reminder.dueDate || null,
         createdAt: reminder.creationDate || new Date(),

@@ -191,7 +191,7 @@
     reminderListsSetting.addTextArea((textArea) => {
       textArea
         .setPlaceholder("Enter reminder list names, one per line")
-        .setValue(settings.integrations.appleReminders.reminderLists.join('\n'))
+        .setValue(settings.integrations.appleReminders.reminderLists?.join('\n') || '')
         .onChange(async (value) => {
           const lists = value
             .split('\n')
@@ -206,22 +206,6 @@
       textArea.inputEl.style.width = "100%";
       textArea.inputEl.style.resize = "vertical";
     });
-
-    // Show available lists if loaded
-    if (availableReminderLists.length > 0) {
-      // Remove existing div if it exists to avoid duplicates
-      if (availableListsDiv) {
-        availableListsDiv.remove();
-      }
-
-      availableListsDiv = appleRemindersContainer.createDiv({
-        cls: "task-sync-available-lists"
-      });
-      availableListsDiv.createEl("small", {
-        text: `Available lists: ${availableReminderLists.join(', ')}`,
-        cls: "task-sync-hint"
-      });
-    }
   }
 
   // Reactive statement to create/destroy settings based on toggle state
@@ -238,6 +222,29 @@
         .forEach((child) => child.remove()); // Keep the warning and toggle
       // Clear loaded lists
       availableReminderLists = [];
+      availableListsDiv = null;
+    }
+  });
+
+  // Separate effect to manage available lists display
+  $effect(() => {
+    // Show available lists if loaded
+    if (availableReminderLists.length > 0 && enabled && isPlatformSupported) {
+      // Remove existing div if it exists to avoid duplicates
+      if (availableListsDiv) {
+        availableListsDiv.remove();
+      }
+
+      availableListsDiv = appleRemindersContainer.createDiv({
+        cls: "task-sync-available-lists"
+      });
+      availableListsDiv.createEl("small", {
+        text: `Available lists: ${availableReminderLists.join(', ')}`,
+        cls: "task-sync-hint"
+      });
+    } else if (availableListsDiv) {
+      // Clean up the div if lists are empty or integration is disabled
+      availableListsDiv.remove();
       availableListsDiv = null;
     }
   });
