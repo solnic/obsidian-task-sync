@@ -656,8 +656,7 @@ export class AppleRemindersExtension implements Extension {
     const defaultCategory = categoryProp.default;
 
     // Find the "done" status from the status options
-    const doneStatus = statusProp.doneOptions[0]; // Get first done status
-    const doneStatusValue = doneStatus?.value ?? "Done";
+    const doneStatus = statusProp.doneOptions[0];
 
     // Map Apple Reminders priority (0-9) to configured task priority names
     // Priority mapping: 0=none, 1-3=low, 4-6=medium, 7-9=high
@@ -688,7 +687,7 @@ export class AppleRemindersExtension implements Extension {
       title: reminder.title,
       description: reminder.notes || "",
       category: defaultCategory,
-      status: reminder.completed ? doneStatusValue : defaultStatus,
+      status: reminder.completed ? doneStatus.value : defaultStatus,
       priority: priorityName,
       done: reminder.completed,
       project: "",

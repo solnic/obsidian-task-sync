@@ -133,6 +133,7 @@ function enhanceNoteType(noteType: NoteType): NoteType {
 export class TypeRegistry {
   private noteTypes: Map<string, NoteType> = new Map();
   private versionHistory: Map<string, SemanticVersion[]> = new Map();
+  private enhancedNoteTypes: Map<string, NoteType> = new Map();
 
   /**
    * Register a new note type
@@ -183,6 +184,9 @@ export class TypeRegistry {
     // Register the note type
     this.noteTypes.set(noteType.id, noteType);
 
+    // Invalidate cache for this note type
+    this.enhancedNoteTypes.delete(noteType.id);
+
     // Update version history
     const versions = this.versionHistory.get(noteType.id) || [];
     if (!versions.includes(noteType.version)) {
@@ -208,6 +212,7 @@ export class TypeRegistry {
     const deleted = this.noteTypes.delete(noteTypeId);
     if (deleted) {
       this.versionHistory.delete(noteTypeId);
+      this.enhancedNoteTypes.delete(noteTypeId);
     }
     return deleted;
   }
@@ -218,12 +223,21 @@ export class TypeRegistry {
    * Returns undefined if the note type is not registered
    */
   get(noteTypeId: string): NoteType | undefined {
+    // Check cache first
+    if (this.enhancedNoteTypes.has(noteTypeId)) {
+      return this.enhancedNoteTypes.get(noteTypeId);
+    }
+
     const noteType = this.noteTypes.get(noteTypeId);
     if (!noteType) return undefined;
 
     // Reconstruct schemas and enhance properties
     const reconstructed = reconstructNoteTypeSchemas(noteType);
-    return enhanceNoteType(reconstructed);
+    const enhanced = enhanceNoteType(reconstructed);
+
+    // Cache the result
+    this.enhancedNoteTypes.set(noteTypeId, enhanced);
+    return enhanced;
   }
 
   /**

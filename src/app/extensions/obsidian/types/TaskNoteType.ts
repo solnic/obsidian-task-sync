@@ -108,7 +108,7 @@ export function buildTaskNoteType(): NoteType {
   const statusValues = statusOptions.map((opt) => opt.value);
 
   // Find default values from options marked as default
-  // These are guaranteed to exist due to validation above
+  // These are GUARANTEED to exist due to validation above - non-null assertion is safe here
   const defaultCategory = categoryOptions.find((opt) => opt.isDefault)!.value;
   const defaultPriority = priorityOptions.find((opt) => opt.isDefault)!.value;
   const defaultStatus = statusOptions.find((opt) => opt.isDefault)!.value;
