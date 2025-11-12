@@ -75,7 +75,7 @@ export class AppleRemindersDataSource implements DataSource<Task> {
 
       // Find the "done" status from configured statuses
       const doneStatus = taskStatuses.find(s => s.isDone);
-      const defaultStatus = taskStatuses.length > 0 ? taskStatuses[0] : undefined;
+      const defaultStatus = taskStatuses[0]
 
       // Map Apple Reminders priority (0-9) to configured task priority names
       // Priority mapping: 0=none, 1-3=low, 4-6=medium, 7-9=high
@@ -99,16 +99,11 @@ export class AppleRemindersDataSource implements DataSource<Task> {
       // Create task data
       const taskData = {
         title: reminder.title,
-        description: reminder.notes || "",
-        status: reminder.completed ? (doneStatus?.name || "Done") : (defaultStatus?.name || "Backlog"),
+        description: reminder.notes,
+        status: reminder.completed ? doneStatus.name : defaultStatus.name,
         done: reminder.completed,
         category: "reminder", // Default category for Apple Reminders
         priority: priorityName,
-        parentTask: "",
-        project: "",
-        areas: [] as string[],
-        tags: [] as string[], // Don't set tags for Apple Reminders
-        doDate: null as Date | null,
         dueDate: reminder.dueDate || null,
         createdAt: reminder.creationDate || new Date(),
         updatedAt: reminder.modificationDate || new Date(),
