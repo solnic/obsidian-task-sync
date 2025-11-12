@@ -44,10 +44,24 @@ export class AppleCalendarService implements CalendarService {
   private credentials?: { username: string; password: string };
   private calendarHomeUrl?: string;
 
+  // Track pending requests to prevent duplicate concurrent fetches
+  private pendingEventRequests: Map<string, Promise<CalendarEvent[]>> = new Map();
+
   constructor(settings: TaskSyncSettings, plugin: Plugin) {
     this.settings = settings;
     this.plugin = plugin;
     this.initializeCredentials();
+  }
+
+  /**
+   * Generate a cache key for event requests
+   * Normalizes dates to day-level to ensure same-day requests hit the cache
+   */
+  private getEventCacheKey(startDate: Date, endDate: Date): string {
+    // Normalize dates to day-level (YYYY-MM-DD) to avoid cache misses due to time precision
+    const startDay = startDate.toISOString().split('T')[0];
+    const endDay = endDate.toISOString().split('T')[0];
+    return `events-${startDay}-${endDay}`;
   }
 
   /**
@@ -99,6 +113,13 @@ export class AppleCalendarService implements CalendarService {
    */
   async initialize(): Promise<void> {
     await this.setupCaches();
+  }
+
+  /**
+   * Load the service - preload caches from persistent storage
+   * Should be called after initialize() during the load phase
+   */
+  async load(): Promise<void> {
     await this.preloadCaches();
   }
 
@@ -144,6 +165,7 @@ export class AppleCalendarService implements CalendarService {
     if (this.eventsCache) {
       await this.eventsCache.clear();
     }
+    this.pendingEventRequests.clear();
   }
 
   /**
@@ -294,6 +316,18 @@ export class AppleCalendarService implements CalendarService {
    * Get all available calendars
    */
   async getCalendars(): Promise<Calendar[]> {
+    // Check cache first
+    if (this.calendarsCache) {
+      const cached = await this.calendarsCache.get("calendars");
+      if (cached && cached.length > 0) {
+        console.log(`[AppleCalendar] Using ${cached.length} cached calendars`);
+        return cached.map(this.convertToGenericCalendar);
+      }
+    }
+
+    // Cache miss - fetch from server
+    console.log("[AppleCalendar] No cached calendars, fetching from CalDAV server");
+
     if (!this.credentials) {
       throw new Error("CalDAV credentials not configured");
     }
@@ -310,6 +344,7 @@ export class AppleCalendarService implements CalendarService {
       // Cache the results
       if (this.calendarsCache) {
         await this.calendarsCache.set("calendars", appleCalendars);
+        console.log(`[AppleCalendar] Cached ${appleCalendars.length} calendars`);
       }
 
       return appleCalendars.map(this.convertToGenericCalendar);
@@ -488,6 +523,8 @@ export class AppleCalendarService implements CalendarService {
     endDate: Date,
     _options?: CalendarEventFetchOptions
   ): Promise<CalendarEvent[]> {
+    console.log(`[AppleCalendar] getEvents called for ${calendarIds.length || 'all'} calendars from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
     if (!this.credentials) {
       throw new Error("CalDAV credentials not configured");
     }
@@ -504,17 +541,116 @@ export class AppleCalendarService implements CalendarService {
           )
         : calendars;
 
-    const allEvents: CalendarEvent[] = [];
+    // Generate cache key based on date range only
+    const cacheKey = this.getEventCacheKey(startDate, endDate);
+    console.log(`[AppleCalendar] Cache key: ${cacheKey}`);
 
-    for (const calendar of targetCalendars) {
-      const events = await this.fetchCalendarEvents(
-        calendar,
-        startDate,
-        endDate
-      );
-      allEvents.push(...events);
+    // Check persistent cache first
+    if (this.eventsCache) {
+      const cachedEvents = await this.eventsCache.get(cacheKey);
+      if (cachedEvents && cachedEvents.length > 0) {
+        console.log(`[AppleCalendar] ✓ Using cached events (${cachedEvents.length} events from persistent cache)`);
+        // Convert cached events to CalendarEvent format
+        return cachedEvents.map(event => ({
+          id: event.id,
+          title: event.title,
+          description: event.description || "",
+          location: event.location || "",
+          startDate: event.startDate,
+          endDate: event.endDate,
+          allDay: event.allDay,
+          calendar: {
+            id: event.calendar.id,
+            name: event.calendar.name,
+            description: event.calendar.description,
+            color: event.calendar.color,
+            visible: event.calendar.visible,
+            provider: "Apple Calendar",
+            metadata: {
+              account: event.calendar.account,
+              type: event.calendar.type,
+            }
+          },
+          url: event.url,
+          metadata: {
+            status: event.status,
+            availability: event.availability,
+            attendees: event.attendees,
+            organizer: event.organizer,
+            recurrenceRule: event.recurrenceRule,
+          }
+        }));
+      }
+      console.log(`[AppleCalendar] ✗ No cached events found`);
     }
-    return allEvents;
+
+    // Check if there's already a pending request for this data
+    const pendingRequest = this.pendingEventRequests.get(cacheKey);
+    if (pendingRequest) {
+      console.log(`[AppleCalendar] Request already in progress, waiting for result...`);
+      return pendingRequest;
+    }
+
+    // Create new request promise
+    const requestPromise = (async () => {
+      try {
+        console.log(`[AppleCalendar] Fetching events from ${targetCalendars.length} calendars`);
+        const allEvents: CalendarEvent[] = [];
+
+        for (const calendar of targetCalendars) {
+          const events = await this.fetchCalendarEvents(
+            calendar,
+            startDate,
+            endDate
+          );
+          allEvents.push(...events);
+        }
+
+        console.log(`[AppleCalendar] Fetched total of ${allEvents.length} events`);
+
+        // Cache the results in persistent storage
+        if (this.eventsCache && allEvents.length > 0) {
+          // Convert to schema format for caching
+          const eventsToCache = allEvents.map(event => ({
+            id: event.id,
+            title: event.title,
+            description: event.description,
+            location: event.location,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            allDay: event.allDay,
+            status: (event.metadata?.status as "confirmed" | "tentative" | "cancelled") || "confirmed",
+            availability: (event.metadata?.availability as "busy" | "free") || "busy",
+            calendar: {
+              id: event.calendar.id,
+              name: event.calendar.name,
+              description: event.calendar.description,
+              color: event.calendar.color,
+              visible: event.calendar.visible,
+              account: event.calendar.metadata?.account,
+              type: event.calendar.metadata?.type,
+            },
+            url: event.url,
+            attendees: event.metadata?.attendees,
+            organizer: event.metadata?.organizer,
+            recurrenceRule: event.metadata?.recurrenceRule,
+          }));
+
+          await this.eventsCache.set(cacheKey, eventsToCache);
+          console.log(`[AppleCalendar] ✓ Cached ${allEvents.length} events to persistent storage with key: ${cacheKey}`);
+        }
+
+        return allEvents;
+      } finally {
+        // Remove from pending requests
+        this.pendingEventRequests.delete(cacheKey);
+      }
+    })();
+
+    // Track pending request
+    this.pendingEventRequests.set(cacheKey, requestPromise);
+
+    return requestPromise;
   }
 
   /**
@@ -775,6 +911,7 @@ export class AppleCalendarService implements CalendarService {
       description: calendar.description,
       color: calendar.color,
       visible: calendar.visible,
+      provider: "Apple Calendar",
       metadata: {
         account: calendar.account,
         type: calendar.type,

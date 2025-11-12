@@ -8,11 +8,18 @@
     isSeparator?: boolean;
     isRecent?: boolean;
     customContent?: any; // For rendering badges or custom HTML
+    groupLabel?: string; // Label for group header
+  }
+
+  interface DropdownGroup {
+    label: string;
+    items: DropdownItem[];
   }
 
   interface Props {
     anchor: HTMLElement | null;
-    items: DropdownItem[];
+    items?: DropdownItem[];
+    groups?: DropdownGroup[];
     selectedValue?: string;
     selectedValues?: string[];
     searchable?: boolean;
@@ -26,7 +33,8 @@
 
   let {
     anchor,
-    items,
+    items = [],
+    groups = [],
     selectedValue = "",
     selectedValues = [],
     searchable = false,
@@ -44,15 +52,44 @@
   let menuPosition = $state({ top: 0, left: 0 });
   let dropdownScope: Scope | null = null;
 
+  // Flatten groups into items if groups are provided
+  let allItems = $derived.by(() => {
+    if (groups.length > 0) {
+      const flattened: DropdownItem[] = [];
+      groups.forEach((group, index) => {
+        // Add group header only if label is not empty
+        if (group.label && group.label.trim()) {
+          flattened.push({
+            value: `__group_${index}__`,
+            label: group.label,
+            groupLabel: group.label,
+            isSeparator: false,
+          });
+        }
+        // Add group items
+        flattened.push(...group.items);
+        // Add separator after group (except for last group)
+        if (index < groups.length - 1) {
+          flattened.push({
+            value: `__sep_${index}__`,
+            isSeparator: true,
+          });
+        }
+      });
+      return flattened;
+    }
+    return items;
+  });
+
   // Filter items based on search query
   let filteredItems = $derived(
     searchable && searchQuery
-      ? items.filter((item) => {
-          if (item.isSeparator) return false;
+      ? allItems.filter((item) => {
+          if (item.isSeparator || item.groupLabel) return false;
           const label = item.label || item.value;
           return label.toLowerCase().includes(searchQuery.toLowerCase());
         })
-      : items
+      : allItems
   );
 
   onMount(() => {
@@ -217,6 +254,13 @@
           class="task-sync-selector-separator"
           data-testid="{testId}-separator"
         ></div>
+      {:else if item.groupLabel}
+        <div
+          class="task-sync-selector-group-header"
+          data-testid="{testId}-group-header"
+        >
+          {item.groupLabel}
+        </div>
       {:else if item.isRecent && onRemoveRecent}
         <div
           class="task-sync-selector-item task-sync-selector-item-container"

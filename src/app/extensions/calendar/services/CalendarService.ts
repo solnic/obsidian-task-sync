@@ -52,6 +52,9 @@ export interface CalendarService {
   /** Initialize the service with any required setup */
   initialize?(): Promise<void>;
 
+  /** Load the service - called during load phase to restore cached data */
+  load?(): Promise<void>;
+
   /** Clean up resources when service is no longer needed */
   dispose?(): void;
 }

@@ -11,6 +11,10 @@
   import type { Host } from "../core/host";
   import type { TaskSyncSettings } from "../types/settings";
   import { isPlanningActive } from "../stores/contextStore";
+  import {
+    filterByCalendars,
+    searchEvents,
+  } from "../utils/calendarFiltering";
 
   // Props
   interface Props {
@@ -67,7 +71,10 @@
 
       // Subscribe to calendars from the extension
       const calendarsStore = calendarExtension.getCalendars();
-      calendarsStore.subscribe((calendars) => {
+
+      let initialCalendars: Calendar[] = [];
+      const unsubscribe = calendarsStore.subscribe((calendars) => {
+        initialCalendars = calendars;
         availableCalendars = calendars;
 
         // Pre-select calendars based on settings
@@ -87,9 +94,13 @@
         }
       });
 
-      // Trigger refresh to load calendars
+      // Always refresh to load calendars from cache or API
+      // Since services check cache first, this won't make unnecessary API calls
+      console.log("[DayView] Loading calendars (from cache or API)");
       await calendarExtension.refresh();
-      await loadEvents();
+
+      // Don't call loadEvents() here - let the reactive $effect handle it
+      // This prevents duplicate API calls
     } catch (err: any) {
       error = `Failed to load calendars: ${err.message}`;
     } finally {
@@ -134,6 +145,37 @@
     ...availableCalendars.map((cal) => cal.name),
   ]);
 
+  // Group calendars by provider for the filter dropdown
+  let calendarFilterGroups = $derived.by(() => {
+    // Group calendars by provider
+    const groups: Record<string, typeof availableCalendars> = {};
+
+    availableCalendars.forEach((cal) => {
+      const provider = cal.provider || "Other";
+      if (!groups[provider]) {
+        groups[provider] = [];
+      }
+      groups[provider].push(cal);
+    });
+
+    // Add "All calendars" option at the top
+    const allCalendarsGroup = {
+      label: "",
+      items: [{ value: "All calendars", label: "All calendars" }],
+    };
+
+    // Convert to array of groups
+    const providerGroups = Object.entries(groups).map(([provider, calendars]) => ({
+      label: provider,
+      items: calendars.map((cal) => ({
+        value: cal.name,
+        label: cal.name,
+      })),
+    }));
+
+    return [allCalendarsGroup, ...providerGroups];
+  });
+
   // Selected calendar names for FilterButton
   let selectedCalendarNames = $derived(
     availableCalendars
@@ -166,7 +208,7 @@
         selectedCalendarIds.length === availableCalendars.length ||
         selectedCalendarIds.length === 0
       ) {
-        selectedCalendarIds = []; // Will be treated as "all calendars" in loadEvents
+        selectedCalendarIds = []; // Will be treated as "all calendars" in filtering
       } else {
         selectedCalendarIds = availableCalendars.map((cal) => cal.id);
       }
@@ -187,48 +229,42 @@
         }
       }
     }
-    loadEvents();
+    // No need to call loadEvents() - filtering is now reactive via $effect
   }
 
   // Zoom controls are now handled by ObsidianDayView
 
-  // Search functionality
-  function searchEvents(
-    query: string,
-    eventList: CalendarEvent[]
-  ): CalendarEvent[] {
-    if (!query.trim()) {
-      return eventList;
-    }
-
-    const lowerQuery = query.toLowerCase();
-    return eventList.filter(
-      (event) =>
-        event.title.toLowerCase().includes(lowerQuery) ||
-        (event.description &&
-          event.description.toLowerCase().includes(lowerQuery)) ||
-        (event.location && event.location.toLowerCase().includes(lowerQuery)) ||
-        (event.calendar?.name &&
-          event.calendar.name.toLowerCase().includes(lowerQuery))
-    );
-  }
-
-  // Reactive filtering
+  // Reactive filtering - apply both calendar and search filters
   $effect(() => {
-    filteredEvents = searchEvents(searchQuery, calendarEvents);
+    let events = calendarEvents;
+
+    // First filter by selected calendars
+    events = filterByCalendars(
+      events,
+      selectedCalendarIds,
+      availableCalendars.length
+    );
+
+    // Then apply search filter
+    events = searchEvents(searchQuery, events);
+
+    filteredEvents = events;
   });
+
+  // Track previous date to avoid redundant loads
+  let previousDate = $state<string | null>(null);
 
   // Reactive effect to reload events when selectedDate changes
   $effect(() => {
-    if (availableCalendars.length > 0) {
-      loadEvents(selectedDate);
-    }
-  });
+    // Only load events when the date actually changes, not when calendars load
+    const currentDateStr = selectedDate.toISOString();
 
-  // Separate effect to reload events when calendar selection changes
-  $effect(() => {
-    if (availableCalendars.length > 0 && selectedCalendarIds) {
-      loadEvents(selectedDate);
+    if (availableCalendars.length > 0 && previousDate !== currentDateStr) {
+      console.log(`[DayView] Date changed from ${previousDate} to ${currentDateStr}, loading events`);
+      previousDate = currentDateStr;
+      loadEvents(selectedDate).catch(err => {
+        console.error('[DayView] Failed to load events:', err);
+      });
     }
   });
 
@@ -402,7 +438,7 @@
               <FilterButton
                 label="Calendars"
                 currentValue={currentCalendarFilterValue}
-                options={calendarFilterOptions}
+                groups={calendarFilterGroups}
                 onselect={handleCalendarFilterSelect}
                 placeholder="All calendars"
                 testId="calendar-filter"
