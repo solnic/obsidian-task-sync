@@ -5,14 +5,13 @@
   // Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
   "image": "mcr.microsoft.com/devcontainers/typescript-node",
   "features": {
-    "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {}
+    "ghcr.io/devcontainers/features/github-cli:latest": {},
+    "ghcr.io/nils-geistmann/devcontainers-features/zsh:latest": {}
   },
   "customizations": {
     "vscode": {
       "extensions": [
         "svelte.svelte-vscode",
-        "Augment.vscode-augment",
         "kahole.magit",
         "esbenp.prettier-vscode"
       ]
