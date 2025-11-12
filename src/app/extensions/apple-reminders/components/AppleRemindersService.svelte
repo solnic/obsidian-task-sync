@@ -18,6 +18,7 @@
   import type { AppleRemindersExtension } from "../AppleRemindersExtension";
   import type { DailyPlanningExtension } from "../../daily-planning/DailyPlanningExtension";
   import { getContextStore } from "../../../stores/contextStore";
+  import type { AppleRemindersRefreshProgress } from "../AppleRemindersExtension";
 
   interface SortField {
     key: string;
@@ -112,6 +113,10 @@
 
   // Subscribe to the store using Svelte's auto-subscription
   let extensionTasks = $derived($extensionTasksStore);
+
+  // Subscribe to refresh progress
+  const refreshProgressStore = appleRemindersExtension.getRefreshProgress();
+  let refreshProgress = $derived($refreshProgressStore);
 
   /**
    * Apply filters, search, and sort to extension tasks
@@ -233,7 +238,9 @@
   }
 
   async function loadInitialData(): Promise<void> {
-    if (hasLoadedInitialData) {
+    // Prevent multiple simultaneous loads
+    if (hasLoadedInitialData || appleRemindersExtension.getIsRefreshing()) {
+      console.log('🍎 Initial data already loaded or loading, skipping...');
       return;
     }
 
@@ -247,7 +254,17 @@
       if (permissionStatus === "granted") {
         // Load available reminder lists
         await loadReminderLists();
+
+        // Trigger refresh if not already in progress
+        // The extension's load() method already starts a refresh asynchronously,
+        // so we only need to wait if it hasn't started yet
+        if (!appleRemindersExtension.getIsRefreshing()) {
+          await appleRemindersExtension.refresh();
+        }
       }
+    } catch (err: any) {
+      console.error("Failed to load initial data:", err);
+      error = err.message;
     } finally {
       isLoading = false;
     }
@@ -293,12 +310,18 @@
   }
 
   async function refresh(): Promise<void> {
+    // Check if already refreshing to prevent multiple simultaneous refreshes
+    if (appleRemindersExtension.getIsRefreshing()) {
+      console.log('🍎 Refresh already in progress, skipping...');
+      return;
+    }
+
     try {
       // Show loading state
       isLoading = true;
       error = null;
 
-      // Use extension's refresh method
+      // Use extension's refresh method (which has its own loading guard)
       await appleRemindersExtension.refresh();
 
       // Reload lists for the UI dropdowns
@@ -479,6 +502,42 @@
     />
   </header>
 
+  <!-- Progress Indicator -->
+  {#if refreshProgress.status !== 'idle' && refreshProgress.status !== 'complete'}
+    <div class="task-sync-progress-container" data-testid="refresh-progress">
+      <div class="task-sync-progress-header">
+        <span class="task-sync-progress-status">
+          {#if refreshProgress.status === 'checking-permissions'}
+            Checking permissions...
+          {:else if refreshProgress.status === 'fetching-lists'}
+            Fetching reminder lists...
+          {:else if refreshProgress.status === 'fetching-reminders'}
+            Fetching reminders{refreshProgress.currentList ? ` from "${refreshProgress.currentList}"` : ''}...
+          {:else if refreshProgress.status === 'processing'}
+            Processing reminders...
+          {:else if refreshProgress.status === 'error'}
+            <span class="task-sync-progress-error">Error: {refreshProgress.error || 'Unknown error'}</span>
+          {/if}
+        </span>
+        <span class="task-sync-progress-percentage">{refreshProgress.percentage}%</span>
+      </div>
+
+      <div class="task-sync-progress-bar">
+        <div
+          class="task-sync-progress-bar-fill"
+          style="width: {refreshProgress.percentage}%"
+        ></div>
+      </div>
+
+      {#if refreshProgress.status === 'fetching-reminders' && refreshProgress.totalLists > 0}
+        <div class="task-sync-progress-details">
+          <span>Lists: {refreshProgress.processedLists} / {refreshProgress.totalLists}</span>
+          <span>Reminders: {refreshProgress.processedReminders}</span>
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   <!-- Content Section -->
   <div class="task-sync-task-list-container">
     {#if !appleRemindersExtension.isEnabled()}
@@ -493,11 +552,11 @@
       <div class="task-sync-error-message" data-testid="permission-denied-message">
         Apple Reminders access denied. Please grant permission in System Preferences > Security & Privacy > Privacy > Reminders.
       </div>
-    {:else if error}
+    {:else if error && refreshProgress.status !== 'error'}
       <div class="task-sync-error-message">
         {error}
       </div>
-    {:else if isLoading}
+    {:else if isLoading && refreshProgress.status === 'idle'}
       <div class="task-sync-loading-indicator" data-testid="loading-indicator">
         Loading reminders...
       </div>

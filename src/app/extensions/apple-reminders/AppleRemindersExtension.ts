@@ -37,6 +37,20 @@ import { EntitiesOperations } from "../../core/entities-base";
 import { getTaskStatusesFromTypeNote, getTaskPrioritiesFromTypeNote, getTaskCategoriesFromTypeNote, type TaskStatus, type TaskPriority } from "../../utils/typeNoteHelpers";
 
 /**
+ * Progress tracking interface for Apple Reminders refresh operations
+ */
+export interface AppleRemindersRefreshProgress {
+  status: 'idle' | 'checking-permissions' | 'fetching-lists' | 'fetching-reminders' | 'processing' | 'complete' | 'error';
+  currentList?: string;
+  processedLists: number;
+  totalLists: number;
+  processedReminders: number;
+  totalReminders: number;
+  percentage: number;
+  error?: string;
+}
+
+/**
  * EntityDataProvider for Apple Reminders extension
  * Handles reading Apple Reminders data for cross-source synchronization
  */
@@ -128,6 +142,20 @@ export class AppleRemindersExtension implements Extension {
 
   // Task operations for creating task files
   private taskOperations: EntitiesOperations;
+
+  // Loading guard to prevent multiple simultaneous refresh operations
+  private isRefreshing = false;
+  private refreshPromise?: Promise<void>;
+
+  // Progress tracking for UI feedback
+  private refreshProgress = writable<AppleRemindersRefreshProgress>({
+    status: 'idle',
+    processedLists: 0,
+    totalLists: 0,
+    processedReminders: 0,
+    totalReminders: 0,
+    percentage: 0,
+  });
 
   constructor(plugin: Plugin, settings: TaskSyncSettings) {
     this.plugin = plugin;
@@ -231,10 +259,7 @@ export class AppleRemindersExtension implements Extension {
       // Preload caches with existing data
       await this.preloadCaches();
 
-      // Load initial data
-      await this.refresh();
-
-      // Trigger extension loaded event
+      // Trigger extension loaded event immediately (don't wait for data refresh)
       eventBus.trigger({
         type: "extension.loaded",
         extension: this.id,
@@ -242,6 +267,12 @@ export class AppleRemindersExtension implements Extension {
       });
 
       console.log("AppleRemindersExtension loaded successfully");
+
+      // Start loading data asynchronously - don't block initialization
+      // The Svelte component will handle showing loading state
+      this.refresh().catch((error) => {
+        console.error("Failed to load initial Apple Reminders data:", error);
+      });
     } catch (error) {
       console.error("Failed to load AppleRemindersExtension:", error);
       throw error;
@@ -298,7 +329,22 @@ export class AppleRemindersExtension implements Extension {
   }
 
   /**
+   * Check if the extension is currently refreshing data
+   */
+  getIsRefreshing(): boolean {
+    return this.isRefreshing;
+  }
+
+  /**
+   * Get the refresh progress store (read-only)
+   */
+  getRefreshProgress(): Readable<AppleRemindersRefreshProgress> {
+    return this.refreshProgress;
+  }
+
+  /**
    * Refresh Apple Reminders data
+   * Uses a loading guard to prevent multiple concurrent refreshes
    */
   async refresh(): Promise<void> {
     if (!this.isEnabled()) {
@@ -306,17 +352,181 @@ export class AppleRemindersExtension implements Extension {
       return;
     }
 
+    // If already refreshing, return the existing promise
+    if (this.isRefreshing && this.refreshPromise) {
+      console.log("Apple Reminders refresh already in progress, waiting for completion...");
+      return this.refreshPromise;
+    }
+
+    // Set refreshing flag and create new promise
+    this.isRefreshing = true;
+    this.refreshPromise = this.performRefresh();
+
+    try {
+      await this.refreshPromise;
+    } finally {
+      // Clear refreshing state after completion
+      this.isRefreshing = false;
+      this.refreshPromise = undefined;
+    }
+  }
+
+  /**
+   * Internal method that performs the actual refresh
+   */
+  private async performRefresh(): Promise<void> {
     try {
       console.log("Refreshing Apple Reminders data...");
 
-      // Fetch reminders and update entity store using data source
+      // Update progress: checking permissions
+      this.refreshProgress.update(p => ({
+        ...p,
+        status: 'checking-permissions',
+        percentage: 0,
+      }));
+
+      // Check permissions first
+      const permissionResult = await this.checkPermissions();
+      if (!permissionResult.success || permissionResult.data !== "authorized") {
+        this.refreshProgress.update(p => ({
+          ...p,
+          status: 'error',
+          error: 'Permission denied',
+          percentage: 0,
+        }));
+        throw new Error("Apple Reminders permission denied");
+      }
+
+      // Update progress: fetching lists
+      this.refreshProgress.update(p => ({
+        ...p,
+        status: 'fetching-lists',
+        percentage: 10,
+      }));
+
+      // Get all lists first
+      const listsResult = await this.fetchLists();
+      if (!listsResult.success || !listsResult.data) {
+        this.refreshProgress.update(p => ({
+          ...p,
+          status: 'error',
+          error: 'Failed to fetch reminder lists',
+          percentage: 0,
+        }));
+        throw new Error("Failed to fetch reminder lists");
+      }
+
+      const lists = listsResult.data;
+      const totalLists = lists.length;
+
+      // Update progress: starting to fetch reminders
+      this.refreshProgress.update(p => ({
+        ...p,
+        status: 'fetching-reminders',
+        totalLists,
+        processedLists: 0,
+        processedReminders: 0,
+        totalReminders: 0,
+        percentage: 20,
+      }));
+
+      const includeCompleted = this.settings.integrations.appleReminders?.includeCompletedReminders ?? false;
+      const allReminders: AppleReminder[] = [];
+      let processedLists = 0;
+
+      // Process each list with progress updates
+      for (const list of lists) {
+        // Update progress: current list being processed
+        this.refreshProgress.update(p => ({
+          ...p,
+          currentList: list.name,
+          processedLists,
+          percentage: 20 + Math.floor((processedLists / totalLists) * 60), // 20-80% range
+        }));
+
+        try {
+          const script = includeCompleted
+            ? `tell application "Reminders" to return properties of reminders in list "${list.name}"`
+            : `tell application "Reminders" to return properties of reminders in list "${list.name}" whose completed is false`;
+
+          const reminders = await this.executeAppleScript(script);
+          const processedReminders: AppleScriptReminder[] = Array.isArray(reminders) ? reminders : [];
+
+          for (const reminder of processedReminders) {
+            const appleReminder: AppleReminder = this.transformAppleScriptReminderToAppleReminder(reminder, list);
+            allReminders.push(appleReminder);
+          }
+
+          processedLists++;
+
+          // Update progress after each list
+          this.refreshProgress.update(p => ({
+            ...p,
+            processedLists,
+            processedReminders: allReminders.length,
+            totalReminders: allReminders.length,
+            percentage: 20 + Math.floor((processedLists / totalLists) * 60),
+          }));
+        } catch (error) {
+          console.warn(`🍎 Failed to fetch reminders from list "${list.name}":`, error);
+          processedLists++;
+          // Continue with other lists
+        }
+      }
+
+      // Update progress: processing data
+      this.refreshProgress.update(p => ({
+        ...p,
+        status: 'processing',
+        currentList: undefined,
+        percentage: 85,
+      }));
+
+      // Cache the results
+      if (this.remindersCache) {
+        await this.remindersCache.set("reminders", allReminders);
+      }
+
+      // Transform to tasks and update entity store
       if (this.dataSource) {
         const tasks = await this.dataSource.refresh();
         this.entityStore.set(tasks as Task[]);
         console.log(`Loaded ${tasks.length} Apple Reminders tasks`);
       }
+
+      // Update progress: complete
+      this.refreshProgress.update(p => ({
+        ...p,
+        status: 'complete',
+        percentage: 100,
+      }));
+
+      // Reset to idle after a short delay
+      setTimeout(() => {
+        this.refreshProgress.update(p => ({
+          ...p,
+          status: 'idle',
+        }));
+      }, 2000);
     } catch (error) {
       console.error("Failed to refresh Apple Reminders data:", error);
+
+      // Update progress: error
+      this.refreshProgress.update(p => ({
+        ...p,
+        status: 'error',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      }));
+
+      // Reset to idle after a delay
+      setTimeout(() => {
+        this.refreshProgress.update(p => ({
+          ...p,
+          status: 'idle',
+        }));
+      }, 5000);
+
+      throw error; // Re-throw to allow callers to handle errors
     }
   }
 
