@@ -141,6 +141,17 @@
       });
     }
 
+    // Include Calendar if extension is registered
+    const calendarExt = extensionRegistry.getById("calendar");
+    if (calendarExt) {
+      allServices.push({
+        id: "calendar",
+        name: "Calendar",
+        icon: "calendar",
+        enabled: true, // Calendar is always enabled if registered
+      });
+    }
+
     return allServices;
   });
 

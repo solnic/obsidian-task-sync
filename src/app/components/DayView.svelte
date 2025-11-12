@@ -166,7 +166,7 @@
         selectedCalendarIds.length === availableCalendars.length ||
         selectedCalendarIds.length === 0
       ) {
-        selectedCalendarIds = []; // Will be treated as "all calendars" in loadEvents
+        selectedCalendarIds = []; // Will be treated as "all calendars" in filtering
       } else {
         selectedCalendarIds = availableCalendars.map((cal) => cal.id);
       }
@@ -187,7 +187,7 @@
         }
       }
     }
-    loadEvents();
+    // No need to call loadEvents() - filtering is now reactive via $effect
   }
 
   // Zoom controls are now handled by ObsidianDayView
@@ -213,21 +213,41 @@
     );
   }
 
-  // Reactive filtering
+  // Filter events by selected calendars
+  function filterByCalendars(
+    eventList: CalendarEvent[],
+    calendarIds: string[]
+  ): CalendarEvent[] {
+    // If no calendars selected or all calendars selected, show all events
+    if (
+      calendarIds.length === 0 ||
+      calendarIds.length === availableCalendars.length
+    ) {
+      return eventList;
+    }
+
+    // Filter events by selected calendar IDs
+    return eventList.filter(
+      (event) => event.calendar && calendarIds.includes(event.calendar.id)
+    );
+  }
+
+  // Reactive filtering - apply both calendar and search filters
   $effect(() => {
-    filteredEvents = searchEvents(searchQuery, calendarEvents);
+    let events = calendarEvents;
+    
+    // First filter by selected calendars
+    events = filterByCalendars(events, selectedCalendarIds);
+    
+    // Then apply search filter
+    events = searchEvents(searchQuery, events);
+    
+    filteredEvents = events;
   });
 
   // Reactive effect to reload events when selectedDate changes
   $effect(() => {
     if (availableCalendars.length > 0) {
-      loadEvents(selectedDate);
-    }
-  });
-
-  // Separate effect to reload events when calendar selection changes
-  $effect(() => {
-    if (availableCalendars.length > 0 && selectedCalendarIds) {
       loadEvents(selectedDate);
     }
   });
