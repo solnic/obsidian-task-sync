@@ -332,6 +332,9 @@ test.describe("Apple Reminders Integration", () => {
     expect(actualLists).not.toContain("Shopping");
     expect(actualLists).not.toContain("Projects");
 
+    // Verify lists are sorted alphabetically (Personal before Work)
+    expect(actualLists).toEqual(["Personal", "Work"]);
+
     // Close the dropdown by clicking elsewhere
     await page.keyboard.press('Escape');
     await page.waitForTimeout(500);
@@ -509,6 +512,9 @@ test.describe("Apple Reminders Integration", () => {
     expect(actualLists).toContain("Personal");
     expect(actualLists).toContain("Shopping");
     expect(actualLists).toContain("Projects");
+
+    // Verify lists are sorted alphabetically
+    expect(actualLists).toEqual(["Personal", "Projects", "Shopping", "Work"]);
 
     // Close dropdown
     await page.keyboard.press('Escape');

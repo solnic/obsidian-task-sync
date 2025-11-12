@@ -304,9 +304,12 @@
 
         // Filter lists based on settings if specific lists are selected
         const selectedLists = settings.integrations.appleReminders?.reminderLists ?? [];
-        availableLists = selectedLists.length > 0
+        const filteredLists = selectedLists.length > 0
           ? allLists.filter(listName => selectedLists.includes(listName))
           : allLists;
+
+        // Sort alphabetically for consistent ordering
+        availableLists = filteredLists.sort((a, b) => a.localeCompare(b));
 
         // Don't auto-select a list - require user selection like GitHub does for repos
         // This ensures users are intentional about which list they're viewing
