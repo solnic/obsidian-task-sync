@@ -617,12 +617,65 @@ export async function restoreGitHubAPIs(page: Page): Promise<void> {
 }
 
 /**
+ * Restore Apple Calendar APIs to original implementations
+ */
+export async function restoreAppleCalendarAPIs(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const app = (window as any).app;
+    const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+
+    // Access the calendar extension through the host
+    const taskSyncApp = plugin?.host?.getApp();
+    const calendarExtension = taskSyncApp?.calendarExtension;
+
+    if (!calendarExtension) {
+      return;
+    }
+
+    // Get the Apple Calendar service
+    const calendarServices = calendarExtension.getCalendarServices();
+    const appleCalendarService = calendarServices.find(
+      (service: any) => service.serviceName === "apple-calendar"
+    );
+
+    if (!appleCalendarService) {
+      return;
+    }
+
+    if (appleCalendarService.__originals) {
+      appleCalendarService.getCalendars = appleCalendarService.__originals.getCalendars;
+      appleCalendarService.getEvents = appleCalendarService.__originals.getEvents;
+      appleCalendarService.getTodayEvents = appleCalendarService.__originals.getTodayEvents;
+      appleCalendarService.checkPermissions = appleCalendarService.__originals.checkPermissions;
+
+      delete appleCalendarService.__originals;
+      delete appleCalendarService.__isStubbed;
+    }
+
+    // Clean up global stubs
+    delete (window as any).__appleCalendarApiStubs;
+    delete (window as any).__installAppleCalendarStubs;
+  });
+}
+
+/**
  * Ensure stubs are installed (useful after plugin reloads)
  */
 export async function ensureGitHubStubsInstalled(page: Page): Promise<void> {
   await page.evaluate(() => {
     if ((window as any).__installGitHubStubs) {
       (window as any).__installGitHubStubs();
+    }
+  });
+}
+
+/**
+ * Ensure Apple Calendar stubs are installed (useful after plugin reloads)
+ */
+export async function ensureAppleCalendarStubsInstalled(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    if ((window as any).__installAppleCalendarStubs) {
+      (window as any).__installAppleCalendarStubs();
     }
   });
 }
@@ -648,12 +701,56 @@ export async function stubAppleCalendarAPIs(
   }
   if (fixtures.events) {
     fixtureData.events = loadFixture("apple-calendar", fixtures.events);
+
+    // Update events to use today's date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    fixtureData.events = fixtureData.events.map((event: any) => {
+      const originalStart = new Date(event.startDate);
+      const originalEnd = new Date(event.endDate);
+
+      // Keep the time component but use today's date
+      const newStart = new Date(today);
+      newStart.setHours(originalStart.getUTCHours(), originalStart.getUTCMinutes(), originalStart.getUTCSeconds());
+
+      const newEnd = new Date(today);
+      newEnd.setHours(originalEnd.getUTCHours(), originalEnd.getUTCMinutes(), originalEnd.getUTCSeconds());
+
+      return {
+        ...event,
+        startDate: newStart.toISOString(),
+        endDate: newEnd.toISOString(),
+      };
+    });
   }
   if (fixtures.todayEvents) {
     fixtureData.todayEvents = loadFixture(
       "apple-calendar",
       fixtures.todayEvents
     );
+
+    // Update today's events to use today's date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    fixtureData.todayEvents = fixtureData.todayEvents.map((event: any) => {
+      const originalStart = new Date(event.startDate);
+      const originalEnd = new Date(event.endDate);
+
+      // Keep the time component but use today's date
+      const newStart = new Date(today);
+      newStart.setHours(originalStart.getUTCHours(), originalStart.getUTCMinutes(), originalStart.getUTCSeconds());
+
+      const newEnd = new Date(today);
+      newEnd.setHours(originalEnd.getUTCHours(), originalEnd.getUTCMinutes(), originalEnd.getUTCSeconds());
+
+      return {
+        ...event,
+        startDate: newStart.toISOString(),
+        endDate: newEnd.toISOString(),
+      };
+    });
   }
   if (fixtures.permissions) {
     fixtureData.permissions = loadFixture(
@@ -671,10 +768,28 @@ export async function stubAppleCalendarAPIs(
       const app = (window as any).app;
       const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
 
-      const appleCalendarService = plugin?.appleCalendarService;
-      if (!appleCalendarService) {
+      // Access the calendar extension through the host
+      const taskSyncApp = plugin?.host?.getApp();
+      const calendarExtension = taskSyncApp?.calendarExtension;
+
+      if (!calendarExtension) {
+        console.log("🔧 Calendar extension not found for stubbing");
         return false;
       }
+
+      // Get the Apple Calendar service from the calendar extension
+      const calendarServices = calendarExtension.getCalendarServices();
+      const appleCalendarService = calendarServices.find(
+        (service: any) => service.serviceName === "apple-calendar"
+      );
+
+      if (!appleCalendarService) {
+        console.log("🔧 Apple Calendar service not found in calendar extension");
+        console.log("🔧 Available services:", calendarServices.map((s: any) => s.serviceName));
+        return false;
+      }
+
+      console.log("🔧 Found Apple Calendar service, installing stubs");
 
       // Only stub if not already stubbed
       if (appleCalendarService.__isStubbed) {
@@ -692,25 +807,33 @@ export async function stubAppleCalendarAPIs(
       // Install stubs
       appleCalendarService.getCalendars = async () => {
         console.log("🔧 Stubbed Apple Calendar getCalendars called");
-        return (window as any).__appleCalendarApiStubs?.calendars || [];
+        const calendars = (window as any).__appleCalendarApiStubs?.calendars || [];
+        console.log("🔧 Returning calendars:", calendars.length, "items");
+        return calendars;
       };
 
       appleCalendarService.getEvents = async () => {
         console.log("🔧 Stubbed Apple Calendar getEvents called");
-        return (window as any).__appleCalendarApiStubs?.events || [];
+        const events = (window as any).__appleCalendarApiStubs?.events || [];
+        console.log("🔧 Returning events:", events.length, "items");
+        return events;
       };
 
       appleCalendarService.getTodayEvents = async () => {
         console.log("🔧 Stubbed Apple Calendar getTodayEvents called");
-        return (window as any).__appleCalendarApiStubs?.todayEvents || [];
+        const todayEvents = (window as any).__appleCalendarApiStubs?.todayEvents || [];
+        console.log("🔧 Returning todayEvents:", todayEvents.length, "items");
+        return todayEvents;
       };
 
       appleCalendarService.checkPermissions = async () => {
         console.log("🔧 Stubbed Apple Calendar checkPermissions called");
-        return (window as any).__appleCalendarApiStubs?.permissions !==
+        const permissions = (window as any).__appleCalendarApiStubs?.permissions !==
           undefined
           ? (window as any).__appleCalendarApiStubs?.permissions
           : true;
+        console.log("🔧 Returning permissions:", permissions);
+        return permissions;
       };
 
       appleCalendarService.__isStubbed = true;
@@ -795,7 +918,7 @@ export async function stubAppleRemindersAPIs(
       };
 
       // Stub executeAppleScript - this is the core method that needs stubbing
-      appleRemindersExtension.executeAppleScript = async (script) => {
+      appleRemindersExtension.executeAppleScript = async (script: string) => {
         console.log("🔧 Stubbed Apple Reminders executeAppleScript called with script:", script);
 
         // Return mock data based on the script content
