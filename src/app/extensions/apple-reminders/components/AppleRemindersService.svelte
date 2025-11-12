@@ -19,6 +19,7 @@
   import type { DailyPlanningExtension } from "../../daily-planning/DailyPlanningExtension";
   import { getContextStore } from "../../../stores/contextStore";
   import type { AppleRemindersRefreshProgress } from "../AppleRemindersExtension";
+  import { AppleRemindersPermission } from "../../../types/apple-reminders";
 
   interface SortField {
     key: string;
@@ -278,7 +279,7 @@
     try {
       const result = await appleRemindersExtension.checkPermissions();
       if (result.success && result.data) {
-        permissionStatus = result.data === "authorized" ? "granted" : "denied";
+        permissionStatus = result.data === AppleRemindersPermission.AUTHORIZED ? "granted" : "denied";
       } else {
         permissionStatus = "denied";
         error = result.error?.message || "Permission check failed";
