@@ -23,6 +23,11 @@
   let availableReminderLists = $state<string[]>([]);
   let loadingLists = $state(false);
   let availableListsDiv: HTMLElement | null = null;
+  let settingsCreated = $state(false);
+  let loadListsButton: HTMLButtonElement | null = null;
+  
+  // Derived state for button text
+  const loadListsButtonText = $derived(loadingLists ? "Loading..." : "Load Lists");
 
   onMount(() => {
     createAppleRemindersSection();
@@ -78,7 +83,22 @@
       });
   }
 
+  function clearAppleRemindersSettings(): void {
+    // Remove all children except the platform warning (if present) and the toggle
+    const children = Array.from(appleRemindersContainer.children);
+    const keepCount = isPlatformSupported ? 1 : 2; // Keep toggle (and warning on non-macOS)
+    children.slice(keepCount).forEach((child) => child.remove());
+    
+    // Clear available lists div reference
+    if (availableListsDiv) {
+      availableListsDiv = null;
+    }
+  }
+
   function createAppleRemindersSettings(): void {
+    // Clear existing settings first to avoid duplicates
+    clearAppleRemindersSettings();
+    
     // Include completed reminders
     new Setting(appleRemindersContainer)
       .setName("Include Completed Reminders")
@@ -179,9 +199,9 @@
       .setName("Reminder Lists")
       .setDesc("Select which reminder lists to sync (leave empty to sync all lists)")
       .addButton((button) => {
+        loadListsButton = button.buttonEl;
         button
-          .setButtonText(loadingLists ? "Loading..." : "Load Lists")
-          .setDisabled(loadingLists)
+          .setButtonText("Load Lists")
           .onClick(async () => {
             await loadReminderLists();
           });
@@ -211,25 +231,40 @@
   // Reactive statement to create/destroy settings based on toggle state
   $effect(() => {
     if (enabled && isPlatformSupported) {
-      createAppleRemindersSettings();
-      // Load reminder lists when integration is enabled
-      loadReminderLists();
+      if (!settingsCreated) {
+        createAppleRemindersSettings();
+        settingsCreated = true;
+        // Load reminder lists when integration is enabled
+        loadReminderLists();
+      }
     } else {
-      // Clear Apple Reminders settings when disabled
-      const children = Array.from(appleRemindersContainer.children);
-      children
-        .slice(isPlatformSupported ? 1 : 2)
-        .forEach((child) => child.remove()); // Keep the warning and toggle
-      // Clear loaded lists
-      availableReminderLists = [];
-      availableListsDiv = null;
+      if (settingsCreated) {
+        clearAppleRemindersSettings();
+        settingsCreated = false;
+        // Clear loaded lists
+        availableReminderLists = [];
+        loadListsButton = null;
+      }
+    }
+  });
+
+  // Update load lists button state reactively
+  $effect(() => {
+    if (loadListsButton) {
+      loadListsButton.textContent = loadListsButtonText;
+      loadListsButton.disabled = loadingLists;
     }
   });
 
   // Separate effect to manage available lists display
   $effect(() => {
+    // Only run if settings are created
+    if (!settingsCreated) {
+      return;
+    }
+    
     // Show available lists if loaded
-    if (availableReminderLists.length > 0 && enabled && isPlatformSupported) {
+    if (availableReminderLists.length > 0) {
       // Remove existing div if it exists to avoid duplicates
       if (availableListsDiv) {
         availableListsDiv.remove();
@@ -243,7 +278,7 @@
         cls: "task-sync-hint"
       });
     } else if (availableListsDiv) {
-      // Clean up the div if lists are empty or integration is disabled
+      // Clean up the div if lists are empty
       availableListsDiv.remove();
       availableListsDiv = null;
     }
