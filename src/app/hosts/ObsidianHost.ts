@@ -68,16 +68,45 @@ export class ObsidianHost extends Host {
         return { ...DEFAULT_SETTINGS };
       }
 
-      // Merge loaded data with defaults to handle partial settings
-      return {
-        ...DEFAULT_SETTINGS,
-        ...data,
-      };
+      // Deep merge loaded data with defaults to handle partial settings
+      // This ensures new settings (like googleCalendar) are properly initialized
+      return this.deepMerge(DEFAULT_SETTINGS, data);
     } catch (error) {
       throw new Error(
         `Failed to load settings from Obsidian: ${error.message}`
       );
     }
+  }
+
+  /**
+   * Deep merge two objects, with source overriding target
+   */
+  private deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+    const result = { ...target };
+
+    for (const key in source) {
+      if (Object.prototype.hasOwnProperty.call(source, key)) {
+        const sourceValue = source[key];
+        const targetValue = result[key];
+
+        // If both are objects (and not arrays or null), merge recursively
+        if (
+          sourceValue &&
+          typeof sourceValue === 'object' &&
+          !Array.isArray(sourceValue) &&
+          targetValue &&
+          typeof targetValue === 'object' &&
+          !Array.isArray(targetValue)
+        ) {
+          result[key] = this.deepMerge(targetValue, sourceValue);
+        } else {
+          // Otherwise, use the source value
+          result[key] = sourceValue;
+        }
+      }
+    }
+
+    return result;
   }
 
   /**
