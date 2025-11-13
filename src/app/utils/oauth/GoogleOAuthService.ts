@@ -41,7 +41,10 @@ export class GoogleOAuthService {
 
   // Local server for OAuth callback
   private server?: http.Server;
-  private serverPort: number = 42813; // Random high port
+  // Port 42813 is hardcoded for the OAuth callback server
+  // LIMITATION: If this port is in use, the OAuth flow will fail
+  // TODO: Implement dynamic port selection as a fallback (see docs/google-oauth-implementation.md Future Enhancements)
+  private serverPort: number = 42813;
 
   constructor(
     settings: TaskSyncSettings,
