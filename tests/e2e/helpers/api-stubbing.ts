@@ -63,6 +63,44 @@ function getAvailableFixtures(service: string): string[] {
 }
 
 /**
+ * Normalize event dates to today while preserving time components
+ * Uses UTC methods to avoid timezone issues
+ */
+function normalizeEventDatesToToday(events: any[]): any[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  return events.map((event: any) => {
+    const originalStart = new Date(event.startDate);
+    const originalEnd = new Date(event.endDate);
+
+    const newStart = new Date(Date.UTC(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      originalStart.getUTCHours(),
+      originalStart.getUTCMinutes(),
+      originalStart.getUTCSeconds()
+    ));
+
+    const newEnd = new Date(Date.UTC(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      originalEnd.getUTCHours(),
+      originalEnd.getUTCMinutes(),
+      originalEnd.getUTCSeconds()
+    ));
+
+    return {
+      ...event,
+      startDate: newStart.toISOString(),
+      endDate: newEnd.toISOString(),
+    };
+  });
+}
+
+/**
  * Stub API calls using vitest and fixture data
  *
  * @param page - Playwright page instance
@@ -701,56 +739,16 @@ export async function stubAppleCalendarAPIs(
   }
   if (fixtures.events) {
     fixtureData.events = loadFixture("apple-calendar", fixtures.events);
-
     // Update events to use today's date
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    fixtureData.events = fixtureData.events.map((event: any) => {
-      const originalStart = new Date(event.startDate);
-      const originalEnd = new Date(event.endDate);
-
-      // Keep the time component but use today's date
-      const newStart = new Date(today);
-      newStart.setHours(originalStart.getUTCHours(), originalStart.getUTCMinutes(), originalStart.getUTCSeconds());
-
-      const newEnd = new Date(today);
-      newEnd.setHours(originalEnd.getUTCHours(), originalEnd.getUTCMinutes(), originalEnd.getUTCSeconds());
-
-      return {
-        ...event,
-        startDate: newStart.toISOString(),
-        endDate: newEnd.toISOString(),
-      };
-    });
+    fixtureData.events = normalizeEventDatesToToday(fixtureData.events);
   }
   if (fixtures.todayEvents) {
     fixtureData.todayEvents = loadFixture(
       "apple-calendar",
       fixtures.todayEvents
     );
-
     // Update today's events to use today's date
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    fixtureData.todayEvents = fixtureData.todayEvents.map((event: any) => {
-      const originalStart = new Date(event.startDate);
-      const originalEnd = new Date(event.endDate);
-
-      // Keep the time component but use today's date
-      const newStart = new Date(today);
-      newStart.setHours(originalStart.getUTCHours(), originalStart.getUTCMinutes(), originalStart.getUTCSeconds());
-
-      const newEnd = new Date(today);
-      newEnd.setHours(originalEnd.getUTCHours(), originalEnd.getUTCMinutes(), originalEnd.getUTCSeconds());
-
-      return {
-        ...event,
-        startDate: newStart.toISOString(),
-        endDate: newEnd.toISOString(),
-      };
-    });
+    fixtureData.todayEvents = normalizeEventDatesToToday(fixtureData.todayEvents);
   }
   if (fixtures.permissions) {
     fixtureData.permissions = loadFixture(

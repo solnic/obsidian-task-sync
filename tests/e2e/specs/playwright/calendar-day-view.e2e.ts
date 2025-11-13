@@ -134,8 +134,11 @@ test.describe("Calendar Day View", () => {
     // Close dropdown
     await page.keyboard.press("Escape");
 
-    // Wait for events to be filtered
-    await page.waitForTimeout(500);
+    // Wait for events to be filtered: all visible events should be from Work Calendar
+    await page.waitForFunction(() => {
+      const events = Array.from(document.querySelectorAll('[data-testid="obsidian-day-view-event"]'));
+      return events.length > 0 && events.every(e => e.getAttribute('data-calendar-name') === 'Work Calendar');
+    });
 
     // Verify only Work Calendar events are shown
     const filteredEvents = page.locator('[data-testid="obsidian-day-view-event"]');

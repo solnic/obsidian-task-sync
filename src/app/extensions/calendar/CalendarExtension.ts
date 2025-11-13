@@ -170,7 +170,7 @@ export class CalendarExtension implements Extension {
       areas: [],
       tags: [],
       doDate: event.startDate,
-      dueDate: event.allDay ? event.endDate : event.startDate,
+      dueDate: event.endDate, // Always use endDate for dueDate to ensure consistency
       source: {
         extension: "calendar",
         keys: {

@@ -5,7 +5,6 @@
    */
 
   import { onMount } from "svelte";
-  import { derived } from "svelte/store";
   import SearchInput from "../../../components/SearchInput.svelte";
   import FilterButton from "../../../components/FilterButton.svelte";
   import ObsidianDayView from "../../../components/ObsidianDayView.svelte";
@@ -17,6 +16,10 @@
   import type { CalendarEvent, Calendar } from "../../../types/calendar";
   import type { CalendarExtension } from "../CalendarExtension";
   import type { DailyPlanningExtension } from "../../daily-planning/DailyPlanningExtension";
+  import {
+    filterByCalendars,
+    searchEvents,
+  } from "../../../utils/calendarFiltering";
 
   interface Props {
     settings: TaskSyncSettings;
@@ -256,29 +259,6 @@
   }
 
   /**
-   * Search events by query string
-   */
-  function searchEvents(
-    query: string,
-    eventList: CalendarEvent[]
-  ): CalendarEvent[] {
-    if (!query.trim()) {
-      return eventList;
-    }
-
-    const lowerQuery = query.toLowerCase();
-    return eventList.filter(
-      (event) =>
-        event.title.toLowerCase().includes(lowerQuery) ||
-        (event.description &&
-          event.description.toLowerCase().includes(lowerQuery)) ||
-        (event.location && event.location.toLowerCase().includes(lowerQuery)) ||
-        (event.calendar?.name &&
-          event.calendar.name.toLowerCase().includes(lowerQuery))
-    );
-  }
-
-  /**
    * Handle refresh
    */
   async function handleRefresh(): Promise<void> {
@@ -290,10 +270,22 @@
   // ============================================================================
 
   /**
-   * Reactive filtering of events
+   * Reactive filtering of events - applies both calendar and search filters
    */
   $effect(() => {
-    filteredEvents = searchEvents(searchQuery, calendarEvents);
+    let events = calendarEvents;
+    
+    // First filter by selected calendars
+    events = filterByCalendars(
+      events,
+      selectedCalendarIds,
+      availableCalendars.length
+    );
+    
+    // Then apply search filter
+    events = searchEvents(searchQuery, events);
+    
+    filteredEvents = events;
   });
 
   // Track previous date and calendar selection to avoid redundant loads
@@ -326,7 +318,9 @@
       console.log(`[CalendarService] Date or calendars changed, loading events`);
       previousDate = currentDateStr;
       previousCalendarIds = currentCalendarIdsStr;
-      loadEvents(selectedDate);
+      loadEvents(selectedDate).catch(err => {
+        console.error('[CalendarService] Failed to load events:', err);
+      });
     }
   });
 

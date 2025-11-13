@@ -262,7 +262,9 @@
     if (availableCalendars.length > 0 && previousDate !== currentDateStr) {
       console.log(`[DayView] Date changed from ${previousDate} to ${currentDateStr}, loading events`);
       previousDate = currentDateStr;
-      loadEvents(selectedDate);
+      loadEvents(selectedDate).catch(err => {
+        console.error('[DayView] Failed to load events:', err);
+      });
     }
   });
 
