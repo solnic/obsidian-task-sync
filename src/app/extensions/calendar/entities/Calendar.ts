@@ -101,27 +101,32 @@ export namespace Calendar {
       endDate: Date,
       options?: CalendarEventFetchOptions
     ): Promise<CalendarEvent[]> {
+      console.log(`[CalendarOperations] getAllEvents called for ${this.calendarServices.length} services`);
+
       const allEvents: CalendarEvent[] = [];
 
       for (const service of this.calendarServices) {
         if (service.isEnabled() && service.isPlatformSupported()) {
           try {
+            console.log(`[CalendarOperations] Fetching events from service: ${service.serviceName}`);
             const events = await service.getEvents(
               [],
               startDate,
               endDate,
               options
             );
+            console.log(`[CalendarOperations] Service ${service.serviceName} returned ${events.length} events`);
             allEvents.push(...events);
           } catch (error) {
             console.error(
-              `Failed to get events from ${service.serviceName}:`,
+              `[CalendarOperations] Failed to get events from ${service.serviceName}:`,
               error
             );
           }
         }
       }
 
+      console.log(`[CalendarOperations] Total events from all services: ${allEvents.length}`);
       return allEvents;
     }
 

@@ -5,6 +5,7 @@
   import LocalTasksService from "./LocalTasksService.svelte";
   import GitHubService from "../extensions/github/components/GitHubService.svelte";
   import AppleRemindersService from "../extensions/apple-reminders/components/AppleRemindersService.svelte";
+  import DayView from "./DayView.svelte";
   import { Host } from "../core/host";
   import { isPlanningActive, currentSchedule } from "../stores/contextStore";
 
@@ -45,6 +46,7 @@
     local: "obsidian",
     github: "github",
     "apple-reminders": "apple-reminders",
+    calendar: "calendar",
   };
 
   // Resolve the extension from the host using the mapped extension ID
@@ -58,6 +60,7 @@
     local: LocalTasksService,
     github: GitHubService,
     "apple-reminders": AppleRemindersService,
+    calendar: DayView,
   };
 
   // Get the component to render based on serviceId

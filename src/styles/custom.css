@@ -2274,6 +2274,23 @@ Provides consistent styling for all UI components
   margin: 4px 0;
 }
 
+/* Group header */
+.task-sync-selector-group-header {
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: var(--background-secondary);
+  margin-top: 4px;
+  user-select: none;
+}
+
+.task-sync-selector-group-header:first-child {
+  margin-top: 0;
+}
+
 /* Auto-suggest search input */
 .task-sync-selector-search {
   padding: 4px;
