@@ -135,6 +135,20 @@ class ObsidianEntityDataProvider implements EntityDataProvider {
   canHandle(entity: Task): boolean {
     return !!entity.source.keys.obsidian;
   }
+
+  /**
+   * Obsidian syncs all properties since it's the storage layer
+   * However, properties from other sources (like GitHub) should be preserved
+   * by the SyncManager's merge strategy, not overridden by Obsidian
+   * 
+   * Returning undefined means all properties are syncable (backward compatibility)
+   */
+  getSyncableProperties(): Array<keyof Task> | undefined {
+    // Obsidian stores all properties, so we don't filter
+    // The SyncManager's "source-wins" strategy ensures that properties
+    // from the authoritative source (e.g., GitHub) are preserved
+    return undefined;
+  }
 }
 
 /**
