@@ -233,7 +233,7 @@ export class TemplateManager {
       // Process properties if provided
       let processedProperties = properties;
       if (Object.keys(properties).length > 0) {
-        const propertyResult = this.propertyProcessor.process(
+        const propertyResult = await this.propertyProcessor.process(
           noteType,
           properties,
           {

@@ -60,6 +60,7 @@ export class CreateEntityModal extends Modal {
         props: {
           typeRegistry: this.plugin.typeNote.registry,
           noteProcessor: this.plugin.typeNote.noteProcessor,
+          settings: this.settings,
           preselectedNoteTypeId: this.preselectedNoteTypeId,
           initialPropertyValues: this.initialPropertyValues,
           contextualTitle: this.contextualTitle,
@@ -100,6 +101,7 @@ export class CreateEntityModal extends Modal {
       } as Omit<Entity, "id" | "createdAt" | "updatedAt">;
 
       await this.operations[noteType.id].create(entityData);
+
       new Notice(`${noteType.name} created successfully`);
       this.close();
     } catch (error) {

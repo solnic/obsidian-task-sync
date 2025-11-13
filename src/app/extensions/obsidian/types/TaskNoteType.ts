@@ -11,10 +11,12 @@ import {
   stringSchema,
   optionalStringSchema,
   booleanSchema,
+  optionalBooleanSchema,
   dateSchema,
   optionalDateSchema,
   stringArraySchema,
   enumSchema,
+  withDefault,
 } from "../../../core/note-kit/schemas";
 
 /**
@@ -197,29 +199,37 @@ export function buildTaskNoteType(): NoteType {
       key: "done",
       name: "Done",
       type: "boolean",
-      schema: booleanSchema,
+      schema: withDefault(optionalBooleanSchema, false),
       frontMatterKey: "Done",
-      required: true,
+      required: false,
       defaultValue: false,
       description: "Whether the task is completed",
       visible: true,
       order: 5,
+      form: {
+        hidden: true, // Hidden from forms, auto-managed by status
+      },
     },
     project: {
       key: "project",
       name: "Project",
-      type: "string",
+      type: "association",
       schema: optionalStringSchema,
       frontMatterKey: "Project",
       required: false,
-      description: "Associated project (wiki link format)",
+      description: "Associated project",
       visible: true,
       order: 6,
+      association: {
+        noteTypeId: "project",
+        multiple: false,
+        allowCreate: true,
+      },
     },
     areas: {
       key: "areas",
       name: "Areas",
-      type: "array",
+      type: "association",
       schema: stringArraySchema,
       frontMatterKey: "Areas",
       required: false,
@@ -227,6 +237,11 @@ export function buildTaskNoteType(): NoteType {
       description: "Associated areas (wiki link format)",
       visible: true,
       order: 7,
+      association: {
+        noteTypeId: "area",
+        multiple: true,
+        allowCreate: true,
+      },
     },
     parentTask: {
       key: "parentTask",

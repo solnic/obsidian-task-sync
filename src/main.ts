@@ -21,6 +21,7 @@ import type { ObsidianExtension } from "./app/extensions/obsidian/ObsidianExtens
 import { Obsidian } from "./app/extensions/obsidian/entities/Obsidian";
 import { get } from "svelte/store";
 import type { Task, Project, Area } from "./app/core/entities";
+import { associationCleanup } from "./app/utils/AssociationCleanup";
 // Singleton operations removed - use operations from ObsidianExtension instance
 
 // Commands
@@ -33,6 +34,9 @@ import {
   NoteKit,
   TypeCache,
   type CachePersistenceAdapter,
+  BackupManager,
+  SchemaMigrationManager,
+  type MigrationRecord,
 } from "./app/core/note-kit";
 
 export default class TaskSyncPlugin extends Plugin {
@@ -41,6 +45,10 @@ export default class TaskSyncPlugin extends Plugin {
 
   // NoteKit API
   public typeNote: NoteKit;
+
+  // Migration system
+  private migrationManager: SchemaMigrationManager;
+  private backupManager: BackupManager;
 
   // Track registered note type commands for cleanup
   private registeredNoteTypeCommands: string[] = [];
@@ -171,6 +179,12 @@ export default class TaskSyncPlugin extends Plugin {
     // Call host onload to set up event handlers
     await this.host.onload();
 
+    // Start association cleanup system
+    associationCleanup.start();
+
+    // Run initial cleanup of orphaned associations
+    await associationCleanup.cleanupOrphanedAssociations();
+
     // Register settings tab
     this.addSettingTab(new TaskSyncSettingTab(this.app, this));
 
@@ -265,6 +279,9 @@ export default class TaskSyncPlugin extends Plugin {
       // This must happen after ObsidianExtension.initialize() which registers the Task note type
       this.registerNoteTypeCommands();
 
+      // Run pending schema migrations after note types are registered
+      await this.runPendingMigrations();
+
       // Now activate the view
       this.activateView();
     });
@@ -320,6 +337,9 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Initialize NoteKit
     await typeNote.initialize();
+
+    // Initialize migration system
+    await this.initializeMigrationSystem(typeNote);
 
     return typeNote;
   }
@@ -397,8 +417,80 @@ export default class TaskSyncPlugin extends Plugin {
     };
   }
 
+  /**
+   * Initialize migration system
+   */
+  private async initializeMigrationSystem(typeNote: NoteKit): Promise<void> {
+    // Initialize BackupManager
+    this.backupManager = new BackupManager(
+      this.app,
+      typeNote.registry,
+      ".obsidian/note-kit-backups"
+    );
+    await this.backupManager.initialize();
+
+    // Load executed migrations from settings
+    const executedMigrations: MigrationRecord[] = (this.settings.executedMigrations || []).map(
+      (record) => ({
+        ...record,
+        executedAt: new Date(record.executedAt),
+      })
+    );
+
+    // Initialize SchemaMigrationManager
+    this.migrationManager = new SchemaMigrationManager(
+      this.app,
+      typeNote.registry,
+      this.backupManager
+    );
+    await this.migrationManager.initialize(executedMigrations);
+  }
+
+  /**
+   * Run pending schema migrations
+   * Called after ObsidianExtension has registered note types
+   */
+  private async runPendingMigrations(): Promise<void> {
+    try {
+      // Execute auto-run migrations
+      const records = await this.migrationManager.checkAndExecuteAutoMigrations(true);
+
+      if (records.length > 0) {
+        // Save migration records to settings
+        await this.saveMigrationRecords(records);
+
+        console.log(`TaskSync: Executed ${records.length} schema migrations`);
+      }
+    } catch (error) {
+      console.error("TaskSync: Failed to run schema migrations:", error);
+      new Notice(`Failed to run schema migrations: ${error.message}`, 10000);
+    }
+  }
+
+  /**
+   * Save migration records to settings
+   */
+  private async saveMigrationRecords(records: MigrationRecord[]): Promise<void> {
+    const allRecords = this.migrationManager.exportMigrationRecords();
+
+    this.settings.executedMigrations = allRecords.map((record) => ({
+      id: record.id,
+      description: record.description,
+      executedAt: record.executedAt.toISOString(),
+      filesAffected: record.filesAffected,
+      success: record.success,
+      version: record.version,
+    }));
+
+    await this.saveSettings();
+  }
+
   async onunload() {
     console.log("TaskSync plugin unloading...");
+
+    // Stop association cleanup system
+    associationCleanup.stop();
+
     await this.host.onunload();
     await taskSyncApp.shutdown();
 

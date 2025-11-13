@@ -47,6 +47,7 @@ export class PropertyAccessor implements PropertyDefinition {
   readonly source?: string;
   readonly link?: boolean;
   readonly selectOptions?: SelectOption[];
+  readonly association?: PropertyDefinition["association"];
   readonly form?: PropertyDefinition["form"];
 
   constructor(private readonly propertyDef: PropertyDefinition) {
@@ -66,6 +67,7 @@ export class PropertyAccessor implements PropertyDefinition {
     this.source = propertyDef.source;
     this.link = propertyDef.link;
     this.selectOptions = propertyDef.selectOptions;
+    this.association = propertyDef.association;
     this.form = propertyDef.form;
   }
 

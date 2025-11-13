@@ -41,6 +41,8 @@ export abstract class ObsidianEntityOperations<
 
   // Common note management methods for reactive updates (called by ObsidianExtension)
   async createNote(entity: T): Promise<string> {
+    console.log("[EntityOperations] Creating note for entity:", (entity as any).id);
+
     // Use existing obsidian key if available, otherwise generate from entity name
     // This prevents creating duplicate files when title changes
     const existingObsidianKey = (entity as any).source?.keys?.obsidian;
@@ -49,27 +51,35 @@ export abstract class ObsidianEntityOperations<
     if (existingObsidianKey) {
       // Use existing file path to update the file in place
       filePath = existingObsidianKey;
+      console.log("[EntityOperations] Using existing file path:", filePath);
     } else {
       // Generate new file path from entity display name
       const entityName = this.getEntityDisplayName(entity);
       const fileName = this.sanitizeFileName(entityName);
       filePath = `${this.folder}/${fileName}.md`;
+      console.log("[EntityOperations] Generated new file path:", filePath);
     }
 
     // Generate entity-specific front-matter
+    console.log("[EntityOperations] Generating front-matter...");
     const frontMatter = this.generateFrontMatter(entity);
+    console.log("[EntityOperations] Front-matter generated:", frontMatter);
 
     // Remove undefined values safely
     const cleanedFrontMatter = Object.fromEntries(
       Object.entries(frontMatter).filter(([_, value]) => value !== undefined)
     );
 
+    console.log("[EntityOperations] Stringifying front-matter to YAML...");
     const frontMatterYaml = stringifyYaml(cleanedFrontMatter);
+    console.log("[EntityOperations] YAML generated successfully");
+
     const content = `---\n${frontMatterYaml}---\n\n${entity.description || ""}`;
 
     const existingFile = this.app.vault.getAbstractFileByPath(filePath);
 
     if (existingFile) {
+      console.log("[EntityOperations] Updating existing file...");
       await this.app.vault.modify(existingFile as any, content);
 
       this.trigger("notes.updated", {
@@ -77,6 +87,7 @@ export abstract class ObsidianEntityOperations<
         filePath,
       });
     } else {
+      console.log("[EntityOperations] Creating new file...");
       await this.app.vault.create(filePath, content);
 
       this.trigger("notes.created", {
@@ -85,6 +96,7 @@ export abstract class ObsidianEntityOperations<
       });
     }
 
+    console.log("[EntityOperations] Note file created/updated successfully at:", filePath);
     return filePath;
   }
 

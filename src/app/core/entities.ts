@@ -47,12 +47,14 @@ export const TaskSchema = z.object({
   status: z.string().default(DEFAULT_TASK_STATUS),
   done: z.boolean().default(false),
 
-  // Organization
+  // Organization - stored as plain entity names (source-agnostic)
+  // Note: Wiki link format [[filepath|Name]] is only used in Obsidian frontmatter/bases
+  // Entity properties always use plain string names for cross-extension compatibility
   category: optionalStringSchema,
   priority: optionalStringSchema,
-  parentTask: optionalStringSchema,
-  project: optionalStringSchema,
-  areas: z.array(z.string()).default([]),
+  parentTask: optionalStringSchema, // Plain task title, not wiki link
+  project: optionalStringSchema, // Plain project name, not wiki link
+  areas: z.array(z.string()).default([]), // Plain area names, not wiki links
   tags: z.array(z.string()).default([]),
 
   // Scheduling
@@ -73,7 +75,7 @@ export const ProjectSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: optionalStringSchema,
-  areas: z.array(z.string()).default([]),
+  areas: z.array(z.string()).default([]), // Plain area names, not wiki links
   tags: z.array(z.string()).default([]),
   createdAt: requiredDateSchema,
   updatedAt: requiredDateSchema,

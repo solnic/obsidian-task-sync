@@ -11,6 +11,7 @@ import { ObsidianBaseManager } from "../utils/BaseManager";
 import type { TaskSyncSettings } from "../../../types/settings";
 import { PROPERTY_REGISTRY } from "../utils/PropertyRegistry";
 import { projectStore } from "../../../stores/projectStore";
+import { areaStore } from "../../../stores/areaStore";
 import { Projects } from "../../../entities/Projects";
 import { EntitiesOperations } from "../../../core/entities-base";
 
@@ -115,7 +116,7 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
     const projectData: Omit<Project, "id" | "createdAt" | "updatedAt"> = {
       name: frontMatter.Name || file.basename,
       description: frontMatter.Description || "",
-      areas: Array.isArray(frontMatter.Areas) ? frontMatter.Areas : [],
+      areas: Array.isArray(frontMatter.Areas) ? frontMatter.Areas : [], // Areas are plain names
       tags: Array.isArray(frontMatter.Tags) ? frontMatter.Tags : [],
       source: {
         extension: "obsidian",
@@ -145,17 +146,37 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
 
   // Implement abstract methods for project-specific behavior
   protected generateFrontMatter(project: Project): Record<string, any> {
+    // Convert association properties from plain entity names to wiki link format
+    // This is the boundary where source-agnostic entity data is converted to Obsidian-specific format
+    //
+    // IMPORTANT: Arrays are kept as plain names for Obsidian Bases filtering compatibility
+    // Bases .contains() method doesn't work properly with wiki link arrays
+
+    // Keep areas as plain names for Bases filtering compatibility
+    const areasValue = project.areas && project.areas.length > 0 ? project.areas : undefined;
+
     return {
       [PROPERTY_REGISTRY.NAME.name]: project.name, // Use property name from registry
       [PROPERTY_REGISTRY.TYPE.name]: "Project", // Always "Project" for project entities
-      [PROPERTY_REGISTRY.AREAS.name]:
-        project.areas && project.areas.length > 0 ? project.areas : undefined,
+      [PROPERTY_REGISTRY.AREAS.name]: areasValue, // Areas as plain names (for Bases filtering)
       [PROPERTY_REGISTRY.TAGS.name]:
         project.tags && project.tags.length > 0 ? project.tags : undefined,
     };
   }
 
-  protected getEntityType(): string {
+  /**
+   * Find an area by name from the area store
+   */
+  private findAreaByName(
+    areaName: string
+  ): import("../../../core/entities").Area | null {
+    let foundArea = null;
+    const unsubscribe = areaStore.subscribe((state) => {
+      foundArea = state.areas.find((a) => a.name === areaName);
+    });
+    unsubscribe();
+    return foundArea;
+  }  protected getEntityType(): string {
     return "Project";
   }
 

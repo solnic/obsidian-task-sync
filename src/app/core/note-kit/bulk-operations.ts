@@ -16,7 +16,7 @@ import { createValidResult, createInvalidResult, createValidationError } from ".
 /**
  * Migration operation types
  */
-export type MigrationOperationType = 
+export type MigrationOperationType =
   | "update-version"
   | "add-property"
   | "remove-property"
@@ -30,19 +30,19 @@ export type MigrationOperationType =
 export interface MigrationOperation {
   /** Type of operation */
   type: MigrationOperationType;
-  
+
   /** Source property key (for property operations) */
   sourceProperty?: string;
-  
+
   /** Target property key (for property operations) */
   targetProperty?: string;
-  
+
   /** Default value (for add-property operations) */
   defaultValue?: any;
-  
+
   /** Transformation function (for transform-property operations) */
   transform?: (value: any) => any;
-  
+
   /** Description of the operation */
   description?: string;
 }
@@ -53,22 +53,22 @@ export interface MigrationOperation {
 export interface MigrationPlan {
   /** Source note type ID */
   sourceNoteTypeId: string;
-  
+
   /** Source version */
   sourceVersion: SemanticVersion;
-  
+
   /** Target note type ID */
   targetNoteTypeId: string;
-  
+
   /** Target version */
   targetVersion: SemanticVersion;
-  
+
   /** List of operations to perform */
   operations: MigrationOperation[];
-  
+
   /** Whether this migration is backwards compatible */
   isBackwardsCompatible: boolean;
-  
+
   /** Migration description */
   description?: string;
 }
@@ -79,19 +79,19 @@ export interface MigrationPlan {
 export interface BulkOperationOptions {
   /** Whether to create backups before migration */
   createBackups?: boolean;
-  
+
   /** Whether to validate after migration */
   validateAfterMigration?: boolean;
-  
+
   /** Whether to continue on errors */
   continueOnErrors?: boolean;
-  
+
   /** Maximum number of files to process in parallel */
   maxConcurrency?: number;
-  
+
   /** Progress callback */
   onProgress?: (processed: number, total: number, currentFile: string) => void;
-  
+
   /** Error callback */
   onError?: (file: TFile, error: string) => void;
 }
@@ -102,25 +102,25 @@ export interface BulkOperationOptions {
 export interface BulkOperationResult {
   /** Whether operation was successful */
   success: boolean;
-  
+
   /** Total files processed */
   totalFiles: number;
-  
+
   /** Successfully processed files */
   successfulFiles: number;
-  
+
   /** Failed files */
   failedFiles: number;
-  
+
   /** List of processed file paths */
   processedFiles: string[];
-  
+
   /** List of failed file paths with errors */
   failedFileErrors: Array<{ filePath: string; error: string }>;
-  
+
   /** Overall errors */
   errors?: string[];
-  
+
   /** Warnings */
   warnings?: string[];
 }
@@ -131,19 +131,19 @@ export interface BulkOperationResult {
 export interface FileMigrationResult {
   /** Whether migration was successful */
   success: boolean;
-  
+
   /** File path */
   filePath: string;
-  
+
   /** Operations performed */
   operationsPerformed: MigrationOperation[];
-  
+
   /** Validation result after migration */
   validationResult?: ValidationResult;
-  
+
   /** Errors */
   errors?: string[];
-  
+
   /** Warnings */
   warnings?: string[];
 }
@@ -163,7 +163,7 @@ export class BulkOperations {
     this.app = app;
     this.vault = app.vault;
     this.registry = registry;
-    
+
     // Initialize processors
     this.propertyProcessor = new PropertyProcessor();
     const templateEngine = new TemplateEngine();
@@ -182,13 +182,13 @@ export class BulkOperations {
   ): MigrationPlan | null {
     const sourceNoteType = this.registry.get(sourceNoteTypeId);
     const targetNoteType = this.registry.get(targetNoteTypeId);
-    
+
     if (!sourceNoteType || !targetNoteType) {
       return null;
     }
 
     const operations: MigrationOperation[] = [];
-    
+
     // Version update operation
     if (sourceNoteTypeId === targetNoteTypeId && sourceVersion !== targetVersion) {
       operations.push({
@@ -290,7 +290,7 @@ export class BulkOperations {
               filePath: file.path,
               error: migrationResult.errors?.join(", ") || "Unknown error",
             });
-            
+
             if (onError) {
               onError(file, migrationResult.errors?.join(", ") || "Unknown error");
             }
@@ -309,7 +309,7 @@ export class BulkOperations {
             filePath: file.path,
             error: errorMessage,
           });
-          
+
           if (onError) {
             onError(file, errorMessage);
           }
@@ -352,7 +352,7 @@ export class BulkOperations {
 
       // Read current content
       const content = await this.vault.read(file);
-      const noteResult = this.noteProcessor.processNote(content, file.path);
+      const noteResult = await this.noteProcessor.processNote(content, file.path);
 
       if (!noteResult.valid || !noteResult.noteType) {
         return {
@@ -473,7 +473,7 @@ export class BulkOperations {
     for (const file of allFiles) {
       try {
         const content = await this.vault.read(file);
-        const result = this.noteProcessor.processNote(content, file.path);
+        const result = await this.noteProcessor.processNote(content, file.path);
 
         if (result.valid && result.noteType?.id === sourceNoteTypeId) {
           // If specific version is requested, check version match
@@ -515,7 +515,7 @@ export class BulkOperations {
     );
 
     const estimatedChanges = candidateFiles.length * migrationPlan.operations.length;
-    
+
     let riskLevel: "low" | "medium" | "high" = "low";
     if (!migrationPlan.isBackwardsCompatible) {
       riskLevel = "high";
