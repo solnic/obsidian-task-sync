@@ -71,7 +71,10 @@ export class ObsidianHost extends Host {
 
       // Deep merge loaded data with defaults to handle partial settings
       // This ensures new settings (like googleCalendar) are properly initialized
-      return deepmerge(DEFAULT_SETTINGS, data) as TaskSyncSettings;
+      // Use array overwrite to prevent concatenating arrays like taskCategories
+      return deepmerge(DEFAULT_SETTINGS, data, {
+        arrayMerge: (_, sourceArray) => sourceArray,
+      }) as TaskSyncSettings;
     } catch (error) {
       throw new Error(
         `Failed to load settings from Obsidian: ${error.message}`
