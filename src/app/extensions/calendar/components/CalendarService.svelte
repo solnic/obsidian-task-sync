@@ -335,11 +335,6 @@
         console.error("[CalendarService] Failed to load events:", err);
       });
     }
-
-    // Only load events if we have calendars and we're not already loading
-    if (availableCalendars.length > 0 && selectedCalendarIds && !isLoading) {
-      loadEvents(selectedDate);
-    }
   });
 
   /**

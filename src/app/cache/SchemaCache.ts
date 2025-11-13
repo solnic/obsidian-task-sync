@@ -2,6 +2,7 @@ import { z } from "zod";
 // @ts-ignore - superjson types not resolving with current moduleResolution setting
 import superjson from "superjson";
 import { Plugin } from "obsidian";
+import equal from "fast-deep-equal";
 
 export interface CacheEntry<T> {
   data: T;
@@ -67,9 +68,9 @@ export class SchemaCache<T> {
 
     // Only log if data actually changed or this is a new entry (unless skipChangeDetection is enabled)
     const existingEntry = this.memoryCache.get(key);
-    const isNewOrChanged = this.options.skipChangeDetection || 
-      !existingEntry ||
-      JSON.stringify(existingEntry.data) !== JSON.stringify(validatedData);
+    const isNewOrChanged = 
+      !this.options.skipChangeDetection &&
+      (!existingEntry || !equal(existingEntry.data, validatedData));
 
     if (isNewOrChanged) {
       console.log(`🔧 Cache updated: ${this.cacheKey}/${key}`);

@@ -35,6 +35,9 @@ export class GoogleOAuthService {
   private config: OAuthConfig;
   private settings: TaskSyncSettings;
   private saveSettings: () => Promise<void>;
+  
+  // Token refresh lock to prevent concurrent refreshes
+  private tokenRefreshPromise: Promise<OAuthTokens> | null = null;
 
   // Local server for OAuth callback
   private server?: http.Server;
@@ -46,6 +49,12 @@ export class GoogleOAuthService {
   ) {
     this.settings = settings;
     this.saveSettings = saveSettings;
+    
+    // Validate that Google Calendar integration settings exist
+    if (!settings.integrations?.googleCalendar) {
+      throw new Error("Google Calendar integration settings are missing. Please check your plugin settings.");
+    }
+    
     this.config = {
       clientId: settings.integrations.googleCalendar.clientId,
       clientSecret: settings.integrations.googleCalendar.clientSecret,
@@ -58,6 +67,11 @@ export class GoogleOAuthService {
    * Update configuration from settings
    */
   updateConfig(): void {
+    // Validate that Google Calendar integration settings exist
+    if (!this.settings.integrations?.googleCalendar) {
+      throw new Error("Google Calendar integration settings are missing. Please check your plugin settings.");
+    }
+    
     this.config = {
       clientId: this.settings.integrations.googleCalendar.clientId,
       clientSecret: this.settings.integrations.googleCalendar.clientSecret,
@@ -123,45 +137,60 @@ export class GoogleOAuthService {
 
   /**
    * Refresh access token using refresh token
+   * Uses a lock to prevent concurrent refresh requests
    */
   async refreshAccessToken(): Promise<OAuthTokens> {
+    // If a refresh is already in progress, wait for it
+    if (this.tokenRefreshPromise) {
+      console.log('[GoogleOAuth] Token refresh already in progress, waiting...');
+      return this.tokenRefreshPromise;
+    }
+
     const refreshToken = this.settings.integrations.googleCalendar.refreshToken;
 
     if (!refreshToken) {
       throw new Error("No refresh token available. Please re-authenticate.");
     }
 
-    try {
-      const response = await requestUrl({
-        url: GoogleOAuthService.TOKEN_URL,
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-          refresh_token: refreshToken,
-          client_id: this.config.clientId,
-          client_secret: this.config.clientSecret,
-          grant_type: "refresh_token"
-        }).toString()
-      });
+    // Create the refresh promise and store it to prevent concurrent refreshes
+    this.tokenRefreshPromise = (async () => {
+      try {
+        const response = await requestUrl({
+          url: GoogleOAuthService.TOKEN_URL,
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          body: new URLSearchParams({
+            refresh_token: refreshToken,
+            client_id: this.config.clientId,
+            client_secret: this.config.clientSecret,
+            grant_type: "refresh_token"
+          }).toString()
+        });
 
-      if (response.status !== 200) {
-        throw new Error(`Token refresh failed: ${response.status}`);
+        if (response.status !== 200) {
+          throw new Error(`Token refresh failed: ${response.status}`);
+        }
+
+        const data = response.json;
+        return {
+          accessToken: data.access_token,
+          refreshToken: refreshToken, // Keep existing refresh token
+          expiresIn: data.expires_in,
+          tokenType: data.token_type,
+          scope: data.scope || this.config.scopes.join(" ")
+        };
+      } catch (error: any) {
+        console.error("Token refresh error:", error);
+        throw new Error(`Failed to refresh access token: ${error.message}`);
+      } finally {
+        // Clear the lock after refresh completes (success or failure)
+        this.tokenRefreshPromise = null;
       }
+    })();
 
-      const data = response.json;
-      return {
-        accessToken: data.access_token,
-        refreshToken: refreshToken, // Keep existing refresh token
-        expiresIn: data.expires_in,
-        tokenType: data.token_type,
-        scope: data.scope || this.config.scopes.join(" ")
-      };
-    } catch (error: any) {
-      console.error("Token refresh error:", error);
-      throw new Error(`Failed to refresh access token: ${error.message}`);
-    }
+    return this.tokenRefreshPromise;
   }
 
   /**
@@ -199,6 +228,9 @@ export class GoogleOAuthService {
       console.error("OAuth flow error:", error);
       new Notice(`OAuth authentication failed: ${error.message}`);
       return false;
+    } finally {
+      // Ensure server is stopped even if an error occurs
+      this.stopServer();
     }
   }
 

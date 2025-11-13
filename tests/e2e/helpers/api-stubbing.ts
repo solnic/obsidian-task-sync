@@ -680,20 +680,20 @@ export async function restoreAppleCalendarAPIs(page: Page): Promise<void> {
       return;
     }
 
-    if (googleCalendarService.__originals) {
-      googleCalendarService.getCalendars = googleCalendarService.__originals.getCalendars;
-      googleCalendarService.getEvents = googleCalendarService.__originals.getEvents;
-      googleCalendarService.getTodayEvents = googleCalendarService.__originals.getTodayEvents;
-      googleCalendarService.checkPermissions = googleCalendarService.__originals.checkPermissions;
+    if (appleCalendarService.__originals) {
+      appleCalendarService.getCalendars = appleCalendarService.__originals.getCalendars;
+      appleCalendarService.getEvents = appleCalendarService.__originals.getEvents;
+      appleCalendarService.getTodayEvents = appleCalendarService.__originals.getTodayEvents;
+      appleCalendarService.checkPermissions = appleCalendarService.__originals.checkPermissions;
 
-      delete googleCalendarService.__originals;
-      delete googleCalendarService.__isStubbed;
+      delete appleCalendarService.__originals;
+      delete appleCalendarService.__isStubbed;
     }
 
     // Restore OAuth service
-    if (googleCalendarService.__originalOAuthService) {
-      googleCalendarService.oauthService = googleCalendarService.__originalOAuthService;
-      delete googleCalendarService.__originalOAuthService;
+    if (appleCalendarService.__originalOAuthService) {
+      appleCalendarService.oauthService = appleCalendarService.__originalOAuthService;
+      delete appleCalendarService.__originalOAuthService;
     }
 
     // Clean up global stubs

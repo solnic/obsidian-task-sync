@@ -19,6 +19,7 @@ import { areaStore } from "../stores/areaStore";
 import { get } from "svelte/store";
 import { taskSyncApp } from "../App";
 import { isPlanningActive } from "../stores/contextStore";
+import deepmerge from "deepmerge";
 
 /**
  * Interface for Obsidian Plugin that provides the necessary methods
@@ -70,7 +71,7 @@ export class ObsidianHost extends Host {
 
       // Deep merge loaded data with defaults to handle partial settings
       // This ensures new settings (like googleCalendar) are properly initialized
-      return this.deepMerge(DEFAULT_SETTINGS, data);
+      return deepmerge(DEFAULT_SETTINGS, data) as TaskSyncSettings;
     } catch (error) {
       throw new Error(
         `Failed to load settings from Obsidian: ${error.message}`
@@ -78,38 +79,7 @@ export class ObsidianHost extends Host {
     }
   }
 
-  /**
-   * Deep merge two objects, with source overriding target
-   */
-  private deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
-    const result = { ...target };
 
-    for (const key in source) {
-      if (Object.prototype.hasOwnProperty.call(source, key)) {
-        const sourceValue = source[key];
-        const targetValue = result[key];
-
-        // If both are objects (and not arrays or null), merge recursively
-        if (
-          sourceValue !== null &&
-          sourceValue !== undefined &&
-          typeof sourceValue === 'object' &&
-          !Array.isArray(sourceValue) &&
-          targetValue !== null &&
-          targetValue !== undefined &&
-          typeof targetValue === 'object' &&
-          !Array.isArray(targetValue)
-        ) {
-          result[key] = this.deepMerge(targetValue, sourceValue);
-        } else if (sourceValue !== undefined) {
-          // Only use the source value if it's not undefined to preserve defaults
-          result[key] = sourceValue;
-        }
-      }
-    }
-
-    return result;
-  }
 
   /**
    * Persist TaskSync settings to Obsidian's plugin data storage.

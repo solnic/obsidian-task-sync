@@ -321,7 +321,7 @@
               settings.integrations.googleCalendar.defaultEventDuration =
                 duration;
               await saveSettings(settings);
-            } else if (!isNaN(duration)) {
+            } else {
               new Notice("Event duration must be between 1 and 1440 minutes (24 hours)");
             }
           });
