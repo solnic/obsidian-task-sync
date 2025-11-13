@@ -128,8 +128,8 @@ export class FrontMatterProcessor {
         this.app.metadataCache.getFileCache(file)?.frontmatter || {};
 
       // Validate new properties if requested
-      if (validateProperties) {
-        const validationResult = this.propertyProcessor.process(
+      if (validateProperties && Object.keys(properties).length > 0) {
+        const validationResult = await this.propertyProcessor.process(
           noteType,
           properties,
           {
@@ -138,7 +138,6 @@ export class FrontMatterProcessor {
             useDefaults,
           }
         );
-
         if (!validationResult.valid) {
           return {
             success: false,
@@ -395,7 +394,7 @@ export class FrontMatterProcessor {
       const frontMatter =
         this.app.metadataCache.getFileCache(file)?.frontmatter || {};
 
-      const result = this.propertyProcessor.process(noteType, frontMatter);
+      const result = await this.propertyProcessor.process(noteType, frontMatter);
 
       return result.valid
         ? createValidResult(result.properties)

@@ -72,6 +72,23 @@ export interface ConditionalValidation {
 }
 
 /**
+ * Association validator interface
+ * Allows external validation of association properties
+ */
+export interface AssociationValidator {
+  /**
+   * Validate that referenced entities exist
+   * @param noteTypeId - The note type ID being referenced
+   * @param references - Array of entity references (e.g., note names or IDs)
+   * @returns ValidationResult indicating if all references are valid
+   */
+  validateReferences(
+    noteTypeId: string,
+    references: string[]
+  ): Promise<ValidationResult> | ValidationResult;
+}
+
+/**
  * Property processing result
  */
 export interface PropertyProcessingResult extends ValidationResult {
@@ -92,6 +109,14 @@ export class PropertyProcessor {
   private dependencies: Map<string, PropertyDependency> = new Map();
   private conditionalValidations: Map<string, ConditionalValidation[]> =
     new Map();
+  private associationValidator: AssociationValidator | null = null;
+
+  /**
+   * Set an association validator for validating association properties
+   */
+  setAssociationValidator(validator: AssociationValidator | null): void {
+    this.associationValidator = validator;
+  }
 
   /**
    * Register a property dependency
@@ -135,11 +160,11 @@ export class PropertyProcessor {
   /**
    * Process properties from front-matter
    */
-  process(
+  async process(
     noteType: NoteType,
     frontMatter: Record<string, any>,
     options: PropertyProcessingOptions = {}
-  ): PropertyProcessingResult {
+  ): Promise<PropertyProcessingResult> {
     const {
       applyTransformations = true,
       useDefaults = true,
@@ -241,7 +266,17 @@ export class PropertyProcessor {
       warnings.push(...conditionalResult.warnings);
     }
 
-    // Fourth pass: Run cross-property validation if defined
+    // Fourth pass: Validate association properties if validator is set
+    if (this.associationValidator) {
+      const associationResult = await this.validateAssociations(
+        noteType,
+        processedProperties
+      );
+      errors.push(...associationResult.errors);
+      warnings.push(...associationResult.warnings);
+    }
+
+    // Fifth pass: Run cross-property validation if defined
     if (noteType.crossPropertyValidation) {
       const crossResult = noteType.crossPropertyValidation(processedProperties);
       if (!crossResult.valid) {
@@ -396,4 +431,73 @@ export class PropertyProcessor {
     result.warnings = warnings;
     return result;
   }
+
+  /**
+   * Validate association properties
+   */
+  private async validateAssociations(
+    noteType: NoteType,
+    properties: Record<string, any>
+  ): Promise<ValidationResult> {
+    const errors: ValidationError[] = [];
+    const warnings: ValidationWarning[] = [];
+
+    if (!this.associationValidator) {
+      return createValidResult({});
+    }
+
+    // Find all association properties
+    for (const [key, propertyDef] of Object.entries(noteType.properties)) {
+      if (propertyDef.type !== "association" || !propertyDef.association) {
+        continue;
+      }
+
+      const value = properties[propertyDef.frontMatterKey];
+
+      // Skip if no value
+      if (value === undefined || value === null) {
+        continue;
+      }
+
+      // Convert to array for uniform handling
+      const references = propertyDef.association.multiple
+        ? Array.isArray(value)
+          ? value
+          : []
+        : value
+        ? [value]
+        : [];
+
+      // Skip if empty
+      if (references.length === 0) {
+        continue;
+      }
+
+      // Validate references
+      const result = await this.associationValidator.validateReferences(
+        propertyDef.association.noteTypeId,
+        references
+      );
+
+      if (!result.valid) {
+        // Add property context to errors
+        for (const error of result.errors) {
+          errors.push({
+            ...error,
+            propertyKey: key,
+          });
+        }
+        warnings.push(...result.warnings);
+      }
+    }
+
+    if (errors.length > 0) {
+      return createInvalidResult(errors, warnings);
+    }
+
+    const result = createValidResult({});
+    result.warnings = warnings;
+    return result;
+  }
 }
+

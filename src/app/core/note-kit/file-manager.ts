@@ -262,7 +262,7 @@ export class FileManager {
       const currentContent = await this.vault.read(file);
 
       // Process current note to get note type and existing properties
-      const noteResult = this.noteProcessor.processNote(
+      const noteResult = await this.noteProcessor.processNote(
         currentContent,
         filePath
       );
@@ -279,7 +279,7 @@ export class FileManager {
 
       // Validate new properties if requested
       if (validateProperties && Object.keys(properties).length > 0) {
-        const propertyResult = this.propertyProcessor.process(
+        const propertyResult = await this.propertyProcessor.process(
           noteResult.noteType,
           properties,
           { validateRequired: false } // Don't require all properties for updates
@@ -331,7 +331,7 @@ export class FileManager {
 
       // Read and process content
       const content = await this.vault.read(file);
-      const result = this.noteProcessor.processNote(content, filePath);
+      const result = await this.noteProcessor.processNote(content, filePath);
 
       return {
         valid: result.valid,

@@ -2,6 +2,11 @@
  * Obsidian Property Registry
  * Single source of truth for all entity properties used in Obsidian Bases
  * This is Obsidian-specific because it defines front-matter properties and base configurations
+ *
+ * IMPORTANT: link: true flag indicates properties that should use wiki link format [[filepath|Name]]
+ * in frontmatter and base properties (Obsidian-specific representation).
+ * Entity properties always store plain names for cross-extension compatibility.
+ * Conversion between formats happens at the boundary in Operations classes.
  */
 
 import { PropertyDefinition } from "../../../types/properties";

@@ -10,6 +10,7 @@ import type {
   SemanticVersion,
   ValidationResult,
   PropertyDefinition,
+  SelectOption,
 } from "./types";
 import { VersionComparison } from "./types";
 import { compareVersions } from "./version";
@@ -93,6 +94,18 @@ export interface SerializedPropertyDefinition {
   options?: string[]; // Options for enum properties
   source?: string; // Source for computed/formula properties
   link?: boolean; // Whether property should be rendered as a link
+  selectOptions?: SelectOption[]; // Options for select properties with colors
+  association?: { // Configuration for association properties
+    noteTypeId: string;
+    multiple: boolean;
+    folder?: string;
+    allowCreate?: boolean;
+  };
+  form?: { // Form-specific configuration
+    hidden?: boolean;
+    main?: boolean;
+    label?: boolean | string; // Allow string for custom labels
+  };
 }
 
 /**
@@ -477,6 +490,9 @@ export class TypeRegistry {
         options: prop.options,
         source: prop.source,
         link: prop.link,
+        selectOptions: prop.selectOptions,
+        association: prop.association,
+        form: prop.form,
       };
     }
 

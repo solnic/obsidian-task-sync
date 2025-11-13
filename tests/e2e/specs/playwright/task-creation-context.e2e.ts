@@ -133,10 +133,10 @@ test.describe("Task Creation with Context Defaults", () => {
     await expect(page.locator(".task-sync-modal-container")).toBeHidden();
     await expectNotice(page, "created successfully");
 
-    // Verify file and front-matter; Parent task should be parentTitle
+    // Verify file and front-matter; Parent task should be wiki link (single-value association)
     const expectedPath = `Tasks/${childTitle}.md`;
     await waitForFileCreation(page, expectedPath);
     const fm = await getFrontMatter(page, expectedPath);
-    expect(fm["Parent task"]).toBe(parentTitle);
+    expect(fm["Parent task"]).toBe(`[[Tasks/${parentTitle}.md|${parentTitle}]]`);
   });
 });

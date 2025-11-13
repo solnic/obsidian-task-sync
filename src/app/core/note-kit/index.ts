@@ -97,6 +97,8 @@ export {
   optionalFilePathSchema,
   tagsSchema,
   optionalTagsSchema,
+  associationSchema,
+  associationsSchema,
   prioritySchema,
   optionalPrioritySchema,
   statusSchema,
@@ -189,6 +191,14 @@ export {
   type RestoreResult,
 } from "./backup-manager";
 
+// Export schema migration system
+export {
+  SchemaMigrationManager,
+  AssociationMigration,
+  type MigrationRecord,
+  type SchemaMigration,
+} from "./schema-migration";
+
 // Export property processor
 export {
   PropertyProcessor,
@@ -196,6 +206,7 @@ export {
   type PropertyProcessingResult,
   type PropertyDependency,
   type ConditionalValidation,
+  type AssociationValidator,
 } from "./property-processor";
 
 // Export property accessor

@@ -9,6 +9,7 @@ import { Task } from "../../../core/entities";
 import { ObsidianEntityOperations } from "./EntityOperations";
 import { projectStore } from "../../../stores/projectStore";
 import { taskStore } from "../../../stores/taskStore";
+import { areaStore } from "../../../stores/areaStore";
 import { getDateString } from "../../../utils/dateFiltering";
 import { PROPERTY_REGISTRY } from "../utils/PropertyRegistry";
 import type { TaskSyncSettings } from "../../../types/settings";
@@ -149,6 +150,12 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     // ALL frontmatter properties must be defined even if they have null/empty defaults
     // to prevent validation errors when creating LocalTask objects.
 
+    // Convert association properties from plain entity names to wiki link format
+    // This is the boundary where source-agnostic entity data is converted to Obsidian-specific format
+    //
+    // IMPORTANT: Arrays are kept as plain names for Obsidian Bases filtering compatibility
+    // Bases .contains() method doesn't work properly with wiki link arrays
+
     // Convert project name to wiki link format
     let projectValue = task.project || "";
     if (projectValue && !projectValue.startsWith("[[")) {
@@ -161,16 +168,29 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       }
     }
 
+    // Keep areas as plain names for Bases filtering compatibility
+    const areasValue = task.areas || [];
+
+    // Convert parent task to wiki link format
+    let parentTaskValue = task.parentTask || "";
+    if (parentTaskValue && !parentTaskValue.startsWith("[[")) {
+      const parentTask = this.findTaskByName(parentTaskValue);
+      const parentTaskFilePath = parentTask?.source.keys.obsidian;
+      if (parentTask && parentTaskFilePath) {
+        parentTaskValue = `[[${parentTaskFilePath}|${parentTaskValue}]]`;
+      }
+    }
+
     return {
       [PROPERTY_REGISTRY.TITLE.name]: task.title, // Use property name from registry
       [PROPERTY_REGISTRY.TYPE.name]: "Task", // Always "Task" for task entities
       [PROPERTY_REGISTRY.CATEGORY.name]: task.category || "", // Task category
       [PROPERTY_REGISTRY.PRIORITY.name]: task.priority || "", // Priority
-      [PROPERTY_REGISTRY.AREAS.name]: task.areas || [], // Areas array
+      [PROPERTY_REGISTRY.AREAS.name]: areasValue, // Areas array as plain names (for Bases filtering)
       [PROPERTY_REGISTRY.PROJECT.name]: projectValue, // Project in wiki link format
       [PROPERTY_REGISTRY.DONE.name]: task.done, // Done boolean
       [PROPERTY_REGISTRY.STATUS.name]: task.status, // Status
-      [PROPERTY_REGISTRY.PARENT_TASK.name]: task.parentTask || "", // Parent task
+      [PROPERTY_REGISTRY.PARENT_TASK.name]: parentTaskValue, // Parent task in wiki link format
       [PROPERTY_REGISTRY.DO_DATE.name]: task.doDate
         ? getDateString(task.doDate)
         : null, // Do Date
@@ -196,6 +216,20 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     });
     unsubscribe();
     return foundProject;
+  }
+
+  /**
+   * Find a task by title from the task store
+   */
+  private findTaskByName(
+    taskTitle: string
+  ): Task | null {
+    let foundTask = null;
+    const unsubscribe = taskStore.subscribe((state) => {
+      foundTask = state.tasks.find((t) => t.title === taskTitle);
+    });
+    unsubscribe();
+    return foundTask;
   }
 
   protected getEntityType(): string {
@@ -296,8 +330,9 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       return value;
     };
 
+    // Areas are stored as plain names in frontmatter (not wiki links)
     // Ensure areas is always an array
-    let areas = cleanLinkFormat(frontMatter.Areas);
+    let areas = frontMatter.Areas;
     if (!Array.isArray(areas)) {
       if (areas === undefined || areas === null) {
         areas = [];

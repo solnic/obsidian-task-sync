@@ -278,11 +278,11 @@ export class NoteProcessor {
   /**
    * Process a complete note
    */
-  processNote(
+  async processNote(
     content: string,
     filePath: string,
     options: NoteProcessingOptions = {}
-  ): NoteProcessingResult {
+  ): Promise<NoteProcessingResult> {
     const {
       propertyOptions = {},
       autoDetectType = true,
@@ -351,7 +351,7 @@ export class NoteProcessor {
     }
 
     // Step 3: Process properties
-    const propertyResult = this.propertyProcessor.process(
+    const propertyResult = await this.propertyProcessor.process(
       noteType,
       frontMatterResult.frontMatter,
       propertyOptions

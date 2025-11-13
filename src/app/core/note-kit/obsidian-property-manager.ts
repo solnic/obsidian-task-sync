@@ -20,6 +20,7 @@ export const TYPE_NOTE_TO_OBSIDIAN_TYPE_MAP = {
   select: "text", // Select maps to text in Obsidian (will store the selected value)
   enum: "text", // Enum also maps to text
   object: "text", // Objects are serialized as text in Obsidian
+  association: "text", // Associations are stored as text (wiki links)
 } as const;
 
 /**
@@ -293,6 +294,7 @@ export class ObsidianPropertyManager {
       date: "Date",
       array: "List",
       select: "Select",
+      association: "Association",
     };
   }
 }
