@@ -19,6 +19,7 @@ import { areaStore } from "../stores/areaStore";
 import { get } from "svelte/store";
 import { taskSyncApp } from "../App";
 import { isPlanningActive } from "../stores/contextStore";
+import deepmerge from "deepmerge";
 
 /**
  * Interface for Obsidian Plugin that provides the necessary methods
@@ -68,17 +69,17 @@ export class ObsidianHost extends Host {
         return { ...DEFAULT_SETTINGS };
       }
 
-      // Merge loaded data with defaults to handle partial settings
-      return {
-        ...DEFAULT_SETTINGS,
-        ...data,
-      };
+      // Deep merge loaded data with defaults to handle partial settings
+      // This ensures new settings (like googleCalendar) are properly initialized
+      return deepmerge(DEFAULT_SETTINGS, data) as TaskSyncSettings;
     } catch (error) {
       throw new Error(
         `Failed to load settings from Obsidian: ${error.message}`
       );
     }
   }
+
+
 
   /**
    * Persist TaskSync settings to Obsidian's plugin data storage.

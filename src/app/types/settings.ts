@@ -92,6 +92,33 @@ export interface AppleCalendarIntegrationSettings {
   includeTaskDetailsInEvent: boolean; // Whether to include task details in event description
 }
 
+// Google Calendar integration interfaces
+export interface GoogleCalendarIntegrationSettings {
+  enabled: boolean;
+  apiKey: string; // Google API Key
+  clientId: string; // OAuth 2.0 Client ID
+  clientSecret: string; // OAuth 2.0 Client Secret
+  accessToken: string; // OAuth 2.0 Access Token
+  refreshToken: string; // OAuth 2.0 Refresh Token
+  tokenExpiry: number; // Token expiration timestamp
+  selectedCalendars: string[]; // Array of calendar IDs to include
+  includeAllDayEvents: boolean;
+  includeBusyEvents: boolean;
+  includeFreeEvents: boolean;
+  daysAhead: number; // Number of days to look ahead for events
+  daysBehind: number; // Number of days to look back for events
+  includeLocation: boolean;
+  includeNotes: boolean;
+  timeFormat: "12h" | "24h";
+  defaultArea: string; // Default area for imported calendar events
+  // Task scheduling configuration
+  schedulingEnabled: boolean; // Whether task scheduling is enabled
+  defaultSchedulingCalendar: string; // Default calendar for scheduling tasks
+  defaultEventDuration: number; // Default event duration in minutes
+  defaultReminders: number[]; // Default reminders (in minutes before event)
+  includeTaskDetailsInEvent: boolean; // Whether to include task details in event description
+}
+
 export interface TaskSyncSettings {
   tasksFolder: string;
   projectsFolder: string;
@@ -121,6 +148,7 @@ export interface TaskSyncSettings {
     github: GitHubIntegrationSettings;
     appleReminders: AppleRemindersIntegrationSettings;
     appleCalendar: AppleCalendarIntegrationSettings;
+    googleCalendar: GoogleCalendarIntegrationSettings;
   };
 }
 
@@ -245,6 +273,31 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
       endHour: 18, // End at 6 PM
       timeIncrement: 15, // 15-minute increments
       zoomLevel: 1, // Default zoom level (second level)
+      // Task scheduling defaults
+      schedulingEnabled: false, // Disabled by default
+      defaultSchedulingCalendar: "", // No default calendar
+      defaultEventDuration: 60, // 1 hour default duration
+      defaultReminders: [15], // 15 minutes before event
+      includeTaskDetailsInEvent: true, // Include task details by default
+    },
+    googleCalendar: {
+      enabled: false,
+      apiKey: "",
+      clientId: "",
+      clientSecret: "",
+      accessToken: "",
+      refreshToken: "",
+      tokenExpiry: 0,
+      selectedCalendars: [], // Empty array means include all calendars
+      includeAllDayEvents: true,
+      includeBusyEvents: true,
+      includeFreeEvents: false,
+      daysAhead: 1, // Look ahead 1 day
+      daysBehind: 0, // Don't look back
+      includeLocation: true,
+      includeNotes: false,
+      timeFormat: "24h" as const,
+      defaultArea: "", // Default area for imported calendar events
       // Task scheduling defaults
       schedulingEnabled: false, // Disabled by default
       defaultSchedulingCalendar: "", // No default calendar

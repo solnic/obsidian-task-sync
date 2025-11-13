@@ -690,6 +690,12 @@ export async function restoreAppleCalendarAPIs(page: Page): Promise<void> {
       delete appleCalendarService.__isStubbed;
     }
 
+    // Restore OAuth service
+    if (appleCalendarService.__originalOAuthService) {
+      appleCalendarService.oauthService = appleCalendarService.__originalOAuthService;
+      delete appleCalendarService.__originalOAuthService;
+    }
+
     // Clean up global stubs
     delete (window as any).__appleCalendarApiStubs;
     delete (window as any).__installAppleCalendarStubs;
@@ -841,6 +847,178 @@ export async function stubAppleCalendarAPIs(
     // Install stubs immediately if plugin is available
     (window as any).__installAppleCalendarStubs();
   }, fixtureData);
+}
+
+/**
+ * Simple Google Calendar API stubbing that persists across plugin reloads
+ * Uses global window storage to maintain stubs and injects a stub OAuth service
+ */
+export async function stubGoogleCalendarAPIs(
+  page: Page,
+  fixtures: {
+    calendars?: string;
+    events?: string;
+    todayEvents?: string;
+    permissions?: string;
+  }
+): Promise<void> {
+  // Load fixture data
+  const fixtureData: any = {};
+
+  if (fixtures.calendars) {
+    fixtureData.calendars = loadFixture("google-calendar", fixtures.calendars);
+  }
+  if (fixtures.events) {
+    fixtureData.events = loadFixture("google-calendar", fixtures.events);
+    // Update events to use today's date
+    fixtureData.events = normalizeEventDatesToToday(fixtureData.events);
+  }
+  if (fixtures.todayEvents) {
+    fixtureData.todayEvents = loadFixture(
+      "google-calendar",
+      fixtures.todayEvents
+    );
+    // Update today's events to use today's date
+    fixtureData.todayEvents = normalizeEventDatesToToday(fixtureData.todayEvents);
+  }
+  if (fixtures.permissions) {
+    fixtureData.permissions = loadFixture(
+      "google-calendar",
+      fixtures.permissions
+    );
+  }
+
+  await page.evaluate((fixtureData) => {
+    // Store fixture data globally
+    (window as any).__googleCalendarApiStubs = fixtureData;
+
+    // Create a stub OAuth service
+    const createStubOAuthService = () => ({
+      isAuthenticated: () => true,
+      getAccessToken: async () => "stub_access_token",
+      authorize: async () => ({ success: true }),
+      refreshToken: async () => "stub_access_token",
+      revokeAccess: async () => {},
+    });
+
+    // Create a global stub installer
+    (window as any).__installGoogleCalendarStubs = () => {
+      const app = (window as any).app;
+      const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+      const taskSyncApp = plugin?.host?.getApp();
+      const calendarExtension = taskSyncApp?.calendarExtension;
+
+      if (!calendarExtension) {
+        console.log("🔧 Calendar extension not found for Google Calendar stubbing");
+        return false;
+      }
+
+      const calendarServices = calendarExtension.getCalendarServices();
+      const googleCalendarService = calendarServices.find(
+        (service: any) => service.serviceName === "google-calendar"
+      );
+
+      if (!googleCalendarService) {
+        console.log("🔧 Google Calendar service not found");
+        return false;
+      }
+
+      console.log("🔧 Found Google Calendar service, installing stubs");
+
+      if (googleCalendarService.__isStubbed) {
+        return true;
+      }
+
+      // Store originals
+      googleCalendarService.__originals = {
+        getCalendars: googleCalendarService.getCalendars,
+        getEvents: googleCalendarService.getEvents,
+        getTodayEvents: googleCalendarService.getTodayEvents,
+        checkPermissions: googleCalendarService.checkPermissions,
+      };
+
+      // Replace OAuth service with stub
+      if (googleCalendarService.oauthService) {
+        googleCalendarService.__originalOAuthService = googleCalendarService.oauthService;
+        googleCalendarService.oauthService = createStubOAuthService();
+        console.log("🔧 Replaced OAuth service with stub");
+      }
+
+      // Install stubs for API methods
+      googleCalendarService.getCalendars = async () => {
+        console.log("🔧 Stubbed getCalendars called");
+        return (window as any).__googleCalendarApiStubs?.calendars || [];
+      };
+
+      googleCalendarService.getEvents = async () => {
+        console.log("🔧 Stubbed getEvents called");
+        return (window as any).__googleCalendarApiStubs?.events || [];
+      };
+
+      googleCalendarService.getTodayEvents = async () => {
+        console.log("🔧 Stubbed getTodayEvents called");
+        return (window as any).__googleCalendarApiStubs?.todayEvents || [];
+      };
+
+      googleCalendarService.checkPermissions = async () => {
+        console.log("🔧 Stubbed checkPermissions called");
+        return (window as any).__googleCalendarApiStubs?.permissions !== undefined
+          ? (window as any).__googleCalendarApiStubs?.permissions
+          : true;
+      };
+
+      googleCalendarService.__isStubbed = true;
+      return true;
+    };
+
+    // Install stubs immediately
+    (window as any).__installGoogleCalendarStubs();
+  }, fixtureData);
+}
+
+/**
+ * Restore Google Calendar APIs to original implementations
+ */
+export async function restoreGoogleCalendarAPIs(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const app = (window as any).app;
+    const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+    const taskSyncApp = plugin?.host?.getApp();
+    const calendarExtension = taskSyncApp?.calendarExtension;
+
+    if (!calendarExtension) {
+      return;
+    }
+
+    const calendarServices = calendarExtension.getCalendarServices();
+    const googleCalendarService = calendarServices.find(
+      (service: any) => service.serviceName === "google-calendar"
+    );
+
+    if (!googleCalendarService) {
+      return;
+    }
+
+    if (googleCalendarService.__originals) {
+      googleCalendarService.getCalendars = googleCalendarService.__originals.getCalendars;
+      googleCalendarService.getEvents = googleCalendarService.__originals.getEvents;
+      googleCalendarService.getTodayEvents = googleCalendarService.__originals.getTodayEvents;
+      googleCalendarService.checkPermissions = googleCalendarService.__originals.checkPermissions;
+
+      delete googleCalendarService.__originals;
+      delete googleCalendarService.__isStubbed;
+    }
+
+    // Restore OAuth service
+    if (googleCalendarService.__originalOAuthService) {
+      googleCalendarService.oauthService = googleCalendarService.__originalOAuthService;
+      delete googleCalendarService.__originalOAuthService;
+    }
+
+    // Clean up global stubs
+    delete (window as any).__googleCalendarApiStubs;
+    delete (window as any).__installGoogleCalendarStubs;
+  });
 }
 
 /**

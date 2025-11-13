@@ -9,7 +9,10 @@ import {
   enableIntegration,
   switchToTaskService,
 } from "../../helpers/global";
-import { stubAppleCalendarAPIs } from "../../helpers/api-stubbing";
+import {
+  stubAppleCalendarAPIs,
+  stubGoogleCalendarAPIs,
+} from "../../helpers/api-stubbing";
 
 test.describe("Calendar Day View", () => {
   test("should display calendar events from Apple Calendar", async ({
@@ -257,5 +260,205 @@ test.describe("Calendar Day View", () => {
 
     // The event list should change (different events or no events)
     // Note: This is a basic test - in a real scenario, we'd stub different fixture data for different dates
+  });
+});
+
+test.describe("Calendar Day View - Google Calendar", () => {
+  test("should display calendar events from Google Calendar", async ({
+    page,
+  }) => {
+    // Enable Google Calendar integration BEFORE opening the view
+    await enableIntegration(page, "googleCalendar");
+    
+    await openView(page, "task-sync-main");
+
+    // Stub Google Calendar APIs with fixture data
+    await stubGoogleCalendarAPIs(page, {
+      calendars: "calendars-basic",
+      events: "today-events-basic",
+      todayEvents: "today-events-basic",
+      permissions: "permissions-granted",
+    });
+
+    // Wait for calendar service button to appear and be enabled
+    await page.waitForSelector('[data-testid="service-calendar"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Switch to calendar view
+    await switchToTaskService(page, "calendar");
+
+    // Wait for calendar events to load
+    await page.waitForSelector('[data-testid="obsidian-day-view-event"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Verify events are displayed
+    const eventCount = await page
+      .locator('[data-testid="obsidian-day-view-event"]')
+      .count();
+    expect(eventCount).toBeGreaterThan(0);
+
+    // Verify specific events from Google Calendar fixture
+    expect(
+      await page
+        .locator('[data-testid="obsidian-day-view-event"]:has-text("Team Meeting")')
+        .count()
+    ).toBe(1);
+
+    expect(
+      await page
+        .locator('[data-testid="obsidian-day-view-event"]:has-text("Project Review")')
+        .count()
+    ).toBe(1);
+  });
+
+  test("should filter Google Calendar events by calendar selection", async ({
+    page,
+  }) => {
+    // Enable Google Calendar integration BEFORE opening the view
+    await enableIntegration(page, "googleCalendar");
+    
+    await openView(page, "task-sync-main");
+
+    // Stub Google Calendar APIs with fixture data
+    await stubGoogleCalendarAPIs(page, {
+      calendars: "calendars-basic",
+      events: "events-basic",
+      todayEvents: "today-events-basic",
+      permissions: "permissions-granted",
+    });
+
+    // Wait for calendar service to be enabled
+    await page.waitForSelector('[data-testid="service-calendar"]:not([disabled])', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Switch to calendar view
+    await switchToTaskService(page, "calendar");
+
+    // Wait for events to load
+    await page.waitForSelector('[data-testid="obsidian-day-view-event"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Get initial event count (all calendars)
+    const initialEventCount = await page
+      .locator('[data-testid="obsidian-day-view-event"]')
+      .count();
+    expect(initialEventCount).toBeGreaterThan(0);
+
+    // Open calendar filter dropdown
+    const calendarFilterButton = page.locator('[data-testid="calendar-filter"]');
+    await calendarFilterButton.click();
+
+    // Wait for dropdown to appear
+    await page.waitForSelector('[data-testid="calendar-filter-dropdown"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // First, deselect "All calendars" to clear selection
+    const allCalendarsOption = page.locator(
+      '[data-testid="calendar-filter-dropdown-item"]:has-text("All calendars")'
+    );
+    await allCalendarsOption.click();
+
+    // Wait a bit for the filter to update
+    await page.waitForTimeout(300);
+
+    // Then select "Work Calendar" only
+    const workCalendarOption = page.locator(
+      '[data-testid="calendar-filter-dropdown-item"]:has-text("Work Calendar")'
+    );
+    await workCalendarOption.click();
+
+    // Close dropdown
+    await page.keyboard.press("Escape");
+
+    // Wait for events to be filtered
+    await page.waitForFunction(() => {
+      const events = Array.from(
+        document.querySelectorAll('[data-testid="obsidian-day-view-event"]')
+      );
+      return (
+        events.length > 0 &&
+        events.every((e) => e.getAttribute("data-calendar-name") === "Work Calendar")
+      );
+    });
+
+    // Verify only Work Calendar events are shown
+    const filteredEvents = page.locator('[data-testid="obsidian-day-view-event"]');
+    const filteredCount = await filteredEvents.count();
+
+    // All filtered events should be from Work Calendar
+    for (let i = 0; i < filteredCount; i++) {
+      const event = filteredEvents.nth(i);
+      const calendarName = await event.getAttribute("data-calendar-name");
+      expect(calendarName).toBe("Work Calendar");
+    }
+  });
+
+  test("should search and filter Google Calendar events by title", async ({
+    page,
+  }) => {
+    // Enable Google Calendar integration BEFORE opening the view
+    await enableIntegration(page, "googleCalendar");
+    
+    await openView(page, "task-sync-main");
+
+    // Stub Google Calendar APIs with fixture data
+    await stubGoogleCalendarAPIs(page, {
+      calendars: "calendars-basic",
+      events: "today-events-basic",
+      todayEvents: "today-events-basic",
+      permissions: "permissions-granted",
+    });
+
+    // Wait for calendar service to be enabled
+    await page.waitForSelector('[data-testid="service-calendar"]:not([disabled])', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Switch to calendar view
+    await switchToTaskService(page, "calendar");
+
+    // Wait for events to load
+    await page.waitForSelector('[data-testid="obsidian-day-view-event"]', {
+      state: "visible",
+      timeout: 10000,
+    });
+
+    // Get initial event count
+    const initialEventCount = await page
+      .locator('[data-testid="obsidian-day-view-event"]')
+      .count();
+    expect(initialEventCount).toBe(2); // Should have 2 today events
+
+    // Use search to filter events
+    const searchInput = page.locator(
+      '[data-testid="day-view-tab"] [data-testid="task-sync-search-input"]'
+    );
+    await searchInput.fill("Team");
+
+    // Wait for search to filter
+    await page.waitForTimeout(500);
+
+    // Verify only matching events are shown
+    const filteredCount = await page
+      .locator('[data-testid="obsidian-day-view-event"]')
+      .count();
+    expect(filteredCount).toBe(1);
+
+    // Verify the shown event is the correct one
+    const visibleEvent = page
+      .locator('[data-testid="obsidian-day-view-event"]')
+      .first();
+    await expect(visibleEvent).toContainText("Team Meeting");
   });
 });

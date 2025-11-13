@@ -153,18 +153,23 @@
         const selectedCalendarNames: string[] = [];
 
         if (appleCalendarSettings?.selectedCalendars?.length > 0) {
-          selectedCalendarNames.push(...appleCalendarSettings.selectedCalendars);
+          selectedCalendarNames.push(
+            ...appleCalendarSettings.selectedCalendars
+          );
         }
 
         if (googleCalendarSettings?.selectedCalendars?.length > 0) {
-          selectedCalendarNames.push(...googleCalendarSettings.selectedCalendars);
+          selectedCalendarNames.push(
+            ...googleCalendarSettings.selectedCalendars
+          );
         }
 
         if (selectedCalendarNames.length > 0) {
           selectedCalendarIds = calendars
-            .filter((cal: Calendar) =>
-              selectedCalendarNames.includes(cal.name) ||
-              selectedCalendarNames.includes(cal.id)
+            .filter(
+              (cal: Calendar) =>
+                selectedCalendarNames.includes(cal.name) ||
+                selectedCalendarNames.includes(cal.id)
             )
             .map((cal: Calendar) => cal.id);
         } else {
@@ -175,10 +180,14 @@
 
       // Only refresh if we don't have calendars cached
       if (initialCalendars.length === 0) {
-        console.log("[CalendarService] No cached calendars, triggering refresh");
+        console.log(
+          "[CalendarService] No cached calendars, triggering refresh"
+        );
         await calendarExtension.refresh();
       } else {
-        console.log(`[CalendarService] Using ${initialCalendars.length} cached calendars`);
+        console.log(
+          `[CalendarService] Using ${initialCalendars.length} cached calendars`
+        );
       }
 
       // Mark as initialized and load initial events
@@ -274,17 +283,17 @@
    */
   $effect(() => {
     let events = calendarEvents;
-    
+
     // First filter by selected calendars
     events = filterByCalendars(
       events,
       selectedCalendarIds,
       availableCalendars.length
     );
-    
+
     // Then apply search filter
     events = searchEvents(searchQuery, events);
-    
+
     filteredEvents = events;
   });
 
@@ -313,13 +322,17 @@
       availableCalendars.length > 0 &&
       selectedCalendarIds.length > 0 &&
       !isLoading &&
-      (previousDate !== currentDateStr || previousCalendarIds !== currentCalendarIdsStr)
+      (previousDate !== currentDateStr ||
+        previousCalendarIds !== currentCalendarIdsStr)
     ) {
-      console.log(`[CalendarService] Date or calendars changed, loading events`);
+      console.log(
+        `[CalendarService] Date or calendars changed, loading events`
+      );
       previousDate = currentDateStr;
       previousCalendarIds = currentCalendarIdsStr;
-      loadEvents(selectedDate).catch(err => {
-        console.error('[CalendarService] Failed to load events:', err);
+
+      loadEvents(selectedDate).catch((err) => {
+        console.error("[CalendarService] Failed to load events:", err);
       });
     }
   });
@@ -383,7 +396,8 @@
             </div>
           {:else if availableCalendars.length === 0}
             <div class="task-sync-empty-message">
-              No calendars available. Please check your calendar integration settings.
+              No calendars available. Please check your calendar integration
+              settings.
             </div>
           {:else}
             <FilterButton
