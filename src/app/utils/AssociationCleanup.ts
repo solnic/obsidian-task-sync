@@ -22,6 +22,18 @@ export interface AssociationCleanupConfig {
 }
 
 /**
+ * Helper function to extract entity name from wiki link format
+ * Wiki links are in format: [[filepath|DisplayName]]
+ * @param wikiLink - The wiki link string
+ * @returns The display name, or the original string if not a wiki link
+ */
+function extractEntityNameFromWikiLink(wikiLink: string): string {
+  // Match wiki link format: [[filepath|DisplayName]]
+  const match = wikiLink.match(/\[\[[^\]]+\|([^\]]+)\]\]/);
+  return match ? match[1] : wikiLink;
+}
+
+/**
  * AssociationCleanup handles automatic cleanup of orphaned association references
  * when entities are deleted
  */
@@ -53,13 +65,13 @@ export class AssociationCleanup {
 
     // Listen for project deletions
     const projectHandler = eventBus.on("projects.deleted", (event) => {
-      this.cleanupProjectReferences(event.projectId);
+      this.cleanupProjectReferences(event.project.name);
     });
     this.eventHandlers.push(projectHandler);
 
     // Listen for area deletions
     const areaHandler = eventBus.on("areas.deleted", (event) => {
-      this.cleanupAreaReferences(event.areaId);
+      this.cleanupAreaReferences(event.area.name);
     });
     this.eventHandlers.push(areaHandler);
 
@@ -97,23 +109,28 @@ export class AssociationCleanup {
 
   /**
    * Clean up references to a deleted project
+   * @param projectName - The name of the deleted project
    */
-  private cleanupProjectReferences(projectId: string): void {
+  private cleanupProjectReferences(projectName: string): void {
     if (this.config.verbose) {
-      console.log(`[AssociationCleanup] Cleaning up references to project: ${projectId}`);
+      console.log(`[AssociationCleanup] Cleaning up references to project: ${projectName}`);
     }
 
     const state = get(taskStore);
     const tasksToUpdate: Task[] = [];
 
     // Find all tasks that reference this project
+    // Project references are stored as wiki links: [[filepath|ProjectName]]
     for (const task of state.tasks) {
-      if (task.project === projectId) {
-        tasksToUpdate.push({
-          ...task,
-          project: "", // Clear the project reference
-          updatedAt: new Date(),
-        });
+      if (task.project) {
+        const taskProjectName = extractEntityNameFromWikiLink(task.project);
+        if (taskProjectName === projectName) {
+          tasksToUpdate.push({
+            ...task,
+            project: "", // Clear the project reference
+            updatedAt: new Date(),
+          });
+        }
       }
     }
 
@@ -129,10 +146,11 @@ export class AssociationCleanup {
 
   /**
    * Clean up references to a deleted area
+   * @param areaName - The name of the deleted area
    */
-  private cleanupAreaReferences(areaId: string): void {
+  private cleanupAreaReferences(areaName: string): void {
     if (this.config.verbose) {
-      console.log(`[AssociationCleanup] Cleaning up references to area: ${areaId}`);
+      console.log(`[AssociationCleanup] Cleaning up references to area: ${areaName}`);
     }
 
     const taskState = get(taskStore);
@@ -141,22 +159,34 @@ export class AssociationCleanup {
     const projectsToUpdate: Project[] = [];
 
     // Find all tasks that reference this area
+    // Area references are stored as wiki links: [[filepath|AreaName]]
     for (const task of taskState.tasks) {
-      if (task.areas.includes(areaId)) {
+      const filteredAreas = task.areas.filter((area) => {
+        const taskAreaName = extractEntityNameFromWikiLink(area);
+        return taskAreaName !== areaName;
+      });
+      
+      if (filteredAreas.length !== task.areas.length) {
         tasksToUpdate.push({
           ...task,
-          areas: task.areas.filter((a) => a !== areaId), // Remove the area reference
+          areas: filteredAreas,
           updatedAt: new Date(),
         });
       }
     }
 
     // Find all projects that reference this area
+    // Area references are stored as wiki links: [[filepath|AreaName]]
     for (const project of projectState.projects) {
-      if (project.areas.includes(areaId)) {
+      const filteredAreas = project.areas.filter((area) => {
+        const projectAreaName = extractEntityNameFromWikiLink(area);
+        return projectAreaName !== areaName;
+      });
+      
+      if (filteredAreas.length !== project.areas.length) {
         projectsToUpdate.push({
           ...project,
-          areas: project.areas.filter((a) => a !== areaId), // Remove the area reference
+          areas: filteredAreas,
           updatedAt: new Date(),
         });
       }
@@ -207,14 +237,20 @@ export class AssociationCleanup {
       let updatedProject = task.project;
       let updatedAreas = task.areas;
 
-      // Check project reference (currently stored as name, not ID)
-      if (task.project && !validProjectNames.has(task.project)) {
-        updatedProject = "";
-        needsUpdate = true;
+      // Check project reference (stored as wiki link: [[filepath|ProjectName]])
+      if (task.project) {
+        const projectName = extractEntityNameFromWikiLink(task.project);
+        if (!validProjectNames.has(projectName)) {
+          updatedProject = "";
+          needsUpdate = true;
+        }
       }
 
-      // Check area references (currently stored as names, not IDs)
-      const validAreas = task.areas.filter((area) => validAreaNames.has(area));
+      // Check area references (stored as wiki links: [[filepath|AreaName]])
+      const validAreas = task.areas.filter((area) => {
+        const areaName = extractEntityNameFromWikiLink(area);
+        return validAreaNames.has(areaName);
+      });
       if (validAreas.length !== task.areas.length) {
         updatedAreas = validAreas;
         needsUpdate = true;
@@ -232,7 +268,10 @@ export class AssociationCleanup {
 
     // Check projects for orphaned area references
     for (const project of projectState.projects) {
-      const validAreas = project.areas.filter((area) => validAreaNames.has(area));
+      const validAreas = project.areas.filter((area) => {
+        const areaName = extractEntityNameFromWikiLink(area);
+        return validAreaNames.has(areaName);
+      });
       if (validAreas.length !== project.areas.length) {
         projectsToUpdate.push({
           ...project,

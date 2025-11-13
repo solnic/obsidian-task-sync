@@ -18,7 +18,7 @@ export type CoreDomainEvent =
       changes?: Partial<Task>;
       extension?: string;
     }
-  | { type: "tasks.deleted"; taskId: string; extension?: string }
+  | { type: "tasks.deleted"; taskId: string; task: Task; extension?: string }
   | { type: "tasks.loaded"; tasks: readonly Task[]; extension?: string }
 
   // Project events
@@ -29,7 +29,7 @@ export type CoreDomainEvent =
       changes?: Partial<Project>;
       extension?: string;
     }
-  | { type: "projects.deleted"; projectId: string; extension?: string }
+  | { type: "projects.deleted"; projectId: string; project: Project; extension?: string }
   | {
       type: "projects.loaded";
       projects: readonly Project[];
@@ -44,7 +44,7 @@ export type CoreDomainEvent =
       changes?: Partial<Area>;
       extension?: string;
     }
-  | { type: "areas.deleted"; areaId: string; extension?: string }
+  | { type: "areas.deleted"; areaId: string; area: Area; extension?: string }
   | { type: "areas.loaded"; areas: readonly Area[]; extension?: string }
 
   // Area request events (triggered by stores, handled by extensions)
