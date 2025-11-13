@@ -75,6 +75,8 @@
             settings.integrations.googleCalendar.apiKey = value;
             await saveSettings(settings);
           });
+        // Set input type to password for security
+        text.inputEl.type = "password";
       });
 
     // Client ID
@@ -315,10 +317,12 @@
           )
           .onChange(async (value) => {
             const duration = parseInt(value);
-            if (!isNaN(duration) && duration > 0) {
+            if (!isNaN(duration) && duration > 0 && duration <= 1440) {
               settings.integrations.googleCalendar.defaultEventDuration =
                 duration;
               await saveSettings(settings);
+            } else if (!isNaN(duration)) {
+              new Notice("Event duration must be between 1 and 1440 minutes (24 hours)");
             }
           });
       });

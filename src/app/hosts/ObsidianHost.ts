@@ -91,11 +91,12 @@ export class ObsidianHost extends Host {
 
         // If both are objects (and not arrays or null), merge recursively
         if (
+          sourceValue !== null &&
           sourceValue !== undefined &&
-          sourceValue &&
           typeof sourceValue === 'object' &&
           !Array.isArray(sourceValue) &&
-          targetValue &&
+          targetValue !== null &&
+          targetValue !== undefined &&
           typeof targetValue === 'object' &&
           !Array.isArray(targetValue)
         ) {

@@ -235,6 +235,27 @@ export class GoogleOAuthService {
           }
 
           if (queryObject.code) {
+            // Validate authorization code
+            const code = String(queryObject.code).trim();
+            if (!code || code.length === 0) {
+              res.writeHead(400, { "Content-Type": "text/html" });
+              res.end(`
+                <html>
+                  <body style="font-family: system-ui; padding: 2rem; text-align: center;">
+                    <h1 style="color: #f44336;">✗ Invalid Authorization Code</h1>
+                    <p>The authorization code is empty or invalid.</p>
+                  </body>
+                </html>
+              `);
+              if (!resolved) {
+                resolved = true;
+                clearTimeout(timeout);
+                this.stopServer();
+                reject(new Error("Invalid authorization code"));
+              }
+              return;
+            }
+
             // Send success response to browser
             res.writeHead(200, { "Content-Type": "text/html" });
             res.end(`
@@ -251,24 +272,19 @@ export class GoogleOAuthService {
               resolved = true;
               clearTimeout(timeout);
               this.stopServer();
-              resolve(queryObject.code as string);
+              resolve(code);
             }
           } else if (queryObject.error) {
-            // Handle error - sanitize the error message to prevent XSS
-            const sanitizedError = String(queryObject.error)
-              .replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#x27;');
+            // Handle error - log details but show generic message to user
+            console.error("OAuth authorization failed:", queryObject.error, queryObject.error_description);
 
             res.writeHead(400, { "Content-Type": "text/html" });
             res.end(`
               <html>
                 <body style="font-family: system-ui; padding: 2rem; text-align: center;">
                   <h1 style="color: #f44336;">✗ Authorization Failed</h1>
-                  <p>Error: ${sanitizedError}</p>
-                  <p>You can close this window.</p>
+                  <p>The authorization process was not completed successfully.</p>
+                  <p>Please check the Obsidian console for details and try again.</p>
                 </body>
               </html>
             `);
@@ -292,7 +308,13 @@ export class GoogleOAuthService {
           resolved = true;
           clearTimeout(timeout);
           this.stopServer();
-          reject(new Error(`Server error: ${error.message}`));
+          
+          // Provide helpful error message if port is in use
+          const errorMessage = error.message.includes("EADDRINUSE") || error.message.includes("address already in use")
+            ? `OAuth callback server port ${this.serverPort} is already in use. Please close any applications using this port and try again.`
+            : `Server error: ${error.message}`;
+          
+          reject(new Error(errorMessage));
         }
       });
 
@@ -310,14 +332,15 @@ export class GoogleOAuthService {
    * Stop the callback server
    */
   private stopServer(): void {
-    if (this.server && !this.server.listening) {
-      // Server already closed
+    if (this.server && this.server.listening) {
+      // Server is running, close it
+      this.server.close();
       this.server = undefined;
       return;
     }
 
     if (this.server) {
-      this.server.close();
+      // Server exists but not listening, just clear it
       this.server = undefined;
     }
   }

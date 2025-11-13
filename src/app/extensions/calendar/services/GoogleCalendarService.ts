@@ -107,7 +107,12 @@ export class GoogleCalendarService implements CalendarService {
   private tokenRefreshPromise: Promise<string | null> | null = null; // Prevent concurrent refreshes
 
   // Track pending requests to prevent duplicate concurrent fetches
-  private pendingEventRequests: Map<string, Promise<CalendarEvent[]>> = new Map();  constructor(
+  private pendingEventRequests: Map<string, Promise<CalendarEvent[]>> = new Map();
+  
+  // Track event-to-calendar mappings for efficient deletion
+  private eventCalendarMap: Map<string, string> = new Map();
+
+  constructor(
     settings: TaskSyncSettings,
     plugin: Plugin,
     saveSettings: () => Promise<void>
@@ -130,7 +135,8 @@ export class GoogleCalendarService implements CalendarService {
     this.eventsCache = new SchemaCache(
       this.plugin,
       "google-calendar-events",
-      GoogleCalendarEventsSchema
+      GoogleCalendarEventsSchema,
+      { skipChangeDetection: true } // Skip expensive deep comparison for large event arrays
     );
   }
 
@@ -362,10 +368,8 @@ export class GoogleCalendarService implements CalendarService {
     endDate: Date,
     _options?: CalendarEventFetchOptions
   ): Promise<CalendarEvent[]> {
-    // Log with stack trace to identify caller
-    const stack = new Error().stack?.split('\n').slice(2, 4).join('\n') || 'unknown';
+    // Log getEvents call
     console.log(`[GoogleCalendar] getEvents called for ${calendarIds.length || 'all'} calendars from ${startDate.toISOString()} to ${endDate.toISOString()}`);
-    console.log(`[GoogleCalendar] Call stack: ${stack}`);
 
     // Generate cache key based on date range only
     const cacheKey = this.getEventCacheKey(startDate, endDate);
@@ -570,6 +574,9 @@ export class GoogleCalendarService implements CalendarService {
       endDate = new Date(item.end.dateTime);
     }
 
+    // Track event-to-calendar mapping for efficient deletion
+    this.eventCalendarMap.set(item.id, calendar.id);
+
     return {
       id: item.id,
       title: item.summary || "Untitled Event",
@@ -749,6 +756,11 @@ export class GoogleCalendarService implements CalendarService {
 
       const createdEvent = this.parseGoogleCalendarEvent(response, calendar);
 
+      // Invalidate events cache since a new event was created
+      if (this.eventsCache) {
+        await this.eventsCache.clear();
+      }
+
       return {
         success: true,
         event: createdEvent,
@@ -851,6 +863,11 @@ export class GoogleCalendarService implements CalendarService {
 
       const updatedEvent = this.parseGoogleCalendarEvent(response, calendar);
 
+      // Invalidate events cache since an event was updated
+      if (this.eventsCache) {
+        await this.eventsCache.clear();
+      }
+
       return {
         success: true,
         event: updatedEvent,
@@ -871,12 +888,40 @@ export class GoogleCalendarService implements CalendarService {
   async deleteEvent(eventId: string): Promise<boolean> {
     const accessToken = await this.getAccessToken();
     if (!accessToken) {
+      console.error("No access token available for deleting event.");
       return false;
     }
 
     try {
-      // We need to know which calendar the event belongs to
-      // For now, try all calendars until we find it
+      // First try to use cached event-to-calendar mapping for efficiency
+      const cachedCalendarId = this.eventCalendarMap.get(eventId);
+      
+      if (cachedCalendarId) {
+        try {
+          const endpoint = `/calendars/${encodeURIComponent(
+            cachedCalendarId
+          )}/events/${encodeURIComponent(eventId)}`;
+          await this.makeGoogleCalendarRequest(endpoint, "DELETE");
+          
+          // Clear the event from cache and mapping
+          this.eventCalendarMap.delete(eventId);
+          
+          // Invalidate events cache since an event was deleted
+          if (this.eventsCache) {
+            await this.eventsCache.clear();
+          }
+          
+          return true;
+        } catch (error: any) {
+          // If deletion failed, log and fall through to try all calendars
+          console.debug(
+            `Failed to delete event ${eventId} from cached calendar ${cachedCalendarId}, trying all calendars:`,
+            error
+          );
+        }
+      }
+
+      // Fallback: try all calendars if no mapping exists or cached deletion failed
       const calendars = await this.getCalendars();
 
       for (const calendar of calendars) {
@@ -885,6 +930,15 @@ export class GoogleCalendarService implements CalendarService {
             calendar.id
           )}/events/${encodeURIComponent(eventId)}`;
           await this.makeGoogleCalendarRequest(endpoint, "DELETE");
+          
+          // Clear the event from mapping
+          this.eventCalendarMap.delete(eventId);
+          
+          // Invalidate events cache since an event was deleted
+          if (this.eventsCache) {
+            await this.eventsCache.clear();
+          }
+          
           return true;
         } catch (error) {
           // Log error for debugging, then continue to next calendar
@@ -895,6 +949,7 @@ export class GoogleCalendarService implements CalendarService {
         }
       }
 
+      console.warn(`Event ${eventId} not found in any calendar`);
       return false;
     } catch (error: any) {
       console.error("Failed to delete event:", error);

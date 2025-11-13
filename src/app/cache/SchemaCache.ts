@@ -11,6 +11,7 @@ export interface CacheEntry<T> {
 
 export interface CacheOptions {
   version?: string; // Schema version for cache invalidation
+  skipChangeDetection?: boolean; // Skip deep comparison for performance (default: false)
 }
 
 export class SchemaCache<T> {
@@ -64,9 +65,9 @@ export class SchemaCache<T> {
       version: this.options.version || "1.0.0",
     };
 
-    // Only log if data actually changed or this is a new entry
+    // Only log if data actually changed or this is a new entry (unless skipChangeDetection is enabled)
     const existingEntry = this.memoryCache.get(key);
-    const isNewOrChanged =
+    const isNewOrChanged = this.options.skipChangeDetection || 
       !existingEntry ||
       JSON.stringify(existingEntry.data) !== JSON.stringify(validatedData);
 
