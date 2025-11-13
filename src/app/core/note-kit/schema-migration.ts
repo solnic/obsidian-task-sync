@@ -85,7 +85,7 @@ export class AssociationMigration implements SchemaMigration {
 
     // Check if any note type has properties with link: true but type !== "association"
     for (const noteType of allNoteTypes) {
-      for (const [key, prop] of Object.entries(noteType.properties)) {
+      for (const prop of Object.values(noteType.properties)) {
         if (prop.link && prop.type !== "association") {
           return true;
         }
@@ -216,7 +216,6 @@ export class AssociationMigration implements SchemaMigration {
     // For each property to migrate, create a transform operation
     for (const { key, prop } of propertiesToMigrate) {
       // Determine association configuration based on current property type
-      const isMultiple = prop.type === "array";
       const noteTypeId = this.inferNoteTypeId(key, prop);
 
       if (!noteTypeId) {

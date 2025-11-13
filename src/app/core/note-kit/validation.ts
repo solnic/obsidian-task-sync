@@ -140,14 +140,6 @@ export function validateProperty(
     }
 
     // Validate with Zod schema
-    console.log("[validateProperty] About to parse:", {
-      property: propertyDef.key,
-      value,
-      hasSchema: !!propertyDef.schema,
-      hasParse: typeof propertyDef.schema?.parse === "function",
-      schema: propertyDef.schema,
-    });
-
     const validatedValue = propertyDef.schema.parse(value);
 
     // Apply transformation if provided

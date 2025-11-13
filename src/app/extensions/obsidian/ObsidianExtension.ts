@@ -658,11 +658,9 @@ export class ObsidianExtension implements Extension {
         });
       } else if (event.type === "tasks.created") {
         const task = event.task;
-        console.log("[ObsidianExtension] tasks.created event received, creating note file for task:", task.id);
 
         // Create the note file and get the file path
         const filePath = await this.taskOperations.createNote(task);
-        console.log("[ObsidianExtension] Task note file created at:", filePath);
 
         // Update the task's source to include the file path
         // This prevents duplicate tasks when the file change event fires
@@ -687,10 +685,9 @@ export class ObsidianExtension implements Extension {
           type: "tasks.updated",
           task: updatedTask,
         });
-        console.log("[ObsidianExtension] Task updated with file path");
       }
     } catch (error) {
-      console.error(`Failed to create entity file for ${event.type}:`, error);
+      console.error(`Failed to create entity file for ${event?.type}:`, error);
       // Re-throw to allow calling code to handle the error
       throw error;
     }

@@ -43,10 +43,10 @@
 
   let {
     properties,
-    values = {},
+    values = $bindable({}),
     onvalueschange,
     onvalidationchange,
-    showOptionalProperties = false,
+    showOptionalProperties = true,
     noteType,
     noteProcessor,
     templateContent = $bindable(""),

@@ -197,10 +197,8 @@ export class AssociationCleanup {
     const tasksToUpdate: Task[] = [];
     const projectsToUpdate: Project[] = [];
 
-    // Get valid IDs for reference checking
-    const validProjectIds = new Set(projectState.projects.map((p) => p.id));
+    // Get valid names for reference checking
     const validProjectNames = new Set(projectState.projects.map((p) => p.name));
-    const validAreaIds = new Set(areaState.areas.map((a) => a.id));
     const validAreaNames = new Set(areaState.areas.map((a) => a.name));
 
     // Check tasks for orphaned project references

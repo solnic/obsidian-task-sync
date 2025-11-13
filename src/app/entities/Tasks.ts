@@ -82,19 +82,14 @@ export class Tasks extends Entities {
     async create(
       taskData: Omit<Task, "id" | "createdAt" | "updatedAt">
     ): Promise<Task> {
-      console.log("[Tasks.Operations] Creating task with data:", taskData);
-
       // buildEntity handles schema validation and date coercion
       const task = this.buildEntity(taskData) as Task;
-      console.log("[Tasks.Operations] Task entity built successfully:", task);
 
       // Dispatch action instead of calling store.addTask()
       store.dispatch({ type: "ADD_TASK", task });
-      console.log("[Tasks.Operations] Task dispatched to store");
 
       // Still trigger domain event for cross-cutting concerns
       eventBus.trigger({ type: "tasks.created", task });
-      console.log("[Tasks.Operations] tasks.created event triggered");
 
       return task;
     }

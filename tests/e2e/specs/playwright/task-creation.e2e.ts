@@ -232,7 +232,7 @@ test.describe("Task Creation", () => {
 
     // Each area should be in wiki link format
     for (const area of frontMatter.Areas) {
-      expect(area).toMatch(/\[\[.*?\.md\|.*?\]\]/);
+      expect(area).toMatch(/\[\[[^\]]+\.md\|[^\]]+\]\]/);
     }
 
     expect(frontMatter.Done).toBe(false);
@@ -452,12 +452,12 @@ test.describe("Task Creation", () => {
 
     // Each area should be in wiki link format
     for (const area of frontMatter.Areas) {
-      expect(area).toMatch(/\[\[.*?\.md\|.*?\]\]/);
+      expect(area).toMatch(/\[\[[^\]]+\.md\|[^\]]+\]\]/);
     }
 
     // Verify specific areas are present
     const areaNames = frontMatter.Areas.map((area: string) =>
-      area.match(/\[\[.*?\|(.*?)\]\]/)?.[1]
+      area.match(/\[\[[^\]]+\|([^\]]+)\]\]/)?.[1]
     );
     expect(areaNames).toContain("Development Area");
     expect(areaNames).toContain("Testing Area");

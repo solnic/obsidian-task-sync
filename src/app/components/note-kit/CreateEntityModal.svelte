@@ -209,7 +209,6 @@
           type="submit"
           class="task-sync-create-button mod-cta"
           data-testid="submit-button"
-          onclick={() => console.log("[CreateEntityModal.svelte] Submit button clicked!")}
         >
           Create {selectedNoteType?.name || "Note"}
         </button>

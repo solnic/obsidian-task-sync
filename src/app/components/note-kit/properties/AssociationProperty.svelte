@@ -4,6 +4,7 @@
   Supports single/multiple selection, inline entity creation, and validation
 -->
 <script lang="ts">
+  import { Notice } from "obsidian";
   import { FieldGroup } from "../../base";
   import Dropdown from "../../Dropdown.svelte";
   import type {
@@ -90,8 +91,6 @@
 
   // Load entities based on noteTypeId
   async function loadEntities() {
-    console.log("[AssociationProperty] loadEntities called for noteTypeId:", noteTypeId);
-
     if (!noteTypeId) {
       availableEntities = [];
       return;
@@ -101,7 +100,6 @@
       let entities: readonly any[] = [];
 
       // Get entities based on note type ID
-      console.log("[AssociationProperty] Fetching entities for type:", noteTypeId);
       switch (noteTypeId) {
         case "task":
           entities = await new Tasks.Queries().getAll();
@@ -117,19 +115,14 @@
           entities = [];
       }
 
-      console.log("[AssociationProperty] Fetched", entities.length, "entities");
-
       // Map to { id, name, filePath } format - make a copy since entities is readonly
       availableEntities = Array.from(entities).map((entity) => {
-        console.log("[AssociationProperty] Mapping entity:", entity.id, entity.name || entity.title);
         return {
           id: entity.id,
           name: entity.name || entity.title || entity.id,
           filePath: entity.source?.keys?.obsidian || entity.source?.filePath,
         };
       });
-
-      console.log("[AssociationProperty] Loaded", availableEntities.length, "entities");
     } catch (error) {
       console.error(`Error loading entities for ${noteTypeId}:`, error);
       availableEntities = [];
@@ -138,7 +131,6 @@
 
   // Load entities when component mounts or noteTypeId changes
   $effect(() => {
-    console.log("[AssociationProperty] Effect: loading entities for noteTypeId:", noteTypeId);
     if (noteTypeId) {
       loadEntities();
     }
@@ -348,7 +340,7 @@
       showInlineCreate = false;
     } catch (error) {
       console.error(`Error creating ${noteTypeId}:`, error);
-      // TODO: Show error message to user
+      new Notice(`Failed to create ${noteTypeId}: ${error.message}`, 5000);
     } finally {
       creatingEntity = false;
     }
