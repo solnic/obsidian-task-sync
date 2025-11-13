@@ -274,7 +274,7 @@ export class FileWatcher extends Component {
     if (this.options.autoValidate) {
       try {
         const content = await this.vault.read(file);
-        const result = this.noteProcessor.processNote(content, file.path);
+        const result = await this.noteProcessor.processNote(content, file.path);
 
         if (result.valid && result.noteType) {
           event.isTypedNote = true;
@@ -362,7 +362,7 @@ export class FileWatcher extends Component {
   async validateFile(file: TFile): Promise<ValidationResult | null> {
     try {
       const content = await this.vault.read(file);
-      const result = this.noteProcessor.processNote(content, file.path);
+      const result = await this.noteProcessor.processNote(content, file.path);
 
       return {
         valid: result.valid,

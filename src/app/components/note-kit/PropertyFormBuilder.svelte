@@ -15,6 +15,7 @@
     EnumProperty,
     ArrayProperty,
     SelectProperty,
+    AssociationProperty,
   } from "./properties";
   import type {
     PropertyDefinition,
@@ -23,12 +24,16 @@
   } from "../../core/note-kit/types";
   import { validateProperty } from "../../core/note-kit/validation";
   import type { NoteProcessor } from "../../core/note-kit/note-processor";
+  import type { TypeRegistry } from "../../core/note-kit/registry";
+  import type { TaskSyncSettings } from "../../types/settings";
 
   interface Props {
     properties: Record<string, PropertyDefinition>;
     values?: Record<string, any>;
     onvalueschange?: (values: Record<string, any>) => void;
     onvalidationchange?: (validation: Record<string, ValidationResult>) => void;
+    settings?: TaskSyncSettings;
+    typeRegistry?: TypeRegistry;
     showOptionalProperties?: boolean;
     noteType?: NoteType;
     noteProcessor?: NoteProcessor;
@@ -38,23 +43,25 @@
 
   let {
     properties,
-    values = $bindable({}),
+    values = {},
     onvalueschange,
     onvalidationchange,
-    showOptionalProperties = true,
+    showOptionalProperties = false,
     noteType,
     noteProcessor,
     templateContent = $bindable(""),
     ontemplatecontentchange,
+    settings,
+    typeRegistry,
   }: Props = $props();
 
   // Internal state
   let validationResults: Record<string, ValidationResult> = $state({});
   let showOptional = $state(false);
 
-  // Helper to check if property is a "button-style" property (select/enum)
+  // Helper to check if property is a "button-style" property (select/enum/association)
   function isButtonProperty(prop: PropertyDefinition): boolean {
-    return prop.type === "select" || prop.type === "enum";
+    return prop.type === "select" || prop.type === "enum" || prop.type === "association";
   }
 
   // Helper to check if property is a text-like property (string, number, date, array)
@@ -179,6 +186,8 @@
         return ArrayProperty;
       case "select":
         return SelectProperty;
+      case "association":
+        return AssociationProperty;
       default:
         return null;
     }
@@ -229,6 +238,8 @@
       onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
       validationResult={validationResults[propertyKey]}
       compact={true}
+      {settings}
+      {typeRegistry}
     />
   {/if}
 {/if}
@@ -256,6 +267,8 @@
       onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
       validationResult={validationResults[propertyKey]}
       compact={true}
+      {settings}
+      {typeRegistry}
     />
   {/if}
 {/each}
@@ -272,6 +285,8 @@
           onvaluechange={(newValue) => handleValueChange(propertyKey, newValue)}
           validationResult={validationResults[propertyKey]}
           compact={true}
+          {settings}
+          {typeRegistry}
         />
       {/if}
     {/each}

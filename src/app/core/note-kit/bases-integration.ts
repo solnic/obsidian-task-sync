@@ -23,6 +23,7 @@ export const TYPE_NOTE_TO_BASE_TYPE_MAP: Record<
   array: "list",
   enum: "text", // Enums are stored as text in basesm,
   select: "list",
+  association: "text", // Associations are stored as text (wiki links)
 } as const;
 
 /**
@@ -189,7 +190,10 @@ export class BasesIntegration {
         baseProperty.source = propertyDef.source;
       }
 
-      if (propertyDef.link !== undefined) {
+      // Association properties should always be rendered as links
+      if (propertyDef.type === "association") {
+        baseProperty.link = true;
+      } else if (propertyDef.link !== undefined) {
         baseProperty.link = propertyDef.link;
       }
 

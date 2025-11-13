@@ -112,7 +112,42 @@ export function validateProperty(
   value: any
 ): ValidationResult {
   try {
+    // Check if schema exists and has parse method
+    if (!propertyDef.schema) {
+      console.error("[validateProperty] Property has no schema:", propertyDef.key);
+      return createInvalidResult([
+        {
+          path: [propertyDef.key],
+          message: "Property schema is missing",
+          code: "invalid_schema",
+        },
+      ]);
+    }
+
+    if (typeof propertyDef.schema.parse !== "function") {
+      console.error("[validateProperty] Schema does not have parse method:", {
+        property: propertyDef.key,
+        schema: propertyDef.schema,
+        schemaType: typeof propertyDef.schema,
+      });
+      return createInvalidResult([
+        {
+          path: [propertyDef.key],
+          message: "Property schema is invalid (missing parse method)",
+          code: "invalid_schema",
+        },
+      ]);
+    }
+
     // Validate with Zod schema
+    console.log("[validateProperty] About to parse:", {
+      property: propertyDef.key,
+      value,
+      hasSchema: !!propertyDef.schema,
+      hasParse: typeof propertyDef.schema?.parse === "function",
+      schema: propertyDef.schema,
+    });
+
     const validatedValue = propertyDef.schema.parse(value);
 
     // Apply transformation if provided

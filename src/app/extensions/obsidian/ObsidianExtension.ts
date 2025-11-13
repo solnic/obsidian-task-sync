@@ -140,7 +140,7 @@ class ObsidianEntityDataProvider implements EntityDataProvider {
    * Obsidian syncs all properties since it's the storage layer
    * However, properties from other sources (like GitHub) should be preserved
    * by the SyncManager's merge strategy, not overridden by Obsidian
-   * 
+   *
    * Returning undefined means all properties are syncable (backward compatibility)
    */
   getSyncableProperties(): Array<keyof Task> | undefined {
@@ -612,78 +612,87 @@ export class ObsidianExtension implements Extension {
 
   // Event handler methods required by Extension interface
   async onEntityCreated(event: any): Promise<void> {
-    if (event.type === "areas.created") {
-      const area = event.area;
+    try {
+      if (event.type === "areas.created") {
+        const area = event.area;
 
-      // Create the note file and get the file path
-      const filePath = await this.areaOperations.createNote(area);
+        // Create the note file and get the file path
+        const filePath = await this.areaOperations.createNote(area);
 
-      // Update the area's source to include the file path
-      // This prevents issues when the file is deleted
-      // IMPORTANT: Preserve the original extension if it exists
-      const updatedArea: Area = {
-        ...area,
-        source: {
-          ...area.source,
-          extension: area.source.extension || "obsidian", // Preserve original extension
-          filePath: filePath,
-        },
-      };
-
-      // Update the area in the store without triggering another event
-      areaStore.dispatch({ type: "UPDATE_AREA", area: updatedArea });
-    } else if (event.type === "projects.created") {
-      const project = event.project;
-
-      // Create the note file and get the file path
-      const filePath = await this.projectOperations.createNote(project);
-
-      // Update the project's source to include the file path
-      // This prevents issues when the file is deleted
-      // IMPORTANT: Preserve the original extension if it exists
-      const updatedProject: Project = {
-        ...project,
-        source: {
-          ...project.source,
-          extension: project.source.extension || "obsidian", // Preserve original extension
-          filePath: filePath,
-        },
-      };
-
-      // Update the project in the store without triggering another event
-      projectStore.dispatch({
-        type: "UPDATE_PROJECT",
-        project: updatedProject,
-      });
-    } else if (event.type === "tasks.created") {
-      const task = event.task;
-
-      // Create the note file and get the file path
-      const filePath = await this.taskOperations.createNote(task);
-
-      // Update the task's source to include the file path
-      // This prevents duplicate tasks when the file change event fires
-      // IMPORTANT: Preserve the original extension (e.g., "github") if it exists
-      const updatedTask: Task = {
-        ...task,
-        source: {
-          ...task.source,
-          extension: task.source.extension || "obsidian", // Preserve original extension
-          keys: {
-            ...task.source.keys,
-            obsidian: filePath,
+        // Update the area's source to include the file path
+        // This prevents issues when the file is deleted
+        // IMPORTANT: Preserve the original extension if it exists
+        const updatedArea: Area = {
+          ...area,
+          source: {
+            ...area.source,
+            extension: area.source.extension || "obsidian", // Preserve original extension
+            filePath: filePath,
           },
-        },
-      };
+        };
 
-      // Update the task in the store AND trigger persistence
-      // We need to trigger tasks.updated event so the updated task (with filePath) gets persisted
-      // This is critical for preserving source.extension after plugin reload
-      taskStore.dispatch({ type: "UPDATE_TASK", task: updatedTask });
-      eventBus.trigger({
-        type: "tasks.updated",
-        task: updatedTask,
-      });
+        // Update the area in the store without triggering another event
+        areaStore.dispatch({ type: "UPDATE_AREA", area: updatedArea });
+      } else if (event.type === "projects.created") {
+        const project = event.project;
+
+        // Create the note file and get the file path
+        const filePath = await this.projectOperations.createNote(project);
+
+        // Update the project's source to include the file path
+        // This prevents issues when the file is deleted
+        // IMPORTANT: Preserve the original extension if it exists
+        const updatedProject: Project = {
+          ...project,
+          source: {
+            ...project.source,
+            extension: project.source.extension || "obsidian", // Preserve original extension
+            filePath: filePath,
+          },
+        };
+
+        // Update the project in the store without triggering another event
+        projectStore.dispatch({
+          type: "UPDATE_PROJECT",
+          project: updatedProject,
+        });
+      } else if (event.type === "tasks.created") {
+        const task = event.task;
+        console.log("[ObsidianExtension] tasks.created event received, creating note file for task:", task.id);
+
+        // Create the note file and get the file path
+        const filePath = await this.taskOperations.createNote(task);
+        console.log("[ObsidianExtension] Task note file created at:", filePath);
+
+        // Update the task's source to include the file path
+        // This prevents duplicate tasks when the file change event fires
+        // IMPORTANT: Preserve the original extension (e.g., "github") if it exists
+        const updatedTask: Task = {
+          ...task,
+          source: {
+            ...task.source,
+            extension: task.source.extension || "obsidian", // Preserve original extension
+            keys: {
+              ...task.source.keys,
+              obsidian: filePath,
+            },
+          },
+        };
+
+        // Update the task in the store AND trigger persistence
+        // We need to trigger tasks.updated event so the updated task (with filePath) gets persisted
+        // This is critical for preserving source.extension after plugin reload
+        taskStore.dispatch({ type: "UPDATE_TASK", task: updatedTask });
+        eventBus.trigger({
+          type: "tasks.updated",
+          task: updatedTask,
+        });
+        console.log("[ObsidianExtension] Task updated with file path");
+      }
+    } catch (error) {
+      console.error(`Failed to create entity file for ${event.type}:`, error);
+      // Re-throw to allow calling code to handle the error
+      throw error;
     }
   }
 

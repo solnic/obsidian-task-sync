@@ -150,6 +150,15 @@ export interface TaskSyncSettings {
     appleCalendar: AppleCalendarIntegrationSettings;
     googleCalendar: GoogleCalendarIntegrationSettings;
   };
+  // Schema migrations tracking
+  executedMigrations?: Array<{
+    id: string;
+    description: string;
+    executedAt: string; // ISO date string
+    filesAffected: number;
+    success: boolean;
+    version: string;
+  }>;
 }
 
 export interface ValidationResult {
@@ -306,6 +315,8 @@ export const DEFAULT_SETTINGS: TaskSyncSettings = {
       includeTaskDetailsInEvent: true, // Include task details by default
     },
   },
+  // Schema migrations tracking - initially empty
+  executedMigrations: [],
 };
 
 /**

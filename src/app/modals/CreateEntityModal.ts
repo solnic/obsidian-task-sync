@@ -60,6 +60,7 @@ export class CreateEntityModal extends Modal {
         props: {
           typeRegistry: this.plugin.typeNote.registry,
           noteProcessor: this.plugin.typeNote.noteProcessor,
+          settings: this.settings,
           preselectedNoteTypeId: this.preselectedNoteTypeId,
           initialPropertyValues: this.initialPropertyValues,
           contextualTitle: this.contextualTitle,
@@ -92,6 +93,12 @@ export class CreateEntityModal extends Modal {
     properties: Record<string, any>,
     description?: string
   ) {
+    console.log("[CreateEntityModal] handleSubmit called with:", {
+      noteType: noteType.id,
+      properties,
+      description,
+    });
+
     try {
       // Build entity data - include description in properties if provided
       const entityData = {
@@ -99,7 +106,12 @@ export class CreateEntityModal extends Modal {
         ...(description ? { description } : {}),
       } as Omit<Entity, "id" | "createdAt" | "updatedAt">;
 
+      console.log("[CreateEntityModal] Entity data prepared:", entityData);
+      console.log("[CreateEntityModal] Calling operations.", noteType.id, ".create()");
+
       await this.operations[noteType.id].create(entityData);
+
+      console.log("[CreateEntityModal] Entity created successfully");
       new Notice(`${noteType.name} created successfully`);
       this.close();
     } catch (error) {
