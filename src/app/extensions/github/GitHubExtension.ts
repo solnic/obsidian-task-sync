@@ -98,6 +98,19 @@ class GitHubEntityDataProvider implements EntityDataProvider {
   canHandle(entity: Task): boolean {
     return entity.source.extension === "github";
   }
+
+  /**
+   * GitHub only syncs specific properties that have direct mapping to GitHub issues
+   * All other properties are Obsidian-specific and should not be overridden
+   */
+  getSyncableProperties(): Array<keyof Task> {
+    return [
+      "title",        // GitHub issue title
+      "status",       // Mapped from GitHub issue state
+      "done",         // Derived from GitHub issue state
+      "description",  // GitHub issue body (note content)
+    ];
+  }
 }
 
 export class GitHubExtension implements Extension {

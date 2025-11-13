@@ -46,6 +46,15 @@ export interface EntityDataProvider {
 
   /** Check if this provider can handle the given entity */
   canHandle(entity: Task): boolean;
+
+  /**
+   * Get the list of property keys that should be synced from this provider
+   * to other providers. Properties not in this list will be excluded during sync.
+   * If undefined/null, all properties are synced (backward compatibility).
+   * 
+   * @returns Array of property keys to sync, or undefined to sync all properties
+   */
+  getSyncableProperties?(): Array<keyof Task> | undefined;
 }
 
 /**
@@ -214,7 +223,9 @@ export class SyncManager {
               title: data.title,
               extension: data.source?.extension,
             });
-            sourceData.set(sourceKey, data);
+            // Filter data to only include syncable properties
+            const filteredData = this.filterSyncableProperties(data, provider);
+            sourceData.set(sourceKey, filteredData);
           } else {
             console.log(`[SyncManager] No data returned from ${sourceKey}`);
           }
@@ -267,21 +278,48 @@ export class SyncManager {
 
   /**
    * Merge entity data from multiple sources using the configured strategy
+   * 
+   * The merge respects each provider's syncable properties:
+   * - For each source, only properties in getSyncableProperties() are merged
+   * - The authoritative source (entity.source.extension) properties are prioritized
+   * - Other sources' syncable properties fill in gaps
    */
   private mergeEntityData(
     entity: Task,
     sourceData: Map<string, Partial<Task>>
   ): Partial<Task> {
+    const sourceExtension = entity.source.extension;
+    
     switch (this.config.strategy) {
-      case "source-wins":
-        // Source extension (creator) data takes precedence
-        const sourceExtension = entity.source.extension;
+      case "source-wins": {
+        // Start with an empty merged result
+        const merged: Record<string, any> = {};
+        
+        // First, merge non-source extension data (as base layer)
+        for (const [sourceKey, data] of sourceData) {
+          if (sourceKey !== sourceExtension) {
+            // Merge this source's data (already filtered by getSyncableProperties)
+            Object.assign(merged, data);
+          }
+        }
+        
+        // Then, overlay source extension data (authoritative source wins)
         const sourceData_priority = sourceData.get(sourceExtension);
         if (sourceData_priority) {
-          return sourceData_priority;
+          Object.assign(merged, sourceData_priority);
         }
-        // Fallback to first available data
-        return sourceData.values().next().value || {};
+        
+        console.log(
+          `[SyncManager] Merged data with source-wins strategy:`,
+          {
+            sourceExtension,
+            sources: Array.from(sourceData.keys()),
+            mergedKeys: Object.keys(merged),
+          }
+        );
+        
+        return merged as Partial<Task>;
+      }
 
       case "last-modified":
         // Most recently modified wins
@@ -353,6 +391,43 @@ export class SyncManager {
         });
       }
     }
+  }
+
+  /**
+   * Filter entity data to only include syncable properties based on provider configuration
+   * 
+   * @param data - The full entity data
+   * @param provider - The provider that defines which properties are syncable
+   * @returns Filtered data containing only syncable properties
+   */
+  private filterSyncableProperties(
+    data: Partial<Task>,
+    provider: EntityDataProvider
+  ): Partial<Task> {
+    // If provider doesn't define syncable properties, sync all properties (backward compatibility)
+    const syncableProps = provider.getSyncableProperties?.();
+    if (!syncableProps || syncableProps.length === 0) {
+      return data;
+    }
+
+    // Filter data to only include syncable properties
+    const filtered: Record<string, any> = {};
+    for (const prop of syncableProps) {
+      if (prop in data) {
+        filtered[prop] = data[prop];
+      }
+    }
+
+    console.log(
+      `[SyncManager] Filtered syncable properties for ${provider.extensionId}:`,
+      {
+        original: Object.keys(data),
+        syncable: syncableProps,
+        filtered: Object.keys(filtered),
+      }
+    );
+
+    return filtered as Partial<Task>;
   }
 }
 
