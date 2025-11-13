@@ -30,7 +30,9 @@
     if (service) {
       googleCalendarService = service as GoogleCalendarService;
     }
-  });  function createGoogleCalendarSection(): void {
+  });
+
+  function createGoogleCalendarSection(): void {
     // Google Calendar integration toggle
     new Setting(googleCalendarContainer)
       .setName("Enable Google Calendar Integration")
@@ -45,6 +47,10 @@
   }
 
   function createGoogleCalendarSettings(): void {
+    // Clear existing settings (except the toggle which is the first child)
+    const children = Array.from(googleCalendarContainer.children);
+    children.slice(1).forEach((child) => child.remove());
+    
     // OAuth info section
     googleCalendarContainer.createEl("div", {
       text: "Google Calendar uses OAuth 2.0 for authentication. You'll need to create a Google Cloud project and OAuth credentials.",

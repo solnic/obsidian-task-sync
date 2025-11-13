@@ -24,6 +24,76 @@ import { CalendarService } from "./CalendarService";
 import type { TaskSyncSettings } from "../../../types/settings";
 import { GoogleOAuthService } from "../../../utils/oauth/GoogleOAuthService";
 
+// Google Calendar API response types
+interface GoogleCalendarListResponse {
+  items?: Array<{
+    id: string;
+    summary?: string;
+    description?: string;
+    backgroundColor?: string;
+    foregroundColor?: string;
+    timeZone?: string;
+    primary?: boolean;
+    accessRole?: string;
+  }>;
+}
+
+interface GoogleCalendarEventDateTime {
+  date?: string;
+  dateTime?: string;
+  timeZone?: string;
+}
+
+interface GoogleCalendarEventItem {
+  id: string;
+  summary?: string;
+  description?: string;
+  location?: string;
+  start: GoogleCalendarEventDateTime;
+  end: GoogleCalendarEventDateTime;
+  htmlLink?: string;
+  created?: string;
+  updated?: string;
+  status?: string;
+  visibility?: string;
+  organizer?: {
+    email?: string;
+    displayName?: string;
+    self?: boolean;
+  };
+  attendees?: Array<{
+    email?: string;
+    displayName?: string;
+    responseStatus?: string;
+  }>;
+  reminders?: {
+    useDefault?: boolean;
+    overrides?: Array<{
+      method: string;
+      minutes: number;
+    }>;
+  };
+}
+
+interface GoogleCalendarEventsResponse {
+  items?: GoogleCalendarEventItem[];
+}
+
+interface GoogleCalendarApiRequestBody {
+  summary?: string;
+  description?: string;
+  location?: string;
+  start?: GoogleCalendarEventDateTime;
+  end?: GoogleCalendarEventDateTime;
+  reminders?: {
+    useDefault: boolean;
+    overrides?: Array<{
+      method: string;
+      minutes: number;
+    }>;
+  };
+}
+
 export class GoogleCalendarService implements CalendarService {
   readonly serviceName = "google-calendar";
 
@@ -154,7 +224,7 @@ export class GoogleCalendarService implements CalendarService {
   private async makeGoogleCalendarRequest(
     endpoint: string,
     method: string = "GET",
-    body?: any
+    body?: GoogleCalendarApiRequestBody
   ): Promise<any> {
     const accessToken = await this.getAccessToken();
     if (!accessToken) {
@@ -195,14 +265,14 @@ export class GoogleCalendarService implements CalendarService {
    */
   async getCalendars(): Promise<Calendar[]> {
     try {
-      const response = await this.makeGoogleCalendarRequest("/users/me/calendarList");
+      const response = await this.makeGoogleCalendarRequest("/users/me/calendarList") as GoogleCalendarListResponse;
 
       if (!response.items) {
         return [];
       }
 
       const googleCalendars: GoogleCalendarType[] = response.items.map(
-        (item: any) => ({
+        (item) => ({
           id: item.id,
           name: item.summary || item.id,
           description: item.description,
@@ -286,7 +356,7 @@ export class GoogleCalendarService implements CalendarService {
       timeMin
     )}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime`;
 
-    const response = await this.makeGoogleCalendarRequest(endpoint);
+    const response = await this.makeGoogleCalendarRequest(endpoint) as GoogleCalendarEventsResponse;
 
     if (!response.items) {
       return [];
@@ -301,7 +371,7 @@ export class GoogleCalendarService implements CalendarService {
     }
 
     const events: CalendarEvent[] = response.items
-      .map((item: any) => {
+      .map((item) => {
         try {
           return this.parseGoogleCalendarEvent(item, calendar);
         } catch (error) {
@@ -318,7 +388,7 @@ export class GoogleCalendarService implements CalendarService {
    * Parse a Google Calendar event from the API response
    */
   private parseGoogleCalendarEvent(
-    item: any,
+    item: GoogleCalendarEventItem,
     calendar: Calendar
   ): CalendarEvent {
     // Determine if it's an all-day event
@@ -458,7 +528,7 @@ export class GoogleCalendarService implements CalendarService {
     }
 
     try {
-      const eventBody: any = {
+      const eventBody: GoogleCalendarApiRequestBody = {
         summary: eventData.title,
         description: eventData.description,
         location: eventData.location,
@@ -554,7 +624,7 @@ export class GoogleCalendarService implements CalendarService {
         };
       }
 
-      const eventBody: any = {};
+      const eventBody: GoogleCalendarApiRequestBody = {};
 
       if (eventData.title) {
         eventBody.summary = eventData.title;

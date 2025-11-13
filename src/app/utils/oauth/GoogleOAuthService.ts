@@ -37,7 +37,7 @@ export class GoogleOAuthService {
   private saveSettings: () => Promise<void>;
 
   // Local server for OAuth callback
-  private server?: any;
+  private server?: http.Server;
   private serverPort: number = 42813; // Random high port
 
   constructor(
@@ -216,7 +216,7 @@ export class GoogleOAuthService {
         }
       }, 5 * 60 * 1000); // 5 minute timeout
 
-      this.server = http.createServer((req: any, res: any) => {
+      this.server = http.createServer((req: http.IncomingMessage, res: http.ServerResponse) => {
         const queryObject = url.parse(req.url, true).query;
 
         // Success callback
@@ -254,13 +254,20 @@ export class GoogleOAuthService {
               resolve(queryObject.code as string);
             }
           } else if (queryObject.error) {
-            // Handle error
+            // Handle error - sanitize the error message to prevent XSS
+            const sanitizedError = String(queryObject.error)
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#x27;');
+            
             res.writeHead(400, { "Content-Type": "text/html" });
             res.end(`
               <html>
                 <body style="font-family: system-ui; padding: 2rem; text-align: center;">
                   <h1 style="color: #f44336;">✗ Authorization Failed</h1>
-                  <p>Error: ${queryObject.error}</p>
+                  <p>Error: ${sanitizedError}</p>
                   <p>You can close this window.</p>
                 </body>
               </html>
@@ -280,7 +287,7 @@ export class GoogleOAuthService {
         }
       });
 
-      this.server.on("error", (error: any) => {
+      this.server.on("error", (error: Error) => {
         if (!resolved) {
           resolved = true;
           clearTimeout(timeout);
@@ -303,6 +310,12 @@ export class GoogleOAuthService {
    * Stop the callback server
    */
   private stopServer(): void {
+    if (this.server && !this.server.listening) {
+      // Server already closed
+      this.server = undefined;
+      return;
+    }
+    
     if (this.server) {
       this.server.close();
       this.server = undefined;

@@ -91,6 +91,7 @@ export class ObsidianHost extends Host {
 
         // If both are objects (and not arrays or null), merge recursively
         if (
+          sourceValue !== undefined &&
           sourceValue &&
           typeof sourceValue === 'object' &&
           !Array.isArray(sourceValue) &&
@@ -99,8 +100,8 @@ export class ObsidianHost extends Host {
           !Array.isArray(targetValue)
         ) {
           result[key] = this.deepMerge(targetValue, sourceValue);
-        } else {
-          // Otherwise, use the source value
+        } else if (sourceValue !== undefined) {
+          // Only use the source value if it's not undefined to preserve defaults
           result[key] = sourceValue;
         }
       }

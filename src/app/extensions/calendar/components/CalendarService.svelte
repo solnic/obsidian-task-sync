@@ -241,7 +241,7 @@
         }
       }
     }
-    loadEvents();
+    // loadEvents will be called by the reactive effect when selectedCalendarIds changes
   }
 
   /**
@@ -286,19 +286,12 @@
   });
 
   /**
-   * Reactive effect to reload events when selectedDate changes
+   * Reactive effect to reload events when selectedDate or calendar selection changes
+   * Consolidates the two separate effects to prevent redundant API calls
    */
   $effect(() => {
-    if (availableCalendars.length > 0) {
-      loadEvents(selectedDate);
-    }
-  });
-
-  /**
-   * Reactive effect to reload events when calendar selection changes
-   */
-  $effect(() => {
-    if (availableCalendars.length > 0 && selectedCalendarIds) {
+    // Only load events if we have calendars and we're not already loading
+    if (availableCalendars.length > 0 && selectedCalendarIds && !isLoading) {
       loadEvents(selectedDate);
     }
   });
