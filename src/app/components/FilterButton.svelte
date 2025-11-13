@@ -134,7 +134,7 @@
       return;
     }
 
-    const hasOptions = groups && groups.length > 0 || optionsWithRecent.length > 0;
+    const hasOptions = (groups && groups.length > 0) || optionsWithRecent.length > 0;
     if (!disabled && hasOptions) {
       isMenuOpen = true;
     }

@@ -11,6 +11,10 @@
   import type { Host } from "../core/host";
   import type { TaskSyncSettings } from "../types/settings";
   import { isPlanningActive } from "../stores/contextStore";
+  import {
+    filterByCalendars,
+    searchEvents,
+  } from "../utils/calendarFiltering";
 
   // Props
   interface Props {
@@ -223,52 +227,16 @@
 
   // Zoom controls are now handled by ObsidianDayView
 
-  // Search functionality
-  function searchEvents(
-    query: string,
-    eventList: CalendarEvent[]
-  ): CalendarEvent[] {
-    if (!query.trim()) {
-      return eventList;
-    }
-
-    const lowerQuery = query.toLowerCase();
-    return eventList.filter(
-      (event) =>
-        event.title.toLowerCase().includes(lowerQuery) ||
-        (event.description &&
-          event.description.toLowerCase().includes(lowerQuery)) ||
-        (event.location && event.location.toLowerCase().includes(lowerQuery)) ||
-        (event.calendar?.name &&
-          event.calendar.name.toLowerCase().includes(lowerQuery))
-    );
-  }
-
-  // Filter events by selected calendars
-  function filterByCalendars(
-    eventList: CalendarEvent[],
-    calendarIds: string[]
-  ): CalendarEvent[] {
-    // If no calendars selected or all calendars selected, show all events
-    if (
-      calendarIds.length === 0 ||
-      calendarIds.length === availableCalendars.length
-    ) {
-      return eventList;
-    }
-
-    // Filter events by selected calendar IDs
-    return eventList.filter(
-      (event) => event.calendar && calendarIds.includes(event.calendar.id)
-    );
-  }
-
   // Reactive filtering - apply both calendar and search filters
   $effect(() => {
     let events = calendarEvents;
 
     // First filter by selected calendars
-    events = filterByCalendars(events, selectedCalendarIds);
+    events = filterByCalendars(
+      events,
+      selectedCalendarIds,
+      availableCalendars.length
+    );
 
     // Then apply search filter
     events = searchEvents(searchQuery, events);
