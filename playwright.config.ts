@@ -35,8 +35,10 @@ export default defineConfig({
   // Test execution configuration
   fullyParallel: false,
   forbidOnly: !!isCI,
-  retries: isCI ? 2 : 0,
-  workers: isCI ? 6 : Math.max(2, Math.floor(os.cpus().length * 0.75)),
+  retries: 3,
+  workers: isCI
+    ? os.cpus().length
+    : Math.max(2, Math.floor(os.cpus().length * 0.75)),
 
   // Reporter configuration
   reporter: [["list"], ["json", { outputFile: "./tests/e2e/results.json" }]],
