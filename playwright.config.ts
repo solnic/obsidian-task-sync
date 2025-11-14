@@ -14,6 +14,7 @@ import * as os from "os";
  */
 
 const isCI = process.env.CI === "true";
+const noRetry = process.env.NO_RETRY === "true";
 
 export default defineConfig({
   // Test directory
@@ -35,7 +36,7 @@ export default defineConfig({
   // Test execution configuration
   fullyParallel: false,
   forbidOnly: !!isCI,
-  retries: 3,
+  retries: noRetry ? 0 : 3,
   workers: isCI
     ? os.cpus().length
     : Math.max(2, Math.floor(os.cpus().length * 0.75)),
