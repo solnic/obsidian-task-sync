@@ -39,7 +39,7 @@ export interface PropertyDefinition {
   type: PropertyType;
 
   /** Zod schema for validation and type coercion */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   schema: z.ZodType<any>; // Zod schema can validate any type - this is correct usage
 
   /** Front-matter key where this property is stored */

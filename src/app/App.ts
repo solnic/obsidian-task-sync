@@ -54,7 +54,7 @@ export class TaskSyncApp {
       // Initialize Obsidian extension - we still need the raw Obsidian objects for the extension
       // The Host abstraction is for the app-level concerns, Extensions still need Obsidian APIs
       // TODO: This will need to be refactored when we make the app truly host-agnostic
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const obsidianHost = host as any; // Cast to access underlying plugin - Host abstraction incomplete
       if (obsidianHost.plugin && obsidianHost.plugin.app) {
         // Pass the plugin's NoteKit instance to share the same registry
@@ -171,7 +171,7 @@ export class TaskSyncApp {
   /**
    * Get extension by ID for testing and external access
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   getExtensionById(id: string): any { // Returns various extension types - used for testing
     switch (id) {
       case "obsidian":
@@ -250,7 +250,7 @@ export class TaskSyncApp {
    * Converts source.filePath -> source.keys.obsidian
    * Converts source.url -> source.keys.github
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   private migrateSourceSchema(entity: any): any { // Entity structure is dynamic during migration
     if (!entity.source) return entity;
 
@@ -363,7 +363,7 @@ export class TaskSyncApp {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const obsidianHost = this.host as any; // Cast to access underlying plugin - Host abstraction incomplete
     if (!obsidianHost.plugin) {
       return;
@@ -399,7 +399,7 @@ export class TaskSyncApp {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const obsidianHost = this.host as any; // Cast to access underlying plugin - Host abstraction incomplete
     if (!obsidianHost.plugin) {
       return;
@@ -439,7 +439,7 @@ export class TaskSyncApp {
       return;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const obsidianHost = this.host as any; // Cast to access underlying plugin - Host abstraction incomplete
     if (!obsidianHost.plugin) {
       return;
@@ -500,7 +500,7 @@ export class TaskSyncApp {
    * Initialize Daily Planning extension
    */
   private async initializeDailyPlanningExtension(): Promise<void> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const obsidianHost = this.host as any; // Cast to access underlying plugin - Host abstraction incomplete
     if (!obsidianHost.plugin || !this.settings) {
       return;
@@ -532,7 +532,7 @@ export class TaskSyncApp {
 
     console.log("Initializing Context extension...");
     this.contextExtension = new ContextExtension(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       (this.host as any).plugin.app, // Cast to access underlying plugin - Host abstraction incomplete
       this.host,
       this.settings

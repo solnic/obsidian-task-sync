@@ -26,13 +26,13 @@ import deepmerge from "deepmerge";
  * for data persistence and lifecycle management.
  */
 interface ObsidianPlugin {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   loadData(): Promise<any>; // Obsidian API returns any - data structure is plugin-defined
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   saveData(data: any): Promise<void>; // Obsidian API accepts any - data structure is plugin-defined
   onload?(): Promise<void> | void;
   onunload?(): Promise<void> | void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   app: any; // Obsidian App instance - third-party API with incomplete types
 }
 
@@ -144,7 +144,7 @@ export class ObsidianHost extends Host {
    * @param data - The TaskSync application data to persist
    * @throws Error if data cannot be saved to Obsidian
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   async saveData(data: any): Promise<void> { // Must match Obsidian Plugin API signature
     try {
       // Load existing data to preserve settings
@@ -174,7 +174,7 @@ export class ObsidianHost extends Host {
    * @returns Promise resolving to the TaskSync application data, or null if none exists
    * @throws Error if data cannot be loaded from Obsidian
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   async loadData(): Promise<any> { // Must match Obsidian Plugin API return type
     try {
       const data = await this.plugin.loadData();
@@ -199,7 +199,7 @@ export class ObsidianHost extends Host {
       throw new Error(`File not found: ${filePath}`);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await app.workspace.getLeaf().openFile(file as any); // Obsidian's TFile type compatibility
   }
 
@@ -343,7 +343,7 @@ export class ObsidianHost extends Host {
    *
    * @returns The TaskSync application instance
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   getApp(): any { // Returns taskSyncApp which has dynamic type - used for testing only
     return taskSyncApp;
   }

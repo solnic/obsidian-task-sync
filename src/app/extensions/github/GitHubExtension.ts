@@ -770,45 +770,41 @@ export class GitHubExtension implements Extension {
    */
   private createObsidianFetch() {
     return async (url: string, options: any = {}) => {
-      try {
-        // Use Obsidian's requestUrl which returns a proper response object
-        const response = await requestUrl({
-          url,
-          method: options.method || "GET",
-          headers: options.headers || {},
-          body: options.body,
-          throw: false, // Don't throw on HTTP errors, let Octokit handle them
+      // Use Obsidian's requestUrl which returns a proper response object
+      const response = await requestUrl({
+        url,
+        method: options.method || "GET",
+        headers: options.headers || {},
+        body: options.body,
+        throw: false, // Don't throw on HTTP errors, let Octokit handle them
+      });
+
+      // Create a Response-like object that Octokit expects
+      // Make headers object iterable like the Headers API
+      const headersMap = new Map();
+      if (response.headers) {
+        Object.entries(response.headers).forEach(([key, value]) => {
+          headersMap.set(key.toLowerCase(), value);
         });
-
-        // Create a Response-like object that Octokit expects
-        // Make headers object iterable like the Headers API
-        const headersMap = new Map();
-        if (response.headers) {
-          Object.entries(response.headers).forEach(([key, value]) => {
-            headersMap.set(key.toLowerCase(), value);
-          });
-        }
-
-        return {
-          ok: response.status >= 200 && response.status < 300,
-          status: response.status,
-          statusText: response.status.toString(),
-          headers: {
-            get: (name: string): string | null =>
-              headersMap.get(name.toLowerCase()) || null,
-            has: (name: string): boolean => headersMap.has(name.toLowerCase()),
-            entries: () => headersMap.entries(),
-            keys: () => headersMap.keys(),
-            values: () => headersMap.values(),
-            [Symbol.iterator]: () => headersMap.entries(),
-          },
-          json: async () => JSON.parse(response.text),
-          text: async () => response.text,
-          url: url,
-        };
-      } catch (error) {
-        throw error;
       }
+
+      return {
+        ok: response.status >= 200 && response.status < 300,
+        status: response.status,
+        statusText: response.status.toString(),
+        headers: {
+          get: (name: string): string | null =>
+            headersMap.get(name.toLowerCase()) || null,
+          has: (name: string): boolean => headersMap.has(name.toLowerCase()),
+          entries: () => headersMap.entries(),
+          keys: () => headersMap.keys(),
+          values: () => headersMap.values(),
+          [Symbol.iterator]: () => headersMap.entries(),
+        },
+        json: async () => JSON.parse(response.text),
+        text: async () => response.text,
+        url: url,
+      };
     };
   }
 

@@ -18,7 +18,7 @@ export function projectReducer(
   action: ProjectAction
 ): ProjectStoreState {
   switch (action.type) {
-    case "ADD_PROJECT":
+    case "ADD_PROJECT": {
       // Check if project already exists to prevent duplicates
       const exists = state.projects.some((p) => p.id === action.project.id);
       if (exists) {
@@ -36,6 +36,7 @@ export function projectReducer(
         projects: [...state.projects, action.project],
         lastSync: new Date(),
       };
+    }
 
     case "UPDATE_PROJECT":
       return {
