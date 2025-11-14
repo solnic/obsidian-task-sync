@@ -12,7 +12,6 @@
 
 import {
   App,
-  TFile,
   MarkdownPostProcessor,
   MarkdownPostProcessorContext,
 } from "obsidian";

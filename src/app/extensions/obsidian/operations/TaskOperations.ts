@@ -9,7 +9,6 @@ import { Task } from "../../../core/entities";
 import { ObsidianEntityOperations } from "./EntityOperations";
 import { projectStore } from "../../../stores/projectStore";
 import { taskStore } from "../../../stores/taskStore";
-import { areaStore } from "../../../stores/areaStore";
 import { getDateString } from "../../../utils/dateFiltering";
 import { PROPERTY_REGISTRY } from "../utils/PropertyRegistry";
 import type { TaskSyncSettings } from "../../../types/settings";

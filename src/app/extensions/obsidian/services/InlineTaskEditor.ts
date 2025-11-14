@@ -7,7 +7,6 @@
 import type { Task } from "../../../core/entities";
 import type {
   InlineTodoItem,
-  InlineTask,
   TaskSection,
 } from "./InlineTaskParser";
 

@@ -4,7 +4,7 @@
  * Integrated as a feature of the ObsidianExtension
  */
 
-import { App, Plugin, TFile } from "obsidian";
+import { App, TFile } from "obsidian";
 import { eventBus, type DomainEvent } from "../../../core/events";
 import type { Schedule, Task } from "../../../core/entities";
 import { TaskSyncSettings } from "../../../types/settings";

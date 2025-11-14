@@ -8,7 +8,6 @@ import type {
   FilterDefinition,
   FilterState,
   ServiceFilters,
-  FilterChangeEvent,
   FilterPersistenceData,
 } from "./types";
 
