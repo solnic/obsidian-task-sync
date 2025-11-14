@@ -274,9 +274,20 @@ export class GitHubTaskSource implements DataSource<Task> {
                 filters.repository!
               );
 
-        // Preserve ID, timestamps, and source keys from existing task
+        // For existing tasks, only update GitHub-syncable properties to preserve
+        // Obsidian-specific properties (priority, areas, project, etc.)
+        // GitHub syncable properties: title, status, done, description
+        const syncableProps = {
+          title: freshTask.title,
+          status: freshTask.status,
+          done: freshTask.done,
+          description: freshTask.description,
+        };
+
+        // Preserve ID, timestamps, source keys, and all non-GitHub properties from existing task
         return {
-          ...freshTask,
+          ...existingTask,
+          ...syncableProps,
           id: existingTask.id,
           createdAt: existingTask.createdAt,
           updatedAt: existingTask.updatedAt,
@@ -316,9 +327,4 @@ export class GitHubTaskSource implements DataSource<Task> {
 
     return tasks;
   }
-
-  // No watch() method - GitHub is pull-based, not push-based
-  // Changes come from user actions (importing issues) or refresh operations
-  // The extension entity store is updated directly, and SyncManager handles
-  // merging with other sources into the main taskStore
 }
