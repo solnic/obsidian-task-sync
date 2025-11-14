@@ -21,7 +21,8 @@ export type PropertyType =
   | "date"
   | "enum"
   | "array"
-  | "select";
+  | "select"
+  | "association";
 
 /**
  * Property definition with Zod schema and transformation rules
@@ -71,6 +72,18 @@ export interface PropertyDefinition {
   link?: boolean;
   /** Options for select properties with colors */
   selectOptions?: SelectOption[];
+
+  /** Configuration for association properties */
+  association?: {
+    /** ID of the note type this property links to (e.g., "task", "project", "area") */
+    noteTypeId: string;
+    /** Whether this property can contain multiple associations */
+    multiple: boolean;
+    /** Optional folder restriction for entity lookup */
+    folder?: string;
+    /** Whether to allow inline entity creation */
+    allowCreate?: boolean;
+  };
 
   /** Form-specific configuration */
   form?: {
@@ -141,6 +154,18 @@ export interface PropertySettingsData {
 
   /** Options for select properties with colors */
   selectOptions?: SelectOption[];
+
+  /** Configuration for association properties */
+  association?: {
+    /** ID of the note type this property links to (e.g., "task", "project", "area") */
+    noteTypeId: string;
+    /** Whether this property can contain multiple associations */
+    multiple: boolean;
+    /** Optional folder restriction for entity lookup */
+    folder?: string;
+    /** Whether to allow inline entity creation */
+    allowCreate?: boolean;
+  };
 
   /** Form-specific configuration */
   form?: {

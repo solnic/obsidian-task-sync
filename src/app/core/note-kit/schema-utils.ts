@@ -6,24 +6,28 @@
 import { z } from "zod";
 import {
   stringSchema,
+  optionalStringSchema,
   numberSchema,
   booleanSchema,
   dateSchema,
   enumSchema,
+  stringArraySchema,
 } from "./schemas";
 import type { NoteType, PropertyDefinition, SelectOption } from "./types";
 
 /**
- * Create a Zod schema from a type string
- * Used when reconstructing schemas from serialized note types
+ * Create a Zod schema from a property definition
+ * Used when reconstructing schemas from serialized note types or when schemas
+ * have been lost through serialization/deserialization
  */
-export function createSchemaFromType(
-  schemaType: string,
-  selectOptions?: SelectOption[]
+export function createSchemaFromProperty(
+  property: PropertyDefinition
 ): z.ZodType<any> {
-  switch (schemaType) {
+  const { type, selectOptions, association, required } = property;
+
+  switch (type) {
     case "string":
-      return stringSchema;
+      return required ? stringSchema : optionalStringSchema;
     case "number":
       return numberSchema;
     case "boolean":
@@ -43,28 +47,34 @@ export function createSchemaFromType(
       return stringSchema; // Fallback
     case "array":
       return z.array(z.string()).default([]);
+    case "association":
+      // Association properties can be single or multiple
+      // Multiple associations use array schema, single uses string schema
+      if (association?.multiple) {
+        return stringArraySchema;
+      } else {
+        return required ? stringSchema : optionalStringSchema;
+      }
     default:
       return stringSchema;
   }
 }
 
+
+
 /**
  * Reconstruct schemas for all properties in a note type
  * This is needed when loading note types from JSON storage
- * where Zod schemas can't be serialized
+ * where Zod schemas can't be serialized, or when schemas have been
+ * lost through Svelte reactivity proxies or other transformations
  */
 export function reconstructNoteTypeSchemas(noteType: NoteType): NoteType {
   const reconstructedProperties: Record<string, PropertyDefinition> = {};
 
   for (const [key, property] of Object.entries(noteType.properties)) {
-    // If schema already exists, keep it
-    if (property.schema) {
-      reconstructedProperties[key] = property;
-      continue;
-    }
-
-    // Reconstruct schema from type
-    const schema = createSchemaFromType(property.type, property.selectOptions);
+    // Always reconstruct schema to ensure it's a proper Zod schema
+    // Schemas can be lost through serialization or reactive proxies
+    const schema = createSchemaFromProperty(property);
 
     reconstructedProperties[key] = {
       ...property,

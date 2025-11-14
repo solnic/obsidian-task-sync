@@ -245,6 +245,107 @@
         break;
     }
 
+    // Association configuration (only for association type)
+    if (property.schemaType === "association") {
+      // Initialize association config if not present
+      if (!property.association) {
+        property.association = {
+          noteTypeId: "task",
+          multiple: false,
+          allowCreate: false,
+        };
+      }
+
+      propertyContent.createEl("h5", {
+        text: "Association Configuration",
+        cls: "association-config-heading",
+      });
+
+      // Note Type ID dropdown
+      new Setting(propertyContent)
+        .setName("Associated Note Type")
+        .setDesc("The type of note this property links to")
+        .addDropdown((dropdown) => {
+          dropdown.addOption("task", "Task");
+          dropdown.addOption("project", "Project");
+          dropdown.addOption("area", "Area");
+          dropdown
+            .setValue(property.association?.noteTypeId || "task")
+            .onChange((value: string) => {
+              if (!property.association) {
+                property.association = {
+                  noteTypeId: value,
+                  multiple: false,
+                  allowCreate: false,
+                };
+              } else {
+                property.association.noteTypeId = value;
+              }
+              onUpdate();
+            });
+          dropdown.selectEl.setAttribute(
+            "data-testid",
+            `association-notetype-dropdown-${propertyKey}`
+          );
+        });
+
+      // Multiple toggle
+      new Setting(propertyContent)
+        .setName("Multiple Selection")
+        .setDesc("Allow selecting multiple entities (array of associations)")
+        .addToggle((toggle) => {
+          toggle
+            .setValue(property.association?.multiple || false)
+            .onChange((value: boolean) => {
+              if (!property.association) {
+                property.association = {
+                  noteTypeId: "task",
+                  multiple: value,
+                  allowCreate: false,
+                };
+              } else {
+                property.association.multiple = value;
+              }
+              // Update default value and schema type for array
+              if (value) {
+                property.defaultValue = [];
+              } else {
+                property.defaultValue = "";
+              }
+              onUpdate();
+            });
+          toggle.toggleEl.setAttribute(
+            "data-testid",
+            `association-multiple-toggle-${propertyKey}`
+          );
+        });
+
+      // Allow Create toggle
+      new Setting(propertyContent)
+        .setName("Allow Inline Creation")
+        .setDesc("Allow creating new entities directly from the dropdown")
+        .addToggle((toggle) => {
+          toggle
+            .setValue(property.association?.allowCreate || false)
+            .onChange((value: boolean) => {
+              if (!property.association) {
+                property.association = {
+                  noteTypeId: "task",
+                  multiple: false,
+                  allowCreate: value,
+                };
+              } else {
+                property.association.allowCreate = value;
+              }
+              onUpdate();
+            });
+          toggle.toggleEl.setAttribute(
+            "data-testid",
+            `association-allowcreate-toggle-${propertyKey}`
+          );
+        });
+    }
+
     // Select options management (only for select type)
     if (property.schemaType === "select") {
       // Initialize selectOptions if not present
@@ -513,7 +614,8 @@
   }
 
   /* Select options styling */
-  :global(.select-options-heading) {
+  :global(.select-options-heading),
+  :global(.association-config-heading) {
     margin: 1rem 0 0.5rem 0;
     font-size: 0.9rem;
     font-weight: 600;

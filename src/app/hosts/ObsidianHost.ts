@@ -71,7 +71,9 @@ export class ObsidianHost extends Host {
 
       // Deep merge loaded data with defaults to handle partial settings
       // This ensures new settings (like googleCalendar) are properly initialized
-      // Use array overwrite to prevent concatenating arrays like taskCategories
+      // Use array overwrite strategy to prevent concatenating arrays like taskCategories.
+      // Arrays in settings should replace defaults entirely, not merge with them,
+      // to avoid duplicate entries and maintain user's explicit configuration.
       return deepmerge(DEFAULT_SETTINGS, data, {
         arrayMerge: (_, sourceArray) => sourceArray,
       }) as TaskSyncSettings;

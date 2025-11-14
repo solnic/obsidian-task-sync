@@ -17,7 +17,7 @@
     dateSchema,
     enumSchema,
   } from "../../../core/note-kit/schemas";
-  import { createSchemaFromType } from "../../../core/note-kit/schema-utils";
+  import { createSchemaFromProperty } from "../../../core/note-kit/schema-utils";
   import PropertySettings from "./PropertySettings.svelte";
   import { camelize } from "inflection";
   import { ObsidianPropertyManager } from "../../../core/note-kit/obsidian-property-manager";
@@ -588,16 +588,15 @@
                 key: generatedKey,
                 frontMatterKey: frontMatterKey,
                 type: schemaType || "string",
-                schema: createSchemaFromType(
-                  schemaType || "string",
-                  property.selectOptions
-                ),
               };
 
               // For select type, ensure selectOptions are included
               if (schemaType === "select" && property.selectOptions) {
                 propertyDef.selectOptions = property.selectOptions;
               }
+
+              // Create schema from the property definition
+              propertyDef.schema = createSchemaFromProperty(propertyDef);
 
               processedProperties[generatedKey] = propertyDef;
             }

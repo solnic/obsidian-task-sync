@@ -204,6 +204,18 @@ export const optionalTagsSchema = z
   .optional();
 
 /**
+ * Schema for association properties (single)
+ * Accepts a string reference to another note
+ */
+export const associationSchema = optionalStringSchema;
+
+/**
+ * Schema for association properties (multiple)
+ * Accepts an array of string references to other notes
+ */
+export const associationsSchema = stringArraySchema;
+
+/**
  * Schema for priority values (Low, Medium, High, Urgent)
  */
 export const prioritySchema = enumSchema([

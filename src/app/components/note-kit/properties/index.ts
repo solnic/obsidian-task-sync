@@ -10,3 +10,4 @@ export { default as DateProperty } from "./DateProperty.svelte";
 export { default as EnumProperty } from "./EnumProperty.svelte";
 export { default as ArrayProperty } from "./ArrayProperty.svelte";
 export { default as SelectProperty } from "./SelectProperty.svelte";
+export { default as AssociationProperty } from "./AssociationProperty.svelte";

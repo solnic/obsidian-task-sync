@@ -3,10 +3,14 @@
   import type { NoteType } from "../../core/note-kit/types";
   import type { TypeRegistry } from "../../core/note-kit/registry";
   import type { NoteProcessor } from "../../core/note-kit/note-processor";
+  import type { TaskSyncSettings } from "../../types/settings";
+
+  console.log("[CreateEntityModal.svelte] Component script loading");
 
   interface Props {
     typeRegistry: TypeRegistry;
     noteProcessor: NoteProcessor;
+    settings: TaskSyncSettings;
     preselectedNoteTypeId?: string;
     validationErrors?: string[];
     initialPropertyValues?: Record<string, any>;
@@ -22,6 +26,7 @@
   let {
     typeRegistry,
     noteProcessor,
+    settings,
     preselectedNoteTypeId,
     validationErrors = [],
     initialPropertyValues,
@@ -30,13 +35,21 @@
     oncancel,
   }: Props = $props();
 
+  console.log("[CreateEntityModal.svelte] Props received:", {
+    preselectedNoteTypeId,
+    hasInitialValues: !!initialPropertyValues,
+    contextualTitle,
+  });
+
   // Get all available note types
   const noteTypes = typeRegistry.getAll();
+  console.log("[CreateEntityModal.svelte] Available note types:", noteTypes.map(nt => nt.id));
 
   // Form state - use preselected note type if provided, otherwise auto-select if only one type
   let selectedNoteTypeId = $state(
     preselectedNoteTypeId || (noteTypes.length === 1 ? noteTypes[0].id : "")
   );
+
   let propertyValues: Record<string, any> = $state({});
   let templateContent = $state(""); // Template content becomes the description for entities
 
@@ -46,8 +59,13 @@
   );
 
   $effect(() => {
+    console.log("[CreateEntityModal.svelte] Effect: selectedNoteType changed to:", selectedNoteType?.id);
+  });
+
+  $effect(() => {
     // When a note type is preselected and initial values provided, seed the form
     if (selectedNoteTypeId && initialPropertyValues) {
+      console.log("[CreateEntityModal.svelte] Seeding form with initial values:", initialPropertyValues);
       propertyValues = { ...initialPropertyValues };
     }
   });
@@ -63,9 +81,18 @@
   function handleSubmit(e: Event) {
     e.preventDefault(); // Prevent default form submission
 
+    console.log("[CreateEntityModal.svelte] handleSubmit called");
+
     if (!selectedNoteType) {
+      console.log("[CreateEntityModal.svelte] No note type selected, aborting");
       return;
     }
+
+    console.log("[CreateEntityModal.svelte] Submitting with:", {
+      noteType: selectedNoteType.id,
+      properties: propertyValues,
+      description: templateContent.trim() || undefined,
+    });
 
     // Submit the data - validation will be handled by entity schema
     onsubmit?.({
@@ -152,6 +179,8 @@
               {noteProcessor}
               bind:templateContent
               ontemplatecontentchange={handleTemplateContentChange}
+              {settings}
+              {typeRegistry}
             />
           </div>
         {:else}

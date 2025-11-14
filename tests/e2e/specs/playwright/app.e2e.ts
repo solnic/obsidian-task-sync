@@ -608,8 +608,8 @@ test.describe("Svelte App Initialization", () => {
     // Button should now show the area as a badge
     await expect(areasButton).toContainText("Development");
 
-    // Wait for file to be updated with new area
-    await waitForFileContentToContain(page, taskPath, "- Development");
+    // Wait for file to be updated with new area (wiki link format in frontmatter)
+    await waitForFileContentToContain(page, taskPath, "Development"); // Display name appears in wiki link
 
     // Verify all changes were persisted to the task entity
     const updatedTask = await getTaskByTitle(page, taskName);
@@ -617,8 +617,8 @@ test.describe("Svelte App Initialization", () => {
     expect(updatedTask.status).toBe("In Progress");
     expect(updatedTask.priority).toBe("High");
     expect(updatedTask.category).toBe("Bug");
-    expect(updatedTask.project).toBe("Widget Test Project");
-    expect(updatedTask.areas).toContain("Development");
+    expect(updatedTask.project).toBe("Widget Test Project"); // Entity stores plain name
+    expect(updatedTask.areas).toContain("Development"); // Entity stores plain name
   });
 
   test("should support multi-select areas with badges and remove buttons", async ({
@@ -695,12 +695,12 @@ test.describe("Svelte App Initialization", () => {
     await expect(areasButton).toContainText("Personal");
     await expect(areasButton).toContainText("Area Three");
 
-    // Wait for file to be updated
-    await waitForFileContentToContain(page, taskPath, "- Development");
-    await waitForFileContentToContain(page, taskPath, "- Personal");
-    await waitForFileContentToContain(page, taskPath, "- Area Three");
+    // Wait for file to be updated (checking for display names in wiki links)
+    await waitForFileContentToContain(page, taskPath, "Development");
+    await waitForFileContentToContain(page, taskPath, "Personal");
+    await waitForFileContentToContain(page, taskPath, "Area Three");
 
-    // Verify task has all three areas
+    // Verify task has all three areas (entity stores plain names)
     let task = await getTaskByTitle(page, taskName);
     expect(task.areas).toContain("Development");
     expect(task.areas).toContain("Personal");

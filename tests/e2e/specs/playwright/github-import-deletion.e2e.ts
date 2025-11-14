@@ -125,9 +125,6 @@ test.describe("GitHub Import and Deletion Sync", () => {
     // GitHub issue should be removed from entity store after deletion
     // (reactive cleanup removes deleted tasks from GitHub entity store)
     expect(githubStoreCheck.taskFound).toBe(false);
-    console.log(
-      "✓ Task removed from GitHub entity store after deletion (reactive cleanup)"
-    );
 
     // Run "Refresh Tasks" command
     await executeCommand(page, "Refresh Tasks");

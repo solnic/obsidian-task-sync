@@ -188,13 +188,6 @@ export async function setupObsidianElectron(
       console.log("[Obsidian Debug]", msgText);
     }
 
-    // Also output errors and warnings for visibility
-    if (msgType === "error") {
-      console.error("[Obsidian Error]", msgText);
-    } else if (msgType === "warning") {
-      console.warn("[Obsidian Warning]", msgText);
-    }
-
     // If DEBUG is explicitly enabled, output all console messages
     if (process.env.DEBUG === "true") {
       console.log(`[Obsidian ${msgType}]`, msgText);
