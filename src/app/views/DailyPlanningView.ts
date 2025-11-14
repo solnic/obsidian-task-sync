@@ -77,7 +77,7 @@ export class DailyPlanningView extends ItemView {
 
     // Unmount Svelte 5 component
     if (this.svelteComponent) {
-      unmount(this.svelteComponent);
+      await unmount(this.svelteComponent);
       this.svelteComponent = null;
     }
   }

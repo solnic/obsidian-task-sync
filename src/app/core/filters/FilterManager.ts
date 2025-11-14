@@ -81,7 +81,7 @@ export class FilterManager {
     }
 
     // Persist changes
-    this.persistState();
+    void this.persistState();
   }
 
   /**
@@ -126,7 +126,7 @@ export class FilterManager {
     const filterDef = service.filters.find((f) => f.id === filterId);
     if (filterDef) {
       service.state[filterId] = filterDef.defaultValue;
-      this.persistState();
+      void this.persistState();
     }
   }
 
@@ -141,7 +141,7 @@ export class FilterManager {
       service.state[filter.id] = filter.defaultValue;
     });
 
-    this.persistState();
+    void this.persistState();
   }
 
   /**

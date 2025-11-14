@@ -52,7 +52,7 @@ export class DayView extends ItemView {
   async onClose(): Promise<void> {
     // Unmount Svelte 5 component
     if (this.svelteComponent) {
-      unmount(this.svelteComponent);
+      await unmount(this.svelteComponent);
       this.svelteComponent = null;
     }
   }
@@ -62,7 +62,7 @@ export class DayView extends ItemView {
    */
   updateSettings(newSettings: TaskSyncSettings): void {
     this.settings = newSettings;
-    this.refresh();
+    void this.refresh();
   }
 
   /**

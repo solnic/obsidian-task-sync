@@ -106,7 +106,7 @@ export class CreateEntityModal extends Modal {
   onClose() {
     const { contentEl } = this;
     if (this.component) {
-      unmount(this.component);
+      void unmount(this.component);
       this.component = null;
     }
     contentEl.empty();

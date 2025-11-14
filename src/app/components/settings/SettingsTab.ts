@@ -40,7 +40,7 @@ export class TaskSyncSettingTab extends PluginSettingTab {
 
   hide(): void {
     if (this.view) {
-      unmount(this.view);
+      void unmount(this.view);
     }
   }
 }

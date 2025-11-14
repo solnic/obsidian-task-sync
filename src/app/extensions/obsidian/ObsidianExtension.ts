@@ -783,13 +783,13 @@ export class ObsidianExtension implements Extension {
         // Task file changes are handled by ObsidianTaskSource.watch()
         // Only handle Projects and Areas here
         if (filePath.startsWith(this.settings.projectsFolder + "/")) {
-          this.handleProjectFileChange(file, cache);
+          void this.handleProjectFileChange(file, cache);
         } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
-          this.handleAreaFileChange(file, cache);
+          void this.handleAreaFileChange(file, cache);
         }
 
         // Handle todo checkbox changes in all files
-        this.handlePotentialTodoCheckboxChange(file);
+        void this.handlePotentialTodoCheckboxChange(file);
       }
     );
 
@@ -804,9 +804,9 @@ export class ObsidianExtension implements Extension {
       // Check if the deleted file is a Project or Area
       // Task deletions are handled by ObsidianTaskSource
       if (filePath.startsWith(this.settings.projectsFolder + "/")) {
-        this.handleProjectFileDeletion(filePath);
+        void this.handleProjectFileDeletion(filePath);
       } else if (filePath.startsWith(this.settings.areasFolder + "/")) {
-        this.handleAreaFileDeletion(filePath);
+        void this.handleAreaFileDeletion(filePath);
       }
     });
 

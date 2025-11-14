@@ -435,7 +435,7 @@ export class GitHubExtension implements Extension {
       if (!hasDataForRepo) {
         // Trigger refresh to fetch data for this repository
         // The refresh will accumulate data in entity store and return ALL imported tasks
-        taskSourceManager.refreshSource("github");
+        void taskSourceManager.refreshSource("github");
       }
     }
   }

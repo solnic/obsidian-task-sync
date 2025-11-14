@@ -144,7 +144,7 @@ export class GoogleOAuthService {
    */
   async refreshAccessToken(): Promise<OAuthTokens> {
     // If a refresh is already in progress, wait for it
-    if (this.tokenRefreshPromise) {
+    if (this.tokenRefreshPromise !== null) {
       console.log('[GoogleOAuth] Token refresh already in progress, waiting...');
       return this.tokenRefreshPromise;
     }
@@ -384,7 +384,7 @@ export class GoogleOAuthService {
    * Open URL in system browser
    */
   private openUrl(url: string): void {
-    shell.openExternal(url);
+    void shell.openExternal(url);
   }
 
   /**
