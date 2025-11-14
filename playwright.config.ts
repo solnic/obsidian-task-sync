@@ -17,7 +17,7 @@ const isCI = process.env.CI === "true";
 
 export default defineConfig({
   // Test directory
-  testDir: "./tests/e2e/specs/playwright",
+  testDir: "./tests/e2e/specs",
 
   // Test file patterns
   testMatch: "**/*.e2e.ts",
