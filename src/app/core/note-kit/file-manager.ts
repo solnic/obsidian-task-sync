@@ -5,17 +5,11 @@
 
 import type { App, Vault } from "obsidian";
 import { normalizePath, TFile, TFolder } from "obsidian";
-import type { NoteType, ValidationResult } from "./types";
+import type { NoteType } from "./types";
 import type { TypeRegistry } from "./registry";
 import { NoteProcessor } from "./note-processor";
 import { TemplateManager, type TemplatePreferences } from "./template-manager";
 import { PropertyProcessor } from "./property-processor";
-import {
-  createValidResult,
-  createInvalidResult,
-  createValidationError,
-} from "./validation";
-import * as yaml from "js-yaml";
 
 /**
  * File creation options
@@ -244,7 +238,6 @@ export class FileManager {
     const {
       properties = {},
       validateProperties = true,
-      preserveContent = true,
       updateModTime = true,
     } = options;
 

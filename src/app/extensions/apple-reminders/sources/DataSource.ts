@@ -53,7 +53,7 @@ export class AppleRemindersDataSource implements DataSource<Task> {
   /**
    * Watch for changes (optional - Apple Reminders doesn't support real-time watching)
    */
-  watch(callbacks: DataSourceWatchCallbacks<Task>): () => void {
+  watch(_callbacks: DataSourceWatchCallbacks<Task>): () => void {
     // Apple Reminders doesn't support real-time watching via AppleScript
     // Return a no-op cleanup function
     return () => {};

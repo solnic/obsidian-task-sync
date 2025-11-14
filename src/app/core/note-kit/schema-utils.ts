@@ -13,7 +13,7 @@ import {
   enumSchema,
   stringArraySchema,
 } from "./schemas";
-import type { NoteType, PropertyDefinition, SelectOption } from "./types";
+import type { NoteType, PropertyDefinition } from "./types";
 
 /**
  * Create a Zod schema from a property definition

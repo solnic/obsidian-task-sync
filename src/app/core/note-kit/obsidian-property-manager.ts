@@ -108,7 +108,7 @@ export class ObsidianPropertyManager {
   getNoteTypePropertyInfo(noteType: NoteType): PropertyTypeInfo[] {
     const propertyInfo: PropertyTypeInfo[] = [];
 
-    for (const [key, propertyDef] of Object.entries(noteType.properties)) {
+    for (const [_key, propertyDef] of Object.entries(noteType.properties)) {
       const typeNoteType = this.inferTypeFromZodSchema(propertyDef.schema);
       const obsidianType = this.mapTypeNoteTypeToObsidian(typeNoteType);
 

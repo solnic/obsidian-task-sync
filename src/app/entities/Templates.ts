@@ -5,7 +5,6 @@
 
 import { Template } from "../core/template-entities";
 import { templateStore as store } from "../stores/templateStore";
-import { eventBus } from "../core/events";
 import { generateId } from "../utils/idGenerator";
 
 export class Templates {
@@ -28,7 +27,7 @@ export class Templates {
       return templates.find((template) => template.id === id) || null;
     }
 
-    async getByExtension(extensionId: string): Promise<readonly Template[]> {
+    async getByExtension(_extensionId: string): Promise<readonly Template[]> {
       // Templates are not extension-specific in the same way as tasks
       // Return all templates for now
       return this.getAll();

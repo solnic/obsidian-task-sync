@@ -7,7 +7,6 @@ import type { App, Vault, TFile } from "obsidian";
 import { normalizePath } from "obsidian";
 import type { NoteType, Template, SemanticVersion } from "./types";
 import type { TypeRegistry } from "./registry";
-import * as yaml from "js-yaml";
 
 /**
  * Backup types
@@ -346,8 +345,6 @@ export class BackupManager {
   ): Promise<RestoreResult> {
     const {
       createBackupBeforeRestore = true,
-      validateAfterRestore = true,
-      forceRestore = false,
     } = options;
 
     try {
@@ -462,7 +459,7 @@ export class BackupManager {
       }
 
       return true;
-    } catch (error) {
+    } catch (_error) {
       return false;
     }
   }
@@ -593,7 +590,7 @@ export class BackupManager {
     }
   }
 
-  private async restoreRegistry(backup: BackupEntry): Promise<void> {
+  private async restoreRegistry(_backup: BackupEntry): Promise<void> {
     // This would restore the entire registry
     // Implementation depends on registry's restore capabilities
   }
