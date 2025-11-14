@@ -126,9 +126,6 @@ test.describe("Calendar Day View", () => {
     );
     await allCalendarsOption.click();
 
-    // Wait a bit for the filter to update
-    await page.waitForTimeout(300);
-
     // Then select "Work Calendar" only
     const workCalendarOption = page.locator(
       '[data-testid="calendar-filter-dropdown-item"]:has-text("Work Calendar")'
@@ -209,8 +206,13 @@ test.describe("Calendar Day View", () => {
     );
     await searchInput.fill("Standup");
 
-    // Wait for search to filter
-    await page.waitForTimeout(500);
+    // Wait for search to filter - check that only matching events are shown
+    await page.waitForFunction(() => {
+      const events = Array.from(
+        document.querySelectorAll('[data-testid="obsidian-day-view-event"]')
+      );
+      return events.length === 1 && events[0].textContent?.includes("Morning Standup");
+    });
 
     // Verify only matching events are shown
     const filteredCount = await page
@@ -269,8 +271,11 @@ test.describe("Calendar Day View", () => {
     );
     await nextDayButton.click();
 
-    // Wait for events to reload for the next day
-    await page.waitForTimeout(1000);
+    // Wait for the date to update - the button should show a different date
+    await page.waitForFunction(() => {
+      const dateDisplay = document.querySelector('[data-testid="obsidian-day-view-date-display"]');
+      return dateDisplay !== null;
+    });
 
     // The event list should change (different events or no events)
     // Note: This is a basic test - in a real scenario, we'd stub different fixture data for different dates
@@ -391,9 +396,6 @@ test.describe("Calendar Day View - Google Calendar", () => {
     );
     await allCalendarsOption.click();
 
-    // Wait a bit for the filter to update
-    await page.waitForTimeout(300);
-
     // Then select "Work Calendar" only
     const workCalendarOption = page.locator(
       '[data-testid="calendar-filter-dropdown-item"]:has-text("Work Calendar")'
@@ -476,8 +478,13 @@ test.describe("Calendar Day View - Google Calendar", () => {
     );
     await searchInput.fill("Team");
 
-    // Wait for search to filter
-    await page.waitForTimeout(500);
+    // Wait for search to filter - check that only matching events are shown
+    await page.waitForFunction(() => {
+      const events = Array.from(
+        document.querySelectorAll('[data-testid="obsidian-day-view-event"]')
+      );
+      return events.length === 1 && events[0].textContent?.includes("Team");
+    });
 
     // Verify only matching events are shown
     const filteredCount = await page
