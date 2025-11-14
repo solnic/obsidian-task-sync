@@ -107,8 +107,17 @@ test.describe("Sync Property Filtering", () => {
     await switchToTaskService(page, "github");
     await selectFromDropdown(page, "repository-filter", "test-repo");
 
-    // Wait for the sync to complete
-    await page.waitForTimeout(2000);
+    // Wait for the sync to complete by checking for the updated task
+    await page.waitForFunction(
+      ({ title }) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const task = plugin?.query?.findTaskByTitle(title);
+        return task !== undefined;
+      },
+      { title: "Updated Title from GitHub" },
+      { timeout: 10000 }
+    );
 
     // Now check the task - it will have the updated title from GitHub
     // Since title is a GitHub-syncable property, it will be updated

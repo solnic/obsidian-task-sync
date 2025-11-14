@@ -340,8 +340,17 @@ test.describe("Commands / Task Refresh", () => {
     // Execute refresh tasks command
     await executeCommand(page, "Refresh Tasks");
 
-    // Wait for refresh to complete
-    await page.waitForTimeout(2000);
+    // Wait for refresh to complete by checking for the updated task
+    await page.waitForFunction(
+      ({ title }) => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const task = plugin?.query?.findTaskByTitle(title);
+        return task !== undefined;
+      },
+      { title: "Updated GitHub Task Title" },
+      { timeout: 10000 }
+    );
 
     // Verify that only ONE task exists with the updated title
     const allTasks = await getAllTasks(page);

@@ -91,9 +91,6 @@ test.describe("GitHub Import and Deletion Sync", () => {
 
     expect(taskInStore).toBeUndefined();
 
-    // Wait a bit for the event to be processed
-    await page.waitForTimeout(500);
-
     // Verify GitHub entity store still has the issue but without Obsidian key
     const githubStoreCheck = await page.evaluate((url) => {
       const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
@@ -126,9 +123,6 @@ test.describe("GitHub Import and Deletion Sync", () => {
 
     // Run "Refresh Tasks" command
     await executeCommand(page, "Refresh Tasks");
-
-    // Wait for refresh to complete
-    await page.waitForTimeout(2000);
 
     // Verify the GitHub task no longer shows as imported
     await openView(page, "task-sync-main");

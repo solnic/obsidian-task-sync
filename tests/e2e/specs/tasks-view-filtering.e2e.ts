@@ -368,7 +368,12 @@ test.describe("TasksView Filtering and Sorting", () => {
 
     // Switch to GitHub service
     await switchToTaskService(page, "github");
-    await page.waitForTimeout(1000); // Wait for tab switch
+    
+    // Wait for the GitHub tab to be active
+    await page.waitForSelector('[data-testid="service-github"][aria-selected="true"]', {
+      state: "attached",
+      timeout: 5000,
+    });
 
     // Switch back to Local service
     await switchToTaskService(page, "local");
