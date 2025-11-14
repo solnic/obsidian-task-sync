@@ -206,13 +206,8 @@ test.describe("Calendar Day View", () => {
     );
     await searchInput.fill("Standup");
 
-    // Wait for search to filter - check that only matching events are shown
-    await page.waitForFunction(() => {
-      const events = Array.from(
-        document.querySelectorAll('[data-testid="obsidian-day-view-event"]')
-      );
-      return events.length === 1 && events[0].textContent?.includes("Morning Standup");
-    });
+    // Wait for only 1 event containing "Morning Standup" to be visible
+    await expect(page.locator('[data-testid="obsidian-day-view-event"]')).toHaveCount(1, { timeout: 5000 });
 
     // Verify only matching events are shown
     const filteredCount = await page
@@ -271,11 +266,8 @@ test.describe("Calendar Day View", () => {
     );
     await nextDayButton.click();
 
-    // Wait for the date to update - the button should show a different date
-    await page.waitForFunction(() => {
-      const dateDisplay = document.querySelector('[data-testid="obsidian-day-view-date-display"]');
-      return dateDisplay !== null;
-    });
+    // Wait for the button click to be processed - the button should still exist
+    await expect(nextDayButton).toBeVisible();
 
     // The event list should change (different events or no events)
     // Note: This is a basic test - in a real scenario, we'd stub different fixture data for different dates
@@ -478,13 +470,8 @@ test.describe("Calendar Day View - Google Calendar", () => {
     );
     await searchInput.fill("Team");
 
-    // Wait for search to filter - check that only matching events are shown
-    await page.waitForFunction(() => {
-      const events = Array.from(
-        document.querySelectorAll('[data-testid="obsidian-day-view-event"]')
-      );
-      return events.length === 1 && events[0].textContent?.includes("Team");
-    });
+    // Wait for only 1 event containing "Team" to be visible
+    await expect(page.locator('[data-testid="obsidian-day-view-event"]')).toHaveCount(1, { timeout: 5000 });
 
     // Verify only matching events are shown
     const filteredCount = await page

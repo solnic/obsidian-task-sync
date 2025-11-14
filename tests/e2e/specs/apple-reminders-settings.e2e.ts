@@ -43,14 +43,9 @@ test.describe("Apple Reminders Settings", () => {
 
     if (!isEnabled) {
       await enableToggle.click();
-      // Wait for settings to expand
-      await page.waitForSelector('.setting-item:has-text("Reminder Lists")', {
-        state: "visible",
-        timeout: 10000,
-      });
     }
 
-    // Wait for the Reminder Lists setting to appear
+    // Wait for the Reminder Lists setting to appear (it appears when enabled)
     const reminderListsSetting = page.locator(
       '.setting-item:has-text("Reminder Lists")'
     );
@@ -63,31 +58,11 @@ test.describe("Apple Reminders Settings", () => {
     // Click the button - if lists aren't loaded, this will trigger loading
     await listsButton.click();
 
-    // Wait for dropdown to appear with lists loaded
-    await page.waitForSelector('[data-testid="apple-reminders-lists-dropdown"]', {
-      state: "visible",
-      timeout: 10000,
-    });
-
-    //Check if we need to click again to open dropdown
-    const dropdownVisible = await page
-      .locator('[data-testid="apple-reminders-lists-dropdown"]')
-      .isVisible()
-      .catch(() => false);
-
-    if (!dropdownVisible) {
-      await listsButton.click();
-      await page.waitForSelector('[data-testid="apple-reminders-lists-dropdown"]', {
-        state: "visible",
-        timeout: 5000,
-      });
-    }
-
     // Wait for dropdown to appear
     const dropdown = page.locator(
       '[data-testid="apple-reminders-lists-dropdown"]'
     );
-    await expect(dropdown).toBeVisible({ timeout: 5000 });
+    await expect(dropdown).toBeVisible({ timeout: 10000 });
 
     // Verify lists are shown in dropdown
     const workList = dropdown.locator(
@@ -103,15 +78,8 @@ test.describe("Apple Reminders Settings", () => {
     // Select "Work" list
     await workList.click();
 
-    // Wait for the button text to update
-    await page.waitForFunction(() => {
-      const button = document.querySelector('.setting-item:has-text("Reminder Lists") button');
-      return button?.textContent?.includes("1 list");
-    }, undefined, { timeout: 5000 });
-
-    // Check button text - should now show "1 list selected"
-    const updatedButtonText = await listsButton.textContent();
-    expect(updatedButtonText).toContain("1 list");
+    // Wait for button text to update to "1 list"
+    await expect(listsButton).toContainText("1 list", { timeout: 5000 });
 
     // Verify the dropdown is still open (multi-select)
     await expect(dropdown).toBeVisible();
@@ -120,14 +88,7 @@ test.describe("Apple Reminders Settings", () => {
     await personalList.click();
 
     // Wait for button text to update to "2 lists"
-    await page.waitForFunction(() => {
-      const button = document.querySelector('.setting-item:has-text("Reminder Lists") button');
-      return button?.textContent?.includes("2 list");
-    }, undefined, { timeout: 5000 });
-
-    // Check button text - should now show "2 lists selected"
-    const finalButtonText = await listsButton.textContent();
-    expect(finalButtonText).toContain("2 list");
+    await expect(listsButton).toContainText("2 list", { timeout: 5000 });
 
     // Close dropdown by clicking outside
     await page.keyboard.press("Escape");
@@ -166,16 +127,13 @@ test.describe("Apple Reminders Settings", () => {
     const isEnabled = await enableToggle.isChecked();
     if (!isEnabled) {
       await enableToggle.click();
-      await page.waitForSelector('.setting-item:has-text("Reminder Lists")', {
-        state: "visible",
-        timeout: 10000,
-      });
     }
 
-    // Find lists button
+    // Find lists button (wait for it to appear after enabling)
     const reminderListsSetting = page.locator(
       '.setting-item:has-text("Reminder Lists")'
     );
+    await expect(reminderListsSetting).toBeVisible({ timeout: 10000 });
     const listsButton = reminderListsSetting.locator("button").first();
 
     // Open dropdown
@@ -190,29 +148,15 @@ test.describe("Apple Reminders Settings", () => {
       '.task-sync-selector-item:has-text("Work")'
     );
     await workList.click();
-    
-    // Wait for button text to update
-    await page.waitForFunction(() => {
-      const button = document.querySelector('.setting-item:has-text("Reminder Lists") button');
-      return button?.textContent?.includes("1 list");
-    }, undefined, { timeout: 5000 });
 
-    // Verify 1 list selected
-    let buttonText = await listsButton.textContent();
-    expect(buttonText).toContain("1 list");
+    // Wait for button text to update to "1 list"
+    await expect(listsButton).toContainText("1 list", { timeout: 5000 });
 
     // Deselect by clicking again
     await workList.click();
-    
-    // Wait for button text to revert to "All lists"
-    await page.waitForFunction(() => {
-      const button = document.querySelector('.setting-item:has-text("Reminder Lists") button');
-      return button?.textContent?.includes("All lists");
-    }, undefined, { timeout: 5000 });
 
-    // Verify back to "All lists"
-    buttonText = await listsButton.textContent();
-    expect(buttonText).toContain("All lists");
+    // Wait for button text to revert to "All lists"
+    await expect(listsButton).toContainText("All lists", { timeout: 5000 });
 
     // Verify settings
     const savedLists = await page.evaluate(() => {

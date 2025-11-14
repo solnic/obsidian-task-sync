@@ -167,11 +167,8 @@ test.describe("Apple Reminders Integration", () => {
     // Filter by Personal list
     await selectFromDropdown(page, "list-filter", "Personal");
 
-    // Wait for filter to apply - wait for the correct number of reminders to appear
-    await page.waitForFunction(() => {
-      const reminders = document.querySelectorAll('[data-testid="apple-reminder-item"]');
-      return reminders.length === 2;
-    }, undefined, { timeout: 10000 });
+    // Wait for exactly 2 Personal reminders to appear
+    await expect(page.locator('[data-testid="apple-reminder-item"]')).toHaveCount(2, { timeout: 10000 });
 
     // Should only show Personal reminders (2 incomplete reminders: reminder-2 and reminder-5)
     // Note: reminder-3 is completed and excluded
@@ -274,10 +271,7 @@ test.describe("Apple Reminders Integration", () => {
     }
 
     // Verify reminders still loaded after refresh
-    await page.waitForSelector('[data-testid="apple-reminder-item"]', {
-      state: "visible",
-      timeout: 5000,
-    });
+    await expect(page.locator('[data-testid="apple-reminder-item"]').first()).toBeVisible({ timeout: 5000 });
     expect(
       await page.locator('[data-testid="apple-reminder-item"]').count()
     ).toBeGreaterThan(0);
@@ -354,6 +348,9 @@ test.describe("Apple Reminders Integration", () => {
 
     // Close the dropdown by clicking elsewhere
     await page.keyboard.press("Escape");
+    
+    // Wait for dropdown to close
+    await expect(page.locator('[data-testid="list-filter-dropdown"]')).not.toBeVisible();
 
     // First, check if extension is properly set up and stubs are installed
     const preRefreshCheck = await page.evaluate(() => {
@@ -393,11 +390,8 @@ test.describe("Apple Reminders Integration", () => {
       await refreshButton.click();
     }
 
-    // Wait for refresh to complete by checking for reminders to be visible
-    await page.waitForSelector('[data-testid="apple-reminder-item"]', {
-      state: "visible",
-      timeout: 10000,
-    });
+    // Wait for refresh to complete - wait for reminders to be visible
+    await expect(page.locator('[data-testid="apple-reminder-item"]').first()).toBeVisible({ timeout: 10000 });
 
     // Select Work list and verify only Work reminders are shown
     await selectFromDropdown(page, "list-filter", "Work");
@@ -430,11 +424,8 @@ test.describe("Apple Reminders Integration", () => {
     // Switch to Personal list and verify only Personal reminders are shown
     await selectFromDropdown(page, "list-filter", "Personal");
     
-    // Wait for filter to apply - check for 2 Personal reminders
-    await page.waitForFunction(() => {
-      const reminders = document.querySelectorAll('[data-testid="apple-reminder-item"]');
-      return reminders.length === 2;
-    }, undefined, { timeout: 10000 });
+    // Wait for exactly 2 Personal reminders to appear
+    await expect(page.locator('[data-testid="apple-reminder-item"]')).toHaveCount(2, { timeout: 10000 });
 
     const personalReminders = await page
       .locator('[data-testid="apple-reminder-item"]')
