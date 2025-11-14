@@ -51,7 +51,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -85,7 +85,7 @@ test.describe("GitHub Integration", () => {
     // if source.data was missing, because GitHubIssueItem tries to access task.source.data.title
     await page.waitForSelector('[data-testid="github-issue-item"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // CRITICAL: Verify that the imported task still has source.data after filter changes
@@ -130,7 +130,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -169,7 +169,7 @@ test.describe("GitHub Integration", () => {
     // Wait for the task to appear
     await page.waitForSelector(
       "[data-testid=\"service-content-local\"]:not(.tab-hidden) .task-sync-item-title:has-text('First test issue')",
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     const taskStillExists = await page
@@ -192,7 +192,7 @@ test.describe("GitHub Integration", () => {
     const importedIssue = page
       .locator('[data-testid="github-issue-item"]')
       .filter({ hasText: "First test issue" });
-    await expect(importedIssue).toBeVisible({ timeout: 5000 });
+    await expect(importedIssue).toBeVisible({ timeout: 2500 });
 
     // Verify it's marked as imported by checking the data-imported attribute
     // The issue item should have data-imported="true"
@@ -218,7 +218,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -296,7 +296,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -341,7 +341,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -412,7 +412,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -447,7 +447,7 @@ test.describe("GitHub Integration", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Navigate to step 2 (Today's Agenda) where we can import tasks
@@ -490,7 +490,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -506,7 +506,7 @@ test.describe("GitHub Integration", () => {
     await executeCommand(page, "Task Sync: Start Daily Planning");
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
     await page.click('[data-testid="next-button"]');
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
 
@@ -561,7 +561,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -572,7 +572,7 @@ test.describe("GitHub Integration", () => {
     // Wait for issues to load
     await page.waitForSelector('[data-testid="github-issue-item"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Verify issues are displayed
@@ -595,7 +595,7 @@ test.describe("GitHub Integration", () => {
     // Wait for either the loading indicator to appear OR for the refresh to complete
     // This tests that the UI immediately shows loading state
     await Promise.race([
-      loadingIndicator.waitFor({ state: "visible", timeout: 1000 }),
+      loadingIndicator.waitFor({ state: "visible", timeout: 2500 }),
       refreshPromise,
     ]);
 
@@ -618,7 +618,7 @@ test.describe("GitHub Integration", () => {
     // After refresh, issues should be loaded again
     await page.waitForSelector('[data-testid="github-issue-item"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     const finalIssueCount = await page
@@ -646,7 +646,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -704,7 +704,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -779,7 +779,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -886,7 +886,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -897,7 +897,7 @@ test.describe("GitHub Integration", () => {
     // Wait for issues to load
     await page.waitForSelector('[data-testid="github-issue-item"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Define the issue data from the fixture
@@ -970,7 +970,7 @@ test.describe("GitHub Integration", () => {
     // Reactivity should automatically update the UI when the task changes
     // The scheduled badge should appear within the issue item
     const scheduledBadge = issueLocator.locator(".scheduled-badge");
-    await expect(scheduledBadge).toBeVisible({ timeout: 10000 });
+    await expect(scheduledBadge).toBeVisible({ timeout: 2500 });
 
     // Verify the badge shows the correct date
     await expect(scheduledBadge).toContainText("Scheduled for");
@@ -995,7 +995,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -1006,7 +1006,7 @@ test.describe("GitHub Integration", () => {
     // Wait for issues to load
     await page.waitForSelector('[data-testid="github-issue-item"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Get all issue items
@@ -1058,7 +1058,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -1098,7 +1098,7 @@ test.describe("GitHub Integration", () => {
     const refreshButton = page.locator(
       '[data-testid="task-sync-github-refresh-button"]'
     );
-    await refreshButton.waitFor({ state: "visible", timeout: 5000 });
+    await refreshButton.waitFor({ state: "visible", timeout: 2500 });
     await refreshButton.click();
 
     // Wait for refresh to complete by waiting for the button to be enabled again
@@ -1110,7 +1110,7 @@ test.describe("GitHub Integration", () => {
         return refreshButton && !refreshButton.hasAttribute("disabled");
       },
       undefined,
-      { timeout: 10000 }
+      { timeout: 2500 }
     );
 
     // Verify that the GitHub task now reflects the original GitHub title (local changes overwritten)
@@ -1169,7 +1169,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -1182,7 +1182,7 @@ test.describe("GitHub Integration", () => {
     // Wait for issues to load
     await page.waitForSelector('[data-testid="github-issue-item"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // Switch to local tasks
@@ -1224,7 +1224,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -1238,7 +1238,7 @@ test.describe("GitHub Integration", () => {
     // Wait for issues to load to ensure selection is complete
     await page.waitForSelector('[data-testid="github-issue-item"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Reload the plugin to test persistence
@@ -1264,7 +1264,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -1282,7 +1282,7 @@ test.describe("GitHub Integration", () => {
     // Wait for dropdown to appear
     await page.waitForSelector('[data-testid="organization-filter-dropdown"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // Get all dropdown items
@@ -1303,7 +1303,7 @@ test.describe("GitHub Integration", () => {
 
     await page.waitForSelector('[data-testid="repository-filter-dropdown"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     const repoItems = await page
@@ -1335,7 +1335,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -1348,7 +1348,7 @@ test.describe("GitHub Integration", () => {
     // Wait for issues to load
     await page.waitForSelector('[data-testid="github-issue-item"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // Reload the plugin
@@ -1374,7 +1374,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -1383,9 +1383,9 @@ test.describe("GitHub Integration", () => {
     const repoButton = page.locator('[data-testid="repository-filter"]');
 
     // Wait for the filters to show the restored values
-    await expect(orgButton).toContainText("solnic", { timeout: 10000 });
+    await expect(orgButton).toContainText("solnic", { timeout: 2500 });
     await expect(repoButton).toContainText("obsidian-task-sync", {
-      timeout: 10000,
+      timeout: 2500,
     });
 
     const orgText = await orgButton.textContent();
@@ -1421,7 +1421,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -1466,7 +1466,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -1511,7 +1511,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -1573,7 +1573,7 @@ test.describe("GitHub Integration", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 

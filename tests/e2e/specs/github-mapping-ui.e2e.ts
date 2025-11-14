@@ -16,7 +16,7 @@ test.describe("GitHub Mapping UI", () => {
   }) => {
     // Open settings
     await page.keyboard.press("Control+,");
-    await page.waitForSelector(".vertical-tab-content", { timeout: 5000 });
+    await page.waitForSelector(".vertical-tab-content", { timeout: 2500 });
 
     // Navigate to Task Sync settings
     const taskSyncTab = page
@@ -34,24 +34,24 @@ test.describe("GitHub Mapping UI", () => {
 
     // Click "Add Mapping" button
     const addButton = page.locator('[data-testid="github-add-mapping-btn"]');
-    await addButton.waitFor({ state: "visible", timeout: 10000 });
+    await addButton.waitFor({ state: "visible", timeout: 2500 });
     await addButton.click();
 
     // Fill in the mapping fields
     const orgInput = page.locator('[data-testid="github-mapping-org-input-0"]');
-    await orgInput.waitFor({ state: "visible", timeout: 5000 });
+    await orgInput.waitFor({ state: "visible", timeout: 2500 });
     await orgInput.fill("test-org");
 
     const areaInput = page.locator(
       '[data-testid="github-mapping-area-input-0"]'
     );
-    await areaInput.waitFor({ state: "visible", timeout: 5000 });
+    await areaInput.waitFor({ state: "visible", timeout: 2500 });
     await areaInput.fill("Test Area");
 
     const projectInput = page.locator(
       '[data-testid="github-mapping-project-input-0"]'
     );
-    await projectInput.waitFor({ state: "visible", timeout: 5000 });
+    await projectInput.waitFor({ state: "visible", timeout: 2500 });
     await projectInput.fill("Test Project");
 
     // Wait for the mapping to be saved using waitForFunction
@@ -68,7 +68,7 @@ test.describe("GitHub Mapping UI", () => {
           mappings[0].targetProject === "Test Project"
         );
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify the mapping was saved
@@ -90,7 +90,7 @@ test.describe("GitHub Mapping UI", () => {
   test("should allow adding multiple mappings", async ({ page }) => {
     // Open settings
     await page.keyboard.press("Control+,");
-    await page.waitForSelector(".vertical-tab-content", { timeout: 5000 });
+    await page.waitForSelector(".vertical-tab-content", { timeout: 2500 });
 
     // Navigate to Task Sync settings
     const taskSyncTab = page
@@ -108,13 +108,13 @@ test.describe("GitHub Mapping UI", () => {
 
     // Add first mapping
     const addButton = page.locator('[data-testid="github-add-mapping-btn"]');
-    await addButton.waitFor({ state: "visible", timeout: 10000 });
+    await addButton.waitFor({ state: "visible", timeout: 2500 });
     await addButton.click();
 
     const orgInput1 = page.locator(
       '[data-testid="github-mapping-org-input-0"]'
     );
-    await orgInput1.waitFor({ state: "visible", timeout: 5000 });
+    await orgInput1.waitFor({ state: "visible", timeout: 2500 });
     await orgInput1.fill("org1");
 
     // Add second mapping
@@ -123,7 +123,7 @@ test.describe("GitHub Mapping UI", () => {
     const orgInput2 = page.locator(
       '[data-testid="github-mapping-org-input-1"]'
     );
-    await orgInput2.waitFor({ state: "visible", timeout: 5000 });
+    await orgInput2.waitFor({ state: "visible", timeout: 2500 });
     await orgInput2.fill("org2");
 
     // Wait for both mappings to be saved
@@ -139,7 +139,7 @@ test.describe("GitHub Mapping UI", () => {
           mappings[1].organization === "org2"
         );
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify both mappings were saved
@@ -175,7 +175,7 @@ test.describe("GitHub Mapping UI", () => {
 
     // Open settings
     await page.keyboard.press("Control+,");
-    await page.waitForSelector(".vertical-tab-content", { timeout: 5000 });
+    await page.waitForSelector(".vertical-tab-content", { timeout: 2500 });
 
     // Navigate to Task Sync settings
     const taskSyncTab = page
@@ -195,7 +195,7 @@ test.describe("GitHub Mapping UI", () => {
     const deleteButton = page.locator(
       '[data-testid="github-mapping-delete-btn-0"]'
     );
-    await deleteButton.waitFor({ state: "visible", timeout: 5000 });
+    await deleteButton.waitFor({ state: "visible", timeout: 2500 });
     await deleteButton.click();
 
     // Wait for the mapping to be deleted
@@ -206,7 +206,7 @@ test.describe("GitHub Mapping UI", () => {
         const mappings = plugin.settings.integrations.github.orgRepoMappings;
         return Array.isArray(mappings) && mappings.length === 0;
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify the mapping was deleted
@@ -227,7 +227,7 @@ test.describe("GitHub Mapping UI", () => {
   }) => {
     // Open settings
     await page.keyboard.press("Control+,");
-    await page.waitForSelector(".vertical-tab-content", { timeout: 5000 });
+    await page.waitForSelector(".vertical-tab-content", { timeout: 2500 });
 
     // Navigate to Task Sync settings
     const taskSyncTab = page
@@ -245,18 +245,18 @@ test.describe("GitHub Mapping UI", () => {
 
     // Add a mapping
     const addButton = page.locator('[data-testid="github-add-mapping-btn"]');
-    await addButton.waitFor({ state: "visible", timeout: 10000 });
+    await addButton.waitFor({ state: "visible", timeout: 2500 });
     await addButton.click();
 
     // Fill in the mapping
     const orgInput = page.locator('[data-testid="github-mapping-org-input-0"]');
-    await orgInput.waitFor({ state: "visible", timeout: 5000 });
+    await orgInput.waitFor({ state: "visible", timeout: 2500 });
     await orgInput.fill("test-org");
 
     const areaInput = page.locator(
       '[data-testid="github-mapping-area-input-0"]'
     );
-    await areaInput.waitFor({ state: "visible", timeout: 5000 });
+    await areaInput.waitFor({ state: "visible", timeout: 2500 });
     await areaInput.fill("Test Area");
 
     // Wait for the GitHub extension to be updated
@@ -277,7 +277,7 @@ test.describe("GitHub Mapping UI", () => {
           mappings[0].targetArea === "Test Area"
         );
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify that the GitHub extension was updated with the new mappings

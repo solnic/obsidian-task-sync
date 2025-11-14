@@ -66,7 +66,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Navigate to step 2 (Today's Agenda)
@@ -134,7 +134,7 @@ test.describe("Daily Planning Wizard", () => {
         );
       },
       undefined,
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // NOW THE CRITICAL TEST: Reopen the daily planning wizard
@@ -144,7 +144,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Navigate to step 2 (Today's Agenda)
@@ -196,7 +196,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // STEP 1: Review Yesterday's Tasks
@@ -248,7 +248,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // STEP 1: Should show yesterday's unfinished task
@@ -301,7 +301,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Navigate to step 2
@@ -342,7 +342,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Navigate through steps to reach step 3
@@ -371,7 +371,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // STEP 1: Should show empty state for yesterday's tasks
@@ -400,7 +400,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Execute command again to activate existing view
@@ -444,7 +444,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // STEP 1: Should show all 3 yesterday tasks
@@ -510,7 +510,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Navigate to step 2
@@ -576,7 +576,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Navigate through all steps
@@ -608,7 +608,7 @@ test.describe("Daily Planning Wizard", () => {
       // Wait for wizard to close after confirmation
       await expect(
         page.locator('[data-testid="daily-planning-view"]')
-      ).not.toBeVisible({ timeout: 5000 });
+      ).not.toBeVisible({ timeout: 2500 });
     }
   });
 
@@ -636,7 +636,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Click cancel button
@@ -662,7 +662,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Navigate to step 2 (Today's Agenda)
@@ -713,7 +713,7 @@ test.describe("Daily Planning Wizard", () => {
       page
         .locator('[data-testid="scheduled-task"] .task-title')
         .filter({ hasText: "Freshly Imported Task" })
-    ).toBeVisible({ timeout: 5000 });
+    ).toBeVisible({ timeout: 2500 });
 
     // Verify the task count has increased
     const updatedTaskCount = await page
@@ -753,7 +753,7 @@ test.describe("Daily Planning Wizard", () => {
     // Wait for wizard to close after confirmation
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).not.toBeVisible({ timeout: 5000 });
+    ).not.toBeVisible({ timeout: 2500 });
 
     // Check if daily note was created in the Daily Notes core plugin folder
     const dailyNoteInfo = await page.evaluate(async () => {
@@ -831,7 +831,7 @@ test.describe("Daily Planning Wizard", () => {
     // Wait for wizard to close after confirmation
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).not.toBeVisible({ timeout: 5000 });
+    ).not.toBeVisible({ timeout: 2500 });
 
     // Check if daily note was created in the Periodic Notes plugin folder
     const dailyNoteInfo = await page.evaluate(async () => {
@@ -912,7 +912,7 @@ test.describe("Daily Planning Wizard", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -923,7 +923,7 @@ test.describe("Daily Planning Wizard", () => {
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
     ).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Navigate to step 2 (Today's Agenda)
@@ -943,20 +943,20 @@ test.describe("Daily Planning Wizard", () => {
     // Wait for issues to load
     await expect(
       page.locator('[data-testid="github-issues-list"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
 
     // Find the first issue and import it
     const firstIssue = page
       .locator('[data-testid="github-issue-item"]')
       .first();
-    await firstIssue.waitFor({ state: "visible", timeout: 10000 });
+    await firstIssue.waitFor({ state: "visible", timeout: 2500 });
     await firstIssue.hover();
 
     // Click "Schedule for today" button (should be visible because wizard is active)
     const scheduleButton = page
       .locator('[data-testid="schedule-for-today-button"]')
       .first();
-    await scheduleButton.waitFor({ state: "visible", timeout: 10000 });
+    await scheduleButton.waitFor({ state: "visible", timeout: 2500 });
     await scheduleButton.click();
 
     // Wait for import to complete and wizard state to update
@@ -969,17 +969,17 @@ test.describe("Daily Planning Wizard", () => {
     // Wait for wizard to be visible
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
 
     // We should be on step 2 still, navigate to step 3
     await page.click('[data-testid="next-button"]');
     await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible({
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Confirm the plan
     const confirmButton = page.locator('[data-testid="confirm-button"]');
-    await confirmButton.waitFor({ state: "visible", timeout: 10000 });
+    await confirmButton.waitFor({ state: "visible", timeout: 2500 });
     await confirmButton.click();
 
     // Wait for daily note to be updated
@@ -1044,7 +1044,7 @@ test.describe("Daily Planning Wizard", () => {
     await executeCommand(page, "Task Sync: Start Daily Planning");
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
 
     // Navigate through wizard to confirmation
     await page.click('[data-testid="next-button"]'); // Step 2
@@ -1090,7 +1090,7 @@ test.describe("Daily Planning Wizard", () => {
     await executeCommand(page, "Task Sync: Start Daily Planning");
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
 
     // Navigate through wizard to confirmation again
     await page.click('[data-testid="next-button"]'); // Step 2
@@ -1100,7 +1100,7 @@ test.describe("Daily Planning Wizard", () => {
     // Wait for wizard to close after confirmation
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).not.toBeVisible({ timeout: 5000 });
+    ).not.toBeVisible({ timeout: 2500 });
 
     // Read daily note content after second confirmation
     const dailyNoteContentAfterSecond = await page.evaluate(async (path) => {
@@ -1134,7 +1134,7 @@ test.describe("Daily Planning Wizard", () => {
     await executeCommand(page, "Task Sync: Start Daily Planning");
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
 
     await page.click('[data-testid="next-button"]'); // Step 2
     await page.click('[data-testid="next-button"]'); // Step 3
@@ -1143,7 +1143,7 @@ test.describe("Daily Planning Wizard", () => {
     // Wait for wizard to close after confirmation
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).not.toBeVisible({ timeout: 5000 });
+    ).not.toBeVisible({ timeout: 2500 });
 
     // Read daily note content after third confirmation
     const dailyNoteContentAfterThird = await page.evaluate(async (path) => {
@@ -1257,7 +1257,7 @@ test.describe("Daily Planning Wizard", () => {
     await executeCommand(page, "Task Sync: Start Daily Planning");
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
 
     // Navigate through wizard to confirmation
     await page.click('[data-testid="next-button"]'); // Step 2
@@ -1384,7 +1384,7 @@ test.describe("Daily Planning Wizard", () => {
     await executeCommand(page, "Task Sync: Start Daily Planning");
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
 
     // Navigate through wizard to confirmation
     await page.click('[data-testid="next-button"]'); // Step 2
@@ -1528,7 +1528,7 @@ test.describe("Daily Planning Wizard", () => {
     await executeCommand(page, "Task Sync: Start Daily Planning");
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
 
     // Navigate through wizard to confirmation quickly
     await page.click('[data-testid="next-button"]'); // Step 2
@@ -1663,7 +1663,7 @@ test.describe("Daily Planning Wizard", () => {
     await executeCommand(page, "Task Sync: Start Daily Planning");
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
 
     // Navigate through wizard to confirmation
     await page.click('[data-testid="next-button"]'); // Step 2
@@ -1673,7 +1673,7 @@ test.describe("Daily Planning Wizard", () => {
     // Wait for wizard to close
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).not.toBeVisible({ timeout: 5000 });
+    ).not.toBeVisible({ timeout: 2500 });
 
     // Wait for daily note processing (file already exists, wizard may or may not modify it)
     await waitForDailyNoteUpdate(page, dailyNotePath, undefined, 10000);
@@ -1774,7 +1774,7 @@ test.describe("Daily Planning Wizard", () => {
     await executeCommand(page, "Task Sync: Start Daily Planning");
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 2500 });
 
     // Navigate through wizard to confirmation quickly
     await page.click('[data-testid="next-button"]'); // Step 2
@@ -1784,7 +1784,7 @@ test.describe("Daily Planning Wizard", () => {
     // Wait for wizard to close
     await expect(
       page.locator('[data-testid="daily-planning-view"]')
-    ).not.toBeVisible({ timeout: 5000 });
+    ).not.toBeVisible({ timeout: 2500 });
 
     // Wait for daily note processing (file already exists with tasks)
     await waitForDailyNoteUpdate(

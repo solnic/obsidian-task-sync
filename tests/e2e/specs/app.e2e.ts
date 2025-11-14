@@ -41,7 +41,7 @@ test.describe("Svelte App Initialization", () => {
     // Wait for local service to be visible
     await page.waitForSelector('[data-testid="local-service"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // Check that tasks are loaded and displayed (use more specific selectors)
@@ -88,7 +88,7 @@ test.describe("Svelte App Initialization", () => {
         return projectCount >= 2;
       },
       undefined,
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify projects are loaded in the store
@@ -145,7 +145,7 @@ test.describe("Svelte App Initialization", () => {
         return areaCount >= 2;
       },
       undefined,
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify areas are loaded in the store
@@ -340,7 +340,7 @@ test.describe("Svelte App Initialization", () => {
     // The new Linear-style design shows property buttons instead of context type labels
     await page.waitForSelector('[data-testid="context-status-button"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // Check for Linear-style property buttons (new design)
@@ -503,7 +503,7 @@ test.describe("Svelte App Initialization", () => {
     // Wait for context widget to show task properties
     await page.waitForSelector('[data-testid="context-status-button"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // 1. Change Status from "Backlog" to "In Progress"
@@ -829,7 +829,7 @@ test.describe("Svelte App Initialization", () => {
         return doDateStr === expectedDate;
       },
       { title: taskName, expectedDate: tomorrowStr },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify task has do date
@@ -866,7 +866,7 @@ test.describe("Svelte App Initialization", () => {
         return dueDateStr === expectedDate;
       },
       { title: taskName, expectedDate: threeDaysLaterStr },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify task has due date
@@ -890,7 +890,7 @@ test.describe("Svelte App Initialization", () => {
         return task && task.doDate === undefined;
       },
       { title: taskName },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify do date is cleared
@@ -910,7 +910,7 @@ test.describe("Svelte App Initialization", () => {
         return task && task.dueDate === undefined;
       },
       { title: taskName },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify due date is cleared
@@ -970,10 +970,8 @@ test.describe("Svelte App Initialization", () => {
     await createProject(page, { name: "Delta Project" });
     await createProject(page, { name: "Echo Project" });
 
-    // Wait for Obsidian to finish processing all project files
-    // This prevents race conditions where Obsidian is still opening the last project
-    // when we try to open the task file
-    await page.waitForTimeout(500);
+    // Wait for the last project file to be processed
+    await waitForFileProcessed(page, "Projects/Echo Project.md");
 
     // Create a task
     const taskName = "Search Test Task";

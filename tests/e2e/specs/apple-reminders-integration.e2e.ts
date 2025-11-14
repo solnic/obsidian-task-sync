@@ -33,7 +33,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for Apple Reminders service button to appear first
     await page.waitForSelector('[data-testid="service-apple-reminders"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Now wait for it to be enabled
@@ -41,7 +41,7 @@ test.describe("Apple Reminders Integration", () => {
       '[data-testid="service-apple-reminders"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -50,7 +50,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for the list filter button to be visible and enabled
     await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     await selectFromDropdown(page, "list-filter", "Work");
@@ -82,7 +82,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for Apple Reminders to be visible
     await page.waitForSelector('[data-testid="apple-reminder-item"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // Verify that the imported task still has source.data after filter changes
@@ -121,7 +121,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for Apple Reminders service button to appear first
     await page.waitForSelector('[data-testid="service-apple-reminders"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Now wait for it to be enabled
@@ -129,7 +129,7 @@ test.describe("Apple Reminders Integration", () => {
       '[data-testid="service-apple-reminders"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -138,7 +138,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for the list filter button to be visible and enabled
     await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Select the first list to load reminders
@@ -147,7 +147,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for reminders to load
     await page.waitForSelector('[data-testid="apple-reminder-item"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Verify list filter dropdown is populated with list names
@@ -167,8 +167,10 @@ test.describe("Apple Reminders Integration", () => {
     // Filter by Personal list
     await selectFromDropdown(page, "list-filter", "Personal");
 
-    // Wait for filter to apply - wait for reminders to update
-    await page.waitForTimeout(1000);
+    // Wait for exactly 2 Personal reminders to appear
+    await expect(
+      page.locator('[data-testid="apple-reminder-item"]')
+    ).toHaveCount(2, { timeout: 2500 });
 
     // Should only show Personal reminders (2 incomplete reminders: reminder-2 and reminder-5)
     // Note: reminder-3 is completed and excluded
@@ -208,7 +210,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for Apple Reminders service button to appear first
     await page.waitForSelector('[data-testid="service-apple-reminders"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Now wait for it to be enabled
@@ -216,7 +218,7 @@ test.describe("Apple Reminders Integration", () => {
       '[data-testid="service-apple-reminders"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -225,7 +227,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for the list filter button to be visible and enabled
     await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Select a list to load reminders
@@ -234,7 +236,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for initial load to complete
     await page.waitForSelector('[data-testid="apple-reminder-item"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Click the refresh button
@@ -249,7 +251,7 @@ test.describe("Apple Reminders Integration", () => {
     try {
       await page.waitForSelector('[data-testid="refresh-progress"]', {
         state: "visible",
-        timeout: 1000,
+        timeout: 2500,
       });
 
       // If we caught it, verify it has the expected structure
@@ -270,8 +272,10 @@ test.describe("Apple Reminders Integration", () => {
       // Progress completed too fast, which is fine - the refresh still worked
     }
 
-    // Verify reminders still loaded after refresh (wait a bit for refresh to complete)
-    await page.waitForTimeout(500);
+    // Verify reminders still loaded after refresh
+    await expect(
+      page.locator('[data-testid="apple-reminder-item"]').first()
+    ).toBeVisible({ timeout: 2500 });
     expect(
       await page.locator('[data-testid="apple-reminder-item"]').count()
     ).toBeGreaterThan(0);
@@ -296,7 +300,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for Apple Reminders service button to appear first
     await page.waitForSelector('[data-testid="service-apple-reminders"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Now wait for it to be enabled
@@ -304,7 +308,7 @@ test.describe("Apple Reminders Integration", () => {
       '[data-testid="service-apple-reminders"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -313,7 +317,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for the list filter button to be visible and enabled
     await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // CRITICAL TEST: Verify the dropdown only shows selected lists from settings
@@ -324,7 +328,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for dropdown to appear (using correct test ID)
     await page.waitForSelector('[data-testid="list-filter-dropdown-item"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // Get all dropdown items
@@ -346,56 +350,71 @@ test.describe("Apple Reminders Integration", () => {
     // Verify lists are sorted alphabetically (Personal before Work)
     expect(actualLists).toEqual(["Personal", "Work"]);
 
-    // Close the dropdown by clicking elsewhere
-    await page.keyboard.press("Escape");
-    await page.waitForTimeout(500);
+    // Select the first list (Personal) to load reminders
+    await page.click(
+      '[data-testid="list-filter-dropdown-item"]:has-text("Personal")'
+    );
 
-    // First, check if extension is properly set up and stubs are installed
-    const preRefreshCheck = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const appleRemindersExtension =
-        plugin?.taskSyncApp?.appleRemindersExtension;
+    // Wait for dropdown to close automatically after selection
+    await expect(
+      page.locator('[data-testid="list-filter-dropdown"]')
+    ).not.toBeVisible();
 
-      return {
-        extensionExists: !!appleRemindersExtension,
-        isEnabled: appleRemindersExtension?.isEnabled(),
-        isStubbed: appleRemindersExtension?.__isStubbed,
-        stubsAvailable: !!(window as any).__appleRemindersApiStubs,
-        stubInstaller: !!(window as any).__installAppleRemindersStubs,
-      };
-    });
+    // Wait for list filter button to show the selected list
+    await expect(listFilterButton).toContainText("Personal");
 
-    // If not stubbed, install stubs now
-    if (!preRefreshCheck.isStubbed) {
-      await page.evaluate(() => {
-        const installer = (window as any).__installAppleRemindersStubs;
-        if (installer) {
-          const result = installer();
-        }
-      });
-    }
-
+    // Click the refresh button to load reminders for the selected list
     const refreshButton = page.locator(
       '[data-testid="task-sync-apple-reminders-refresh-button"]'
     );
 
-    // Check if refresh button exists and is visible
-    const buttonExists = await refreshButton.count();
+    // Wait for refresh button to be visible and enabled
+    await refreshButton.waitFor({ state: "visible", timeout: 2500 });
+    await page.waitForFunction(
+      () => {
+        const button = document.querySelector(
+          '[data-testid="task-sync-apple-reminders-refresh-button"]'
+        );
+        return button && !button.hasAttribute("disabled");
+      },
+      undefined,
+      { timeout: 2500 }
+    );
 
-    if (buttonExists > 0) {
-      const isVisible = await refreshButton.isVisible();
-      await refreshButton.click();
-    }
+    await refreshButton.click();
 
-    // Wait for refresh to complete
-    await page.waitForTimeout(3000);
+    // Wait for refresh to complete - wait for Personal reminders to be visible
+    await expect(
+      page.locator('[data-testid="apple-reminder-item"]').first()
+    ).toBeVisible({ timeout: 2500 });
 
-    // Select Work list and verify only Work reminders are shown
+    // Verify Personal reminders are shown first (since we selected Personal)
+    const initialReminders = await page
+      .locator('[data-testid="apple-reminder-item"]')
+      .count();
+    expect(initialReminders).toBe(2);
+
+    // Verify Personal reminder titles
+    expect(
+      await page
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Buy groceries")'
+        )
+        .count()
+    ).toBe(1);
+    expect(
+      await page
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Weekend hiking trip")'
+        )
+        .count()
+    ).toBe(1);
+
+    // Now switch to Work list and verify only Work reminders are shown
     await selectFromDropdown(page, "list-filter", "Work");
     await page.waitForSelector('[data-testid="apple-reminder-item"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     const workReminders = await page
@@ -419,9 +438,13 @@ test.describe("Apple Reminders Integration", () => {
         .count()
     ).toBe(1);
 
-    // Switch to Personal list and verify only Personal reminders are shown
+    // Switch back to Personal list and verify Personal reminders are shown
     await selectFromDropdown(page, "list-filter", "Personal");
-    await page.waitForTimeout(1000);
+
+    // Wait for exactly 2 Personal reminders to appear
+    await expect(
+      page.locator('[data-testid="apple-reminder-item"]')
+    ).toHaveCount(2, { timeout: 2500 });
 
     const personalReminders = await page
       .locator('[data-testid="apple-reminder-item"]')
@@ -449,7 +472,7 @@ test.describe("Apple Reminders Integration", () => {
     await listFilterButton.click();
     await page.waitForSelector('[data-testid="list-filter-dropdown-item"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // Verify Shopping and Projects are NOT available in the dropdown
@@ -487,7 +510,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for Apple Reminders service button to appear
     await page.waitForSelector('[data-testid="service-apple-reminders"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Wait for it to be enabled
@@ -495,7 +518,7 @@ test.describe("Apple Reminders Integration", () => {
       '[data-testid="service-apple-reminders"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -504,7 +527,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for the list filter button to be visible and enabled
     await page.waitForSelector('[data-testid="list-filter"]:not([disabled])', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Click the list filter button to open the dropdown
@@ -514,7 +537,7 @@ test.describe("Apple Reminders Integration", () => {
     // Wait for dropdown to appear (using correct test ID)
     await page.waitForSelector('[data-testid="list-filter-dropdown-item"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // Get all dropdown items

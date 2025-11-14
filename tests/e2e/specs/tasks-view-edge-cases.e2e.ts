@@ -184,7 +184,7 @@ This task has corrupted front-matter.`;
         );
         return taskItems.length === 0; // Should have no results for non-existent search
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Should show empty state or no results
@@ -200,7 +200,7 @@ This task has corrupted front-matter.`;
         );
         return taskItems.length >= 1; // Should have tasks again after clearing search
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     const restoredTasks = await getVisibleTaskItems(page);
@@ -240,7 +240,7 @@ This task has corrupted front-matter.`;
         const app = (window as any).app;
         return app && app.plugins && app.plugins.plugins["obsidian-task-sync"];
       },
-      { timeout: 10000 }
+      { timeout: 2500 }
     );
 
     // Open Tasks view again

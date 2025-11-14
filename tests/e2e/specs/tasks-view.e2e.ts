@@ -89,7 +89,7 @@ test.describe("TasksView Component", () => {
         );
         return taskTexts.some((text) => text.includes("External Task"));
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify both tasks are now present
@@ -165,7 +165,7 @@ test.describe("TasksView Component", () => {
         const activeFile = app.workspace.getActiveFile();
         return activeFile && activeFile.name === "Open Test Task.md";
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify the file content is displayed (simplified check)
@@ -242,7 +242,7 @@ test.describe("TasksView Component", () => {
         return taskItems.length >= expectedCount;
       },
       tasks.length + 2, // 3 new tasks + 2 pre-existing tasks
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify all our created tasks are displayed with correct properties
@@ -310,7 +310,7 @@ test.describe("TasksView Component", () => {
         }
         return false;
       },
-      { timeout: 10000 }
+      { timeout: 2500 }
     );
 
     // Verify the changes are reflected
@@ -349,7 +349,7 @@ test.describe("TasksView Component", () => {
         return taskItems.length === expectedCount;
       },
       initialCount + 1,
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify the new task is displayed
@@ -378,7 +378,7 @@ test.describe("TasksView Component", () => {
         return taskItems.length === expectedCount;
       },
       initialCount,
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify the task is no longer displayed
@@ -433,7 +433,7 @@ test.describe("TasksView Component", () => {
         );
         return taskItems.length >= 2;
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify both tasks are present
@@ -451,7 +451,7 @@ test.describe("TasksView Component", () => {
         );
         return taskItems.length >= 2;
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify both tasks are still present after refresh

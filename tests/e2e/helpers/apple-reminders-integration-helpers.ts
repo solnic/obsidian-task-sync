@@ -119,10 +119,7 @@ export async function clickReminderImportButton(
   await reminderItem.waitFor({ state: "visible", timeout: 5000 });
   await reminderItem.hover();
 
-  // Wait a bit for the hover state to trigger
-  await page.waitForTimeout(100);
-
-  // Now find and click the import button
+  // Wait for the import button to appear after hover
   const importButton = page.locator(
     `[data-testid="apple-reminder-item"]:has-text("${reminderTitle}") [data-testid="import-reminder-button"]`
   );
@@ -142,7 +139,9 @@ export async function waitForReminderImportComplete(
   await page.waitForFunction(
     (title) => {
       // Find all reminder items and check their text content
-      const reminderItems = document.querySelectorAll('[data-testid="apple-reminder-item"]');
+      const reminderItems = document.querySelectorAll(
+        '[data-testid="apple-reminder-item"]'
+      );
       let reminderItem = null;
 
       for (const item of reminderItems) {
@@ -174,11 +173,10 @@ export async function waitForReminderImportComplete(
  * Dismiss any visible notices that might block UI interactions
  */
 export async function dismissNotices(page: Page): Promise<void> {
-  // Wait a bit for notices to appear
-  await page.waitForTimeout(100);
-
-  // Click on any visible notices to dismiss them
+  // Wait for any notices to appear using Playwright's auto-waiting
   const notices = page.locator(".notice-container .notice");
+
+  // Check if any notices are visible
   const noticeCount = await notices.count();
 
   if (noticeCount > 0) {
@@ -187,7 +185,6 @@ export async function dismissNotices(page: Page): Promise<void> {
         const notice = notices.nth(i);
         if (await notice.isVisible()) {
           await notice.click();
-          await page.waitForTimeout(100);
         }
       } catch (error) {
         // Ignore errors when dismissing notices
@@ -195,6 +192,13 @@ export async function dismissNotices(page: Page): Promise<void> {
     }
   }
 
-  // Wait for notices to disappear
-  await page.waitForTimeout(300);
+  // Wait for all notices to be gone
+  await page
+    .waitForSelector(".notice-container .notice", {
+      state: "hidden",
+      timeout: 3000,
+    })
+    .catch(() => {
+      // Ignore timeout - notices may have already disappeared
+    });
 }

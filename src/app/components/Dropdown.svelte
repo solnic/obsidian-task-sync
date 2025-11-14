@@ -168,6 +168,7 @@
 
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === "Escape") {
+      e.stopPropagation();
       close();
     } else if (e.key === "Enter" && searchable) {
       const firstItem = filteredItems.find((item) => !item.isSeparator);

@@ -83,9 +83,6 @@ test.describe("Base Synchronization", () => {
     // Open area file to verify initial state
     await openFile(page, "Areas/Technology.md");
 
-    // Wait a bit for the bases view to fully initialize
-    await page.waitForTimeout(1000);
-
     await waitForBaseViewToLoad(page, 5000);
 
     // Verify "All Epics" view is NOT available yet
@@ -204,9 +201,6 @@ test.describe("Base Synchronization", () => {
     // Open project file to verify initial state
     await openFile(page, "Projects/Documentation.md");
 
-    // Wait a bit for the bases view to fully initialize
-    await page.waitForTimeout(1000);
-
     await waitForBaseViewToLoad(page, 5000);
 
     // Verify "All Chores" view is available and functional
@@ -246,7 +240,7 @@ test.describe("Base Synchronization", () => {
         return !content.includes("name: All Chores");
       },
       { filePath: "Bases/Documentation.base" },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify base file content confirms removal

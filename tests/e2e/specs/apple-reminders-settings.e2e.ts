@@ -5,6 +5,7 @@
 
 import { test, expect } from "../helpers/setup";
 import {
+  openView,
   openTaskSyncSettings,
   scrollToSettingsSection,
 } from "../helpers/global";
@@ -20,6 +21,9 @@ test.describe("Apple Reminders Settings", () => {
       lists: "lists-basic",
       reminders: "reminders-basic",
     });
+
+    // Open the main view first to ensure plugin is fully initialized
+    await openView(page, "task-sync-main");
 
     // Open settings
     await openTaskSyncSettings(page);
@@ -37,48 +41,32 @@ test.describe("Apple Reminders Settings", () => {
     const enableToggle = page.locator(
       '.setting-item:has-text("Enable Apple Reminders Integration") input[type="checkbox"]'
     );
-    await expect(enableToggle).toBeVisible({ timeout: 10000 });
+    await expect(enableToggle).toBeVisible({ timeout: 2500 });
 
     const isEnabled = await enableToggle.isChecked();
 
     if (!isEnabled) {
       await enableToggle.click();
-      // Wait for settings to expand
-      await page.waitForTimeout(2000);
     }
 
-    // Wait for the Reminder Lists setting to appear
+    // Wait for the Reminder Lists setting to appear (it appears when enabled)
     const reminderListsSetting = page.locator(
       '.setting-item:has-text("Reminder Lists")'
     );
-    await expect(reminderListsSetting).toBeVisible({ timeout: 10000 });
+    await expect(reminderListsSetting).toBeVisible({ timeout: 2500 });
 
-    // Find the lists button (should show "All lists" initially or after lists are loaded)
+    // Find the lists button (should show "All lists" since lists are loaded)
     const listsButton = reminderListsSetting.locator("button").first();
     await expect(listsButton).toBeVisible();
 
-    // Click the button - if lists aren't loaded, this will trigger loading
+    // Click button to show dropdown
     await listsButton.click();
-
-    // Wait for lists to load (give it time to fetch)
-    await page.waitForTimeout(3000);
-
-    //Check if we need to click again to open dropdown
-    const dropdownVisible = await page
-      .locator('[data-testid="apple-reminders-lists-dropdown"]')
-      .isVisible()
-      .catch(() => false);
-
-    if (!dropdownVisible) {
-      await listsButton.click();
-      await page.waitForTimeout(500);
-    }
 
     // Wait for dropdown to appear
     const dropdown = page.locator(
       '[data-testid="apple-reminders-lists-dropdown"]'
     );
-    await expect(dropdown).toBeVisible({ timeout: 5000 });
+    await expect(dropdown).toBeVisible({ timeout: 2500 });
 
     // Verify lists are shown in dropdown
     const workList = dropdown.locator(
@@ -94,12 +82,8 @@ test.describe("Apple Reminders Settings", () => {
     // Select "Work" list
     await workList.click();
 
-    // Wait a moment for the update to process
-    await page.waitForTimeout(500);
-
-    // Check button text - should now show "1 list selected"
-    const updatedButtonText = await listsButton.textContent();
-    expect(updatedButtonText).toContain("1 list");
+    // Wait for button text to update to "1 list"
+    await expect(listsButton).toContainText("1 list", { timeout: 2500 });
 
     // Verify the dropdown is still open (multi-select)
     await expect(dropdown).toBeVisible();
@@ -107,12 +91,8 @@ test.describe("Apple Reminders Settings", () => {
     // Select "Personal" list as well
     await personalList.click();
 
-    // Wait for update
-    await page.waitForTimeout(500);
-
-    // Check button text - should now show "2 lists selected"
-    const finalButtonText = await listsButton.textContent();
-    expect(finalButtonText).toContain("2 list");
+    // Wait for button text to update to "2 lists"
+    await expect(listsButton).toContainText("2 list", { timeout: 2500 });
 
     // Close dropdown by clicking outside
     await page.keyboard.press("Escape");
@@ -140,6 +120,9 @@ test.describe("Apple Reminders Settings", () => {
       reminders: "reminders-basic",
     });
 
+    // Open the main view first to ensure plugin is fully initialized
+    await openView(page, "task-sync-main");
+
     // Open settings and navigate to Apple Reminders
     await openTaskSyncSettings(page);
     await scrollToSettingsSection(page, "Integrations");
@@ -151,40 +134,38 @@ test.describe("Apple Reminders Settings", () => {
     const isEnabled = await enableToggle.isChecked();
     if (!isEnabled) {
       await enableToggle.click();
-      await page.waitForTimeout(500);
     }
 
-    // Find lists button
+    // Find lists button (wait for it to appear after enabling)
     const reminderListsSetting = page.locator(
       '.setting-item:has-text("Reminder Lists")'
     );
-    const listsButton = reminderListsSetting.locator("button").first();
+    await expect(reminderListsSetting).toBeVisible({ timeout: 2500 });
 
-    // Open dropdown
+    // Click button to show dropdown
+    const listsButton = reminderListsSetting.locator("button").first();
     await listsButton.click();
+
+    // Wait for dropdown to appear
     const dropdown = page.locator(
       '[data-testid="apple-reminders-lists-dropdown"]'
     );
-    await expect(dropdown).toBeVisible({ timeout: 5000 });
+    await expect(dropdown).toBeVisible({ timeout: 2500 });
 
     // Select Work list
     const workList = dropdown.locator(
       '.task-sync-selector-item:has-text("Work")'
     );
     await workList.click();
-    await page.waitForTimeout(500);
 
-    // Verify 1 list selected
-    let buttonText = await listsButton.textContent();
-    expect(buttonText).toContain("1 list");
+    // Wait for button text to update to "1 list"
+    await expect(listsButton).toContainText("1 list", { timeout: 2500 });
 
     // Deselect by clicking again
     await workList.click();
-    await page.waitForTimeout(500);
 
-    // Verify back to "All lists"
-    buttonText = await listsButton.textContent();
-    expect(buttonText).toContain("All lists");
+    // Wait for button text to revert to "All lists"
+    await expect(listsButton).toContainText("All lists", { timeout: 2500 });
 
     // Verify settings
     const savedLists = await page.evaluate(() => {

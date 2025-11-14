@@ -14,6 +14,7 @@ import * as os from "os";
  */
 
 const isCI = process.env.CI === "true";
+const noRetry = process.env.NO_RETRY === "true";
 
 export default defineConfig({
   // Test directory
@@ -27,7 +28,7 @@ export default defineConfig({
   globalTeardown: require.resolve("./tests/e2e/global-teardown.ts"),
 
   // Timeout configuration
-  timeout: isCI ? 30000 : 15000,
+  timeout: isCI ? 15000 : 10000,
   expect: {
     timeout: 5000,
   },
@@ -35,7 +36,7 @@ export default defineConfig({
   // Test execution configuration
   fullyParallel: false,
   forbidOnly: !!isCI,
-  retries: 3,
+  retries: noRetry ? 0 : 3,
   workers: isCI
     ? os.cpus().length
     : Math.max(2, Math.floor(os.cpus().length * 0.75)),

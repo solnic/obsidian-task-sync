@@ -84,7 +84,7 @@ test.describe("GitHub Organization/Repository Mapping", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -190,7 +190,7 @@ test.describe("GitHub Organization/Repository Mapping", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -248,7 +248,7 @@ test.describe("GitHub Organization/Repository Mapping", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 

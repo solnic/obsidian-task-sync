@@ -191,6 +191,38 @@ this.addCommand({
 - Handle async operations properly
 - Most plugin functionality is and must be covered by e2e tests
 
+#### E2E Test Best Practices
+
+**NEVER use `page.waitForTimeout()` in e2e tests.** Fixed timeouts are unreliable and lead to flaky tests. Instead:
+
+- ✅ Use `page.waitForSelector()` to wait for elements to appear/disappear
+- ✅ Use `page.waitForFunction()` to wait for specific conditions
+- ✅ Use helper functions like `waitForFileProcessed()`, `waitForNoticeDisappear()`, `waitForFileContentToContain()`
+- ✅ Use `expect().toBeVisible()` and other Playwright assertions that auto-wait
+- ❌ NEVER use `page.waitForTimeout()` - it's banned in test spec files
+
+**Examples:**
+
+```typescript
+// ❌ BAD - Arbitrary timeout
+await page.click('[data-testid="submit"]');
+await page.waitForTimeout(1000);
+
+// ✅ GOOD - Wait for specific condition
+await page.click('[data-testid="submit"]');
+await page.waitForSelector('.success-message', { state: 'visible' });
+
+// ✅ GOOD - Wait for file to be processed
+await createTask(page, { title: "My Task" });
+await waitForFileProcessed(page, "Tasks/My Task.md");
+
+// ✅ GOOD - Wait for notice to disappear
+await expectNotice(page, "created successfully");
+await waitForNoticeDisappear(page, "created successfully");
+```
+
+See `tests/e2e/HELPER_FUNCTIONS_GUIDE.md` for all available helper functions.
+
 ### Unit Tests (Rarely Needed)
 
 **Unit tests cover very little in this project.** Use them only for isolated utility functions that don't require Obsidian.

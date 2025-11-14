@@ -39,7 +39,7 @@ test.describe("GitHub Import and Deletion Sync", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -50,7 +50,7 @@ test.describe("GitHub Import and Deletion Sync", () => {
 
     // Wait for GitHub tasks to load
     await page.waitForSelector('[data-testid="github-issue-item"]', {
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Import the GitHub issue (issue #999 from the fixture)
@@ -91,9 +91,6 @@ test.describe("GitHub Import and Deletion Sync", () => {
 
     expect(taskInStore).toBeUndefined();
 
-    // Wait a bit for the event to be processed
-    await page.waitForTimeout(500);
-
     // Verify GitHub entity store still has the issue but without Obsidian key
     const githubStoreCheck = await page.evaluate((url) => {
       const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
@@ -127,9 +124,6 @@ test.describe("GitHub Import and Deletion Sync", () => {
     // Run "Refresh Tasks" command
     await executeCommand(page, "Refresh Tasks");
 
-    // Wait for refresh to complete
-    await page.waitForTimeout(2000);
-
     // Verify the GitHub task no longer shows as imported
     await openView(page, "task-sync-main");
     await switchToTaskService(page, "github");
@@ -138,7 +132,7 @@ test.describe("GitHub Import and Deletion Sync", () => {
 
     // Wait for GitHub tasks to load
     await page.waitForSelector('[data-testid="github-issue-item"]', {
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // The task should be visible but NOT have the imported badge
