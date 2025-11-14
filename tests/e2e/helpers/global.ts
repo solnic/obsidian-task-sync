@@ -2219,8 +2219,12 @@ export async function enableIntegration(
         const taskSyncApp = plugin?.host?.getApp();
         const extension = taskSyncApp?.calendarExtension;
 
-        // Extension must be initialized and enabled
-        return extension && extension.isEnabled();
+        // Extension must be initialized and have at least one enabled service
+        if (!extension) return false;
+
+        // Check if extension has any enabled services
+        const enabledServices = extension.getEnabledCalendarServices();
+        return enabledServices && enabledServices.length > 0;
       },
       undefined,
       { timeout: 10000 }
