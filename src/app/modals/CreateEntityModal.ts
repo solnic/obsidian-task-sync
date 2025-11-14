@@ -43,49 +43,42 @@ export class CreateEntityModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
 
-    try {
-      // Check if there are any note types registered
-      const noteTypes = this.plugin.typeNote.registry.getAll();
+    // Check if there are any note types registered
+    const noteTypes = this.plugin.typeNote.registry.getAll();
 
-      if (noteTypes.length === 0) {
-        contentEl.createEl("div", {
-          text: "No note types available. Please create a note type in settings first.",
-          cls: "task-sync-error-message",
-        });
-        return;
-      }
-
-      this.component = mount(CreateEntityModalSvelte, {
-        target: contentEl,
-        props: {
-          typeRegistry: this.plugin.typeNote.registry,
-          noteProcessor: this.plugin.typeNote.noteProcessor,
-          settings: this.settings,
-          preselectedNoteTypeId: this.preselectedNoteTypeId,
-          initialPropertyValues: this.initialPropertyValues,
-          contextualTitle: this.contextualTitle,
-          onsubmit: async (data: {
-            noteType: NoteType;
-            properties: Record<string, any>;
-            description?: string;
-          }) => {
-            await this.handleSubmit(
-              data.noteType,
-              data.properties,
-              data.description
-            );
-          },
-          oncancel: () => {
-            this.close();
-          },
-        },
-      });
-    } catch (error) {
-      console.error("Failed to open CreateEntityModal:", error);
+    if (noteTypes.length === 0) {
       contentEl.createEl("div", {
-        text: "Failed to load entity creation form: " + error.message,
+        text: "No note types available. Please create a note type in settings first.",
+        cls: "task-sync-error-message",
       });
+      return;
     }
+
+    this.component = mount(CreateEntityModalSvelte, {
+      target: contentEl,
+      props: {
+        typeRegistry: this.plugin.typeNote.registry,
+        noteProcessor: this.plugin.typeNote.noteProcessor,
+        settings: this.settings,
+        preselectedNoteTypeId: this.preselectedNoteTypeId,
+        initialPropertyValues: this.initialPropertyValues,
+        contextualTitle: this.contextualTitle,
+        onsubmit: async (data: {
+          noteType: NoteType;
+          properties: Record<string, any>;
+          description?: string;
+        }) => {
+          await this.handleSubmit(
+            data.noteType,
+            data.properties,
+            data.description
+          );
+        },
+        oncancel: () => {
+          this.close();
+        },
+      },
+    });
   }
 
   private async handleSubmit(
