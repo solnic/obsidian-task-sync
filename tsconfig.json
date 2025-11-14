@@ -12,6 +12,7 @@
     "declaration": true,
     "outDir": "./dist",
     "esModuleInterop": true,
+    "isolatedModules": true,
     "typeRoots": [
       "node_modules/@types"
     ],
@@ -21,7 +22,9 @@
     ]
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "src/**/*.svelte",
+    "src/svelte.d.ts"
   ],
   "exclude": [
     "node_modules",
