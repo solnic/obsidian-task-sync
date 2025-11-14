@@ -82,6 +82,16 @@ jobs:
             manifest.json
           retention-days: 1
 
+      - name: Create node_modules tarball
+        run: tar -czf node_modules.tar.gz node_modules
+
+      - name: Upload node_modules
+        uses: actions/upload-artifact@v4
+        with:
+          name: node_modules
+          path: node_modules.tar.gz
+          retention-days: 1
+
       - name: Create Obsidian tarball for distribution
         run: |
           cd tests/e2e
@@ -105,10 +115,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22.x
-          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Download node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node_modules
+
+      - name: Extract node_modules
+        run: tar -xzf node_modules.tar.gz && rm node_modules.tar.gz
 
       - name: Run unit tests
         run: npm run test:unit
@@ -133,10 +147,14 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22.x
-          cache: 'npm'
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Download node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node_modules
+
+      - name: Extract node_modules
+        run: tar -xzf node_modules.tar.gz && rm node_modules.tar.gz
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
