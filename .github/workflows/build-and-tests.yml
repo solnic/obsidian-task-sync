@@ -28,19 +28,46 @@ jobs:
         run: |
           VERSION=$(curl -s https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "archive=obsidian-${VERSION}.tar.gz" >> $GITHUB_OUTPUT
 
-      - name: Cache Obsidian installation
-        id: cache-obsidian
+      - name: Cache Obsidian tar.gz
+        id: cache-obsidian-tar
         uses: actions/cache@v4
         with:
-          path: tests/e2e/.obsidian-unpacked
-          key: obsidian-${{ runner.os }}-${{ steps.obsidian-version.outputs.version }}
-          restore-keys: |
-            obsidian-${{ runner.os }}-
+          path: tmp/obsidian-${{ steps.obsidian-version.outputs.version }}.tar.gz
+          key: obsidian-tar-${{ runner.os }}-${{ steps.obsidian-version.outputs.version }}
 
-      - name: Setup e2e environment
-        if: steps.cache-obsidian.outputs.cache-hit != 'true'
-        run: npm run setup:e2e
+      - name: Download Obsidian if not cached
+        if: steps.cache-obsidian-tar.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p tmp
+          curl -L -o "tmp/obsidian-${{ steps.obsidian-version.outputs.version }}.tar.gz" \
+            "https://github.com/obsidianmd/obsidian-releases/releases/download/v${{ steps.obsidian-version.outputs.version }}/obsidian-${{ steps.obsidian-version.outputs.version }}.tar.gz"
+
+      - name: Extract Obsidian
+        run: |
+          mkdir -p tests/e2e/.obsidian-unpacked
+          tar -xzf "tmp/obsidian-${{ steps.obsidian-version.outputs.version }}.tar.gz" -C tests/e2e/.obsidian-unpacked --strip-components=1
+
+      - name: Setup Obsidian for Playwright
+        run: |
+          cd tests/e2e/.obsidian-unpacked
+          if [ -f "resources/app.asar" ]; then
+            echo "Extracting app.asar for Playwright..."
+            npx asar extract resources/app.asar app-extracted 2>/dev/null || true
+            if [ -f "app-extracted/main.js" ]; then
+              cp app-extracted/main.js ./main.js
+              echo "Extracted main.js from app.asar"
+            fi
+            if [ -f "resources/obsidian.asar" ] && [ -d "app-extracted" ]; then
+              cp resources/obsidian.asar app-extracted/
+              echo "Copied obsidian.asar to app-extracted directory"
+            fi
+            if [ ! -f "package.json" ] && [ -f "app-extracted/package.json" ]; then
+              cp app-extracted/package.json ./package.json
+              echo "Extracted package.json from app.asar"
+            fi
+          fi
 
       - name: Build
         run: npm run build
@@ -55,11 +82,16 @@ jobs:
             manifest.json
           retention-days: 1
 
+      - name: Create Obsidian tarball for distribution
+        run: |
+          cd tests/e2e
+          tar -czf obsidian-unpacked.tar.gz .obsidian-unpacked
+
       - name: Upload Obsidian installation
         uses: actions/upload-artifact@v4
         with:
           name: obsidian-unpacked
-          path: tests/e2e/.obsidian-unpacked
+          path: tests/e2e/obsidian-unpacked.tar.gz
           retention-days: 1
 
   test-unit:
@@ -115,7 +147,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: obsidian-unpacked
-          path: tests/e2e/.obsidian-unpacked
+          path: tests/e2e/
+
+      - name: Extract Obsidian
+        run: |
+          cd tests/e2e
+          tar -xzf obsidian-unpacked.tar.gz
+          rm obsidian-unpacked.tar.gz
 
       - name: Run e2e tests - ${{ matrix.test-group }}
         run: npm run test:e2e -- tests/e2e/specs/${{ matrix.test-group }}
