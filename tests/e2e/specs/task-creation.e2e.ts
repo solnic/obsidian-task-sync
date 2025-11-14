@@ -10,6 +10,8 @@ import {
   readVaultFile,
   getFrontMatter,
   expectNotice,
+  waitForNoticeDisappear,
+  waitForFileProcessed,
 } from "../helpers/global";
 
 test.describe("Task Creation", () => {
@@ -102,8 +104,8 @@ test.describe("Task Creation", () => {
     await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");
-
-    await page.waitForTimeout(500);
+    await waitForNoticeDisappear(page, "created successfully");
+    await waitForFileProcessed(page, "Areas/Development.md");
 
     await executeCommand(page, "Create Area");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
@@ -111,8 +113,8 @@ test.describe("Task Creation", () => {
     await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");
-
-    await page.waitForTimeout(500);
+    await waitForNoticeDisappear(page, "created successfully");
+    await waitForFileProcessed(page, "Areas/Testing.md");
 
     // Open the Create Task command
     await executeCommand(page, "Create Task");
@@ -163,9 +165,6 @@ test.describe("Task Creation", () => {
     const areasButton = page.locator('[data-testid="property-areas"]');
     await expect(areasButton).toBeVisible();
 
-    // Wait for entities to load before clicking
-    await page.waitForTimeout(1000);
-
     await areasButton.click();
 
     // Wait for dropdown to appear
@@ -183,8 +182,11 @@ test.describe("Task Creation", () => {
     await expect(developmentArea).toBeVisible({ timeout: 3000 });
     await developmentArea.click();
 
-    // Dropdown closes after selection, need to reopen for second selection
-    await page.waitForTimeout(200);
+    // Wait for dropdown to close after selection
+    await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
+      state: "hidden",
+      timeout: 3000,
+    });
     await areasButton.click();
     await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
       state: "visible",
@@ -198,9 +200,6 @@ test.describe("Task Creation", () => {
       .first();
     await expect(testingArea).toBeVisible();
     await testingArea.click();
-
-    // Wait a moment for the selection to register
-    await page.waitForTimeout(300);
 
     // Ensure modal is still visible before submitting
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
@@ -249,9 +248,8 @@ test.describe("Task Creation", () => {
     await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");
-
-    // Wait a moment for the project to be fully created
-    await page.waitForTimeout(500);
+    await waitForNoticeDisappear(page, "created successfully");
+    await waitForFileProcessed(page, "Projects/Test Project.md");
 
     // Now create a task and select the project
     await executeCommand(page, "Create Task");
@@ -353,8 +351,8 @@ test.describe("Task Creation", () => {
     await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");
-
-    await page.waitForTimeout(500);
+    await waitForNoticeDisappear(page, "created successfully");
+    await waitForFileProcessed(page, "Areas/Development Area.md");
 
     await executeCommand(page, "Create Area");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
@@ -362,8 +360,8 @@ test.describe("Task Creation", () => {
     await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");
-
-    await page.waitForTimeout(500);
+    await waitForNoticeDisappear(page, "created successfully");
+    await waitForFileProcessed(page, "Areas/Testing Area.md");
 
     await executeCommand(page, "Create Area");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
@@ -371,8 +369,8 @@ test.describe("Task Creation", () => {
     await page.click('[data-testid="submit-button"]');
     await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
     await expectNotice(page, "created successfully");
-
-    await page.waitForTimeout(500);
+    await waitForNoticeDisappear(page, "created successfully");
+    await waitForFileProcessed(page, "Areas/Documentation Area.md");
 
     // Now create a task and select multiple areas
     await executeCommand(page, "Create Task");
@@ -406,8 +404,11 @@ test.describe("Task Creation", () => {
     await expect(developmentArea).toBeVisible({ timeout: 3000 });
     await developmentArea.click();
 
-    // Dropdown closes after selection, need to reopen for second selection
-    await page.waitForTimeout(200);
+    // Wait for dropdown to close after selection
+    await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
+      state: "hidden",
+      timeout: 3000,
+    });
     await areasButton.click();
     await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
       state: "visible",
@@ -422,8 +423,11 @@ test.describe("Task Creation", () => {
     await expect(testingArea).toBeVisible();
     await testingArea.click();
 
-    // Dropdown closes again, reopen for third selection
-    await page.waitForTimeout(200);
+    // Wait for dropdown to close after selection
+    await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
+      state: "hidden",
+      timeout: 3000,
+    });
     await areasButton.click();
     await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
       state: "visible",
@@ -437,9 +441,6 @@ test.describe("Task Creation", () => {
       .first();
     await expect(documentationArea).toBeVisible();
     await documentationArea.click();
-
-    // Wait a moment for the selection to register
-    await page.waitForTimeout(300);
 
     // Ensure modal is still visible before submitting
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();

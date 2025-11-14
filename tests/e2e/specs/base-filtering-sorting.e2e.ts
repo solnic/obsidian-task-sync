@@ -9,6 +9,7 @@ import {
   waitForBaseFile,
   readVaultFile,
   openFile,
+  waitForFileProcessed,
 } from "../helpers/global";
 import {
   createArea,
@@ -104,8 +105,8 @@ test.describe("Base Filtering and Sorting", () => {
       done: true,
     });
 
-    // Wait a bit for tasks to be processed
-    await page.waitForTimeout(1000);
+    // Wait for the last task to be processed
+    await waitForFileProcessed(page, "Tasks/Hidden Done Task Low Priority.md");
 
     // Regenerate bases to ensure new tasks are included
     await regenerateBases(page);
@@ -243,8 +244,8 @@ test.describe("Base Filtering and Sorting", () => {
       done: false,
     });
 
-    // Wait for tasks to be processed
-    await page.waitForTimeout(1000);
+    // Wait for the last task to be processed
+    await waitForFileProcessed(page, "Tasks/Standalone Bug Fix.md");
 
     // Regenerate bases to include new tasks
     await regenerateBases(page);
@@ -354,8 +355,8 @@ test.describe("Base Filtering and Sorting", () => {
       done: false,
     });
 
-    // Wait for tasks to be processed
-    await page.waitForTimeout(1000);
+    // Wait for the last task to be processed
+    await waitForFileProcessed(page, "Tasks/Charlie Task.md");
 
     // Regenerate bases to include new tasks
     await regenerateBases(page);
@@ -479,8 +480,8 @@ test.describe("Base Filtering and Sorting", () => {
       done: false,
     });
 
-    // Wait for tasks to be processed
-    await page.waitForTimeout(1000);
+    // Wait for the last task to be processed
+    await waitForFileProcessed(page, "Tasks/Unassigned Task.md");
 
     // Regenerate bases to include new tasks
     await regenerateBases(page);
@@ -624,8 +625,8 @@ test.describe("Base Filtering and Sorting", () => {
       done: false,
     });
 
-    // Wait for tasks to be processed
-    await page.waitForTimeout(1000);
+    // Wait for the last task to be processed
+    await waitForFileProcessed(page, "Tasks/Unassigned Area Task.md");
 
     // Regenerate bases to include new tasks
     await regenerateBases(page);
@@ -745,8 +746,8 @@ test.describe("Base Filtering and Sorting", () => {
       done: false,
     });
 
-    // Wait for tasks to be processed
-    await page.waitForTimeout(1000);
+    // Wait for the last task to be processed
+    await waitForFileProcessed(page, "Tasks/General Task Beta.md");
 
     // Regenerate bases to include new tasks
     await regenerateBases(page);
@@ -902,8 +903,8 @@ test.describe("Base Filtering and Sorting", () => {
       done: false,
     });
 
-    // Wait for tasks to be processed
-    await page.waitForTimeout(1000);
+    // Wait for the last task to be processed
+    await waitForFileProcessed(page, "Tasks/Another Urgent Feature.md");
 
     // Regenerate bases to include new tasks
     await regenerateBases(page);

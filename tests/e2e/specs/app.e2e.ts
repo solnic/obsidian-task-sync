@@ -970,10 +970,8 @@ test.describe("Svelte App Initialization", () => {
     await createProject(page, { name: "Delta Project" });
     await createProject(page, { name: "Echo Project" });
 
-    // Wait for Obsidian to finish processing all project files
-    // This prevents race conditions where Obsidian is still opening the last project
-    // when we try to open the task file
-    await page.waitForTimeout(500);
+    // Wait for the last project file to be processed
+    await waitForFileProcessed(page, "Projects/Echo Project.md");
 
     // Create a task
     const taskName = "Search Test Task";
