@@ -10,9 +10,7 @@ import type {
 import {
   stringSchema,
   optionalStringSchema,
-  booleanSchema,
   optionalBooleanSchema,
-  dateSchema,
   optionalDateSchema,
   stringArraySchema,
   enumSchema,

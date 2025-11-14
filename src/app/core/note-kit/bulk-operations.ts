@@ -4,14 +4,13 @@
  */
 
 import type { App, TFile, Vault } from "obsidian";
-import type { NoteType, SemanticVersion, ValidationResult } from "./types";
+import type { SemanticVersion, ValidationResult } from "./types";
 import type { TypeRegistry } from "./registry";
 import { NoteProcessor } from "./note-processor";
 import { FrontMatterProcessor } from "./front-matter-processor";
 import { PropertyProcessor } from "./property-processor";
 import { TemplateEngine } from "./template-engine";
 import { compareVersions, VersionComparison } from "./version";
-import { createValidResult, createInvalidResult, createValidationError } from "./validation";
 
 /**
  * Migration operation types
@@ -481,7 +480,7 @@ export class BulkOperations {
             candidateFiles.push(file);
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Skip files that can't be read
         continue;
       }

@@ -6,7 +6,7 @@
 
 import type { App, Vault } from "obsidian";
 import { TFile, TFolder } from "obsidian";
-import type { NoteType, Template, TemplateVariable } from "./types";
+import type { NoteType, Template } from "./types";
 import type { TypeRegistry } from "./registry";
 import { PropertyProcessor } from "./property-processor";
 import type { ValidationResult } from "./validation";

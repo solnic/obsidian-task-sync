@@ -6,7 +6,6 @@
 import type { NoteType, PropertyDefinition } from "../../../core/note-kit/types";
 import {
   stringSchema,
-  optionalStringSchema,
   stringArraySchema,
 } from "../../../core/note-kit/schemas";
 

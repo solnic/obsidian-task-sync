@@ -29,7 +29,6 @@ import {
   type AppleReminder,
   type AppleRemindersList,
   type AppleScriptReminder,
-  type AppleScriptList,
   type AppleRemindersFilter,
 } from "../../types/apple-reminders";
 import moment from "moment";

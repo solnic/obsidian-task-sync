@@ -3,7 +3,7 @@
  * Manages automatic schema migrations including property type conversions
  */
 
-import type { App, TFile, Notice as ObsidianNotice } from "obsidian";
+import type { App, Notice as ObsidianNotice } from "obsidian";
 import { Notice } from "obsidian";
 import type { NoteType, PropertyDefinition } from "./types";
 import type { TypeRegistry } from "./registry";
@@ -256,7 +256,7 @@ export class AssociationMigration implements SchemaMigration {
   /**
    * Infer the target note type ID from property key
    */
-  private inferNoteTypeId(key: string, prop: PropertyDefinition): string | null {
+  private inferNoteTypeId(key: string, _prop: PropertyDefinition): string | null {
     // Common mappings based on property key naming conventions
     const keyToTypeMap: Record<string, string> = {
       project: "project",

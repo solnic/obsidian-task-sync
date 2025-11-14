@@ -99,7 +99,7 @@ export class ExtensionRegistry {
   }
 }
 
-export abstract class BaseEntityOperations<T extends Entity> {
+export abstract class BaseEntityOperations<_T extends Entity> {
   public id: string;
 
   constructor(options: { id: string }) {

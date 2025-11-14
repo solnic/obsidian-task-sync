@@ -3,7 +3,7 @@
  * Detects external changes to typed notes and triggers re-validation
  */
 
-import type { App, Vault, MetadataCache, TAbstractFile } from "obsidian";
+import type { App, Vault, MetadataCache } from "obsidian";
 import { Component, TFile } from "obsidian";
 import type { NoteType, ValidationResult } from "./types";
 import type { TypeRegistry } from "./registry";

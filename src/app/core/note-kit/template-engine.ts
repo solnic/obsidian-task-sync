@@ -12,7 +12,6 @@ import type {
   TemplateProcessingResult,
   SemanticVersion,
   ValidationResult,
-  NoteType,
 } from "./types";
 import { VersionComparison } from "./types";
 import { compareVersions } from "./version";
