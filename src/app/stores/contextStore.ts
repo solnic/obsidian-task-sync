@@ -111,7 +111,7 @@ export function updateFileContext(newContext: FileContext): void {
           : "unknown",
     });
 
-    currentFileContext.update((context) => updatedContext);
+    currentFileContext.update((_context) => updatedContext);
 
     console.log("Context store updated with:", {
       type: newContext.type,

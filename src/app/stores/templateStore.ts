@@ -3,7 +3,7 @@
  * Manages template state using Svelte stores
  */
 
-import { writable, derived, type Readable } from "svelte/store";
+import { writable, derived } from "svelte/store";
 import type { Template } from "../core/template-entities";
 
 export interface TemplateStoreState {

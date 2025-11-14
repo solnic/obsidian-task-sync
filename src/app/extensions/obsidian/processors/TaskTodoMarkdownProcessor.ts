@@ -141,7 +141,7 @@ export class TaskTodoMarkdownProcessor {
   private async processWikiLink(
     link: HTMLElement,
     todoItem: HTMLElement,
-    ctx: MarkdownPostProcessorContext
+    _ctx: MarkdownPostProcessorContext
   ): Promise<void> {
     const href = link.getAttribute("href");
     if (!href) return;

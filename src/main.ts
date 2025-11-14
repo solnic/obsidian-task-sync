@@ -230,11 +230,12 @@ export default class TaskSyncPlugin extends Plugin {
     refreshTasksCommand.register();
 
     // Register Apple Reminders commands
-    const checkAppleRemindersPermissionsCommand = new CheckAppleRemindersPermissionsCommand({
-      plugin: this,
-      app: this.app,
-      settings: this.settings,
-    });
+    const checkAppleRemindersPermissionsCommand =
+      new CheckAppleRemindersPermissionsCommand({
+        plugin: this,
+        app: this.app,
+        settings: this.settings,
+      });
     checkAppleRemindersPermissionsCommand.register();
 
     const importAppleRemindersCommand = new ImportAppleRemindersCommand({
@@ -430,12 +431,12 @@ export default class TaskSyncPlugin extends Plugin {
     await this.backupManager.initialize();
 
     // Load executed migrations from settings
-    const executedMigrations: MigrationRecord[] = (this.settings.executedMigrations || []).map(
-      (record) => ({
-        ...record,
-        executedAt: new Date(record.executedAt),
-      })
-    );
+    const executedMigrations: MigrationRecord[] = (
+      this.settings.executedMigrations || []
+    ).map((record) => ({
+      ...record,
+      executedAt: new Date(record.executedAt),
+    }));
 
     // Initialize SchemaMigrationManager
     this.migrationManager = new SchemaMigrationManager(
@@ -453,7 +454,9 @@ export default class TaskSyncPlugin extends Plugin {
   private async runPendingMigrations(): Promise<void> {
     try {
       // Execute auto-run migrations
-      const records = await this.migrationManager.checkAndExecuteAutoMigrations(true);
+      const records = await this.migrationManager.checkAndExecuteAutoMigrations(
+        true
+      );
 
       if (records.length > 0) {
         // Save migration records to settings
@@ -470,7 +473,9 @@ export default class TaskSyncPlugin extends Plugin {
   /**
    * Save migration records to settings
    */
-  private async saveMigrationRecords(records: MigrationRecord[]): Promise<void> {
+  private async saveMigrationRecords(
+    _records: MigrationRecord[]
+  ): Promise<void> {
     const allRecords = this.migrationManager.exportMigrationRecords();
 
     this.settings.executedMigrations = allRecords.map((record) => ({
@@ -513,7 +518,7 @@ export default class TaskSyncPlugin extends Plugin {
     this.app.workspace.iterateAllLeaves((leaf) => {
       // Check if view has updateSettings method before calling it
       const view = leaf.view as any;
-      if (view.updateSettings && typeof view.updateSettings === 'function') {
+      if (view.updateSettings && typeof view.updateSettings === "function") {
         view.updateSettings(this.settings);
       }
     });

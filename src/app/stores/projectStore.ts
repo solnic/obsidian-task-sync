@@ -3,8 +3,7 @@
  * All mutations go through action dispatcher for centralized state management
  */
 
-import { writable, get, type Readable } from "svelte/store";
-import { Project } from "../core/entities";
+import { writable, type Readable } from "svelte/store";
 import {
   projectReducer,
   type ProjectStoreState,

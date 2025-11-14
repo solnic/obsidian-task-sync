@@ -4,7 +4,7 @@
  * This is Obsidian-specific because it manages .base files for Obsidian Bases plugin
  */
 
-import { App, Vault, TFile, TFolder } from "obsidian";
+import { App, Vault, TFile } from "obsidian";
 import { TaskSyncSettings } from "../../../types/settings";
 import * as yaml from "js-yaml";
 import { sanitizeFileName } from "../../../utils/fileNameSanitizer";
@@ -174,7 +174,7 @@ export class ObsidianBaseManager {
           });
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Folder doesn't exist or can't be read
       console.log(`Projects folder not found or empty: ${projectsFolder}`);
     }
@@ -204,7 +204,7 @@ export class ObsidianBaseManager {
           });
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Folder doesn't exist or can't be read
       console.log(`Areas folder not found or empty: ${areasFolder}`);
     }

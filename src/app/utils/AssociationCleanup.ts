@@ -8,7 +8,7 @@ import { taskStore } from "../stores/taskStore";
 import { projectStore } from "../stores/projectStore";
 import { areaStore } from "../stores/areaStore";
 import { get } from "svelte/store";
-import type { Task, Project, Area } from "../core/entities";
+import type { Task, Project } from "../core/entities";
 
 /**
  * Configuration for association cleanup

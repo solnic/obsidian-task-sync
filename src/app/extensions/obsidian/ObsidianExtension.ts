@@ -882,7 +882,7 @@ export class ObsidianExtension implements Extension {
           }
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently fail - this is a background sync operation
     }
   }
@@ -918,7 +918,7 @@ export class ObsidianExtension implements Extension {
           done: isCompleted,
         });
       }
-    } catch (error) {
+    } catch (_error) {
       // Silently fail - this is a background sync operation
     }
   }

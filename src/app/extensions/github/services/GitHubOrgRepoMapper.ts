@@ -47,7 +47,7 @@ export class GitHubOrgRepoMapper {
       return { matchType: "none" };
     }
 
-    const [owner, repo] = repository.split("/", 2);
+    const [owner, _repo] = repository.split("/", 2);
 
     // Sort mappings by priority (higher priority first), then by specificity
     const sortedMappings = this.getSortedMappings();

@@ -186,7 +186,7 @@ export class FilterBuilder {
    * @param projectName - The display name of the project
    * @param projectPath - The full path to the project file (e.g., "Projects/Foo Bar.md")
    */
-  static inProject(projectName: string, projectPath?: string): CustomFilter {
+  static inProject(projectName: string, _projectPath?: string): CustomFilter {
     // Based on user example: Project == link("Task Sync")
     // Format: Project == link("displayName") - just the display name, no path needed
     // Note: Uses Project directly (capital P), not note["Project"]

@@ -298,7 +298,7 @@ export class AppleCalendarService implements CalendarService {
           return calendarHome;
         }
       }
-    } catch (error) {
+    } catch (_error) {
       // Fall through to direct approach
     }
 
@@ -876,7 +876,7 @@ export class AppleCalendarService implements CalendarService {
       // First, try a simple OPTIONS request to test basic connectivity
       try {
         await this.makeCalDAVRequest("/", "OPTIONS");
-      } catch (error) {
+      } catch (_error) {
         return false;
       }
 
@@ -1082,7 +1082,7 @@ export class AppleCalendarService implements CalendarService {
           if (response.status >= 200 && response.status < 300) {
             return true;
           }
-        } catch (error) {
+        } catch (_error) {
           // Continue to next calendar if this one fails
           continue;
         }

@@ -4,7 +4,7 @@
  */
 
 import type { App, TFile } from "obsidian";
-import type { NoteType, ValidationResult } from "./types";
+import type { ValidationResult } from "./types";
 import type { TypeRegistry } from "./registry";
 import { PropertyProcessor } from "./property-processor";
 import {
@@ -12,7 +12,6 @@ import {
   createInvalidResult,
   createValidationError,
 } from "./validation";
-import * as yaml from "js-yaml";
 
 /**
  * Front-matter modification options
@@ -122,10 +121,6 @@ export class FrontMatterProcessor {
 
       // Create backup before modification
       await this.createBackup(file, noteTypeId);
-
-      // Get current front-matter
-      const currentFrontMatter =
-        this.app.metadataCache.getFileCache(file)?.frontmatter || {};
 
       // Validate new properties if requested
       if (validateProperties && Object.keys(properties).length > 0) {

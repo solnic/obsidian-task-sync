@@ -3,8 +3,7 @@
  * All mutations go through action dispatcher for centralized state management
  */
 
-import { writable, get, type Readable } from "svelte/store";
-import { Area } from "../core/entities";
+import { writable, type Readable } from "svelte/store";
 import { areaReducer, type AreaStoreState } from "./reducers/areaReducer";
 import type { AreaAction } from "./actions";
 

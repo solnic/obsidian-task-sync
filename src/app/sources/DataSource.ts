@@ -13,8 +13,6 @@
  * - Support both bulk refresh and incremental updates
  */
 
-import type { Task } from "../core/entities";
-
 /**
  * Callbacks for watching data source changes
  *

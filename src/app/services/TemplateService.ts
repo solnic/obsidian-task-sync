@@ -8,12 +8,10 @@ import { App, Vault, TFile } from "obsidian";
 import type { TaskSyncSettings } from "../types/settings";
 import type {
   Template,
-  TemplateInfo,
   TemplateVariable,
   ValidationResult,
 } from "../core/template-entities";
-import { templateOperations, templateQueries } from "../entities/Templates";
-import { generateId } from "../utils/idGenerator";
+import { templateOperations } from "../entities/Templates";
 
 export class TemplateService {
   constructor(

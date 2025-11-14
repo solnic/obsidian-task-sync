@@ -285,7 +285,7 @@ export class FileWatcher extends Component {
             warnings: result.warnings,
           };
         }
-      } catch (error) {
+      } catch (_error) {
         // File might be deleted or inaccessible, ignore validation errors
       }
     }
@@ -369,7 +369,7 @@ export class FileWatcher extends Component {
         errors: result.errors,
         warnings: result.warnings,
       };
-    } catch (error) {
+    } catch (_error) {
       return null;
     }
   }

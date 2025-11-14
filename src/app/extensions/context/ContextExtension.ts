@@ -172,7 +172,7 @@ export class ContextExtension implements Extension {
     });
 
     // Listen for file renames/moves that might affect context
-    this.app.vault.on("rename", (file, oldPath) => {
+    this.app.vault.on("rename", (_file, _oldPath) => {
       this.updateCurrentContext();
     });
   }
@@ -264,14 +264,14 @@ export class ContextExtension implements Extension {
     // No-op: ContextExtension doesn't maintain its own task cache
   }
 
-  searchTasks(query: string, tasks: readonly Task[]): readonly Task[] {
+  searchTasks(_query: string, _tasks: readonly Task[]): readonly Task[] {
     // No-op: ContextExtension doesn't provide task search
     return [];
   }
 
   sortTasks(
     tasks: readonly Task[],
-    sortFields: Array<{ key: string; direction: "asc" | "desc" }>
+    _sortFields: Array<{ key: string; direction: "asc" | "desc" }>
   ): readonly Task[] {
     // No-op: ContextExtension doesn't provide task sorting
     return tasks;
@@ -279,7 +279,7 @@ export class ContextExtension implements Extension {
 
   filterTasks(
     tasks: readonly Task[],
-    criteria: {
+    _criteria: {
       project?: string | null;
       area?: string | null;
       source?: string | null;

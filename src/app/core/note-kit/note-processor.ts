@@ -5,14 +5,11 @@
 
 import type {
   NoteType,
-  ValidationResult,
   ValidationError,
   ValidationWarning,
   TemplateProcessingResult,
 } from "./types";
 import {
-  createValidResult,
-  createInvalidResult,
   createValidationError,
   createValidationWarning,
 } from "./validation";
@@ -211,7 +208,6 @@ export class NoteProcessor {
     frontMatter: Record<string, any>,
     filePath: string
   ): NoteTypeDetectionResult {
-    const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
 
     // Method 1: Check front-matter type field
@@ -287,7 +283,6 @@ export class NoteProcessor {
       propertyOptions = {},
       autoDetectType = true,
       explicitNoteTypeId,
-      validateContent = true,
     } = options;
 
     const errors: ValidationError[] = [];

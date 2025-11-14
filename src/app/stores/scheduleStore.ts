@@ -10,11 +10,7 @@ import {
   type Writable,
   type Readable,
 } from "svelte/store";
-import type {
-  Schedule,
-  ScheduleCreateData,
-  CalendarEvent,
-} from "../core/entities";
+import type { Schedule, ScheduleCreateData } from "../core/entities";
 import { generateId } from "../utils/idGenerator";
 
 export interface ScheduleStoreState {

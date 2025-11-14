@@ -71,7 +71,7 @@ export class InlineTaskParser {
    */
   async parseInlineTodos(
     file: TFile,
-    tasksFolderOverride?: string
+    _tasksFolderOverride?: string
   ): Promise<InlineTodoItem[]> {
     try {
       const cache = this.app.metadataCache.getFileCache(file);
@@ -238,7 +238,7 @@ export class InlineTaskParser {
    * Extract text content from a todo, handling wiki link formats
    * If the text contains a wiki link like [[path|display]] or [[path]], extract the display text or path
    */
-  private extractTextFromTodo(text: string, linkPath?: string): string {
+  private extractTextFromTodo(text: string, _linkPath?: string): string {
     // Check if text is a wiki link format: [[path|display]] or [[path]]
     const wikiLinkMatch = text.match(/^\[\[([^\]]+)\]\]$/);
     if (wikiLinkMatch) {
