@@ -27,7 +27,7 @@ import {
   type GitHubOrganizationList,
   type GitHubPullRequest,
 } from "../../cache/schemas/github";
-import { GitHub } from "./entities/GitHub";
+import { GitHubOperations } from "./entities/GitHub";
 import type { TaskSyncSettings } from "../../types/settings";
 import { GitHubTaskSource } from "./sources/TaskSource";
 import { taskSourceManager } from "../../core/TaskSourceManager";
@@ -123,7 +123,7 @@ export class GitHubExtension implements Extension {
   private octokit: Octokit | undefined;
   private plugin: Plugin;
   private settings: TaskSyncSettings;
-  private githubOperations: GitHub.Operations;
+  private githubOperations: GitHubOperations;
 
   // Cache instances
   private issuesCache?: SchemaCache<GitHubIssueList>;
@@ -137,7 +137,7 @@ export class GitHubExtension implements Extension {
   constructor(settings: TaskSyncSettings, plugin: Plugin) {
     this.settings = settings;
     this.plugin = plugin;
-    this.githubOperations = new GitHub.Operations(settings);
+    this.githubOperations = new GitHubOperations(settings);
   }
 
   /**
@@ -147,7 +147,7 @@ export class GitHubExtension implements Extension {
     this.settings = newSettings;
 
     // Update GitHub operations with new settings
-    this.githubOperations = new GitHub.Operations(newSettings);
+    this.githubOperations = new GitHubOperations(newSettings);
 
     // Update organization/repository mappings
     this.githubOperations.tasks.updateOrgRepoMappings(

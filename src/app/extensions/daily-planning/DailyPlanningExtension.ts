@@ -13,7 +13,7 @@ import {
 import { eventBus, DomainEvent } from "../../core/events";
 import { writable, get, readable, type Readable } from "svelte/store";
 import type { Task, Schedule, CalendarEvent } from "../../core/entities";
-import { Schedules } from "../../entities/Schedules";
+import { ScheduleQueries, ScheduleOperations } from "../../entities/Schedules";
 import { Tasks } from "../../entities/Tasks";
 import { scheduleStore } from "../../stores/scheduleStore";
 import { taskStore } from "../../stores/taskStore";
@@ -81,7 +81,7 @@ export class DailyPlanningExtension implements Extension {
   constructor(settings: TaskSyncSettings, host: ObsidianHost) {
     this.settings = settings;
     this.host = host;
-    this.schedules = new Schedules.Operations();
+    this.schedules = new ScheduleOperations();
     this.taskOperations = new Tasks.Operations(settings);
     this.inlineTaskParser = new InlineTaskParser(
       host.plugin.app,
@@ -284,7 +284,7 @@ export class DailyPlanningExtension implements Extension {
    * Create or get today's schedule
    */
   async ensureTodayScheduleExists(): Promise<Schedule> {
-    const queries = new Schedules.Queries();
+    const queries = new ScheduleQueries();
     let todaySchedule = await queries.getToday();
 
     if (!todaySchedule) {
@@ -310,7 +310,7 @@ export class DailyPlanningExtension implements Extension {
    * Create or get yesterday's schedule
    */
   async ensureYesterdayScheduleExists(): Promise<Schedule> {
-    const queries = new Schedules.Queries();
+    const queries = new ScheduleQueries();
     let yesterdaySchedule = await queries.getYesterday();
 
     if (!yesterdaySchedule) {
@@ -575,7 +575,7 @@ export class DailyPlanningExtension implements Extension {
 
     // Add task to today's schedule
     const todaySchedule = await this.ensureTodayScheduleExists();
-    const scheduleOperations = new Schedules.Operations();
+    const scheduleOperations = new ScheduleOperations();
 
     // Check if task is already in today's schedule
     const isAlreadyInSchedule = todaySchedule.tasks.some(
@@ -604,7 +604,7 @@ export class DailyPlanningExtension implements Extension {
 
     // Also remove from today's schedule tasks array to prevent it from being written to Daily Note
     const todaySchedule = await this.ensureTodayScheduleExists();
-    const scheduleOperations = new Schedules.Operations();
+    const scheduleOperations = new ScheduleOperations();
     const updatedTasks = todaySchedule.tasks.filter((t) => t.id !== task.id);
 
     await scheduleOperations.update(todaySchedule.id, {
@@ -661,11 +661,11 @@ export class DailyPlanningExtension implements Extension {
     await this.removeTaskFromAllSchedules(task.id);
 
     // Add to the schedule for the new date
-    const scheduleQueries = new Schedules.Queries();
+    const scheduleQueries = new ScheduleQueries();
     let targetSchedule = await scheduleQueries.getByDate(newDate);
 
     if (!targetSchedule) {
-      const scheduleOperations = new Schedules.Operations();
+      const scheduleOperations = new ScheduleOperations();
       targetSchedule = await scheduleOperations.create({
         date: newDate,
         tasks: [],
@@ -680,7 +680,7 @@ export class DailyPlanningExtension implements Extension {
       });
     }
 
-    const scheduleOperations = new Schedules.Operations();
+    const scheduleOperations = new ScheduleOperations();
     await scheduleOperations.addTask(targetSchedule.id, {
       ...task,
       doDate: newDate,

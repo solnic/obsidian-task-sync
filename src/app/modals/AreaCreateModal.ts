@@ -7,7 +7,7 @@ import { App, Modal } from "obsidian";
 import { mount, unmount } from "svelte";
 import AreaCreateModalSvelte from "../components/AreaCreateModal.svelte";
 import type TaskSyncPlugin from "../../main";
-import { Obsidian } from "../extensions/obsidian/entities/Obsidian";
+import { ObsidianAreaOperations } from "../extensions/obsidian/entities/Obsidian";
 
 export class AreaCreateModal extends Modal {
   private component: any = null;
@@ -24,7 +24,7 @@ export class AreaCreateModal extends Modal {
 
     try {
       // Use Obsidian.AreaOperations which sets source.filePath correctly
-      const areaOperations = new Obsidian.AreaOperations(this.plugin.settings);
+      const areaOperations = new ObsidianAreaOperations(this.plugin.settings);
 
       this.component = mount(AreaCreateModalSvelte, {
         target: contentEl,
