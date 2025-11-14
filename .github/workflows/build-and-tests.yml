@@ -8,9 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,30 +23,174 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup e2e environment
-        run: npm run setup:e2e
+      - name: Get Obsidian version
+        id: obsidian-version
+        run: |
+          VERSION=$(curl -s https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "archive=obsidian-${VERSION}.tar.gz" >> $GITHUB_OUTPUT
+
+      - name: Cache Obsidian tar.gz
+        id: cache-obsidian-tar
+        uses: actions/cache@v4
+        with:
+          path: tmp/obsidian-${{ steps.obsidian-version.outputs.version }}.tar.gz
+          key: obsidian-tar-${{ runner.os }}-${{ steps.obsidian-version.outputs.version }}
+
+      - name: Download Obsidian if not cached
+        if: steps.cache-obsidian-tar.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p tmp
+          curl -L -o "tmp/obsidian-${{ steps.obsidian-version.outputs.version }}.tar.gz" \
+            "https://github.com/obsidianmd/obsidian-releases/releases/download/v${{ steps.obsidian-version.outputs.version }}/obsidian-${{ steps.obsidian-version.outputs.version }}.tar.gz"
+
+      - name: Extract Obsidian
+        run: |
+          mkdir -p tests/e2e/.obsidian-unpacked
+          tar -xzf "tmp/obsidian-${{ steps.obsidian-version.outputs.version }}.tar.gz" -C tests/e2e/.obsidian-unpacked --strip-components=1
+
+      - name: Setup Obsidian for Playwright
+        run: |
+          cd tests/e2e/.obsidian-unpacked
+          if [ -f "resources/app.asar" ]; then
+            echo "Extracting app.asar for Playwright..."
+            npx asar extract resources/app.asar app-extracted 2>/dev/null || true
+            if [ -f "app-extracted/main.js" ]; then
+              cp app-extracted/main.js ./main.js
+              echo "Extracted main.js from app.asar"
+            fi
+            if [ -f "resources/obsidian.asar" ] && [ -d "app-extracted" ]; then
+              cp resources/obsidian.asar app-extracted/
+              echo "Copied obsidian.asar to app-extracted directory"
+            fi
+            if [ ! -f "package.json" ] && [ -f "app-extracted/package.json" ]; then
+              cp app-extracted/package.json ./package.json
+              echo "Extracted package.json from app.asar"
+            fi
+          fi
 
       - name: Build
         run: npm run build
 
-      - name: Run e2e tests
-        run: npm run test:e2e
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            main.js
+            styles.css
+            manifest.json
+          retention-days: 1
 
-      - name: Upload test results
+      - name: Create node_modules tarball
+        run: tar -czf node_modules.tar.gz node_modules
+
+      - name: Upload node_modules
+        uses: actions/upload-artifact@v4
+        with:
+          name: node_modules
+          path: node_modules.tar.gz
+          retention-days: 1
+
+      - name: Create Obsidian tarball for distribution
+        run: |
+          cd tests/e2e
+          tar -czf obsidian-unpacked.tar.gz .obsidian-unpacked
+
+      - name: Upload Obsidian installation
+        uses: actions/upload-artifact@v4
+        with:
+          name: obsidian-unpacked
+          path: tests/e2e/obsidian-unpacked.tar.gz
+          retention-days: 1
+
+  test-unit:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Download node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node_modules
+
+      - name: Extract node_modules
+        run: tar -xzf node_modules.tar.gz && rm node_modules.tar.gz
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+  test-e2e:
+    runs-on: ubuntu-latest
+    needs: build
+    strategy:
+      fail-fast: true
+      matrix:
+        test-group:
+          - core
+          - note-kit
+          - bases
+          - commands
+          - extensions
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Download node_modules
+        uses: actions/download-artifact@v4
+        with:
+          name: node_modules
+
+      - name: Extract node_modules
+        run: tar -xzf node_modules.tar.gz && rm node_modules.tar.gz
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+
+      - name: Download Obsidian installation
+        uses: actions/download-artifact@v4
+        with:
+          name: obsidian-unpacked
+          path: tests/e2e/
+
+      - name: Extract Obsidian
+        run: |
+          cd tests/e2e
+          tar -xzf obsidian-unpacked.tar.gz
+          rm obsidian-unpacked.tar.gz
+
+      - name: Run e2e tests - ${{ matrix.test-group }}
+        run: npm run test:e2e -- tests/e2e/specs/${{ matrix.test-group }}
+
+      - name: Upload test results - ${{ matrix.test-group }}
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-test-results
+          name: e2e-test-results-${{ matrix.test-group }}
           path: |
             tests/e2e/debug/
             tests/e2e/results.json
             test-results/
           retention-days: 7
 
-      - name: Upload Playwright report
+      - name: Upload Playwright report - ${{ matrix.test-group }}
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.test-group }}
           path: playwright-report/
           retention-days: 7
