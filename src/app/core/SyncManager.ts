@@ -321,7 +321,7 @@ export class SyncManager {
         return merged as Partial<Task>;
       }
 
-      case "last-modified":
+      case "last-modified": {
         // Most recently modified wins
         let latestData: Partial<Task> = {};
         let latestTime = 0;
@@ -336,12 +336,14 @@ export class SyncManager {
           }
         }
         return latestData;
+      }
 
-      case "manual-resolve":
+      case "manual-resolve": {
         // For now, just return the source extension data
         // In the future, this could trigger a UI for manual resolution
         const manualSourceData = sourceData.get(entity.source.extension);
         return manualSourceData || sourceData.values().next().value || {};
+      }
 
       default:
         return sourceData.values().next().value || {};

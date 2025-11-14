@@ -10,7 +10,7 @@
 export function extractRepositoryFromGitHubUrl(url: string): string | null {
   if (!url) return null;
 
-  const match = url.match(/github\.com\/([^\/]+\/[^\/]+)(?:\/|$)/);
+  const match = url.match(/github\.com\/([^/]+\/[^/]+)(?:\/|$)/);
   return match ? match[1] : null;
 }
 

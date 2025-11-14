@@ -88,13 +88,14 @@
       case "date":
         schema = dateSchema;
         break;
-      case "enum":
+      case "enum": {
         const options = newProperty.enumOptions
           .split(",")
           .map((opt) => opt.trim())
           .filter((opt) => opt);
         schema = enumSchema(options as [string, ...string[]]);
         break;
+      }
       case "array":
         schema = stringArraySchema;
         break;

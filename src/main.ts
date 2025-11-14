@@ -412,7 +412,7 @@ export default class TaskSyncPlugin extends Plugin {
     };
 
     // Add a method to wait for all pending persistence operations
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     (typeNote.registry as any).waitForPersistence = async () => { // Extending registry with test helper
       await Promise.all(pendingPersistence);
       pendingPersistence.length = 0; // Clear the array
@@ -518,7 +518,7 @@ export default class TaskSyncPlugin extends Plugin {
     // Update all open views with new settings
     this.app.workspace.iterateAllLeaves((leaf) => {
       // Check if view has updateSettings method before calling it
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const view = leaf.view as any; // View type is dynamic - checking for method existence
       if (view.updateSettings && typeof view.updateSettings === "function") {
         view.updateSettings(this.settings);
@@ -611,7 +611,7 @@ export default class TaskSyncPlugin extends Plugin {
           active: true,
         });
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
     } catch (error: any) { // Error type is unknown - accessing message property
       console.error("Error starting daily planning:", error);
       new Notice(`Failed to start daily planning: ${error.message}`);
@@ -828,7 +828,7 @@ export default class TaskSyncPlugin extends Plugin {
 
 class TaskSyncView extends ItemView {
   private plugin: TaskSyncPlugin;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   private appComponent: any = null; // Svelte component with dynamic type
 
   constructor(leaf: WorkspaceLeaf, plugin: TaskSyncPlugin) {
