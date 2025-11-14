@@ -60,40 +60,7 @@ export function createSchemaFromProperty(
   }
 }
 
-/**
- * Legacy function for backward compatibility
- * @deprecated Use createSchemaFromProperty instead
- */
-export function createSchemaFromType(
-  schemaType: string,
-  selectOptions?: SelectOption[]
-): z.ZodType<any> {
-  switch (schemaType) {
-    case "string":
-      return stringSchema;
-    case "number":
-      return numberSchema;
-    case "boolean":
-      return booleanSchema;
-    case "date":
-      return dateSchema;
-    case "select":
-      // For select type, create enum schema from options
-      if (selectOptions && selectOptions.length > 0) {
-        const values = selectOptions.map((opt) => opt.value);
-        return enumSchema(values as [string, ...string[]]);
-      }
-      return stringSchema; // Fallback if no options
-    case "enum":
-      // For enum type, we need the options to be passed separately
-      // This is handled by the caller
-      return stringSchema; // Fallback
-    case "array":
-      return z.array(z.string()).default([]);
-    default:
-      return stringSchema;
-  }
-}
+
 
 /**
  * Reconstruct schemas for all properties in a note type
