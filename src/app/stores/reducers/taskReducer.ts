@@ -5,7 +5,7 @@
  * All state changes go through this reducer, providing a single source of truth.
  */
 
-import type { Task } from "../../core/entities";
+import type { Task, TaskSource } from "../../core/entities";
 import type { TaskAction } from "../actions";
 
 function deepEqual(a: any, b: any): boolean {
