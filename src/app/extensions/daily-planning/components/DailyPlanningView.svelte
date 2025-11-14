@@ -10,7 +10,7 @@
   import { taskStore } from "../../../stores/taskStore";
   import { TaskQueryService } from "../../../services/TaskQueryService";
   import { get } from "svelte/store";
-  import { Schedules } from "../../../entities/Schedules";
+  import { ScheduleQueries, ScheduleOperations } from "../../../entities/Schedules";
 
   // Step components
   import Step from "./Step.svelte";
@@ -269,7 +269,7 @@
 
       // Get the current schedule state after all tasks have been added
       // This ensures we include tasks that were imported during planning
-      const scheduleQueries = new Schedules.Queries();
+      const scheduleQueries = new ScheduleQueries();
       const todaySchedule = await scheduleQueries.getToday();
 
       if (!todaySchedule) {
@@ -297,7 +297,7 @@
       const tasksForSchedule = Array.from(taskMap.values());
 
       // Update the schedule with final tasks/events and mark as planned
-      const scheduleOperations = new Schedules.Operations();
+      const scheduleOperations = new ScheduleOperations();
       await scheduleOperations.update(todaySchedule.id, {
         tasks: tasksForSchedule,
         events: finalPlan.events,

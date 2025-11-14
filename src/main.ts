@@ -18,7 +18,7 @@ import { taskStore, type TaskStore } from "./app/stores/taskStore";
 import { projectStore, type ProjectStore } from "./app/stores/projectStore";
 import { areaStore, type AreaStore } from "./app/stores/areaStore";
 import type { ObsidianExtension } from "./app/extensions/obsidian/ObsidianExtension";
-import { Obsidian } from "./app/extensions/obsidian/entities/Obsidian";
+import { ObsidianTaskOperations, ObsidianProjectOperations, ObsidianAreaOperations } from "./app/extensions/obsidian/entities/Obsidian";
 import { get } from "svelte/store";
 import type { Task, Project, Area } from "./app/core/entities";
 import { associationCleanup } from "./app/utils/AssociationCleanup";
@@ -76,9 +76,9 @@ export default class TaskSyncPlugin extends Plugin {
   public get operations() {
     // Use Obsidian namespace operations which extend EntitiesOperations
     // and set source.keys.obsidian in buildEntity
-    const taskOps = new Obsidian.TaskOperations(this.settings);
-    const projectOps = new Obsidian.ProjectOperations(this.settings);
-    const areaOps = new Obsidian.AreaOperations(this.settings);
+    const taskOps = new ObsidianTaskOperations(this.settings);
+    const projectOps = new ObsidianProjectOperations(this.settings);
+    const areaOps = new ObsidianAreaOperations(this.settings);
 
     return {
       task: taskOps,

@@ -25,7 +25,7 @@ import { ProjectQueryService } from "../../services/ProjectQueryService";
 import { AreaQueryService } from "../../services/AreaQueryService";
 import { projectStore } from "../../stores/projectStore";
 import { areaStore } from "../../stores/areaStore";
-import { Obsidian } from "./entities/Obsidian";
+import { ObsidianTodoPromotionOperations, ObsidianTaskOperations as ObsidianTaskOps } from "./entities/Obsidian";
 import { ContextService } from "../../services/ContextService";
 import { Tasks } from "../../entities/Tasks";
 import { Projects } from "../../entities/Projects";
@@ -157,12 +157,12 @@ class ObsidianEntityDataProvider implements EntityDataProvider {
  *
  * Note: Base-related settings are Obsidian-specific because they use Obsidian's database feature.
  * These settings control how Obsidian Bases are generated and managed for areas, projects, and tasks.
+ *
+ * Currently a type alias for TaskSyncSettings. In the future, Obsidian-only settings
+ * (like Base configuration) should be added here to better separate concerns between
+ * general task sync and Obsidian-specific features.
  */
-export interface ObsidianExtensionSettings extends TaskSyncSettings {
-  // All Obsidian-specific settings are currently in TaskSyncSettings for convenience
-  // In the future, Obsidian-only settings (like Base configuration) should be moved here
-  // to better separate concerns between general task sync and Obsidian-specific features
-}
+export type ObsidianExtensionSettings = TaskSyncSettings;
 
 export class ObsidianExtension implements Extension {
   readonly id = "obsidian";
@@ -202,7 +202,7 @@ export class ObsidianExtension implements Extension {
   readonly areaOperations: ObsidianAreaOperations;
   readonly projectOperations: ObsidianProjectOperations;
   readonly taskOperations: ObsidianTaskOperations;
-  readonly todoPromotionOperations: Obsidian.TodoPromotionOperations;
+  readonly todoPromotionOperations: ObsidianTodoPromotionOperations;
   readonly typeNote: NoteKit;
 
   // SyncManager provider
@@ -238,11 +238,11 @@ export class ObsidianExtension implements Extension {
     const contextService = new ContextService(app, settings);
 
     // Initialize todo promotion operations
-    this.todoPromotionOperations = new Obsidian.TodoPromotionOperations(
+    this.todoPromotionOperations = new ObsidianTodoPromotionOperations(
       app,
       settings,
       contextService,
-      new Obsidian.TaskOperations(settings)
+      new ObsidianTaskOps(settings)
     );
 
     // Note: TaskTodoMarkdownProcessor will be initialized in the initialize() method

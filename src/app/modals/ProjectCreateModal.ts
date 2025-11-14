@@ -7,7 +7,7 @@ import { App, Modal } from "obsidian";
 import { mount, unmount } from "svelte";
 import ProjectCreateModalSvelte from "../components/ProjectCreateModal.svelte";
 import type TaskSyncPlugin from "../../main";
-import { Obsidian } from "../extensions/obsidian/entities/Obsidian";
+import { ObsidianProjectOperations } from "../extensions/obsidian/entities/Obsidian";
 
 export class ProjectCreateModal extends Modal {
   private component: any = null;
@@ -24,7 +24,7 @@ export class ProjectCreateModal extends Modal {
 
     try {
       // Use Obsidian.ProjectOperations which sets source.filePath correctly
-      const projectOperations = new Obsidian.ProjectOperations(
+      const projectOperations = new ObsidianProjectOperations(
         this.plugin.settings
       );
 

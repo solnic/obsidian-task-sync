@@ -5,7 +5,7 @@
 
 import { App, stringifyYaml } from "obsidian";
 import { Area, Project, Task } from "../../../core/entities";
-import { EntityOperations } from "../../../core/extension";
+import { BaseEntityOperations } from "../../../core/extension";
 
 // Union type for entities that can be managed by Obsidian operations
 export type ObsidianEntity = Area | Project | Task;
@@ -27,7 +27,7 @@ export interface EntityNameProvider {
  */
 export abstract class ObsidianEntityOperations<
   T extends ObsidianEntity
-> extends EntityOperations<T> {
+> extends BaseEntityOperations<T> {
   constructor(protected app: App, protected folder: string) {
     super({ id: "obsidian" });
   }
