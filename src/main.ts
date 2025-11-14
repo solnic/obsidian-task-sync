@@ -200,7 +200,7 @@ export default class TaskSyncPlugin extends Plugin {
 
     // Add ribbon icon for main view (use valid Obsidian icon)
     this.addRibbonIcon("list-todo", "Task Sync", () => {
-      this.activateView();
+      void this.activateView();
     });
 
     // Add command to open main view
@@ -208,7 +208,7 @@ export default class TaskSyncPlugin extends Plugin {
       id: "open-main-view",
       name: "Open Main View",
       callback: () => {
-        this.activateView();
+        void this.activateView();
       },
     });
 
@@ -249,7 +249,7 @@ export default class TaskSyncPlugin extends Plugin {
       id: "start-daily-planning",
       name: "Start Daily Planning",
       callback: () => {
-        this.startDailyPlanning();
+        void this.startDailyPlanning();
       },
     });
 
@@ -283,7 +283,7 @@ export default class TaskSyncPlugin extends Plugin {
       await this.runPendingMigrations();
 
       // Now activate the view
-      this.activateView();
+      void this.activateView();
     });
 
     console.log("TaskSync plugin loaded successfully");
@@ -485,18 +485,18 @@ export default class TaskSyncPlugin extends Plugin {
     await this.saveSettings();
   }
 
-  async onunload() {
+  onunload() {
     console.log("TaskSync plugin unloading...");
 
     // Stop association cleanup system
     associationCleanup.stop();
 
-    await this.host.onunload();
-    await taskSyncApp.shutdown();
+    void this.host.onunload();
+    void taskSyncApp.shutdown();
 
     // Cleanup NoteKit
     if (this.typeNote) {
-      await this.typeNote.cleanup();
+      void this.typeNote.cleanup();
     }
   }
 
@@ -595,7 +595,7 @@ export default class TaskSyncPlugin extends Plugin {
 
       if (existingLeaves.length > 0) {
         // Activate existing view
-        this.app.workspace.revealLeaf(existingLeaves[0]);
+        await this.app.workspace.revealLeaf(existingLeaves[0]);
       } else {
         // Create new view
         const leaf = this.app.workspace.getLeaf("tab");
@@ -663,7 +663,7 @@ export default class TaskSyncPlugin extends Plugin {
       await leaf.setViewState({ type: "task-sync-main", active: true });
     }
 
-    workspace.revealLeaf(leaf);
+    await workspace.revealLeaf(leaf);
   }
 
   async openCreateAreaModal() {
@@ -767,7 +767,7 @@ export default class TaskSyncPlugin extends Plugin {
         id: commandId,
         name: `Create ${noteType.name}`,
         callback: () => {
-          this.openCreateNoteModal(noteType.id);
+          void this.openCreateNoteModal(noteType.id);
         },
       });
 
@@ -866,7 +866,7 @@ class TaskSyncView extends ItemView {
     console.log("TaskSync view closing...");
     if (this.appComponent) {
       try {
-        unmount(this.appComponent);
+        await unmount(this.appComponent);
         this.appComponent = null;
         console.log("TaskSync Svelte app unmounted successfully");
       } catch (error) {

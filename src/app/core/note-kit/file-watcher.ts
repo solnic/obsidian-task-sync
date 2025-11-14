@@ -122,7 +122,7 @@ export class FileWatcher extends Component {
     this.registerEvent(
       this.vault.on("create", (file) => {
         if (file instanceof TFile) {
-          this.handleFileCreate(file);
+          void this.handleFileCreate(file);
         }
       })
     );
@@ -130,7 +130,7 @@ export class FileWatcher extends Component {
     this.registerEvent(
       this.vault.on("modify", (file) => {
         if (file instanceof TFile) {
-          this.handleFileModify(file);
+          void this.handleFileModify(file);
         }
       })
     );
@@ -138,7 +138,7 @@ export class FileWatcher extends Component {
     this.registerEvent(
       this.vault.on("delete", (file) => {
         if (file instanceof TFile) {
-          this.handleFileDelete(file);
+          void this.handleFileDelete(file);
         }
       })
     );
@@ -146,7 +146,7 @@ export class FileWatcher extends Component {
     this.registerEvent(
       this.vault.on("rename", (file, oldPath) => {
         if (file instanceof TFile) {
-          this.handleFileRename(file, oldPath);
+          void this.handleFileRename(file, oldPath);
         }
       })
     );
@@ -329,9 +329,9 @@ export class FileWatcher extends Component {
     }
 
     // Set new timer
-    const timer = setTimeout(async () => {
+    const timer = setTimeout(() => {
       this.debounceTimers.delete(key);
-      await callback();
+      void callback();
     }, this.options.debounceDelay);
 
     this.debounceTimers.set(key, timer);

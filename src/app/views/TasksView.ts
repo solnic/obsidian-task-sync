@@ -86,7 +86,7 @@ export class TasksView extends ItemView {
   async onClose(): Promise<void> {
     // Unmount Svelte 5 component
     if (this.svelteComponent) {
-      unmount(this.svelteComponent);
+      await unmount(this.svelteComponent);
       this.svelteComponent = null;
       this.svelteComponentRef = null;
       console.log("TasksView Svelte component unmounted successfully");
@@ -109,10 +109,10 @@ export class TasksView extends ItemView {
   /**
    * Override onResize to handle when view becomes active (no longer deferred)
    */
-  async onResize(): Promise<void> {
+  onResize(): void {
     // If the view was deferred and is now becoming active, create the component
     if (!this.isComponentCreated && !this.leaf.isDeferred) {
-      await this.createSvelteComponent();
+      void this.createSvelteComponent();
     }
   }
 

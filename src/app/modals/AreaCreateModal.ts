@@ -50,7 +50,7 @@ export class AreaCreateModal extends Modal {
   onClose() {
     if (this.component) {
       try {
-        unmount(this.component);
+        void unmount(this.component);
         this.component = null;
       } catch (error) {
         console.error("Failed to unmount AreaCreateModal component:", error);
