@@ -744,9 +744,9 @@ export class DailyPlanningExtension implements Extension {
 
   private setupEventListeners(): void {
     // Listen for task events to keep schedules in sync
-    eventBus.on("tasks.created", (event) => this.onEntityCreated(event));
-    eventBus.on("tasks.updated", (event) => this.onEntityUpdated(event));
-    eventBus.on("tasks.deleted", (event) => this.onEntityDeleted(event));
+    eventBus.on("tasks.created", (event) => void this.onEntityCreated(event));
+    eventBus.on("tasks.updated", (event) => void this.onEntityUpdated(event));
+    eventBus.on("tasks.deleted", (event) => void this.onEntityDeleted(event));
   }
 
   private getExtensionSettings(): DailyPlanningExtensionSettings {

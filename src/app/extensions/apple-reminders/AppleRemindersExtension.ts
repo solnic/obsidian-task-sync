@@ -398,7 +398,7 @@ export class AppleRemindersExtension implements Extension {
     }
 
     // If already refreshing, return the existing promise
-    if (this.isRefreshing && this.refreshPromise) {
+    if (this.isRefreshing) {
       console.log("Apple Reminders refresh already in progress, waiting for completion...");
       return this.refreshPromise;
     }

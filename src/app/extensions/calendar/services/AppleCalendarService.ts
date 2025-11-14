@@ -586,7 +586,7 @@ export class AppleCalendarService implements CalendarService {
 
     // Check if there's already a pending request for this data
     const pendingRequest = this.pendingEventRequests.get(cacheKey);
-    if (pendingRequest) {
+    if (pendingRequest !== undefined) {
       console.log(`[AppleCalendar] Request already in progress, waiting for result...`);
       return pendingRequest;
     }
