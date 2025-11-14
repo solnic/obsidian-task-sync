@@ -39,7 +39,8 @@ export interface PropertyDefinition {
   type: PropertyType;
 
   /** Zod schema for validation and type coercion */
-  schema: z.ZodType<any>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  schema: z.ZodType<any>; // Zod schema can validate any type - this is correct usage
 
   /** Front-matter key where this property is stored */
   frontMatterKey: string;
@@ -48,10 +49,10 @@ export interface PropertyDefinition {
   required: boolean;
 
   /** Default value if not provided */
-  defaultValue?: any;
+  defaultValue?: unknown;
 
   /** Optional transformation function applied after validation */
-  transform?: (value: any) => any;
+  transform?: (value: unknown) => unknown;
 
   /** Optional description for documentation */
   description?: string;
@@ -138,7 +139,7 @@ export interface PropertySettingsData {
   required: boolean;
 
   /** Default value if not provided */
-  defaultValue?: any;
+  defaultValue?: unknown;
 
   /** Optional description for documentation */
   description?: string;
@@ -185,10 +186,10 @@ export interface TemplateVariable {
   name: string;
 
   /** Default value if not provided */
-  defaultValue?: any;
+  defaultValue?: unknown;
 
   /** Optional transformation function */
-  transform?: (value: any) => any;
+  transform?: (value: unknown) => unknown;
 
   /** Description for documentation */
   description?: string;
@@ -288,7 +289,7 @@ export interface NoteType {
 
   /** Optional validation rules that span multiple properties */
   crossPropertyValidation?: (
-    properties: Record<string, any>
+    properties: Record<string, unknown>
   ) => ValidationResult;
 }
 
@@ -307,7 +308,7 @@ export interface ValidationResult {
   warnings: ValidationWarning[];
 
   /** Validated and transformed data (if valid) */
-  data?: any;
+  data?: unknown;
 }
 
 /**
@@ -328,10 +329,10 @@ export interface ValidationError {
   path?: string[];
 
   /** Expected value or type */
-  expected?: any;
+  expected?: unknown;
 
   /** Actual value that failed */
-  actual?: any;
+  actual?: unknown;
 }
 
 /**
@@ -411,13 +412,13 @@ export interface NoteTypeMetadata {
  */
 export interface TemplateContext {
   /** Variable values */
-  variables: Record<string, any>;
+  variables: Record<string, unknown>;
 
   /** Note type being created */
   noteType: NoteType;
 
   /** Additional context data */
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 
   /** Timestamp when template is being processed */
   timestamp?: Date;
@@ -434,7 +435,7 @@ export interface TemplateProcessingResult {
   content?: string;
 
   /** Front-matter properties (if successful) */
-  frontMatter?: Record<string, any>;
+  frontMatter?: Record<string, unknown>;
 
   /** Processing errors (if any) */
   errors: ValidationError[];
