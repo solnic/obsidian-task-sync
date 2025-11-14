@@ -1,0 +1,1832 @@
+/**
+ * End-to-End Tests for Daily Planning Functionality
+ * Tests the complete daily planning workflow in the new architecture
+ */
+
+import { test, expect } from "../../helpers/setup";
+import {
+  executeCommand,
+  openView,
+  enableIntegration,
+  switchToTaskService,
+  selectFromDropdown,
+  waitForDailyPlanningUpdate,
+  waitForTaskScheduled,
+  waitForTaskUnscheduled,
+  waitForDailyNoteUpdate,
+} from "../../helpers/global";
+import { getTodayString, getYesterdayString } from "../../helpers/date-helpers";
+import { createTask } from "../../helpers/entity-helpers";
+import { stubGitHubWithFixtures } from "../../helpers/github-integration-helpers";
+
+test.describe("Daily Planning Wizard", () => {
+  test.beforeEach(async ({ page }) => {
+    // Stub Apple Calendar APIs for consistent testing
+    await page.evaluate(() => {
+      // Mock Apple Calendar service to return empty events
+      (window as any).mockAppleCalendarService = {
+        getEventsForDate: () => Promise.resolve([]),
+        getCalendars: () => Promise.resolve([]),
+        checkPermissions: () => Promise.resolve({ granted: true }),
+      };
+    });
+  });
+
+  test("should preserve schedule state when reopening wizard after confirmation", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create 2 tasks for today
+    const task1 = await createTask(page, {
+      title: "Task 1 - Keep scheduled",
+      description: "This task should remain scheduled",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Task 2 - Will be unscheduled",
+      description: "This task will be unscheduled during planning",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Navigate to step 2 (Today's Agenda)
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Verify initial state: Task 1 and Task 2 should be in today's tasks
+    await expect(
+      page.locator(".task-item").filter({ hasText: "Task 1 - Keep scheduled" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".task-item")
+        .filter({ hasText: "Task 2 - Will be unscheduled" })
+    ).toBeVisible();
+
+    // Unschedule Task 2
+    const task2Item = page
+      .locator(".task-item")
+      .filter({ hasText: "Task 2 - Will be unscheduled" });
+    await task2Item
+      .locator('[data-testid="unschedule-planning-button"]')
+      .click();
+
+    // Wait for task to be unscheduled
+    await waitForTaskUnscheduled(page, "Task 2 - Will be unscheduled");
+
+    // Verify Task 2 moved to "Staged for unscheduling" section
+    await expect(
+      page
+        .locator('[data-testid="unscheduled-task"]')
+        .filter({ hasText: "Task 2 - Will be unscheduled" })
+    ).toBeVisible();
+
+    // Navigate to step 3 (Plan Summary)
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
+
+    // Verify the final plan shows only Task 1 (Task 2 was unscheduled)
+    await expect(
+      page
+        .locator(".preview-item.task")
+        .filter({ hasText: "Task 1 - Keep scheduled" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".preview-item.task")
+        .filter({ hasText: "Task 2 - Will be unscheduled" })
+    ).not.toBeVisible();
+
+    // Confirm the plan
+    await page.click('[data-testid="confirm-button"]');
+
+    // Wait for confirmation by checking for success notice or daily note creation
+    await page.waitForFunction(
+      () => {
+        // Check if daily note was created or if we got a success notice
+        const notices = document.querySelectorAll(".notice");
+        const noticeTexts = Array.from(notices).map((n) => n.textContent || "");
+        return noticeTexts.some(
+          (text) =>
+            text.includes("Daily plan") ||
+            text.includes("created") ||
+            text.includes("success")
+        );
+      },
+      undefined,
+      { timeout: 2500 }
+    );
+
+    // NOW THE CRITICAL TEST: Reopen the daily planning wizard
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open again
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Navigate to step 2 (Today's Agenda)
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // CRITICAL ASSERTION: The schedule state should match what was confirmed
+    // Task 1 should be visible in today's tasks
+    await expect(
+      page.locator(".task-item").filter({ hasText: "Task 1 - Keep scheduled" })
+    ).toBeVisible();
+
+    // Task 2 should NOT be in today's tasks (it was unscheduled)
+    // This is the bug - currently Task 2 will reappear because the wizard
+    // loads from task store (which still has Task 2 with doDate=today)
+    // instead of from the schedule (which has the correct state)
+    const task2Count = await page
+      .locator(".task-item")
+      .filter({ hasText: "Task 2 - Will be unscheduled" })
+      .count();
+
+    // This should be 0, but if the bug exists, it will be > 0
+    expect(task2Count).toBe(0);
+
+    // Navigate to step 3 to verify final plan
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
+
+    // Final plan should show only Task 1
+    await expect(
+      page
+        .locator(".preview-item.task")
+        .filter({ hasText: "Task 1 - Keep scheduled" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator(".preview-item.task")
+        .filter({ hasText: "Task 2 - Will be unscheduled" })
+    ).not.toBeVisible();
+  });
+
+  test("should open daily planning wizard and display all 3 steps", async ({
+    page,
+  }) => {
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // STEP 1: Review Yesterday's Tasks
+    await expect(page.locator('[data-testid="step-1-content"]')).toBeVisible();
+    await expect(
+      page.locator("h3").filter({ hasText: "Review Yesterday" })
+    ).toBeVisible();
+
+    // Navigate to step 2
+    await page.click('[data-testid="next-button"]');
+
+    // STEP 2: Today's Agenda
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+    await expect(
+      page.locator("h3").filter({ hasText: "Today's Agenda" })
+    ).toBeVisible();
+
+    // Navigate to step 3
+    await page.click('[data-testid="next-button"]');
+
+    // STEP 3: Plan Summary
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
+    await expect(
+      page.locator("h3").filter({ hasText: "Plan Summary" })
+    ).toBeVisible();
+  });
+
+  test("should handle yesterday's unfinished tasks", async ({ page }) => {
+    const yesterdayString = getYesterdayString();
+
+    // Create a task scheduled for yesterday using the proper helper
+    // Note: Daily planning uses doDate, not dueDate
+    const task = await createTask(page, {
+      title: "Yesterday Task",
+      description: "A task that was scheduled for yesterday but not completed.",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: yesterdayString,
+    });
+
+    expect(task).toBeTruthy();
+    expect(task.title).toBe("Yesterday Task");
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // STEP 1: Should show yesterday's unfinished task
+    await expect(page.locator('[data-testid="step-1-content"]')).toBeVisible();
+
+    // Look for the task in the not completed section - use more specific locator
+    await expect(
+      page.locator('[data-testid="not-completed-task"]')
+    ).toBeVisible();
+
+    // Use more specific locator within the not-completed-task element
+    await expect(
+      page
+        .locator('[data-testid="not-completed-task"] .task-title')
+        .filter({ hasText: "Yesterday Task" })
+    ).toBeVisible();
+
+    // Click "Move to Today" button
+    const moveToTodayButton = page.locator(
+      '[data-testid="move-to-today-button"]'
+    );
+    if (await moveToTodayButton.isVisible()) {
+      await moveToTodayButton.click();
+      // Wait for the wizard to process the action
+      await waitForDailyPlanningUpdate(page);
+    }
+  });
+
+  test("should display today's scheduled tasks in step 2", async ({ page }) => {
+    const todayString = getTodayString();
+
+    // Create a task scheduled for today using the proper helper
+    // Note: Daily planning uses doDate, not dueDate
+    const task = await createTask(page, {
+      title: "Today Task",
+      description: "A task scheduled for today.",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task).toBeTruthy();
+    expect(task.title).toBe("Today Task");
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Navigate to step 2
+    await page.click('[data-testid="next-button"]');
+
+    // STEP 2: Should show today's scheduled task
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Look for today's task in the agenda - use more specific locator
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Today Task" })
+    ).toBeVisible();
+  });
+
+  test("should show plan summary in step 3", async ({ page }) => {
+    const todayString = getTodayString();
+
+    // Create a task for the plan summary using the proper helper
+    // Note: Daily planning uses doDate, not dueDate
+    const task = await createTask(page, {
+      title: "Summary Task",
+      description: "A task for testing plan summary.",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task).toBeTruthy();
+    expect(task.title).toBe("Summary Task");
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Navigate through steps to reach step 3
+    await page.click('[data-testid="next-button"]');
+    await page.click('[data-testid="next-button"]');
+
+    // STEP 3: Plan Summary
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
+
+    // Should show the task in the plan summary - use more specific locator
+    await expect(
+      page
+        .locator('[data-testid="step-3-content"] .preview-title')
+        .filter({ hasText: "Summary Task" })
+    ).toBeVisible();
+
+    // Should have a confirm button
+    await expect(page.locator('[data-testid="confirm-button"]')).toBeVisible();
+  });
+
+  test("should handle empty state when no tasks exist", async ({ page }) => {
+    // Start daily planning without creating any tasks
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // STEP 1: Should show empty state for yesterday's tasks
+    await expect(page.locator('[data-testid="step-1-content"]')).toBeVisible();
+
+    // Navigate to step 2
+    await page.click('[data-testid="next-button"]');
+
+    // STEP 2: Should show empty state for today's agenda
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Navigate to step 3
+    await page.click('[data-testid="next-button"]');
+
+    // STEP 3: Should show empty plan summary
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
+  });
+
+  test("should close daily planning view when command is executed again", async ({
+    page,
+  }) => {
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Execute command again to activate existing view
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // View should still be visible (activated, not closed)
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible();
+  });
+
+  test("should handle multiple yesterday tasks and move them to today", async ({
+    page,
+  }) => {
+    const yesterdayString = getYesterdayString();
+
+    // Create multiple tasks scheduled for yesterday using the proper helper
+    // Note: Daily planning uses doDate, not dueDate
+    const tasks: any[] = [];
+    for (let i = 1; i <= 3; i++) {
+      const task = await createTask(page, {
+        title: `Yesterday Task ${i}`,
+        description: `Task ${i} that was scheduled for yesterday.`,
+        status: "Not Started",
+        priority: "Medium",
+        done: false,
+        doDate: yesterdayString,
+      });
+      tasks.push(task);
+    }
+
+    expect(tasks).toHaveLength(3);
+    expect(tasks[0].title).toBe("Yesterday Task 1");
+    expect(tasks[1].title).toBe("Yesterday Task 2");
+    expect(tasks[2].title).toBe("Yesterday Task 3");
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // STEP 1: Should show all 3 yesterday tasks
+    await expect(page.locator('[data-testid="step-1-content"]')).toBeVisible();
+
+    // Wait for tasks to appear and check count
+    const yesterdayTasks = page.locator('[data-testid="not-completed-task"]');
+    await expect(yesterdayTasks).toHaveCount(3);
+
+    // Move all tasks to today
+    const moveToTodayButton = page.locator(
+      '[data-testid="move-to-today-button"]'
+    );
+    if (await moveToTodayButton.isVisible()) {
+      await moveToTodayButton.click();
+      await waitForDailyPlanningUpdate(page);
+    }
+
+    // Navigate to step 2 to verify tasks were moved
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Should see the moved tasks in today's agenda - use more specific locators
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Yesterday Task 1" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Yesterday Task 2" })
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Yesterday Task 3" })
+    ).toBeVisible();
+  });
+
+  test("should handle task scheduling and unscheduling in step 2", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create a task scheduled for today that we can unschedule in step 2
+    const task = await createTask(page, {
+      title: "Task to Unschedule",
+      description: "A task that will be unscheduled in step 2.",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString, // Schedule it for today first
+    });
+
+    expect(task).toBeTruthy();
+    expect(task.title).toBe("Task to Unschedule");
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Navigate to step 2
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Should show the scheduled task in today's tasks
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Task to Unschedule" })
+    ).toBeVisible();
+
+    // Test unscheduling functionality - click unschedule button
+    const unscheduleButton = page
+      .locator('[data-testid="unschedule-planning-button"]')
+      .first();
+    if (await unscheduleButton.isVisible()) {
+      await unscheduleButton.click();
+      await waitForTaskUnscheduled(page, "Task to Unschedule");
+
+      // After unscheduling, the task should appear in the staged for unscheduling section
+      await expect(
+        page
+          .locator(
+            '[data-testid="step-2-content"] [data-testid="unscheduled-task"] .task-title'
+          )
+          .filter({ hasText: "Task to Unschedule" })
+      ).toBeVisible();
+
+      // Test re-scheduling functionality
+      const rescheduleButton = page
+        .locator('[data-testid="schedule-task-button"]')
+        .first();
+      if (await rescheduleButton.isVisible()) {
+        await rescheduleButton.click();
+        await waitForDailyPlanningUpdate(page);
+      }
+    }
+  });
+
+  test("should complete full workflow and confirm plan", async ({ page }) => {
+    const todayString = getTodayString();
+
+    // Create a task for the complete workflow using the proper helper
+    // Note: Daily planning uses doDate, not dueDate
+    const task = await createTask(page, {
+      title: "Workflow Task",
+      description: "A task for testing the complete daily planning workflow.",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task).toBeTruthy();
+    expect(task.title).toBe("Workflow Task");
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Navigate through all steps
+    // Step 1
+    await expect(page.locator('[data-testid="step-1-content"]')).toBeVisible();
+    await page.click('[data-testid="next-button"]');
+
+    // Step 2
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Workflow Task" })
+    ).toBeVisible();
+    await page.click('[data-testid="next-button"]');
+
+    // Step 3
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible();
+    await expect(
+      page
+        .locator('[data-testid="step-3-content"] .preview-title')
+        .filter({ hasText: "Workflow Task" })
+    ).toBeVisible();
+
+    // Confirm the plan if button is available
+    const confirmButton = page.locator('[data-testid="confirm-button"]');
+    if (await confirmButton.isVisible()) {
+      await confirmButton.click();
+      // Wait for wizard to close after confirmation
+      await expect(
+        page.locator('[data-testid="daily-planning-view"]')
+      ).not.toBeVisible({ timeout: 2500 });
+    }
+  });
+
+  test("should close wizard when cancel button is clicked", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create a task for the daily plan
+    const task = await createTask(page, {
+      title: "Cancel Test Task",
+      description: "Task for testing cancel functionality.",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task).toBeTruthy();
+
+    // Start daily planning
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Click cancel button
+    const cancelButton = page.locator('[data-testid="cancel-button"]');
+    await cancelButton.click();
+
+    // Verify wizard is closed
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible();
+  });
+
+  test("should reflect freshly imported tasks when using 'Schedule for today'", async ({
+    page,
+  }) => {
+    // This test reproduces the bug where "Schedule for today" imports and stages tasks
+    // but they don't appear in the Daily Planning UI until refresh
+
+    // Start daily planning first
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Navigate to step 2 (Today's Agenda)
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Verify no tasks are initially scheduled
+    const initialTaskCount = await page
+      .locator('[data-testid="scheduled-task"]')
+      .count();
+    expect(initialTaskCount).toBe(0);
+
+    // Create a task using the "Schedule for today" functionality
+    // This simulates importing a GitHub issue with "Schedule for today"
+    const importedTask = await page.evaluate(async () => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+
+      // Create a task and immediately stage it for today (simulating GitHub import)
+      const taskOperations = plugin.operations.taskOperations;
+      const createdTask = await taskOperations.create({
+        title: "Freshly Imported Task",
+        description: "A task imported via 'Schedule for today'",
+        status: "Not Started",
+        priority: "Medium",
+        done: false,
+      });
+
+      // Stage the task for today (this is what "Schedule for today" does)
+      const dailyPlanningExtension =
+        plugin.host.getExtensionById("daily-planning");
+      if (dailyPlanningExtension) {
+        dailyPlanningExtension.scheduleTaskForToday(createdTask.id);
+      }
+
+      return createdTask;
+    });
+
+    expect(importedTask).toBeTruthy();
+    expect(importedTask.title).toBe("Freshly Imported Task");
+
+    // BUG: The task should now appear in the Daily Planning UI without needing to refresh
+    // Wait for task to be scheduled
+    await waitForTaskScheduled(page, "Freshly Imported Task", 5000);
+
+    // The task should appear in today's tasks section
+    await expect(
+      page
+        .locator('[data-testid="scheduled-task"] .task-title')
+        .filter({ hasText: "Freshly Imported Task" })
+    ).toBeVisible({ timeout: 2500 });
+
+    // Verify the task count has increased
+    const updatedTaskCount = await page
+      .locator('[data-testid="scheduled-task"]')
+      .count();
+    expect(updatedTaskCount).toBe(1);
+  });
+
+  test("should discover daily note location from Daily Notes core plugin", async ({
+    page,
+  }) => {
+    // This test verifies that the system uses Daily Notes core plugin settings
+    // when Periodic Notes is disabled
+
+    await openView(page, "task-sync-main");
+
+    // Disable Periodic Notes plugin to ensure Daily Notes core plugin is used
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+      const periodicNotesPlugin = app.plugins.plugins["periodic-notes"];
+      if (periodicNotesPlugin) {
+        await app.plugins.disablePlugin("periodic-notes");
+      }
+    });
+
+    // Start daily planning to trigger daily note discovery
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible();
+
+    // Navigate to step 3 and confirm the plan to trigger daily note creation
+    await page.click('[data-testid="next-button"]');
+    await page.click('[data-testid="next-button"]');
+    await page.click('[data-testid="confirm-button"]');
+
+    // Wait for wizard to close after confirmation
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 2500 });
+
+    // Check if daily note was created in the Daily Notes core plugin folder
+    const dailyNoteInfo = await page.evaluate(async () => {
+      const app = (window as any).app;
+      const today = new Date();
+      const dateString =
+        today.getFullYear() +
+        "-" +
+        String(today.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(today.getDate()).padStart(2, "0");
+
+      // Check if daily note exists in the Daily Notes core plugin folder
+      const dailyNotesPath = `Daily Notes/${dateString}.md`;
+      const dailyNotesFile = app.vault.getAbstractFileByPath(dailyNotesPath);
+
+      // Check if it was incorrectly created in Periodic Notes folder
+      const periodicNotesPath = `Periodic Daily Notes/${dateString}.md`;
+      const periodicNotesFile =
+        app.vault.getAbstractFileByPath(periodicNotesPath);
+
+      return {
+        dailyNotesExists: !!dailyNotesFile,
+        periodicNotesExists: !!periodicNotesFile,
+        dailyNotesPath,
+        periodicNotesPath,
+      };
+    });
+
+    // The daily note should be created in the Daily Notes core plugin folder
+    expect(dailyNoteInfo.dailyNotesExists).toBe(true);
+
+    // The daily note should NOT be created in the Periodic Notes folder
+    expect(dailyNoteInfo.periodicNotesExists).toBe(false);
+  });
+
+  test("should discover daily note location from Periodic Notes plugin", async ({
+    page,
+  }) => {
+    // This test verifies that the system uses Periodic Notes plugin settings
+    // when Daily Notes core plugin is disabled
+
+    await openView(page, "task-sync-main");
+
+    // Disable Daily Notes core plugin to ensure Periodic Notes plugin is used
+    await page.evaluate(async () => {
+      const app = (window as any).app;
+
+      // Disable Daily Notes core plugin
+      const dailyNotesPlugin = app.internalPlugins.plugins["daily-notes"];
+      if (dailyNotesPlugin && dailyNotesPlugin.enabled) {
+        dailyNotesPlugin.enabled = false;
+        await app.internalPlugins.saveConfig();
+      }
+
+      // Ensure Periodic Notes plugin is enabled
+      const periodicNotesPluginEnabled =
+        app.plugins.isEnabled("periodic-notes");
+      if (!periodicNotesPluginEnabled) {
+        await app.plugins.enablePlugin("periodic-notes");
+      }
+    });
+
+    // Start daily planning to trigger daily note discovery
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible();
+
+    // Navigate to step 3 and confirm the plan to trigger daily note creation
+    await page.click('[data-testid="next-button"]');
+    await page.click('[data-testid="next-button"]');
+    await page.click('[data-testid="confirm-button"]');
+
+    // Wait for wizard to close after confirmation
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 2500 });
+
+    // Check if daily note was created in the Periodic Notes plugin folder
+    const dailyNoteInfo = await page.evaluate(async () => {
+      const app = (window as any).app;
+      const today = new Date();
+      const dateString =
+        today.getFullYear() +
+        "-" +
+        String(today.getMonth() + 1).padStart(2, "0") +
+        "-" +
+        String(today.getDate()).padStart(2, "0");
+
+      // Check if daily note exists in the Periodic Notes plugin folder
+      const periodicNotesPath = `Periodic Daily Notes/${dateString}.md`;
+      const periodicNotesFile =
+        app.vault.getAbstractFileByPath(periodicNotesPath);
+
+      // Check if it was incorrectly created in Daily Notes core plugin folder
+      const dailyNotesPath = `Daily Notes/${dateString}.md`;
+      const dailyNotesFile = app.vault.getAbstractFileByPath(dailyNotesPath);
+
+      // Debug: Check plugin states and discovery utility
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const dailyNoteFeature =
+        plugin?.host?.obsidianExtension?.dailyNoteFeature;
+
+      let discoveredPath = null;
+      let discoveredSettings = null;
+      if (dailyNoteFeature) {
+        discoveredPath = await dailyNoteFeature.getTodayDailyNotePath();
+        // Also test the discovery utility directly
+        const { discoverDailyNoteSettings } =
+          plugin.host.obsidianExtension.constructor;
+        if (discoverDailyNoteSettings) {
+          discoveredSettings = discoverDailyNoteSettings(app, "Fallback");
+        }
+      }
+
+      return {
+        periodicNotesExists: !!periodicNotesFile,
+        dailyNotesExists: !!dailyNotesFile,
+        periodicNotesPath,
+        dailyNotesPath,
+        discoveredPath,
+        discoveredSettings,
+        dailyNotesPluginEnabled:
+          app.internalPlugins.plugins["daily-notes"]?.enabled,
+        periodicNotesPluginEnabled: app.plugins.isEnabled("periodic-notes"),
+      };
+    });
+
+    // The daily note should be created in the Periodic Notes plugin folder
+    expect(dailyNoteInfo.periodicNotesExists).toBe(true);
+
+    // The daily note should NOT be created in the Daily Notes core plugin folder
+    expect(dailyNoteInfo.dailyNotesExists).toBe(false);
+  });
+
+  test("should include imported tasks in daily note when confirming plan", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Set up GitHub integration
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service to be ready
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 2500,
+      }
+    );
+
+    // Start Daily Planning wizard
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for daily planning view to open
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Navigate to step 2 (Today's Agenda)
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
+
+    // Import a GitHub issue while in the wizard
+    // First, switch to the Tasks view tab (wizard stays open in background)
+    const tasksViewTab = page.locator('[data-testid="tasks-view-tab"]');
+    await tasksViewTab.click();
+
+    // Switch to GitHub service
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Wait for issues to load
+    await expect(
+      page.locator('[data-testid="github-issues-list"]')
+    ).toBeVisible({ timeout: 2500 });
+
+    // Find the first issue and import it
+    const firstIssue = page
+      .locator('[data-testid="github-issue-item"]')
+      .first();
+    await firstIssue.waitFor({ state: "visible", timeout: 2500 });
+    await firstIssue.hover();
+
+    // Click "Schedule for today" button (should be visible because wizard is active)
+    const scheduleButton = page
+      .locator('[data-testid="schedule-for-today-button"]')
+      .first();
+    await scheduleButton.waitFor({ state: "visible", timeout: 2500 });
+    await scheduleButton.click();
+
+    // Wait for import to complete and wizard state to update
+    await waitForDailyPlanningUpdate(page, 3000);
+
+    // Now complete the daily planning wizard
+    // Use the command palette to navigate directly to confirm
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+
+    // Wait for wizard to be visible
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 2500 });
+
+    // We should be on step 2 still, navigate to step 3
+    await page.click('[data-testid="next-button"]');
+    await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible({
+      timeout: 2500,
+    });
+
+    // Confirm the plan
+    const confirmButton = page.locator('[data-testid="confirm-button"]');
+    await confirmButton.waitFor({ state: "visible", timeout: 2500 });
+    await confirmButton.click();
+
+    // Wait for daily note to be updated
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+    await waitForDailyNoteUpdate(page, dailyNotePath, "test issue", 10000);
+
+    // Verify daily note was created and contains the imported task
+
+    const dailyNoteContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    // Verify daily note exists
+    expect(dailyNoteContent).toBeTruthy();
+
+    // Verify daily note contains an imported GitHub issue
+    // The test imports whichever issue is first in the list (depends on sort order)
+    // Could be any of: "First test issue", "Second test issue", "Third test issue"
+    const hasTestIssue =
+      dailyNoteContent.includes("First test issue") ||
+      dailyNoteContent.includes("Second test issue") ||
+      dailyNoteContent.includes("Third test issue");
+    expect(hasTestIssue).toBe(true);
+
+    // Verify the task link format is correct
+    expect(dailyNoteContent).toContain("## Tasks");
+    expect(dailyNoteContent).toContain("- [ ] [[Tasks/");
+  });
+
+  test("should not duplicate tasks when confirming schedule multiple times (idempotency)", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create 2 tasks for today
+    const task1 = await createTask(page, {
+      title: "Idempotency Test Task 1",
+      description: "First task for idempotency test",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Idempotency Test Task 2",
+      description: "Second task for idempotency test",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // FIRST CONFIRMATION: Start daily planning and confirm
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 2500 });
+
+    // Navigate through wizard to confirmation
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm
+
+    // Wait for daily note to be updated
+    await waitForDailyNoteUpdate(
+      page,
+      dailyNotePath,
+      "Idempotency Test Task",
+      10000
+    );
+
+    // Read daily note content after first confirmation
+    const dailyNoteContentAfterFirst = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(dailyNoteContentAfterFirst).toBeTruthy();
+    expect(dailyNoteContentAfterFirst).toContain("Idempotency Test Task 1");
+    expect(dailyNoteContentAfterFirst).toContain("Idempotency Test Task 2");
+
+    // Count task LINKS (lines with checkboxes) after first confirmation
+    // Use a more specific pattern that matches the full task link line
+    const task1CountFirst = (
+      dailyNoteContentAfterFirst!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 1.*\]\]$/gm
+      ) || []
+    ).length;
+    const task2CountFirst = (
+      dailyNoteContentAfterFirst!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 2.*\]\]$/gm
+      ) || []
+    ).length;
+
+    expect(task1CountFirst).toBe(1);
+    expect(task2CountFirst).toBe(1);
+
+    // SECOND CONFIRMATION: Reopen wizard and confirm again
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 2500 });
+
+    // Navigate through wizard to confirmation again
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm again
+
+    // Wait for wizard to close after confirmation
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 2500 });
+
+    // Read daily note content after second confirmation
+    const dailyNoteContentAfterSecond = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(dailyNoteContentAfterSecond).toBeTruthy();
+
+    // CRITICAL ASSERTION: Task link count should remain the same (no duplicates)
+    const task1CountSecond = (
+      dailyNoteContentAfterSecond!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 1.*\]\]$/gm
+      ) || []
+    ).length;
+    const task2CountSecond = (
+      dailyNoteContentAfterSecond!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 2.*\]\]$/gm
+      ) || []
+    ).length;
+
+    // These should still be 1, not 2 or more
+    expect(task1CountSecond).toBe(1);
+    expect(task2CountSecond).toBe(1);
+
+    // Verify content is identical after both confirmations
+    expect(dailyNoteContentAfterSecond).toBe(dailyNoteContentAfterFirst);
+
+    // THIRD CONFIRMATION: One more time to be absolutely sure
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 2500 });
+
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm third time
+
+    // Wait for wizard to close after confirmation
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 2500 });
+
+    // Read daily note content after third confirmation
+    const dailyNoteContentAfterThird = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(dailyNoteContentAfterThird).toBeTruthy();
+
+    // Final assertion: Still only 1 task link for each task
+    const task1CountThird = (
+      dailyNoteContentAfterThird!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 1.*\]\]$/gm
+      ) || []
+    ).length;
+    const task2CountThird = (
+      dailyNoteContentAfterThird!.match(
+        /^- \[ \] \[\[.*Idempotency Test Task 2.*\]\]$/gm
+      ) || []
+    ).length;
+
+    expect(task1CountThird).toBe(1);
+    expect(task2CountThird).toBe(1);
+
+    // Content should be identical across all confirmations
+    expect(dailyNoteContentAfterThird).toBe(dailyNoteContentAfterFirst);
+  });
+
+  test("should detect existing tasks in daily note and not duplicate them", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create tasks for today
+    const task1 = await createTask(page, {
+      title: "Pre-existing Task 1",
+      description: "First task that will be pre-existing in daily note",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Pre-existing Task 2",
+      description: "Second task that will be pre-existing in daily note",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // MANUALLY create daily note with existing task links to simulate the bug scenario
+    const preExistingContent = `# ${todayString}
+
+## Tasks
+- [ ] [[Tasks/Pre-existing Task 1|Pre-existing Task 1]]
+- [ ] [[Tasks/Pre-existing Task 2|Pre-existing Task 2]]
+
+## Notes
+
+## Reflections
+`;
+
+    // Create the daily note manually with existing tasks
+    await page.evaluate(
+      async ({ path, content }) => {
+        const app = (window as any).app;
+
+        // Ensure the Daily Notes folder exists
+        const folder = app.vault.getAbstractFileByPath("Daily Notes");
+        if (!folder) {
+          await app.vault.createFolder("Daily Notes");
+        }
+
+        // Create the daily note with pre-existing content
+        await app.vault.create(path, content);
+      },
+      { path: dailyNotePath, content: preExistingContent }
+    );
+
+    // Verify the daily note was created with existing tasks
+    const initialContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(initialContent).toBeTruthy();
+    expect(initialContent).toContain("Pre-existing Task 1");
+    expect(initialContent).toContain("Pre-existing Task 2");
+
+    // Count initial task links
+    const initialTask1Count = (
+      initialContent!.match(/^- \[ \] \[\[.*Pre-existing Task 1.*\]\]$/gm) || []
+    ).length;
+    const initialTask2Count = (
+      initialContent!.match(/^- \[ \] \[\[.*Pre-existing Task 2.*\]\]$/gm) || []
+    ).length;
+
+    expect(initialTask1Count).toBe(1);
+    expect(initialTask2Count).toBe(1);
+
+    // NOW run daily planning - it should detect existing tasks and NOT duplicate them
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 2500 });
+
+    // Navigate through wizard to confirmation
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm
+
+    // Wait for daily note to be updated
+    await waitForDailyNoteUpdate(
+      page,
+      dailyNotePath,
+      "Pre-existing Task",
+      10000
+    );
+
+    // Read daily note content after confirmation
+    const finalContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(finalContent).toBeTruthy();
+
+    // CRITICAL ASSERTION: Task count should remain the same (no duplicates added)
+    const finalTask1Count = (
+      finalContent!.match(/^- \[ \] \[\[.*Pre-existing Task 1.*\]\]$/gm) || []
+    ).length;
+    const finalTask2Count = (
+      finalContent!.match(/^- \[ \] \[\[.*Pre-existing Task 2.*\]\]$/gm) || []
+    ).length;
+
+    // These should still be 1, not 2 (which would indicate duplication)
+    expect(finalTask1Count).toBe(1);
+    expect(finalTask2Count).toBe(1);
+
+    // Content should be identical (no new tasks added since they already existed)
+    expect(finalContent).toBe(initialContent);
+  });
+
+  test("should detect existing tasks with different link formats and not duplicate them", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create tasks for today
+    const task1 = await createTask(page, {
+      title: "Format Test Task 1",
+      description: "Task to test different link formats",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Format Test Task 2",
+      description: "Another task to test different link formats",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // Create daily note with DIFFERENT link format than what DailyNoteFeature generates
+    // DailyNoteFeature generates: [[Tasks/Task Name|Task Name]]
+    // DailyPlanningExtension generates: [[Task Name]]
+    // Let's test with the DailyPlanningExtension format to see if DailyNoteFeature detects it
+    const preExistingContent = `# ${todayString}
+
+## Tasks
+- [ ] [[Format Test Task 1]]
+- [ ] [[Format Test Task 2]]
+
+## Notes
+
+## Reflections
+`;
+
+    // Create the daily note manually with existing tasks in DailyPlanningExtension format
+    await page.evaluate(
+      async ({ path, content }) => {
+        const app = (window as any).app;
+
+        // Ensure the Daily Notes folder exists
+        const folder = app.vault.getAbstractFileByPath("Daily Notes");
+        if (!folder) {
+          await app.vault.createFolder("Daily Notes");
+        }
+
+        // Create the daily note with pre-existing content
+        await app.vault.create(path, content);
+      },
+      { path: dailyNotePath, content: preExistingContent }
+    );
+
+    // Verify the daily note was created with existing tasks
+    const initialContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(initialContent).toBeTruthy();
+    expect(initialContent).toContain("Format Test Task 1");
+    expect(initialContent).toContain("Format Test Task 2");
+
+    // Count initial task links (DailyPlanningExtension format)
+    const initialTask1Count = (
+      initialContent!.match(/^- \[ \] \[\[Format Test Task 1\]\]$/gm) || []
+    ).length;
+    const initialTask2Count = (
+      initialContent!.match(/^- \[ \] \[\[Format Test Task 2\]\]$/gm) || []
+    ).length;
+
+    expect(initialTask1Count).toBe(1);
+    expect(initialTask2Count).toBe(1);
+
+    // NOW run daily planning - DailyNoteFeature should detect existing tasks despite different format
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 2500 });
+
+    // Navigate through wizard to confirmation
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm
+
+    // Wait for daily note to be updated
+    await waitForDailyNoteUpdate(
+      page,
+      dailyNotePath,
+      "Format Test Task",
+      10000
+    );
+
+    // Read daily note content after confirmation
+    const finalContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(finalContent).toBeTruthy();
+
+    // CRITICAL ASSERTION: Check if tasks were duplicated due to format mismatch
+    // Count both formats to see if duplicates were added
+    const finalTask1SimpleCount = (
+      finalContent!.match(/^- \[ \] \[\[Format Test Task 1\]\]$/gm) || []
+    ).length;
+    const finalTask2SimpleCount = (
+      finalContent!.match(/^- \[ \] \[\[Format Test Task 2\]\]$/gm) || []
+    ).length;
+
+    const finalTask1FullCount = (
+      finalContent!.match(
+        /^- \[ \] \[\[Tasks\/Format Test Task 1\|Format Test Task 1\]\]$/gm
+      ) || []
+    ).length;
+    const finalTask2FullCount = (
+      finalContent!.match(
+        /^- \[ \] \[\[Tasks\/Format Test Task 2\|Format Test Task 2\]\]$/gm
+      ) || []
+    ).length;
+
+    // If the bug exists, we'll see both formats (duplication)
+    // If the bug is fixed, we should only see the original format (no duplication)
+    const totalTask1Count = finalTask1SimpleCount + finalTask1FullCount;
+    const totalTask2Count = finalTask2SimpleCount + finalTask2FullCount;
+
+    // These should still be 1 total, not 2 (which would indicate duplication)
+    expect(totalTask1Count).toBe(1);
+    expect(totalTask2Count).toBe(1);
+
+    // The original simple format should still be there
+    expect(finalTask1SimpleCount).toBe(1);
+    expect(finalTask2SimpleCount).toBe(1);
+
+    // No full format should have been added (no duplication)
+    expect(finalTask1FullCount).toBe(0);
+    expect(finalTask2FullCount).toBe(0);
+  });
+
+  test("should detect existing tasks when metadata cache is not immediately available", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create tasks for today
+    const task1 = await createTask(page, {
+      title: "Cache Test Task 1",
+      description: "Task to test metadata cache timing",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Cache Test Task 2",
+      description: "Another task to test metadata cache timing",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // Create daily note with simple link format (like DailyPlanningExtension creates)
+    const preExistingContent = `# ${todayString}
+
+## Tasks
+- [ ] [[Cache Test Task 1]]
+- [ ] [[Cache Test Task 2]]
+
+## Notes
+
+## Reflections
+`;
+
+    // Create the daily note manually
+    await page.evaluate(
+      async ({ path, content }) => {
+        const app = (window as any).app;
+
+        // Ensure the Daily Notes folder exists
+        const folder = app.vault.getAbstractFileByPath("Daily Notes");
+        if (!folder) {
+          await app.vault.createFolder("Daily Notes");
+        }
+
+        // Create the daily note with pre-existing content
+        await app.vault.create(path, content);
+
+        // Force metadata cache refresh to simulate timing issues
+        await app.metadataCache.trigger(
+          "changed",
+          app.vault.getAbstractFileByPath(path)
+        );
+      },
+      { path: dailyNotePath, content: preExistingContent }
+    );
+
+    // Wait for file to be processed
+    await waitForDailyNoteUpdate(page, dailyNotePath, undefined, 10000);
+
+    // Verify the daily note was created with existing tasks
+    const initialContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(initialContent).toBeTruthy();
+    expect(initialContent).toContain("Cache Test Task 1");
+    expect(initialContent).toContain("Cache Test Task 2");
+
+    // NOW run daily planning immediately - this might trigger the bug if metadata cache isn't ready
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 2500 });
+
+    // Navigate through wizard to confirmation quickly
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm
+
+    // Wait for daily note to be updated (file already exists, just wait for it to be processed)
+    await waitForDailyNoteUpdate(page, dailyNotePath, "Cache Test Task", 10000);
+
+    // Read daily note content after confirmation
+    const finalContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(finalContent).toBeTruthy();
+
+    // Check for duplication - count all task link formats
+    const simpleTask1Count = (
+      finalContent!.match(/^- \[ \] \[\[Cache Test Task 1\]\]$/gm) || []
+    ).length;
+    const simpleTask2Count = (
+      finalContent!.match(/^- \[ \] \[\[Cache Test Task 2\]\]$/gm) || []
+    ).length;
+
+    const fullTask1Count = (
+      finalContent!.match(
+        /^- \[ \] \[\[Tasks\/Cache Test Task 1\|Cache Test Task 1\]\]$/gm
+      ) || []
+    ).length;
+    const fullTask2Count = (
+      finalContent!.match(
+        /^- \[ \] \[\[Tasks\/Cache Test Task 2\|Cache Test Task 2\]\]$/gm
+      ) || []
+    ).length;
+
+    // Log for debugging
+    const totalTask1Count = simpleTask1Count + fullTask1Count;
+    const totalTask2Count = simpleTask2Count + fullTask2Count;
+
+    expect(totalTask1Count).toBe(1);
+    expect(totalTask2Count).toBe(1);
+  });
+
+  test("should detect existing tasks with different section headers and not duplicate them", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create tasks for today
+    const task1 = await createTask(page, {
+      title: "Section Header Test Task 1",
+      description: "Task to test section header mismatch",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Section Header Test Task 2",
+      description: "Another task to test section header mismatch",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // Create daily note with "## Tasks" header (like DailyPlanningExtension creates)
+    // Both DailyPlanningExtension and DailyNoteFeature now use the same "## Tasks" header
+    const preExistingContent = `# ${todayString}
+
+## Tasks
+- [ ] [[Section Header Test Task 1]]
+- [ ] [[Section Header Test Task 2]]
+
+## Notes
+
+## Reflections
+`;
+
+    // Create the daily note manually with DailyPlanningExtension format
+    await page.evaluate(
+      async ({ path, content }) => {
+        const app = (window as any).app;
+
+        // Ensure the Daily Notes folder exists
+        const folder = app.vault.getAbstractFileByPath("Daily Notes");
+        if (!folder) {
+          await app.vault.createFolder("Daily Notes");
+        }
+
+        // Create the daily note with pre-existing content
+        await app.vault.create(path, content);
+      },
+      { path: dailyNotePath, content: preExistingContent }
+    );
+
+    // Verify the daily note was created with existing tasks under "## Tasks"
+    const initialContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(initialContent).toBeTruthy();
+    expect(initialContent).toContain("## Tasks");
+    expect(initialContent).toContain("Section Header Test Task 1");
+    expect(initialContent).toContain("Section Header Test Task 2");
+
+    // Count initial task links under "## Tasks"
+    const initialTask1Count = (
+      initialContent!.match(/^- \[ \] \[\[Section Header Test Task 1\]\]$/gm) ||
+      []
+    ).length;
+    const initialTask2Count = (
+      initialContent!.match(/^- \[ \] \[\[Section Header Test Task 2\]\]$/gm) ||
+      []
+    ).length;
+
+    expect(initialTask1Count).toBe(1);
+    expect(initialTask2Count).toBe(1);
+
+    // NOW run daily planning - DailyNoteFeature should detect existing tasks under "## Tasks"
+    // and not create duplicates
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 2500 });
+
+    // Navigate through wizard to confirmation
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm
+
+    // Wait for wizard to close
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 2500 });
+
+    // Wait for daily note processing (file already exists, wizard may or may not modify it)
+    await waitForDailyNoteUpdate(page, dailyNotePath, undefined, 10000);
+
+    // Read daily note content after confirmation
+    const finalContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(finalContent).toBeTruthy();
+
+    // Count tasks in the Tasks section (now unified header)
+    const tasksUnderTasksSection =
+      finalContent!.match(/## Tasks[\s\S]*?(?=\n## |$)/)?.[0] || "";
+
+    const task1InTasksSection = (
+      tasksUnderTasksSection.match(
+        /^- \[ \] \[\[.*Section Header Test Task 1.*\]\]$/gm
+      ) || []
+    ).length;
+    const task2InTasksSection = (
+      tasksUnderTasksSection.match(
+        /^- \[ \] \[\[.*Section Header Test Task 2.*\]\]$/gm
+      ) || []
+    ).length;
+
+    // Total count should be 1 per task (no duplication)
+    const totalTask1Count = task1InTasksSection;
+    const totalTask2Count = task2InTasksSection;
+
+    expect(totalTask1Count).toBe(1);
+    expect(totalTask2Count).toBe(1);
+
+    // Verify there's only one "## Tasks" section
+    const tasksSectionMatches = finalContent!.match(/^## Tasks$/gm) || [];
+    expect(tasksSectionMatches.length).toBe(1);
+  });
+
+  test("should detect existing tasks when links don't resolve to task files immediately", async ({
+    page,
+  }) => {
+    const todayString = getTodayString();
+
+    // Create tasks for today
+    const task1 = await createTask(page, {
+      title: "Resolution Test Task 1",
+      description: "Task to test link resolution timing",
+      status: "Not Started",
+      priority: "High",
+      done: false,
+      doDate: todayString,
+    });
+
+    const task2 = await createTask(page, {
+      title: "Resolution Test Task 2",
+      description: "Another task to test link resolution timing",
+      status: "Not Started",
+      priority: "Medium",
+      done: false,
+      doDate: todayString,
+    });
+
+    expect(task1).toBeTruthy();
+    expect(task2).toBeTruthy();
+
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
+    // Create daily note with task links that might not resolve immediately
+    // Use the exact format that might cause resolution issues
+    const preExistingContent = `# ${todayString}
+
+## Tasks
+- [ ] [[Resolution Test Task 1]]
+- [ ] [[Resolution Test Task 2]]
+`;
+
+    // Create the daily note manually
+    await page.evaluate(
+      async ({ path, content }) => {
+        const app = (window as any).app;
+
+        // Ensure the Daily Notes folder exists
+        const folder = app.vault.getAbstractFileByPath("Daily Notes");
+        if (!folder) {
+          await app.vault.createFolder("Daily Notes");
+        }
+
+        // Create the daily note with pre-existing content
+        await app.vault.create(path, content);
+      },
+      { path: dailyNotePath, content: preExistingContent }
+    );
+
+    // Immediately run daily planning without waiting for metadata cache to settle
+    // This might trigger the bug if the parser can't resolve the links yet
+    await executeCommand(page, "Task Sync: Start Daily Planning");
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).toBeVisible({ timeout: 2500 });
+
+    // Navigate through wizard to confirmation quickly
+    await page.click('[data-testid="next-button"]'); // Step 2
+    await page.click('[data-testid="next-button"]'); // Step 3
+    await page.click('[data-testid="confirm-button"]'); // Confirm
+
+    // Wait for wizard to close
+    await expect(
+      page.locator('[data-testid="daily-planning-view"]')
+    ).not.toBeVisible({ timeout: 2500 });
+
+    // Wait for daily note processing (file already exists with tasks)
+    await waitForDailyNoteUpdate(
+      page,
+      dailyNotePath,
+      "Resolution Test Task",
+      10000
+    );
+
+    // Read daily note content after confirmation
+    const finalContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    expect(finalContent).toBeTruthy();
+
+    // Check for duplication - count all possible task link formats
+    const simpleTask1Count = (
+      finalContent!.match(/^- \[ \] \[\[Resolution Test Task 1\]\]$/gm) || []
+    ).length;
+    const simpleTask2Count = (
+      finalContent!.match(/^- \[ \] \[\[Resolution Test Task 2\]\]$/gm) || []
+    ).length;
+
+    const fullTask1Count = (
+      finalContent!.match(
+        /^- \[ \] \[\[Tasks\/Resolution Test Task 1\|Resolution Test Task 1\]\]$/gm
+      ) || []
+    ).length;
+    const fullTask2Count = (
+      finalContent!.match(
+        /^- \[ \] \[\[Tasks\/Resolution Test Task 2\|Resolution Test Task 2\]\]$/gm
+      ) || []
+    ).length;
+
+    // Total count should be 1 per task (no duplication)
+    const totalTask1Count = simpleTask1Count + fullTask1Count;
+    const totalTask2Count = simpleTask2Count + fullTask2Count;
+
+    expect(totalTask1Count).toBe(1);
+    expect(totalTask2Count).toBe(1);
+  });
+});
