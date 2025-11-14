@@ -117,9 +117,7 @@ export async function refreshTasks(page: Page): Promise<void> {
     '[data-testid="task-sync-local-refresh-button"]'
   );
   await refreshButton.click();
-
-  // Just wait a bit for the refresh to start
-  await page.waitForTimeout(100);
+  // Refresh is expected to be instant; no need to wait for UI state changes
 }
 
 /**
@@ -189,8 +187,19 @@ export async function clearAllFilters(page: Page): Promise<void> {
     // Click the first clear button (always index 0 since we re-query)
     await clearButtons.first().click();
 
-    // Wait for the button to disappear
-    await page.waitForTimeout(300);
+    // Wait for the button to actually disappear using waitForFunction
+    await page
+      .waitForFunction(
+        (previousCount) => {
+          const buttons = document.querySelectorAll(".filter-clear-button");
+          return buttons.length < previousCount;
+        },
+        count,
+        { timeout: 1000, polling: 50 }
+      )
+      .catch(() => {
+        // Button might have been removed instantly
+      });
 
     attempts++;
   }
@@ -201,7 +210,7 @@ export async function clearAllFilters(page: Page): Promise<void> {
       const buttons = document.querySelectorAll(".filter-clear-button");
       return buttons.length === 0;
     },
-    undefined,
+    {},
     { timeout: 3000 }
   );
 }

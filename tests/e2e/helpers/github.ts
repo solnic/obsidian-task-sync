@@ -20,7 +20,16 @@ export async function openSettings(page: Page): Promise<void> {
     .locator(".vertical-tab-nav-item")
     .filter({ hasText: "Task Sync" });
   await taskSyncTab.click();
-  await page.waitForTimeout(500);
+  
+  // Wait for Task Sync settings to become visible
+  await page.waitForFunction(
+    () => {
+      const content = document.querySelector(".vertical-tab-content");
+      return content && content.textContent?.includes("Task Sync");
+    },
+    {},
+    { timeout: 2000, polling: 100 }
+  );
 }
 
 /**
@@ -42,7 +51,20 @@ export async function enableGitHubIntegration(
   await toggle.click();
 
   // Wait for additional settings to appear
-  await page.waitForTimeout(1000);
+  await page.waitForFunction(
+    () => {
+      const settings = document.querySelectorAll(".setting-item");
+      for (const setting of settings) {
+        const nameEl = setting.querySelector(".setting-item-name");
+        if (nameEl && nameEl.textContent?.includes("GitHub Personal Access Token")) {
+          return true;
+        }
+      }
+      return false;
+    },
+    {},
+    { timeout: 3000, polling: 100 }
+  );
 
   // Configure personal access token
   const tokenSetting = page.locator(".setting-item").filter({
@@ -97,7 +119,9 @@ export async function openTasksView(page: Page): Promise<void> {
   await page.keyboard.press("Control+p");
   await page.fill(".prompt-input", "Tasks");
   await page.keyboard.press("Enter");
-  await page.waitForTimeout(1000);
+  
+  // Wait for command palette to close
+  await page.waitForSelector(".prompt-input", { state: "hidden", timeout: 3000 });
 
   // Wait for Tasks view to be visible
   await page.waitForSelector('[data-testid="tasks-view"]', { timeout: 10000 });
@@ -109,12 +133,21 @@ export async function openTasksView(page: Page): Promise<void> {
 export async function switchToGitHubService(page: Page): Promise<void> {
   const githubTab = page.locator('[data-testid="service-github"]');
   await githubTab.click();
-  await page.waitForTimeout(1000);
 
   // Wait for GitHub service content to load
   await page.waitForSelector('[data-testid="github-service"]', {
     timeout: 10000,
   });
+  
+  // Wait for service to be fully initialized
+  await page.waitForFunction(
+    () => {
+      const service = document.querySelector('[data-testid="github-service"]');
+      return service && service.textContent && service.textContent.length > 0;
+    },
+    {},
+    { timeout: 3000, polling: 100 }
+  );
 }
 
 /**
@@ -143,7 +176,29 @@ export async function selectRepository(
     await repoOption.click();
   }
 
-  await page.waitForTimeout(1000);
+  // Wait for repository selection to be applied
+  await page
+    .waitForFunction(
+      (selectedRepo) => {
+        const selector = document.querySelector('[data-testid="repository-filter"]') as HTMLSelectElement;
+        if (selector) {
+          return selector.value === selectedRepo;
+        }
+        // Fallback: check if repository name appears in UI
+        const repoElements = document.querySelectorAll(".repository-selector, .selected-repository");
+        for (const el of repoElements) {
+          if (el.textContent?.includes(selectedRepo)) {
+            return true;
+          }
+        }
+        return false;
+      },
+      repository,
+      { timeout: 3000, polling: 100 }
+    )
+    .catch(() => {
+      // Selection might have been applied instantly
+    });
 }
 
 /**
@@ -160,10 +215,12 @@ export async function importGitHubIssue(
 
   // Hover over the issue to reveal import button
   await issueItem.hover();
-  await page.waitForTimeout(200);
+  
+  // Wait for import button to appear after hover
+  const importButton = issueItem.locator('[data-testid="issue-import-button"]');
+  await importButton.waitFor({ state: "visible", timeout: 2000 });
 
   // Click the import button
-  const importButton = issueItem.locator('[data-testid="issue-import-button"]');
   await importButton.click();
 
   // Wait for import to complete
@@ -199,7 +256,16 @@ export async function verifyTaskInLocalTasks(
   // Switch to Local Tasks service
   const localTasksTab = page.locator('[data-testid="service-local"]');
   await localTasksTab.click();
-  await page.waitForTimeout(1000);
+  
+  // Wait for local tasks to load
+  await page.waitForFunction(
+    () => {
+      const service = document.querySelector('[data-testid="local-service"]');
+      return service && service.textContent && service.textContent.length > 0;
+    },
+    {},
+    { timeout: 3000, polling: 100 }
+  );
 
   // Find the task by title
   const taskItem = page.locator('[data-testid="local-task-item"]').filter({

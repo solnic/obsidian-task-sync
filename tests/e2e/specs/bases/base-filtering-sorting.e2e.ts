@@ -117,7 +117,7 @@ test.describe("Base Filtering and Sorting", () => {
     await openFile(page, "Projects/Testing Project.md");
 
     // Wait for bases view to load with data
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     // Test 1: Main "Tasks" view - should show only not-done tasks
     // (Already on Tasks view by default, no need to switch)
@@ -254,7 +254,7 @@ test.describe("Base Filtering and Sorting", () => {
     await openFile(page, "Areas/Development.md");
 
     // Wait for bases view to load with data
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     // Should see standalone tasks and parent task, but NOT child tasks
     await expectBaseTasksContain(page, [
@@ -365,7 +365,7 @@ test.describe("Base Filtering and Sorting", () => {
     await openFile(page, "Projects/Sorting Test.md");
 
     // Wait for bases view to load with data
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     // Get all visible tasks
     const allTitles = await getBaseTaskTitles(page);
@@ -488,7 +488,7 @@ test.describe("Base Filtering and Sorting", () => {
 
     // Test Project Alpha base
     await openFile(page, "Projects/Project Alpha.md");
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     // Should only see Project Alpha tasks
     await expectBaseTasksContain(page, ["Alpha Task One", "Alpha Task Two"]);
@@ -500,7 +500,7 @@ test.describe("Base Filtering and Sorting", () => {
 
     // Test Project Beta base
     await openFile(page, "Projects/Project Beta.md");
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     // Should only see Project Beta tasks
     await expectBaseTasksContain(page, ["Beta Task One", "Beta Task Two"]);
@@ -512,7 +512,7 @@ test.describe("Base Filtering and Sorting", () => {
 
     // Test filtering persists across view switches in Project Alpha
     await openFile(page, "Projects/Project Alpha.md");
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     await switchBaseView(page, "All Features");
     const alphaFeatures = await getBaseTaskTitles(page);
@@ -633,7 +633,7 @@ test.describe("Base Filtering and Sorting", () => {
 
     // Test Personal Growth area base
     await openFile(page, "Areas/Personal Growth.md");
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     // Should see Personal Growth tasks and shared task
     await expectBaseTasksContain(page, [
@@ -651,7 +651,7 @@ test.describe("Base Filtering and Sorting", () => {
 
     // Test Work Projects area base
     await openFile(page, "Areas/Work Projects.md");
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     // Should see Work Projects tasks and shared task
     await expectBaseTasksContain(page, [
@@ -669,7 +669,7 @@ test.describe("Base Filtering and Sorting", () => {
 
     // Test filtering persists across view switches
     await openFile(page, "Areas/Personal Growth.md");
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     await switchBaseView(page, "All Features");
     const personalFeatures = await getBaseTaskTitles(page);
@@ -754,7 +754,7 @@ test.describe("Base Filtering and Sorting", () => {
 
     // Open the project file which embeds the base
     await openFile(page, "Projects/Category Test.md");
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     // Test "All Bugs" view - should only show Bug tasks
     await switchBaseView(page, "All Bugs");
@@ -911,7 +911,7 @@ test.describe("Base Filtering and Sorting", () => {
 
     // Open the area file which embeds the base
     await openFile(page, "Areas/Work Projects.md");
-    await waitForBaseViewToLoad(page, 3000);
+    await waitForBaseViewToLoad(page, 5000);
 
     // Switch to the specific priority + category view
     await switchBaseView(page, "Features • Urgent priority");

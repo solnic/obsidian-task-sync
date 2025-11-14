@@ -122,8 +122,8 @@ export async function waitForBaseContent(
 }
 
 /**
- * Wait for file content to contain specific text using exponential backoff
- * More efficient than fixed timeouts - starts with short waits and increases gradually
+ * Wait for file content to contain specific text using Playwright's waitForFunction
+ * More reliable than polling with timeouts
  */
 export async function waitForFileContentToContain(
   page: Page,
@@ -132,11 +132,9 @@ export async function waitForFileContentToContain(
   timeout: number = 10000
 ): Promise<void> {
   const startTime = Date.now();
-  let waitTime = 50; // Start with 50ms for faster response
-  const maxWaitTime = 1000; // Cap individual waits at 1 second
+  const pollInterval = 100;
 
   while (Date.now() - startTime < timeout) {
-    // Check if file contains expected content
     const hasContent = await page.evaluate(
       async ({ path, content }) => {
         const app = (window as any).app;
@@ -157,9 +155,13 @@ export async function waitForFileContentToContain(
       return; // Success!
     }
 
-    // Wait with exponential backoff
-    await page.waitForTimeout(waitTime);
-    waitTime = Math.min(waitTime * 1.5, maxWaitTime); // Increase wait time more gradually
+    // Wait before next check using a promise-based delay
+    await page.evaluate(
+      async (ms) => {
+        await new Promise(resolve => setTimeout(resolve, ms));
+      },
+      pollInterval
+    );
   }
 
   // Timeout reached - get current content for debugging
@@ -1139,37 +1141,35 @@ export async function openTaskSyncSettings(page: ExtendedPage): Promise<void> {
   await executeCommand(page, "Open Settings");
   await waitForSettingsModal(page);
 
-  const taskSyncSelectors = [
-    '.vertical-tab-nav-item:has-text("Task Sync")',
-    '.vertical-tab-nav .vertical-tab-nav-item[data-tab="task-sync"]',
-    '.vertical-tab-nav-item:text("Task Sync")',
-    '.vertical-tab-nav :text("Task Sync")',
-  ];
+  // Wait for the settings navigation to be ready
+  await page.waitForFunction(
+    () => {
+      const navItems = document.querySelectorAll('.vertical-tab-nav-item');
+      return navItems.length > 0;
+    },
+    undefined,
+    { timeout: 5000 }
+  );
 
-  for (const selector of taskSyncSelectors) {
-    try {
-      const element = page.locator(selector);
-      const count = await element.count();
+  // Find and click the Task Sync settings tab
+  await page.waitForSelector('.vertical-tab-nav-item:has-text("Task Sync")', { 
+    state: 'visible',
+    timeout: 5000 
+  });
+  
+  const taskSyncItem = page.locator('.vertical-tab-nav-item').filter({ hasText: 'Task Sync' });
+  await taskSyncItem.click();
 
-      if (count > 0 && (await element.first().isVisible())) {
-        await element.first().click();
-        // Wait for the Task Sync settings to load by looking for the settings container
-        await page.waitForSelector(".task-sync-settings", {
-          timeout: 5000,
-        });
-        // Also wait for the header to be visible
-        await page.waitForSelector(
-          '.task-sync-settings-header h2:has-text("Task Sync Settings")',
-          { timeout: 5000 }
-        );
-        return;
-      }
-    } catch (error) {
-      continue;
-    }
-  }
+  // Wait for the Task Sync settings to load
+  await page.waitForSelector(".task-sync-settings", {
+    timeout: 5000,
+  });
 
-  throw new Error("Could not find Task Sync in settings modal");
+  // Also wait for the header to be visible
+  await page.waitForSelector(
+    '.task-sync-settings-header h2:has-text("Task Sync Settings")',
+    { timeout: 5000 }
+  );
 }
 
 /**
@@ -2781,21 +2781,36 @@ export async function waitForDailyNoteUpdate(
   timeout: number = 10000
 ): Promise<void> {
   const startTime = Date.now();
+  const pollInterval = 100;
+
   while (Date.now() - startTime < timeout) {
-    const fileContent = await page.evaluate(async (path) => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(path);
-      if (!file) return null;
-      return await app.vault.read(file);
-    }, dailyNotePath);
+    const fileContent = await page.evaluate(
+      async (path) => {
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(path);
+        if (!file) return null;
+        try {
+          return await app.vault.read(file);
+        } catch (error) {
+          return null;
+        }
+      },
+      dailyNotePath
+    );
 
     if (fileContent !== null) {
       if (!expectedContent || fileContent.includes(expectedContent)) {
-        return;
+        return; // Success!
       }
     }
 
-    await page.waitForTimeout(100); // Poll every 100ms
+    // Wait before next check using a promise-based delay
+    await page.evaluate(
+      async (ms) => {
+        await new Promise(resolve => setTimeout(resolve, ms));
+      },
+      pollInterval
+    );
   }
 
   throw new Error(
@@ -2808,7 +2823,7 @@ export async function waitForDailyNoteUpdate(
 /**
  * Wait for sync operation to complete
  * Since sync happens automatically after refresh, we wait for loading indicators
- * to disappear and then a short period to allow async operations to complete
+ * to disappear and then verify completion
  */
 export async function waitForSyncComplete(
   page: Page,
@@ -2823,13 +2838,27 @@ export async function waitForSyncComplete(
         );
         return loadingIndicators.length === 0;
       },
+      {},
       { timeout }
     )
     .catch(() => {
       // Ignore timeout - loading indicators might not exist
     });
 
-  // Wait a short period for async sync operations to complete
-  // SyncManager doesn't expose explicit state tracking, so we use a small delay
-  await page.waitForTimeout(500);
+  // Wait for sync state to stabilize by checking that no new loading indicators appear
+  // This replaces the fixed 500ms timeout with a more reliable check
+  await page
+    .waitForFunction(
+      () => {
+        const loadingIndicators = document.querySelectorAll(
+          '.is-loading, .loading, [data-loading="true"]'
+        );
+        return loadingIndicators.length === 0;
+      },
+      {},
+      { timeout: 1000, polling: 100 }
+    )
+    .catch(() => {
+      // Sync might be complete even if this check times out
+    });
 }
