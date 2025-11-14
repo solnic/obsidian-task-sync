@@ -202,7 +202,9 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       // Note: createdAt and updatedAt are NOT frontmatter properties according to registry
       // They come from file.ctime and file.mtime (frontmatter: false)
     };
-  }  /**
+  }
+
+  /**
    * Find a project by name from the project store
    */
   private findProjectByName(
@@ -214,20 +216,6 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
     });
     unsubscribe();
     return foundProject;
-  }
-
-  /**
-   * Find an area by name from the area store
-   */
-  private findAreaByName(
-    areaName: string
-  ): import("../../../core/entities").Area | null {
-    let foundArea = null;
-    const unsubscribe = areaStore.subscribe((state) => {
-      foundArea = state.areas.find((a) => a.name === areaName);
-    });
-    unsubscribe();
-    return foundArea;
   }
 
   /**

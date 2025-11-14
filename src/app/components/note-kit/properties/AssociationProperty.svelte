@@ -182,8 +182,6 @@
   }
 
   function handleSelect(selectedValue: string) {
-    console.log("[AssociationProperty] handleSelect called with:", selectedValue);
-
     // Handle "Create new..." selection
     if (selectedValue === "__create_new__") {
       showDropdown = false;
@@ -194,16 +192,12 @@
     // Find the entity name from the ID
     const entity = availableEntities.find((e) => e.id === selectedValue);
     if (!entity) {
-      console.log("[AssociationProperty] Entity not found for ID:", selectedValue);
       return;
     }
-
-    console.log("[AssociationProperty] Found entity:", entity);
 
     // Store plain entity name (not wiki link)
     // Wiki link format is only for frontmatter and base properties, not entity properties
     const entityName = entity.name;
-    console.log("[AssociationProperty] Storing entity name:", entityName);
 
     // Handle normal selection
     if (isMultiple) {
@@ -211,11 +205,9 @@
       const newValues = currentValues.includes(entityName)
         ? currentValues.filter((v) => v !== entityName)
         : [...currentValues, entityName];
-      console.log("[AssociationProperty] Updating multiple values:", newValues);
       value = newValues;
       onvaluechange?.(newValues);
     } else {
-      console.log("[AssociationProperty] Updating single value:", entityName);
       value = entityName;
       onvaluechange?.(entityName);
     }

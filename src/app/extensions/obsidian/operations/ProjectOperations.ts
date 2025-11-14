@@ -170,13 +170,11 @@ export class ObsidianProjectOperations extends ObsidianEntityOperations<Project>
   private findAreaByName(
     areaName: string
   ): import("../../../core/entities").Area | null {
-    let foundArea = null;
-    const unsubscribe = areaStore.subscribe((state) => {
-      foundArea = state.areas.find((a) => a.name === areaName);
-    });
-    unsubscribe();
-    return foundArea;
-  }  protected getEntityType(): string {
+    const state = get(areaStore);
+    return state.areas.find((a) => a.name === areaName) ?? null;
+  }
+
+  protected getEntityType(): string {
     return "Project";
   }
 

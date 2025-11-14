@@ -100,8 +100,6 @@
       properties: propertyValues,
       description: templateContent.trim() || undefined,
     });
-
-    console.log("[CreateEntityModal.svelte] onsubmit callback called");
   }
 
   function handleCancel(e: Event) {

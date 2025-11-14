@@ -124,7 +124,10 @@ export function validateProperty(
       ]);
     }
 
-    if (typeof propertyDef.schema.parse !== "function") {
+    if (
+      typeof propertyDef.schema !== "object" ||
+      typeof propertyDef.schema.parse !== "function"
+    ) {
       console.error("[validateProperty] Schema does not have parse method:", {
         property: propertyDef.key,
         schema: propertyDef.schema,
