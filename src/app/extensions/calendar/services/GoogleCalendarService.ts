@@ -231,7 +231,7 @@ export class GoogleCalendarService implements CalendarService {
     // Check if token is expired and refresh if needed
     if (this.oauthService && this.oauthService.isTokenExpired()) {
       // If a refresh is already in progress, wait for it
-      if (this.tokenRefreshPromise) {
+      if (this.tokenRefreshPromise !== null) {
         console.log("[GoogleCalendar] Token refresh already in progress, waiting...");
         return this.tokenRefreshPromise;
       }
@@ -422,7 +422,7 @@ export class GoogleCalendarService implements CalendarService {
 
     // Check if there's already a pending request for this data
     const pendingRequest = this.pendingEventRequests.get(cacheKey);
-    if (pendingRequest) {
+    if (pendingRequest !== undefined) {
       console.log(`[GoogleCalendar] Request already in progress, waiting for result...`);
       return pendingRequest;
     }

@@ -28,24 +28,28 @@
 
 ---
 
-## Phase 2: Critical Errors - Promise Misuse (Priority: HIGH)
+## DONE - Phase 2: Critical Errors - Promise Misuse (Priority: HIGH)
 
 **Issue:** `@typescript-eslint/no-misused-promises` - Promises in wrong contexts
-**Count:** 15 errors
+**Count:** 15 errors (ALL FIXED ✅)
 **Impact:** Can cause unexpected behavior with conditionals and callbacks
 
-### Files to fix:
-- `src/app/core/note-kit/file-watcher.ts` (line 332) - Promise in function arg expecting void
-- `src/app/extensions/apple-reminders/AppleRemindersExtension.ts` (line 401) - Promise in conditional
-- `src/app/extensions/calendar/services/AppleCalendarService.ts` (line 589) - Promise in conditional
-- `src/app/extensions/calendar/services/GoogleCalendarService.ts` (lines 234, 425) - Promises in conditionals
-- `src/app/extensions/daily-planning/DailyPlanningExtension.ts` (lines 747, 748, 749) - Promises in function args
-- `src/app/hosts/ObsidianHost.ts` (lines 252, 287-300) - Multiple promises in function args expecting void
-- `src/app/utils/oauth/GoogleOAuthService.ts` (line 147) - Promise in conditional
-- `src/app/views/TasksView.ts` (line 112) - Promise-returning method where void expected
-- `src/main.ts` (line 488) - Promise-returning method where void expected
+### Files fixed:
+- ✅ `src/app/core/note-kit/file-watcher.ts` (line 332) - Promise in function arg expecting void
+- ✅ `src/app/extensions/apple-reminders/AppleRemindersExtension.ts` (line 401) - Promise in conditional
+- ✅ `src/app/extensions/calendar/services/AppleCalendarService.ts` (line 589) - Promise in conditional
+- ✅ `src/app/extensions/calendar/services/GoogleCalendarService.ts` (lines 234, 425) - Promises in conditionals
+- ✅ `src/app/extensions/daily-planning/DailyPlanningExtension.ts` (lines 747, 748, 749) - Promises in function args
+- ✅ `src/app/hosts/ObsidianHost.ts` (lines 252, 287-300) - Multiple promises in function args expecting void
+- ✅ `src/app/utils/oauth/GoogleOAuthService.ts` (line 147) - Promise in conditional
+- ✅ `src/app/views/TasksView.ts` (line 112) - Promise-returning method where void expected
+- ✅ `src/main.ts` (line 488) - Promise-returning method where void expected
+- ✅ `src/vendor/obsidian.d.ts` (line 3420) - Excluded from linting via eslint config
 
-**Fix:** Properly await or wrap in async handlers
+**Fix Applied:** 
+- Used explicit `!== null` or `!== undefined` checks instead of truthy checks for promises in conditionals
+- Wrapped async functions with `void` operator when used as event handlers expecting void returns
+- Added `src/vendor/**` to eslint ignore patterns
 
 ---
 

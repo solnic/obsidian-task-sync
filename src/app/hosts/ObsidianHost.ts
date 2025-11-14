@@ -249,38 +249,42 @@ export class ObsidianHost extends Host {
   async onload(): Promise<void> {
     // Subscribe to note creation events and automatically open the created note
     // BUT NOT when Daily Planning wizard is active (to avoid changing context)
-    eventBus.on("obsidian.notes.created", async ({ filePath }) => {
-      // Check if Daily Planning wizard is active
-      const planningActive = get(isPlanningActive);
+    eventBus.on("obsidian.notes.created", ({ filePath }) => {
+      void (async () => {
+        // Check if Daily Planning wizard is active
+        const planningActive = get(isPlanningActive);
 
-      if (!planningActive) {
-        await this.openFileByPath(filePath);
-      } else {
-        console.log(
-          `Skipping auto-open of ${filePath} because Daily Planning wizard is active`
-        );
-      }
+        if (!planningActive) {
+          await this.openFileByPath(filePath);
+        } else {
+          console.log(
+            `Skipping auto-open of ${filePath} because Daily Planning wizard is active`
+          );
+        }
+      })();
     });
 
     // Subscribe to entity change events and persist data to Obsidian storage
     // This ensures that all entity changes are automatically saved
-    const persistData = async () => {
-      try {
-        const tasks = get(taskStore).tasks;
-        const projects = get(projectStore).projects;
-        const areas = get(areaStore).areas;
+    const persistData = () => {
+      void (async () => {
+        try {
+          const tasks = get(taskStore).tasks;
+          const projects = get(projectStore).projects;
+          const areas = get(areaStore).areas;
 
-        const data = {
-          tasks,
-          projects,
-          areas,
-          lastSync: new Date().toISOString(),
-        };
+          const data = {
+            tasks,
+            projects,
+            areas,
+            lastSync: new Date().toISOString(),
+          };
 
-        await this.saveData(data);
-      } catch (error) {
-        console.error("Failed to persist entity data:", error);
-      }
+          await this.saveData(data);
+        } catch (error) {
+          console.error("Failed to persist entity data:", error);
+        }
+      })();
     };
 
     // Subscribe to all entity change events

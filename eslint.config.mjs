@@ -6,6 +6,7 @@ export default [
   eslint.configs.recommended,
   {
     files: ['src/**/*.ts'],
+    ignores: ['src/vendor/**'],
     languageOptions: {
       parser: tsParser,
       parserOptions: {
