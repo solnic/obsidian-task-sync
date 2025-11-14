@@ -44,10 +44,10 @@ export interface FrontMatterModificationResult {
   success: boolean;
 
   /** Modified properties */
-  modifiedProperties?: Record<string, any>;
+  modifiedProperties?: Record<string, unknown>;
 
   /** Properties that were preserved */
-  preservedProperties?: Record<string, any>;
+  preservedProperties?: Record<string, unknown>;
 
   /** Properties that were removed */
   removedProperties?: string[];
@@ -67,7 +67,7 @@ export interface FrontMatterBackup {
   filePath: string;
 
   /** Original front-matter */
-  originalFrontMatter: Record<string, any>;
+  originalFrontMatter: Record<string, unknown>;
 
   /** Backup timestamp */
   timestamp: Date;
@@ -97,7 +97,7 @@ export class FrontMatterProcessor {
   async modifyFrontMatter(
     file: TFile,
     noteTypeId: string,
-    properties: Record<string, any>,
+    properties: Record<string, unknown>,
     options: FrontMatterModificationOptions = {}
   ): Promise<FrontMatterModificationResult> {
     const {
@@ -143,8 +143,8 @@ export class FrontMatterProcessor {
       }
 
       // Track modifications
-      const modifiedProperties: Record<string, any> = {};
-      const preservedProperties: Record<string, any> = {};
+      const modifiedProperties: Record<string, unknown> = {};
+      const preservedProperties: Record<string, unknown> = {};
       const removedProperties: string[] = [];
 
       // Apply modifications using processFrontMatter
@@ -160,7 +160,7 @@ export class FrontMatterProcessor {
           for (const [key, value] of Object.entries(frontMatter)) {
             if (
               !noteTypePropertyKeys.has(key) &&
-              !properties.hasOwnProperty(key)
+              !Object.prototype.hasOwnProperty.call(properties, key)
             ) {
               preservedProperties[key] = value;
             }
@@ -170,8 +170,8 @@ export class FrontMatterProcessor {
         // Preserve explicitly requested properties
         for (const key of preserveProperties) {
           if (
-            frontMatter.hasOwnProperty(key) &&
-            !properties.hasOwnProperty(key)
+            Object.prototype.hasOwnProperty.call(frontMatter, key) &&
+            !Object.prototype.hasOwnProperty.call(properties, key)
           ) {
             preservedProperties[key] = frontMatter[key];
           }
@@ -219,7 +219,7 @@ export class FrontMatterProcessor {
     file: TFile,
     noteTypeId: string,
     propertyKey: string,
-    value: any,
+    value: unknown,
     options: FrontMatterModificationOptions = {}
   ): Promise<FrontMatterModificationResult> {
     return this.modifyFrontMatter(
@@ -248,7 +248,7 @@ export class FrontMatterProcessor {
       // Remove properties using processFrontMatter
       await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
         for (const key of propertyKeys) {
-          if (frontMatter.hasOwnProperty(key)) {
+          if (Object.prototype.hasOwnProperty.call(frontMatter, key)) {
             delete frontMatter[key];
             removedProperties.push(key);
           }
