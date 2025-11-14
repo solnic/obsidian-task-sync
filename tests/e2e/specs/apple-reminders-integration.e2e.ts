@@ -346,54 +346,67 @@ test.describe("Apple Reminders Integration", () => {
     // Verify lists are sorted alphabetically (Personal before Work)
     expect(actualLists).toEqual(["Personal", "Work"]);
 
-    // Close the dropdown by clicking elsewhere
-    await page.keyboard.press("Escape");
-    
-    // Wait for dropdown to close
-    await expect(page.locator('[data-testid="list-filter-dropdown"]')).not.toBeVisible();
+    // Select the first list (Personal) to load reminders
+    await page.click(
+      '[data-testid="list-filter-dropdown-item"]:has-text("Personal")'
+    );
 
-    // First, check if extension is properly set up and stubs are installed
-    const preRefreshCheck = await page.evaluate(() => {
-      const app = (window as any).app;
-      const plugin = app.plugins.plugins["obsidian-task-sync"];
-      const appleRemindersExtension =
-        plugin?.taskSyncApp?.appleRemindersExtension;
+    // Wait for dropdown to close automatically after selection
+    await expect(
+      page.locator('[data-testid="list-filter-dropdown"]')
+    ).not.toBeVisible();
 
-      return {
-        extensionExists: !!appleRemindersExtension,
-        isEnabled: appleRemindersExtension?.isEnabled(),
-        isStubbed: appleRemindersExtension?.__isStubbed,
-        stubsAvailable: !!(window as any).__appleRemindersApiStubs,
-        stubInstaller: !!(window as any).__installAppleRemindersStubs,
-      };
-    });
+    // Wait for list filter button to show the selected list
+    await expect(listFilterButton).toContainText("Personal");
 
-    // If not stubbed, install stubs now
-    if (!preRefreshCheck.isStubbed) {
-      await page.evaluate(() => {
-        const installer = (window as any).__installAppleRemindersStubs;
-        if (installer) {
-          const result = installer();
-        }
-      });
-    }
-
+    // Click the refresh button to load reminders for the selected list
     const refreshButton = page.locator(
       '[data-testid="task-sync-apple-reminders-refresh-button"]'
     );
 
-    // Check if refresh button exists and is visible
-    const buttonExists = await refreshButton.count();
+    // Wait for refresh button to be visible and enabled
+    await refreshButton.waitFor({ state: "visible", timeout: 5000 });
+    await page.waitForFunction(
+      () => {
+        const button = document.querySelector(
+          '[data-testid="task-sync-apple-reminders-refresh-button"]'
+        );
+        return button && !button.hasAttribute("disabled");
+      },
+      undefined,
+      { timeout: 5000 }
+    );
 
-    if (buttonExists > 0) {
-      const isVisible = await refreshButton.isVisible();
-      await refreshButton.click();
-    }
+    await refreshButton.click();
 
-    // Wait for refresh to complete - wait for reminders to be visible
-    await expect(page.locator('[data-testid="apple-reminder-item"]').first()).toBeVisible({ timeout: 10000 });
+    // Wait for refresh to complete - wait for Personal reminders to be visible
+    await expect(
+      page.locator('[data-testid="apple-reminder-item"]').first()
+    ).toBeVisible({ timeout: 10000 });
 
-    // Select Work list and verify only Work reminders are shown
+    // Verify Personal reminders are shown first (since we selected Personal)
+    const initialReminders = await page
+      .locator('[data-testid="apple-reminder-item"]')
+      .count();
+    expect(initialReminders).toBe(2);
+
+    // Verify Personal reminder titles
+    expect(
+      await page
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Buy groceries")'
+        )
+        .count()
+    ).toBe(1);
+    expect(
+      await page
+        .locator(
+          '[data-testid="apple-reminder-item"]:has-text("Weekend hiking trip")'
+        )
+        .count()
+    ).toBe(1);
+
+    // Now switch to Work list and verify only Work reminders are shown
     await selectFromDropdown(page, "list-filter", "Work");
     await page.waitForSelector('[data-testid="apple-reminder-item"]', {
       state: "visible",
@@ -421,11 +434,13 @@ test.describe("Apple Reminders Integration", () => {
         .count()
     ).toBe(1);
 
-    // Switch to Personal list and verify only Personal reminders are shown
+    // Switch back to Personal list and verify Personal reminders are shown
     await selectFromDropdown(page, "list-filter", "Personal");
-    
+
     // Wait for exactly 2 Personal reminders to appear
-    await expect(page.locator('[data-testid="apple-reminder-item"]')).toHaveCount(2, { timeout: 10000 });
+    await expect(
+      page.locator('[data-testid="apple-reminder-item"]')
+    ).toHaveCount(2, { timeout: 10000 });
 
     const personalReminders = await page
       .locator('[data-testid="apple-reminder-item"]')

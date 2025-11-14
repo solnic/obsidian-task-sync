@@ -3,6 +3,7 @@
   import { Setting } from "obsidian";
   import { onMount } from "svelte";
   import { extensionRegistry } from "../../../core/extension";
+  import { eventBus } from "../../../core/events";
   import type { AppleRemindersExtension } from "../../../extensions/apple-reminders/AppleRemindersExtension";
   import Dropdown from "../../Dropdown.svelte";
 
@@ -17,10 +18,23 @@
 
   let { settings, saveSettings, enabled, onToggle }: Props = $props();
 
-  // Get extension instance
-  const extension = $derived(
+  // Get extension instance - use $state to make it reactive
+  let extension = $state<AppleRemindersExtension | undefined>(
     extensionRegistry.getById("apple-reminders") as AppleRemindersExtension | undefined
   );
+
+  // Listen for extension registration event to update extension reference
+  onMount(() => {
+    const unsubscribeExtensionRegistered = eventBus.on("extension.registered", (event) => {
+      if (event.extension === "apple-reminders") {
+        extension = extensionRegistry.getById("apple-reminders") as AppleRemindersExtension | undefined;
+      }
+    });
+
+    return () => {
+      unsubscribeExtensionRegistered();
+    };
+  });
 
   // Platform check for Apple integrations
   // In test environments with stubs, always return true
@@ -92,10 +106,16 @@
     // Get fresh extension reference each time
     let currentExtension = extensionRegistry.getById("apple-reminders") as AppleRemindersExtension | undefined;
 
-    // If extension doesn't exist yet, wait for it
+    // If extension doesn't exist yet, wait for it to be registered
     if (!currentExtension) {
-      await new Promise(resolve => setTimeout(resolve, 500));
-      currentExtension = extensionRegistry.getById("apple-reminders") as AppleRemindersExtension | undefined;
+      // Wait for extension to be registered by polling
+      const maxAttempts = 20; // 2 seconds total (20 * 100ms)
+      for (let i = 0; i < maxAttempts; i++) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        currentExtension = extensionRegistry.getById("apple-reminders") as AppleRemindersExtension | undefined;
+        if (currentExtension) break;
+      }
+      
       if (!currentExtension) {
         loadError = "Extension not initialized";
         return;

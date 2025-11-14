@@ -2130,37 +2130,102 @@ export async function enableIntegration(
       const taskSyncApp = plugin?.host?.getApp();
 
       // Initialize Calendar extension if enabling Apple Calendar or Google Calendar integration
-      if ((name === "appleCalendar" || name === "googleCalendar") && taskSyncApp && !taskSyncApp.calendarExtension) {
-        console.log("🔧 Calendar extension not initialized, initializing manually");
+      if (
+        (name === "appleCalendar" || name === "googleCalendar") &&
+        taskSyncApp &&
+        !taskSyncApp.calendarExtension
+      ) {
+        console.log(
+          "🔧 Calendar extension not initialized, initializing manually"
+        );
 
         try {
           await taskSyncApp["initializeCalendarExtension"]();
           console.log("🔧 Calendar extension manually initialized");
         } catch (error) {
-          console.error("🔧 Failed to manually initialize calendar extension:", error);
+          console.error(
+            "🔧 Failed to manually initialize calendar extension:",
+            error
+          );
         }
-
-        // Wait a bit for initialization to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       // Initialize Apple Reminders extension if enabling Apple Reminders integration
-      if (name === "appleReminders" && taskSyncApp && !taskSyncApp.appleRemindersExtension) {
-        console.log("🔧 Apple Reminders extension not initialized, initializing manually");
+      if (
+        name === "appleReminders" &&
+        taskSyncApp &&
+        !taskSyncApp.appleRemindersExtension
+      ) {
+        console.log(
+          "🔧 Apple Reminders extension not initialized, initializing manually"
+        );
 
         try {
+          // Install stubs before initializing if stub installer exists
+          if ((window as any).__installAppleRemindersStubs) {
+            console.log(
+              "🔧 Installing Apple Reminders stubs before initialization"
+            );
+            (window as any).__installAppleRemindersStubs();
+          }
+
           await taskSyncApp["initializeAppleRemindersExtension"]();
           console.log("🔧 Apple Reminders extension manually initialized");
         } catch (error) {
-          console.error("🔧 Failed to manually initialize Apple Reminders extension:", error);
+          console.error(
+            "🔧 Failed to manually initialize Apple Reminders extension:",
+            error
+          );
         }
-
-        // Wait a bit for initialization to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else if (
+        name === "appleReminders" &&
+        taskSyncApp &&
+        taskSyncApp.appleRemindersExtension
+      ) {
+        // Extension already exists, install stubs if available
+        if ((window as any).__installAppleRemindersStubs) {
+          console.log(
+            "🔧 Installing Apple Reminders stubs for existing extension"
+          );
+          (window as any).__installAppleRemindersStubs();
+        }
       }
     },
     { name, integration_config }
   );
+
+  // Wait for extension to be fully loaded by checking if it's initialized and enabled
+  if (name === "appleReminders") {
+    await page.waitForFunction(
+      () => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const taskSyncApp = plugin?.host?.getApp();
+        const extension = taskSyncApp?.appleRemindersExtension;
+
+        // Extension must be initialized and enabled
+        return extension && extension.isEnabled();
+      },
+      undefined,
+      { timeout: 10000 }
+    );
+  }
+
+  if (name === "appleCalendar" || name === "googleCalendar") {
+    await page.waitForFunction(
+      () => {
+        const app = (window as any).app;
+        const plugin = app.plugins.plugins["obsidian-task-sync"];
+        const taskSyncApp = plugin?.host?.getApp();
+        const extension = taskSyncApp?.calendarExtension;
+
+        // Extension must be initialized and enabled
+        return extension && extension.isEnabled();
+      },
+      undefined,
+      { timeout: 10000 }
+    );
+  }
 }
 
 export async function openView(page: Page, viewName: string) {
@@ -2271,8 +2336,27 @@ export async function switchToTaskService(page: Page, service: string) {
     { timeout: 5000 }
   );
 
-  // Give the component a moment to fully render
-  await page.waitForTimeout(500);
+  // Wait for the service content to be fully rendered by checking for actual content
+  // This is more reliable than a fixed timeout
+  await page.waitForFunction(
+    (serviceName) => {
+      const content = document.querySelector(
+        `[data-testid="service-content-${serviceName}"]:not(.tab-hidden)`
+      );
+      if (!content) return false;
+
+      // Check if the content has rendered children
+      // Most services render either tasks, reminders, or a message
+      const hasContent = content.children.length > 0;
+
+      // Also check if the DOM has stopped changing (content is stable)
+      const isStable = !content.querySelector(".loading, .spinner");
+
+      return hasContent && isStable;
+    },
+    service,
+    { timeout: 5000 }
+  );
 }
 
 export async function selectFromDropdown(

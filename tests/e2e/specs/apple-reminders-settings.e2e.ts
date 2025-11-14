@@ -5,6 +5,7 @@
 
 import { test, expect } from "../helpers/setup";
 import {
+  openView,
   openTaskSyncSettings,
   scrollToSettingsSection,
 } from "../helpers/global";
@@ -20,6 +21,9 @@ test.describe("Apple Reminders Settings", () => {
       lists: "lists-basic",
       reminders: "reminders-basic",
     });
+
+    // Open the main view first to ensure plugin is fully initialized
+    await openView(page, "task-sync-main");
 
     // Open settings
     await openTaskSyncSettings(page);
@@ -51,18 +55,18 @@ test.describe("Apple Reminders Settings", () => {
     );
     await expect(reminderListsSetting).toBeVisible({ timeout: 10000 });
 
-    // Find the lists button (should show "All lists" initially or after lists are loaded)
+    // Find the lists button (should show "All lists" since lists are loaded)
     const listsButton = reminderListsSetting.locator("button").first();
     await expect(listsButton).toBeVisible();
 
-    // Click the button - if lists aren't loaded, this will trigger loading
+    // Click button to show dropdown
     await listsButton.click();
 
     // Wait for dropdown to appear
     const dropdown = page.locator(
       '[data-testid="apple-reminders-lists-dropdown"]'
     );
-    await expect(dropdown).toBeVisible({ timeout: 10000 });
+    await expect(dropdown).toBeVisible({ timeout: 5000 });
 
     // Verify lists are shown in dropdown
     const workList = dropdown.locator(
@@ -116,6 +120,9 @@ test.describe("Apple Reminders Settings", () => {
       reminders: "reminders-basic",
     });
 
+    // Open the main view first to ensure plugin is fully initialized
+    await openView(page, "task-sync-main");
+
     // Open settings and navigate to Apple Reminders
     await openTaskSyncSettings(page);
     await scrollToSettingsSection(page, "Integrations");
@@ -134,10 +141,12 @@ test.describe("Apple Reminders Settings", () => {
       '.setting-item:has-text("Reminder Lists")'
     );
     await expect(reminderListsSetting).toBeVisible({ timeout: 10000 });
+    
+    // Click button to show dropdown
     const listsButton = reminderListsSetting.locator("button").first();
-
-    // Open dropdown
     await listsButton.click();
+
+    // Wait for dropdown to appear
     const dropdown = page.locator(
       '[data-testid="apple-reminders-lists-dropdown"]'
     );
