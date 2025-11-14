@@ -39,7 +39,7 @@ test.describe("GitHub Import and Deletion Sync", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -50,7 +50,7 @@ test.describe("GitHub Import and Deletion Sync", () => {
 
     // Wait for GitHub tasks to load
     await page.waitForSelector('[data-testid="github-issue-item"]', {
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Import the GitHub issue (issue #999 from the fixture)
@@ -132,7 +132,7 @@ test.describe("GitHub Import and Deletion Sync", () => {
 
     // Wait for GitHub tasks to load
     await page.waitForSelector('[data-testid="github-issue-item"]', {
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // The task should be visible but NOT have the imported badge

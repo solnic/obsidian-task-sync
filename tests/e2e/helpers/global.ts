@@ -2258,7 +2258,9 @@ export async function openView(page: Page, viewName: string) {
       const rightSplit = app?.workspace?.rightSplit;
       if (!rightSplit) return false;
       if (rightSplit.collapsed) return false;
-      const sidebarEl = document.querySelector('.workspace-split.mod-right-split');
+      const sidebarEl = document.querySelector(
+        ".workspace-split.mod-right-split"
+      );
       return sidebarEl !== null;
     },
     { timeout: 5000 }
@@ -2270,9 +2272,9 @@ export async function openView(page: Page, viewName: string) {
     const rightSplit = app?.workspace?.rightSplit;
     if (rightSplit) {
       // Set a wide sidebar width (800px) to accommodate all content
-      rightSplit.containerEl.style.width = '800px';
-      rightSplit.containerEl.style.minWidth = '800px';
-      rightSplit.containerEl.style.maxWidth = '800px';
+      rightSplit.containerEl.style.width = "800px";
+      rightSplit.containerEl.style.minWidth = "800px";
+      rightSplit.containerEl.style.maxWidth = "800px";
     }
   });
 
@@ -2284,7 +2286,9 @@ export async function openView(page: Page, viewName: string) {
       if (!rightSplit) return false;
       if (rightSplit.collapsed) return false;
 
-      const sidebarEl = document.querySelector('.workspace-split.mod-right-split');
+      const sidebarEl = document.querySelector(
+        ".workspace-split.mod-right-split"
+      );
       if (!sidebarEl) return false;
 
       const rect = sidebarEl.getBoundingClientRect();
@@ -2295,10 +2299,10 @@ export async function openView(page: Page, viewName: string) {
   );
 
   // Wait for the task-sync-app to be visible (specific to task-sync-main view)
-  if (viewName === 'task-sync-main') {
-    await page.waitForSelector('.task-sync-app', {
-      state: 'visible',
-      timeout: 5000
+  if (viewName === "task-sync-main") {
+    await page.waitForSelector(".task-sync-app", {
+      state: "visible",
+      timeout: 5000,
     });
   }
 }
@@ -2372,17 +2376,22 @@ export async function selectFromDropdown(
   await page.locator(`[data-testid="${dropdown}"]`).click();
 
   // Take a screenshot and dump HTML to debug, if enabled
-  if (process.env.DEBUG_E2E === 'true') {
-    await page.screenshot({ path: `tests/e2e/debug/after-dropdown-click-${dropdown}.png` });
+  if (process.env.DEBUG_E2E === "true") {
+    await page.screenshot({
+      path: `tests/e2e/debug/after-dropdown-click-${dropdown}.png`,
+    });
     const html = await page.content();
-    const fs = require('fs');
-    fs.writeFileSync(`tests/e2e/debug/after-dropdown-click-${dropdown}.html`, html);
+    const fs = require("fs");
+    fs.writeFileSync(
+      `tests/e2e/debug/after-dropdown-click-${dropdown}.html`,
+      html
+    );
   }
 
   // Wait for dropdown items to appear
   await page.waitForSelector(`[data-testid="${dropdown}-dropdown-item"]`, {
-    state: 'visible',
-    timeout: 5000
+    state: "visible",
+    timeout: 5000,
   });
 
   // Use a more specific selector to avoid strict mode violations
@@ -2623,7 +2632,7 @@ export async function waitForNoticeDisappear(
 export async function waitForFileProcessed(
   page: Page,
   filePath: string,
-  timeout: number = 10000
+  timeout: number = 15000
 ): Promise<void> {
   await page.waitForFunction(
     async ({ path }) => {

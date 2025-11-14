@@ -41,7 +41,7 @@ test.describe("Apple Reminders Settings", () => {
     const enableToggle = page.locator(
       '.setting-item:has-text("Enable Apple Reminders Integration") input[type="checkbox"]'
     );
-    await expect(enableToggle).toBeVisible({ timeout: 10000 });
+    await expect(enableToggle).toBeVisible({ timeout: 2500 });
 
     const isEnabled = await enableToggle.isChecked();
 
@@ -53,7 +53,7 @@ test.describe("Apple Reminders Settings", () => {
     const reminderListsSetting = page.locator(
       '.setting-item:has-text("Reminder Lists")'
     );
-    await expect(reminderListsSetting).toBeVisible({ timeout: 10000 });
+    await expect(reminderListsSetting).toBeVisible({ timeout: 2500 });
 
     // Find the lists button (should show "All lists" since lists are loaded)
     const listsButton = reminderListsSetting.locator("button").first();
@@ -66,7 +66,7 @@ test.describe("Apple Reminders Settings", () => {
     const dropdown = page.locator(
       '[data-testid="apple-reminders-lists-dropdown"]'
     );
-    await expect(dropdown).toBeVisible({ timeout: 5000 });
+    await expect(dropdown).toBeVisible({ timeout: 2500 });
 
     // Verify lists are shown in dropdown
     const workList = dropdown.locator(
@@ -83,7 +83,7 @@ test.describe("Apple Reminders Settings", () => {
     await workList.click();
 
     // Wait for button text to update to "1 list"
-    await expect(listsButton).toContainText("1 list", { timeout: 5000 });
+    await expect(listsButton).toContainText("1 list", { timeout: 2500 });
 
     // Verify the dropdown is still open (multi-select)
     await expect(dropdown).toBeVisible();
@@ -92,7 +92,7 @@ test.describe("Apple Reminders Settings", () => {
     await personalList.click();
 
     // Wait for button text to update to "2 lists"
-    await expect(listsButton).toContainText("2 list", { timeout: 5000 });
+    await expect(listsButton).toContainText("2 list", { timeout: 2500 });
 
     // Close dropdown by clicking outside
     await page.keyboard.press("Escape");
@@ -140,8 +140,8 @@ test.describe("Apple Reminders Settings", () => {
     const reminderListsSetting = page.locator(
       '.setting-item:has-text("Reminder Lists")'
     );
-    await expect(reminderListsSetting).toBeVisible({ timeout: 10000 });
-    
+    await expect(reminderListsSetting).toBeVisible({ timeout: 2500 });
+
     // Click button to show dropdown
     const listsButton = reminderListsSetting.locator("button").first();
     await listsButton.click();
@@ -150,7 +150,7 @@ test.describe("Apple Reminders Settings", () => {
     const dropdown = page.locator(
       '[data-testid="apple-reminders-lists-dropdown"]'
     );
-    await expect(dropdown).toBeVisible({ timeout: 5000 });
+    await expect(dropdown).toBeVisible({ timeout: 2500 });
 
     // Select Work list
     const workList = dropdown.locator(
@@ -159,13 +159,13 @@ test.describe("Apple Reminders Settings", () => {
     await workList.click();
 
     // Wait for button text to update to "1 list"
-    await expect(listsButton).toContainText("1 list", { timeout: 5000 });
+    await expect(listsButton).toContainText("1 list", { timeout: 2500 });
 
     // Deselect by clicking again
     await workList.click();
 
     // Wait for button text to revert to "All lists"
-    await expect(listsButton).toContainText("All lists", { timeout: 5000 });
+    await expect(listsButton).toContainText("All lists", { timeout: 2500 });
 
     // Verify settings
     const savedLists = await page.evaluate(() => {

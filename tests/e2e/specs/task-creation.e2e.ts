@@ -11,7 +11,6 @@ import {
   getFrontMatter,
   expectNotice,
   waitForNoticeDisappear,
-  waitForFileProcessed,
 } from "../helpers/global";
 
 test.describe("Task Creation", () => {
@@ -78,7 +77,7 @@ test.describe("Task Creation", () => {
     // Wait for modal to remain visible (it shouldn't close)
     await page.waitForSelector(".task-sync-modal-container", {
       state: "visible",
-      timeout: 2000,
+      timeout: 2500,
     });
 
     // Type in the title input
@@ -97,25 +96,7 @@ test.describe("Task Creation", () => {
   test("should create task with all properties and verify file content", async ({
     page,
   }) => {
-    // First, create test areas to select
-    await executeCommand(page, "Create Area");
-    await expect(page.locator(".task-sync-modal-container")).toBeVisible();
-    await page.fill('[data-testid="property-name"]', "Development");
-    await page.click('[data-testid="submit-button"]');
-    await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
-    await expectNotice(page, "created successfully");
-    await waitForNoticeDisappear(page, "created successfully");
-    await waitForFileProcessed(page, "Areas/Development.md");
-
-    await executeCommand(page, "Create Area");
-    await expect(page.locator(".task-sync-modal-container")).toBeVisible();
-    await page.fill('[data-testid="property-name"]', "Testing");
-    await page.click('[data-testid="submit-button"]');
-    await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
-    await expectNotice(page, "created successfully");
-    await waitForNoticeDisappear(page, "created successfully");
-    await waitForFileProcessed(page, "Areas/Testing.md");
-
+    // Use existing areas from test vault (Development and Personal)
     // Open the Create Task command
     await executeCommand(page, "Create Task");
 
@@ -170,7 +151,7 @@ test.describe("Task Creation", () => {
     // Wait for dropdown to appear
     await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
       state: "visible",
-      timeout: 3000,
+      timeout: 2500,
     });
 
     // Select multiple areas
@@ -179,27 +160,27 @@ test.describe("Task Creation", () => {
         '[data-testid="property-areas-dropdown-item"]:has-text("Development")'
       )
       .first();
-    await expect(developmentArea).toBeVisible({ timeout: 3000 });
+    await expect(developmentArea).toBeVisible({ timeout: 2500 });
     await developmentArea.click();
 
     // Wait for dropdown to close after selection
     await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
       state: "hidden",
-      timeout: 3000,
+      timeout: 2500,
     });
     await areasButton.click();
     await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
       state: "visible",
-      timeout: 3000,
+      timeout: 2500,
     });
 
-    const testingArea = page
+    const personalArea = page
       .locator(
-        '[data-testid="property-areas-dropdown-item"]:has-text("Testing")'
+        '[data-testid="property-areas-dropdown-item"]:has-text("Personal")'
       )
       .first();
-    await expect(testingArea).toBeVisible();
-    await testingArea.click();
+    await expect(personalArea).toBeVisible();
+    await personalArea.click();
 
     // Ensure modal is still visible before submitting
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
@@ -233,7 +214,7 @@ test.describe("Task Creation", () => {
     expect(Array.isArray(frontMatter.Areas)).toBe(true);
     expect(frontMatter.Areas.length).toBe(2);
     expect(frontMatter.Areas).toContain("Development");
-    expect(frontMatter.Areas).toContain("Testing");
+    expect(frontMatter.Areas).toContain("Personal");
 
     expect(frontMatter.Done).toBe(false);
   });
@@ -241,17 +222,8 @@ test.describe("Task Creation", () => {
   test("should show project dropdown and allow project selection", async ({
     page,
   }) => {
-    // First, create a test project to select
-    await executeCommand(page, "Create Project");
-    await expect(page.locator(".task-sync-modal-container")).toBeVisible();
-    await page.fill('[data-testid="property-name"]', "Test Project");
-    await page.click('[data-testid="submit-button"]');
-    await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
-    await expectNotice(page, "created successfully");
-    await waitForNoticeDisappear(page, "created successfully");
-    await waitForFileProcessed(page, "Projects/Test Project.md");
-
-    // Now create a task and select the project
+    // Use existing project from test vault (Sample Project 1)
+    // Create a task and select the project
     await executeCommand(page, "Create Task");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
@@ -271,14 +243,14 @@ test.describe("Task Creation", () => {
     // Wait for dropdown to appear
     await page.waitForSelector('[data-testid="property-project-dropdown"]', {
       state: "visible",
-      timeout: 3000,
+      timeout: 2500,
     });
 
-    // Verify "Test Project" appears in the dropdown items
+    // Verify "Sample Project 1" appears in the dropdown items
     const projectItem = page.locator(
-      '[data-testid="property-project-dropdown-item"]:has-text("Test Project")'
+      '[data-testid="property-project-dropdown-item"]:has-text("Sample Project 1")'
     );
-    await expect(projectItem).toBeVisible({ timeout: 3000 });
+    await expect(projectItem).toBeVisible({ timeout: 2500 });
 
     // Select the project by clicking the item
     await projectItem.click();
@@ -297,7 +269,7 @@ test.describe("Task Creation", () => {
     // Frontmatter properties use wiki link format (Obsidian-specific representation)
     // Entity properties store plain names, wiki links are only in frontmatter/bases
     expect(frontMatter.Project).toMatch(/\[\[.*?\.md\|.*?\]\]/);
-    expect(frontMatter.Project).toContain("Test Project");
+    expect(frontMatter.Project).toContain("Sample Project 1");
   });
 
   test("should handle task creation with minimal required fields", async ({
@@ -344,35 +316,8 @@ test.describe("Task Creation", () => {
   test("should support multi-select areas association and verify in frontmatter", async ({
     page,
   }) => {
-    // First, create test areas to select
-    await executeCommand(page, "Create Area");
-    await expect(page.locator(".task-sync-modal-container")).toBeVisible();
-    await page.fill('[data-testid="property-name"]', "Development Area");
-    await page.click('[data-testid="submit-button"]');
-    await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
-    await expectNotice(page, "created successfully");
-    await waitForNoticeDisappear(page, "created successfully");
-    await waitForFileProcessed(page, "Areas/Development Area.md");
-
-    await executeCommand(page, "Create Area");
-    await expect(page.locator(".task-sync-modal-container")).toBeVisible();
-    await page.fill('[data-testid="property-name"]', "Testing Area");
-    await page.click('[data-testid="submit-button"]');
-    await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
-    await expectNotice(page, "created successfully");
-    await waitForNoticeDisappear(page, "created successfully");
-    await waitForFileProcessed(page, "Areas/Testing Area.md");
-
-    await executeCommand(page, "Create Area");
-    await expect(page.locator(".task-sync-modal-container")).toBeVisible();
-    await page.fill('[data-testid="property-name"]', "Documentation Area");
-    await page.click('[data-testid="submit-button"]');
-    await expect(page.locator(".task-sync-modal-container")).not.toBeVisible();
-    await expectNotice(page, "created successfully");
-    await waitForNoticeDisappear(page, "created successfully");
-    await waitForFileProcessed(page, "Areas/Documentation Area.md");
-
-    // Now create a task and select multiple areas
+    // Use existing areas from test vault (Development and Personal)
+    // Create a task and select multiple areas
     await executeCommand(page, "Create Task");
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
 
@@ -392,55 +337,36 @@ test.describe("Task Creation", () => {
     // Wait for dropdown to appear
     await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
       state: "visible",
-      timeout: 3000,
+      timeout: 2500,
     });
 
     // Select multiple areas by clicking items (dropdown closes after each selection)
     const developmentArea = page
       .locator(
-        '[data-testid="property-areas-dropdown-item"]:has-text("Development Area")'
+        '[data-testid="property-areas-dropdown-item"]:has-text("Development")'
       )
       .first();
-    await expect(developmentArea).toBeVisible({ timeout: 3000 });
+    await expect(developmentArea).toBeVisible({ timeout: 2500 });
     await developmentArea.click();
 
     // Wait for dropdown to close after selection
     await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
       state: "hidden",
-      timeout: 3000,
+      timeout: 2500,
     });
     await areasButton.click();
     await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
       state: "visible",
-      timeout: 3000,
+      timeout: 2500,
     });
 
-    const testingArea = page
+    const personalArea = page
       .locator(
-        '[data-testid="property-areas-dropdown-item"]:has-text("Testing Area")'
+        '[data-testid="property-areas-dropdown-item"]:has-text("Personal")'
       )
       .first();
-    await expect(testingArea).toBeVisible();
-    await testingArea.click();
-
-    // Wait for dropdown to close after selection
-    await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
-      state: "hidden",
-      timeout: 3000,
-    });
-    await areasButton.click();
-    await page.waitForSelector('[data-testid="property-areas-dropdown"]', {
-      state: "visible",
-      timeout: 3000,
-    });
-
-    const documentationArea = page
-      .locator(
-        '[data-testid="property-areas-dropdown-item"]:has-text("Documentation Area")'
-      )
-      .first();
-    await expect(documentationArea).toBeVisible();
-    await documentationArea.click();
+    await expect(personalArea).toBeVisible();
+    await personalArea.click();
 
     // Ensure modal is still visible before submitting
     await expect(page.locator(".task-sync-modal-container")).toBeVisible();
@@ -457,12 +383,11 @@ test.describe("Task Creation", () => {
     const frontMatter = await getFrontMatter(page, expectedFilePath);
     expect(frontMatter.Areas).toBeDefined();
     expect(Array.isArray(frontMatter.Areas)).toBe(true);
-    expect(frontMatter.Areas.length).toBe(3);
+    expect(frontMatter.Areas.length).toBe(2);
 
     // Areas are stored as plain names in frontmatter (for Bases filtering compatibility)
-    expect(frontMatter.Areas).toContain("Development Area");
-    expect(frontMatter.Areas).toContain("Testing Area");
-    expect(frontMatter.Areas).toContain("Documentation Area");
+    expect(frontMatter.Areas).toContain("Development");
+    expect(frontMatter.Areas).toContain("Personal");
   });
 
   test("should verify Done property is not required and hidden from form", async ({

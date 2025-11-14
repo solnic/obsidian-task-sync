@@ -240,7 +240,7 @@ test.describe("Base Synchronization", () => {
         return !content.includes("name: All Chores");
       },
       { filePath: "Bases/Documentation.base" },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify base file content confirms removal

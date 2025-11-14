@@ -100,7 +100,7 @@ test.describe("Sync Property Filtering", () => {
     // Wait for GitHub to be ready
     await page.waitForSelector(
       '[data-testid="service-github"]:not([disabled])',
-      { state: "visible", timeout: 10000 }
+      { state: "visible", timeout: 2500 }
     );
 
     // Switch to GitHub and trigger a refresh by selecting the repository
@@ -116,7 +116,7 @@ test.describe("Sync Property Filtering", () => {
         return task !== undefined;
       },
       { title: "Updated Title from GitHub" },
-      { timeout: 10000 }
+      { timeout: 2500 }
     );
 
     // Now check the task - it will have the updated title from GitHub

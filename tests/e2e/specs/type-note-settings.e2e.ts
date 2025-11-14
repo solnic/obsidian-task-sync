@@ -212,7 +212,7 @@ test.describe("NoteKit Settings - Property Management", () => {
     // Wait for UI to recreate after type change
     await page.waitForSelector(
       `[data-testid="property-required-toggle-${key}"]`,
-      { state: "visible", timeout: 3000 }
+      { state: "visible", timeout: 2500 }
     );
 
     // Re-find the toggle after UI recreation
@@ -231,7 +231,7 @@ test.describe("NoteKit Settings - Property Management", () => {
     // Wait for UI to recreate after type change
     await page.waitForSelector(
       `[data-testid="property-required-toggle-${key}"]`,
-      { state: "visible", timeout: 3000 }
+      { state: "visible", timeout: 2500 }
     );
 
     // Re-find the toggle after UI recreation
@@ -248,7 +248,7 @@ test.describe("NoteKit Settings - Property Management", () => {
     // Wait for UI to recreate after type change
     await page.waitForSelector(
       `[data-testid="property-required-toggle-${key}"]`,
-      { state: "visible", timeout: 3000 }
+      { state: "visible", timeout: 2500 }
     );
 
     // Re-find the toggle after UI recreation
@@ -681,7 +681,7 @@ test.describe("NoteKit Settings - Complete Note Type Lifecycle", () => {
     // Listen for the success notice
     const noticePromise = page.waitForSelector(".notice", {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
     await updateSaveButton.click();
     await noticePromise;

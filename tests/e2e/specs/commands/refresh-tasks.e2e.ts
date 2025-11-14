@@ -53,14 +53,14 @@ test.describe("Commands / Task Refresh", () => {
     // Wait for local service to be visible
     await page.waitForSelector('[data-testid="local-service"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // Wait for tasks to load by checking for the task to appear
     await page.waitForSelector(
       '.task-sync-item-title:has-text("Sample Task 1")',
       {
-        timeout: 5000,
+        timeout: 2500,
       }
     );
 
@@ -349,7 +349,7 @@ test.describe("Commands / Task Refresh", () => {
         return task !== undefined;
       },
       { title: "Updated GitHub Task Title" },
-      { timeout: 10000 }
+      { timeout: 2500 }
     );
 
     // Verify that only ONE task exists with the updated title

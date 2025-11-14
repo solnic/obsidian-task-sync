@@ -95,7 +95,7 @@ test.describe("TasksView Filtering and Sorting", () => {
         );
         return taskItems.length > 0 && taskItems.length <= 3; // Should have 3 filtered results
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify filtering worked - should have fewer tasks than initial
@@ -118,7 +118,7 @@ test.describe("TasksView Filtering and Sorting", () => {
         return taskItems.length === expectedCount;
       },
       initialCount,
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     const allTasks = await getVisibleTaskItems(page);
@@ -142,7 +142,7 @@ test.describe("TasksView Filtering and Sorting", () => {
         );
         return taskTexts.some((text) => text.toLowerCase().includes("bug"));
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify search worked
@@ -165,7 +165,7 @@ test.describe("TasksView Filtering and Sorting", () => {
             text.toLowerCase().includes("bug")
         );
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify combined filtering worked
@@ -185,7 +185,7 @@ test.describe("TasksView Filtering and Sorting", () => {
         );
         return taskItems.length > 0; // Should still have area-filtered results
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Should now show all Testing area tasks
@@ -234,7 +234,7 @@ test.describe("TasksView Filtering and Sorting", () => {
         );
         return taskItems.length > 0 && taskItems.length <= 3; // Should have 3 Development area tasks
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     const areaFilteredTasks = await getVisibleTaskItems(page);
@@ -255,7 +255,7 @@ test.describe("TasksView Filtering and Sorting", () => {
           text.toLowerCase().includes("critical")
         );
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Should show fewer tasks than area filter alone
@@ -277,7 +277,7 @@ test.describe("TasksView Filtering and Sorting", () => {
         return taskItems.length === expectedCount;
       },
       areaFilteredTasks.length,
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Should show area filtered tasks again
@@ -294,7 +294,7 @@ test.describe("TasksView Filtering and Sorting", () => {
         return taskItems.length === expectedCount;
       },
       initialCount,
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     const allTasks = await getVisibleTaskItems(page);
@@ -321,7 +321,7 @@ test.describe("TasksView Filtering and Sorting", () => {
       '[data-testid="service-github"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -359,7 +359,7 @@ test.describe("TasksView Filtering and Sorting", () => {
           !taskTexts.some((text) => text.includes("Beta Project Task"))
         );
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify the filter button shows "Alpha Project"
@@ -391,7 +391,7 @@ test.describe("TasksView Filtering and Sorting", () => {
           !taskTexts.some((text) => text.includes("Beta Project Task"))
         );
       },
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
   });
 

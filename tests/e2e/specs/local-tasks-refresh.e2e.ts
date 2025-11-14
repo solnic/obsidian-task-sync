@@ -29,7 +29,7 @@ test.describe("LocalTasksService Refresh", () => {
     // Verify task is present
     await page.waitForSelector(
       '.task-sync-item-title:has-text("Refresh Test Task")',
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Create another task directly in the vault (simulating external change)
@@ -59,7 +59,7 @@ Task created directly in vault for refresh test.`
     // Wait for refresh to complete and new task to appear
     await page.waitForSelector(
       '.task-sync-item-title:has-text("External Refresh Task")',
-      { timeout: 5000 }
+      { timeout: 2500 }
     );
 
     // Verify both tasks are present after refresh
@@ -105,7 +105,7 @@ Task created directly in vault for refresh test.`
     // Wait for error to appear
     await page.waitForSelector(".task-sync-error-message", {
       state: "visible",
-      timeout: 2000,
+      timeout: 2500,
     });
 
     // Verify error message is displayed

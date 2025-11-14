@@ -74,7 +74,7 @@ test.describe("Area Creation", () => {
     // Wait for modal to remain visible (it shouldn't close)
     await page.waitForSelector(".task-sync-modal-container", {
       state: "visible",
-      timeout: 2000,
+      timeout: 2500,
     });
 
     // Type in the name input

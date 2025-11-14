@@ -34,7 +34,7 @@ test.describe("Calendar Day View", () => {
     // Wait for calendar service button to appear and be enabled
     await page.waitForSelector('[data-testid="service-calendar"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Switch to calendar view
@@ -43,7 +43,7 @@ test.describe("Calendar Day View", () => {
     // Wait for calendar events to load
     await page.waitForSelector('[data-testid="obsidian-day-view-event"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Verify events are displayed
@@ -89,7 +89,7 @@ test.describe("Calendar Day View", () => {
       '[data-testid="service-calendar"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -99,7 +99,7 @@ test.describe("Calendar Day View", () => {
     // Wait for events to load
     await page.waitForSelector('[data-testid="obsidian-day-view-event"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Get initial event count (all calendars)
@@ -117,7 +117,7 @@ test.describe("Calendar Day View", () => {
     // Wait for dropdown to appear
     await page.waitForSelector('[data-testid="calendar-filter-dropdown"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // First, deselect "All calendars" to clear selection
@@ -181,7 +181,7 @@ test.describe("Calendar Day View", () => {
       '[data-testid="service-calendar"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -191,7 +191,7 @@ test.describe("Calendar Day View", () => {
     // Wait for events to load
     await page.waitForSelector('[data-testid="obsidian-day-view-event"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Get initial event count
@@ -207,7 +207,9 @@ test.describe("Calendar Day View", () => {
     await searchInput.fill("Standup");
 
     // Wait for only 1 event containing "Morning Standup" to be visible
-    await expect(page.locator('[data-testid="obsidian-day-view-event"]')).toHaveCount(1, { timeout: 5000 });
+    await expect(
+      page.locator('[data-testid="obsidian-day-view-event"]')
+    ).toHaveCount(1, { timeout: 2500 });
 
     // Verify only matching events are shown
     const filteredCount = await page
@@ -241,7 +243,7 @@ test.describe("Calendar Day View", () => {
       '[data-testid="service-calendar"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -251,7 +253,7 @@ test.describe("Calendar Day View", () => {
     // Wait for today's events to load
     await page.waitForSelector('[data-testid="obsidian-day-view-event"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Verify today's events are shown
@@ -294,7 +296,7 @@ test.describe("Calendar Day View - Google Calendar", () => {
     // Wait for calendar service button to appear and be enabled
     await page.waitForSelector('[data-testid="service-calendar"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Switch to calendar view
@@ -303,7 +305,7 @@ test.describe("Calendar Day View - Google Calendar", () => {
     // Wait for calendar events to load
     await page.waitForSelector('[data-testid="obsidian-day-view-event"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Verify events are displayed
@@ -351,7 +353,7 @@ test.describe("Calendar Day View - Google Calendar", () => {
       '[data-testid="service-calendar"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -361,7 +363,7 @@ test.describe("Calendar Day View - Google Calendar", () => {
     // Wait for events to load
     await page.waitForSelector('[data-testid="obsidian-day-view-event"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Get initial event count (all calendars)
@@ -379,7 +381,7 @@ test.describe("Calendar Day View - Google Calendar", () => {
     // Wait for dropdown to appear
     await page.waitForSelector('[data-testid="calendar-filter-dropdown"]', {
       state: "visible",
-      timeout: 5000,
+      timeout: 2500,
     });
 
     // First, deselect "All calendars" to clear selection
@@ -445,7 +447,7 @@ test.describe("Calendar Day View - Google Calendar", () => {
       '[data-testid="service-calendar"]:not([disabled])',
       {
         state: "visible",
-        timeout: 10000,
+        timeout: 2500,
       }
     );
 
@@ -455,7 +457,7 @@ test.describe("Calendar Day View - Google Calendar", () => {
     // Wait for events to load
     await page.waitForSelector('[data-testid="obsidian-day-view-event"]', {
       state: "visible",
-      timeout: 10000,
+      timeout: 2500,
     });
 
     // Get initial event count
@@ -471,7 +473,9 @@ test.describe("Calendar Day View - Google Calendar", () => {
     await searchInput.fill("Team");
 
     // Wait for only 1 event containing "Team" to be visible
-    await expect(page.locator('[data-testid="obsidian-day-view-event"]')).toHaveCount(1, { timeout: 5000 });
+    await expect(
+      page.locator('[data-testid="obsidian-day-view-event"]')
+    ).toHaveCount(1, { timeout: 2500 });
 
     // Verify only matching events are shown
     const filteredCount = await page
