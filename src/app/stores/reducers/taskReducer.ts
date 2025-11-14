@@ -141,19 +141,26 @@ export function taskReducer(
 
         if (existing) {
           // Step 3: Merge with existing task
+          const mergedSource: TaskSource = {
+            extension: existing.source.extension, // Preserve owner
+            keys: {
+              ...existing.source.keys, // Keep existing keys
+              ...newTask.source.keys, // Merge new keys
+            },
+          };
+          
+          // Only add data property if it exists
+          const sourceData = newTask.source.data || existing.source.data;
+          if (sourceData !== undefined) {
+            mergedSource.data = sourceData;
+          }
+          
           const mergedBase: Task = {
             ...existing, // Start with existing task
             ...newTask, // Override with new data
             id: existing.id, // Preserve ID
             createdAt: existing.createdAt, // Preserve creation time
-            source: {
-              extension: existing.source.extension, // Preserve owner
-              keys: {
-                ...existing.source.keys, // Keep existing keys
-                ...newTask.source.keys, // Merge new keys
-              },
-              data: newTask.source.data || existing.source.data, // Prefer new data
-            },
+            source: mergedSource,
           };
 
           // Check if meaningfully different for updatedAt

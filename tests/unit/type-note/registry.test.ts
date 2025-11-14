@@ -61,7 +61,21 @@ describe("TypeRegistry", () => {
 
       expect(result.valid).toBe(true);
       expect(registry.has("task")).toBe(true);
-      expect(registry.get("task")).toEqual(noteType);
+      
+      // Get the registered note type (it will be enhanced with PropertyAccessor)
+      const registered = registry.get("task");
+      expect(registered).toBeDefined();
+      expect(registered?.id).toBe(noteType.id);
+      expect(registered?.name).toBe(noteType.name);
+      expect(registered?.version).toBe(noteType.version);
+      
+      // Check that properties are accessible (they're wrapped in PropertyAccessor)
+      expect(registered?.properties.title).toBeDefined();
+      expect(registered?.properties.title.key).toBe("title");
+      expect(registered?.properties.title.required).toBe(true);
+      expect(registered?.properties.dueDate).toBeDefined();
+      expect(registered?.properties.dueDate.key).toBe("dueDate");
+      expect(registered?.properties.dueDate.required).toBe(false);
     });
 
     test("prevents duplicate registration without allowOverwrite", () => {
@@ -185,7 +199,14 @@ describe("TypeRegistry", () => {
       registry.register(noteType);
 
       const retrieved = registry.get("task");
-      expect(retrieved).toEqual(noteType);
+      expect(retrieved).toBeDefined();
+      expect(retrieved?.id).toBe(noteType.id);
+      expect(retrieved?.name).toBe(noteType.name);
+      expect(retrieved?.version).toBe(noteType.version);
+      
+      // Properties are enhanced with PropertyAccessor
+      expect(retrieved?.properties.title.key).toBe("title");
+      expect(retrieved?.properties.dueDate.key).toBe("dueDate");
     });
 
     test("returns undefined for non-existent note type", () => {

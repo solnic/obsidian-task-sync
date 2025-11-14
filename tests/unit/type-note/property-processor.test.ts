@@ -78,7 +78,7 @@ describe("PropertyProcessor", () => {
   });
 
   describe("process", () => {
-    test("processes valid properties", () => {
+    test("processes valid properties", async () => {
       const noteType = createSampleNoteType();
       const frontMatter = {
         title: "Test Task",
@@ -86,7 +86,7 @@ describe("PropertyProcessor", () => {
         priority: 5,
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(true);
       expect(result.properties).toEqual({
@@ -96,13 +96,13 @@ describe("PropertyProcessor", () => {
       });
     });
 
-    test("reports error for missing required property", () => {
+    test("reports error for missing required property", async () => {
       const noteType = createSampleNoteType();
       const frontMatter = {
         description: "Missing title",
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(1);
@@ -110,13 +110,13 @@ describe("PropertyProcessor", () => {
       expect(result.errors[0].propertyKey).toBe("title");
     });
 
-    test("uses default values for missing optional properties", () => {
+    test("uses default values for missing optional properties", async () => {
       const noteType = createSampleNoteType();
       const frontMatter = {
         title: "Test Task",
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(true);
       expect(result.properties?.description).toBe("No description");
@@ -125,35 +125,35 @@ describe("PropertyProcessor", () => {
       expect(result.defaulted).toContain("priority");
     });
 
-    test("applies transformations", () => {
+    test("applies transformations", async () => {
       const noteType = createSampleNoteType();
       const frontMatter = {
         title: "Test Task",
         priority: 15, // Should be clamped to 10
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(true);
       expect(result.properties?.priority).toBe(10);
       expect(result.transformed).toContain("priority");
     });
 
-    test("reports schema validation errors", () => {
+    test("reports schema validation errors", async () => {
       const noteType = createSampleNoteType();
       const frontMatter = {
         title: "Test Task",
         priority: "invalid", // Should be a number
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].code).toBe("SCHEMA_VALIDATION_ERROR");
     });
 
-    test("handles transformation errors", () => {
+    test("handles transformation errors", async () => {
       const noteType = createSampleNoteType();
       noteType.properties.priority.transform = () => {
         throw new Error("Transform failed");
@@ -164,21 +164,21 @@ describe("PropertyProcessor", () => {
         priority: 5,
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].code).toBe("TRANSFORMATION_ERROR");
     });
 
-    test("skips transformations when disabled", () => {
+    test("skips transformations when disabled", async () => {
       const noteType = createSampleNoteType();
       const frontMatter = {
         title: "Test Task",
         priority: 15,
       };
 
-      const result = processor.process(noteType, frontMatter, {
+      const result = await processor.process(noteType, frontMatter, {
         applyTransformations: false,
       });
 
@@ -187,13 +187,13 @@ describe("PropertyProcessor", () => {
       expect(result.transformed).toHaveLength(0);
     });
 
-    test("skips default values when disabled", () => {
+    test("skips default values when disabled", async () => {
       const noteType = createSampleNoteType();
       const frontMatter = {
         title: "Test Task",
       };
 
-      const result = processor.process(noteType, frontMatter, {
+      const result = await processor.process(noteType, frontMatter, {
         useDefaults: false,
       });
 
@@ -202,13 +202,13 @@ describe("PropertyProcessor", () => {
       expect(result.defaulted).toHaveLength(0);
     });
 
-    test("skips required validation when disabled", () => {
+    test("skips required validation when disabled", async () => {
       const noteType = createSampleNoteType();
       const frontMatter = {
         description: "No title",
       };
 
-      const result = processor.process(noteType, frontMatter, {
+      const result = await processor.process(noteType, frontMatter, {
         validateRequired: false,
       });
 
@@ -218,7 +218,7 @@ describe("PropertyProcessor", () => {
   });
 
   describe("property dependencies", () => {
-    test("validates property dependencies", () => {
+    test("validates property dependencies", async () => {
       const noteType = createSampleNoteType();
       const dependency: PropertyDependency = {
         propertyKey: "dueDate",
@@ -245,7 +245,7 @@ describe("PropertyProcessor", () => {
         // Missing due_date
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(false);
       expect(
@@ -253,7 +253,7 @@ describe("PropertyProcessor", () => {
       ).toBe(true);
     });
 
-    test("passes when dependency is satisfied", () => {
+    test("passes when dependency is satisfied", async () => {
       const noteType = createSampleNoteType();
       const dependency: PropertyDependency = {
         propertyKey: "dueDate",
@@ -280,7 +280,7 @@ describe("PropertyProcessor", () => {
         due_date: "2024-12-31",
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(true);
     });
@@ -300,7 +300,7 @@ describe("PropertyProcessor", () => {
   });
 
   describe("conditional validation", () => {
-    test("runs conditional validation when condition is met", () => {
+    test("runs conditional validation when condition is met", async () => {
       const noteType = createSampleNoteType();
       const validation: ConditionalValidation = {
         propertyKey: "description",
@@ -328,7 +328,7 @@ describe("PropertyProcessor", () => {
         // description will use default "No description"
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(false);
       expect(
@@ -336,7 +336,7 @@ describe("PropertyProcessor", () => {
       ).toBe(true);
     });
 
-    test("skips conditional validation when condition is not met", () => {
+    test("skips conditional validation when condition is not met", async () => {
       const noteType = createSampleNoteType();
       const validation: ConditionalValidation = {
         propertyKey: "description",
@@ -363,7 +363,7 @@ describe("PropertyProcessor", () => {
         // description will use default "No description"
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(true);
     });
@@ -384,7 +384,7 @@ describe("PropertyProcessor", () => {
   });
 
   describe("cross-property validation", () => {
-    test("runs cross-property validation", () => {
+    test("runs cross-property validation", async () => {
       const noteType = createSampleNoteType();
       noteType.crossPropertyValidation = (props) => {
         if (props.priority > 5 && !props.due_date) {
@@ -403,7 +403,7 @@ describe("PropertyProcessor", () => {
         priority: 8,
       };
 
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(false);
       expect(
@@ -413,7 +413,7 @@ describe("PropertyProcessor", () => {
   });
 
   describe("clear", () => {
-    test("clears all dependencies and validations", () => {
+    test("clears all dependencies and validations", async () => {
       processor.registerDependency({
         propertyKey: "test",
         dependsOn: [],
@@ -431,7 +431,7 @@ describe("PropertyProcessor", () => {
       // After clearing, processing should work without running any custom validations
       const noteType = createSampleNoteType();
       const frontMatter = { title: "Test" };
-      const result = processor.process(noteType, frontMatter);
+      const result = await processor.process(noteType, frontMatter);
 
       expect(result.valid).toBe(true);
     });

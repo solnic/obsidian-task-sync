@@ -186,7 +186,7 @@ priority: 5
   });
 
   describe("processNote", () => {
-    test("processes a complete note successfully", () => {
+    test("processes a complete note successfully", async () => {
       const noteType = createSampleNoteType();
       registry.register(noteType);
 
@@ -201,7 +201,7 @@ priority: 5
 
 This is the content of the note.`;
 
-      const result = processor.processNote(content, "test-task.md");
+      const result = await processor.processNote(content, "test-task.md");
 
       expect(result.valid).toBe(true);
       expect(result.noteType?.id).toBe("task");
@@ -215,21 +215,21 @@ This is the content of the note.`;
       );
     });
 
-    test("fails when note type cannot be detected", () => {
+    test("fails when note type cannot be detected", async () => {
       const content = `---
 title: Unknown Note
 ---
 
 # Unknown Note`;
 
-      const result = processor.processNote(content, "unknown.md");
+      const result = await processor.processNote(content, "unknown.md");
 
       expect(result.valid).toBe(false);
       expect(result.errors).toHaveLength(1);
       expect(result.errors[0].code).toBe("NOTE_TYPE_NOT_DETECTED");
     });
 
-    test("fails when property validation fails", () => {
+    test("fails when property validation fails", async () => {
       const noteType = createSampleNoteType();
       registry.register(noteType);
 
@@ -241,7 +241,7 @@ priority: 5
 
 # Test Task`;
 
-      const result = processor.processNote(content, "test-task.md");
+      const result = await processor.processNote(content, "test-task.md");
 
       expect(result.valid).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
