@@ -2,11 +2,13 @@ import * as fs from "fs";
 import * as path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
+import { ensureSetup } from "./helpers/setup-verification";
 
 const execAsync = promisify(exec);
 
 /**
  * Global setup for all e2e tests
+ * Verifies and sets up the e2e testing environment if needed
  * Prepares test environment without creating shared Electron instances
  * Each worker will create its own isolated Electron instance
  */
@@ -76,6 +78,10 @@ async function cleanupDebugArtifacts(): Promise<void> {
 }
 
 export default async function globalSetup() {
+  // Ensure e2e testing environment is properly set up
+  // This will automatically run setup if needed
+  await ensureSetup();
+
   // Kill any existing Electron processes first
   await killExistingElectronProcesses();
 

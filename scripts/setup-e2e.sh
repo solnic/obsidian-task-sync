@@ -1,11 +1,80 @@
 #!/bin/bash
 
-# Setup script to download and unpack Obsidian for e2e testing
-# This script downloads the Obsidian AppImage and extracts it for Playwright testing
+# Consolidated e2e testing setup script
+# Sets up both headless testing and Obsidian Playwright e2e infrastructure
 
 set -e
 
-echo "🔧 Setting up Obsidian for e2e testing..."
+echo "🚀 Setting up e2e testing environment..."
+echo ""
+
+# Function to check if a command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Function to check if running as root
+is_root() {
+    [ "$(id -u)" -eq 0 ]
+}
+
+# Function to run command with sudo if not root
+run_with_sudo() {
+    if is_root; then
+        "$@"
+    else
+        sudo "$@"
+    fi
+}
+
+# Step 1: Setup headless testing (xvfb and dependencies)
+echo "📦 Step 1/2: Setting up headless testing environment..."
+echo ""
+
+# Check if we're on a Debian-based system
+if command_exists apt-get; then
+    # Update package list
+    echo "Updating package list..."
+    run_with_sudo apt-get update -qq
+
+    # Install xvfb if not already installed
+    if ! command_exists xvfb-run; then
+        echo "Installing Xvfb (X Virtual Framebuffer)..."
+        run_with_sudo apt-get install -y xvfb
+    else
+        echo "✅ Xvfb is already installed"
+    fi
+
+    # Install additional dependencies that might be needed for Electron
+    echo "Installing additional dependencies for Electron..."
+    run_with_sudo apt-get install -y \
+        libnss3 \
+        libatk-bridge2.0-0 \
+        libdrm2 \
+        libxcomposite1 \
+        libxdamage1 \
+        libxrandr2 \
+        libgbm1 \
+        libxss1 \
+        libasound2 \
+        libatspi2.0-0 \
+        libgtk-3-0 \
+        2>/dev/null || echo "Some packages may already be installed"
+else
+    echo "⚠️ Not a Debian-based system. Skipping headless setup."
+    echo "   For other systems, please install xvfb manually:"
+    echo "   - RHEL/CentOS: yum install xorg-x11-server-Xvfb"
+    echo "   - Arch: pacman -S xorg-server-xvfb"
+    echo "   - Alpine: apk add xvfb"
+fi
+
+echo ""
+echo "✅ Step 1/2 complete: Headless environment ready"
+echo ""
+
+# Step 2: Setup Obsidian for Playwright
+echo "📦 Step 2/2: Setting up Obsidian for Playwright..."
+echo ""
 
 # Configuration
 DOWNLOAD_DIR="./tmp"
@@ -23,16 +92,11 @@ get_latest_version() {
     fi
 
     if [ -z "$LATEST_VERSION" ]; then
-        echo "❌ Error: Could not fetch latest version. Using fallback version 1.8.7" >&2
+        echo "⚠️ Could not fetch latest version. Using fallback version 1.8.7" >&2
         LATEST_VERSION="1.8.7"
     fi
 
     echo "$LATEST_VERSION"
-}
-
-# Function to check if a command exists
-command_exists() {
-    command -v "$1" >/dev/null 2>&1
 }
 
 # Get latest version
@@ -81,6 +145,12 @@ if [ -f "${UNPACKED_DIR}/main.js" ] || [ -f "${UNPACKED_DIR}/obsidian" ]; then
 
     if [ "$CURRENT_VERSION" = "$OBSIDIAN_VERSION" ]; then
         echo "   Already up to date!"
+        echo ""
+        echo "✅ Step 2/2 complete: Obsidian already set up"
+        echo ""
+        echo "🎉 All e2e testing setup complete!"
+        echo ""
+        echo "🧪 You can now run e2e tests with: npm run test:e2e"
         exit 0
     else
         echo "   Updating to latest version..."
@@ -230,7 +300,9 @@ if [ -f "$ARCHIVE_PATH" ]; then
 fi
 
 echo ""
-echo "🚀 Obsidian setup complete!"
+echo "✅ Step 2/2 complete: Obsidian setup complete"
+echo ""
+echo "🎉 All e2e testing setup complete!"
 echo ""
 echo "📍 Unpacked Obsidian location: ${UNPACKED_DIR}"
 echo "🧪 You can now run e2e tests with: npm run test:e2e"

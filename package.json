@@ -14,11 +14,10 @@
     "test:e2e": "xvfb-maybe npx playwright test",
     "test:e2e:failed": "node scripts/rerun-failed-e2e.js",
     "test:obsidian:open": "node scripts/open-obsidian-headless.js",
-    "setup:obsidian-playwright": "bash scripts/setup-obsidian-playwright.sh",
-    "setup:headless": "bash scripts/setup-headless-testing.sh",
+    "setup:e2e": "bash scripts/setup-e2e.sh",
+    "setup:verify": "node scripts/verify-setup.js",
     "test:headless-detection": "node scripts/test-headless-detection.js",
     "test:xvfb": "node scripts/test-xvfb-electron.js",
-    "validate:headless": "node scripts/validate-headless-setup.js",
     "dev:obsidian:open_test_vault": "bash scripts/dev-obsidian-open-test-vault.sh",
     "dev:obsidian:install": "bash scripts/dev-obsidian-install.sh",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
