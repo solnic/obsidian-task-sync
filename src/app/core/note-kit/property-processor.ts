@@ -49,7 +49,7 @@ export interface PropertyDependency {
   dependsOn: string[];
 
   /** Validation function that checks if dependency is satisfied */
-  validate: (value: any, dependencies: Record<string, any>) => ValidationResult;
+  validate: (value: unknown, dependencies: Record<string, unknown>) => ValidationResult;
 }
 
 /**
@@ -61,10 +61,10 @@ export interface ConditionalValidation {
   propertyKey: string;
 
   /** Condition that must be met for validation to run */
-  condition: (properties: Record<string, any>) => boolean;
+  condition: (properties: Record<string, unknown>) => boolean;
 
   /** Validation function to run if condition is met */
-  validate: (value: any, properties: Record<string, any>) => ValidationResult;
+  validate: (value: unknown, properties: Record<string, unknown>) => ValidationResult;
 
   /** Description of the conditional validation */
   description?: string;
@@ -92,7 +92,7 @@ export interface AssociationValidator {
  */
 export interface PropertyProcessingResult extends ValidationResult {
   /** Processed and validated properties */
-  properties?: Record<string, any>;
+  properties?: Record<string, unknown>;
 
   /** Properties that were transformed */
   transformed?: string[];
@@ -161,7 +161,7 @@ export class PropertyProcessor {
    */
   async process(
     noteType: NoteType,
-    frontMatter: Record<string, any>,
+    frontMatter: Record<string, unknown>,
     options: PropertyProcessingOptions = {}
   ): Promise<PropertyProcessingResult> {
     const {
@@ -174,7 +174,7 @@ export class PropertyProcessor {
 
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
-    const processedProperties: Record<string, any> = {};
+    const processedProperties: Record<string, unknown> = {};
     const transformed: string[] = [];
     const defaulted: string[] = [];
 
@@ -311,18 +311,18 @@ export class PropertyProcessor {
    */
   private validateWithSchema(
     propertyDef: PropertyDefinition,
-    value: any
+    value: unknown
   ): ValidationResult {
     try {
       const validatedValue = propertyDef.schema.parse(value);
       return createValidResult(validatedValue);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        const errors = (error.issues || []).map((err: any) =>
+        const errors = error.issues.map((err) =>
           createValidationError(err.message, "SCHEMA_VALIDATION_ERROR", {
             propertyKey: propertyDef.key,
-            path: err.path,
-            expected: err.expected,
+            path: err.path.map(String),
+            expected: "expected" in err ? err.expected : undefined,
             actual: value,
           })
         );
@@ -356,7 +356,7 @@ export class PropertyProcessor {
    */
   private resolveDependencies(
     noteType: NoteType,
-    properties: Record<string, any>
+    properties: Record<string, unknown>
   ): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
@@ -368,7 +368,7 @@ export class PropertyProcessor {
       const value = properties[propertyDef.frontMatterKey];
 
       // Collect dependency values
-      const dependencyValues: Record<string, any> = {};
+      const dependencyValues: Record<string, unknown> = {};
       for (const depKey of dependency.dependsOn) {
         const depDef = noteType.properties[depKey];
         if (depDef) {
@@ -398,7 +398,7 @@ export class PropertyProcessor {
    */
   private runConditionalValidations(
     noteType: NoteType,
-    properties: Record<string, any>
+    properties: Record<string, unknown>
   ): ValidationResult {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];
@@ -436,7 +436,7 @@ export class PropertyProcessor {
    */
   private async validateAssociations(
     noteType: NoteType,
-    properties: Record<string, any>
+    properties: Record<string, unknown>
   ): Promise<ValidationResult> {
     const errors: ValidationError[] = [];
     const warnings: ValidationWarning[] = [];

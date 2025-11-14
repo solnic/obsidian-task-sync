@@ -28,7 +28,7 @@ export interface FrontMatterExtractionResult {
   valid: boolean;
 
   /** Extracted front-matter data */
-  frontMatter: Record<string, any>;
+  frontMatter: Record<string, unknown>;
 
   /** Note content after front-matter */
   content: string;
@@ -104,7 +104,7 @@ export interface NoteProcessingResult {
   noteType: NoteType | null;
 
   /** Processed properties */
-  properties: Record<string, any>;
+  properties: Record<string, unknown>;
 
   /** Note content */
   content: string;
@@ -205,7 +205,7 @@ export class NoteProcessor {
    * Detect note type from front-matter and file path
    */
   detectNoteType(
-    frontMatter: Record<string, any>,
+    frontMatter: Record<string, unknown>,
     filePath: string
   ): NoteTypeDetectionResult {
     const warnings: ValidationWarning[] = [];
@@ -213,17 +213,19 @@ export class NoteProcessor {
     // Method 1: Check front-matter type field
     if (frontMatter.type || frontMatter.Type) {
       const typeId = frontMatter.type || frontMatter.Type;
-      const noteType = this.registry.get(typeId);
+      if (typeof typeId === "string") {
+        const noteType = this.registry.get(typeId);
 
-      if (noteType) {
-        return {
-          valid: true,
-          noteType,
-          confidence: "high",
-          detectionMethod: "frontmatter-type",
-          errors: [],
-          warnings: [],
-        };
+        if (noteType) {
+          return {
+            valid: true,
+            noteType,
+            confidence: "high",
+            detectionMethod: "frontmatter-type",
+            errors: [],
+            warnings: [],
+          };
+        }
       }
 
       warnings.push(
@@ -383,7 +385,7 @@ export class NoteProcessor {
    */
   processTemplate(
     noteType: NoteType,
-    properties: Record<string, any>,
+    properties: Record<string, unknown>,
     options: ProcessOptions = {}
   ): TemplateProcessingResult {
     const templateResult = this.templateEngine.process(
@@ -407,8 +409,8 @@ export class NoteProcessor {
    * Simple YAML parser for front-matter
    * In production, this should use js-yaml library
    */
-  private parseYaml(yamlText: string): Record<string, any> {
-    const result: Record<string, any> = {};
+  private parseYaml(yamlText: string): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
     const lines = yamlText.split("\n");
 
     for (const line of lines) {
@@ -437,7 +439,7 @@ export class NoteProcessor {
       }
 
       // Simple value parsing
-      let value: any = valueText;
+      let value: unknown = valueText;
 
       // Parse numbers
       if (/^\d+$/.test(valueText)) {

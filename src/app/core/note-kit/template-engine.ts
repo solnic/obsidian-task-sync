@@ -29,7 +29,7 @@ export class TemplateEngineError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: Record<string, any>
+    public details?: Record<string, unknown>
   ) {
     super(message);
     this.name = "TemplateEngineError";
@@ -91,9 +91,9 @@ export class TemplateEngine {
     // Date formatting helper
     this.handlebars.registerHelper(
       "formatDate",
-      (date: any, format?: string) => {
+      (date: unknown, format?: string) => {
         if (!date) return "";
-        const d = new Date(date);
+        const d = new Date(date as string | number | Date);
         if (isNaN(d.getTime())) return String(date);
 
         // Simple date formatting (can be enhanced with moment.js or similar)
@@ -108,7 +108,7 @@ export class TemplateEngine {
     // Conditional helper for existence check
     this.handlebars.registerHelper(
       "ifExists",
-      function (value: any, options: any) {
+      function (this: unknown, value: unknown, options: Handlebars.HelperOptions) {
         return value !== null && value !== undefined && value !== ""
           ? options.fn(this)
           : options.inverse(this);
@@ -116,7 +116,7 @@ export class TemplateEngine {
     );
 
     // Join array helper
-    this.handlebars.registerHelper("join", (array: any[], separator = ", ") => {
+    this.handlebars.registerHelper("join", (array: unknown, separator = ", ") => {
       if (!Array.isArray(array)) return "";
       return array.join(separator);
     });
@@ -124,7 +124,7 @@ export class TemplateEngine {
     // Default value helper
     this.handlebars.registerHelper(
       "default",
-      (value: any, defaultValue: any) => {
+      (value: unknown, defaultValue: unknown) => {
         return value !== null && value !== undefined && value !== ""
           ? value
           : defaultValue;
@@ -211,7 +211,7 @@ export class TemplateEngine {
     const mergedVariables = this.mergeVariables(template, context);
 
     // Apply transformations to variables
-    const transformedVariables: Record<string, any> = {};
+    const transformedVariables: Record<string, unknown> = {};
     for (const [varName, value] of Object.entries(mergedVariables)) {
       const templateVar = template.variables[varName];
       if (templateVar?.transform) {
@@ -314,7 +314,7 @@ export class TemplateEngine {
    */
   validateVariables(
     template: Template,
-    variables: Record<string, any>
+    variables: Record<string, unknown>
   ): ValidationResult {
     const errors = [];
     const warnings = [];
@@ -354,8 +354,8 @@ export class TemplateEngine {
   private mergeVariables(
     template: Template,
     context: TemplateContext
-  ): Record<string, any> {
-    const merged: Record<string, any> = {};
+  ): Record<string, unknown> {
+    const merged: Record<string, unknown> = {};
 
     // Start with default values from template variables
     for (const [varName, varDef] of Object.entries(template.variables)) {
