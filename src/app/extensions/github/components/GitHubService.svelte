@@ -655,7 +655,7 @@
         try {
           if (dailyPlanningWizardMode) {
             dailyPlanningExtension.scheduleTaskForToday(existing.id);
-          } else if (dayPlanningMode) {
+          } else {
             await dailyPlanningExtension.addTasksToTodayDailyNote([existing]);
           }
         } catch (err) {
@@ -700,8 +700,8 @@
         } catch (err: any) {
           console.error("Error staging task for today:", err);
         }
-      } else if (dayPlanningMode && dailyPlanningExtension) {
-        // In regular day planning mode, add to today's daily note immediately
+      } else if (dailyPlanningExtension) {
+        // Add to today's daily note immediately
         try {
           await dailyPlanningExtension.addTasksToTodayDailyNote([
             { id: result.taskId, title: githubData.title } as Task,
