@@ -19,46 +19,35 @@
 </script>
 
 <div class="source-context">
-  <div class="property-label">Source</div>
+  <span class="source-label">Source:</span>
   
   {#if sourceExtension === "github"}
     <GitHubSourceInfo {task} />
   {:else if sourceExtension === "obsidian"}
     <ObsidianSourceInfo {task} />
   {:else}
-    <div class="source-info-generic">
-      <span class="source-extension">{sourceExtension}</span>
-    </div>
+    <span class="source-extension">{sourceExtension}</span>
   {/if}
 </div>
 
 <style>
   .source-context {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--background-modifier-border);
+    align-items: center;
+    gap: 6px;
+    padding: 6px 0;
+    font-size: 11px;
   }
 
-  .property-label {
-    font-size: 11px;
+  .source-label {
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-  }
-
-  .source-info-generic {
-    padding: 6px 8px;
-    border-radius: 6px;
-    background: var(--background-secondary);
-    border: 1px solid var(--background-modifier-border);
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
   }
 
   .source-extension {
-    font-size: 13px;
     color: var(--text-normal);
     text-transform: capitalize;
   }

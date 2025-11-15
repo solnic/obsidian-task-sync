@@ -1152,11 +1152,11 @@ export async function openTaskSyncSettings(page: ExtendedPage): Promise<void> {
   );
 
   // Find and click the Task Sync settings tab
-  await page.waitForSelector('.vertical-tab-nav-item:has-text("Task Sync")', { 
-    state: 'visible',
-    timeout: 5000 
+  await page.waitForSelector('.vertical-tab-nav-item:has-text("Task Sync")', {
+    state: "visible",
+    timeout: 5000,
   });
-  
+
   const taskSyncItem = page.locator('.vertical-tab-nav-item').filter({ hasText: 'Task Sync' });
   await taskSyncItem.click();
 

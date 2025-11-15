@@ -407,7 +407,7 @@ export async function resetObsidianUI(page: Page): Promise<void> {
   await toggleSidebar(page, "left", false);
   await toggleSidebar(page, "right", false);
 
-  // Close any open daily planning views and task planning views
+  // Close any open daily planning views, task planning views, and context views
   await page.evaluate(() => {
     try {
       const app = (window as any).app;
@@ -417,6 +417,9 @@ export async function resetObsidianUI(page: Page): Promise<void> {
 
         // Also close task planning views to ensure clean state
         app.workspace.detachLeavesOfType("task-planning");
+
+        // Close context views
+        app.workspace.detachLeavesOfType("task-sync-context");
 
         // Force close any remaining planning-related views
         const allLeaves = app.workspace.getLeavesOfType("daily-planning");
@@ -435,6 +438,16 @@ export async function resetObsidianUI(page: Page): Promise<void> {
             leaf.detach();
           } catch (e) {
             console.debug("Error detaching task planning leaf:", e);
+          }
+        });
+
+        const contextViewLeaves =
+          app.workspace.getLeavesOfType("task-sync-context");
+        contextViewLeaves.forEach((leaf: any) => {
+          try {
+            leaf.detach();
+          } catch (e) {
+            console.debug("Error detaching context view leaf:", e);
           }
         });
       }
