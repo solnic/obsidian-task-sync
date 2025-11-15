@@ -10,8 +10,19 @@ import { stubGitHubAPIs } from "./api-stubbing";
  * Dismiss any visible notices that might block UI interactions
  */
 export async function dismissNotices(page: Page): Promise<void> {
-  // Wait a bit for notices to appear
-  await page.waitForTimeout(100);
+  // Wait for notices to appear if any
+  await page
+    .waitForFunction(
+      () => {
+        const notices = document.querySelectorAll(".notice-container .notice");
+        return notices.length > 0;
+      },
+      {},
+      { timeout: 500, polling: 50 }
+    )
+    .catch(() => {
+      // No notices to dismiss
+    });
 
   // Click on any visible notices to dismiss them
   const notices = page.locator(".notice-container .notice");
@@ -23,7 +34,10 @@ export async function dismissNotices(page: Page): Promise<void> {
         const notice = notices.nth(i);
         if (await notice.isVisible()) {
           await notice.click();
-          await page.waitForTimeout(100);
+          // Wait for notice to disappear
+          await notice
+            .waitFor({ state: "hidden", timeout: 500 })
+            .catch(() => {});
         }
       } catch (error) {
         // Ignore errors when dismissing notices
@@ -31,8 +45,19 @@ export async function dismissNotices(page: Page): Promise<void> {
     }
   }
 
-  // Wait for notices to disappear
-  await page.waitForTimeout(300);
+  // Wait for all notices to disappear
+  await page
+    .waitForFunction(
+      () => {
+        const notices = document.querySelectorAll(".notice-container .notice");
+        return notices.length === 0;
+      },
+      {},
+      { timeout: 1000, polling: 50 }
+    )
+    .catch(() => {
+      // Notices might have been dismissed already
+    });
 }
 
 /**

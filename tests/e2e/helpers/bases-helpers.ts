@@ -13,12 +13,13 @@ export async function regenerateBases(page: Page): Promise<void> {
     await plugin.regenerateBases();
   });
 
-  // Wait for file system operations to complete
-  await page.waitForTimeout(500);
-
   // Verify bases were actually created by checking for at least one .base file
-  await page.waitForFunction(
-    async () => {
+  const startTime = Date.now();
+  const timeout = 5000;
+  const pollInterval = 100;
+
+  while (Date.now() - startTime < timeout) {
+    const hasBaseFiles = await page.evaluate(async () => {
       const app = (window as any).app;
       const basesFolder =
         app.plugins.plugins["obsidian-task-sync"]?.settings?.basesFolder ||
@@ -29,9 +30,19 @@ export async function regenerateBases(page: Page): Promise<void> {
       } catch {
         return false;
       }
-    },
-    { timeout: 5000 }
-  );
+    });
+
+    if (hasBaseFiles) {
+      return;
+    }
+
+    // Wait before next check
+    await page.evaluate(async (ms) => {
+      await new Promise((resolve) => setTimeout(resolve, ms));
+    }, pollInterval);
+  }
+
+  throw new Error("Timeout waiting for base files to be created");
 }
 
 /**
@@ -43,15 +54,25 @@ export async function openNoteWithBases(
   timeoutMs: number = 3000
 ): Promise<void> {
   // Ensure vault sees the file
-  await page.waitForFunction(
-    async ({ path }) => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(path);
-      return file !== null;
-    },
-    { path: filePath },
-    { timeout: timeoutMs }
-  );
+  const fileCheckStart = Date.now();
+  while (Date.now() - fileCheckStart < timeoutMs) {
+    const fileExists = await page.evaluate(
+      async ({ path }) => {
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(path);
+        return file !== null;
+      },
+      { path: filePath }
+    );
+
+    if (fileExists) {
+      break;
+    }
+
+    await page.evaluate(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+  }
 
   // Open the file
   await page.evaluate(async (path) => {
@@ -78,9 +99,10 @@ export async function openNoteWithBases(
   );
 
   // Ensure active file stays stable as the expected path for a short window
+  // Keep the original manual polling since it needs to re-open the file on each check
   const stabilityWindowMs = 800;
-  const start = Date.now();
-  while (Date.now() - start < stabilityWindowMs) {
+  const stabilityStart = Date.now();
+  while (Date.now() - stabilityStart < stabilityWindowMs) {
     const stillActive = await page.evaluate(
       ({ path }) => {
         const app = (window as any).app;
@@ -96,7 +118,10 @@ export async function openNoteWithBases(
         await leaf.openFile(file);
       }, filePath);
     }
-    await page.waitForTimeout(50);
+    // Brief polling delay
+    await page.evaluate(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
   }
 
   // Wait for editor to be visible
@@ -105,15 +130,16 @@ export async function openNoteWithBases(
     timeout: timeoutMs,
   });
 
-  // Two-stage wait for embedded Bases UI: first embed presence, then table
-  const deadline = Date.now() + timeoutMs;
+  // Wait for embedded Bases UI to appear - use manual polling since we need to re-open file
+  const embedDeadline = Date.now() + timeoutMs;
   let embedVisible = false;
-  while (Date.now() < deadline) {
+  while (Date.now() < embedDeadline) {
     embedVisible = await page
       .locator(".internal-embed.bases-embed")
       .isVisible()
       .catch(() => false);
     if (embedVisible) break;
+
     // Re-open target file to fight focus-steal by newly created task notes
     await page.evaluate(async (path) => {
       const app = (window as any).app;
@@ -121,7 +147,11 @@ export async function openNoteWithBases(
       const leaf = app.workspace.getLeaf();
       await leaf.openFile(file);
     }, filePath);
-    await page.waitForTimeout(100);
+
+    // Brief polling delay
+    await page.evaluate(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
   }
 
   // Now wait for bases view/table to be present inside the embed
@@ -148,9 +178,21 @@ export async function openNoteWithBases(
     .catch(() => false);
 
   if (!hasToolbar || !headerVisible) {
-    // Retry after forcing regeneration and a small delay
+    // Retry after forcing regeneration
     await regenerateBases(page);
-    await page.waitForTimeout(300);
+
+    // Wait for regeneration to complete
+    await page
+      .waitForFunction(
+        () => {
+          const toolbar = document.querySelector(".bases-view .query-toolbar");
+          return toolbar !== null;
+        },
+        {},
+        { timeout: 1000, polling: 100 }
+      )
+      .catch(() => {});
+
     await page.evaluate(async (path) => {
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(path);
@@ -189,7 +231,16 @@ export async function openBaseNoteStable(
     }
   });
 
-  await page.waitForTimeout(200);
+  // Wait for leaves to be detached
+  await page.waitForFunction(
+    () => {
+      const app = (window as any).app;
+      const leaves = app.workspace.getLeavesOfType("markdown");
+      return leaves.length === 0;
+    },
+    {},
+    { timeout: 1000, polling: 50 }
+  ).catch(() => {});
 
   // Now open the file fresh
   await openFile(page as any, filePath, timeoutMs);
@@ -218,8 +269,17 @@ export async function openBaseNoteStable(
     timeout: 3000,
   });
 
-  // Give Bases plugin time to load the embed content
-  await page.waitForTimeout(500);
+  // Wait for Bases plugin to load the embed content
+  await page.waitForFunction(
+    () => {
+      const embed = document.querySelector(".internal-embed.bases-embed");
+      if (!embed) return false;
+      const basesView = embed.querySelector(".bases-view");
+      return basesView !== null;
+    },
+    {},
+    { timeout: 2000, polling: 100 }
+  );
 
   // Expand collapsed headings
   await page.evaluate(() => {
@@ -236,7 +296,23 @@ export async function openBaseNoteStable(
     });
   });
 
-  await page.waitForTimeout(500);
+  // Wait for headings to expand
+  await page.waitForFunction(
+    () => {
+      const collapsedHeadings = document.querySelectorAll(
+        ".markdown-preview-view .heading-collapse-indicator.collapse-icon"
+      );
+      for (const indicator of collapsedHeadings) {
+        const parent = indicator.closest(".el-h2, .el-h3, .el-h4, .el-h5, .el-h6");
+        if (parent && parent.classList.contains("is-collapsed")) {
+          return false;
+        }
+      }
+      return true;
+    },
+    {},
+    { timeout: 2000, polling: 100 }
+  ).catch(() => {});
 
   await waitForBaseView(page as any, timeoutMs);
 }
@@ -349,8 +425,20 @@ export async function switchBaseView(
     timeout: 5000,
   });
 
-  // Give the toolbar additional time to fully initialize
-  await page.waitForTimeout(300);
+  // Wait for the toolbar to fully initialize by checking for interactive elements
+  await page.waitForFunction(
+    () => {
+      const toolbar = document.querySelector(
+        ".internal-embed.bases-embed .bases-toolbar"
+      );
+      if (!toolbar) return false;
+      // Check if toolbar has clickable elements
+      const buttons = toolbar.querySelectorAll("button, .text-icon-button");
+      return buttons.length > 0;
+    },
+    {},
+    { timeout: 1000, polling: 100 }
+  );
 
   // Find the views dropdown button in the toolbar
   // Scope to the embedded bases view to avoid conflicts with other UI elements
@@ -425,7 +513,14 @@ export async function switchBaseView(
   await viewsButton.click();
 
   // Wait for dropdown menu to appear
-  await page.waitForTimeout(200);
+  await page.waitForFunction(
+    () => {
+      const menu = document.querySelector(".menu");
+      return menu && (menu as HTMLElement).offsetParent !== null;
+    },
+    {},
+    { timeout: 1000, polling: 50 }
+  );
 
   // Click the view label in the dropdown
   const viewOption = page
@@ -447,10 +542,10 @@ export async function switchBaseView(
   }
 
   // Wait for the view to switch and data to reload
-  await waitForBaseViewToLoad(page, 3000);
+  await waitForBaseViewToLoad(page, 5000);
 
-  // Wait for the view to actually apply - verify the table has updated with filtered data
-  // We wait for the table to stabilize (row count stops changing)
+  // Wait for the view to switch and filters to apply
+  // Check that we have a valid table structure and no loading indicators
   await page.waitForFunction(
     () => {
       const basesView = document.querySelector(
@@ -462,15 +557,21 @@ export async function switchBaseView(
       const tbody = basesView.querySelector(".bases-tbody");
       if (!tbody) return false;
 
-      // Wait for at least some rows to be present (even if 0 after filtering)
-      // The key is waiting for the table to finish updating
-      return true;
+      // Check if no loading indicators are present
+      const loadingIndicators = basesView.querySelectorAll(
+        ".is-loading, .loading"
+      );
+      return loadingIndicators.length === 0;
     },
-    { timeout: 2000 }
+    {},
+    { timeout: 3000, polling: 100 }
   );
 
-  // Give additional time for filters to apply and table to re-render
-  await page.waitForTimeout(500);
+  // Additional wait to ensure the DOM has fully updated after view switch
+  // The bases view rerenders asynchronously, so we need to wait for the table to stabilize
+  await page.evaluate(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  });
 }
 
 /**
