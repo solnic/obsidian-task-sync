@@ -124,10 +124,11 @@ test.describe("Sync Property Filtering", () => {
     expect(syncedTask.areas).toEqual(["Development", "Testing"]);
     expect(syncedTask.project).toBe("My Project");
 
-    // Verify the file content
+    // Verify the file content - file name doesn't automatically change with title
+    // So we check the original file name
     const fileContent = await readVaultFile(
       page,
-      "Tasks/GitHub Updated This Title.md"
+      "Tasks/Updated Title from GitHub.md"
     );
     expect(fileContent).toBeTruthy();
     expect(fileContent).toContain("Title: GitHub Updated This Title");
@@ -144,51 +145,11 @@ test.describe("Sync Property Filtering", () => {
     await openView(page, "task-sync-main");
     await enableIntegration(page, "github");
 
-    // Create a fixture for issue #789 with basic data
-    await page.evaluate(() => {
-      (window as any).__githubApiStubs = {
-        issues: [
-          {
-            id: 111,
-            number: 789,
-            title: "GitHub Task",
-            body: "Test description from GitHub",
-            state: "open",
-            html_url: "https://github.com/test-owner/test-repo/issues/789",
-            labels: [],
-            assignees: [],
-            created_at: "2024-01-01T00:00:00Z",
-            updated_at: "2024-01-01T00:00:00Z",
-            repository: {
-              owner: {
-                login: "test-owner",
-              },
-              name: "test-repo",
-              full_name: "test-owner/test-repo",
-            },
-          },
-        ],
-        repositories: [
-          {
-            id: 123,
-            name: "test-repo",
-            full_name: "test-owner/test-repo",
-            owner: {
-              login: "test-owner",
-              type: "User",
-            },
-            private: false,
-            html_url: "https://github.com/test-owner/test-repo",
-            description: "Test repository",
-            fork: false,
-          },
-        ],
-        currentUser: {
-          login: "testuser",
-          id: 1,
-          avatar_url: "https://github.com/images/error/testuser.png",
-        },
-      };
+    // Set up GitHub fixtures with issue #789
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-test-repo",
+      issues: "issue-789",
+      currentUser: "current-user-basic",
     });
 
     // Wait for GitHub to be ready
