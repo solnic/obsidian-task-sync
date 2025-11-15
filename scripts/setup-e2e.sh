@@ -92,8 +92,8 @@ get_latest_version() {
     fi
 
     if [ -z "$LATEST_VERSION" ]; then
-        echo "⚠️ Could not fetch latest version. Using fallback version 1.8.7" >&2
-        LATEST_VERSION="1.8.7"
+        echo "⚠️ Could not fetch latest version. Using fallback version 1.10.3" >&2
+        LATEST_VERSION="1.10.3"
     fi
 
     echo "$LATEST_VERSION"
