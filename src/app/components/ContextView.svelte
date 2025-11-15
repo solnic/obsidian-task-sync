@@ -46,12 +46,15 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    width: 100%;
+    min-height: 0;
     overflow: hidden;
   }
 
   .context-view-header {
     padding: 16px 16px 8px 16px;
     border-bottom: 1px solid var(--background-modifier-border);
+    flex-shrink: 0;
   }
 
   .context-view-title {
@@ -63,7 +66,9 @@
 
   .context-view-content {
     flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    padding: 16px;
   }
 </style>

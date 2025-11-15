@@ -699,9 +699,13 @@ export default class TaskSyncPlugin extends Plugin {
     const existingLeaves = workspace.getLeavesOfType(CONTEXT_VIEW_TYPE);
 
     if (existingLeaves.length > 0) {
-      // Activate existing view
+      // Activate existing view and ensure right sidebar is visible
+      workspace.rightSplit.expand();
       await workspace.revealLeaf(existingLeaves[0]);
     } else {
+      // Ensure right sidebar is expanded
+      workspace.rightSplit.expand();
+      
       // Create new view in right sidebar
       const leaf = workspace.getRightLeaf(false);
       await leaf.setViewState({

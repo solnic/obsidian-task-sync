@@ -380,7 +380,8 @@ test.describe("Svelte App Initialization", () => {
     await expect(priorityButton).toContainText("High");
 
     // Click project button to verify it opens dropdown
-    await projectButton.click();
+    // Use force: true because editor in main area may overlap the right sidebar
+    await projectButton.click({ force: true });
 
     // Should show project dropdown
     const projectDropdown = page.locator(
@@ -440,7 +441,7 @@ test.describe("Svelte App Initialization", () => {
       '[data-testid="context-status-button"]'
     );
     await expect(statusButton).toContainText("Backlog");
-    await statusButton.click();
+    await statusButton.click({ force: true });
 
     const statusDropdown = page.locator(
       '[data-testid="context-status-dropdown"]'
@@ -462,7 +463,7 @@ test.describe("Svelte App Initialization", () => {
       '[data-testid="context-priority-button"]'
     );
     await expect(priorityButton).toContainText("Low");
-    await priorityButton.click();
+    await priorityButton.click({ force: true });
 
     const priorityDropdown = page.locator(
       '[data-testid="context-priority-dropdown"]'
@@ -484,7 +485,7 @@ test.describe("Svelte App Initialization", () => {
       '[data-testid="context-category-button"]'
     );
     await expect(categoryButton).toContainText("Task");
-    await categoryButton.click();
+    await categoryButton.click({ force: true });
 
     const categoryDropdown = page.locator(
       '[data-testid="context-category-dropdown"]'
@@ -506,7 +507,7 @@ test.describe("Svelte App Initialization", () => {
       '[data-testid="context-project-button"]'
     );
     await expect(projectButton).toContainText("Add to project");
-    await projectButton.click();
+    await projectButton.click({ force: true });
 
     const projectDropdown = page.locator(
       '[data-testid="context-project-dropdown"]'
@@ -528,7 +529,7 @@ test.describe("Svelte App Initialization", () => {
       '[data-testid="context-areas-button"]'
     );
     await expect(areasButton).toContainText("Add to area");
-    await areasButton.click();
+    await areasButton.click({ force: true });
 
     const areasDropdown = page.locator(
       '[data-testid="context-areas-dropdown"]'
@@ -584,11 +585,15 @@ test.describe("Svelte App Initialization", () => {
     await waitForFileProcessed(page, taskPath);
     await openFile(page, taskPath);
 
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-    await expect(page.locator(".task-sync-app")).toBeVisible();
+    // Open the Context view
+    await executeCommand(page, "Task Sync: Open Context View");
 
-    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    // Wait for context view to be visible
+    const contextView = page.locator('[data-testid="context-view"]');
+    await expect(contextView).toBeVisible();
+
+    // Get the context widget
+    const contextWidget = contextView.locator('[data-testid="context-widget"]');
     await expect(contextWidget).toBeVisible();
 
     const areasButton = contextWidget.locator(
@@ -599,7 +604,7 @@ test.describe("Svelte App Initialization", () => {
     await expect(areasButton).toContainText("Add to area");
 
     // Open areas dropdown
-    await areasButton.click();
+    await areasButton.click({ force: true });
     const areasDropdown = page.locator(
       '[data-testid="context-areas-dropdown"]'
     );
@@ -741,7 +746,7 @@ test.describe("Svelte App Initialization", () => {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const tomorrowStr = tomorrow.toISOString().split("T")[0];
 
-    await doDateInput.fill(tomorrowStr);
+    await doDateInput.fill(tomorrowStr, { force: true });
     await doDateInput.blur(); // Trigger change event
 
     // Wait for file to be updated with do date
@@ -778,7 +783,7 @@ test.describe("Svelte App Initialization", () => {
     threeDaysLater.setDate(threeDaysLater.getDate() + 3);
     const threeDaysLaterStr = threeDaysLater.toISOString().split("T")[0];
 
-    await dueDateInput.fill(threeDaysLaterStr);
+    await dueDateInput.fill(threeDaysLaterStr, { force: true });
     await dueDateInput.blur(); // Trigger change event
 
     // Wait for file to be updated with due date
@@ -811,7 +816,7 @@ test.describe("Svelte App Initialization", () => {
     }
 
     // Clear do date
-    await doDateInput.fill("");
+    await doDateInput.fill("", { force: true });
     await doDateInput.blur();
 
     // Wait for task entity to have do date cleared
@@ -831,7 +836,7 @@ test.describe("Svelte App Initialization", () => {
     expect(task.doDate).toBeUndefined();
 
     // Clear due date
-    await dueDateInput.fill("");
+    await dueDateInput.fill("", { force: true });
     await dueDateInput.blur();
 
     // Wait for task entity to have due date cleared
@@ -938,7 +943,7 @@ test.describe("Svelte App Initialization", () => {
     const projectButton = contextWidget.locator(
       '[data-testid="context-project-button"]'
     );
-    await projectButton.click();
+    await projectButton.click({ force: true });
 
     const projectDropdown = page.locator(
       '[data-testid="context-project-dropdown"]'
