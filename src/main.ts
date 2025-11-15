@@ -748,37 +748,29 @@ export default class TaskSyncPlugin extends Plugin {
         // Basic inference from path: if under Projects/ or Areas/ use that as default
         if (activePath.startsWith(projectFolder)) {
           const parts = activePath.substring(projectFolder.length).split("/");
-          let folderName = parts[0] || "";
+          let projectName = parts[0] || "";
           // Remove .md extension if present (in case file is directly in Projects/)
-          folderName = folderName.replace(/\.md$/, "");
+          projectName = projectName.replace(/\.md$/, "");
           
-          if (folderName) {
-            // Look up the actual project entity by name
-            const project = this.query.findProjectByName(folderName);
-            if (project) {
-              initialPropertyValues = {
-                ...(initialPropertyValues || {}),
-                project: project.name,
-              };
-              contextualTitle = `Create Task for Project: ${project.name}`;
-            }
+          if (projectName) {
+            initialPropertyValues = {
+              ...(initialPropertyValues || {}),
+              project: projectName,
+            };
+            contextualTitle = `Create Task for Project: ${projectName}`;
           }
         } else if (activePath.startsWith(areaFolder)) {
           const parts = activePath.substring(areaFolder.length).split("/");
-          let folderName = parts[0] || "";
+          let areaName = parts[0] || "";
           // Remove .md extension if present (in case file is directly in Areas/)
-          folderName = folderName.replace(/\.md$/, "");
+          areaName = areaName.replace(/\.md$/, "");
           
-          if (folderName) {
-            // Look up the actual area entity by name
-            const area = this.query.findAreaByName(folderName);
-            if (area) {
-              initialPropertyValues = {
-                ...(initialPropertyValues || {}),
-                areas: [area.name],
-              };
-              contextualTitle = `Create Task for Area: ${area.name}`;
-            }
+          if (areaName) {
+            initialPropertyValues = {
+              ...(initialPropertyValues || {}),
+              areas: [areaName],
+            };
+            contextualTitle = `Create Task for Area: ${areaName}`;
           }
         }
 
@@ -787,17 +779,13 @@ export default class TaskSyncPlugin extends Plugin {
         if (activePath.startsWith(tasksFolder)) {
           const parentTitle = activeFile?.basename;
           if (parentTitle) {
-            // Look up the actual task entity by title
-            const parentTask = this.query.findTaskByTitle(parentTitle);
-            if (parentTask) {
-              initialPropertyValues = {
-                ...(initialPropertyValues || {}),
-                parentTask: parentTask.title,
-              };
-              // If no prior context title, reflect parent task
-              if (!contextualTitle) {
-                contextualTitle = `Create Subtask of: ${parentTask.title}`;
-              }
+            initialPropertyValues = {
+              ...(initialPropertyValues || {}),
+              parentTask: parentTitle,
+            };
+            // If no prior context title, reflect parent task
+            if (!contextualTitle) {
+              contextualTitle = `Create Subtask of: ${parentTitle}`;
             }
           }
         }
