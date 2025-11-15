@@ -359,6 +359,9 @@ export class ObsidianExtension implements Extension {
       // Set up vault event listeners for file deletions
       this.setupVaultEventListeners();
 
+      // Set up NoteKit file watcher for property auto-completion
+      this.setupPropertyAutoCompletion();
+
       // Register markdown processor after layout is ready
       this.registerTaskTodoMarkdownProcessor();
 
@@ -818,6 +821,128 @@ export class ObsidianExtension implements Extension {
 
     this.vaultEventRefs.push(metadataChangeRef);
     this.vaultEventRefs.push(deleteRef);
+  }
+
+  /**
+   * Set up property auto-completion for newly created typed notes
+   *
+   * When notes are created externally (e.g., via Base UI), they may only have
+   * the properties configured in the base. This handler detects such notes and
+   * automatically adds missing properties with their default values.
+   */
+  private setupPropertyAutoCompletion(): void {
+    console.log("[ObsidianExtension] Setting up property auto-completion...");
+
+    this.typeNote.fileWatcher.addEventHandler(async (event) => {
+      // Only process created files
+      if (event.type !== "created") {
+        return;
+      }
+
+      // Only process typed notes
+      if (!event.isTypedNote || !event.noteType) {
+        return;
+      }
+
+      console.log(
+        `[ObsidianExtension] Detected new typed note: ${event.file.path} (type: ${event.noteType.id})`
+      );
+
+      try {
+        // Read the current file content
+        const content = await this.app.vault.read(event.file);
+        const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+        if (!frontMatterMatch) {
+          console.warn(
+            `[ObsidianExtension] No front-matter found in ${event.file.path}, skipping auto-completion`
+          );
+          return;
+        }
+
+        // Parse existing properties
+        const { default: yaml } = await import("js-yaml");
+        const existingProperties = yaml.load(frontMatterMatch[1]) as Record<
+          string,
+          any
+        >;
+
+        // Determine which properties need to be added
+        const propertiesToAdd: Record<string, any> = {};
+        let needsUpdate = false;
+
+        for (const [_key, propDef] of Object.entries(
+          event.noteType.properties
+        )) {
+          const frontMatterKey = propDef.frontMatterKey || propDef.name;
+
+          // Check if property is missing
+          if (existingProperties[frontMatterKey] === undefined) {
+            // Add the property if it has a default value or is required
+            if (propDef.defaultValue !== undefined) {
+              propertiesToAdd[frontMatterKey] = propDef.defaultValue;
+              needsUpdate = true;
+              console.log(
+                `[ObsidianExtension] Adding missing property '${frontMatterKey}' with default value:`,
+                propDef.defaultValue
+              );
+            } else if (propDef.required) {
+              // For required properties without defaults, we need to determine a sensible default
+              if (propDef.type === "string") {
+                propertiesToAdd[frontMatterKey] = "";
+              } else if (propDef.type === "boolean") {
+                propertiesToAdd[frontMatterKey] = false;
+              } else if (propDef.type === "array") {
+                propertiesToAdd[frontMatterKey] = [];
+              }
+              // Note: For other types (number, date, etc.), we skip adding them
+              // as we don't have a sensible default value
+
+              if (propertiesToAdd[frontMatterKey] !== undefined) {
+                needsUpdate = true;
+                console.log(
+                  `[ObsidianExtension] Adding missing required property '${frontMatterKey}' with inferred default`
+                );
+              }
+            }
+          }
+        }
+
+        // Update the file if needed
+        if (needsUpdate) {
+          console.log(
+            `[ObsidianExtension] Updating ${event.file.path} with ${
+              Object.keys(propertiesToAdd).length
+            } missing properties`
+          );
+
+          // Use Obsidian's processFrontMatter API to update the file
+          await this.app.fileManager.processFrontMatter(
+            event.file,
+            (frontMatter) => {
+              Object.assign(frontMatter, propertiesToAdd);
+            }
+          );
+
+          console.log(
+            `[ObsidianExtension] Successfully updated ${event.file.path}`
+          );
+        } else {
+          console.log(
+            `[ObsidianExtension] No missing properties found in ${event.file.path}`
+          );
+        }
+      } catch (error) {
+        console.error(
+          `[ObsidianExtension] Failed to auto-complete properties for ${event.file.path}:`,
+          error
+        );
+      }
+    });
+
+    console.log(
+      "[ObsidianExtension] Property auto-completion handler registered"
+    );
   }
 
   /**

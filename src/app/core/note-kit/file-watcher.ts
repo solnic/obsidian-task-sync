@@ -276,7 +276,9 @@ export class FileWatcher extends Component {
         const content = await this.vault.read(file);
         const result = await this.noteProcessor.processNote(content, file.path);
 
-        if (result.valid && result.noteType) {
+        // Mark as typed note if a note type was detected, even if validation failed
+        // This allows auto-completion handlers to fix missing required properties
+        if (result.noteType) {
           event.isTypedNote = true;
           event.noteType = result.noteType;
           event.validationResult = {
