@@ -14,6 +14,10 @@ import {
   DailyPlanningView,
   DAILY_PLANNING_VIEW_TYPE,
 } from "./app/views/DailyPlanningView";
+import {
+  ContextView,
+  CONTEXT_VIEW_TYPE,
+} from "./app/views/ContextView";
 import { taskStore, type TaskStore } from "./app/stores/taskStore";
 import { projectStore, type ProjectStore } from "./app/stores/projectStore";
 import { areaStore, type AreaStore } from "./app/stores/areaStore";
@@ -198,6 +202,11 @@ export default class TaskSyncPlugin extends Plugin {
       return new DailyPlanningView(leaf);
     });
 
+    // Register the Context View
+    this.registerView(CONTEXT_VIEW_TYPE, (leaf) => {
+      return new ContextView(leaf, this.host, this.settings);
+    });
+
     // Add ribbon icon for main view (use valid Obsidian icon)
     this.addRibbonIcon("list-todo", "Task Sync", () => {
       void this.activateView();
@@ -218,6 +227,15 @@ export default class TaskSyncPlugin extends Plugin {
       name: "Refresh Bases",
       callback: async () => {
         await this.refreshBases();
+      },
+    });
+
+    // Add command to open context view
+    this.addCommand({
+      id: "open-context-view",
+      name: "Open Context View",
+      callback: () => {
+        void this.openContextView();
       },
     });
 
@@ -672,6 +690,25 @@ export default class TaskSyncPlugin extends Plugin {
     }
 
     await workspace.revealLeaf(leaf);
+  }
+
+  async openContextView() {
+    const { workspace } = this.app;
+
+    // Check if Context view already exists
+    const existingLeaves = workspace.getLeavesOfType(CONTEXT_VIEW_TYPE);
+
+    if (existingLeaves.length > 0) {
+      // Activate existing view
+      await workspace.revealLeaf(existingLeaves[0]);
+    } else {
+      // Create new view in right sidebar
+      const leaf = workspace.getRightLeaf(false);
+      await leaf.setViewState({
+        type: CONTEXT_VIEW_TYPE,
+        active: true,
+      });
+    }
   }
 
   async openCreateAreaModal() {

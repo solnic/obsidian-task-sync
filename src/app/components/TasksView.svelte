@@ -6,13 +6,12 @@
 
   import Service from "./Service.svelte";
   import TabView from "./TabView.svelte";
-  import ContextWidget from "./ContextWidget.svelte";
   import type { TaskSyncSettings } from "../types/settings";
   import { setIcon } from "obsidian";
   import { extensionRegistry } from "../core/extension";
   import type { DailyPlanningExtension } from "../extensions/daily-planning/DailyPlanningExtension";
   import type { Host } from "../core/host";
-  import { isPlanningActive, currentFileContext } from "../stores/contextStore";
+  import { isPlanningActive } from "../stores/contextStore";
   import { untrack } from "svelte";
   import { eventBus } from "../core/events";
 
@@ -31,21 +30,10 @@
 
   // State - simplified to only support local tasks initially
   let activeService = $state<string>("local");
-  let showContextTab = $state<boolean>(true); // Default to showing context tab
 
   // Track which services have been mounted (visited at least once)
-  // Context tab and local service are mounted by default
+  // Local service is mounted by default
   let mountedServices = $state<Set<string>>(new Set(["local"]));
-
-  // Debug logging for context changes - use $derived to access store reactively
-  $effect(() => {
-    console.log("TasksView - Context from store:", {
-      type: $currentFileContext?.type,
-      name: $currentFileContext?.name,
-      hasEntity: !!$currentFileContext?.entity,
-      entityId: $currentFileContext?.entity?.id,
-    });
-  });
 
   // Get daily planning extension - simple, direct lookup
   let dailyPlanningExtension = $derived(
@@ -182,34 +170,15 @@
       <TabView
         className="tasks-view-tab"
         testId="tasks-view-tab"
-        showHeader={showContextTab || !showContextTab}
-        headerTitle={showContextTab
-          ? $currentFileContext?.type === "task"
-            ? "Task"
-            : $currentFileContext?.type === "project"
-              ? "Project"
-              : $currentFileContext?.type === "area"
-                ? "Area"
-                : $currentFileContext?.type === "daily"
-                  ? "Daily Note"
-                  : "Context"
-          : services.find((s: any) => s.id === activeService)?.name}
+        showHeader={true}
+        headerTitle={services.find((s: any) => s.id === activeService)?.name}
       >
-        <!-- Context Widget Content - Always mounted, visibility controlled by CSS -->
-        <div
-          class="context-tab-content"
-          class:tab-hidden={!showContextTab}
-          data-testid="context-tab-content"
-        >
-          <ContextWidget context={$currentFileContext} {settings} {host} />
-        </div>
-
         <!-- Service Content - Only mount services that have been visited, keep them mounted -->
         {#each services as service}
           {#if mountedServices.has(service.id)}
             <div
               class="service-content"
-              class:tab-hidden={showContextTab || activeService !== service.id}
+              class:tab-hidden={activeService !== service.id}
               data-testid="service-content-{service.id}"
             >
               <Service
@@ -229,22 +198,6 @@
 
     <!-- Vertical Tab Switcher on the right -->
     <div class="service-switcher-vertical" data-testid="service-switcher">
-      <!-- Context Tab Button (above service tabs) -->
-      <button
-        class="service-button-vertical context-tab-button {showContextTab
-          ? 'active'
-          : ''}"
-        title="Context Information"
-        data-testid="context-tab-button"
-        aria-label="Show context information"
-        onclick={() => {
-          showContextTab = true;
-          activeService = ""; // Deactivate service tabs when context tab is clicked
-        }}
-      >
-        <span class="service-icon-vertical" data-icon="info"></span>
-      </button>
-
       <!-- Service Tab Buttons -->
       {#each services as service}
         <button
@@ -257,7 +210,6 @@
           aria-label="Switch to {service.name}"
           onclick={() => {
             activeService = service.id;
-            showContextTab = false; // Hide context tab when switching to service
             // Mark this service as mounted so it stays loaded
             // Create a new Set to trigger reactivity
             if (!mountedServices.has(service.id)) {
