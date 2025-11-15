@@ -369,101 +369,87 @@
 </script>
 
 <div class="task-context">
-  <!-- Primary properties group -->
-  <ul class="property-group">
-    <li>
-      <button
-        bind:this={statusButtonEl}
-        type="button"
-        onclick={() => (showStatusDropdown = true)}
-        class="task-sync-property-button mod-minimal"
-        data-testid="context-status-button"
-        aria-label="Change status"
-      ></button>
-    </li>
-    <li>
-      <button
-        bind:this={categoryButtonEl}
-        type="button"
-        onclick={() => (showCategoryDropdown = true)}
-        class="task-sync-property-button mod-minimal"
-        data-testid="context-category-button"
-        aria-label="Change category"
-      ></button>
-    </li>
-    <li>
-      <button
-        bind:this={priorityButtonEl}
-        type="button"
-        onclick={() => (showPriorityDropdown = true)}
-        class="task-sync-property-button mod-minimal"
-        data-testid="context-priority-button"
-        aria-label="Change priority"
-      ></button>
-    </li>
-  </ul>
+  <!-- Primary properties - inline badges -->
+  <div class="context-badges-row">
+    <button
+      bind:this={statusButtonEl}
+      type="button"
+      onclick={() => (showStatusDropdown = true)}
+      class="task-sync-property-button mod-minimal mod-compact"
+      data-testid="context-status-button"
+      aria-label="Change status"
+    ></button>
+    <button
+      bind:this={categoryButtonEl}
+      type="button"
+      onclick={() => (showCategoryDropdown = true)}
+      class="task-sync-property-button mod-minimal mod-compact"
+      data-testid="context-category-button"
+      aria-label="Change category"
+    ></button>
+    <button
+      bind:this={priorityButtonEl}
+      type="button"
+      onclick={() => (showPriorityDropdown = true)}
+      class="task-sync-property-button mod-minimal mod-compact"
+      data-testid="context-priority-button"
+      aria-label="Change priority"
+    ></button>
+  </div>
 
-  <!-- Project property -->
-  <ul class="property-group">
-    <li>
-      <div class="property-label">Project</div>
+  <!-- Project & Areas - inline -->
+  <div class="context-meta-row">
+    <div class="context-meta-item">
+      <span class="context-meta-label">Project</span>
       <button
         bind:this={projectButtonEl}
         type="button"
         onclick={() => (showProjectDropdown = true)}
-        class="task-sync-property-button mod-minimal task-sync-property-button-full"
+        class="task-sync-property-button mod-minimal mod-inline"
         data-testid="context-project-button"
         aria-label="Change project"
       ></button>
-    </li>
-  </ul>
-
-  <!-- Areas property -->
-  <ul class="property-group">
-    <li>
-      <div class="property-label">Areas</div>
+    </div>
+    <div class="context-meta-item">
+      <span class="context-meta-label">Area</span>
       <button
         bind:this={areasButtonEl}
         type="button"
         onclick={() => (showAreasDropdown = true)}
-        class="task-sync-property-button mod-minimal task-sync-property-button-full"
+        class="task-sync-property-button mod-minimal mod-inline"
         data-testid="context-areas-button"
         aria-label="Change areas"
       ></button>
-    </li>
-  </ul>
+    </div>
+  </div>
 
-  <!-- Do Date property -->
-  <ul class="property-group">
-    <li>
-      <div class="property-label">Do Date</div>
+  <!-- Dates - inline on same row -->
+  <div class="context-dates-row">
+    <div class="context-date-item">
+      <span class="context-date-label">Do</span>
       <input
         bind:this={doDateInputEl}
         type="date"
         value={formatDate(task.doDate)}
         onchange={handleDoDateChange}
-        class="task-sync-date-input"
+        class="task-sync-date-input mod-compact"
         data-testid="context-dodate-input"
         aria-label="Change do date"
       />
-    </li>
-  </ul>
-
-  <!-- Due Date property -->
-  <ul class="property-group">
-    <li>
-      <div class="property-label">Due Date</div>
+    </div>
+    <div class="context-date-item">
+      <span class="context-date-label">Due</span>
       <input
         bind:this={dueDateInputEl}
         type="date"
         value={formatDate(task.dueDate)}
         onchange={handleDueDateChange}
-        class="task-sync-date-input"
+        class="task-sync-date-input mod-compact"
         data-testid="context-duedate-input"
         aria-label="Change due date"
       />
-    </li>
-  </ul>
+    </div>
+  </div>
 
   <!-- Source information -->
   <SourceContext {task} />
@@ -534,77 +520,125 @@
   .task-context {
     display: flex;
     flex-direction: column;
+    gap: 8px;
   }
 
-  .property-group {
+  /* Compact badges row - horizontal layout */
+  .context-badges-row {
     display: flex;
-    flex-direction: column;
+    flex-wrap: wrap;
     gap: 4px;
-    padding: 12px 0;
+    align-items: center;
+    padding: 6px 0;
     border-bottom: 1px solid var(--background-modifier-border);
-    list-style: none;
-    margin: 0;
-    padding: 12px 0;
   }
 
-  .property-group:first-child {
-    padding-top: 0;
+  /* Meta row for project/area - horizontal inline */
+  .context-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
   }
 
-  .property-group:last-child {
-    border-bottom: none;
+  .context-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
   }
 
-  .property-group li {
-    list-style: none;
-  }
-
-  .property-label {
-    font-size: 11px;
+  .context-meta-label {
+    font-size: 10px;
     font-weight: 600;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
   }
 
-  :global(.task-sync-property-button-full) {
-    width: 100%;
-    justify-content: flex-start;
+  /* Dates row - horizontal inline */
+  .context-dates-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--background-modifier-border);
   }
 
-  .task-sync-date-input {
-    width: 100%;
-    padding: 6px 8px;
+  .context-date-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .context-date-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex-shrink: 0;
+  }
+
+  /* Compact property buttons */
+  :global(.task-sync-property-button.mod-compact) {
+    padding: 4px 8px !important;
+    font-size: 12px !important;
+    min-height: 24px !important;
+  }
+
+  :global(.task-sync-property-button.mod-inline) {
+    padding: 2px 6px !important;
+    font-size: 11px !important;
+    flex: 1;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Compact date inputs */
+  .task-sync-date-input.mod-compact {
+    flex: 1;
+    padding: 4px 6px;
     border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: 4px;
     background: transparent;
     color: var(--text-normal);
     font-family: inherit;
-    font-size: 13px;
+    font-size: 11px;
     transition: all 0.2s ease;
     cursor: pointer;
+    min-width: 0;
   }
 
-  .task-sync-date-input:hover {
+  .task-sync-date-input.mod-compact:hover {
     background: var(--background-modifier-hover);
     border-color: var(--background-modifier-border);
   }
 
-  .task-sync-date-input:focus {
+  .task-sync-date-input.mod-compact:focus {
     outline: none;
     background: var(--background-primary);
     border-color: var(--interactive-accent);
     box-shadow: 0 0 0 1px var(--interactive-accent-hover);
   }
 
-  .task-sync-date-input::-webkit-calendar-picker-indicator {
+  .task-sync-date-input.mod-compact::-webkit-calendar-picker-indicator {
     cursor: pointer;
-    opacity: 0.6;
+    opacity: 0.5;
     transition: opacity 0.2s;
+    width: 12px;
+    height: 12px;
   }
 
-  .task-sync-date-input::-webkit-calendar-picker-indicator:hover {
+  .task-sync-date-input.mod-compact::-webkit-calendar-picker-indicator:hover {
     opacity: 1;
   }
 </style>

@@ -52,16 +52,18 @@
   }
 
   .context-view-header {
-    padding: 16px 16px 8px 16px;
+    padding: 8px 12px 6px 12px;
     border-bottom: 1px solid var(--background-modifier-border);
     flex-shrink: 0;
   }
 
   .context-view-title {
     margin: 0;
-    font-size: 16px;
+    font-size: 13px;
     font-weight: 600;
-    color: var(--text-normal);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   .context-view-content {
@@ -69,6 +71,6 @@
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 16px;
+    padding: 8px 12px;
   }
 </style>
