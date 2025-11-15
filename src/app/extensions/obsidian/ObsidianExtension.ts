@@ -627,7 +627,10 @@ export class ObsidianExtension implements Extension {
           source: {
             ...area.source,
             extension: area.source.extension || "obsidian", // Preserve original extension
-            filePath: filePath,
+            keys: {
+              ...area.source.keys,
+              obsidian: filePath,
+            },
           },
         };
 
@@ -647,7 +650,10 @@ export class ObsidianExtension implements Extension {
           source: {
             ...project.source,
             extension: project.source.extension || "obsidian", // Preserve original extension
-            filePath: filePath,
+            keys: {
+              ...project.source.keys,
+              obsidian: filePath,
+            },
           },
         };
 
