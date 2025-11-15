@@ -220,50 +220,55 @@ test.describe("Svelte App Initialization", () => {
     expect(updatedAtDiff).toBeLessThan(2000); // Within 2 seconds
   });
 
-  test("should show context tab button above service tabs", async ({
+  test("should open context view via command", async ({
     page,
   }) => {
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
+    // Open a task file to establish context
+    await openFile(page, "Tasks/Sample Task 1.md");
 
-    // Wait for the view to be visible
-    await expect(page.locator(".task-sync-app")).toBeVisible();
+    // Open the Context view
+    await executeCommand(page, "Task Sync: Open Context View");
 
-    // Context tab button should be visible above service tabs
-    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
-    await expect(contextTabButton).toBeVisible();
+    // Wait for the context view to be visible
+    const contextView = page.locator('[data-testid="context-view"]');
+    await expect(contextView).toBeVisible();
 
-    // Should have info icon
-    await expect(contextTabButton.locator('[data-icon="info"]')).toBeVisible();
-
-    // Should be active by default (context tab is the default view)
-    await expect(contextTabButton).toHaveClass(/active/);
+    // Verify the context widget is displayed
+    const contextWidget = contextView.locator('[data-testid="context-widget"]');
+    await expect(contextWidget).toBeVisible();
   });
 
-  test("should show context widget when context tab is active", async ({
+  test("should show context widget in context view", async ({
     page,
   }) => {
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
+    // Open a task file to establish context
+    await openFile(page, "Tasks/Sample Task 1.md");
 
-    // Wait for the view to be visible
+    // Open the Context view
+    await executeCommand(page, "Task Sync: Open Context View");
+
+    // Wait for the context view to be visible
+    const contextView = page.locator('[data-testid="context-view"]');
+    await expect(contextView).toBeVisible();
+
+    // Context widget should be visible
+    const contextWidget = contextView.locator('[data-testid="context-widget"]');
+    await expect(contextWidget).toBeVisible();
+
+    // Service content in main view should be unaffected
+    // Open main view to verify
+    await executeCommand(page, "Task Sync: Open Main View");
     await expect(page.locator(".task-sync-app")).toBeVisible();
 
-    // Context tab button should be active by default
-    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
-    await expect(contextTabButton).toHaveClass(/active/);
+    // Click on the local service tab to show tasks
+    const localServiceButton = page.locator('[data-testid="service-local"]');
+    await localServiceButton.click();
 
-    // Context widget content should be visible
-    const contextTabContent = page.locator(
-      '[data-testid="context-tab-content"]'
-    );
-    await expect(contextTabContent).toBeVisible();
-
-    // Service content should be hidden (check local service specifically)
+    // Service content should be visible
     const serviceContent = page.locator(
       '[data-testid="service-content-local"]'
     );
-    await expect(serviceContent).not.toBeVisible();
+    await expect(serviceContent).toBeVisible();
   });
 
   test("should display enhanced context widget with project entity details", async ({
@@ -280,16 +285,15 @@ test.describe("Svelte App Initialization", () => {
     // Open the project file to establish context
     await openFile(page, `Projects/${projectName}.md`);
 
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-    await expect(page.locator(".task-sync-app")).toBeVisible();
+    // Open the Context view
+    await executeCommand(page, "Task Sync: Open Context View");
 
-    // Context tab should be active by default
-    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
-    await expect(contextTabButton).toHaveClass(/active/);
+    // Wait for context view to be visible
+    const contextView = page.locator('[data-testid="context-view"]');
+    await expect(contextView).toBeVisible();
 
-    // Wait for context widget to be visible
-    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    // Get the context widget
+    const contextWidget = contextView.locator('[data-testid="context-widget"]');
     await expect(contextWidget).toBeVisible();
 
     // Check for Linear-style property buttons (new design)
@@ -325,17 +329,17 @@ test.describe("Svelte App Initialization", () => {
     // Open the task file to establish context
     await openFile(page, `Tasks/${taskName}.md`);
 
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-    await expect(page.locator(".task-sync-app")).toBeVisible();
+    // Open the Context view
+    await executeCommand(page, "Task Sync: Open Context View");
 
-    // Context tab should be active by default - verify context widget is visible
-    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    // Wait for context view to be visible
+    const contextView = page.locator('[data-testid="context-view"]');
+    await expect(contextView).toBeVisible();
+
+    // Get the context widget
+    const contextWidget = contextView.locator('[data-testid="context-widget"]');
     await expect(contextWidget).toBeVisible();
 
-    // Verify context tab button has active class
-    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
-    await expect(contextTabButton).toHaveClass(/active/);
     // Wait for context widget to show task properties
     // The new Linear-style design shows property buttons instead of context type labels
     await page.waitForSelector('[data-testid="context-status-button"]', {
@@ -385,84 +389,6 @@ test.describe("Svelte App Initialization", () => {
     await expect(projectDropdown).toBeVisible();
   });
 
-  test("should hide context tab when service tab is clicked", async ({
-    page,
-  }) => {
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-
-    // Wait for the view to be visible
-    await expect(page.locator(".task-sync-app")).toBeVisible();
-
-    // Context tab should be active by default
-    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
-    await expect(contextTabButton).toHaveClass(/active/);
-
-    // Click a service tab (local service)
-    const localServiceButton = page.locator('[data-testid="service-local"]');
-    await localServiceButton.click();
-
-    // Context tab should no longer be active
-    await expect(contextTabButton).not.toHaveClass(/active/);
-
-    // Service content should be visible (check local service specifically)
-    const serviceContent = page.locator(
-      '[data-testid="service-content-local"]'
-    );
-    await expect(serviceContent).toBeVisible();
-
-    // Context tab content should be hidden
-    const contextTabContent = page.locator(
-      '[data-testid="context-tab-content"]'
-    );
-    await expect(contextTabContent).not.toBeVisible();
-  });
-
-  test("should deactivate service tab when context tab is clicked", async ({
-    page,
-  }) => {
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-
-    // Wait for the view to be visible
-    await expect(page.locator(".task-sync-app")).toBeVisible();
-
-    // Context tab should be active by default
-    const contextTabButton = page.locator('[data-testid="context-tab-button"]');
-    await expect(contextTabButton).toHaveClass(/active/);
-
-    // Click a service tab (local service)
-    const localServiceButton = page.locator('[data-testid="service-local"]');
-    await localServiceButton.click();
-
-    // Service tab should be active
-    await expect(localServiceButton).toHaveClass(/active/);
-
-    // Context tab should not be active
-    await expect(contextTabButton).not.toHaveClass(/active/);
-
-    // Now click the context tab button
-    await contextTabButton.click();
-
-    // Context tab should be active again
-    await expect(contextTabButton).toHaveClass(/active/);
-
-    // BUG: Service tab should no longer be active
-    await expect(localServiceButton).not.toHaveClass(/active/);
-
-    // Context tab content should be visible
-    const contextTabContent = page.locator(
-      '[data-testid="context-tab-content"]'
-    );
-    await expect(contextTabContent).toBeVisible();
-
-    // Service content should be hidden (check local service specifically)
-    const serviceContent = page.locator(
-      '[data-testid="service-content-local"]'
-    );
-    await expect(serviceContent).not.toBeVisible();
-  });
-
   test("should update task properties through context widget interactions", async ({
     page,
   }) => {
@@ -492,12 +418,15 @@ test.describe("Svelte App Initialization", () => {
     // Open the task file to establish context BEFORE opening the view
     await openFile(page, taskPath);
 
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-    await expect(page.locator(".task-sync-app")).toBeVisible();
+    // Open the Context view
+    await executeCommand(page, "Task Sync: Open Context View");
 
-    // Context tab should be active by default
-    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    // Wait for the context view to be visible
+    const contextView = page.locator('[data-testid="context-view"]');
+    await expect(contextView).toBeVisible();
+
+    // Get the context widget
+    const contextWidget = contextView.locator('[data-testid="context-widget"]');
     await expect(contextWidget).toBeVisible();
 
     // Wait for context widget to show task properties
@@ -785,11 +714,15 @@ test.describe("Svelte App Initialization", () => {
 
     await openFile(page, taskPath);
 
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-    await expect(page.locator(".task-sync-app")).toBeVisible();
+    // Open the Context view
+    await executeCommand(page, "Task Sync: Open Context View");
 
-    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    // Wait for the context view to be visible
+    const contextView = page.locator('[data-testid="context-view"]');
+    await expect(contextView).toBeVisible();
+
+    // Get the context widget
+    const contextWidget = contextView.locator('[data-testid="context-widget"]');
     await expect(contextWidget).toBeVisible();
 
     // Find the date inputs
@@ -938,11 +871,15 @@ test.describe("Svelte App Initialization", () => {
 
     await openFile(page, taskPath);
 
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-    await expect(page.locator(".task-sync-app")).toBeVisible();
+    // Open the Context view
+    await executeCommand(page, "Task Sync: Open Context View");
 
-    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    // Wait for the context view to be visible
+    const contextView = page.locator('[data-testid="context-view"]');
+    await expect(contextView).toBeVisible();
+
+    // Get the context widget
+    const contextWidget = contextView.locator('[data-testid="context-widget"]');
     await expect(contextWidget).toBeVisible();
 
     // Verify source context is visible
@@ -986,11 +923,15 @@ test.describe("Svelte App Initialization", () => {
     await waitForFileProcessed(page, taskPath);
     await openFile(page, taskPath);
 
-    // Open the Task Sync view
-    await executeCommand(page, "Task Sync: Open Main View");
-    await expect(page.locator(".task-sync-app")).toBeVisible();
+    // Open the Context view
+    await executeCommand(page, "Task Sync: Open Context View");
 
-    const contextWidget = page.locator('[data-testid="context-tab-content"]');
+    // Wait for the context view to be visible
+    const contextView = page.locator('[data-testid="context-view"]');
+    await expect(contextView).toBeVisible();
+
+    // Get the context widget
+    const contextWidget = contextView.locator('[data-testid="context-widget"]');
     await expect(contextWidget).toBeVisible();
 
     // Open project dropdown
