@@ -5,7 +5,7 @@
  */
 
 import { test, expect } from "../../helpers/setup";
-import { createTask, getTaskByTitle } from "../../helpers/entity-helpers";
+import { getTaskByTitle } from "../../helpers/entity-helpers";
 import {
   fileExists,
   readVaultFile,
@@ -13,7 +13,8 @@ import {
   openView,
   switchToTaskService,
   selectFromDropdown,
-  reloadPlugin,
+  updateFileFrontmatter,
+  waitForFileUpdate,
 } from "../../helpers/global";
 import {
   stubGitHubWithFixtures,
@@ -25,72 +26,11 @@ test.describe("Sync Property Filtering", () => {
   test("should only sync GitHub-defined properties and preserve Obsidian-specific properties", async ({
     page,
   }) => {
-    // First, create an Obsidian task with properties
-    const task = await createTask(page, {
-      title: "Cross-Source Task",
-      description: "Original description",
-      status: "Backlog",
-      priority: "High",
-      areas: ["Development", "Testing"],
-      project: "My Project",
-    });
-
-    expect(task).toBeTruthy();
-    expect(task.title).toBe("Cross-Source Task");
-
-    // Verify task file exists
-    const taskExists = await fileExists(page, "Tasks/Cross-Source Task.md");
-    expect(taskExists).toBe(true);
-
-    // Manually link the task to a GitHub issue by updating its source
-    await page.evaluate(async () => {
-      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
-
-      let currentTasks: any[] = [];
-      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
-        currentTasks = state.tasks;
-      });
-      unsubscribe();
-
-      const task = currentTasks.find(
-        (t: any) => t.title === "Cross-Source Task"
-      );
-
-      if (task) {
-        const updatedTask = {
-          ...task,
-          source: {
-            extension: "github",
-            keys: {
-              github: "https://github.com/test-owner/test-repo/issues/456",
-              obsidian: task.source.keys.obsidian,
-            },
-            data: {
-              owner: "test-owner",
-              repo: "test-repo",
-              id: 789,
-              number: 456,
-              html_url: "https://github.com/test-owner/test-repo/issues/456",
-              state: "open",
-              title: "Cross-Source Task",
-              body: "Original description",
-              created_at: "2024-01-01T00:00:00Z",
-              updated_at: "2024-01-01T00:00:00Z",
-            },
-          },
-        };
-
-        plugin.stores.taskStore.dispatch({
-          type: "UPDATE_TASK",
-          task: updatedTask,
-        });
-      }
-    });
-
-    // Now enable GitHub and stub it to return updated data for this issue
+    // Step 1: Enable GitHub integration and set up fixtures
     await openView(page, "task-sync-main");
     await enableIntegration(page, "github");
 
+    // Set up initial GitHub fixture with issue #456
     await stubGitHubWithFixtures(page, {
       repositories: "repositories-test-repo",
       issues: "issue-updated-456",
@@ -103,143 +43,222 @@ test.describe("Sync Property Filtering", () => {
       { state: "visible", timeout: 2500 }
     );
 
-    // Switch to GitHub and trigger a refresh by selecting the repository
+    // Step 2: Import the GitHub issue through UI
     await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "test-owner");
     await selectFromDropdown(page, "repository-filter", "test-repo");
 
-    // Wait for the sync to complete by checking for the updated task
-    await page.waitForFunction(
-      ({ title }) => {
-        const app = (window as any).app;
-        const plugin = app.plugins.plugins["obsidian-task-sync"];
-        const task = plugin?.query?.findTaskByTitle(title);
-        return task !== undefined;
-      },
-      { title: "Updated Title from GitHub" },
-      { timeout: 2500 }
-    );
+    // Import issue #456
+    await clickIssueImportButton(page, 456);
+    await waitForIssueImportComplete(page, 456);
 
-    // Now check the task - it will have the updated title from GitHub
-    // Since title is a GitHub-syncable property, it will be updated
-    const updatedTask = await getTaskByTitle(page, "Updated Title from GitHub");
-
-    expect(updatedTask).toBeDefined();
-
-    // GitHub-defined properties SHOULD be synced from GitHub data
-    expect(updatedTask.title).toBe("Updated Title from GitHub");
-
-    // Obsidian-specific properties should NOT be overridden
-    // They should retain their original values
-    expect(updatedTask.priority).toBe("High");
-    expect(updatedTask.areas).toEqual(["Development", "Testing"]);
-    expect(updatedTask.project).toBe("My Project");
-
-    // Verify the file - it may still have the old name or the new name
-    let fileContent = await readVaultFile(
+    // Verify the task was imported
+    const taskExists = await fileExists(
       page,
       "Tasks/Updated Title from GitHub.md"
     );
-    if (!fileContent) {
-      // Try the original name
-      fileContent = await readVaultFile(page, "Tasks/Cross-Source Task.md");
-    }
+    expect(taskExists).toBe(true);
 
+    // Step 3: Add Obsidian-specific properties to the imported task
+    await updateFileFrontmatter(page, "Tasks/Updated Title from GitHub.md", {
+      Priority: "High",
+      Areas: ["Development", "Testing"],
+      Project: "My Project",
+    });
+
+    // Wait for file changes to be processed
+    await waitForFileUpdate(
+      page,
+      "Tasks/Updated Title from GitHub.md",
+      "Priority: High"
+    );
+
+    // Verify task now has Obsidian properties
+    const taskWithObsidianProps = await getTaskByTitle(
+      page,
+      "Updated Title from GitHub"
+    );
+    expect(taskWithObsidianProps.priority).toBe("High");
+    expect(taskWithObsidianProps.areas).toEqual(["Development", "Testing"]);
+    expect(taskWithObsidianProps.project).toBe("My Project");
+
+    // Step 4: Update GitHub fixture to simulate a title change
+    await page.evaluate(() => {
+      const stubs = (window as any).__githubApiStubs;
+      if (stubs && stubs.issues && stubs.issues.length > 0) {
+        // Update the issue title to simulate a GitHub change
+        stubs.issues[0].title = "GitHub Updated This Title";
+        stubs.issues[0].updated_at = "2024-01-03T00:00:00Z";
+      }
+    });
+
+    // Step 5: Trigger GitHub refresh to sync changes
+    const refreshButton = page.locator(
+      '[data-testid="task-sync-github-refresh-button"]'
+    );
+    await refreshButton.waitFor({ state: "visible", timeout: 2500 });
+    await refreshButton.click();
+
+    // Wait for refresh to complete
+    await page.waitForFunction(
+      () => {
+        const refreshButton = document.querySelector(
+          '[data-testid="task-sync-github-refresh-button"]'
+        );
+        return refreshButton && !refreshButton.hasAttribute("disabled");
+      },
+      undefined,
+      { timeout: 2500 }
+    );
+
+    // Step 6: Verify that GitHub properties were updated but Obsidian properties preserved
+    const syncedTask = await getTaskByTitle(page, "GitHub Updated This Title");
+    expect(syncedTask).toBeDefined();
+
+    // GitHub-defined properties SHOULD be synced from GitHub
+    expect(syncedTask.title).toBe("GitHub Updated This Title");
+    expect(syncedTask.description).toBe("Updated description from GitHub");
+
+    // Obsidian-specific properties should NOT be overridden
+    expect(syncedTask.priority).toBe("High");
+    expect(syncedTask.areas).toEqual(["Development", "Testing"]);
+    expect(syncedTask.project).toBe("My Project");
+
+    // Verify the file content
+    const fileContent = await readVaultFile(
+      page,
+      "Tasks/GitHub Updated This Title.md"
+    );
     expect(fileContent).toBeTruthy();
+    expect(fileContent).toContain("Title: GitHub Updated This Title");
     expect(fileContent).toContain("Priority: High");
     expect(fileContent).toContain("Development");
     expect(fileContent).toContain("Testing");
     expect(fileContent).toContain("Project: My Project");
   });
 
-  test.skip("should allow Obsidian to update non-GitHub properties without conflict", async ({
+  test("should allow Obsidian to update non-GitHub properties without conflict", async ({
     page,
   }) => {
-    // Create a task
-    const task = await createTask(page, {
-      title: "GitHub Task",
-      description: "Test description",
-      status: "Backlog",
-      priority: "Medium",
-    });
+    // Step 1: Enable GitHub integration and set up fixtures
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
 
-    expect(task).toBeTruthy();
-
-    // Convert to GitHub task
-    await page.evaluate(async () => {
-      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
-
-      let currentTasks: any[] = [];
-      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
-        currentTasks = state.tasks;
-      });
-      unsubscribe();
-
-      const task = currentTasks.find((t: any) => t.title === "GitHub Task");
-
-      if (task) {
-        const updatedTask = {
-          ...task,
-          source: {
-            extension: "github",
-            keys: {
-              github: "https://github.com/test/repo/issues/789",
-              obsidian: task.source.keys.obsidian,
-            },
-            data: {
-              id: 111,
-              number: 789,
-              html_url: "https://github.com/test/repo/issues/789",
+    // Create a fixture for issue #789 with basic data
+    await page.evaluate(() => {
+      (window as any).__githubApiStubs = {
+        issues: [
+          {
+            id: 111,
+            number: 789,
+            title: "GitHub Task",
+            body: "Test description from GitHub",
+            state: "open",
+            html_url: "https://github.com/test-owner/test-repo/issues/789",
+            labels: [],
+            assignees: [],
+            created_at: "2024-01-01T00:00:00Z",
+            updated_at: "2024-01-01T00:00:00Z",
+            repository: {
+              owner: {
+                login: "test-owner",
+              },
+              name: "test-repo",
+              full_name: "test-owner/test-repo",
             },
           },
-        };
-
-        plugin.stores.taskStore.dispatch({
-          type: "UPDATE_TASK",
-          task: updatedTask,
-        });
-      }
-    });
-
-    // Now update Obsidian-specific properties via the file
-    await page.evaluate(async (filePath) => {
-      const app = (window as any).app;
-      const file = app.vault.getAbstractFileByPath(filePath);
-      if (file) {
-        const content = await app.vault.read(file);
-        const modifiedContent = content
-          .replace("Priority: Medium", "Priority: High")
-          .replace("Areas: []", 'Areas: ["Important"]');
-        await app.vault.modify(file, modifiedContent);
-      }
-    }, "Tasks/GitHub Task.md");
-
-    // Refresh to trigger sync
-    await openTasksView(page);
-    await waitForLocalTasksToLoad(page);
-    await refreshTasks(page);
-    await waitForTaskRefreshComplete(page);
-    await waitForSyncComplete(page);
-
-    // Verify the Obsidian-specific properties were updated and preserved
-    const taskData = await page.evaluate(async () => {
-      const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
-
-      let currentTasks: any[] = [];
-      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
-        currentTasks = state.tasks;
-      });
-      unsubscribe();
-
-      const task = currentTasks.find((t: any) => t.title === "GitHub Task");
-
-      return {
-        priority: task?.priority,
-        areas: task?.areas,
+        ],
+        repositories: [
+          {
+            id: 123,
+            name: "test-repo",
+            full_name: "test-owner/test-repo",
+            owner: {
+              login: "test-owner",
+              type: "User",
+            },
+            private: false,
+            html_url: "https://github.com/test-owner/test-repo",
+            description: "Test repository",
+            fork: false,
+          },
+        ],
+        currentUser: {
+          login: "testuser",
+          id: 1,
+          avatar_url: "https://github.com/images/error/testuser.png",
+        },
       };
     });
 
-    // Obsidian updates should be preserved
-    expect(taskData.priority).toBe("High");
-    expect(taskData.areas).toEqual(["Important"]);
+    // Wait for GitHub to be ready
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      { state: "visible", timeout: 2500 }
+    );
+
+    // Step 2: Import the GitHub issue through UI
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "test-owner");
+    await selectFromDropdown(page, "repository-filter", "test-repo");
+
+    // Import issue #789
+    await clickIssueImportButton(page, 789);
+    await waitForIssueImportComplete(page, 789);
+
+    // Verify the task was imported
+    const taskExists = await fileExists(page, "Tasks/GitHub Task.md");
+    expect(taskExists).toBe(true);
+
+    // Step 3: Update Obsidian-specific properties via the file
+    await updateFileFrontmatter(page, "Tasks/GitHub Task.md", {
+      Priority: "High",
+      Areas: ["Important"],
+    });
+
+    // Wait for file changes to be processed
+    await waitForFileUpdate(page, "Tasks/GitHub Task.md", "Priority: High");
+
+    // Verify task has updated Obsidian properties
+    const taskWithUpdates = await getTaskByTitle(page, "GitHub Task");
+    expect(taskWithUpdates.priority).toBe("High");
+    expect(taskWithUpdates.areas).toEqual(["Important"]);
+
+    // Step 4: Trigger GitHub refresh to ensure Obsidian properties are preserved
+    const refreshButton = page.locator(
+      '[data-testid="task-sync-github-refresh-button"]'
+    );
+    await refreshButton.waitFor({ state: "visible", timeout: 2500 });
+    await refreshButton.click();
+
+    // Wait for refresh to complete
+    await page.waitForFunction(
+      () => {
+        const refreshButton = document.querySelector(
+          '[data-testid="task-sync-github-refresh-button"]'
+        );
+        return refreshButton && !refreshButton.hasAttribute("disabled");
+      },
+      undefined,
+      { timeout: 2500 }
+    );
+
+    // Step 5: Verify Obsidian-specific properties were preserved after GitHub sync
+    const taskAfterSync = await getTaskByTitle(page, "GitHub Task");
+    expect(taskAfterSync).toBeDefined();
+
+    // GitHub properties should still be from GitHub
+    expect(taskAfterSync.title).toBe("GitHub Task");
+    expect(taskAfterSync.description).toBe("Test description from GitHub");
+
+    // Obsidian-specific properties should be preserved
+    expect(taskAfterSync.priority).toBe("High");
+    expect(taskAfterSync.areas).toEqual(["Important"]);
+
+    // Verify file content
+    const fileContent = await readVaultFile(page, "Tasks/GitHub Task.md");
+    expect(fileContent).toBeTruthy();
+    expect(fileContent).toContain("Priority: High");
+    expect(fileContent).toContain("Important");
   });
 });
