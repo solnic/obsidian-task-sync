@@ -64,7 +64,9 @@ export class ContextView extends ItemView {
   updateSettings(newSettings: TaskSyncSettings): void {
     this.settings = newSettings;
     if (this.svelteComponent) {
-      this.svelteComponent.settings = newSettings;
+      this.svelteComponent.$set({
+        settings: newSettings,
+      });
     }
   }
 }

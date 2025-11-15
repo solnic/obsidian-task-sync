@@ -705,7 +705,7 @@ export default class TaskSyncPlugin extends Plugin {
     } else {
       // Ensure right sidebar is expanded
       workspace.rightSplit.expand();
-      
+
       // Create new view in right sidebar
       const leaf = workspace.getRightLeaf(false);
       await leaf.setViewState({
