@@ -139,7 +139,7 @@
         onImport={handleAddToToday}
         isImported={isStaged}
       />
-    {:else if dayPlanningMode}
+    {:else}
       <ImportButton
         dayPlanningMode={true}
         title="Add to today"

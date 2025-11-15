@@ -464,4 +464,43 @@ test.describe("TasksView Component", () => {
     const finalTasks = await getVisibleTaskItems(page);
     expect(finalTasks.length).toBeGreaterThanOrEqual(2);
   });
+
+  test('should display "Add to today" button on task items', async ({
+    page,
+  }) => {
+    // Create a test task
+    await createTask(page, {
+      title: "Add to Today Test Task",
+      category: "Feature",
+      priority: "High",
+      status: "Backlog",
+    });
+
+    // Open Tasks view
+    await openTasksView(page);
+    await waitForLocalTasksToLoad(page);
+
+    // Hover over the task to show action buttons
+    await hoverTaskItem(page, "Add to Today Test Task");
+
+    // Get the task item and find the "Add to today" button
+    const taskItem = await getTaskItemByTitle(page, "Add to Today Test Task");
+    const addToTodayButton = taskItem.locator(
+      '[data-testid="add-to-today-button"]'
+    );
+
+    // Verify the button is visible
+    await expect(addToTodayButton).toBeVisible();
+
+    // Verify the button text
+    const buttonText = await addToTodayButton.textContent();
+    expect(buttonText?.trim()).toBe("Add to today");
+
+    // Click the "Add to today" button
+    await addToTodayButton.click();
+
+    // Verify the button is still present after clicking
+    // (it may change state but should remain visible)
+    await expect(addToTodayButton).toBeVisible();
+  });
 });
