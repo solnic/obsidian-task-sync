@@ -834,8 +834,9 @@ export class ObsidianExtension implements Extension {
     console.log("[ObsidianExtension] Setting up property auto-completion...");
 
     this.typeNote.fileWatcher.addEventHandler(async (event) => {
-      // Only process created files
-      if (event.type !== "created") {
+      // Process both created and modified events
+      // (files created by Base UI may be detected as modified rather than created)
+      if (event.type !== "created" && event.type !== "modified") {
         return;
       }
 
@@ -845,7 +846,7 @@ export class ObsidianExtension implements Extension {
       }
 
       console.log(
-        `[ObsidianExtension] Detected new typed note: ${event.file.path} (type: ${event.noteType.id})`
+        `[ObsidianExtension] Processing typed note for auto-completion: ${event.file.path} (type: ${event.noteType.id}, event: ${event.type})`
       );
 
       try {
@@ -876,35 +877,17 @@ export class ObsidianExtension implements Extension {
         )) {
           const frontMatterKey = propDef.frontMatterKey || propDef.name;
 
-          // Check if property is missing
-          if (existingProperties[frontMatterKey] === undefined) {
-            // Add the property if it has a default value or is required
-            if (propDef.defaultValue !== undefined) {
-              propertiesToAdd[frontMatterKey] = propDef.defaultValue;
-              needsUpdate = true;
-              console.log(
-                `[ObsidianExtension] Adding missing property '${frontMatterKey}' with default value:`,
-                propDef.defaultValue
-              );
-            } else if (propDef.required) {
-              // For required properties without defaults, we need to determine a sensible default
-              if (propDef.type === "string") {
-                propertiesToAdd[frontMatterKey] = "";
-              } else if (propDef.type === "boolean") {
-                propertiesToAdd[frontMatterKey] = false;
-              } else if (propDef.type === "array") {
-                propertiesToAdd[frontMatterKey] = [];
-              }
-              // Note: For other types (number, date, etc.), we skip adding them
-              // as we don't have a sensible default value
-
-              if (propertiesToAdd[frontMatterKey] !== undefined) {
-                needsUpdate = true;
-                console.log(
-                  `[ObsidianExtension] Adding missing required property '${frontMatterKey}' with inferred default`
-                );
-              }
-            }
+          // Check if property is missing and has a configured default
+          if (
+            existingProperties[frontMatterKey] === undefined &&
+            propDef.defaultValue !== undefined
+          ) {
+            propertiesToAdd[frontMatterKey] = propDef.defaultValue;
+            needsUpdate = true;
+            console.log(
+              `[ObsidianExtension] Adding missing property '${frontMatterKey}' with default value:`,
+              propDef.defaultValue
+            );
           }
         }
 
