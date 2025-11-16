@@ -28,7 +28,7 @@ test.describe("Base UI Note Creation", () => {
     });
 
     const projectPath = `Projects/${project.name}.md`;
-    
+
     // Get list of existing tasks before creating new one
     const existingTasks = await page.evaluate(async () => {
       const app = (window as any).app;
@@ -39,15 +39,17 @@ test.describe("Base UI Note Creation", () => {
         .filter((f: any) => f.extension === "md")
         .map((f: any) => f.path);
     });
-    
+
     // Open the project file
     await openFile(page, projectPath);
-    
+
     // Wait for the bases view to appear (even if empty)
-    await page.waitForSelector('.bases-view', { state: 'visible' });
-    
+    await page.waitForSelector(".bases-view", { state: "visible" });
+
     // Wait for the toolbar with New button to appear
-    await page.waitForSelector('.bases-toolbar .bases-toolbar-new-item-menu', { state: 'visible' });
+    await page.waitForSelector(".bases-toolbar .bases-toolbar-new-item-menu", {
+      state: "visible",
+    });
 
     // Click the "New" button in the Base UI
     await clickBaseNewButton(page);
@@ -55,7 +57,7 @@ test.describe("Base UI Note Creation", () => {
     // Find the newly created file (one that wasn't in existingTasks)
     let newTaskPath: string | null = null;
     const deadline = Date.now() + 5000; // 5 second timeout
-    
+
     while (Date.now() < deadline && !newTaskPath) {
       const currentTasks = await page.evaluate(async () => {
         const app = (window as any).app;
@@ -66,24 +68,26 @@ test.describe("Base UI Note Creation", () => {
           .filter((f: any) => f.extension === "md")
           .map((f: any) => f.path);
       });
-      
-      const newTasks = currentTasks.filter((path: string) => !existingTasks.includes(path));
+
+      const newTasks = currentTasks.filter(
+        (path: string) => !existingTasks.includes(path)
+      );
       if (newTasks.length > 0) {
         newTaskPath = newTasks[0];
         break;
       }
-      
+
       await page.waitForTimeout(100);
     }
 
     expect(newTaskPath).toBeTruthy();
     expect(newTaskPath).toContain("Tasks/");
-    
+
     console.log("New task created at:", newTaskPath);
 
     // Wait for the file to be processed by NoteKit file watcher
     await waitForFileProcessed(page, newTaskPath!);
-    
+
     // Read initial content to see what Base UI created
     const initialContent = await readVaultFile(page, newTaskPath!);
     console.log("Initial content from Base UI:", initialContent);

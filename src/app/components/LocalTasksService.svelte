@@ -488,9 +488,18 @@
               }}
               onOpen={() => openTask(localTask.task)}
               dailyPlanningWizardMode={$isPlanningActive}
-              onAddToToday={(task) => {
-                if (onStageTask) {
+              onAddToToday={async (task) => {
+                if ($isPlanningActive && onStageTask) {
+                  // In wizard mode, stage the task
                   onStageTask(task);
+                } else if (dailyPlanningExtension) {
+                  // In regular mode, add to today's daily note immediately
+                  try {
+                    await dailyPlanningExtension.addTasksToTodayDailyNote([task]);
+                    console.log(`Added task ${task.id} to today's daily note`);
+                  } catch (err: any) {
+                    console.error("Error adding to today's daily note:", err);
+                  }
                 }
               }}
               isStaged={stagedTaskIds.has(localTask.task.id)}

@@ -2780,44 +2780,41 @@ export async function waitForDailyNoteUpdate(
   expectedContent?: string,
   timeout: number = 10000
 ): Promise<void> {
-  const startTime = Date.now();
-  const pollInterval = 100;
-
-  while (Date.now() - startTime < timeout) {
-    const fileContent = await page.evaluate(
-      async (path) => {
+  try {
+    await page.waitForFunction(
+      async ({ path, expected }) => {
         const app = (window as any).app;
         const file = app.vault.getAbstractFileByPath(path);
-        if (!file) return null;
+        if (!file) {
+          console.log(`[waitForDailyNoteUpdate] File not found: ${path}`);
+          return false;
+        }
+        
         try {
-          return await app.vault.read(file);
+          const content = await app.vault.read(file);
+          // If we expect specific content, the file must contain it
+          // An empty file doesn't satisfy the requirement
+          if (expected) {
+            const hasContent = content && content.includes(expected);
+            if (!hasContent) {
+              console.log(`[waitForDailyNoteUpdate] File exists but doesn't contain expected content. Length: ${content?.length || 0}`);
+            }
+            return hasContent;
+          }
+          // If no specific content expected, just verify file exists and is readable
+          return content !== null && content !== undefined;
         } catch (error) {
-          return null;
+          console.log(`[waitForDailyNoteUpdate] Error reading file: ${error}`);
+          return false;
         }
       },
-      dailyNotePath
+      { path: dailyNotePath, expected: expectedContent },
+      { timeout }
     );
-
-    if (fileContent !== null) {
-      if (!expectedContent || fileContent.includes(expectedContent)) {
-        return; // Success!
-      }
-    }
-
-    // Wait before next check using a promise-based delay
-    await page.evaluate(
-      async (ms) => {
-        await new Promise(resolve => setTimeout(resolve, ms));
-      },
-      pollInterval
-    );
+  } catch (error) {
+    console.error(`[waitForDailyNoteUpdate] Timeout waiting for ${dailyNotePath} with content: ${expectedContent}`);
+    throw error;
   }
-
-  throw new Error(
-    `Timeout waiting for daily note update. Expected content: ${
-      expectedContent || "file to exist"
-    }`
-  );
 }
 
 /**

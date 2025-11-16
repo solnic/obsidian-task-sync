@@ -646,18 +646,23 @@ export async function expectBaseTasksNotContain(
  */
 export async function clickBaseNewButton(page: Page): Promise<void> {
   // Wait for the Base UI toolbar to be visible
-  await page.waitForSelector('.bases-toolbar', { state: 'visible', timeout: 5000 });
-  
+  await page.waitForSelector(".bases-toolbar", {
+    state: "visible",
+    timeout: 5000,
+  });
+
   // Find and click the "New" button
   // The button has classes: bases-toolbar-item bases-toolbar-new-item-menu
-  const newButton = page.locator('.bases-toolbar .bases-toolbar-new-item-menu .text-icon-button');
-  
+  const newButton = page.locator(
+    ".bases-toolbar .bases-toolbar-new-item-menu .text-icon-button"
+  );
+
   // Wait for button to be visible and clickable
   await expect(newButton).toBeVisible({ timeout: 5000 });
-  
+
   // Click the button
   await newButton.click();
-  
+
   // Wait a bit for the new note creation to process
   await page.waitForTimeout(500);
 }
