@@ -430,8 +430,9 @@ export default class TaskSyncPlugin extends Plugin {
     };
 
     // Add a method to wait for all pending persistence operations
-     
-    (typeNote.registry as any).waitForPersistence = async () => { // Extending registry with test helper
+
+    (typeNote.registry as any).waitForPersistence = async () => {
+      // Extending registry with test helper
       await Promise.all(pendingPersistence);
       pendingPersistence.length = 0; // Clear the array
     };
@@ -536,7 +537,7 @@ export default class TaskSyncPlugin extends Plugin {
     // Update all open views with new settings
     this.app.workspace.iterateAllLeaves((leaf) => {
       // Check if view has updateSettings method before calling it
-       
+
       const view = leaf.view as any; // View type is dynamic - checking for method existence
       if (view.updateSettings && typeof view.updateSettings === "function") {
         view.updateSettings(this.settings);
@@ -629,8 +630,8 @@ export default class TaskSyncPlugin extends Plugin {
           active: true,
         });
       }
-       
-    } catch (error: any) { // Error type is unknown - accessing message property
+    } catch (error: any) {
+      // Error type is unknown - accessing message property
       console.error("Error starting daily planning:", error);
       new Notice(`Failed to start daily planning: ${error.message}`);
     }
@@ -737,50 +738,34 @@ export default class TaskSyncPlugin extends Plugin {
     let contextualTitle: string | undefined;
 
     try {
-      const activeFile = this.app.workspace.getActiveFile();
-      const activePath = activeFile?.path || "";
-
       // Only attempt context for tasks
       if (noteTypeId === "task") {
-        const areaFolder = this.settings.areasFolder + "/";
-        const projectFolder = this.settings.projectsFolder + "/";
+        // Use Host's getCurrentContext to get current context and entity
+        const context = this.host.getCurrentContext();
 
-        // Basic inference from path: if under Projects/ or Areas/ use that as default
-        if (activePath.startsWith(projectFolder)) {
-          const parts = activePath.substring(projectFolder.length).split("/");
-          const projectName = parts[0] || "";
-          if (projectName) {
+        if (context.entity) {
+          // Set initial property values based on the context entity type
+          if (context.type === "project") {
+            const project = context.entity as Project;
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              project: projectName,
+              project: project.name,
             };
-            contextualTitle = `Create Task for Project: ${projectName}`;
-          }
-        } else if (activePath.startsWith(areaFolder)) {
-          const parts = activePath.substring(areaFolder.length).split("/");
-          const areaName = parts[0] || "";
-          if (areaName) {
+            contextualTitle = `Create Task for Project: ${project.name}`;
+          } else if (context.type === "area") {
+            const area = context.entity as Area;
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              areas: [areaName],
+              areas: [area.name],
             };
-            contextualTitle = `Create Task for Area: ${areaName}`;
-          }
-        }
-
-        // If opening from within a task file, set Parent task
-        const tasksFolder = this.settings.tasksFolder + "/";
-        if (activePath.startsWith(tasksFolder)) {
-          const parentTitle = activeFile?.basename;
-          if (parentTitle) {
+            contextualTitle = `Create Task for Area: ${area.name}`;
+          } else if (context.type === "task") {
+            const task = context.entity as Task;
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              parentTask: parentTitle,
+              parentTask: task.title,
             };
-            // If no prior context title, reflect parent task
-            if (!contextualTitle) {
-              contextualTitle = `Create Subtask of: ${parentTitle}`;
-            }
+            contextualTitle = `Create Subtask of: ${task.title}`;
           }
         }
       }
@@ -869,7 +854,7 @@ export default class TaskSyncPlugin extends Plugin {
 
 class TaskSyncView extends ItemView {
   private plugin: TaskSyncPlugin;
-   
+
   private appComponent: any = null; // Svelte component with dynamic type
 
   constructor(leaf: WorkspaceLeaf, plugin: TaskSyncPlugin) {
