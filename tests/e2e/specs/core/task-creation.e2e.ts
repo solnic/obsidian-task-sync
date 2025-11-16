@@ -394,22 +394,8 @@ test.describe("Task Creation", () => {
   test("prefills Project from Projects/<Project>/ context and shows contextual title", async ({
     page,
   }) => {
-    // Arrange: ensure project folder and context file exist and are active
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const folderPath = "Projects/Alpha";
-      const exists = await app.vault.adapter.exists(folderPath);
-      if (!exists) {
-        await app.vault.createFolder(folderPath);
-      }
-    });
-    await createFile(
-      page,
-      "Projects/Alpha/index.md",
-      { Title: "Alpha" },
-      "# Alpha\n"
-    );
-    await openFile(page, "Projects/Alpha/index.md");
+    // Arrange: open pre-existing project file from test vault
+    await openFile(page, "Projects/Sample Project 1.md");
 
     // Act: invoke Create Task command
     await executeCommand(page, "Create Task");
@@ -417,11 +403,11 @@ test.describe("Task Creation", () => {
 
     // Assert: modal title indicates project context
     await expect(page.locator(".task-sync-modal-header h2")).toContainText(
-      "Create Task for Project: Alpha"
+      "Create Task for Project: Sample Project 1"
     );
 
     // Fill in title and create
-    const title = "Task in Alpha";
+    const title = "Task in Sample Project 1";
     await page.fill('[data-testid="property-title"]', title);
     await page.click('[data-testid="submit-button"]');
 
@@ -432,28 +418,15 @@ test.describe("Task Creation", () => {
     const expectedPath = `Tasks/${title}.md`;
     await waitForFileCreation(page, expectedPath);
     const fm = await getFrontMatter(page, expectedPath);
-    expect(fm.Project).toBe("Alpha");
+    // Project field is stored as a wikilink
+    expect(fm.Project).toBe("[[Projects/Sample Project 1.md|Sample Project 1]]");
   });
 
   test("prefills Areas from Areas/<Area>/ context and shows contextual title", async ({
     page,
   }) => {
-    // Arrange: ensure area folder and context file exist and are active
-    await page.evaluate(async () => {
-      const app = (window as any).app;
-      const folderPath = "Areas/Marketing";
-      const exists = await app.vault.adapter.exists(folderPath);
-      if (!exists) {
-        await app.vault.createFolder(folderPath);
-      }
-    });
-    await createFile(
-      page,
-      "Areas/Marketing/index.md",
-      { Title: "Marketing" },
-      "# Marketing\n"
-    );
-    await openFile(page, "Areas/Marketing/index.md");
+    // Arrange: open pre-existing area file from test vault
+    await openFile(page, "Areas/Development.md");
 
     // Act: invoke Create Task command
     await executeCommand(page, "Create Task");
@@ -461,11 +434,11 @@ test.describe("Task Creation", () => {
 
     // Assert: modal title indicates area context
     await expect(page.locator(".task-sync-modal-header h2")).toContainText(
-      "Create Task for Area: Marketing"
+      "Create Task for Area: Development"
     );
 
     // Fill in title and create
-    const title = "Task in Marketing";
+    const title = "Task in Development";
     await page.fill('[data-testid="property-title"]', title);
     await page.click('[data-testid="submit-button"]');
 
@@ -477,7 +450,7 @@ test.describe("Task Creation", () => {
     await waitForFileCreation(page, expectedPath);
     const fm = await getFrontMatter(page, expectedPath);
     expect(Array.isArray(fm.Areas)).toBe(true);
-    expect(fm.Areas).toContain("Marketing");
+    expect(fm.Areas).toContain("Development");
   });
 
   test("prefills Parent task when invoked from within a task file", async ({
