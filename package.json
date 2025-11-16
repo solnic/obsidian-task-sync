@@ -13,7 +13,7 @@
     "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run",
     "test:build": "npm test && npm run build",
-    "test:e2e": "xvfb-maybe npx playwright test",
+    "test:e2e": "node scripts/pre-test-e2e.js && xvfb-maybe npx playwright test",
     "test:e2e:failed": "node scripts/rerun-failed-e2e.js",
     "test:obsidian:open": "node scripts/open-obsidian-headless.js",
     "setup:e2e": "bash scripts/setup-e2e.sh",

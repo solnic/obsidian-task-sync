@@ -84,9 +84,23 @@ npm run build
 # Run tests
 npm test
 
-# Run e2e tests
+# Run e2e tests (automatically sets up environment if needed)
 npm run test:e2e
+
+# Manually verify e2e setup
+npm run setup:verify
+
+# Manually trigger e2e setup
+npm run setup:e2e
 ```
+
+**Note on E2E Testing**: The first time you run `npm run test:e2e`, the environment will be automatically set up if needed. This includes:
+- Installing xvfb for headless testing on Linux
+- Installing Electron dependencies
+- Downloading and unpacking Obsidian for testing
+- Building the plugin
+
+If you encounter any issues, you can manually verify the setup with `npm run setup:verify` or force a setup with `npm run setup:e2e`.
 
 ### Cross-Platform Development
 

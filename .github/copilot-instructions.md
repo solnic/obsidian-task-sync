@@ -80,9 +80,12 @@ npm run test:unit
 **Important Testing Notes:**
 - **E2E tests are the primary testing method** - Use Playwright with actual Obsidian instances
 - **Unit tests cover very little** - Most functionality must be tested via e2e tests
+- **Automatic environment setup** - Running `npm run test:e2e` will automatically set up the testing environment if needed (xvfb, Electron dependencies, Obsidian)
 - Test timeout is 10 seconds for both unit and hook timeouts
 - Use `xvfb-maybe` for headless testing on Linux
 - E2E debug artifacts are saved to `tests/e2e/debug/*`
+- To manually verify setup: `npm run setup:verify`
+- To manually trigger setup: `npm run setup:e2e`
 
 ### Build System
 
@@ -96,11 +99,12 @@ npm run test:unit
 ### Scripts
 
 Development helper scripts in `scripts/`:
+- `pre-test-e2e.js` - Pre-test script that ensures e2e environment is set up before tests run
 - `dev-obsidian-install.sh` - Install plugin to Obsidian vault
 - `dev-obsidian-open-test-vault.sh` - Open test vault in Obsidian
 - `setup-dev.sh` - Set up development environment
-- `setup-obsidian-playwright.sh` - Set up e2e testing
-- `setup-headless-testing.sh` - Configure headless testing
+- `setup-e2e.sh` - Set up e2e testing environment (called automatically by pre-test script)
+- `verify-setup.js` - Verify e2e testing environment is ready
 
 ## Code Style and Conventions
 
