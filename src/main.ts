@@ -26,6 +26,9 @@ import { ObsidianTaskOperations, ObsidianProjectOperations, ObsidianAreaOperatio
 import { get } from "svelte/store";
 import type { Task, Project, Area } from "./app/core/entities";
 import { associationCleanup } from "./app/utils/AssociationCleanup";
+import { ProjectQueryService } from "./app/services/ProjectQueryService";
+import { AreaQueryService } from "./app/services/AreaQueryService";
+import { TaskQueryService } from "./app/services/TaskQueryService";
 // Singleton operations removed - use operations from ObsidianExtension instance
 
 // Commands
@@ -744,42 +747,47 @@ export default class TaskSyncPlugin extends Plugin {
       if (noteTypeId === "task") {
         const areaFolder = this.settings.areasFolder + "/";
         const projectFolder = this.settings.projectsFolder + "/";
+        const tasksFolder = this.settings.tasksFolder + "/";
 
-        // Basic inference from path: if under Projects/ or Areas/ use that as default
+        // Get current state from stores
+        const projects = get(projectStore).projects;
+        const areas = get(areaStore).areas;
+        const tasks = get(taskStore).tasks;
+
+        // Check if active file is a project file
         if (activePath.startsWith(projectFolder)) {
-          const parts = activePath.substring(projectFolder.length).split("/");
-          const projectName = parts[0] || "";
-          if (projectName) {
+          const project = ProjectQueryService.findByFilePath(projects, activePath);
+          if (project) {
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              project: projectName,
+              project: project.name,
             };
-            contextualTitle = `Create Task for Project: ${projectName}`;
+            contextualTitle = `Create Task for Project: ${project.name}`;
           }
-        } else if (activePath.startsWith(areaFolder)) {
-          const parts = activePath.substring(areaFolder.length).split("/");
-          const areaName = parts[0] || "";
-          if (areaName) {
+        } 
+        // Check if active file is an area file
+        else if (activePath.startsWith(areaFolder)) {
+          const area = AreaQueryService.findByFilePath(areas, activePath);
+          if (area) {
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              areas: [areaName],
+              areas: [area.name],
             };
-            contextualTitle = `Create Task for Area: ${areaName}`;
+            contextualTitle = `Create Task for Area: ${area.name}`;
           }
         }
 
-        // If opening from within a task file, set Parent task
-        const tasksFolder = this.settings.tasksFolder + "/";
+        // Check if active file is a task file (for parent task)
         if (activePath.startsWith(tasksFolder)) {
-          const parentTitle = activeFile?.basename;
-          if (parentTitle) {
+          const parentTask = TaskQueryService.findByFilePath(tasks, activePath);
+          if (parentTask) {
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              parentTask: parentTitle,
+              parentTask: parentTask.title,
             };
             // If no prior context title, reflect parent task
             if (!contextualTitle) {
-              contextualTitle = `Create Subtask of: ${parentTitle}`;
+              contextualTitle = `Create Subtask of: ${parentTask.title}`;
             }
           }
         }
