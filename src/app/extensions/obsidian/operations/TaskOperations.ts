@@ -397,6 +397,16 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       };
     }
 
+    // Read file content to extract description from body
+    const fileContent = await this.app.vault.read(file);
+    
+    // Extract description from note body (everything after frontmatter)
+    // Frontmatter is between --- markers, description is what follows
+    const frontmatterEndMatch = fileContent.match(/^---\n[\s\S]*?\n---\n\n?/);
+    const description = frontmatterEndMatch
+      ? fileContent.slice(frontmatterEndMatch[0].length).trim()
+      : "";
+
     // Create Task data and use buildEntity to generate ID
     const taskData = {
       title: frontMatter.Title,
@@ -404,6 +414,7 @@ export class ObsidianTaskOperations extends ObsidianEntityOperations<Task> {
       status: frontMatter.Status,
       priority: frontMatter.Priority,
       done: frontMatter.Done,
+      description: description,
       project: cleanLinkFormat(frontMatter.Project),
       areas: areas,
       parentTask: cleanLinkFormat(frontMatter["Parent task"]),
