@@ -26,9 +26,6 @@ import { ObsidianTaskOperations, ObsidianProjectOperations, ObsidianAreaOperatio
 import { get } from "svelte/store";
 import type { Task, Project, Area } from "./app/core/entities";
 import { associationCleanup } from "./app/utils/AssociationCleanup";
-import { ProjectQueryService } from "./app/services/ProjectQueryService";
-import { AreaQueryService } from "./app/services/AreaQueryService";
-import { TaskQueryService } from "./app/services/TaskQueryService";
 // Singleton operations removed - use operations from ObsidianExtension instance
 
 // Commands
@@ -740,105 +737,36 @@ export default class TaskSyncPlugin extends Plugin {
     let contextualTitle: string | undefined;
 
     try {
-      const activeFile = this.app.workspace.getActiveFile();
-      const activePath = activeFile?.path || "";
-
       // Only attempt context for tasks
       if (noteTypeId === "task") {
-        const areaFolder = this.settings.areasFolder + "/";
-        const projectFolder = this.settings.projectsFolder + "/";
-        const tasksFolder = this.settings.tasksFolder + "/";
+        // Use ContextService to get current context and entity
+        const { ContextService } = await import("./app/services/ContextService");
+        const contextService = new ContextService(this.app, this.settings);
+        const context = contextService.getCurrentContext();
 
-        // Get current state from stores
-        const projects = get(projectStore).projects;
-        const areas = get(areaStore).areas;
-        const tasks = get(taskStore).tasks;
-
-        // Check if active file is a project file or within a project folder
-        if (activePath.startsWith(projectFolder)) {
-          let projectName: string | undefined;
-          
-          // Try to find project entity by file path first
-          const project = ProjectQueryService.findByFilePath(projects, activePath);
-          if (project) {
-            projectName = project.name;
-          } else {
-            // Fallback: Extract project name from path
-            // Handle both folder-based (Projects/Alpha/index.md) and file-based (Projects/Alpha.md) projects
-            const relativePath = activePath.substring(projectFolder.length);
-            const parts = relativePath.split("/");
-            
-            if (parts.length > 1) {
-              // Folder-based project: Projects/Alpha/index.md -> "Alpha"
-              projectName = parts[0];
-            } else if (parts[0]) {
-              // File-based project: Projects/Alpha.md -> "Alpha" (strip .md extension)
-              projectName = parts[0].replace(/\.md$/, "");
-            }
-          }
-          
-          if (projectName) {
+        if (context.entity) {
+          // Set initial property values based on the context entity type
+          if (context.type === "project") {
+            const project = context.entity as Project;
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              project: projectName,
+              project: project.name,
             };
-            contextualTitle = `Create Task for Project: ${projectName}`;
-          }
-        } 
-        // Check if active file is an area file or within an area folder
-        else if (activePath.startsWith(areaFolder)) {
-          let areaName: string | undefined;
-          
-          // Try to find area entity by file path first
-          const area = AreaQueryService.findByFilePath(areas, activePath);
-          if (area) {
-            areaName = area.name;
-          } else {
-            // Fallback: Extract area name from path
-            // Handle both folder-based (Areas/Marketing/index.md) and file-based (Areas/Marketing.md) areas
-            const relativePath = activePath.substring(areaFolder.length);
-            const parts = relativePath.split("/");
-            
-            if (parts.length > 1) {
-              // Folder-based area: Areas/Marketing/index.md -> "Marketing"
-              areaName = parts[0];
-            } else if (parts[0]) {
-              // File-based area: Areas/Marketing.md -> "Marketing" (strip .md extension)
-              areaName = parts[0].replace(/\.md$/, "");
-            }
-          }
-          
-          if (areaName) {
+            contextualTitle = `Create Task for Project: ${project.name}`;
+          } else if (context.type === "area") {
+            const area = context.entity as Area;
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              areas: [areaName],
+              areas: [area.name],
             };
-            contextualTitle = `Create Task for Area: ${areaName}`;
-          }
-        }
-
-        // Check if active file is a task file (for parent task)
-        if (activePath.startsWith(tasksFolder)) {
-          let parentTaskTitle: string | undefined;
-          
-          // Try to find task entity by file path first
-          const parentTask = TaskQueryService.findByFilePath(tasks, activePath);
-          if (parentTask) {
-            parentTaskTitle = parentTask.title;
-          } else {
-            // Fallback: Use file basename (without extension) as task title
-            parentTaskTitle = activeFile?.basename;
-          }
-          
-          if (parentTaskTitle) {
+            contextualTitle = `Create Task for Area: ${area.name}`;
+          } else if (context.type === "task") {
+            const task = context.entity as Task;
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              parentTask: parentTaskTitle,
+              parentTask: task.title,
             };
-            // If no prior context title, reflect parent task
-            if (!contextualTitle) {
-              contextualTitle = `Create Subtask of: ${parentTaskTitle}`;
-            }
+            contextualTitle = `Create Subtask of: ${task.title}`;
           }
         }
       }
