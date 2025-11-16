@@ -17,7 +17,8 @@ import {
   verifyTaskCount,
 } from "../../helpers/tasks-view-helpers";
 import { createTask } from "../../helpers/entity-helpers";
-import { executeCommand, waitForContextUpdate } from "../../helpers/global";
+import { executeCommand, waitForContextUpdate, waitForDailyNoteUpdate } from "../../helpers/global";
+import { getTodayString } from "../../helpers/date-helpers";
 
 test.describe("TasksView Component", () => {
   test("should open Tasks view and display local tasks", async ({ page }) => {
@@ -468,6 +469,9 @@ test.describe("TasksView Component", () => {
   test('should display "Add to today" button on task items', async ({
     page,
   }) => {
+    const todayString = getTodayString();
+    const dailyNotePath = `Daily Notes/${todayString}.md`;
+
     // Create a test task
     await createTask(page, {
       title: "Add to Today Test Task",
@@ -502,5 +506,22 @@ test.describe("TasksView Component", () => {
     // Verify the button is still present after clicking
     // (it may change state but should remain visible)
     await expect(addToTodayButton).toBeVisible();
+
+    // Verify the daily note was actually updated with the task
+    await waitForDailyNoteUpdate(page, dailyNotePath, "Add to Today Test Task", 10000);
+
+    // Read and verify the daily note content
+    const dailyNoteContent = await page.evaluate(async (path) => {
+      const file = (window as any).app.vault.getAbstractFileByPath(path);
+      if (!file) return null;
+      return await (window as any).app.vault.read(file);
+    }, dailyNotePath);
+
+    // Verify daily note exists and contains the task
+    expect(dailyNoteContent).toBeTruthy();
+    expect(dailyNoteContent).toContain("Add to Today Test Task");
+
+    // Verify the task is formatted as a task item (checkbox)
+    expect(dailyNoteContent).toMatch(/- \[ \] .*Add to Today Test Task/);
   });
 });
