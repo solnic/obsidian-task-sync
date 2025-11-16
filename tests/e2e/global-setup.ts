@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
-import { ensureSetup } from "./helpers/setup-verification";
 
 const execAsync = promisify(exec);
 
@@ -78,10 +77,9 @@ async function cleanupDebugArtifacts(): Promise<void> {
 }
 
 export default async function globalSetup() {
-  // Ensure e2e testing environment is properly set up
-  // This will automatically run setup if needed
-  await ensureSetup();
-
+  // Note: Setup verification is already done in pre-test-e2e.js
+  // No need to run ensureSetup() again here
+  
   // Kill any existing Electron processes first
   await killExistingElectronProcesses();
 
