@@ -754,40 +754,90 @@ export default class TaskSyncPlugin extends Plugin {
         const areas = get(areaStore).areas;
         const tasks = get(taskStore).tasks;
 
-        // Check if active file is a project file
+        // Check if active file is a project file or within a project folder
         if (activePath.startsWith(projectFolder)) {
+          let projectName: string | undefined;
+          
+          // Try to find project entity by file path first
           const project = ProjectQueryService.findByFilePath(projects, activePath);
           if (project) {
+            projectName = project.name;
+          } else {
+            // Fallback: Extract project name from path
+            // Handle both folder-based (Projects/Alpha/index.md) and file-based (Projects/Alpha.md) projects
+            const relativePath = activePath.substring(projectFolder.length);
+            const parts = relativePath.split("/");
+            
+            if (parts.length > 1) {
+              // Folder-based project: Projects/Alpha/index.md -> "Alpha"
+              projectName = parts[0];
+            } else if (parts[0]) {
+              // File-based project: Projects/Alpha.md -> "Alpha" (strip .md extension)
+              projectName = parts[0].replace(/\.md$/, "");
+            }
+          }
+          
+          if (projectName) {
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              project: project.name,
+              project: projectName,
             };
-            contextualTitle = `Create Task for Project: ${project.name}`;
+            contextualTitle = `Create Task for Project: ${projectName}`;
           }
         } 
-        // Check if active file is an area file
+        // Check if active file is an area file or within an area folder
         else if (activePath.startsWith(areaFolder)) {
+          let areaName: string | undefined;
+          
+          // Try to find area entity by file path first
           const area = AreaQueryService.findByFilePath(areas, activePath);
           if (area) {
+            areaName = area.name;
+          } else {
+            // Fallback: Extract area name from path
+            // Handle both folder-based (Areas/Marketing/index.md) and file-based (Areas/Marketing.md) areas
+            const relativePath = activePath.substring(areaFolder.length);
+            const parts = relativePath.split("/");
+            
+            if (parts.length > 1) {
+              // Folder-based area: Areas/Marketing/index.md -> "Marketing"
+              areaName = parts[0];
+            } else if (parts[0]) {
+              // File-based area: Areas/Marketing.md -> "Marketing" (strip .md extension)
+              areaName = parts[0].replace(/\.md$/, "");
+            }
+          }
+          
+          if (areaName) {
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              areas: [area.name],
+              areas: [areaName],
             };
-            contextualTitle = `Create Task for Area: ${area.name}`;
+            contextualTitle = `Create Task for Area: ${areaName}`;
           }
         }
 
         // Check if active file is a task file (for parent task)
         if (activePath.startsWith(tasksFolder)) {
+          let parentTaskTitle: string | undefined;
+          
+          // Try to find task entity by file path first
           const parentTask = TaskQueryService.findByFilePath(tasks, activePath);
           if (parentTask) {
+            parentTaskTitle = parentTask.title;
+          } else {
+            // Fallback: Use file basename (without extension) as task title
+            parentTaskTitle = activeFile?.basename;
+          }
+          
+          if (parentTaskTitle) {
             initialPropertyValues = {
               ...(initialPropertyValues || {}),
-              parentTask: parentTask.title,
+              parentTask: parentTaskTitle,
             };
             // If no prior context title, reflect parent task
             if (!contextualTitle) {
-              contextualTitle = `Create Subtask of: ${parentTask.title}`;
+              contextualTitle = `Create Subtask of: ${parentTaskTitle}`;
             }
           }
         }
