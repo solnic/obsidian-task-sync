@@ -1,0 +1,35 @@
+[
+  {
+    "id": 789012,
+    "number": 789,
+    "title": "Update documentation",
+    "body": "The documentation needs to be updated with latest changes.",
+    "labels": [
+      {
+        "id": 5,
+        "name": "documentation",
+        "color": "0075ca",
+        "description": "Improvements or additions to documentation"
+      },
+      {
+        "id": 6,
+        "name": "help-wanted",
+        "color": "008672",
+        "description": "Extra attention is needed"
+      }
+    ],
+    "assignee": null,
+    "assignees": [],
+    "state": "open",
+    "html_url": "https://github.com/solnic/obsidian-task-sync/issues/789",
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z",
+    "closed_at": null,
+    "user": {
+      "login": "testuser",
+      "id": 5678,
+      "avatar_url": "https://avatars.githubusercontent.com/u/5678?v=4",
+      "html_url": "https://github.com/testuser"
+    }
+  }
+]

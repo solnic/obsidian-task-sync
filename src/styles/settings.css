@@ -1,0 +1,275 @@
+/* Task Sync Settings Styles */
+.task-sync-settings {
+  padding: 20px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.task-sync-settings-header {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.task-sync-settings-header h2 {
+  margin-bottom: 10px;
+  color: var(--text-normal);
+}
+
+.task-sync-settings-description {
+  color: var(--text-muted);
+  font-size: 14px;
+  margin: 0;
+}
+
+.task-sync-settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.task-sync-settings-section {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.task-sync-section-header {
+  margin: 0 0 15px 0;
+  color: var(--text-normal);
+  font-size: 18px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 8px;
+}
+
+.task-sync-settings-section-desc {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin: 0 0 20px 0;
+  line-height: 1.4;
+}
+
+/* Compact settings layout for task configuration - target by preview elements */
+/* NOTE: As of 2025, the :has() pseudo-class is widely supported in all major browsers. */
+/* The .has-task-sync-settings-badge-preview class can be used for legacy fallback if needed. */
+.setting-item:has(.task-sync-settings-badge-preview) .setting-item-info,
+.setting-item.has-task-sync-settings-badge-preview .setting-item-info {
+  display: none; /* Hide the left side name/description for task config items */
+}
+
+.setting-item:has(.task-sync-settings-badge-preview) .setting-item-control,
+.setting-item.has-task-sync-settings-badge-preview .setting-item-control {
+  margin-left: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-start;
+}
+
+/* Task preview badges */
+.task-sync-settings-badge-preview {
+  flex-shrink: 0;
+  min-width: 120px;
+}
+
+.task-sync-settings-badge-preview span {
+  font-size: 0.6rem;
+  padding: 0.4rem;
+}
+
+/* Action buttons (Delete and Add) on far right - target both button types */
+.setting-item:has(.task-sync-settings-badge-preview) .setting-item-control {
+  position: relative;
+}
+
+.setting-item:has(.task-sync-settings-badge-preview)
+  .setting-item-control
+  button {
+  margin-left: auto;
+}
+
+/* State radio buttons container */
+.task-status-state-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.task-status-state-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.task-status-radio-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.task-status-radio-wrapper input[type="radio"] {
+  margin: 0;
+}
+
+.task-status-radio-wrapper label {
+  font-size: 12px;
+  color: var(--text-normal);
+  cursor: pointer;
+  margin: 0;
+}
+
+.task-sync-setting-error {
+  border-left: 3px solid var(--text-error);
+  padding-left: 15px;
+  background: var(--background-modifier-error);
+}
+
+.task-sync-validation-error {
+  color: var(--text-error);
+  font-size: 12px;
+  margin-top: 5px;
+  font-weight: 500;
+}
+
+.task-sync-settings-actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.task-type-preview {
+  margin-right: 10px;
+  display: inline-block;
+}
+
+.suggestion-container {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+.suggestion-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  color: var(--text-normal);
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+  transition: background-color 0.1s ease;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item:hover,
+.suggestion-item.is-selected {
+  background: var(--background-modifier-hover);
+}
+
+/* NoteKit Settings Styles */
+.properties-editor-container {
+  margin: 1rem 0;
+}
+
+.template-editor-container {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  background: var(--background-secondary);
+}
+
+.properties-list {
+  margin-top: 0.5rem;
+}
+
+.properties-list .setting-item {
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+  padding: 0.75rem 0;
+}
+
+.properties-list .setting-item:last-child {
+  border-bottom: none;
+}
+
+.template-variables {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: var(--background-primary);
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+.template-variables ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.template-variables li {
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.template-variables code {
+  background: var(--background-modifier-accent);
+  padding: 0.125rem 0.25rem;
+  border-radius: 3px;
+  font-family: var(--font-monospace);
+  font-size: 0.85rem;
+}
+
+/* Note type list styles */
+.note-type-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  background: var(--background-primary);
+}
+
+.note-type-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.note-type-info {
+  flex: 1;
+}
+
+.note-type-name {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.note-type-meta {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.note-type-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Form improvements */
+.setting-item .setting-item-control textarea {
+  min-height: 200px;
+  font-family: var(--font-monospace);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  resize: vertical;
+}
+
+.setting-item .setting-item-control input[type="text"] {
+  min-width: 200px;
+}
+
+.setting-item .setting-item-control select {
+  min-width: 120px;
+}

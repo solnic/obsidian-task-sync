@@ -1,0 +1,38 @@
+[
+  {
+    "id": "primary",
+    "name": "Primary Calendar",
+    "description": "Your main Google Calendar",
+    "color": "#039BE5",
+    "visible": true,
+    "metadata": {
+      "account": "Google",
+      "type": "Google",
+      "primary": true
+    }
+  },
+  {
+    "id": "work-calendar-id",
+    "name": "Work Calendar",
+    "description": "Work-related events and meetings",
+    "color": "#0B8043",
+    "visible": true,
+    "metadata": {
+      "account": "Google",
+      "type": "Google",
+      "primary": false
+    }
+  },
+  {
+    "id": "personal-calendar-id",
+    "name": "Personal Calendar",
+    "description": "Personal events",
+    "color": "#D50000",
+    "visible": true,
+    "metadata": {
+      "account": "Google",
+      "type": "Google",
+      "primary": false
+    }
+  }
+]

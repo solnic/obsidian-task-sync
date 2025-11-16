@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "bug",
+    "color": "d73a4a",
+    "description": "Something isn't working"
+  },
+  {
+    "id": 2,
+    "name": "enhancement",
+    "color": "a2eeef",
+    "description": "New feature or request"
+  },
+  {
+    "id": 3,
+    "name": "documentation",
+    "color": "0075ca",
+    "description": "Improvements or additions to documentation"
+  },
+  {
+    "id": 4,
+    "name": "good first issue",
+    "color": "7057ff",
+    "description": "Good for newcomers"
+  },
+  {
+    "id": 5,
+    "name": "help wanted",
+    "color": "008672",
+    "description": "Extra attention is needed"
+  }
+]

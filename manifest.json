@@ -1,0 +1,11 @@
+{
+  "id": "obsidian-task-sync",
+  "name": "Task Sync",
+  "version": "1.0.0",
+  "minAppVersion": "0.15.0",
+  "description": "Simple task creation plugin designed to work seamlessly with Obsidian's Bases feature for task management",
+  "author": "Peter Solnica",
+  "authorUrl": "https://github.com/solnic",
+  "fundingUrl": "https://github.com/sponsors/solnic",
+  "isDesktopOnly": false
+}

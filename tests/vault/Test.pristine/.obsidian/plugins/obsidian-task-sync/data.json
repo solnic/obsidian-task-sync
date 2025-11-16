@@ -1,0 +1,147 @@
+{
+  "tasksFolder": "Tasks",
+  "projectsFolder": "Projects",
+  "areasFolder": "Areas",
+  "templateFolder": "Templates",
+  "useTemplater": false,
+  "defaultTaskTemplate": "Task.md",
+  "defaultProjectTemplate": "project-template.md",
+  "defaultAreaTemplate": "area-template.md",
+  "defaultParentTaskTemplate": "parent-task-template.md",
+  "basesFolder": "Bases",
+  "tasksBaseFile": "Tasks.base",
+  "autoGenerateBases": true,
+  "autoUpdateBaseViews": true,
+  "taskCategories": [
+    {
+      "name": "Task",
+      "color": "#3b82f6"
+    },
+    {
+      "name": "Bug",
+      "color": "#ef4444"
+    },
+    {
+      "name": "Feature",
+      "color": "#10b981"
+    },
+    {
+      "name": "Improvement",
+      "color": "#8b5cf6"
+    },
+    {
+      "name": "Chore",
+      "color": "#6b7280"
+    }
+  ],
+  "taskPriorities": [
+    {
+      "name": "Low",
+      "color": "#10b981"
+    },
+    {
+      "name": "Medium",
+      "color": "#f59e0b"
+    },
+    {
+      "name": "High",
+      "color": "#f97316"
+    },
+    {
+      "name": "Urgent",
+      "color": "#ef4444"
+    }
+  ],
+  "taskStatuses": [
+    {
+      "name": "Backlog",
+      "color": "#6b7280",
+      "isDone": false,
+      "isInProgress": false
+    },
+    {
+      "name": "In Progress",
+      "color": "#3b82f6",
+      "isDone": false,
+      "isInProgress": true
+    },
+    {
+      "name": "Done",
+      "color": "#10b981",
+      "isDone": true,
+      "isInProgress": false
+    }
+  ],
+  "areaBasesEnabled": true,
+  "projectBasesEnabled": true,
+  "autoSyncAreaProjectBases": true,
+  "taskPropertyOrder": [
+    "TITLE",
+    "TYPE",
+    "CATEGORY",
+    "PRIORITY",
+    "AREAS",
+    "PROJECT",
+    "DONE",
+    "STATUS",
+    "PARENT_TASK",
+    "DO_DATE",
+    "DUE_DATE",
+    "TAGS",
+    "REMINDERS"
+  ],
+  "integrations": {
+    "github": {
+      "enabled": false,
+      "personalAccessToken": "",
+      "repositories": [],
+      "defaultRepository": "",
+      "issueFilters": {
+        "state": "open",
+        "assignee": "",
+        "labels": []
+      },
+      "labelTypeMapping": {
+        "bug": "Bug",
+        "enhancement": "Feature",
+        "feature": "Feature",
+        "improvement": "Improvement",
+        "chore": "Chore",
+        "documentation": "Chore"
+      },
+      "orgRepoMappings": []
+    },
+    "appleReminders": {
+      "enabled": false,
+      "includeCompletedReminders": false,
+      "reminderLists": [],
+      "syncInterval": 60,
+      "excludeAllDayReminders": false,
+      "defaultTaskType": "Task",
+      "importNotesAsDescription": true,
+      "preservePriority": true
+    },
+    "appleCalendar": {
+      "enabled": false,
+      "username": "",
+      "appSpecificPassword": "",
+      "selectedCalendars": [],
+      "includeAllDayEvents": true,
+      "includeBusyEvents": true,
+      "includeFreeEvents": false,
+      "daysAhead": 1,
+      "daysBehind": 0,
+      "includeLocation": true,
+      "includeNotes": false,
+      "timeFormat": "24h",
+      "defaultArea": "",
+      "startHour": 8,
+      "endHour": 18,
+      "schedulingEnabled": false,
+      "defaultSchedulingCalendar": "",
+      "defaultEventDuration": 60,
+      "defaultReminders": [15],
+      "includeTaskDetailsInEvent": true
+    }
+  }
+}

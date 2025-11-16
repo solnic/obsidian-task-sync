@@ -1,0 +1,40 @@
+[
+  {
+    "id": 1,
+    "number": 1,
+    "title": "Add new feature",
+    "body": "This PR adds a new feature",
+    "state": "open",
+    "draft": false,
+    "merged_at": null,
+    "labels": [{ "name": "enhancement" }],
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z",
+    "html_url": "https://github.com/test/repo/pull/1",
+    "head": { "ref": "feature-branch", "label": "user:feature-branch" },
+    "base": { "ref": "main", "label": "user:main" },
+    "user": { "login": "testuser" },
+    "assignee": { "login": "testuser" },
+    "assignees": [{ "login": "testuser" }],
+    "requested_reviewers": []
+  },
+  {
+    "id": 2,
+    "number": 2,
+    "title": "Fix bug in component",
+    "body": "This PR fixes a critical bug",
+    "state": "open",
+    "draft": true,
+    "merged_at": null,
+    "labels": [{ "name": "bug" }],
+    "created_at": "2024-01-16T10:30:00Z",
+    "updated_at": "2024-01-16T10:30:00Z",
+    "html_url": "https://github.com/test/repo/pull/2",
+    "head": { "ref": "bugfix-branch", "label": "user:bugfix-branch" },
+    "base": { "ref": "main", "label": "user:main" },
+    "user": { "login": "testuser" },
+    "assignee": null,
+    "assignees": [],
+    "requested_reviewers": []
+  }
+]

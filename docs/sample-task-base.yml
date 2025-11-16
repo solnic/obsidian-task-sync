@@ -1,0 +1,49 @@
+filters:
+  and:
+    - file.folder == "5. Bases/Tasks"
+    - Areas.contains(link("Task Sync"))
+formulas:
+  Type: Type
+  Title: link(file.path, Title)
+properties:
+  file.name:
+    displayName: Title
+  note.Done:
+    displayName: Done
+  note.Project:
+    displayName: Project
+  file.ctime:
+    displayName: Created At
+  file.mtime:
+    displayName: Updated At
+views:
+  - type: table
+    name: All
+    order:
+      - Done
+      - formula.Title
+      - Project
+      - formula.Type
+      - file.ctime
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+      - property: formula.Title
+        direction: ASC
+  - type: table
+    name: Bugs
+    filters:
+      and:
+        - Type == "Bug"
+    order:
+      - Done
+      - formula.Title
+      - Project
+      - file.ctime
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+      - property: file.name
+        direction: ASC

@@ -1,0 +1,922 @@
+/**
+ * Daily Planning Extension for TaskSync
+ * Manages Schedule entities and provides daily planning wizard functionality
+ */
+
+import { TFile } from "obsidian";
+import {
+  Extension,
+  extensionRegistry,
+  EntityType,
+  EntityOperations,
+} from "../../core/extension";
+import { eventBus, DomainEvent } from "../../core/events";
+import { writable, get, readable, type Readable } from "svelte/store";
+import type { Task, Schedule, CalendarEvent } from "../../core/entities";
+import { ScheduleQueries, ScheduleOperations } from "../../entities/Schedules";
+import { Tasks } from "../../entities/Tasks";
+import { scheduleStore } from "../../stores/scheduleStore";
+import { taskStore } from "../../stores/taskStore";
+import { TaskQueryService } from "../../services/TaskQueryService";
+import type { TaskSyncSettings } from "../../types/settings";
+import {
+  setPlanningActive,
+  setCurrentSchedule,
+  isPlanningActive,
+  currentSchedule,
+} from "../../stores/contextStore";
+import type { CalendarExtension } from "../calendar/CalendarExtension";
+import type { ObsidianExtension } from "../obsidian/ObsidianExtension";
+import {
+  getYesterdayTasksGrouped,
+  getTodayTasksGrouped,
+} from "../../utils/dateFiltering";
+import { getDailyNotePath } from "../../utils/dailyNoteDiscovery";
+import { InlineTaskParser } from "../obsidian/services/InlineTaskParser";
+import { InlineTaskEditor } from "../obsidian/services/InlineTaskEditor";
+import { ObsidianHost } from "../../hosts/ObsidianHost";
+
+export interface DailyPlanningExtensionSettings {
+  enabled: boolean;
+  autoCreateDailySchedules: boolean;
+  defaultPlanningTime: string; // e.g., "09:00"
+}
+
+export class DailyPlanningExtension implements Extension {
+  readonly id = "daily-planning";
+  readonly name = "Daily Planning";
+  readonly version = "1.0.0";
+  readonly supportedEntities: readonly EntityType[] = ["schedule"];
+
+  private initialized = false;
+  private settings: TaskSyncSettings;
+
+  public host: ObsidianHost;
+
+  // Schedule operations
+  public schedules: EntityOperations<Schedule>;
+
+  // Task operations
+  private taskOperations: InstanceType<typeof Tasks.Operations>;
+
+  // Calendar extension for events
+  private calendarExtension?: CalendarExtension;
+
+  // Inline task parser for extracting task links from notes
+  private inlineTaskParser: InlineTaskParser;
+  private inlineTaskEditor: InlineTaskEditor;
+
+  // Note: Planning state is now managed by contextStore
+
+  // Single source of truth for staging changes
+  // Store task IDs, not full objects, for simplicity and performance
+  private stagedChanges = writable<{
+    toSchedule: Set<string>; // Task IDs to schedule for today
+    toUnschedule: Set<string>; // Task IDs to remove from today
+  }>({
+    toSchedule: new Set(),
+    toUnschedule: new Set(),
+  });
+
+  constructor(settings: TaskSyncSettings, host: ObsidianHost) {
+    this.settings = settings;
+    this.host = host;
+    this.schedules = new ScheduleOperations();
+    this.taskOperations = new Tasks.Operations(settings);
+    this.inlineTaskParser = new InlineTaskParser(
+      host.plugin.app,
+      settings.tasksFolder
+    );
+    this.inlineTaskEditor = new InlineTaskEditor(settings.tasksFolder);
+
+    // Calendar extension will be set during initialization
+    this.calendarExtension = undefined;
+  }
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    try {
+      console.log("Initializing DailyPlanningExtension...");
+
+      // Register extension
+      extensionRegistry.register(this);
+
+      // Set up event listeners for domain events
+      this.setupEventListeners();
+
+      // Trigger extension registered event
+      eventBus.trigger({
+        type: "extension.registered",
+        extension: this.id,
+        supportedEntities: [...this.supportedEntities],
+      });
+
+      this.initialized = true;
+      console.log("DailyPlanningExtension initialized successfully");
+    } catch (error) {
+      console.error("Failed to initialize DailyPlanningExtension:", error);
+      throw error;
+    }
+  }
+
+  async load(): Promise<void> {
+    if (!this.initialized) {
+      throw new Error(
+        "DailyPlanningExtension must be initialized before loading"
+      );
+    }
+
+    try {
+      console.log("Loading DailyPlanningExtension...");
+
+      // Try to get calendar extension from registry
+      this.calendarExtension = extensionRegistry.getById(
+        "calendar"
+      ) as CalendarExtension;
+
+      // Auto-create today's schedule if enabled
+      const extensionSettings = this.getExtensionSettings();
+      if (extensionSettings.autoCreateDailySchedules) {
+        await this.ensureTodayScheduleExists();
+      }
+
+      // Trigger extension loaded event
+      eventBus.trigger({
+        type: "extension.loaded",
+        extension: this.id,
+        supportedEntities: [...this.supportedEntities],
+      });
+
+      console.log("DailyPlanningExtension loaded successfully");
+    } catch (error) {
+      console.error("Failed to load DailyPlanningExtension:", error);
+      throw error;
+    }
+  }
+
+  async refresh(): Promise<void> {
+    // No-op for this extension
+  }
+
+  async shutdown(): Promise<void> {
+    if (!this.initialized) return;
+
+    // Persist any pending schedule data
+    await this.persistSchedules();
+
+    eventBus.trigger({
+      type: "extension.unregistered",
+      extension: this.id,
+    });
+
+    this.initialized = false;
+  }
+
+  // Extension interface methods
+  async onEntityCreated(event: DomainEvent): Promise<void> {
+    if (event.type === "tasks.created") {
+      // Optionally add new tasks to today's schedule
+      // This could be configurable behavior
+    }
+  }
+
+  async onEntityUpdated(event: DomainEvent): Promise<void> {
+    if (event.type === "tasks.updated") {
+      // Update any schedules that contain this task
+      await this.updateSchedulesWithTask(event.task);
+    }
+  }
+
+  async onEntityDeleted(event: DomainEvent): Promise<void> {
+    if (event.type === "tasks.deleted") {
+      // Remove task from any schedules
+      await this.removeTaskFromAllSchedules(event.taskId);
+    }
+  }
+
+  async isHealthy(): Promise<boolean> {
+    return this.initialized;
+  }
+
+  // Data access interface
+  getTasks(): Readable<readonly Task[]> {
+    // Daily Planning Extension doesn't manage tasks directly
+    // It works with schedules that contain tasks
+    // Return a simple readable store with empty array
+    return readable<readonly Task[]>([]);
+  }
+
+  searchTasks(_query: string, _tasks: readonly Task[]): readonly Task[] {
+    // Not applicable for this extension
+    return [];
+  }
+
+  filterTasks(_tasks: readonly Task[], _filters: any): readonly Task[] {
+    // Not applicable for this extension
+    return [];
+  }
+
+  sortTasks(
+    _tasks: readonly Task[],
+    _sortFields: Array<{ key: string; direction: "asc" | "desc" }>
+  ): readonly Task[] {
+    // Not applicable for this extension
+    return [];
+  }
+
+  // Daily Planning specific methods
+
+  /**
+   * Get the current planning state
+   */
+  getPlanningActive(): Readable<boolean> {
+    return isPlanningActive;
+  }
+
+  /**
+   * Check if planning is currently active (synchronous)
+   */
+  isPlanningActive(): boolean {
+    return get(isPlanningActive);
+  }
+
+  /**
+   * Set the planning active state
+   */
+  setPlanningActive(active: boolean): void {
+    setPlanningActive(active);
+  }
+
+  /**
+   * Get the current schedule being planned
+   */
+  getCurrentSchedule(): Readable<Schedule | null> {
+    return currentSchedule;
+  }
+
+  /**
+   * Get staged changes for planning (read-only)
+   */
+  getStagedChanges(): Readable<{
+    toSchedule: Set<string>;
+    toUnschedule: Set<string>;
+  }> {
+    return this.stagedChanges;
+  }
+
+  /**
+   * Check if a task is staged for scheduling
+   */
+  isTaskStaged(taskId: string): boolean {
+    const state = get(this.stagedChanges);
+    return state.toSchedule.has(taskId);
+  }
+
+  /**
+   * Set the current schedule being planned
+   */
+  setCurrentSchedule(schedule: Schedule | null): void {
+    setCurrentSchedule(schedule);
+  }
+
+  /**
+   * Create or get today's schedule
+   */
+  async ensureTodayScheduleExists(): Promise<Schedule> {
+    const queries = new ScheduleQueries();
+    let todaySchedule = await queries.getToday();
+
+    if (!todaySchedule) {
+      const scheduleData = {
+        date: new Date(),
+        tasks: [] as Task[],
+        unscheduledTasks: [] as Task[],
+        events: [] as any[],
+        dailyNoteExists: false,
+        isPlanned: false,
+        source: {
+          extension: "daily-planning",
+          keys: {},
+        },
+      };
+      todaySchedule = await this.schedules.create(scheduleData);
+    }
+
+    return todaySchedule;
+  }
+
+  /**
+   * Create or get yesterday's schedule
+   */
+  async ensureYesterdayScheduleExists(): Promise<Schedule> {
+    const queries = new ScheduleQueries();
+    let yesterdaySchedule = await queries.getYesterday();
+
+    if (!yesterdaySchedule) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const scheduleData = {
+        date: yesterday,
+        tasks: [] as Task[],
+        unscheduledTasks: [] as Task[],
+        events: [] as any[],
+        dailyNoteExists: false,
+        isPlanned: false,
+        source: {
+          extension: "daily-planning",
+          keys: {},
+        },
+      };
+      yesterdaySchedule = await this.schedules.create(scheduleData);
+    }
+
+    return yesterdaySchedule;
+  }
+
+  /**
+   * Sync schedule with Daily Note
+   * Updates the schedule to match what's actually in the Daily Note
+   */
+  async syncScheduleWithDailyNote(): Promise<void> {
+    try {
+      // Get tasks from Daily Note (source of truth)
+      const dailyNoteTasks = await this.getTasksFromTodayDailyNote();
+
+      // Get today's schedule
+      const todaySchedule = await this.ensureTodayScheduleExists();
+
+      // Update schedule to match Daily Note
+      await this.schedules.update(todaySchedule.id, {
+        tasks: dailyNoteTasks,
+      });
+    } catch (error) {
+      console.error("Error syncing schedule with Daily Note:", error);
+    }
+  }
+
+  /**
+   * Start daily planning wizard
+   */
+  async startDailyPlanning(): Promise<void> {
+    this.setPlanningActive(true);
+
+    // Ensure today's schedule exists
+    const todaySchedule = await this.ensureTodayScheduleExists();
+
+    // Sync schedule with Daily Note (source of truth)
+    await this.syncScheduleWithDailyNote();
+
+    this.setCurrentSchedule(todaySchedule);
+
+    // Ensure today's daily note exists and open it
+    await this.ensureAndOpenTodayDailyNote();
+
+    // Trigger planning started event
+    eventBus.trigger({
+      type: "daily-planning.started",
+      schedule: todaySchedule,
+    });
+  }
+
+  /**
+   * Complete daily planning wizard
+   */
+  async completeDailyPlanning(): Promise<void> {
+    const currentSchedule = scheduleStore.findScheduleByDate(new Date());
+    if (currentSchedule) {
+      await this.schedules.update(currentSchedule.id, {
+        isPlanned: true,
+        planningCompletedAt: new Date(),
+      });
+    }
+
+    this.setPlanningActive(false);
+    this.setCurrentSchedule(null);
+
+    // Trigger planning completed event
+    eventBus.trigger({
+      type: "daily-planning.completed",
+      schedule: currentSchedule,
+    });
+  }
+
+  /**
+   * Cancel daily planning wizard
+   */
+  async cancelDailyPlanning(): Promise<void> {
+    this.setPlanningActive(false);
+    this.setCurrentSchedule(null);
+
+    // Trigger planning cancelled event
+    eventBus.trigger({
+      type: "daily-planning.cancelled",
+    });
+  }
+
+  // Task movement operations for daily planning
+
+  /**
+   * Get yesterday's tasks grouped by completion status
+   */
+  async getYesterdayTasksGrouped(): Promise<{ done: Task[]; notDone: Task[] }> {
+    const taskQueries = new Tasks.Queries();
+    const allTasks = await taskQueries.getAll();
+    return getYesterdayTasksGrouped([...allTasks]);
+  }
+
+  /**
+   * Get today's tasks grouped by completion status
+   * This reconciles tasks with doDate=today against the Daily Note
+   */
+  async getTodayTasksGrouped(): Promise<{ done: Task[]; notDone: Task[] }> {
+    const taskQueries = new Tasks.Queries();
+    const allTasks = await taskQueries.getAll();
+
+    // Get tasks with doDate=today
+    const tasksWithTodayDoDate = getTodayTasksGrouped([...allTasks]);
+
+    // Return all tasks with doDate=today
+    // The wizard will handle the categorization based on Daily Note content
+    return tasksWithTodayDoDate;
+  }
+
+  /**
+   * Get tasks that are actually linked in today's Daily Note
+   * This is the source of truth for what's scheduled
+   */
+  async getTasksFromTodayDailyNote(): Promise<Task[]> {
+    try {
+      const today = new Date();
+      const dailyNotePath = getDailyNotePath(
+        this.host.plugin.app,
+        today,
+        this.settings.dailyNotesFolder
+      );
+
+      const dailyNoteFile =
+        this.host.plugin.app.vault.getAbstractFileByPath(dailyNotePath);
+
+      if (!dailyNoteFile || !(dailyNoteFile instanceof TFile)) {
+        return [];
+      }
+
+      // Parse the Daily Note to get task file paths
+      const taskFilePaths = await this.inlineTaskParser.getTaskFilePaths(
+        dailyNoteFile
+      );
+
+      // Get all tasks and filter to those in the Daily Note
+      const taskQueries = new Tasks.Queries();
+      const allTasks = await taskQueries.getAll();
+
+      return allTasks.filter((task) =>
+        taskFilePaths.includes(task.source.keys.obsidian)
+      );
+    } catch (error) {
+      console.error("Error getting tasks from Daily Note:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get tasks that have doDate=today but are NOT in the Daily Note
+   * These are candidates for scheduling
+   */
+  async getSchedulingCandidates(): Promise<Task[]> {
+    const taskQueries = new Tasks.Queries();
+    const allTasks = await taskQueries.getAll();
+
+    // Get tasks with doDate=today
+    const tasksWithTodayDoDate = getTodayTasksGrouped([...allTasks]);
+    const allTodayTasks = [
+      ...tasksWithTodayDoDate.done,
+      ...tasksWithTodayDoDate.notDone,
+    ];
+
+    // Get tasks in Daily Note
+    const dailyNoteTasks = await this.getTasksFromTodayDailyNote();
+    const dailyNoteTaskIds = new Set(dailyNoteTasks.map((t) => t.id));
+
+    // Return tasks with doDate=today that are NOT in Daily Note
+    return allTodayTasks.filter((task) => !dailyNoteTaskIds.has(task.id));
+  }
+
+  /**
+   * Schedule a task for today (staging - doesn't immediately apply)
+   */
+  scheduleTaskForToday(taskId: string): void {
+    this.stagedChanges.update((state) => ({
+      toSchedule: new Set([...state.toSchedule, taskId]),
+      toUnschedule: new Set(
+        [...state.toUnschedule].filter((id) => id !== taskId)
+      ),
+    }));
+  }
+
+  /**
+   * Unschedule a task from today (staging - doesn't immediately apply)
+   */
+  unscheduleTaskFromToday(taskId: string): void {
+    this.stagedChanges.update((state) => ({
+      toSchedule: new Set([...state.toSchedule].filter((id) => id !== taskId)),
+      toUnschedule: new Set([...state.toUnschedule, taskId]),
+    }));
+  }
+
+  /**
+   * Clear all staging changes
+   */
+  clearStaging(): void {
+    this.stagedChanges.set({
+      toSchedule: new Set(),
+      toUnschedule: new Set(),
+    });
+  }
+
+  /**
+   * Apply all staged changes (move tasks to today, unschedule tasks)
+   */
+  async applyStaging(): Promise<void> {
+    const state = get(this.stagedChanges);
+    const storeState = get(taskStore);
+
+    // Apply scheduled tasks
+    for (const taskId of state.toSchedule) {
+      const task = TaskQueryService.findById(storeState.tasks, taskId);
+      if (task) {
+        await this.moveTaskToTodayImmediate(task);
+      }
+    }
+
+    // Apply unscheduled tasks
+    for (const taskId of state.toUnschedule) {
+      const task = TaskQueryService.findById(storeState.tasks, taskId);
+      if (task) {
+        await this.unscheduleTaskImmediate(task);
+      }
+    }
+
+    // Clear staging after applying
+    this.clearStaging();
+  }
+
+  /**
+   * Move a task to today immediately (used internally and for applying staging)
+   */
+  async moveTaskToTodayImmediate(task: Task): Promise<void> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Set to start of day
+
+    await this.taskOperations.update({
+      ...task,
+      doDate: today,
+    });
+
+    // Add task to today's schedule
+    const todaySchedule = await this.ensureTodayScheduleExists();
+    const scheduleOperations = new ScheduleOperations();
+
+    // Check if task is already in today's schedule
+    const isAlreadyInSchedule = todaySchedule.tasks.some(
+      (t) => t.id === task.id
+    );
+    if (!isAlreadyInSchedule) {
+      await scheduleOperations.addTask(todaySchedule.id, {
+        ...task,
+        doDate: today,
+      });
+    }
+  }
+
+  /**
+   * Unschedule a task immediately (used internally and for applying staging)
+   */
+  async unscheduleTaskImmediate(task: Task): Promise<void> {
+    // Remove doDate from the task
+    await this.taskOperations.update({
+      ...task,
+      doDate: null,
+    });
+
+    // Remove task from all schedules (including today's schedule)
+    await this.removeTaskFromAllSchedules(task.id);
+
+    // Also remove from today's schedule tasks array to prevent it from being written to Daily Note
+    const todaySchedule = await this.ensureTodayScheduleExists();
+    const scheduleOperations = new ScheduleOperations();
+    const updatedTasks = todaySchedule.tasks.filter((t) => t.id !== task.id);
+
+    await scheduleOperations.update(todaySchedule.id, {
+      tasks: updatedTasks,
+    });
+  }
+
+  /**
+   * Move a task to today by setting its doDate to today (for backward compatibility)
+   */
+  async moveTaskToToday(task: Task): Promise<void> {
+    // If planning is active, stage the task instead of applying immediately
+    if (get(isPlanningActive)) {
+      this.scheduleTaskForToday(task.id);
+    } else {
+      await this.moveTaskToTodayImmediate(task);
+    }
+  }
+
+  /**
+   * Move all unfinished tasks from yesterday to today
+   */
+  async moveUnfinishedTasksToToday(): Promise<void> {
+    const yesterdayTasks = await this.getYesterdayTasksGrouped();
+
+    for (const task of yesterdayTasks.notDone) {
+      await this.moveTaskToToday(task);
+    }
+  }
+
+  /**
+   * Unschedule a task by removing its doDate
+   */
+  async unscheduleTask(task: Task): Promise<void> {
+    await this.taskOperations.update({
+      ...task,
+      doDate: undefined,
+    });
+
+    // Remove task from all schedules
+    await this.removeTaskFromAllSchedules(task.id);
+  }
+
+  /**
+   * Reschedule a task to a specific date
+   */
+  async rescheduleTask(task: Task, newDate: Date): Promise<void> {
+    await this.taskOperations.update({
+      ...task,
+      doDate: newDate,
+    });
+
+    // Remove from current schedules and add to new date's schedule
+    await this.removeTaskFromAllSchedules(task.id);
+
+    // Add to the schedule for the new date
+    const scheduleQueries = new ScheduleQueries();
+    let targetSchedule = await scheduleQueries.getByDate(newDate);
+
+    if (!targetSchedule) {
+      const scheduleOperations = new ScheduleOperations();
+      targetSchedule = await scheduleOperations.create({
+        date: newDate,
+        tasks: [],
+        unscheduledTasks: [],
+        events: [],
+        dailyNoteExists: false,
+        isPlanned: false,
+        source: {
+          extension: "daily-planning",
+          keys: {},
+        },
+      });
+    }
+
+    const scheduleOperations = new ScheduleOperations();
+    await scheduleOperations.addTask(targetSchedule.id, {
+      ...task,
+      doDate: newDate,
+    });
+  }
+
+  // Calendar event operations for daily planning
+
+  /**
+   * Get today's calendar events
+   */
+  async getTodayEvents(): Promise<CalendarEvent[]> {
+    if (!this.calendarExtension) {
+      return [];
+    }
+
+    try {
+      return await this.calendarExtension.getTodayEvents();
+    } catch (error) {
+      console.error("Error loading today's calendar events:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get unscheduled tasks (tasks without a doDate)
+   */
+  async getUnscheduledTasks(): Promise<Task[]> {
+    const taskQueries = new Tasks.Queries();
+    const allTasks = await taskQueries.getAll();
+
+    // Filter tasks that don't have a doDate set
+    return allTasks.filter((task) => !task.doDate || task.doDate === null);
+  }
+
+  /**
+   * Get calendar events for a specific date
+   */
+  async getEventsForDate(date: Date): Promise<CalendarEvent[]> {
+    if (!this.calendarExtension) {
+      return [];
+    }
+
+    try {
+      const startOfDay = new Date(date);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(date);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      return await this.calendarExtension.getEventsForDateRange(
+        startOfDay,
+        endOfDay
+      );
+    } catch (error) {
+      console.error("Error loading calendar events for date:", error);
+      return [];
+    }
+  }
+
+  // Private helper methods
+
+  private setupEventListeners(): void {
+    // Listen for task events to keep schedules in sync
+    eventBus.on("tasks.created", (event) => void this.onEntityCreated(event));
+    eventBus.on("tasks.updated", (event) => void this.onEntityUpdated(event));
+    eventBus.on("tasks.deleted", (event) => void this.onEntityDeleted(event));
+  }
+
+  private getExtensionSettings(): DailyPlanningExtensionSettings {
+    return {
+      enabled: true,
+      autoCreateDailySchedules: true,
+      defaultPlanningTime: "09:00",
+      // TODO: Load from actual settings
+    };
+  }
+
+  private async persistSchedules(): Promise<void> {
+    // TODO: Implement saving to plugin storage
+    // This would save current schedule state to plugin data
+    console.log("Persisting schedules...");
+  }
+
+  private async updateSchedulesWithTask(task: Task): Promise<void> {
+    // Find schedules that contain this task and update them
+    const allSchedules = scheduleStore.getSchedules();
+    for (const schedule of allSchedules) {
+      const hasTask =
+        schedule.tasks.some((t) => t.id === task.id) ||
+        schedule.unscheduledTasks.some((t) => t.id === task.id);
+
+      if (hasTask) {
+        await this.schedules.update(schedule.id, {
+          tasks: schedule.tasks.map((t) => (t.id === task.id ? task : t)),
+          unscheduledTasks: schedule.unscheduledTasks.map((t) =>
+            t.id === task.id ? task : t
+          ),
+        });
+      }
+    }
+  }
+
+  private async removeTaskFromAllSchedules(taskId: string): Promise<void> {
+    // Remove task from all schedules
+    const allSchedules = scheduleStore.getSchedules();
+    for (const schedule of allSchedules) {
+      const hasTask =
+        schedule.tasks.some((t) => t.id === taskId) ||
+        schedule.unscheduledTasks.some((t) => t.id === taskId);
+
+      if (hasTask) {
+        await this.schedules.update(schedule.id, {
+          tasks: schedule.tasks.filter((t) => t.id !== taskId),
+          unscheduledTasks: schedule.unscheduledTasks.filter(
+            (t) => t.id !== taskId
+          ),
+        });
+      }
+    }
+  }
+
+  /**
+   * Ensure today's daily note exists and open it
+   * Delegates to ObsidianExtension's DailyNoteFeature for consistent note creation
+   */
+  private async ensureAndOpenTodayDailyNote(): Promise<void> {
+    try {
+      // Use ObsidianExtension's DailyNoteFeature to ensure consistent daily note creation
+      const obsidianExtension = extensionRegistry.getById(
+        "obsidian"
+      ) as ObsidianExtension;
+      if (!obsidianExtension) {
+        console.error("ObsidianExtension not found");
+        return;
+      }
+
+      // Ensure the daily note exists using the centralized feature
+      const dailyNoteResult = await obsidianExtension.ensureTodayDailyNote();
+
+      // Open the daily note
+      await this.host.plugin.app.workspace.openLinkText(
+        dailyNoteResult.path,
+        "",
+        false
+      );
+    } catch (error) {
+      console.error("Failed to ensure and open today's daily note:", error);
+    }
+  }
+
+  /**
+   * Open today's daily note (public method for external use)
+   */
+  async openTodayDailyNote(): Promise<void> {
+    await this.ensureAndOpenTodayDailyNote();
+  }
+
+  /**
+   * Add tasks to today's daily note and open it
+   */
+  async addTasksToTodayDailyNote(tasks: Task[]): Promise<void> {
+    try {
+      const today = new Date();
+
+      // Use discovery utility to get the correct path based on Obsidian plugin settings
+      const dailyNotePath = getDailyNotePath(
+        this.host.plugin.app,
+        today,
+        this.settings.dailyNotesFolder
+      );
+
+      // Ensure today's daily note exists
+      await this.ensureAndOpenTodayDailyNote();
+
+      // Get the daily note file
+      const dailyNoteFile =
+        this.host.plugin.app.vault.getAbstractFileByPath(dailyNotePath);
+      if (!dailyNoteFile || !(dailyNoteFile instanceof TFile)) {
+        console.error("Daily note file not found or invalid");
+        return;
+      }
+
+      // Read current content
+      const currentContent = await this.host.plugin.app.vault.read(
+        dailyNoteFile as any
+      );
+
+      // Filter tasks that already exist in the daily note to avoid duplicates
+      const existingTaskPaths = await this.inlineTaskParser.getTaskFilePaths(
+        dailyNoteFile as any
+      );
+      const existingTaskPathsSet = new Set(existingTaskPaths);
+
+      // Filter out tasks that are already in the daily note
+      const tasksToAdd = tasks.filter((task) => {
+        const filePath = task.source.keys.obsidian;
+        return filePath && !existingTaskPathsSet.has(filePath);
+      });
+
+      // Set the Do Date property for all tasks
+      for (const task of tasks) {
+        await this.setTaskDoDate(task, today);
+      }
+
+      // Add new tasks to the daily note using InlineTaskEditor
+      if (tasksToAdd.length > 0) {
+        const updatedContent = this.inlineTaskEditor.addTasks(
+          currentContent,
+          tasksToAdd,
+          { section: "Tasks" }
+        );
+
+        await this.host.plugin.app.vault.modify(
+          dailyNoteFile as any,
+          updatedContent
+        );
+      }
+
+      // Open and focus on today's daily note
+      await this.host.plugin.app.workspace.openLinkText(
+        dailyNotePath,
+        "",
+        true
+      );
+    } catch (error) {
+      console.error("Failed to add tasks to today's daily note:", error);
+    }
+  }
+
+  /**
+   * Set the Do Date property in a task's front-matter
+   */
+  private async setTaskDoDate(task: Task, date: Date): Promise<Task> {
+    return await this.taskOperations.update({
+      ...task,
+      doDate: date,
+    });
+  }
+}

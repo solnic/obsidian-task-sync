@@ -1,0 +1,44 @@
+[
+  {
+    "id": "today-event-1",
+    "title": "Morning Standup",
+    "description": "Daily team standup meeting",
+    "location": "Virtual - Zoom",
+    "startDate": "2024-01-15T09:00:00.000Z",
+    "endDate": "2024-01-15T09:30:00.000Z",
+    "allDay": false,
+    "calendar": {
+      "id": "test-calendar-1",
+      "name": "Work Calendar",
+      "description": "Work-related events and meetings",
+      "color": "#007AFF",
+      "visible": true,
+      "metadata": {
+        "account": "iCloud",
+        "type": "CalDAV"
+      }
+    },
+    "url": "calendar://event/today-event-1"
+  },
+  {
+    "id": "today-event-2",
+    "title": "Lunch with Client",
+    "description": "Business lunch meeting",
+    "location": "Downtown Restaurant",
+    "startDate": "2024-01-15T12:00:00.000Z",
+    "endDate": "2024-01-15T13:30:00.000Z",
+    "allDay": false,
+    "calendar": {
+      "id": "test-calendar-1",
+      "name": "Work Calendar",
+      "description": "Work-related events and meetings",
+      "color": "#007AFF",
+      "visible": true,
+      "metadata": {
+        "account": "iCloud",
+        "type": "CalDAV"
+      }
+    },
+    "url": "calendar://event/today-event-2"
+  }
+]

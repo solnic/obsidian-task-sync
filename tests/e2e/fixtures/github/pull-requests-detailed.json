@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1,
+    "number": 123,
+    "title": "Implement new authentication system",
+    "body": "This PR implements OAuth2 authentication",
+    "state": "open",
+    "draft": false,
+    "merged_at": null,
+    "labels": [{ "name": "enhancement" }, { "name": "security" }],
+    "created_at": "2024-01-15T10:30:00Z",
+    "updated_at": "2024-01-15T10:30:00Z",
+    "html_url": "https://github.com/test/repo/pull/123",
+    "head": { "ref": "feature/oauth2", "label": "user:feature/oauth2" },
+    "base": { "ref": "main", "label": "user:main" },
+    "user": { "login": "developer" },
+    "assignee": { "login": "reviewer" },
+    "assignees": [{ "login": "reviewer" }],
+    "requested_reviewers": [{ "login": "senior-dev" }]
+  }
+]
