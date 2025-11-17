@@ -3,12 +3,14 @@
 ## Project Overview
 
 This is an Obsidian plugin for task management that integrates with the Bases feature. The plugin provides:
+
 - Quick task creation with template-aligned fields
 - Project and area organization
 - Integration with Obsidian's Bases for visualization
 - Template support (native Obsidian and Templater plugin)
 
 **Tech Stack:**
+
 - TypeScript (ES6 target, ESNext modules)
 - Svelte 5 for UI components
 - Obsidian API
@@ -78,11 +80,10 @@ npm run test:unit
 ```
 
 **Important Testing Notes:**
+
 - **E2E tests are the primary testing method** - Use Playwright with actual Obsidian instances
 - **Unit tests cover very little** - Most functionality must be tested via e2e tests
 - **Automatic environment setup** - Running `npm run test:e2e` will automatically set up the testing environment if needed (xvfb, Electron dependencies, Obsidian)
-- Test timeout is 10 seconds for both unit and hook timeouts
-- Use `xvfb-maybe` for headless testing on Linux
 - E2E debug artifacts are saved to `tests/e2e/debug/*`
 - To manually verify setup: `npm run setup:verify`
 - To manually trigger setup: `npm run setup:e2e`
@@ -95,16 +96,6 @@ npm run test:unit
 - External modules: obsidian, electron, CodeMirror, Lezer, Node.js built-ins
 - Bundle format: CommonJS (required by Obsidian)
 - Source maps: inline in development, none in production
-
-### Scripts
-
-Development helper scripts in `scripts/`:
-- `pre-test-e2e.js` - Pre-test script that ensures e2e environment is set up before tests run
-- `dev-obsidian-install.sh` - Install plugin to Obsidian vault
-- `dev-obsidian-open-test-vault.sh` - Open test vault in Obsidian
-- `setup-dev.sh` - Set up development environment
-- `setup-e2e.sh` - Set up e2e testing environment (called automatically by pre-test script)
-- `verify-setup.js` - Verify e2e testing environment is ready
 
 ## Code Style and Conventions
 
@@ -175,9 +166,11 @@ await this.app.vault.modify(file, newContent);
 
 // Registering a command
 this.addCommand({
-  id: 'my-command',
-  name: 'My Command',
-  callback: () => { /* ... */ }
+  id: "my-command",
+  name: "My Command",
+  callback: () => {
+    /* ... */
+  },
 });
 ```
 
@@ -214,7 +207,7 @@ await page.waitForTimeout(1000);
 
 // ✅ GOOD - Wait for specific condition
 await page.click('[data-testid="submit"]');
-await page.waitForSelector('.success-message', { state: 'visible' });
+await page.waitForSelector(".success-message", { state: "visible" });
 
 // ✅ GOOD - Wait for file to be processed
 await createTask(page, { title: "My Task" });
@@ -224,8 +217,6 @@ await waitForFileProcessed(page, "Tasks/My Task.md");
 await expectNotice(page, "created successfully");
 await waitForNoticeDisappear(page, "created successfully");
 ```
-
-See `tests/e2e/HELPER_FUNCTIONS_GUIDE.md` for all available helper functions.
 
 ### Unit Tests (Rarely Needed)
 
@@ -238,14 +229,14 @@ See `tests/e2e/HELPER_FUNCTIONS_GUIDE.md` for all available helper functions.
 - **Never mock the Obsidian API for integration tests** - use e2e tests instead
 
 ```typescript
-describe('Utility Function', () => {
-  it('should do something specific', () => {
+describe("Utility Function", () => {
+  it("should do something specific", () => {
     // Arrange
     const input = createInput();
-    
+
     // Act
     const result = processInput(input);
-    
+
     // Assert
     expect(result).to.equal(expectedOutput);
   });
@@ -308,6 +299,7 @@ describe('Utility Function', () => {
 ## Build Output
 
 Plugin generates three files for distribution:
+
 - `main.js` - Bundled plugin code
 - `styles.css` - Compiled styles
 - `manifest.json` - Plugin metadata
@@ -358,6 +350,7 @@ Plugin generates three files for distribution:
 ## Contributing
 
 When making changes:
+
 1. Create a feature branch
 2. Make minimal, focused changes
 3. Add/update tests
