@@ -103,6 +103,11 @@ test.describe("Base UI Note Creation", { tag: '@bases' }, () => {
     expect(updatedContent).toContain("Done: false"); // Should have default value
     expect(updatedContent).toContain("Areas:");
     expect(updatedContent).toContain("tags:");
+    
+    // Verify that ALL properties are present, including those without defaults
+    expect(updatedContent).toContain("Do Date:"); // Optional property without default
+    expect(updatedContent).toContain("Due Date:"); // Optional property without default
+    expect(updatedContent).toContain("Parent task:"); // Optional property without default
 
     // Verify that the Project property was set by the Base UI (if the base includes it)
     // The property might be there from the base configuration
@@ -153,5 +158,11 @@ Minimal task content.
     expect(updatedContent).toContain("Done: false");
     expect(updatedContent).toContain("Areas: []");
     expect(updatedContent).toContain("tags: []");
+    
+    // Verify that ALL properties are present, including those without defaults
+    expect(updatedContent).toContain("Do Date:"); // Optional property without default
+    expect(updatedContent).toContain("Due Date:"); // Optional property without default
+    expect(updatedContent).toContain("Project:"); // Optional property without default
+    expect(updatedContent).toContain("Parent task:"); // Optional property without default
   });
 });
