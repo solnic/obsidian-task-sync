@@ -95,15 +95,12 @@ test.describe("GitHub Import Association Handling", () => {
     // The project should be converted to wiki link format because the entity exists
     const taskFilePath = task.source.keys.obsidian;
     const frontMatter = await getFrontMatter(page, taskFilePath);
-    
-    // The bug: project is saved as raw string "Test Project" instead of wiki link
-    // Expected: [[Projects/Test Project.md|Test Project]]
-    // Actual (bug): "Test Project"
-    console.log("Project frontmatter value:", frontMatter.Project);
-    
+
     // This assertion should pass after the fix
-    expect(frontMatter.Project).toMatch(/^\[\[Projects\/Test Project\.md\|Test Project\]\]$/);
-    
+    expect(frontMatter.Project).toMatch(
+      /^\[\[Projects\/Test Project\.md\|Test Project\]\]$/
+    );
+
     // Areas should remain as plain names (for Bases filtering compatibility)
     expect(frontMatter.Areas).toEqual(expect.arrayContaining(["Test Area"]));
   });
@@ -112,7 +109,7 @@ test.describe("GitHub Import Association Handling", () => {
     page,
   }) => {
     // DO NOT create the project entity - this tests the fallback behavior
-    
+
     // Configure mapping to use a non-existent project
     await configureGitHubOrgRepoMappings(page, [
       {
@@ -159,9 +156,11 @@ test.describe("GitHub Import Association Handling", () => {
     // Check frontmatter - should be raw string when entity doesn't exist
     const taskFilePath = task.source.keys.obsidian;
     const frontMatter = await getFrontMatter(page, taskFilePath);
-    
+
     // When the project entity doesn't exist, it should be saved as a plain string
     expect(frontMatter.Project).toBe("Nonexistent Project");
-    expect(frontMatter.Areas).toEqual(expect.arrayContaining(["Nonexistent Area"]));
+    expect(frontMatter.Areas).toEqual(
+      expect.arrayContaining(["Nonexistent Area"])
+    );
   });
 });

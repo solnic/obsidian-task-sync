@@ -83,14 +83,8 @@ test.describe("Base UI Note Creation", () => {
     expect(newTaskPath).toBeTruthy();
     expect(newTaskPath).toContain("Tasks/");
 
-    console.log("New task created at:", newTaskPath);
-
     // Wait for the file to be processed by NoteKit file watcher
     await waitForFileProcessed(page, newTaskPath!);
-
-    // Read initial content to see what Base UI created
-    const initialContent = await readVaultFile(page, newTaskPath!);
-    console.log("Initial content from Base UI:", initialContent);
 
     // Wait for auto-completion to add missing properties
     await waitForFileContentToContain(page, newTaskPath!, "Type: Task", 5000);
