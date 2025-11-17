@@ -877,16 +877,49 @@ export class ObsidianExtension implements Extension {
         )) {
           const frontMatterKey = propDef.frontMatterKey || propDef.name;
 
-          // Check if property is missing and has a configured default
-          if (
-            existingProperties[frontMatterKey] === undefined &&
-            propDef.defaultValue !== undefined
-          ) {
+          // Skip properties that already exist
+          if (existingProperties[frontMatterKey] !== undefined) {
+            continue;
+          }
+
+          // Add missing property with default value if available
+          if (propDef.defaultValue !== undefined) {
             propertiesToAdd[frontMatterKey] = propDef.defaultValue;
             needsUpdate = true;
             console.log(
               `[ObsidianExtension] Adding missing property '${frontMatterKey}' with default value:`,
               propDef.defaultValue
+            );
+          } else {
+            // Add missing property with appropriate empty/null value based on type
+            let emptyValue: any;
+            
+            switch (propDef.type) {
+              case "array":
+                emptyValue = [];
+                break;
+              case "boolean":
+                emptyValue = false;
+                break;
+              case "number":
+                emptyValue = null;
+                break;
+              case "date":
+                emptyValue = null;
+                break;
+              case "string":
+              case "select":
+              case "association":
+              default:
+                emptyValue = null;
+                break;
+            }
+            
+            propertiesToAdd[frontMatterKey] = emptyValue;
+            needsUpdate = true;
+            console.log(
+              `[ObsidianExtension] Adding missing property '${frontMatterKey}' with empty value:`,
+              emptyValue
             );
           }
         }
