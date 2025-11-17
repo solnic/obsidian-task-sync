@@ -8,7 +8,9 @@ import {
   getFileContent,
   executeCommand,
   openFile,
-  waitForFileContentToContain,
+  waitForFileToContainText,
+  goToLineNumber,
+  promoteTodoAndWait,
 } from "../../helpers/global";
 import {
   createArea,
@@ -29,37 +31,26 @@ test.describe("Todo Promotion Reverting", () => {
     await createArea(page, { name: "Revert Test", description: noteContent });
     await openFile(page, "Areas/Revert Test.md");
 
-    await page.keyboard.press("Control+Home"); // Go to beginning
-    await page.keyboard.press("ArrowDown"); // Move to line 1 (first todo)
-    await page.keyboard.press("ArrowDown"); // Move to line 2 (second todo)
+    await goToLineNumber(page, 2); // Position on second todo
 
-    await executeCommand(page, "Promote Todo to Task");
+    await promoteTodoAndWait(page, "Areas/Revert Test.md", "Second todo item");
 
-    await waitForFileContentToContain(
-      page,
-      "Tasks/Second todo item.md",
-      "Second todo item"
-    );
-
-    await openFile(page, "Areas/Revert Test.md");
-
+    // Verify the area file was updated
     let updatedContent = await getFileContent(page, "Areas/Revert Test.md");
     expect(updatedContent).toContain("[[Second todo item]]");
 
-    await page.keyboard.press("Control+Home"); // Go to beginning
-    await page.keyboard.press("ArrowDown"); // Move to line 1 (first todo)
-    await page.keyboard.press("ArrowDown"); // Move to line 2 (second todo)
+    // Re-open the file to ensure clean state and position cursor
+    await openFile(page, "Areas/Revert Test.md");
+    await goToLineNumber(page, 2); // Position on the promoted link
 
     await executeCommand(page, "Revert Promoted Todo");
 
-    await waitForFileContentToContain(
-      page,
-      "Areas/Revert Test.md",
-      "- [ ] Second todo item"
-    );
-
     // Wait for the task to be removed from the store
     await waitForTaskToBeRemoved(page, "Second todo item");
+
+    // Verify the content was reverted
+    const revertedContent = await getFileContent(page, "Areas/Revert Test.md");
+    expect(revertedContent).toContain("- [ ] Second todo item");
 
     expect(await getTaskByTitle(page, "Second todo item")).toBeUndefined();
   });
@@ -78,41 +69,29 @@ test.describe("Todo Promotion Reverting", () => {
     await createArea(page, { name: "Revert Test", description: noteContent });
     await openFile(page, "Areas/Revert Test.md");
 
-    await page.keyboard.press("Control+Home"); // Go to beginning
-    await page.keyboard.press("ArrowDown"); // Move to line 1 (first todo)
-    await page.keyboard.press("ArrowDown"); // Move to line 2 (second todo)
+    await goToLineNumber(page, 2); // Position on second todo
 
-    await executeCommand(page, "Promote Todo to Task");
-
-    await waitForFileContentToContain(
-      page,
-      "Tasks/Second todo item.md",
-      "Second todo item"
-    );
+    await promoteTodoAndWait(page, "Areas/Revert Test.md", "Second todo item");
 
     const secondTask = await getTaskByTitle(page, "Second todo item");
-
     expect(secondTask.done).toBe(true);
 
-    await openFile(page, "Areas/Revert Test.md");
-
+    // Verify the area file was updated
     let updatedContent = await getFileContent(page, "Areas/Revert Test.md");
     expect(updatedContent).toContain("[[Second todo item]]");
 
-    await page.keyboard.press("Control+Home"); // Go to beginning
-    await page.keyboard.press("ArrowDown"); // Move to line 1 (first todo)
-    await page.keyboard.press("ArrowDown"); // Move to line 2 (second todo)
+    // Re-open the file to ensure clean state and position cursor
+    await openFile(page, "Areas/Revert Test.md");
+    await goToLineNumber(page, 2); // Position on the promoted link
 
     await executeCommand(page, "Revert Promoted Todo");
 
-    await waitForFileContentToContain(
-      page,
-      "Areas/Revert Test.md",
-      "- [x] Second todo item"
-    );
-
     // Wait for the task to be removed from the store
     await waitForTaskToBeRemoved(page, "Second todo item");
+
+    // Verify the content was reverted
+    const revertedContent = await getFileContent(page, "Areas/Revert Test.md");
+    expect(revertedContent).toContain("- [x] Second todo item");
 
     expect(await getTaskByTitle(page, "Second todo item")).toBeUndefined();
   });
@@ -131,10 +110,7 @@ test.describe("Todo Promotion Reverting", () => {
 
     await openFile(page, "Areas/Error Test.md");
 
-    // Position cursor on the regular todo
-    await page.keyboard.press("Control+Home"); // Go to beginning
-    await page.keyboard.press("ArrowDown"); // Move to line 1 (empty)
-    await page.keyboard.press("ArrowDown"); // Move to line 2 (regular todo)
+    await goToLineNumber(page, 2); // Position on the regular todo
 
     // Try to execute the revert command
     await executeCommand(page, "Revert Promoted Todo");

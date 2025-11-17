@@ -1838,6 +1838,82 @@ export async function waitForFileCreation(
 }
 
 /**
+ * Wait for a file to contain specific text
+ * This is useful after operations that modify files asynchronously
+ */
+export async function waitForFileToContainText(
+  page: Page,
+  filePath: string,
+  expectedText: string,
+  timeout: number = 5000
+): Promise<void> {
+  await page.waitForFunction(
+    async ({ path, text }) => {
+      const app = (window as any).app;
+      const file = app.vault.getAbstractFileByPath(path);
+      if (!file) return false;
+      const content = await app.vault.read(file);
+      return content.includes(text);
+    },
+    { path: filePath, text: expectedText },
+    { timeout }
+  );
+}
+
+/**
+ * Position cursor on a specific line number in the active editor
+ */
+export async function goToLineNumber(
+  page: Page,
+  lineNumber: number
+): Promise<void> {
+  await page.keyboard.press("Control+Home");
+  for (let i = 0; i < lineNumber; i++) {
+    await page.keyboard.press("ArrowDown");
+  }
+}
+
+/**
+ * Helper to test todo promotion workflow:
+ * 1. Promote a todo at the cursor position
+ * 2. Wait for task file creation
+ * 3. Wait for source file to be updated with the link
+ * Returns the task title for further assertions
+ */
+export async function promoteTodoAndWait(
+  page: Page,
+  sourceFilePath: string,
+  taskTitle: string
+): Promise<void> {
+  await executeCommand(page, "Promote Todo to Task");
+
+  // Wait for task file to be created
+  await waitForFileCreation(page, `Tasks/${taskTitle}.md`);
+
+  // Wait for source file to be updated with the link
+  await waitForFileToContainText(page, sourceFilePath, `[[${taskTitle}]]`);
+}
+
+/**
+ * Helper to test todo revert workflow:
+ * 1. Position cursor on the promoted todo link
+ * 2. Execute revert command
+ * 3. Wait for task to be removed from store
+ */
+export async function revertPromotedTodoAndWait(
+  page: Page,
+  taskTitle: string,
+  lineNumber: number
+): Promise<void> {
+  await goToLineNumber(page, lineNumber);
+  await executeCommand(page, "Revert Promoted Todo");
+
+  // Import waitForTaskToBeRemoved from entity-helpers
+  const { waitForTaskToBeRemoved } = await import("./entity-helpers");
+  await waitForTaskToBeRemoved(page, taskTitle);
+}
+
+/**
  * Helper to get task properties using the plugin's TaskFileManager
  * This is much more reliable than parsing raw file content
  */
@@ -2789,7 +2865,7 @@ export async function waitForDailyNoteUpdate(
           console.log(`[waitForDailyNoteUpdate] File not found: ${path}`);
           return false;
         }
-        
+
         try {
           const content = await app.vault.read(file);
           // If we expect specific content, the file must contain it
