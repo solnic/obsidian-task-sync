@@ -922,12 +922,14 @@ test.describe("Daily Planning Wizard", () => {
     // Navigate through wizard to confirmation
     await page.click('[data-testid="next-button"]'); // Step 2
     await expect(page.locator('[data-testid="step-2-content"]')).toBeVisible();
-    
+
     // Verify the task appears in step 2
     await expect(
-      page.locator('[data-testid="step-2-content"] .task-title').filter({ hasText: "Imported Test Task" })
+      page
+        .locator('[data-testid="step-2-content"] .task-title')
+        .filter({ hasText: "Imported Test Task" })
     ).toBeVisible();
-    
+
     await page.click('[data-testid="next-button"]'); // Step 3
     await expect(page.locator('[data-testid="step-3-content"]')).toBeVisible({
       timeout: 2500,
@@ -945,7 +947,12 @@ test.describe("Daily Planning Wizard", () => {
 
     // Wait for daily note to be created/updated
     const dailyNotePath = `Daily Notes/${todayString}.md`;
-    await waitForDailyNoteUpdate(page, dailyNotePath, "Imported Test Task", 10000);
+    await waitForDailyNoteUpdate(
+      page,
+      dailyNotePath,
+      "Imported Test Task",
+      10000
+    );
 
     // Verify daily note was created and contains the task
     const dailyNoteContent = await page.evaluate(async (path) => {
