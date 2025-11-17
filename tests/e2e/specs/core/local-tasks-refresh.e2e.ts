@@ -11,7 +11,7 @@ import {
 } from "../../helpers/tasks-view-helpers";
 import { createTask } from "../../helpers/entity-helpers";
 
-test.describe("LocalTasksService Refresh", () => {
+test.describe("LocalTasksService Refresh", { tag: '@core' }, () => {
   test("should refresh tasks successfully when refresh button is clicked", async ({
     page,
   }) => {

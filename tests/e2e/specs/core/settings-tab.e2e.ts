@@ -15,7 +15,7 @@ import {
   getPluginSettingValue,
 } from "../../helpers/global";
 
-test.describe("Settings Tab Functionality", () => {
+test.describe("Settings Tab", { tag: '@core' }, () => {
   test("should modify general settings and save changes", async ({ page }) => {
     // Open settings
     await openTaskSyncSettings(page);

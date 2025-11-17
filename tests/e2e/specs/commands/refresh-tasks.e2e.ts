@@ -22,7 +22,7 @@ import {
   getAllTasks,
 } from "../../helpers/entity-helpers";
 
-test.describe("Commands / Task Refresh", () => {
+test.describe("Commands / Task Refresh", { tag: '@commands' }, () => {
   test("should rebuild all task data and fix missing properties", async ({
     page,
   }) => {

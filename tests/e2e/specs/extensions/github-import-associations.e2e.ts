@@ -23,7 +23,7 @@ import {
   getTaskByTitle,
 } from "../../helpers/entity-helpers";
 
-test.describe("GitHub Import Association Handling", () => {
+test.describe("GitHub Import Association Handling", { tag: '@github' }, () => {
   test.beforeEach(async ({ page }) => {
     await enableIntegration(page, "github");
   });

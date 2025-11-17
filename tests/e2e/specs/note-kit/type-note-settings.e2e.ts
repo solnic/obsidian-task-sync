@@ -10,7 +10,7 @@ import {
   readVaultFile,
 } from "../../helpers/global";
 
-test.describe("NoteKit Settings - Property Management", () => {
+test.describe("NoteKit Settings - Property Management", { tag: '@note-kit' }, () => {
   test.beforeEach(async ({ page }) => {
     await openTaskSyncSettings(page);
 

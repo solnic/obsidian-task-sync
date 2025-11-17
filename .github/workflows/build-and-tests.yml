@@ -145,7 +145,12 @@ jobs:
           - note-kit
           - bases
           - commands
-          - extensions
+          - github
+          - apple-reminders
+          - todo-promotion
+          - daily-planning
+          - calendar
+          - sync
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -181,7 +186,7 @@ jobs:
           rm obsidian-unpacked.tar.gz
 
       - name: Run e2e tests - ${{ matrix.test-group }}
-        run: npm run test:e2e -- tests/e2e/specs/${{ matrix.test-group }}
+        run: npm run test:e2e -- --grep @${{ matrix.test-group }}
 
       - name: Upload test results - ${{ matrix.test-group }}
         if: failure()

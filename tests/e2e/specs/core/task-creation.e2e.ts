@@ -14,7 +14,7 @@ import {
   openFile,
 } from "../../helpers/global";
 
-test.describe("Task Creation", () => {
+test.describe("Task Creation", { tag: '@core' }, () => {
   test("should create task through modal and verify task file is created", async ({
     page,
   }) => {

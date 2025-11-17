@@ -22,7 +22,7 @@ import {
   waitForIssueImportComplete,
 } from "../../helpers/github-integration-helpers";
 
-test.describe("Sync Property Filtering", () => {
+test.describe("Sync Property Filtering", { tag: '@sync' }, () => {
   test("should only sync GitHub-defined properties and preserve Obsidian-specific properties", async ({
     page,
   }) => {

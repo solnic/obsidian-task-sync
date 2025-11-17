@@ -20,7 +20,7 @@ import { createTask } from "../../helpers/entity-helpers";
 import { executeCommand, waitForContextUpdate, waitForFileContentToContain, readVaultFile } from "../../helpers/global";
 import { getTodayString } from "../../helpers/date-helpers";
 
-test.describe("TasksView Component", () => {
+test.describe("TasksView Component", { tag: '@core' }, () => {
   test("should open Tasks view and display local tasks", async ({ page }) => {
     // Create some test tasks first
     await createTask(page, {

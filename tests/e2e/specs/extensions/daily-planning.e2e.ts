@@ -21,7 +21,7 @@ import { getTodayString, getYesterdayString } from "../../helpers/date-helpers";
 import { createTask } from "../../helpers/entity-helpers";
 import { stubGitHubWithFixtures } from "../../helpers/github-integration-helpers";
 
-test.describe("Daily Planning Wizard", () => {
+test.describe("Daily Planning Wizard", { tag: '@daily-planning' }, () => {
   test.beforeEach(async ({ page }) => {
     // Stub Apple Calendar APIs for consistent testing
     await page.evaluate(() => {

@@ -15,7 +15,7 @@ import {
   createTestTask,
 } from "../../helpers/tasks-view-helpers";
 
-test.describe("TasksView Edge Cases and Error Handling", () => {
+test.describe("TasksView Edge Cases and Error Handling", { tag: '@core' }, () => {
   test("should handle missing Tasks folder gracefully", async ({ page }) => {
     // Delete the Tasks folder to simulate the error condition
     await page.evaluate(async () => {

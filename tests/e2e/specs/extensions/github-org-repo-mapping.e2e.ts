@@ -22,7 +22,7 @@ import {
   getTaskByTitle,
 } from "../../helpers/entity-helpers";
 
-test.describe("GitHub Organization/Repository Mapping", () => {
+test.describe("GitHub Organization/Repository Mapping", { tag: '@github' }, () => {
   test.beforeEach(async ({ page }) => {
     await enableIntegration(page, "github");
   });

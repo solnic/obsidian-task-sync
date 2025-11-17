@@ -10,7 +10,7 @@ import {
   readVaultFile,
 } from "../../helpers/global";
 
-test.describe("NoteKit BasesIntegration", () => {
+test.describe("NoteKit BasesIntegration", { tag: '@note-kit' }, () => {
   test("should create Obsidian base from NoteKit note type", async ({
     page,
   }) => {

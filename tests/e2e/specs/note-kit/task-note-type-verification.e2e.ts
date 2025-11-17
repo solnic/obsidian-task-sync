@@ -4,7 +4,7 @@
 
 import { test, expect } from "../../helpers/setup";
 
-test.describe("Task Note Type Verification", () => {
+test.describe("Task Note Type Verification", { tag: '@note-kit' }, () => {
   test("should register Task note type and show in settings", async ({
     page,
   }) => {

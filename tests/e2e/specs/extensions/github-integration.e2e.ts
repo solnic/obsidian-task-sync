@@ -33,7 +33,7 @@ import {
   waitForTaskUpdated,
 } from "../../helpers/entity-helpers";
 
-test.describe("GitHub Integration", () => {
+test.describe("GitHub Integration", { tag: '@github' }, () => {
   test("should import GitHub issue as task", async ({ page }) => {
     await openView(page, "task-sync-main");
     await enableIntegration(page, "github");

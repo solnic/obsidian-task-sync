@@ -19,7 +19,7 @@ import {
   getTaskByTitle,
 } from "../../helpers/entity-helpers";
 
-test.describe("Svelte App Initialization", () => {
+test.describe("Svelte App Initialization", { tag: '@core' }, () => {
   test("should scan and load existing task files during initialization", async ({
     page,
   }) => {

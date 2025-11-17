@@ -15,7 +15,7 @@ import {
   getObsidianApp,
 } from "../../helpers/global";
 
-test.describe("NoteKit ObsidianPropertyManager", () => {
+test.describe("NoteKit ObsidianPropertyManager", { tag: '@note-kit' }, () => {
   test("should provide property type mapping between NoteKit and Obsidian", async ({
     page,
   }) => {

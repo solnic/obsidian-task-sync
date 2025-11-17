@@ -18,7 +18,7 @@ import {
 } from "../../helpers/apple-reminders-integration-helpers";
 import { getTaskByTitle, getAllTasks } from "../../helpers/entity-helpers";
 
-test.describe("Apple Reminders Integration", () => {
+test.describe("Apple Reminders Integration", { tag: '@apple-reminders' }, () => {
   test("should import Apple Reminder as task", async ({ page }) => {
     // Set up stubs BEFORE enabling integration
     await stubAppleRemindersWithFixtures(page, {

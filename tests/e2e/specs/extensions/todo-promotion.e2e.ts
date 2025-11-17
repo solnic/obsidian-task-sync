@@ -14,7 +14,7 @@ import {
 import { createArea, createProject } from "../../helpers/entity-helpers";
 import { goToLine } from "../../helpers/editor";
 
-test.describe("Todo Promotion", () => {
+test.describe("Todo Promotion", { tag: '@todo-promotion' }, () => {
   test("should promote incomplete todo to task", async ({ page }) => {
     await createArea(page, {
       name: "Personal",

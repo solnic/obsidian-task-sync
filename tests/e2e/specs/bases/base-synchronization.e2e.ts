@@ -29,7 +29,7 @@ import {
   openBaseNoteStable,
 } from "../../helpers/bases-helpers";
 
-test.describe("Base Synchronization", () => {
+test.describe("Base Synchronization", { tag: '@bases' }, () => {
   test("should sync area bases when new task type is added", async ({
     page,
   }) => {

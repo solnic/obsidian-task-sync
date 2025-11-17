@@ -6,7 +6,7 @@
 import { test, expect } from "../../helpers/setup";
 import { enableIntegration } from "../../helpers/global";
 
-test.describe("GitHub Mapping UI", () => {
+test.describe("GitHub Mapping UI", { tag: '@github' }, () => {
   test.beforeEach(async ({ page }) => {
     await enableIntegration(page, "github");
   });

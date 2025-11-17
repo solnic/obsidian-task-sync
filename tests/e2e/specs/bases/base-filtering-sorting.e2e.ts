@@ -27,7 +27,7 @@ import {
   expectBaseTasksNotContain,
 } from "../../helpers/bases-helpers";
 
-test.describe("Base Filtering and Sorting", () => {
+test.describe("Base Filtering and Sorting", { tag: '@bases' }, () => {
   test("should filter out done tasks in all base views", async ({ page }) => {
     // Enable project bases and auto-sync
     await updatePluginSettings(page, {

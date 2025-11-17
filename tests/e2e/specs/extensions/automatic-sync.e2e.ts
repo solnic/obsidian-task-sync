@@ -20,7 +20,7 @@ import {
   waitForSyncComplete,
 } from "../../helpers/global";
 
-test.describe("Automatic Sync During Refresh", () => {
+test.describe("Automatic Sync During Refresh", { tag: '@sync' }, () => {
   test("should sync vault changes with persisted data after refresh", async ({
     page,
   }) => {

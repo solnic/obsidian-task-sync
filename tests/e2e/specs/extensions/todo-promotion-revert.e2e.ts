@@ -18,7 +18,7 @@ import {
   waitForTaskToBeRemoved,
 } from "../../helpers/entity-helpers";
 
-test.describe("Todo Promotion Reverting", () => {
+test.describe("Todo Promotion Reverting", { tag: '@todo-promotion' }, () => {
   test("should revert promoted todo under cursor", async ({ page }) => {
     const todos = [
       "- [ ] First todo item",

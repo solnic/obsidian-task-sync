@@ -19,7 +19,7 @@ import {
   waitForIssueImportComplete,
 } from "../../helpers/github-integration-helpers";
 
-test.describe("GitHub Import and Deletion Sync", () => {
+test.describe("GitHub Import and Deletion Sync", { tag: '@github' }, () => {
   test("should remove imported status when local task file is deleted and refresh is run", async ({
     page,
   }) => {

@@ -11,7 +11,7 @@ import {
 } from "../../helpers/global";
 import { stubAppleRemindersWithFixtures } from "../../helpers/apple-reminders-integration-helpers";
 
-test.describe("Apple Reminders Settings", () => {
+test.describe("Apple Reminders Settings", { tag: '@apple-reminders' }, () => {
   test("should allow selecting reminder lists in settings", async ({
     page,
   }) => {

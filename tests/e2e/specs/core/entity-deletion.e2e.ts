@@ -8,18 +8,17 @@ import {
   executeCommand,
   waitForFileCreation,
   deleteVaultFile,
-  waitForFileDeletion,
 } from "../../helpers/global";
 import {
-  getTaskByTitle,
-  getProjectByName,
   getAreaByName,
-  waitForTaskToBeRemoved,
-  waitForProjectToBeRemoved,
+  getProjectByName,
+  getTaskByTitle,
   waitForAreaToBeRemoved,
+  waitForProjectToBeRemoved,
+  waitForTaskToBeRemoved,
 } from "../../helpers/entity-helpers";
 
-test.describe("Entity Deletion on Note Deletion", () => {
+test.describe("Entity Deletion", { tag: '@core' }, () => {
   test("should delete task entity when task note is deleted", async ({
     page,
   }) => {

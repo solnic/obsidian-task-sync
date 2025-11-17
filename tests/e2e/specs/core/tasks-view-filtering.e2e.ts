@@ -26,7 +26,7 @@ import {
 import { stubGitHubWithFixtures } from "../../helpers/github-integration-helpers";
 import { createTask } from "../../helpers/entity-helpers";
 
-test.describe("TasksView Filtering and Sorting", () => {
+test.describe("TasksView Filtering and Sorting", { tag: '@core' }, () => {
   test.beforeEach(async ({ page }) => {
     // Create a diverse set of test tasks for filtering/sorting tests
     // Note: Test vault already has pre-existing tasks and areas (Development, Personal)

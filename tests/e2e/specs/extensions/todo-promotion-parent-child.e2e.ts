@@ -11,10 +11,10 @@ import {
   openFile,
   waitForFileContentToContain,
 } from "../../helpers/global";
-import { createArea } from "../../helpers/entity-helpers";
+import { createTask, createArea } from "../../helpers/entity-helpers";
 import { goToLine } from "../../helpers/editor";
 
-test.describe("Todo Promotion Parent-Child Relationships", () => {
+test.describe("Todo Promotion Parent-Child Hierarchy", { tag: '@todo-promotion' }, () => {
   test("should promote individual todo without auto-creating children", async ({
     page,
   }) => {

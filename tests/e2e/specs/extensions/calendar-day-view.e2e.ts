@@ -14,7 +14,7 @@ import {
   stubGoogleCalendarAPIs,
 } from "../../helpers/api-stubbing";
 
-test.describe("Calendar Day View", () => {
+test.describe("Calendar Day View", { tag: '@calendar' }, () => {
   test("should display calendar events from Apple Calendar", async ({
     page,
   }) => {

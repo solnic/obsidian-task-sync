@@ -17,7 +17,7 @@ import {
 } from "../../helpers/bases-helpers";
 import { createProject } from "../../helpers/entity-helpers";
 
-test.describe("Base UI Note Creation", () => {
+test.describe("Base UI Note Creation", { tag: '@bases' }, () => {
   test("should auto-complete missing properties when clicking New button in Base UI", async ({
     page,
   }) => {

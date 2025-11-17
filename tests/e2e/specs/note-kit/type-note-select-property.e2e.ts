@@ -6,7 +6,7 @@
 import { test, expect } from "../../helpers/setup";
 import { openTaskSyncSettings } from "../../helpers/global";
 
-test.describe("NoteKit Select Property Type", () => {
+test.describe("NoteKit Select Property Type", { tag: '@note-kit' }, () => {
   test("should show Select type in property type dropdown", async ({
     page,
   }) => {

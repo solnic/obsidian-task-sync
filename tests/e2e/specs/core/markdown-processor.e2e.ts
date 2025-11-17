@@ -13,7 +13,7 @@ import {
   expectNotice,
 } from "../../helpers/global";
 
-test.describe("TaskTodoMarkdownProcessor", () => {
+test.describe("TaskTodoMarkdownProcessor", { tag: '@core' }, () => {
   test("should enhance todo items with task badges in reading mode", async ({
     page,
   }) => {
