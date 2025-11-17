@@ -72,6 +72,7 @@ test.describe("Svelte App Initialization", { tag: '@core' }, () => {
     // Wait for projects to be loaded into the store
     await page.waitForFunction(
       () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Playwright serialization boundary: window.app not available in browser context types
         const plugin = (window as any).app.plugins.plugins[
           "obsidian-task-sync"
         ];
@@ -81,7 +82,8 @@ test.describe("Svelte App Initialization", { tag: '@core' }, () => {
 
         const projectStore = plugin.stores.projectStore;
         let projectCount = 0;
-        projectStore.subscribe((state: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Svelte store state cannot be fully typed across serialization boundary
+        projectStore.subscribe((state: { projects: any[] }) => {
           projectCount = state.projects.length;
         })();
 
@@ -98,7 +100,7 @@ test.describe("Svelte App Initialization", { tag: '@core' }, () => {
 
       // Get current value from the store using subscribe
       let projects: any[] = [];
-      projectStore.subscribe((state: any) => {
+      projectStore.subscribe((state: { projects: any[] }) => {
         projects = state.projects;
       })();
 
@@ -129,6 +131,7 @@ test.describe("Svelte App Initialization", { tag: '@core' }, () => {
     // Wait for areas to be loaded into the store
     await page.waitForFunction(
       () => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Playwright serialization boundary: window.app not available in browser context types
         const plugin = (window as any).app.plugins.plugins[
           "obsidian-task-sync"
         ];
@@ -138,7 +141,8 @@ test.describe("Svelte App Initialization", { tag: '@core' }, () => {
 
         const areaStore = plugin.stores.areaStore;
         let areaCount = 0;
-        areaStore.subscribe((state: any) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Svelte store state cannot be fully typed across serialization boundary
+        areaStore.subscribe((state: { areas: any[] }) => {
           areaCount = state.areas.length;
         })();
 
@@ -155,7 +159,7 @@ test.describe("Svelte App Initialization", { tag: '@core' }, () => {
 
       // Get current value from the store using subscribe
       let areas: any[] = [];
-      areaStore.subscribe((state: any) => {
+      areaStore.subscribe((state: { areas: any[] }) => {
         areas = state.areas;
       })();
 
@@ -759,6 +763,7 @@ test.describe("Svelte App Initialization", { tag: '@core' }, () => {
     // Wait for task entity to be updated with the new do date
     await page.waitForFunction(
       ({ title, expectedDate }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Playwright serialization boundary: window.app not available in browser context types
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
         const task = plugin.query.findTaskByTitle(title);
@@ -796,6 +801,7 @@ test.describe("Svelte App Initialization", { tag: '@core' }, () => {
     // Wait for task entity to be updated with the new due date
     await page.waitForFunction(
       ({ title, expectedDate }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Playwright serialization boundary: window.app not available in browser context types
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
         const task = plugin.query.findTaskByTitle(title);
@@ -822,6 +828,7 @@ test.describe("Svelte App Initialization", { tag: '@core' }, () => {
     // Wait for task entity to have do date cleared
     await page.waitForFunction(
       ({ title }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Playwright serialization boundary: window.app not available in browser context types
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
         const task = plugin.query.findTaskByTitle(title);
@@ -842,6 +849,7 @@ test.describe("Svelte App Initialization", { tag: '@core' }, () => {
     // Wait for task entity to have due date cleared
     await page.waitForFunction(
       ({ title }) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Playwright serialization boundary: window.app not available in browser context types
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
         const task = plugin.query.findTaskByTitle(title);

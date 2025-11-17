@@ -24,13 +24,12 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.svelte",
-    "src/svelte.d.ts"
+    "src/svelte.d.ts",
+    "tests/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "tmp/**/*",
-    "tests/e2e/**/*",
-    "tests/**/*",
     "old-stuff/**/*"
   ]
 }

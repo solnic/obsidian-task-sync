@@ -10,7 +10,7 @@ import type { Page } from "playwright";
 /**
  * Load a fixture file by service and fixture name
  */
-function loadFixture(service: string, fixtureName: string): any {
+function loadFixture(service: string, fixtureName: string): unknown {
   const fixturePath = path.join(
     process.cwd(),
     "tests",
@@ -31,10 +31,10 @@ function loadFixture(service: string, fixtureName: string): any {
   try {
     const fixtureContent = fs.readFileSync(fixturePath, "utf-8");
     return JSON.parse(fixtureContent);
-  } catch (error) {
+  } catch (_error) {
     throw new Error(
       `Failed to parse fixture file ${fixturePath}: ${
-        error instanceof Error ? error.message : String(error)
+        _error instanceof Error ? _error.message : String(_error)
       }`
     );
   }
@@ -66,11 +66,11 @@ function getAvailableFixtures(service: string): string[] {
  * Normalize event dates to today while preserving time components
  * Uses UTC methods to avoid timezone issues
  */
-function normalizeEventDatesToToday(events: any[]): any[] {
+function normalizeEventDatesToToday(events: Array<{ startDate: string; endDate: string; [key: string]: unknown }>): Array<{ startDate: string; endDate: string; [key: string]: unknown }> {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  return events.map((event: any) => {
+  return events.map((event) => {
     const originalStart = new Date(event.startDate);
     const originalEnd = new Date(event.endDate);
 
@@ -186,7 +186,7 @@ async function stubGitHubAPI(
       }
 
       // Stub the method
-      githubService[mappedMethod] = async (...args: any[]) => {
+      githubService[mappedMethod] = async (...args: unknown[]) => {
         console.log(`🔧 Stubbed ${methodName} called with args:`, args);
         return data;
       };
@@ -247,7 +247,7 @@ async function stubAppleCalendarAPI(
       }
 
       // Stub the method
-      appleCalendarService[mappedMethod] = async (...args: any[]) => {
+      appleCalendarService[mappedMethod] = async (...args: unknown[]) => {
         console.log(
           `🔧 Stubbed Apple Calendar ${methodName} called with args:`,
           args
@@ -309,7 +309,7 @@ async function stubAppleRemindersAPI(
       }
 
       // Stub the method
-      appleRemindersExtension[mappedMethod] = async (...args: any[]) => {
+      appleRemindersExtension[mappedMethod] = async (...args: unknown[]) => {
         console.log(
           `🔧 Stubbed Apple Reminders ${methodName} called with args:`,
           args
@@ -494,7 +494,7 @@ export async function stubGitHubAPIs(
   }
 ): Promise<void> {
   // Load fixture data
-  const fixtureData: any = {};
+  const fixtureData: Record<string, unknown> = {};
 
   if (fixtures.issues) {
     fixtureData.issues = loadFixture("github", fixtures.issues);
@@ -559,11 +559,11 @@ export async function stubGitHubAPIs(
         const allItems = (window as any).__githubApiStubs?.issues || [];
         // Filter out pull requests - same logic as real implementation
         // Pull requests have a "pull_request" field that distinguishes them from actual issues
-        let issues = allItems.filter((item: any) => !item.pull_request);
+        let issues = allItems.filter((item: { pull_request?: unknown }) => !item.pull_request);
 
         // Filter by repository if specified
         if (repository) {
-          issues = issues.filter((item: any) => {
+          issues = issues.filter((item: { labels?: Array<{ name: string }>; html_url?: string }) => {
             const url = item.html_url || "";
             return url.includes(`github.com/${repository}/`);
           });
@@ -594,7 +594,7 @@ export async function stubGitHubAPIs(
           `🔧 Stubbed fetchRepositoriesForOrganization called for: ${org}`
         );
         const allRepos = (window as any).__githubApiStubs?.repositories || [];
-        return allRepos.filter((repo: any) =>
+        return allRepos.filter((repo: { owner: { login: string }; full_name: string }) =>
           repo.full_name.startsWith(org + "/")
         );
       };
@@ -673,7 +673,7 @@ export async function restoreAppleCalendarAPIs(page: Page): Promise<void> {
     // Get the Apple Calendar service
     const calendarServices = calendarExtension.getCalendarServices();
     const appleCalendarService = calendarServices.find(
-      (service: any) => service.serviceName === "apple-calendar"
+      (service: { serviceName: string }) => service.serviceName === "apple-calendar"
     );
 
     if (!appleCalendarService) {
@@ -738,7 +738,7 @@ export async function stubAppleCalendarAPIs(
   }
 ): Promise<void> {
   // Load fixture data
-  const fixtureData: any = {};
+  const fixtureData: Record<string, unknown> = {};
 
   if (fixtures.calendars) {
     fixtureData.calendars = loadFixture("apple-calendar", fixtures.calendars);
@@ -746,7 +746,7 @@ export async function stubAppleCalendarAPIs(
   if (fixtures.events) {
     fixtureData.events = loadFixture("apple-calendar", fixtures.events);
     // Update events to use today's date
-    fixtureData.events = normalizeEventDatesToToday(fixtureData.events);
+    fixtureData.events = normalizeEventDatesToToday(fixtureData.events as any);
   }
   if (fixtures.todayEvents) {
     fixtureData.todayEvents = loadFixture(
@@ -754,7 +754,7 @@ export async function stubAppleCalendarAPIs(
       fixtures.todayEvents
     );
     // Update today's events to use today's date
-    fixtureData.todayEvents = normalizeEventDatesToToday(fixtureData.todayEvents);
+    fixtureData.todayEvents = normalizeEventDatesToToday(fixtureData.todayEvents as any);
   }
   if (fixtures.permissions) {
     fixtureData.permissions = loadFixture(
@@ -784,12 +784,12 @@ export async function stubAppleCalendarAPIs(
       // Get the Apple Calendar service from the calendar extension
       const calendarServices = calendarExtension.getCalendarServices();
       const appleCalendarService = calendarServices.find(
-        (service: any) => service.serviceName === "apple-calendar"
+        (service: { serviceName: string }) => service.serviceName === "apple-calendar"
       );
 
       if (!appleCalendarService) {
         console.log("🔧 Apple Calendar service not found in calendar extension");
-        console.log("🔧 Available services:", calendarServices.map((s: any) => s.serviceName));
+        console.log("🔧 Available services:", calendarServices.map((s: { serviceName: string }) => s.serviceName));
         return false;
       }
 
@@ -863,7 +863,7 @@ export async function stubGoogleCalendarAPIs(
   }
 ): Promise<void> {
   // Load fixture data
-  const fixtureData: any = {};
+  const fixtureData: Record<string, unknown> = {};
 
   if (fixtures.calendars) {
     fixtureData.calendars = loadFixture("google-calendar", fixtures.calendars);
@@ -871,7 +871,7 @@ export async function stubGoogleCalendarAPIs(
   if (fixtures.events) {
     fixtureData.events = loadFixture("google-calendar", fixtures.events);
     // Update events to use today's date
-    fixtureData.events = normalizeEventDatesToToday(fixtureData.events);
+    fixtureData.events = normalizeEventDatesToToday(fixtureData.events as any);
   }
   if (fixtures.todayEvents) {
     fixtureData.todayEvents = loadFixture(
@@ -879,7 +879,7 @@ export async function stubGoogleCalendarAPIs(
       fixtures.todayEvents
     );
     // Update today's events to use today's date
-    fixtureData.todayEvents = normalizeEventDatesToToday(fixtureData.todayEvents);
+    fixtureData.todayEvents = normalizeEventDatesToToday(fixtureData.todayEvents as any);
   }
   if (fixtures.permissions) {
     fixtureData.permissions = loadFixture(
@@ -915,7 +915,7 @@ export async function stubGoogleCalendarAPIs(
 
       const calendarServices = calendarExtension.getCalendarServices();
       const googleCalendarService = calendarServices.find(
-        (service: any) => service.serviceName === "google-calendar"
+        (service: { serviceName: string }) => service.serviceName === "google-calendar"
       );
 
       if (!googleCalendarService) {
@@ -992,7 +992,7 @@ export async function restoreGoogleCalendarAPIs(page: Page): Promise<void> {
 
     const calendarServices = calendarExtension.getCalendarServices();
     const googleCalendarService = calendarServices.find(
-      (service: any) => service.serviceName === "google-calendar"
+      (service: { serviceName: string }) => service.serviceName === "google-calendar"
     );
 
     if (!googleCalendarService) {
@@ -1034,7 +1034,7 @@ export async function stubAppleRemindersAPIs(
   }
 ): Promise<void> {
   // Load fixture data
-  const fixtureData: any = {};
+  const fixtureData: Record<string, unknown> = {};
 
   if (fixtures.reminders) {
     fixtureData.reminders = loadFixture("apple-reminders", fixtures.reminders);

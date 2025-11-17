@@ -57,21 +57,28 @@ test.describe("GitHub Import and Deletion Sync", { tag: '@github' }, () => {
     await clickIssueImportButton(page, 999);
     await waitForIssueImportComplete(page, 999);
 
-    // Verify the task file was created
-    const githubUrl = "https://github.com/solnic/obsidian-task-sync/issues/999";
-    const taskFilePath = await page.evaluate((url) => {
+    // Get the GitHub URL and task file path for the imported task
+    const { githubUrl, taskFilePath } = await page.evaluate(() => {
       const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
       let tasks: any[] = [];
-      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
+      const unsubscribe = plugin.stores.taskStore.subscribe((state: { tasks: any[] }) => {
         tasks = state.tasks;
       });
       unsubscribe();
 
-      const importedTask = tasks.find((t: any) => t.source.keys.github === url);
-      return importedTask?.source.keys.obsidian;
-    }, githubUrl);
+      // Find the task with issue #999
+      const importedTask = tasks.find(
+        (t: any) => t.source.keys.github && t.source.keys.github.includes("/999")
+      );
+
+      return {
+        githubUrl: importedTask?.source.keys.github || "",
+        taskFilePath: importedTask?.source.keys.obsidian || "",
+      };
+    });
 
     expect(taskFilePath).toBeTruthy();
+    expect(githubUrl).toBeTruthy();
 
     // Delete the local task file
     await deleteVaultFile(page, taskFilePath);
@@ -81,7 +88,7 @@ test.describe("GitHub Import and Deletion Sync", { tag: '@github' }, () => {
     const taskInStore = await page.evaluate((url) => {
       const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
       let tasks: any[] = [];
-      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
+      const unsubscribe = plugin.stores.taskStore.subscribe((state: { tasks: any[] }) => {
         tasks = state.tasks;
       });
       unsubscribe();

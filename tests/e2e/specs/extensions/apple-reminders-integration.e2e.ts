@@ -268,7 +268,7 @@ test.describe("Apple Reminders Integration", { tag: '@apple-reminders' }, () => 
         (await progressStatus.count()) > 0 ||
           (await progressPercentage.count()) > 0
       ).toBe(true);
-    } catch (e) {
+    } catch (_e) {
       // Progress completed too fast, which is fine - the refresh still worked
     }
 

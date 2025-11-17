@@ -20,7 +20,7 @@ export async function openSettings(page: Page): Promise<void> {
     .locator(".vertical-tab-nav-item")
     .filter({ hasText: "Task Sync" });
   await taskSyncTab.click();
-  
+
   // Wait for Task Sync settings to become visible
   await page.waitForFunction(
     () => {
@@ -54,9 +54,12 @@ export async function enableGitHubIntegration(
   await page.waitForFunction(
     () => {
       const settings = document.querySelectorAll(".setting-item");
-      for (const setting of settings) {
+      for (const setting of Array.from(settings)) {
         const nameEl = setting.querySelector(".setting-item-name");
-        if (nameEl && nameEl.textContent?.includes("GitHub Personal Access Token")) {
+        if (
+          nameEl &&
+          nameEl.textContent?.includes("GitHub Personal Access Token")
+        ) {
           return true;
         }
       }
@@ -119,9 +122,12 @@ export async function openTasksView(page: Page): Promise<void> {
   await page.keyboard.press("Control+p");
   await page.fill(".prompt-input", "Tasks");
   await page.keyboard.press("Enter");
-  
+
   // Wait for command palette to close
-  await page.waitForSelector(".prompt-input", { state: "hidden", timeout: 3000 });
+  await page.waitForSelector(".prompt-input", {
+    state: "hidden",
+    timeout: 3000,
+  });
 
   // Wait for Tasks view to be visible
   await page.waitForSelector('[data-testid="tasks-view"]', { timeout: 10000 });
@@ -138,7 +144,7 @@ export async function switchToGitHubService(page: Page): Promise<void> {
   await page.waitForSelector('[data-testid="github-service"]', {
     timeout: 10000,
   });
-  
+
   // Wait for service to be fully initialized
   await page.waitForFunction(
     () => {
@@ -180,13 +186,17 @@ export async function selectRepository(
   await page
     .waitForFunction(
       (selectedRepo) => {
-        const selector = document.querySelector('[data-testid="repository-filter"]') as HTMLSelectElement;
+        const selector = document.querySelector(
+          '[data-testid="repository-filter"]'
+        ) as HTMLSelectElement;
         if (selector) {
           return selector.value === selectedRepo;
         }
         // Fallback: check if repository name appears in UI
-        const repoElements = document.querySelectorAll(".repository-selector, .selected-repository");
-        for (const el of repoElements) {
+        const repoElements = document.querySelectorAll(
+          ".repository-selector, .selected-repository"
+        );
+        for (const el of Array.from(repoElements)) {
           if (el.textContent?.includes(selectedRepo)) {
             return true;
           }
@@ -215,7 +225,7 @@ export async function importGitHubIssue(
 
   // Hover over the issue to reveal import button
   await issueItem.hover();
-  
+
   // Wait for import button to appear after hover
   const importButton = issueItem.locator('[data-testid="issue-import-button"]');
   await importButton.waitFor({ state: "visible", timeout: 2000 });
@@ -229,7 +239,7 @@ export async function importGitHubIssue(
       const issueItems = document.querySelectorAll(
         '[data-testid="github-issue-item"]'
       );
-      for (const item of issueItems) {
+      for (const item of Array.from(issueItems)) {
         if (item.textContent?.includes(`#${issueNum}`)) {
           return item.getAttribute("data-imported") === "true";
         }
@@ -256,7 +266,7 @@ export async function verifyTaskInLocalTasks(
   // Switch to Local Tasks service
   const localTasksTab = page.locator('[data-testid="service-local"]');
   await localTasksTab.click();
-  
+
   // Wait for local tasks to load
   await page.waitForFunction(
     () => {
@@ -331,13 +341,13 @@ export async function createGitHubIssueFixture(
           title: issue.title,
           body: issue.body || "",
           labels: issue.labels || [],
-          assignee: null,
-          assignees: [],
+          assignee: null as any,
+          assignees: [] as any[],
           state: issue.state || "open",
           html_url: `https://github.com/${repo}/issues/${issue.number}`,
           created_at: "2024-01-01T00:00:00Z",
           updated_at: "2024-01-01T00:00:00Z",
-          closed_at: issue.state === "closed" ? "2024-01-02T00:00:00Z" : null,
+          closed_at: (issue.state === "closed" ? "2024-01-02T00:00:00Z" : null) as any,
           user: {
             login: "testuser",
             id: 5678,

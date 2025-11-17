@@ -5,7 +5,11 @@
 
 import { describe, test, expect, beforeEach } from "vitest";
 import { Host } from "../../../src/app/core/host";
-import { TaskSyncSettings } from "../../../src/app/types/settings";
+import { Task, Project, Area } from "../../../src/app/core/entities";
+import {
+  TaskSyncSettings,
+  DEFAULT_SETTINGS,
+} from "../../../src/app/types/settings";
 
 // Mock host for testing
 class MockHost extends Host {
@@ -13,6 +17,10 @@ class MockHost extends Host {
   private mockData: any = null;
   private loadCalled = false;
   private unloadCalled = false;
+
+  async load(): Promise<void> {
+    this.loadCalled = true;
+  }
 
   async loadSettings(): Promise<TaskSyncSettings> {
     if (!this.mockSettings) {
@@ -33,9 +41,21 @@ class MockHost extends Host {
     return this.mockData;
   }
 
-  async openFile(filePath: string): Promise<void> {
-    // Mock implementation - just log the file path
-    console.log(`Mock opening file: ${filePath}`);
+  async openFile(entity: Task | Project | Area): Promise<void> {
+    // Mock implementation - just log the entity
+    console.log(`Mock opening file for entity:`, entity);
+  }
+
+  showNotice(message: string): void {
+    console.log(`Notice: ${message}`);
+  }
+
+  getExtensionById(id: string): any {
+    return null;
+  }
+
+  getApp(): any {
+    return {};
   }
 
   async onload(): Promise<void> {
@@ -51,7 +71,7 @@ class MockHost extends Host {
     this.mockSettings = settings;
   }
 
-  setMockData(data: any): void {
+  setMockData(data: unknown): void {
     this.mockData = data;
   }
 
@@ -77,13 +97,92 @@ describe("Host Abstraction", () => {
         areasFolder: "TestAreas",
         projectsFolder: "TestProjects",
         tasksFolder: "TestTasks",
-        enableGitHubIntegration: true,
-        enableAppleRemindersIntegration: false,
-        enableAppleCalendarIntegration: false,
-        defaultView: "areas",
-        showCompletedTasks: false,
-        autoCreateFolders: true,
-        useTemplates: true,
+        templateFolder: "Templates",
+        dailyNotesFolder: "Daily Notes",
+        useTemplater: false,
+        defaultTaskTemplate: "Task.md",
+        defaultProjectTemplate: "project-template.md",
+        defaultAreaTemplate: "area-template.md",
+        defaultParentTaskTemplate: "parent-task-template.md",
+        basesFolder: "Bases",
+        tasksBaseFile: "Tasks.base",
+        autoGenerateBases: true,
+        autoUpdateBaseViews: true,
+        taskCategories: [],
+        taskPriorities: [],
+        taskStatuses: [],
+        areaBasesEnabled: true,
+        projectBasesEnabled: true,
+        autoSyncAreaProjectBases: true,
+        integrations: {
+          github: {
+            enabled: true,
+            personalAccessToken: "",
+            repositories: [],
+            defaultRepository: "",
+            issueFilters: { state: "open", assignee: "", labels: [] },
+            labelTypeMapping: {},
+            orgRepoMappings: [],
+          },
+          appleReminders: {
+            enabled: false,
+            includeCompletedReminders: false,
+            reminderLists: [],
+            syncInterval: 60,
+            excludeAllDayReminders: false,
+            defaultTaskType: "Task",
+            importNotesAsDescription: true,
+            preservePriority: true,
+          },
+          appleCalendar: {
+            enabled: false,
+            username: "",
+            appSpecificPassword: "",
+            selectedCalendars: [],
+            includeAllDayEvents: true,
+            includeBusyEvents: true,
+            includeFreeEvents: false,
+            daysAhead: 1,
+            daysBehind: 0,
+            includeLocation: true,
+            includeNotes: false,
+            timeFormat: "24h",
+            defaultArea: "",
+            startHour: 8,
+            endHour: 18,
+            timeIncrement: 15,
+            zoomLevel: 1,
+            schedulingEnabled: false,
+            defaultSchedulingCalendar: "",
+            defaultEventDuration: 60,
+            defaultReminders: [15],
+            includeTaskDetailsInEvent: true,
+          },
+          googleCalendar: {
+            enabled: false,
+            apiKey: "",
+            clientId: "",
+            clientSecret: "",
+            accessToken: "",
+            refreshToken: "",
+            tokenExpiry: 0,
+            selectedCalendars: [],
+            includeAllDayEvents: true,
+            includeBusyEvents: true,
+            includeFreeEvents: false,
+            daysAhead: 1,
+            daysBehind: 0,
+            includeLocation: true,
+            includeNotes: false,
+            timeFormat: "24h",
+            defaultArea: "",
+            schedulingEnabled: false,
+            defaultSchedulingCalendar: "",
+            defaultEventDuration: 60,
+            defaultReminders: [15],
+            includeTaskDetailsInEvent: true,
+          },
+        },
       };
 
       await mockHost.saveSettings(testSettings);
@@ -91,7 +190,7 @@ describe("Host Abstraction", () => {
 
       expect(loadedSettings).toEqual(testSettings);
       expect(loadedSettings.areasFolder).toBe("TestAreas");
-      expect(loadedSettings.enableGitHubIntegration).toBe(true);
+      expect(loadedSettings.integrations.github.enabled).toBe(true);
     });
 
     test("should implement data persistence", async () => {
@@ -140,42 +239,44 @@ describe("Host Abstraction", () => {
   describe("Host lifecycle", () => {
     test("should support multiple save/load cycles", async () => {
       const settings1: TaskSyncSettings = {
+        ...DEFAULT_SETTINGS,
         areasFolder: "Areas1",
         projectsFolder: "Projects1",
         tasksFolder: "Tasks1",
-        enableGitHubIntegration: false,
-        enableAppleRemindersIntegration: false,
-        enableAppleCalendarIntegration: false,
-        defaultView: "tasks",
-        showCompletedTasks: true,
-        autoCreateFolders: false,
-        useTemplates: false,
+        integrations: {
+          ...DEFAULT_SETTINGS.integrations,
+          github: {
+            ...DEFAULT_SETTINGS.integrations.github,
+            enabled: false,
+          },
+        },
       };
 
       const settings2: TaskSyncSettings = {
+        ...DEFAULT_SETTINGS,
         areasFolder: "Areas2",
         projectsFolder: "Projects2",
         tasksFolder: "Tasks2",
-        enableGitHubIntegration: true,
-        enableAppleRemindersIntegration: true,
-        enableAppleCalendarIntegration: true,
-        defaultView: "projects",
-        showCompletedTasks: false,
-        autoCreateFolders: true,
-        useTemplates: true,
+        integrations: {
+          ...DEFAULT_SETTINGS.integrations,
+          github: {
+            ...DEFAULT_SETTINGS.integrations.github,
+            enabled: true,
+          },
+        },
       };
 
       // First cycle
       await mockHost.saveSettings(settings1);
       let loaded = await mockHost.loadSettings();
       expect(loaded.areasFolder).toBe("Areas1");
-      expect(loaded.enableGitHubIntegration).toBe(false);
+      expect(loaded.integrations.github.enabled).toBe(false);
 
       // Second cycle
       await mockHost.saveSettings(settings2);
       loaded = await mockHost.loadSettings();
       expect(loaded.areasFolder).toBe("Areas2");
-      expect(loaded.enableGitHubIntegration).toBe(true);
+      expect(loaded.integrations.github.enabled).toBe(true);
     });
 
     test("should support multiple onload/onunload cycles", async () => {

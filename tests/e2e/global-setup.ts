@@ -28,7 +28,7 @@ async function killExistingElectronProcesses(): Promise<void> {
       for (const pid of pids) {
         try {
           process.kill(parseInt(pid), "SIGTERM");
-        } catch (error) {
+        } catch (_error) {
           // NO OP
         }
       }
@@ -49,16 +49,20 @@ async function killExistingElectronProcesses(): Promise<void> {
           for (const pid of remainingPids) {
             try {
               process.kill(parseInt(pid), "SIGKILL");
-            } catch (error) {
+            } catch (_error) {
               // NO OP
             }
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Ignore errors when checking for remaining processes
+        void _error;
       }
     }
-  } catch (error) {}
+  } catch (_error) {
+    // Ignore errors when cleaning up processes
+    void _error;
+  }
 }
 
 /**
@@ -73,7 +77,10 @@ async function cleanupDebugArtifacts(): Promise<void> {
     }
 
     await fs.promises.mkdir(debugDir, { recursive: true });
-  } catch (error) {}
+  } catch (_error) {
+    // Ignore cleanup errors
+    void _error;
+  }
 }
 
 export default async function globalSetup() {

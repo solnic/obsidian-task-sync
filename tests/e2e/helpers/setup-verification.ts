@@ -137,14 +137,20 @@ async function checkNodeAndNpm(): Promise<SetupCheckResult[]> {
     try {
       const { stdout } = await execAsync("node --version");
       nodeVersion = stdout.trim();
-    } catch {}
+    } catch (e) {
+      // Ignore if version check fails
+      void e;
+    }
   }
 
   if (hasNpm) {
     try {
       const { stdout } = await execAsync("npm --version");
       npmVersion = stdout.trim();
-    } catch {}
+    } catch (e) {
+      // Ignore if version check fails
+      void e;
+    }
   }
 
   return [
@@ -251,9 +257,10 @@ export async function runSetup(): Promise<void> {
     } as any);
 
     console.log("✅ Setup completed successfully");
-  } catch (error: any) {
-    console.error("❌ Setup failed:", error.message);
-    throw new Error(`Setup script failed: ${error.message}`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error("❌ Setup failed:", errorMessage);
+    throw new Error(`Setup script failed: ${errorMessage}`);
   }
 }
 

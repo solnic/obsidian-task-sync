@@ -62,7 +62,7 @@ export async function waitForLocalTasksToLoad(
 /**
  * Get all visible task items in the local tasks view
  */
-export async function getVisibleTaskItems(page: Page): Promise<any[]> {
+export async function getVisibleTaskItems(page: Page): Promise<unknown[]> {
   return await page.locator('[data-testid^="local-task-item-"]').all();
 }
 
@@ -252,7 +252,7 @@ export async function getTaskItemByTitle(
 
   // Check if the test ID contains special characters that would make it invalid as a CSS selector
   // If so, fall back to searching by title text content
-  const hasSpecialChars = /[^\w\-]/.test(testId);
+  const hasSpecialChars = /[^\w-]/.test(testId);
 
   if (hasSpecialChars) {
     // Fall back to searching by title text content for titles with special characters

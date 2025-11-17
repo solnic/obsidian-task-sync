@@ -31,7 +31,10 @@ const cleanupOldFiles = (dir: string, maxFiles: number = 50) => {
       } else {
         fs.unlinkSync(file.path);
       }
-    } catch (error) {}
+    } catch (_error) {
+      // Ignore cleanup errors
+      void _error;
+    }
   });
 };
 

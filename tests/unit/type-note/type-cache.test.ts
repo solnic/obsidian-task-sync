@@ -28,6 +28,7 @@ describe("TypeCache", () => {
     properties: {
       title: {
         key: "title",
+        type: "string" as const,
         name: "Title",
         schema: stringSchema,
         frontMatterKey: "title",
@@ -35,6 +36,7 @@ describe("TypeCache", () => {
       },
       description: {
         key: "description",
+        type: "string" as const,
         name: "Description",
         schema: optionalStringSchema,
         frontMatterKey: "description",
@@ -43,6 +45,7 @@ describe("TypeCache", () => {
       },
       priority: {
         key: "priority",
+        type: "number" as const,
         name: "Priority",
         schema: numberSchema,
         frontMatterKey: "priority",
@@ -54,9 +57,9 @@ describe("TypeCache", () => {
       version: "1.0.0",
       content: "# {{title}}\n\n{{description}}\n\nPriority: {{priority}}",
       variables: {
-        title: { type: "string", required: true },
-        description: { type: "string", required: false },
-        priority: { type: "number", required: false },
+        title: { name: "title" },
+        description: { name: "description" },
+        priority: { name: "priority" },
       },
     },
   });

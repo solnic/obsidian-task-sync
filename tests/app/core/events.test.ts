@@ -16,6 +16,7 @@ const mockTask: Task = {
   done: false,
   areas: [],
   tags: [],
+  source: { extension: "test", keys: {} },
   createdAt: new Date("2024-01-01"),
   updatedAt: new Date("2024-01-01"),
 };
@@ -25,6 +26,7 @@ const mockProject: Project = {
   name: "Test Project",
   areas: [],
   tags: [],
+  source: { extension: "test", keys: {} },
   createdAt: new Date("2024-01-01"),
   updatedAt: new Date("2024-01-01"),
 };
@@ -33,13 +35,14 @@ const mockArea: Area = {
   id: "area-1",
   name: "Test Area",
   tags: [],
+  source: { extension: "test", keys: {} },
   createdAt: new Date("2024-01-01"),
   updatedAt: new Date("2024-01-01"),
 };
 
 describe("EventBus", () => {
   let eventBus: EventBus;
-  let mockHandler: vi.MockedFunction<(event: DomainEvent) => void>;
+  let mockHandler: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     eventBus = new EventBus();

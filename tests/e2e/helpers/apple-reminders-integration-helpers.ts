@@ -23,7 +23,7 @@ export async function stubAppleRemindersWithFixtures(
   page: Page,
   fixtures: AppleRemindersFixtures
 ): Promise<void> {
-  const fixturesPath = join(__dirname, "../fixtures/apple-reminders");
+  const fixturesPath = join(process.cwd(), "tests/e2e/fixtures/apple-reminders");
 
   // Load fixture data
   const permissionsData = readFileSync(
@@ -144,7 +144,7 @@ export async function waitForReminderImportComplete(
       );
       let reminderItem = null;
 
-      for (const item of reminderItems) {
+      for (const item of Array.from(reminderItems)) {
         if (item.textContent && item.textContent.includes(title)) {
           reminderItem = item;
           break;
@@ -186,7 +186,7 @@ export async function dismissNotices(page: Page): Promise<void> {
         if (await notice.isVisible()) {
           await notice.click();
         }
-      } catch (error) {
+      } catch (_error) {
         // Ignore errors when dismissing notices
       }
     }

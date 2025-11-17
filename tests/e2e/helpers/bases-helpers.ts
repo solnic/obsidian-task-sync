@@ -84,7 +84,10 @@ export async function openNoteWithBases(
     if (leaf && leaf.view && typeof leaf.view.setState === "function") {
       try {
         await leaf.view.setState({ mode: "preview" });
-      } catch {}
+      } catch (e) {
+        // Ignore if mode change fails
+        void e;
+      }
     }
   }, filePath);
 
@@ -201,7 +204,10 @@ export async function openNoteWithBases(
       if (leaf && leaf.view && typeof leaf.view.setState === "function") {
         try {
           await leaf.view.setState({ mode: "preview" });
-        } catch {}
+        } catch (e) {
+          // Ignore if mode change fails
+          void e;
+        }
       }
     }, filePath);
     await waitForBaseView(page as any, timeoutMs);
@@ -302,7 +308,7 @@ export async function openBaseNoteStable(
       const collapsedHeadings = document.querySelectorAll(
         ".markdown-preview-view .heading-collapse-indicator.collapse-icon"
       );
-      for (const indicator of collapsedHeadings) {
+      for (const indicator of Array.from(collapsedHeadings)) {
         const parent = indicator.closest(".el-h2, .el-h3, .el-h4, .el-h5, .el-h6");
         if (parent && parent.classList.contains("is-collapsed")) {
           return false;
@@ -501,8 +507,8 @@ export async function switchBaseView(
             )}) but views dropdown button is not visible in UI. Cannot switch to "${viewLabel}".`;
           }
         }
-      } catch (error) {
-        // Base file might not exist yet, continue with generic error
+      } catch (_error) {
+        // Base file might not exist yet, continue with generic _error
       }
     }
 

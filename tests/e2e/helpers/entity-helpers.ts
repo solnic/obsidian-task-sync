@@ -8,8 +8,8 @@ import { waitForFileCreation } from "./global";
 
 export async function updateEntity(
   page: ExtendedPage,
-  entity: any,
-  props: any
+  entity: unknown,
+  props: Record<string, unknown>
 ) {
   return await page.evaluate(
     async ({ entity, props }) => {
@@ -100,7 +100,7 @@ export async function getPersistedTaskByTitle(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       const data = await plugin.loadData();
-      return data?.entities?.tasks?.find((t: any) => t.title === title);
+      return data?.entities?.tasks?.find((t: { title: string }) => t.title === title);
     },
     { title }
   );
@@ -195,7 +195,7 @@ export async function waitForTaskToBeRemoved(
 export async function waitForTaskUpdated(
   page: ExtendedPage,
   title: string,
-  changes: any,
+  changes: Record<string, unknown>,
   timeout: number = 5000
 ) {
   await page.waitForFunction(
@@ -291,7 +291,7 @@ export async function createArea(
       const areaData = {
         name: props.name,
         description: props.description,
-        tags: [],
+        tags: [] as string[],
       };
 
       const createdArea = await plugin.operations.area.create(areaData);
@@ -333,7 +333,7 @@ export async function createProject(
         name: props.name,
         description: props.description,
         areas: props.areas || [],
-        tags: [],
+        tags: [] as string[],
       };
 
       const createdProject = await plugin.operations.project.create(
@@ -389,7 +389,7 @@ export async function createTaskEntityWithoutFile(
         project: taskData.project || "",
         done: taskData.done || false,
         status: taskData.status || "Backlog",
-        tags: [],
+        tags: [] as string[],
         createdAt: new Date(),
         updatedAt: new Date(),
         source: {

@@ -11,7 +11,7 @@ import type { Area, Project, Task } from "../../../src/app/core/entities";
  * Helper function to access Obsidian app instance in e2e tests
  * Abstracts the global window access pattern
  */
-export async function getObsidianApp(page: Page): Promise<any> {
+export async function getObsidianApp(page: Page): Promise<unknown> {
   return page.evaluate(() => (window as any).app);
 }
 
@@ -112,7 +112,7 @@ export async function waitForBaseContent(
       try {
         const fileContent = await app.vault.read(file);
         return fileContent.includes(content);
-      } catch (error) {
+      } catch (_error) {
         return false;
       }
     },
@@ -144,7 +144,7 @@ export async function waitForFileContentToContain(
         try {
           const fileContent = await app.vault.read(file);
           return fileContent.includes(content);
-        } catch (error) {
+        } catch (_error) {
           return false;
         }
       },
@@ -223,7 +223,7 @@ export async function waitForAddToTodayOperation(
           reject(new Error(`Timeout waiting for file modification: ${path}`));
         }, timeoutMs);
 
-        const onModify = (file: any) => {
+        const onModify = (file: { path: string; [key: string]: unknown }) => {
           if (file.path === path) {
             clearTimeout(timeoutId);
             app.vault.off("modify", onModify);
@@ -249,11 +249,11 @@ export async function waitForAddToTodayOperation(
         timeout
       ),
     ]);
-  } catch (error) {
+  } catch (_error) {
     // If the vault listener fails, fall back to content checking
     console.warn(
       "Vault modification listener failed, falling back to content checking:",
-      error
+      _error
     );
     await waitForFileContentToContain(
       page,
@@ -272,7 +272,7 @@ export async function waitForAddToTodayOperation(
 
       try {
         return await app.vault.read(file);
-      } catch (error) {
+      } catch (_error) {
         return "";
       }
     },
@@ -343,7 +343,7 @@ export async function waitForBasesRegeneration(
 /**
  * Get the Task Sync plugin instance
  */
-export async function getTaskSyncPlugin(page: Page): Promise<any> {
+export async function getTaskSyncPlugin(page: Page): Promise<unknown> {
   return await page.evaluate(() => {
     return (window as any).app.plugins.plugins["obsidian-task-sync"];
   });
@@ -501,8 +501,8 @@ export async function listFilesInFolder(
       }
 
       return folder.children
-        .filter((child: any) => child.extension === "md")
-        .map((child: any) => child.path);
+        .filter((child: { extension: string }) => child.extension === "md")
+        .map((child: { path: string }) => child.path);
     },
     { path: folderPath }
   );
@@ -595,7 +595,7 @@ async function waitForSettingsModal(page: Page): Promise<void> {
     try {
       await page.waitForSelector(selector, { timeout: 1000 });
       break;
-    } catch (error) {
+    } catch (_error) {
       continue;
     }
   }
@@ -660,7 +660,7 @@ export async function waitForSuccessNotice(
       { timeout }
     );
     return true;
-  } catch (error) {
+  } catch (_error) {
     console.log(`No success notice appeared within ${timeout}ms`);
     return false;
   }
@@ -687,7 +687,7 @@ export async function waitForModal(
     });
 
     return { found: true, type: modalType };
-  } catch (error) {
+  } catch (_error) {
     return { found: false, type: "none" };
   }
 }
@@ -695,7 +695,7 @@ export async function waitForModal(
 /**
  * Get modal content for interaction
  */
-export async function getModalContent(page: Page): Promise<any> {
+export async function getModalContent(page: Page): Promise<unknown> {
   return await page.evaluate(() => {
     const modalContainer = document.querySelector(".modal-container");
     if (modalContainer) {
@@ -746,7 +746,7 @@ export async function verifyPluginAvailable(page: Page): Promise<void> {
  * Get plugin instance (assumes plugin availability has been verified)
  * This is a simplified version that doesn't include defensive checks
  */
-export async function getPlugin(page: Page): Promise<any> {
+export async function getPlugin(page: Page): Promise<unknown> {
   return await page.evaluate(() => {
     return (window as any).app.plugins.plugins["obsidian-task-sync"];
   });
@@ -756,7 +756,7 @@ export async function getPlugin(page: Page): Promise<any> {
  * Get file from vault (assumes plugin availability has been verified)
  * This is a simplified version that doesn't include defensive checks
  */
-export async function getFile(page: Page, filePath: string): Promise<any> {
+export async function getFile(page: Page, filePath: string): Promise<unknown> {
   return await page.evaluate(
     ({ path }) => {
       return (window as any).app.vault.getAbstractFileByPath(path);
@@ -812,7 +812,7 @@ export async function updateFileFrontmatter(
       const app = (window as any).app;
       const file = app.vault.getAbstractFileByPath(path);
 
-      await app.fileManager.processFrontMatter(file, (frontmatter: any) => {
+      await app.fileManager.processFrontMatter(file, (frontmatter: Record<string, unknown>) => {
         Object.assign(frontmatter, updates);
       });
     },
@@ -922,7 +922,7 @@ export async function expectNotice(
     await page.waitForSelector(".notice", {
       timeout: Math.min(timeout, 5000),
     });
-  } catch (error) {
+  } catch (_error) {
     // If no notice appears at all, take a screenshot for debugging
     await captureScreenshotOnFailure(
       page,
@@ -1054,7 +1054,7 @@ export async function createFile(
 
       if (frontmatter && Object.keys(frontmatter).length > 0) {
         const file = app.vault.getAbstractFileByPath(filePath);
-        await app.fileManager.processFrontMatter(file, (fm: any) => {
+        await app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
           Object.assign(fm, frontmatter);
         });
       }
@@ -1086,7 +1086,7 @@ export async function getFrontMatter(
           await app.vault.read(file);
           await new Promise((resolve) => setTimeout(resolve, 50));
           cache = app.metadataCache.getFileCache(file);
-        } catch (e) {
+        } catch (_e) {
           // Ignore read errors
         }
       }
@@ -1097,7 +1097,7 @@ export async function getFrontMatter(
           app.metadataCache.trigger("changed", file);
           await new Promise((resolve) => setTimeout(resolve, 50));
           cache = app.metadataCache.getFileCache(file);
-        } catch (e) {
+        } catch (_e) {
           // Ignore trigger errors
         }
       }
@@ -1108,7 +1108,7 @@ export async function getFrontMatter(
           app.metadataCache.getFileCache(file, true); // Force rebuild
           await new Promise((resolve) => setTimeout(resolve, 100));
           cache = app.metadataCache.getFileCache(file);
-        } catch (e) {
+        } catch (_e) {
           // Ignore rebuild errors
         }
       }
@@ -1211,8 +1211,8 @@ export async function closeSettings(page: Page): Promise<void> {
             // Ignore if modal persists
           });
       });
-  } catch (error) {
-    console.debug("Error closing settings:", error);
+  } catch (_error) {
+    console.debug("Error closing settings:", _error);
   }
 }
 
@@ -1257,7 +1257,7 @@ export async function scrollToSettingsSection(
         await section.first().waitFor({ state: "visible", timeout: 2000 });
         return;
       }
-    } catch (error) {
+    } catch (_error) {
       continue;
     }
   }
@@ -1321,7 +1321,7 @@ export async function addTaskStatus(
     ({ name }) => {
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
-      return plugin.settings.taskStatuses.some((s: any) => s.name === name);
+      return plugin.settings.taskStatuses.some((s: { name: string }) => s.name === name);
     },
     { name: statusName },
     { timeout: 3000 }
@@ -1380,7 +1380,7 @@ export async function setTaskStatusState(
       if (!plugin || !plugin.settings || !plugin.settings.taskStatuses)
         return false;
       const status = plugin.settings.taskStatuses.find(
-        (s: any) => s.name === name
+        (s: { name: string }) => s.name === name
       );
       if (!status) return false;
       if (expectedState === "done") return !!status.isDone;
@@ -1432,7 +1432,7 @@ export async function toggleTaskStatusInProgress(
         const app = (window as any).app;
         const plugin = app.plugins.plugins["obsidian-task-sync"];
         const status = plugin.settings.taskStatuses.find(
-          (s: any) => s.name === name
+          (s: { name: string }) => s.name === name
         );
         return status && status.isInProgress === expected;
       },
@@ -1491,7 +1491,7 @@ export async function addTaskCategory(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return plugin.settings.taskCategories.some(
-        (type: any) => type.name === categoryName
+        (type: { name: string }) => type.name === categoryName
       );
     },
     { categoryName },
@@ -1556,7 +1556,7 @@ export async function deleteTaskCategory(
       const app = (window as any).app;
       const plugin = app.plugins.plugins["obsidian-task-sync"];
       return !plugin.settings.taskCategories.some(
-        (type: any) => type.name === categoryName
+        (type: { name: string }) => type.name === categoryName
       );
     },
     { categoryName },
@@ -1947,8 +1947,8 @@ export async function getTaskProperties(
     try {
       const yaml = (window as any).require("js-yaml");
       return yaml.load(frontMatterMatch[1]) || {};
-    } catch (error) {
-      console.error("Failed to parse front matter:", error);
+    } catch (_error) {
+      console.error("Failed to parse front matter:", _error);
       return {};
     }
   }, taskPath);
@@ -1988,8 +1988,8 @@ export async function getProjectProperties(
     try {
       const yaml = (window as any).require("js-yaml");
       return yaml.load(frontMatterMatch[1]) || {};
-    } catch (error) {
-      console.error("Failed to parse front matter:", error);
+    } catch (_error) {
+      console.error("Failed to parse front matter:", _error);
       return {};
     }
   }, projectPath);
@@ -2029,8 +2029,8 @@ export async function getAreaProperties(
     try {
       const yaml = (window as any).require("js-yaml");
       return yaml.load(frontMatterMatch[1]) || {};
-    } catch (error) {
-      console.error("Failed to parse front matter:", error);
+    } catch (_error) {
+      console.error("Failed to parse front matter:", _error);
       return {};
     }
   }, areaPath);
@@ -2218,10 +2218,10 @@ export async function enableIntegration(
         try {
           await taskSyncApp["initializeCalendarExtension"]();
           console.log("🔧 Calendar extension manually initialized");
-        } catch (error) {
+        } catch (_error) {
           console.error(
             "🔧 Failed to manually initialize calendar extension:",
-            error
+            _error
           );
         }
       }
@@ -2247,10 +2247,10 @@ export async function enableIntegration(
 
           await taskSyncApp["initializeAppleRemindersExtension"]();
           console.log("🔧 Apple Reminders extension manually initialized");
-        } catch (error) {
+        } catch (_error) {
           console.error(
             "🔧 Failed to manually initialize Apple Reminders extension:",
-            error
+            _error
           );
         }
       } else if (
@@ -2457,6 +2457,7 @@ export async function selectFromDropdown(
       path: `tests/e2e/debug/after-dropdown-click-${dropdown}.png`,
     });
     const html = await page.content();
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, no-undef
     const fs = require("fs");
     fs.writeFileSync(
       `tests/e2e/debug/after-dropdown-click-${dropdown}.html`,
@@ -2530,7 +2531,7 @@ export async function getTasksFromView(page: Page): Promise<Task[]> {
   return page.evaluate(() => {
     const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
     let tasks: Task[] = [];
-    const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
+    const unsubscribe = plugin.stores.taskStore.subscribe((state: { tasks: Task[] }) => {
       tasks = state.tasks;
     });
     unsubscribe();
@@ -2545,7 +2546,7 @@ export async function getProjectsFromView(page: Page): Promise<Project[]> {
   return page.evaluate(() => {
     const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
     let projects: Project[] = [];
-    const unsubscribe = plugin.stores.projectStore.subscribe((state: any) => {
+    const unsubscribe = plugin.stores.projectStore.subscribe((state: { projects: Project[] }) => {
       projects = state.projects;
     });
     unsubscribe();
@@ -2560,7 +2561,7 @@ export async function getAreasFromView(page: Page): Promise<Area[]> {
   return page.evaluate(() => {
     const plugin = (window as any).app.plugins.plugins["obsidian-task-sync"];
     let areas: Area[] = [];
-    const unsubscribe = plugin.stores.areaStore.subscribe((state: any) => {
+    const unsubscribe = plugin.stores.areaStore.subscribe((state: { areas: Area[] }) => {
       areas = state.areas;
     });
     unsubscribe();
@@ -2879,17 +2880,17 @@ export async function waitForDailyNoteUpdate(
           }
           // If no specific content expected, just verify file exists and is readable
           return content !== null && content !== undefined;
-        } catch (error) {
-          console.log(`[waitForDailyNoteUpdate] Error reading file: ${error}`);
+        } catch (_error) {
+          console.log(`[waitForDailyNoteUpdate] Error reading file: ${_error}`);
           return false;
         }
       },
       { path: dailyNotePath, expected: expectedContent },
       { timeout }
     );
-  } catch (error) {
+  } catch (_error) {
     console.error(`[waitForDailyNoteUpdate] Timeout waiting for ${dailyNotePath} with content: ${expectedContent}`);
-    throw error;
+    throw _error;
   }
 }
 

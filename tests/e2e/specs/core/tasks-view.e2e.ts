@@ -300,7 +300,7 @@ test.describe("TasksView Component", { tag: '@core' }, () => {
         const taskItems = document.querySelectorAll(
           '[data-testid^="local-task-item-"]'
         );
-        for (const item of taskItems) {
+        for (const item of Array.from(taskItems)) {
           if (
             item.textContent?.includes("Reactivity Test Task") &&
             item.textContent?.includes("High") &&
@@ -414,9 +414,9 @@ test.describe("TasksView Component", { tag: '@core' }, () => {
         priority: "High",
         done: false,
         project: "",
-        areas: [],
+        areas: [] as string[],
         parentTask: "",
-        tags: [],
+        tags: [] as string[],
         source: {
           extension: "github",
           filePath: "github/issue/123",

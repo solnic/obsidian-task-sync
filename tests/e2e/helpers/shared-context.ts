@@ -344,8 +344,8 @@ export async function resetObsidianUI(page: Page): Promise<void> {
         } else {
           modal.remove();
         }
-      } catch (error) {
-        console.debug("Error closing modal:", error);
+      } catch (_error) {
+        console.debug("Error closing modal:", _error);
       }
     });
   });
@@ -379,28 +379,28 @@ export async function resetObsidianUI(page: Page): Promise<void> {
       modals.forEach((modal) => {
         try {
           modal.remove();
-        } catch (error) {
-          console.debug("Error removing modal:", error);
+        } catch (_error) {
+          console.debug("Error removing modal:", _error);
         }
       });
 
       if (document.activeElement && document.activeElement !== document.body) {
         try {
           (document.activeElement as HTMLElement).blur();
-        } catch (error) {
-          console.debug("Error blurring active element:", error);
+        } catch (_error) {
+          console.debug("Error blurring active element:", _error);
         }
       }
 
       if (window.getSelection) {
         try {
           window.getSelection()?.removeAllRanges();
-        } catch (error) {
-          console.debug("Error clearing selection:", error);
+        } catch (_error) {
+          console.debug("Error clearing selection:", _error);
         }
       }
-    } catch (error) {
-      console.debug("Error in final UI cleanup:", error);
+    } catch (_error) {
+      console.debug("Error in final UI cleanup:", _error);
     }
   });
 
@@ -423,36 +423,36 @@ export async function resetObsidianUI(page: Page): Promise<void> {
 
         // Force close any remaining planning-related views
         const allLeaves = app.workspace.getLeavesOfType("daily-planning");
-        allLeaves.forEach((leaf: any) => {
+        allLeaves.forEach((leaf: { detach: () => void }) => {
           try {
             leaf.detach();
-          } catch (e) {
-            console.debug("Error detaching daily planning leaf:", e);
+          } catch (_e) {
+            console.debug("Error detaching daily planning leaf:", _e);
           }
         });
 
         const taskPlanningLeaves =
           app.workspace.getLeavesOfType("task-planning");
-        taskPlanningLeaves.forEach((leaf: any) => {
+        taskPlanningLeaves.forEach((leaf: { detach: () => void }) => {
           try {
             leaf.detach();
-          } catch (e) {
-            console.debug("Error detaching task planning leaf:", e);
+          } catch (_e) {
+            console.debug("Error detaching task planning leaf:", _e);
           }
         });
 
         const contextViewLeaves =
           app.workspace.getLeavesOfType("task-sync-context");
-        contextViewLeaves.forEach((leaf: any) => {
+        contextViewLeaves.forEach((leaf: { detach: () => void }) => {
           try {
             leaf.detach();
-          } catch (e) {
-            console.debug("Error detaching context view leaf:", e);
+          } catch (_e) {
+            console.debug("Error detaching context view leaf:", _e);
           }
         });
       }
-    } catch (error) {
-      console.debug("Error closing planning views:", error);
+    } catch (_error) {
+      console.debug("Error closing planning views:", _error);
     }
   });
 
@@ -588,7 +588,10 @@ async function copyDirectory(src: string, dest: string): Promise<void> {
     } else {
       try {
         await fs.promises.copyFile(srcPath, destPath);
-      } catch (error) {}
+      } catch (_error) {
+        // Ignore copy errors
+        void _error;
+      }
     }
   }
 }
@@ -626,9 +629,9 @@ export async function captureFullDebugInfo(
     const app = (window as any).app;
 
     // Helper function to safely extract properties without circular references
-    const safeExtract = (obj: any, props: string[]) => {
+    const safeExtract = (obj: Record<string, unknown>, props: string[]) => {
       if (!obj) return null;
-      const result: any = {};
+      const result: Record<string, unknown> = {};
       for (const prop of props) {
         try {
           const value = obj[prop];

@@ -39,7 +39,7 @@ export async function dismissNotices(page: Page): Promise<void> {
             .waitFor({ state: "hidden", timeout: 500 })
             .catch(() => {});
         }
-      } catch (error) {
+      } catch (_error) {
         // Ignore errors when dismissing notices
       }
     }
@@ -286,14 +286,13 @@ export async function toggleGitHubIntegration(
         ) as HTMLInputElement;
 
         if (toggle && checkbox) {
-          const isCurrentlyEnabled = checkbox.checked;
-          if (isCurrentlyEnabled !== shouldEnable) {
-            toggle.click();
-          } else {
-          }
-          return true;
+        const isCurrentlyEnabled = checkbox.checked;
+        if (isCurrentlyEnabled !== shouldEnable) {
+          toggle.click();
         }
+        return true;
       }
+    }
     }
     return false;
   }, enabled);
@@ -548,7 +547,7 @@ export async function ensureGitHubViewExists(page: Page): Promise<void> {
         }
 
         if (view && view.onOpen && typeof view.onOpen === "function") {
-          view.onOpen().catch((error: any) => {
+          view.onOpen().catch((error: unknown) => {
             console.warn("⚠️ Error calling onOpen():", error);
           });
         }

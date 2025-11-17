@@ -421,7 +421,7 @@ describe("TemplateEngine", () => {
       const result = engine.migrateTemplate(template, "1.0.0", "1.0.0");
 
       expect(result.valid).toBe(true);
-      expect(result.data.content).toBe(template.content);
+      expect((result.data as any).content).toBe(template.content);
     });
 
     test("rejects migration to older version", () => {
@@ -444,7 +444,7 @@ describe("TemplateEngine", () => {
       const result = engine.migrateTemplate(template, "1.0.0", "2.0.0");
 
       expect(result.valid).toBe(true);
-      expect(result.data.content).toContain("{{newTitle}}");
+      expect((result.data as any).content).toContain("{{newTitle}}");
     });
 
     test("handles migration errors", () => {

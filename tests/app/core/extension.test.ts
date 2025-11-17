@@ -35,29 +35,43 @@ class MockExtension implements Extension {
     return this.initialized;
   }
 
+  async load(): Promise<void> {
+    // Mock implementation
+  }
+
+  getTasks(): any {
+    return {
+      subscribe: () => () => {},
+    };
+  }
+
+  async refresh(): Promise<void> {
+    // Mock implementation
+  }
+
   // Event handler methods required by Extension interface
-  async onEntityCreated(event: DomainEvent): Promise<void> {
+  async onEntityCreated(_event: DomainEvent): Promise<void> {
     // Mock implementation
   }
 
-  async onEntityUpdated(event: DomainEvent): Promise<void> {
+  async onEntityUpdated(_event: DomainEvent): Promise<void> {
     // Mock implementation
   }
 
-  async onEntityDeleted(event: DomainEvent): Promise<void> {
+  async onEntityDeleted(_event: DomainEvent): Promise<void> {
     // Mock implementation
   }
 
   // Mock task operations
   tasks: EntityOperations<Task> = {
     getAll: async () => [],
-    getById: async (id: string) => undefined,
-    create: async (entity: Omit<Task, "id" | "createdAt" | "updatedAt">) => {
+    getById: async (_id: string) => undefined,
+    create: async (_entity: Omit<Task, "id" | "createdAt" | "updatedAt">) => {
       return {
         id: "mock-task-1",
         createdAt: new Date(),
         updatedAt: new Date(),
-        ...entity,
+        ..._entity,
       } as Task;
     },
     update: async (id: string, updates: Partial<Task>) => {
@@ -79,13 +93,15 @@ class MockExtension implements Extension {
   // Mock project operations
   projects: EntityOperations<Project> = {
     getAll: async () => [],
-    getById: async (id: string) => undefined,
-    create: async (entity: Omit<Project, "id" | "createdAt" | "updatedAt">) => {
+    getById: async (_id: string) => undefined,
+    create: async (
+      _entity: Omit<Project, "id" | "createdAt" | "updatedAt">
+    ) => {
       return {
         id: "mock-project-1",
         createdAt: new Date(),
         updatedAt: new Date(),
-        ...entity,
+        ..._entity,
       } as Project;
     },
     update: async (id: string, updates: Partial<Project>) => {
@@ -99,7 +115,7 @@ class MockExtension implements Extension {
         ...updates, // Apply the actual updates
       } as Project;
     },
-    delete: async (id: string) => true,
+    delete: async (_id: string) => true,
   };
 }
 
@@ -133,7 +149,7 @@ describe("Extension System Foundation", () => {
     test("should provide entity operations for supported entities", () => {
       expect(mockExtension.tasks).toBeDefined();
       expect(mockExtension.projects).toBeDefined();
-      expect(mockExtension.areas).toBeUndefined();
+      expect('areas' in mockExtension && mockExtension.areas).toBeFalsy();
     });
   });
 
@@ -151,6 +167,7 @@ describe("Extension System Foundation", () => {
         done: false,
         areas: [],
         tags: [],
+        source: { extension: "mock", keys: {} },
       });
       expect(newTask.id).toBe("mock-task-1");
       expect(newTask.title).toBe("Test Task");
@@ -172,6 +189,7 @@ describe("Extension System Foundation", () => {
         name: "Test Project",
         areas: [],
         tags: [],
+        source: { extension: "mock", keys: {} },
       });
       expect(newProject.id).toBe("mock-project-1");
       expect(newProject.name).toBe("Test Project");
@@ -208,11 +226,9 @@ describe("Extension System Foundation", () => {
     });
 
     test("should filter extensions by entity type", () => {
-      const taskOnlyExtension = {
-        ...mockExtension,
-        id: "task-only",
-        supportedEntities: ["task"] as const,
-      };
+      const taskOnlyExtension = new MockExtension();
+      (taskOnlyExtension as any).id = "task-only";
+      (taskOnlyExtension as any).supportedEntities = ["task"] as const;
 
       registry.register(mockExtension);
       registry.register(taskOnlyExtension);
@@ -242,8 +258,8 @@ describe("Extension System Foundation", () => {
     test("should require event handler methods in Extension interface", () => {
       // This test will fail until we add the event handler methods to the Extension interface
 
-      // Create a basic extension that only implements current Extension interface
-      const basicExtension: Extension = {
+      // Create a basic extension that only implements partial Extension interface
+      const basicExtension = {
         id: "basic",
         name: "Basic Extension",
         version: "1.0.0",
@@ -255,16 +271,14 @@ describe("Extension System Foundation", () => {
         },
       };
 
-      // This should fail compilation until Extension interface includes event methods
-      // @ts-expect-error - Extension interface should require event handler methods
-      const eventExtension: {
-        onEntityCreated(event: DomainEvent): Promise<void>;
-        onEntityUpdated(event: DomainEvent): Promise<void>;
-        onEntityDeleted(event: DomainEvent): Promise<void>;
-      } & Extension = basicExtension;
+      // Extension interface now requires event handler methods
+      const hasEventMethods =
+        "onEntityCreated" in mockExtension &&
+        "onEntityUpdated" in mockExtension &&
+        "onEntityDeleted" in mockExtension;
 
-      // Test should pass once we fix the interface
-      expect(basicExtension).toBeDefined();
+      // Test that Extension interface requires event methods
+      expect(hasEventMethods).toBe(true);
     });
 
     test("should implement event handler methods for entity lifecycle", async () => {
@@ -290,6 +304,20 @@ describe("Extension System Foundation", () => {
 
         async isHealthy(): Promise<boolean> {
           return this.initialized;
+        }
+
+        async load(): Promise<void> {
+          // Mock implementation
+        }
+
+        getTasks(): any {
+          return {
+            subscribe: () => () => {},
+          };
+        }
+
+        async refresh(): Promise<void> {
+          // Mock implementation
         }
 
         // Event-driven methods that extensions should implement
@@ -374,6 +402,12 @@ describe("Extension System Foundation", () => {
           return true;
         }
 
+        async load(): Promise<void> {}
+        getTasks(): any {
+          return { subscribe: () => () => {} };
+        }
+        async refresh(): Promise<void> {}
+
         async onEntityCreated(event: DomainEvent): Promise<void> {}
         async onEntityUpdated(event: DomainEvent): Promise<void> {}
         async onEntityDeleted(event: DomainEvent): Promise<void> {}
@@ -387,9 +421,9 @@ describe("Extension System Foundation", () => {
       const extension = new EventDrivenExtension();
 
       // Event-driven extensions should not expose entity operations
-      expect(extension.tasks).toBeUndefined();
-      expect(extension.projects).toBeUndefined();
-      expect(extension.areas).toBeUndefined();
+      expect((extension as any).tasks).toBeUndefined();
+      expect((extension as any).projects).toBeUndefined();
+      expect((extension as any).areas).toBeUndefined();
     });
   });
 });

@@ -77,13 +77,13 @@ describe("taskReducer", () => {
       expect(newState.error).toBe(null);
 
       // Verify other state properties are preserved
-      expect(newState.sourceStates).toEqual(stateWithTasks.sourceStates);
+      expect(newState.lastSync).toEqual(stateWithTasks.lastSync);
     });
 
     it("should work correctly when store is already empty", () => {
       const emptyState = {
         ...initialTaskStoreState,
-        tasks: [],
+        tasks: [] as Task[],
       };
 
       const action: TaskAction = { type: "CLEAR_ALL_TASKS" };

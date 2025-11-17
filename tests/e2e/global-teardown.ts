@@ -29,11 +29,18 @@ export default async function globalTeardown() {
 
       for (const pid of pids) {
         try {
-          process.kill(parseInt(pid), "SIGKILL");
-        } catch (error) {}
+          console.log("Killing Obsidian process:", pid);
+          process.kill(Number(pid));
+        } catch (_error) {
+          // Ignore if process doesn't exist
+          void _error;
+        }
       }
     }
-  } catch (error) {}
+  } catch (_error) {
+    // Ignore errors when cleaning up processes
+    void _error;
+  }
 }
 
 /**

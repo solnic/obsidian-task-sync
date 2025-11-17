@@ -141,6 +141,11 @@ describe("Core Domain Entities", () => {
       const task: Task = {
         id: "task-1",
         title: "Test Task",
+        status: "Backlog",
+        done: false,
+        areas: [],
+        tags: [],
+        source: { extension: "test", keys: {} },
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -156,11 +161,11 @@ describe("Core Domain Entities", () => {
         title: "Task with nulls",
         createdAt: new Date("2024-01-01"),
         updatedAt: new Date("2024-01-01"),
-        parentTask: null,
-        project: null,
-        category: null,
-        priority: null,
-        description: null,
+        parentTask: null as string | null,
+        project: null as string | null,
+        category: null as string | null,
+        priority: null as string | null,
+        description: null as string | null,
         source: {
           extension: "obsidian",
           keys: {},

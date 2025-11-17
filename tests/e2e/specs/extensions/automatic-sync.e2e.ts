@@ -121,7 +121,7 @@ test.describe("Automatic Sync During Refresh", { tag: '@sync' }, () => {
 
       // Get current tasks using the helper pattern
       let currentTasks: any[] = [];
-      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
+      const unsubscribe = plugin.stores.taskStore.subscribe((state: { tasks: any[] }) => {
         currentTasks = state.tasks;
       });
       unsubscribe();
@@ -172,7 +172,7 @@ test.describe("Automatic Sync During Refresh", { tag: '@sync' }, () => {
 
       // Get current tasks using the helper pattern
       let currentTasks: any[] = [];
-      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
+      const unsubscribe = plugin.stores.taskStore.subscribe((state: { tasks: any[] }) => {
         currentTasks = state.tasks;
       });
       unsubscribe();

@@ -1120,7 +1120,7 @@ test.describe("GitHub Integration", { tag: '@github' }, () => {
 
       // Get current tasks from store
       let currentTasks: any[] = [];
-      const unsubscribe = plugin.stores.taskStore.subscribe((state: any) => {
+      const unsubscribe = plugin.stores.taskStore.subscribe((state: { tasks: any[] }) => {
         currentTasks = state.tasks;
       });
       unsubscribe();

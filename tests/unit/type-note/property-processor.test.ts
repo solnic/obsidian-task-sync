@@ -224,7 +224,7 @@ describe("PropertyProcessor", () => {
         propertyKey: "dueDate",
         dependsOn: ["priority"],
         validate: (value, deps) => {
-          if (deps.priority > 5 && !value) {
+          if ((deps.priority as number) > 5 && !value) {
             return createInvalidResult([
               createValidationError(
                 "High priority tasks must have a due date",
@@ -259,7 +259,7 @@ describe("PropertyProcessor", () => {
         propertyKey: "dueDate",
         dependsOn: ["priority"],
         validate: (value, deps) => {
-          if (deps.priority > 5 && !value) {
+          if ((deps.priority as number) > 5 && !value) {
             return createInvalidResult([
               createValidationError(
                 "High priority tasks must have a due date",
@@ -304,7 +304,7 @@ describe("PropertyProcessor", () => {
       const noteType = createSampleNoteType();
       const validation: ConditionalValidation = {
         propertyKey: "description",
-        condition: (props) => props.priority > 7,
+        condition: (props) => (props.priority as number) > 7,
         validate: (value) => {
           if (!value || value === "No description") {
             return createInvalidResult([
@@ -340,7 +340,7 @@ describe("PropertyProcessor", () => {
       const noteType = createSampleNoteType();
       const validation: ConditionalValidation = {
         propertyKey: "description",
-        condition: (props) => props.priority > 7,
+        condition: (props) => (props.priority as number) > 7,
         validate: (value) => {
           if (!value || value === "No description") {
             return createInvalidResult([
@@ -387,7 +387,7 @@ describe("PropertyProcessor", () => {
     test("runs cross-property validation", async () => {
       const noteType = createSampleNoteType();
       noteType.crossPropertyValidation = (props) => {
-        if (props.priority > 5 && !props.due_date) {
+        if ((props.priority as number) > 5 && !props.due_date) {
           return createInvalidResult([
             createValidationError(
               "High priority tasks must have a due date",

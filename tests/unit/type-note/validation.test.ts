@@ -120,9 +120,9 @@ describe("zodErrorToValidationErrors", () => {
 
     try {
       schema.parse({ name: "John", age: "not a number" });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        const validationErrors = zodErrorToValidationErrors(error);
+    } catch (_error) {
+      if (_error instanceof z.ZodError) {
+        const validationErrors = zodErrorToValidationErrors(_error);
 
         expect(validationErrors.length).toBeGreaterThan(0);
         expect(validationErrors[0].code).toBeDefined();
@@ -137,6 +137,7 @@ describe("validateProperty", () => {
     const propertyDef: PropertyDefinition = {
       key: "name",
       name: "Name",
+      type: "string" as const,
       schema: z.string(),
       frontMatterKey: "name",
       required: true,
@@ -153,6 +154,7 @@ describe("validateProperty", () => {
     const propertyDef: PropertyDefinition = {
       key: "age",
       name: "Age",
+      type: "number" as const,
       schema: z.number(),
       frontMatterKey: "age",
       required: true,
@@ -168,10 +170,11 @@ describe("validateProperty", () => {
     const propertyDef: PropertyDefinition = {
       key: "name",
       name: "Name",
+      type: "string" as const,
       schema: z.string(),
       frontMatterKey: "name",
       required: true,
-      transform: (value) => value.toUpperCase(),
+      transform: (value: unknown) => (value as string).toUpperCase(),
     };
 
     const result = validateProperty(propertyDef, "john doe");
@@ -190,6 +193,7 @@ describe("validateProperties", () => {
       title: {
         key: "title",
         name: "Title",
+        type: "string" as const,
         schema: z.string(),
         frontMatterKey: "title",
         required: true,
@@ -197,6 +201,7 @@ describe("validateProperties", () => {
       description: {
         key: "description",
         name: "Description",
+        type: "string" as const,
         schema: z.string(),
         frontMatterKey: "description",
         required: false,
@@ -204,6 +209,7 @@ describe("validateProperties", () => {
       count: {
         key: "count",
         name: "Count",
+        type: "number" as const,
         schema: z.number(),
         frontMatterKey: "count",
         required: false,
@@ -250,7 +256,7 @@ describe("validateProperties", () => {
     const result = validateProperties(noteType, properties);
 
     expect(result.valid).toBe(true);
-    expect(result.data?.count).toBe(0);
+    expect((result.data as any)?.count).toBe(0);
   });
 
   test("validates property types", () => {
@@ -276,6 +282,7 @@ describe("validateNoteType", () => {
         title: {
           key: "title",
           name: "Title",
+          type: "string" as const,
           schema: z.string(),
           frontMatterKey: "title",
           required: true,
@@ -387,12 +394,12 @@ describe("mergeValidationResults", () => {
     const results = [
       {
         valid: true,
-        errors: [],
+        errors: [] as any[],
         warnings: [createValidationWarning("Warning 1", "WARNING_1")],
       },
       {
         valid: true,
-        errors: [],
+        errors: [] as any[],
         warnings: [createValidationWarning("Warning 2", "WARNING_2")],
       },
     ];

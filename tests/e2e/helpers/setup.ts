@@ -86,9 +86,9 @@ export async function cleanupPlaywrightTest(
   // Reset UI state before cleanup to ensure clean state for next test
   try {
     await resetObsidianUI(context.page);
-  } catch (error) {
+  } catch (_error) {
     // Ignore errors during cleanup - page might already be closing
-    console.debug("Error resetting UI during cleanup:", error);
+    console.debug("Error resetting UI during cleanup:", _error);
   }
 
   if (testInfo.status !== "passed") {
@@ -139,6 +139,7 @@ export const test = base.extend<{
     logs: Array<{ type: string; text: string; timestamp: Date }>;
   };
 }>({
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, no-empty-pattern
   page: async ({}, use, testInfo: TestInfo) => {
     // Setup before each test
     const context = await setupPlaywrightTest(testInfo);

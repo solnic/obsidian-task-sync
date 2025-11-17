@@ -116,12 +116,16 @@ export async function navigateToStep(
   // Start from step 1 and navigate forward
   for (let i = 1; i < stepNumber; i++) {
     await page.click('[data-testid="next-button"]');
-    
+
     // Wait for next step to become visible
     await page.waitForFunction(
       (nextStep) => {
-        const stepContent = document.querySelector(`[data-testid="step-${nextStep}-content"]`);
-        return stepContent && (stepContent as HTMLElement).offsetParent !== null;
+        const stepContent = document.querySelector(
+          `[data-testid="step-${nextStep}-content"]`
+        );
+        return (
+          stepContent && (stepContent as HTMLElement).offsetParent !== null
+        );
       },
       i + 1,
       { timeout: 2000, polling: 100 }
@@ -147,7 +151,7 @@ export async function waitForTasksToLoad(
       '[data-testid*="task"], .task-item, .preview-item',
       { timeout }
     );
-  } catch (error) {
+  } catch (_error) {
     // Tasks might not exist, which is fine for some tests
     console.log("No tasks found, continuing...");
   }
@@ -165,12 +169,14 @@ export async function moveYesterdayTasksToToday(
 
   if (await moveToTodayButton.isVisible()) {
     await moveToTodayButton.click();
-    
+
     // Wait for the move operation to complete
     await page
       .waitForFunction(
         () => {
-          const button = document.querySelector('[data-testid="move-to-today-button"]');
+          const button = document.querySelector(
+            '[data-testid="move-to-today-button"]'
+          );
           return !button || (button as HTMLButtonElement).disabled;
         },
         {},
@@ -190,7 +196,7 @@ export async function confirmDailyPlan(page: ExtendedPage): Promise<void> {
 
   if (await confirmButton.isVisible()) {
     await confirmButton.click();
-    
+
     // Wait for the confirmation to complete by checking if wizard closes
     await page
       .waitForFunction(
@@ -300,10 +306,10 @@ export async function createMultipleTestTasks(
   count: number,
   taskCategory: "yesterday" | "today" | "unscheduled" = "today"
 ): Promise<any[]> {
-  const tasks: any[] = [];
+  const tasks: Array<{ title: string; [key: string]: unknown }> = [];
 
   for (let i = 1; i <= count; i++) {
-    let task: any;
+    let task: { title: string; [key: string]: unknown } | undefined;
 
     switch (taskCategory) {
       case "yesterday":
