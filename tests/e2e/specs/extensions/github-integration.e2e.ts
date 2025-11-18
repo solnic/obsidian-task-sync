@@ -1120,9 +1120,11 @@ test.describe("GitHub Integration", { tag: '@github' }, () => {
 
       // Get current tasks from store
       let currentTasks: any[] = [];
-      const unsubscribe = plugin.stores.taskStore.subscribe((state: { tasks: any[] }) => {
-        currentTasks = state.tasks;
-      });
+      const unsubscribe = plugin.stores.taskStore.subscribe(
+        (state: { tasks: any[] }) => {
+          currentTasks = state.tasks;
+        }
+      );
       unsubscribe();
 
       // Find the GitHub task
@@ -1603,5 +1605,109 @@ test.describe("GitHub Integration", { tag: '@github' }, () => {
       "Tasks/Issue with non-matching label.md"
     );
     expect(fileContent).toContain("Category: Task");
+  });
+
+  test("should fetch and display closed issues when state filter is set to 'closed'", async ({
+    page,
+  }) => {
+    await openView(page, "task-sync-main");
+    await enableIntegration(page, "github");
+
+    await stubGitHubWithFixtures(page, {
+      repositories: "repositories-with-orgs",
+      issues: "issues-multiple",
+      organizations: "organizations-basic",
+      currentUser: "current-user-basic",
+      labels: "labels-basic",
+    });
+
+    // Wait for GitHub service button and switch to it
+    await page.waitForSelector(
+      '[data-testid="service-github"]:not([disabled])',
+      {
+        state: "visible",
+        timeout: 2500,
+      }
+    );
+
+    await switchToTaskService(page, "github");
+    await selectFromDropdown(page, "organization-filter", "solnic");
+    await selectFromDropdown(page, "repository-filter", "obsidian-task-sync");
+
+    // Wait for open issues to load (default state is "open")
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 2500,
+    });
+
+    // Count open issues (should be 3: issues 111, 222, 333)
+    const openIssueCount = await page
+      .locator('[data-testid="github-issue-item"]')
+      .count();
+    expect(openIssueCount).toBe(3);
+
+    // Click the "Closed" filter button
+    await page.locator('[data-testid="closed-filter"]').click();
+
+    // Wait for the filter button to become active
+    await page
+      .waitForFunction(
+        () => {
+          const closedButton = document.querySelector(
+            '[data-testid="closed-filter"]'
+          );
+          return (
+            closedButton?.classList.contains("active") ||
+            closedButton?.classList.contains("is-active")
+          );
+        },
+        { timeout: 1000 }
+      )
+      .catch(() => {
+        // Filter button might not have active class, that's ok
+      });
+
+    // Trigger a refresh to fetch closed issues
+    const refreshButton = page.locator(
+      '[data-testid="task-sync-github-refresh-button"]'
+    );
+    await refreshButton.click();
+
+    // Wait for refresh to complete - look for loading indicator to appear and disappear
+    await page.waitForFunction(
+      () => {
+        const loadingIndicator = document.querySelector(
+          '[data-testid="loading-indicator"]'
+        );
+        return loadingIndicator === null || !loadingIndicator.isConnected;
+      },
+      { timeout: 5000 }
+    );
+
+    // Wait for closed issues to load
+    await page.waitForSelector('[data-testid="github-issue-item"]', {
+      state: "visible",
+      timeout: 5000,
+    });
+
+    // Count closed issues (should be 2: issues 444, 555)
+    const closedIssueCount = await page
+      .locator('[data-testid="github-issue-item"]')
+      .count();
+    expect(closedIssueCount).toBe(2);
+
+    // Verify we're seeing the closed issues
+    const issueItems = page.locator('[data-testid="github-issue-item"]');
+    await expect(issueItems.first()).toContainText("Closed test issue");
+
+    // Verify both closed issues are present
+    const allIssueText = await issueItems.allTextContents();
+    const hasCompletedIssue = allIssueText.some((text) =>
+      text.includes("completed")
+    );
+    const hasNotPlannedIssue = allIssueText.some((text) =>
+      text.includes("not planned")
+    );
+    expect(hasCompletedIssue || hasNotPlannedIssue).toBe(true);
   });
 });

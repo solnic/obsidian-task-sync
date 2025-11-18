@@ -98,6 +98,7 @@ export class GitHubTaskSource implements DataSource<Task> {
 
     // Get current filters from the extension
     const filters = this.githubExtension.getCurrentFilters();
+    const fullFilters = get(this.githubExtension.getFilters());
 
     if (!filters.repository) {
       console.log(
@@ -107,11 +108,15 @@ export class GitHubTaskSource implements DataSource<Task> {
     }
 
     try {
-      // Fetch fresh data from GitHub API
+      // Fetch fresh data from GitHub API, passing the current state filter
       const githubItems =
         filters.type === "issues"
-          ? await this.githubExtension.fetchIssues(filters.repository)
-          : await this.githubExtension.fetchPullRequests(filters.repository);
+          ? await this.githubExtension.fetchIssues(filters.repository, {
+              state: fullFilters.state,
+            })
+          : await this.githubExtension.fetchPullRequests(filters.repository, {
+              state: fullFilters.state,
+            });
 
       console.log(
         `[GitHubTaskSource] Fetched ${githubItems.length} ${filters.type} from GitHub API`

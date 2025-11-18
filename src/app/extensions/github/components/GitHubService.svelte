@@ -142,6 +142,7 @@
     githubExtension.setFilters({
       repository: filters.repository,
       type: filters.type,
+      state: filters.state,
     });
   });
 
@@ -361,6 +362,10 @@
 
   function setStateFilter(state: "open" | "closed" | "all"): void {
     filters = { ...filters, state };
+    // Update the settings to persist the filter
+    settings.integrations.github.issueFilters.state = state;
+    // Trigger a refresh to fetch data with the new filter
+    void refresh();
   }
 
   function toggleAssignedToMe(): void {

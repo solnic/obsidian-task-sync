@@ -14,18 +14,20 @@ import { SchemaCache } from "../../cache/SchemaCache";
 import { TaskQueryService } from "../../services/TaskQueryService";
 import {
   GitHubIssueListSchema,
+  GitHubPullRequestListSchema,
   GitHubLabelListSchema,
   GitHubRepositoryListSchema,
   GitHubOrganizationListSchema,
   type GitHubIssue,
   type GitHubIssueList,
+  type GitHubPullRequest,
+  type GitHubPullRequestList,
   type GitHubLabel,
   type GitHubLabelList,
   type GitHubRepository,
   type GitHubRepositoryList,
   type GitHubOrganization,
   type GitHubOrganizationList,
-  type GitHubPullRequest,
 } from "../../cache/schemas/github";
 import { GitHubOperations } from "./entities/GitHub";
 import type { TaskSyncSettings } from "../../types/settings";
@@ -105,10 +107,10 @@ class GitHubEntityDataProvider implements EntityDataProvider {
    */
   getSyncableProperties(): Array<keyof Task> {
     return [
-      "title",        // GitHub issue title
-      "status",       // Mapped from GitHub issue state
-      "done",         // Derived from GitHub issue state
-      "description",  // GitHub issue body (note content)
+      "title", // GitHub issue title
+      "status", // Mapped from GitHub issue state
+      "done", // Derived from GitHub issue state
+      "description", // GitHub issue body (note content)
     ];
   }
 }
@@ -127,6 +129,7 @@ export class GitHubExtension implements Extension {
 
   // Cache instances
   private issuesCache?: SchemaCache<GitHubIssueList>;
+  private pullRequestsCache?: SchemaCache<GitHubPullRequestList>;
   private labelsCache?: SchemaCache<GitHubLabelList>;
   private repositoriesCache?: SchemaCache<GitHubRepositoryList>;
   private organizationsCache?: SchemaCache<GitHubOrganizationList>;
@@ -371,9 +374,11 @@ export class GitHubExtension implements Extension {
   private currentFilters = writable<{
     repository: string | null;
     type: "issues" | "pull-requests";
+    state: "open" | "closed" | "all";
   }>({
     repository: null,
     type: "issues",
+    state: "open",
   });
 
   /**
@@ -382,6 +387,7 @@ export class GitHubExtension implements Extension {
   getFilters(): Readable<{
     repository: string | null;
     type: "issues" | "pull-requests";
+    state: "open" | "closed" | "all";
   }> {
     return this.currentFilters;
   }
@@ -392,6 +398,7 @@ export class GitHubExtension implements Extension {
   setFilters(filters: {
     repository?: string | null;
     type?: "issues" | "pull-requests";
+    state?: "open" | "closed" | "all";
   }): void {
     console.log("[GitHubExtension] setFilters called with:", filters);
 
@@ -401,12 +408,13 @@ export class GitHubExtension implements Extension {
           ? filters.repository
           : current.repository,
       type: filters.type !== undefined ? filters.type : current.type,
+      state: filters.state !== undefined ? filters.state : current.state,
     }));
 
     // Trigger data fetch if repository is set and we don't have data for it
-    const { repository, type } = get(this.currentFilters);
+    const { repository, type, state } = get(this.currentFilters);
     console.log(
-      `[GitHubExtension] Current filters after update: repository=${repository}, type=${type}`
+      `[GitHubExtension] Current filters after update: repository=${repository}, type=${type}, state=${state}`
     );
 
     if (repository) {
@@ -423,7 +431,15 @@ export class GitHubExtension implements Extension {
         const typeMatches =
           (type === "issues" && url.includes("/issues/")) ||
           (type === "pull-requests" && url.includes("/pull/"));
-        return taskRepository === repository && typeMatches;
+
+        // Check state match using source.data.state
+        const githubData = task.source?.data;
+        const stateMatches =
+          !state || state === "all" || !githubData
+            ? true
+            : githubData.state === state;
+
+        return taskRepository === repository && typeMatches && stateMatches;
       });
 
       console.log(
@@ -446,6 +462,7 @@ export class GitHubExtension implements Extension {
   getCurrentFilters(): {
     repository: string | null;
     type: "issues" | "pull-requests";
+    state: "open" | "closed" | "all";
   } {
     return get(this.currentFilters);
   }
@@ -477,9 +494,9 @@ export class GitHubExtension implements Extension {
           return $importedTasks;
         }
 
-        const { repository, type } = $filters;
+        const { repository, type, state } = $filters;
 
-        // Filter GitHub tasks from entity store for this repository and type
+        // Filter GitHub tasks from entity store for this repository, type, and state
         const githubTasksForRepo = $githubTasks.filter((task) => {
           const url = task.source.keys.github;
           if (!url) return false;
@@ -491,7 +508,14 @@ export class GitHubExtension implements Extension {
             (type === "issues" && url.includes("/issues/")) ||
             (type === "pull-requests" && url.includes("/pull/"));
 
-          return repoMatches && typeMatches;
+          // Check state match using source.data.state
+          const githubData = task.source?.data;
+          const stateMatches =
+            !state || state === "all" || !githubData
+              ? true
+              : githubData.state === state;
+
+          return repoMatches && typeMatches && stateMatches;
         });
 
         // Filter imported tasks for this repository
@@ -646,7 +670,7 @@ export class GitHubExtension implements Extension {
 
   /**
    * Filter tasks by criteria
-   * Uses TaskQueryService for standard filters, applies GitHub-specific filters separately
+   * GitHub doesn't use showCompleted - state filter determines open/closed
    */
   filterTasks(
     tasks: readonly Task[],
@@ -654,7 +678,6 @@ export class GitHubExtension implements Extension {
       project?: string | null;
       area?: string | null;
       source?: string | null;
-      showCompleted?: boolean;
       // GitHub-specific filters
       state?: "open" | "closed" | "all";
       assignedToMe?: boolean;
@@ -662,19 +685,23 @@ export class GitHubExtension implements Extension {
       currentUser?: { login: string; id: number; avatar_url: string } | null;
     }
   ): readonly Task[] {
-    // Apply standard filters using TaskQueryService
-    let filtered = TaskQueryService.filter(tasks, {
-      project: criteria.project || undefined,
-      area: criteria.area || undefined,
-      source: criteria.source || undefined,
-      showCompleted: criteria.showCompleted,
-    });
-
-    // Apply GitHub-specific filters
-    return filtered.filter((task) => {
+    // For GitHub, we apply our own filtering logic
+    // Don't use TaskQueryService.filter because it applies showCompleted
+    // which doesn't make sense for GitHub (state filter handles open/closed)
+    return tasks.filter((task) => {
       const githubData = task.source?.data;
 
-      // Filter by state
+      // Filter by project
+      if (criteria.project && task.project !== criteria.project) {
+        return false;
+      }
+
+      // Filter by area
+      if (criteria.area && !task.areas.includes(criteria.area)) {
+        return false;
+      }
+
+      // Filter by state (this is already done in getTasks, but keep for safety)
       if (criteria.state && criteria.state !== "all" && githubData) {
         if (githubData.state !== criteria.state) return false;
       }
@@ -707,6 +734,11 @@ export class GitHubExtension implements Extension {
       "github-issues",
       GitHubIssueListSchema
     );
+    this.pullRequestsCache = new SchemaCache(
+      this.plugin,
+      "github-pull-requests",
+      GitHubPullRequestListSchema
+    );
     this.labelsCache = new SchemaCache(
       this.plugin,
       "github-labels",
@@ -730,6 +762,7 @@ export class GitHubExtension implements Extension {
   private async preloadCaches(): Promise<void> {
     const caches = [
       this.issuesCache,
+      this.pullRequestsCache,
       this.labelsCache,
       this.repositoriesCache,
       this.organizationsCache,
@@ -812,7 +845,12 @@ export class GitHubExtension implements Extension {
    * Generate consistent cache key for GitHub resources
    */
   private generateCacheKey(
-    category: "issues" | "labels" | "repositories" | "organizations",
+    category:
+      | "issues"
+      | "pull-requests"
+      | "labels"
+      | "repositories"
+      | "organizations",
     repository?: string,
     filters?: { state?: string; assignee?: string; labels?: string[] }
   ): string {
@@ -864,6 +902,12 @@ export class GitHubExtension implements Extension {
       console.log("[GitHubExtension] Issues cache cleared");
     }
 
+    if (this.pullRequestsCache) {
+      console.log("[GitHubExtension] Clearing pull requests cache...");
+      await this.pullRequestsCache.clear();
+      console.log("[GitHubExtension] Pull requests cache cleared");
+    }
+
     if (this.labelsCache) {
       console.log("[GitHubExtension] Clearing labels cache...");
       await this.labelsCache.clear();
@@ -900,8 +944,17 @@ export class GitHubExtension implements Extension {
 
   /**
    * Fetch issues from a GitHub repository with caching
+   * @param repository - Repository in format "owner/repo"
+   * @param filterOverrides - Optional filter overrides (state, assignee, labels)
    */
-  async fetchIssues(repository: string): Promise<GitHubIssue[]> {
+  async fetchIssues(
+    repository: string,
+    filterOverrides?: {
+      state?: "open" | "closed" | "all";
+      assignee?: string;
+      labels?: string[];
+    }
+  ): Promise<GitHubIssue[]> {
     if (!this.octokit) {
       throw new Error("GitHub integration is not enabled or configured");
     }
@@ -910,7 +963,14 @@ export class GitHubExtension implements Extension {
       throw new Error("Invalid repository format. Expected: owner/repo");
     }
 
-    const filters = this.settings.integrations.github.issueFilters;
+    // Use filterOverrides if provided, otherwise fall back to settings
+    const settingsFilters = this.settings.integrations.github.issueFilters;
+    const filters = {
+      state: filterOverrides?.state ?? settingsFilters.state,
+      assignee: filterOverrides?.assignee ?? settingsFilters.assignee,
+      labels: filterOverrides?.labels ?? settingsFilters.labels,
+    };
+
     const cacheKey = this.generateCacheKey("issues", repository, {
       state: filters.state,
       assignee: filters.assignee,
@@ -927,19 +987,33 @@ export class GitHubExtension implements Extension {
 
     const [owner, repo] = repository.split("/");
 
+    console.log(
+      `[GitHubExtension] Fetching issues for ${repository} with state=${filters.state}`
+    );
+
     const response = await this.octokit.rest.issues.listForRepo({
       owner,
       repo,
-      state: filters.state,
+      state: filters.state as "open" | "closed" | "all",
       assignee: filters.assignee || undefined,
       labels: filters.labels.length > 0 ? filters.labels.join(",") : undefined,
       per_page: 100,
     });
 
+    console.log(
+      `[GitHubExtension] Received ${response.data.length} items from issues API`
+    );
+
     // Filter out pull requests - GitHub API returns both issues and PRs from the issues endpoint
     // Pull requests have a "pull_request" field that distinguishes them from actual issues
     const allItems = response.data as GitHubIssue[];
     const issues = allItems.filter((item) => !item.pull_request);
+
+    console.log(
+      `[GitHubExtension] Filtered to ${issues.length} actual issues (${
+        allItems.length - issues.length
+      } were PRs)`
+    );
 
     // Cache the results
     if (this.issuesCache) {
@@ -1121,9 +1195,16 @@ export class GitHubExtension implements Extension {
   }
 
   /**
-   * Fetch pull requests from a GitHub repository
+   * Fetch pull requests from a GitHub repository with caching
+   * @param repository - Repository in format "owner/repo"
+   * @param filterOverrides - Optional filter overrides (state)
    */
-  async fetchPullRequests(repository: string): Promise<GitHubPullRequest[]> {
+  async fetchPullRequests(
+    repository: string,
+    filterOverrides?: {
+      state?: "open" | "closed" | "all";
+    }
+  ): Promise<GitHubPullRequest[]> {
     if (!this.octokit) {
       throw new Error("GitHub integration is not enabled or configured");
     }
@@ -1132,16 +1213,53 @@ export class GitHubExtension implements Extension {
       throw new Error("Invalid repository format. Expected: owner/repo");
     }
 
+    // Use filterOverrides if provided, otherwise fall back to settings
+    const settingsFilters = this.settings.integrations.github.issueFilters;
+    const filters = {
+      state: filterOverrides?.state ?? settingsFilters.state,
+      assignee: settingsFilters.assignee,
+      labels: settingsFilters.labels,
+    };
+
+    const cacheKey = this.generateCacheKey("pull-requests", repository, {
+      state: filters.state,
+      assignee: filters.assignee,
+      labels: filters.labels,
+    });
+
+    // Check cache first
+    if (this.pullRequestsCache) {
+      const cachedPRs = await this.pullRequestsCache.get(cacheKey);
+      if (cachedPRs) {
+        return cachedPRs;
+      }
+    }
+
     const [owner, repo] = repository.split("/");
+
+    console.log(
+      `[GitHubExtension] Fetching pull requests for ${repository} with state=${filters.state}`
+    );
 
     const response = await this.octokit.rest.pulls.list({
       owner,
       repo,
-      state: "open",
+      state: filters.state as "open" | "closed" | "all",
       per_page: 100,
     });
 
-    return response.data as GitHubPullRequest[];
+    const pullRequests = response.data as GitHubPullRequest[];
+
+    console.log(
+      `[GitHubExtension] Received ${pullRequests.length} pull requests from API`
+    );
+
+    // Cache the results
+    if (this.pullRequestsCache) {
+      await this.pullRequestsCache.set(cacheKey, pullRequests);
+    }
+
+    return pullRequests;
   }
 
   /**

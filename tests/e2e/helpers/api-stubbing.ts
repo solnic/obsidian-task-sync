@@ -551,22 +551,38 @@ export async function stubGitHubAPIs(
       };
 
       // Install stubs
-      githubExtension.fetchIssues = async (repository?: string) => {
+      githubExtension.fetchIssues = async (
+        repository?: string,
+        filterOverrides?: { state?: "open" | "closed" | "all" }
+      ) => {
         console.log(
           "🔧 Stubbed fetchIssues called for repository:",
-          repository
+          repository,
+          "with filters:",
+          filterOverrides
         );
         const allItems = (window as any).__githubApiStubs?.issues || [];
         // Filter out pull requests - same logic as real implementation
         // Pull requests have a "pull_request" field that distinguishes them from actual issues
-        let issues = allItems.filter((item: { pull_request?: unknown }) => !item.pull_request);
+        let issues = allItems.filter(
+          (item: { pull_request?: unknown }) => !item.pull_request
+        );
+
+        // Apply state filter if provided
+        if (filterOverrides?.state && filterOverrides.state !== "all") {
+          issues = issues.filter(
+            (item: { state: string }) => item.state === filterOverrides.state
+          );
+        }
 
         // Filter by repository if specified
         if (repository) {
-          issues = issues.filter((item: { labels?: Array<{ name: string }>; html_url?: string }) => {
-            const url = item.html_url || "";
-            return url.includes(`github.com/${repository}/`);
-          });
+          issues = issues.filter(
+            (item: { labels?: Array<{ name: string }>; html_url?: string }) => {
+              const url = item.html_url || "";
+              return url.includes(`github.com/${repository}/`);
+            }
+          );
         }
 
         return issues;
@@ -577,9 +593,34 @@ export async function stubGitHubAPIs(
         return (window as any).__githubApiStubs?.repositories || [];
       };
 
-      githubExtension.fetchPullRequests = async () => {
-        console.log("🔧 Stubbed fetchPullRequests called");
-        return (window as any).__githubApiStubs?.pullRequests || [];
+      githubExtension.fetchPullRequests = async (
+        _repository?: string,
+        filterOverrides?: { state?: "open" | "closed" | "all" }
+      ) => {
+        console.log(
+          "🔧 Stubbed fetchPullRequests called with filters:",
+          filterOverrides
+        );
+        const allPRs = (window as any).__githubApiStubs?.pullRequests || [];
+
+        // Use filterOverrides.state if provided, otherwise fall back to settings
+        let stateFilter = filterOverrides?.state;
+        if (!stateFilter) {
+          const app = (window as any).app;
+          const plugin = app?.plugins?.plugins?.["obsidian-task-sync"];
+          stateFilter =
+            plugin?.settings?.integrations?.github?.issueFilters?.state ||
+            "open";
+        }
+
+        // Filter PRs based on state
+        if (stateFilter === "all") {
+          return allPRs;
+        }
+
+        return allPRs.filter(
+          (pr: { state: string }) => pr.state === stateFilter
+        );
       };
 
       githubExtension.fetchOrganizations = async () => {
