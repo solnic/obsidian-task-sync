@@ -86,7 +86,7 @@ async function cleanupDebugArtifacts(): Promise<void> {
 export default async function globalSetup() {
   // Note: Setup verification is already done in pre-test-e2e.js
   // No need to run ensureSetup() again here
-  
+
   // Kill any existing Electron processes first
   await killExistingElectronProcesses();
 

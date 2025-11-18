@@ -7,7 +7,6 @@ import { test, expect } from "../../helpers/setup";
 import {
   updatePluginSettings,
   waitForBaseFile,
-  readVaultFile,
   openFile,
   waitForFileProcessed,
 } from "../../helpers/global";
@@ -21,13 +20,13 @@ import {
   waitForBaseViewToLoad,
   getBaseTaskTitles,
   switchBaseView,
-  hasViewsDropdown,
   expectBaseTasksInOrder,
   expectBaseTasksContain,
   expectBaseTasksNotContain,
+  waitForStableSorting,
 } from "../../helpers/bases-helpers";
 
-test.describe("Base Filtering and Sorting", { tag: '@bases' }, () => {
+test.describe("Base Filtering and Sorting", { tag: "@bases" }, () => {
   test("should filter out done tasks in all base views", async ({ page }) => {
     // Enable project bases and auto-sync
     await updatePluginSettings(page, {
@@ -143,6 +142,9 @@ test.describe("Base Filtering and Sorting", { tag: '@bases' }, () => {
       "Visible Not Done Feature",
       "Visible Not Done Task Low Priority",
     ].sort();
+
+    // Wait for sorting to stabilize before checking order
+    await waitForStableSorting(page, 3000);
 
     await expectBaseTasksInOrder(page, expectedOrder);
 
@@ -366,6 +368,9 @@ test.describe("Base Filtering and Sorting", { tag: '@bases' }, () => {
 
     // Wait for bases view to load with data
     await waitForBaseViewToLoad(page, 5000);
+
+    // Wait for sorting to stabilize
+    await waitForStableSorting(page, 5000);
 
     // Get all visible tasks
     const allTitles = await getBaseTaskTitles(page);

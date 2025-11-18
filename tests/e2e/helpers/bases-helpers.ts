@@ -674,6 +674,48 @@ export async function clickBaseNewButton(page: Page): Promise<void> {
 }
 
 /**
+ * Wait for the bases view sorting to stabilize.
+ * This polls the task order until it stops changing, indicating sorting is complete.
+ */
+export async function waitForStableSorting(
+  page: Page,
+  timeout = 3000
+): Promise<void> {
+  const startTime = Date.now();
+  let previousTitles: string[] = [];
+  let stableCount = 0;
+  const requiredStableChecks = 3; // Must be stable for 3 consecutive checks
+
+  while (Date.now() - startTime < timeout) {
+    const currentTitles = await getBaseTaskTitles(page);
+
+    // Check if titles are the same as previous check
+    if (
+      currentTitles.length > 0 &&
+      JSON.stringify(currentTitles) === JSON.stringify(previousTitles)
+    ) {
+      stableCount++;
+      if (stableCount >= requiredStableChecks) {
+        // Sorting has been stable for required checks
+        return;
+      }
+    } else {
+      // Order changed, reset stability counter
+      stableCount = 0;
+      previousTitles = currentTitles;
+    }
+
+    // Wait before next check
+    await page.evaluate(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    });
+  }
+
+  // If we get here, sorting didn't stabilize within timeout, but that's okay
+  // The test will fail with a meaningful assertion error if the order is still wrong
+}
+
+/**
  * Assert headers have expected sort directions using their visible names.
  */
 export async function expectSortHeader(
