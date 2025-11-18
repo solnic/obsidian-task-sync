@@ -12,6 +12,7 @@
  */
 
 import type { App } from "obsidian";
+import { TFile } from "obsidian";
 import type {
   DataSource,
   DataSourceWatchCallbacks,
@@ -220,11 +221,74 @@ export class ObsidianTaskSource implements DataSource<Task> {
       }
     });
 
+    // Listen for file renames
+    const onRename = this.app.vault.on("rename", async (file, oldPath) => {
+      // Ensure file is a TFile, not just TAbstractFile
+      if (!(file instanceof TFile)) {
+        return;
+      }
+
+      if (isTaskFile(file)) {
+        console.log(
+          `[ObsidianTaskSource] Task file renamed: ${oldPath} -> ${file.path}`
+        );
+
+        try {
+          // Find the task by old Obsidian key
+          const currentState = get(taskStore);
+          const existingTask = currentState.tasks.find(
+            (t) => t.source.keys.obsidian === oldPath
+          );
+
+          if (existingTask && callbacks.onItemChanged) {
+            // Get the cache for the renamed file
+            const cache = this.app.metadataCache.getFileCache(file);
+
+            // Parse the renamed file to get updated task data
+            const taskData = await this.taskOperations.parseFileToTaskData(
+              file,
+              cache
+            );
+
+            if (taskData) {
+              // Update task's source key to new path
+              const updatedTask = {
+                ...taskData,
+                id: existingTask.id, // Preserve the original task ID
+                source: {
+                  ...taskData.source,
+                  keys: {
+                    ...taskData.source.keys,
+                    obsidian: file.path, // Use new path
+                  },
+                },
+              };
+
+              // Update the extension's entity store
+              this.updateEntityStoreWithTask(updatedTask);
+
+              // Notify about the changed item
+              callbacks.onItemChanged(updatedTask);
+
+              console.log(
+                `[ObsidianTaskSource] Updated task after rename: ${updatedTask.title} (new path: ${file.path})`
+              );
+            }
+          }
+        } catch (error) {
+          console.error(
+            `[ObsidianTaskSource] Failed to handle rename: ${error}`
+          );
+        }
+      }
+    });
+
     // Return cleanup function
     return () => {
       console.log("[ObsidianTaskSource] Cleaning up file watchers...");
       this.app.metadataCache.offref(onModify);
       this.app.vault.offref(onDelete);
+      this.app.vault.offref(onRename);
     };
   }
 

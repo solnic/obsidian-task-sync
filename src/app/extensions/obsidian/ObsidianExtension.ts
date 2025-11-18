@@ -834,9 +834,10 @@ export class ObsidianExtension implements Extension {
     console.log("[ObsidianExtension] Setting up property auto-completion...");
 
     this.typeNote.fileWatcher.addEventHandler(async (event) => {
-      // Process both created and modified events
-      // (files created by Base UI may be detected as modified rather than created)
-      if (event.type !== "created" && event.type !== "modified") {
+      // Process created, modified, and renamed events
+      // - created/modified: files created by Base UI may need missing properties
+      // - renamed: when user renames file, Title property needs to be updated
+      if (event.type !== "created" && event.type !== "modified" && event.type !== "renamed") {
         return;
       }
 
@@ -861,16 +862,28 @@ export class ObsidianExtension implements Extension {
           return;
         }
 
-        // Determine which properties need to be added
+        // Determine which properties need to be added or updated
         const propertiesToAdd: Record<string, any> = {};
         let needsUpdate = false;
+
+        // Special case: For renamed events, always update Title to match new filename
+        if (event.type === "renamed") {
+          const currentTitle = existingProperties.Title;
+          if (currentTitle !== event.file.basename) {
+            propertiesToAdd.Title = event.file.basename;
+            needsUpdate = true;
+            console.log(
+              `[ObsidianExtension] Updating Title after rename: "${currentTitle}" -> "${event.file.basename}"`
+            );
+          }
+        }
 
         for (const [_key, propDef] of Object.entries(
           event.noteType.properties
         )) {
           const frontMatterKey = propDef.frontMatterKey || propDef.name;
 
-          // Skip properties that already exist
+          // Skip properties that already exist (unless it's Title in a rename event, already handled above)
           if (existingProperties[frontMatterKey] !== undefined) {
             continue;
           }
