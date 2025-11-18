@@ -89,27 +89,11 @@ jobs:
             manifest.json
           retention-days: 1
 
-      - name: Create node_modules tarball
-        run: tar -czf node_modules.tar.gz node_modules
+      - name: Post Cache Obsidian tar.gz
+        run: echo "Obsidian cached for reuse in test jobs"
 
-      - name: Upload node_modules
-        uses: actions/upload-artifact@v4
-        with:
-          name: node_modules
-          path: node_modules.tar.gz
-          retention-days: 1
-
-      - name: Create Obsidian tarball for distribution
-        run: |
-          cd tests/e2e
-          tar -czf obsidian-unpacked.tar.gz .obsidian-unpacked
-
-      - name: Upload Obsidian installation
-        uses: actions/upload-artifact@v4
-        with:
-          name: obsidian-unpacked
-          path: tests/e2e/obsidian-unpacked.tar.gz
-          retention-days: 1
+      - name: Post Setup Node.js
+        run: echo "Build complete"
 
   test-unit:
     runs-on: ubuntu-latest
@@ -122,14 +106,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22.x
+          cache: 'npm'
 
-      - name: Download node_modules
-        uses: actions/download-artifact@v4
-        with:
-          name: node_modules
-
-      - name: Extract node_modules
-        run: tar -xzf node_modules.tar.gz && rm node_modules.tar.gz
+      - name: Install dependencies
+        run: npm ci
 
       - name: Run unit tests
         run: npm run test:unit
@@ -143,6 +123,9 @@ jobs:
         test-group:
           - core
           - note-kit
+          - settings
+          - entities
+          - tasks-view
           - bases
           - commands
           - github
@@ -159,31 +142,53 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22.x
+          cache: 'npm'
 
-      - name: Download node_modules
-        uses: actions/download-artifact@v4
-        with:
-          name: node_modules
-
-      - name: Extract node_modules
-        run: tar -xzf node_modules.tar.gz && rm node_modules.tar.gz
+      - name: Install dependencies
+        run: npm ci
 
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
 
-      - name: Download Obsidian installation
-        uses: actions/download-artifact@v4
+      - name: Get Obsidian version
+        id: obsidian-version
+        run: |
+          VERSION=$(curl -s https://api.github.com/repos/obsidianmd/obsidian-releases/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Restore cached Obsidian tar.gz
+        id: cache-obsidian-tar
+        uses: actions/cache@v4
         with:
-          name: obsidian-unpacked
-          path: tests/e2e/
+          path: tmp/obsidian-${{ steps.obsidian-version.outputs.version }}.tar.gz
+          key: obsidian-tar-${{ runner.os }}-${{ steps.obsidian-version.outputs.version }}
 
       - name: Extract Obsidian
         run: |
-          cd tests/e2e
-          tar -xzf obsidian-unpacked.tar.gz
-          rm obsidian-unpacked.tar.gz
+          mkdir -p tests/e2e/.obsidian-unpacked
+          tar -xzf "tmp/obsidian-${{ steps.obsidian-version.outputs.version }}.tar.gz" -C tests/e2e/.obsidian-unpacked --strip-components=1
+
+      - name: Setup Obsidian for Playwright
+        run: |
+          cd tests/e2e/.obsidian-unpacked
+          if [ -f "resources/app.asar" ]; then
+            echo "Extracting app.asar for Playwright..."
+            npx asar extract resources/app.asar app-extracted 2>/dev/null || true
+            if [ -f "app-extracted/main.js" ]; then
+              cp app-extracted/main.js ./main.js
+              echo "Extracted main.js from app.asar"
+            fi
+            if [ -f "resources/obsidian.asar" ] && [ -d "app-extracted" ]; then
+              cp resources/obsidian.asar app-extracted/
+              echo "Copied obsidian.asar to app-extracted directory"
+            fi
+            if [ ! -f "package.json" ] && [ -f "app-extracted/package.json" ]; then
+              cp app-extracted/package.json ./package.json
+              echo "Extracted package.json from app.asar"
+            fi
+          fi
 
       - name: Run e2e tests - ${{ matrix.test-group }}
         run: npm run test:e2e -- --grep @${{ matrix.test-group }}

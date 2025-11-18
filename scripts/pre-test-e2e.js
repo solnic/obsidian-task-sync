@@ -21,11 +21,8 @@ async function main() {
 
     const { ensureSetup } = require('../tests/e2e/helpers/setup-verification.ts');
 
-    console.log('🔍 Checking e2e testing setup...\n');
-
     await ensureSetup();
 
-    console.log('✅ E2E environment ready, starting tests...\n');
     process.exit(0);
   } catch (error) {
     console.error('❌ Error during e2e setup:', error.message);

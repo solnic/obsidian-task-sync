@@ -18,7 +18,7 @@ import {
   waitForTaskToBeRemoved,
 } from "../../helpers/entity-helpers";
 
-test.describe("Entity Deletion", { tag: '@core' }, () => {
+test.describe("Entity Deletion", { tag: "@entities" }, () => {
   test("should delete task entity when task note is deleted", async ({
     page,
   }) => {
