@@ -7,11 +7,10 @@ import { test, expect } from "../../helpers/setup";
 import {
   openTasksView,
   waitForLocalTasksToLoad,
-  refreshTasks,
 } from "../../helpers/tasks-view-helpers";
 import { createTask } from "../../helpers/entity-helpers";
 
-test.describe("LocalTasksService Refresh", { tag: '@core' }, () => {
+test.describe("LocalTasksService Refresh", { tag: "@tasks-view" }, () => {
   test("should refresh tasks successfully when refresh button is clicked", async ({
     page,
   }) => {

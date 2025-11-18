@@ -122,8 +122,10 @@ jobs:
       matrix:
         test-group:
           - core
-          - entities
           - note-kit
+          - settings
+          - entities
+          - tasks-view
           - bases
           - commands
           - github

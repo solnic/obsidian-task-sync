@@ -17,10 +17,13 @@ import {
   verifyTaskCount,
 } from "../../helpers/tasks-view-helpers";
 import { createTask } from "../../helpers/entity-helpers";
-import { executeCommand, waitForContextUpdate, waitForFileContentToContain, readVaultFile } from "../../helpers/global";
+import {
+  waitForFileContentToContain,
+  readVaultFile,
+} from "../../helpers/global";
 import { getTodayString } from "../../helpers/date-helpers";
 
-test.describe("TasksView Component", { tag: '@core' }, () => {
+test.describe("TasksView Component", { tag: "@tasks-view" }, () => {
   test("should open Tasks view and display local tasks", async ({ page }) => {
     // Create some test tasks first
     await createTask(page, {
@@ -506,7 +509,11 @@ test.describe("TasksView Component", { tag: '@core' }, () => {
 
     // Verify the daily note was actually updated with the task
     // Wait for the file to contain the expected content
-    await waitForFileContentToContain(page, dailyNotePath, "Add to Today Test Task");
+    await waitForFileContentToContain(
+      page,
+      dailyNotePath,
+      "Add to Today Test Task"
+    );
 
     // Verify the task is formatted as a task item (checkbox) by reading the file
     const dailyNoteContent = await readVaultFile(page, dailyNotePath);

@@ -6,16 +6,12 @@
 import { test, expect } from "../../helpers/setup";
 import {
   openTaskSyncSettings,
-  openTaskCategoriesSettings,
   scrollToSettingsSection,
-  addTaskCategory,
-  verifyTaskCategoryExists,
-  deleteTaskCategory,
   setSettingValue,
   getPluginSettingValue,
 } from "../../helpers/global";
 
-test.describe("Settings Tab", { tag: '@core' }, () => {
+test.describe("Settings Tab", { tag: "@settings" }, () => {
   test("should modify general settings and save changes", async ({ page }) => {
     // Open settings
     await openTaskSyncSettings(page);
