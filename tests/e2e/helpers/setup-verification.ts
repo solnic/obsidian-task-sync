@@ -274,21 +274,21 @@ export async function ensureSetup(): Promise<void> {
   const result = await verifySetup();
 
   if (result.isReady) {
-    console.log("✅ E2E testing environment is ready");
+    console.log("  ✅ E2E testing environment is ready");
     return;
   }
 
-  console.log("⚠️ E2E testing environment is not ready:");
+  console.log("  ⚠️ E2E testing environment is not ready:");
   for (const requirement of result.missingRequirements) {
     console.log(`   - ${requirement}`);
   }
 
-  console.log("\n🔧 Running setup to configure the environment...\n");
+  console.log("  🔧 Running setup to configure the environment...\n");
 
   await runSetup();
 
   // Verify again after setup
-  console.log("\n🔍 Re-verifying setup...");
+  console.log("  🔍 Re-verifying setup...");
   const verifyResult = await verifySetup();
 
   if (!verifyResult.isReady) {
@@ -301,5 +301,5 @@ export async function ensureSetup(): Promise<void> {
     );
   }
 
-  console.log("✅ E2E testing environment is now ready\n");
+  console.log("  ✅ E2E testing environment is now ready\n");
 }

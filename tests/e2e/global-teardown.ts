@@ -13,9 +13,6 @@ export default async function globalTeardown() {
   // Clean up test environments
   await cleanupTestEnvironments();
 
-  // Kill any remaining Electron processes
-  console.log("🔍 Cleaning up any remaining Electron processes...");
-
   try {
     const { stdout } = await execAsync(
       'pgrep -f "Electron.*obsidian.*main.js" || true'
@@ -29,7 +26,6 @@ export default async function globalTeardown() {
 
       for (const pid of pids) {
         try {
-          console.log("Killing Obsidian process:", pid);
           process.kill(Number(pid));
         } catch (_error) {
           // Ignore if process doesn't exist
