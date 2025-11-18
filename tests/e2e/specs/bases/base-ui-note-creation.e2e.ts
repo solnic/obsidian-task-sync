@@ -11,10 +11,7 @@ import {
   waitForSyncComplete,
   openFile,
 } from "../../helpers/global";
-import {
-  waitForBaseViewToLoad,
-  clickBaseNewButton,
-} from "../../helpers/bases-helpers";
+import { clickBaseNewButton } from "../../helpers/bases-helpers";
 import { createProject, getTaskByTitle } from "../../helpers/entity-helpers";
 
 test.describe("Base UI Note Creation", { tag: '@bases' }, () => {
@@ -103,7 +100,7 @@ test.describe("Base UI Note Creation", { tag: '@bases' }, () => {
     expect(updatedContent).toContain("Done: false"); // Should have default value
     expect(updatedContent).toContain("Areas:");
     expect(updatedContent).toContain("tags:");
-    
+
     // Verify that ALL properties are present, including those without defaults
     expect(updatedContent).toContain("Do Date:"); // Optional property without default
     expect(updatedContent).toContain("Due Date:"); // Optional property without default
@@ -158,7 +155,7 @@ Minimal task content.
     expect(updatedContent).toContain("Done: false");
     expect(updatedContent).toContain("Areas: []");
     expect(updatedContent).toContain("tags: []");
-    
+
     // Verify that ALL properties are present, including those without defaults
     expect(updatedContent).toContain("Do Date:"); // Optional property without default
     expect(updatedContent).toContain("Due Date:"); // Optional property without default
