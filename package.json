@@ -16,6 +16,7 @@
     "test:e2e": "node scripts/pre-test-e2e.js && xvfb-maybe npx playwright test",
     "test:e2e:failed": "node scripts/rerun-failed-e2e.js",
     "test:e2e:core": "npm run test:e2e -- --grep @core",
+    "test:e2e:entities": "npm run test:e2e -- --grep @entities",
     "test:e2e:bases": "npm run test:e2e -- --grep @bases",
     "test:e2e:note-kit": "npm run test:e2e -- --grep @note-kit",
     "test:e2e:commands": "npm run test:e2e -- --grep @commands",

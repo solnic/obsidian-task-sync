@@ -12,7 +12,7 @@ import {
   expectNotice,
 } from "../../helpers/global";
 
-test.describe("Project Creation", { tag: '@core' }, () => {
+test.describe("Project Creation", { tag: "@entities" }, () => {
   test("should create project through modal and verify project file is created", async ({
     page,
   }) => {

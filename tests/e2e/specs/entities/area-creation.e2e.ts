@@ -12,7 +12,7 @@ import {
   expectNotice,
 } from "../../helpers/global";
 
-test.describe("Area Creation", { tag: '@core' }, () => {
+test.describe("Area Creation", { tag: "@entities" }, () => {
   test("should create area through modal and verify area file is created", async ({
     page,
   }) => {

@@ -14,7 +14,7 @@ import {
   openFile,
 } from "../../helpers/global";
 
-test.describe("Task Creation", { tag: '@core' }, () => {
+test.describe("Task Creation", { tag: "@entities" }, () => {
   test("should create task through modal and verify task file is created", async ({
     page,
   }) => {
@@ -419,7 +419,9 @@ test.describe("Task Creation", { tag: '@core' }, () => {
     await waitForFileCreation(page, expectedPath);
     const fm = await getFrontMatter(page, expectedPath);
     // Project field is stored as a wikilink
-    expect(fm.Project).toBe("[[Projects/Sample Project 1.md|Sample Project 1]]");
+    expect(fm.Project).toBe(
+      "[[Projects/Sample Project 1.md|Sample Project 1]]"
+    );
   });
 
   test("prefills Areas from Areas/<Area>/ context and shows contextual title", async ({

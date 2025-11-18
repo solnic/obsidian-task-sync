@@ -136,6 +136,7 @@ jobs:
       matrix:
         test-group:
           - core
+          - entities
           - note-kit
           - bases
           - commands
