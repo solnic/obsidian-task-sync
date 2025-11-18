@@ -15,7 +15,7 @@ import {
   waitForBaseViewToLoad,
   clickBaseNewButton,
 } from "../../helpers/bases-helpers";
-import { createProject } from "../../helpers/entity-helpers";
+import { createProject, getTaskByTitle } from "../../helpers/entity-helpers";
 
 test.describe("Base UI Note Creation", { tag: '@bases' }, () => {
   test("should auto-complete missing properties when clicking New button in Base UI", async ({
@@ -164,5 +164,10 @@ Minimal task content.
     expect(updatedContent).toContain("Due Date:"); // Optional property without default
     expect(updatedContent).toContain("Project:"); // Optional property without default
     expect(updatedContent).toContain("Parent task:"); // Optional property without default
+
+    // Verify that a corresponding task entity was created
+    const taskEntity = await getTaskByTitle(page, "Minimal Task");
+    expect(taskEntity).toBeTruthy();
+    expect(taskEntity.title).toBe("Minimal Task");
   });
 });

@@ -850,23 +850,16 @@ export class ObsidianExtension implements Extension {
       );
 
       try {
-        // Read the current file content
-        const content = await this.app.vault.read(event.file);
-        const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+        // Get frontmatter from Obsidian's cache instead of parsing the file
+        const fileCache = this.app.metadataCache.getFileCache(event.file);
+        const existingProperties = fileCache?.frontmatter || {};
 
-        if (!frontMatterMatch) {
+        if (!fileCache) {
           console.warn(
-            `[ObsidianExtension] No front-matter found in ${event.file.path}, skipping auto-completion`
+            `[ObsidianExtension] No cache found for ${event.file.path}, skipping auto-completion`
           );
           return;
         }
-
-        // Parse existing properties
-        const { default: yaml } = await import("js-yaml");
-        const existingProperties = yaml.load(frontMatterMatch[1]) as Record<
-          string,
-          any
-        >;
 
         // Determine which properties need to be added
         const propertiesToAdd: Record<string, any> = {};
@@ -879,6 +872,16 @@ export class ObsidianExtension implements Extension {
 
           // Skip properties that already exist
           if (existingProperties[frontMatterKey] !== undefined) {
+            continue;
+          }
+
+          // Special handling for Title property - use filename if missing
+          if (frontMatterKey === "Title") {
+            propertiesToAdd[frontMatterKey] = event.file.basename;
+            needsUpdate = true;
+            console.log(
+              `[ObsidianExtension] Adding missing Title from filename: ${event.file.basename}`
+            );
             continue;
           }
 
