@@ -25,7 +25,10 @@ import { ProjectQueryService } from "../../services/ProjectQueryService";
 import { AreaQueryService } from "../../services/AreaQueryService";
 import { projectStore } from "../../stores/projectStore";
 import { areaStore } from "../../stores/areaStore";
-import { ObsidianTodoPromotionOperations, ObsidianTaskOperations as ObsidianTaskOps } from "./entities/Obsidian";
+import {
+  ObsidianTodoPromotionOperations,
+  ObsidianTaskOperations as ObsidianTaskOps,
+} from "./entities/Obsidian";
 import { ContextService } from "../../services/ContextService";
 import { Tasks } from "../../entities/Tasks";
 import { Projects } from "../../entities/Projects";
@@ -834,9 +837,14 @@ export class ObsidianExtension implements Extension {
     console.log("[ObsidianExtension] Setting up property auto-completion...");
 
     this.typeNote.fileWatcher.addEventHandler(async (event) => {
-      // Process both created and modified events
-      // (files created by Base UI may be detected as modified rather than created)
-      if (event.type !== "created" && event.type !== "modified") {
+      // Process created, modified, and renamed events
+      // - created/modified: files created by Base UI may need missing properties
+      // - renamed: when user renames file, Title property needs to be updated
+      if (
+        event.type !== "created" &&
+        event.type !== "modified" &&
+        event.type !== "renamed"
+      ) {
         return;
       }
 
@@ -850,43 +858,91 @@ export class ObsidianExtension implements Extension {
       );
 
       try {
-        // Read the current file content
-        const content = await this.app.vault.read(event.file);
-        const frontMatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+        // Get frontmatter from Obsidian's cache instead of parsing the file
+        const fileCache = this.app.metadataCache.getFileCache(event.file);
+        const existingProperties = fileCache?.frontmatter || {};
 
-        if (!frontMatterMatch) {
+        if (!fileCache) {
           console.warn(
-            `[ObsidianExtension] No front-matter found in ${event.file.path}, skipping auto-completion`
+            `[ObsidianExtension] No cache found for ${event.file.path}, skipping auto-completion`
           );
           return;
         }
 
-        // Parse existing properties
-        const { default: yaml } = await import("js-yaml");
-        const existingProperties = yaml.load(frontMatterMatch[1]) as Record<
-          string,
-          any
-        >;
-
-        // Determine which properties need to be added
+        // Determine which properties need to be added or updated
         const propertiesToAdd: Record<string, any> = {};
         let needsUpdate = false;
+
+        // Special case: For renamed events, always update Title to match new filename
+        if (event.type === "renamed") {
+          const currentTitle = existingProperties.Title;
+          if (currentTitle !== event.file.basename) {
+            propertiesToAdd.Title = event.file.basename;
+            needsUpdate = true;
+            console.log(
+              `[ObsidianExtension] Updating Title after rename: "${currentTitle}" -> "${event.file.basename}"`
+            );
+          }
+        }
 
         for (const [_key, propDef] of Object.entries(
           event.noteType.properties
         )) {
           const frontMatterKey = propDef.frontMatterKey || propDef.name;
 
-          // Check if property is missing and has a configured default
-          if (
-            existingProperties[frontMatterKey] === undefined &&
-            propDef.defaultValue !== undefined
-          ) {
+          // Skip properties that already exist (unless it's Title in a rename event, already handled above)
+          if (existingProperties[frontMatterKey] !== undefined) {
+            continue;
+          }
+
+          // Special handling for Title property - use filename if missing
+          if (frontMatterKey === "Title") {
+            propertiesToAdd[frontMatterKey] = event.file.basename;
+            needsUpdate = true;
+            console.log(
+              `[ObsidianExtension] Adding missing Title from filename: ${event.file.basename}`
+            );
+            continue;
+          }
+
+          // Add missing property with default value if available
+          if (propDef.defaultValue !== undefined) {
             propertiesToAdd[frontMatterKey] = propDef.defaultValue;
             needsUpdate = true;
             console.log(
               `[ObsidianExtension] Adding missing property '${frontMatterKey}' with default value:`,
               propDef.defaultValue
+            );
+          } else {
+            // Add missing property with appropriate empty/null value based on type
+            let emptyValue: any;
+
+            switch (propDef.type) {
+              case "array":
+                emptyValue = [];
+                break;
+              case "boolean":
+                emptyValue = false;
+                break;
+              case "number":
+                emptyValue = null;
+                break;
+              case "date":
+                emptyValue = null;
+                break;
+              case "string":
+              case "select":
+              case "association":
+              default:
+                emptyValue = null;
+                break;
+            }
+
+            propertiesToAdd[frontMatterKey] = emptyValue;
+            needsUpdate = true;
+            console.log(
+              `[ObsidianExtension] Adding missing property '${frontMatterKey}' with empty value:`,
+              emptyValue
             );
           }
         }

@@ -11,11 +11,8 @@ import {
   waitForSyncComplete,
   openFile,
 } from "../../helpers/global";
-import {
-  waitForBaseViewToLoad,
-  clickBaseNewButton,
-} from "../../helpers/bases-helpers";
-import { createProject } from "../../helpers/entity-helpers";
+import { clickBaseNewButton } from "../../helpers/bases-helpers";
+import { createProject, getTaskByTitle } from "../../helpers/entity-helpers";
 
 test.describe("Base UI Note Creation", { tag: '@bases' }, () => {
   test("should auto-complete missing properties when clicking New button in Base UI", async ({
@@ -104,6 +101,11 @@ test.describe("Base UI Note Creation", { tag: '@bases' }, () => {
     expect(updatedContent).toContain("Areas:");
     expect(updatedContent).toContain("tags:");
 
+    // Verify that ALL properties are present, including those without defaults
+    expect(updatedContent).toContain("Do Date:"); // Optional property without default
+    expect(updatedContent).toContain("Due Date:"); // Optional property without default
+    expect(updatedContent).toContain("Parent task:"); // Optional property without default
+
     // Verify that the Project property was set by the Base UI (if the base includes it)
     // The property might be there from the base configuration
   });
@@ -153,5 +155,138 @@ Minimal task content.
     expect(updatedContent).toContain("Done: false");
     expect(updatedContent).toContain("Areas: []");
     expect(updatedContent).toContain("tags: []");
+
+    // Verify that ALL properties are present, including those without defaults
+    expect(updatedContent).toContain("Do Date:"); // Optional property without default
+    expect(updatedContent).toContain("Due Date:"); // Optional property without default
+    expect(updatedContent).toContain("Project:"); // Optional property without default
+    expect(updatedContent).toContain("Parent task:"); // Optional property without default
+
+    // Verify that a corresponding task entity was created
+    const taskEntity = await getTaskByTitle(page, "Minimal Task");
+    expect(taskEntity).toBeTruthy();
+    expect(taskEntity.title).toBe("Minimal Task");
+  });
+
+  test("should update Title property when file is renamed after creating via New button", async ({
+    page,
+  }) => {
+    // Create a test project - this will have an embedded base
+    const project = await createProject(page, {
+      name: "Test Rename Project",
+      description: "Project for testing file rename",
+    });
+
+    const projectPath = `Projects/${project.name}.md`;
+
+    // Get list of existing tasks before creating new one
+    const existingTasks = await page.evaluate(async () => {
+      const app = (window as any).app;
+      const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
+      if (!tasksFolder) return [];
+      const files = tasksFolder.children || [];
+      return files
+        .filter((f: any) => f.extension === "md")
+        .map((f: any) => f.path);
+    });
+
+    // Open the project file
+    await openFile(page, projectPath);
+
+    // Wait for the bases view to appear
+    await page.waitForSelector(".bases-view", { state: "visible" });
+
+    // Wait for the toolbar with New button to appear
+    await page.waitForSelector(".bases-toolbar .bases-toolbar-new-item-menu", {
+      state: "visible",
+    });
+
+    // Click the "New" button in the Base UI
+    await clickBaseNewButton(page);
+
+    // Find the newly created file (one that wasn't in existingTasks)
+    let newTaskPath: string | null = null;
+    const deadline = Date.now() + 5000; // 5 second timeout
+
+    while (Date.now() < deadline && !newTaskPath) {
+      const currentTasks = await page.evaluate(async () => {
+        const app = (window as any).app;
+        const tasksFolder = app.vault.getAbstractFileByPath("Tasks");
+        if (!tasksFolder) return [];
+        const files = tasksFolder.children || [];
+        return files
+          .filter((f: any) => f.extension === "md")
+          .map((f: any) => f.path);
+      });
+
+      const newTasks = currentTasks.filter(
+        (path: string) => !existingTasks.includes(path)
+      );
+      if (newTasks.length > 0) {
+        newTaskPath = newTasks[0];
+        break;
+      }
+
+      await page.waitForSelector(".bases-view", { state: "visible" });
+    }
+
+    expect(newTaskPath).toBeTruthy();
+    expect(newTaskPath).toContain("Tasks/");
+
+    // Wait for the file to be processed by NoteKit file watcher
+    await waitForFileProcessed(page, newTaskPath!);
+
+    // Wait for auto-completion to add missing properties
+    await waitForFileContentToContain(page, newTaskPath!, "Type: Task", 5000);
+
+    // Wait for sync to complete
+    await waitForSyncComplete(page);
+
+    // Verify initial task entity was created with "Untitled" title
+    const initialTask = await getTaskByTitle(page, "Untitled");
+    expect(initialTask).toBeTruthy();
+    expect(initialTask.title).toBe("Untitled");
+
+    // Rename the file to simulate user changing the task name
+    const newFileName = "My Renamed Task";
+    await page.evaluate(
+      async ({ oldPath, newPath }) => {
+        const app = (window as any).app;
+        const file = app.vault.getAbstractFileByPath(oldPath);
+        if (file) {
+          await app.fileManager.renameFile(file, newPath);
+        }
+      },
+      { oldPath: newTaskPath, newPath: `Tasks/${newFileName}.md` }
+    );
+
+    // Wait for the renamed file to be processed
+    await waitForFileProcessed(page, `Tasks/${newFileName}.md`);
+
+    // Wait for Title property to be updated
+    await waitForFileContentToContain(
+      page,
+      `Tasks/${newFileName}.md`,
+      `Title: ${newFileName}`
+    );
+
+    // Wait for sync
+    await waitForSyncComplete(page);
+
+    // Read the updated content
+    const updatedContent = await readVaultFile(page, `Tasks/${newFileName}.md`);
+
+    // Verify that Title was updated to match new filename
+    expect(updatedContent).toContain(`Title: ${newFileName}`);
+    expect(updatedContent).not.toContain("Title: Untitled");
+
+    // Verify that the task entity was updated with new title
+    const renamedTask = await getTaskByTitle(page, newFileName);
+    expect(renamedTask).toBeTruthy();
+    expect(renamedTask.title).toBe(newFileName);
+
+    // Verify old title doesn't exist anymore
+    const oldTask = await getTaskByTitle(page, "Untitled");
+    expect(oldTask).toBeFalsy();
   });
 });
