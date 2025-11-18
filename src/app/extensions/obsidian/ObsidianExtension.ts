@@ -25,7 +25,10 @@ import { ProjectQueryService } from "../../services/ProjectQueryService";
 import { AreaQueryService } from "../../services/AreaQueryService";
 import { projectStore } from "../../stores/projectStore";
 import { areaStore } from "../../stores/areaStore";
-import { ObsidianTodoPromotionOperations, ObsidianTaskOperations as ObsidianTaskOps } from "./entities/Obsidian";
+import {
+  ObsidianTodoPromotionOperations,
+  ObsidianTaskOperations as ObsidianTaskOps,
+} from "./entities/Obsidian";
 import { ContextService } from "../../services/ContextService";
 import { Tasks } from "../../entities/Tasks";
 import { Projects } from "../../entities/Projects";
@@ -837,7 +840,11 @@ export class ObsidianExtension implements Extension {
       // Process created, modified, and renamed events
       // - created/modified: files created by Base UI may need missing properties
       // - renamed: when user renames file, Title property needs to be updated
-      if (event.type !== "created" && event.type !== "modified" && event.type !== "renamed") {
+      if (
+        event.type !== "created" &&
+        event.type !== "modified" &&
+        event.type !== "renamed"
+      ) {
         return;
       }
 
@@ -909,7 +916,7 @@ export class ObsidianExtension implements Extension {
           } else {
             // Add missing property with appropriate empty/null value based on type
             let emptyValue: any;
-            
+
             switch (propDef.type) {
               case "array":
                 emptyValue = [];
@@ -930,7 +937,7 @@ export class ObsidianExtension implements Extension {
                 emptyValue = null;
                 break;
             }
-            
+
             propertiesToAdd[frontMatterKey] = emptyValue;
             needsUpdate = true;
             console.log(
