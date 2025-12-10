@@ -290,6 +290,9 @@ test.describe("GitHub Status Syncing", { tag: '@github' }, () => {
       await clickIssueImportButton(page, 111);
       await waitForIssueImportComplete(page, 111);
 
+      // Wait for file to be created
+      await waitForFileUpdate(page, "Tasks/First test issue.md", "Done: false");
+
       // Verify initial file content
       const initialContent = await readVaultFile(page, "Tasks/First test issue.md");
       expect(initialContent).toContain("Done: false");
@@ -439,6 +442,9 @@ test.describe("GitHub Status Syncing", { tag: '@github' }, () => {
 
       await waitForFileUpdate(page, "Tasks/First test issue.md", "Priority: High");
 
+      // Wait for the task store to be updated with the new priority
+      await waitForTaskProperty(page, "First test issue", "priority", "High");
+
       // Verify Obsidian properties were set
       const taskBeforeSync = await getTaskByTitle(page, "First test issue");
       expect(taskBeforeSync.priority).toBe("High");
@@ -470,6 +476,9 @@ test.describe("GitHub Status Syncing", { tag: '@github' }, () => {
         undefined,
         { timeout: 2500 }
       );
+
+      // Wait for the task to be updated with done=true
+      await waitForTaskProperty(page, "First test issue", "done", true);
 
       // THEN: Status should be updated but Obsidian properties should be preserved
       const taskAfterSync = await getTaskByTitle(page, "First test issue");
@@ -703,6 +712,9 @@ test.describe("GitHub Status Syncing", { tag: '@github' }, () => {
         undefined,
         { timeout: 2500 }
       );
+
+      // Wait for the task to be updated with done=true
+      await waitForTaskProperty(page, "First test issue", "done", true);
 
       // THEN: Status should be updated to the first isDone=true status ("Shipped")
       const closedTask = await getTaskByTitle(page, "First test issue");
