@@ -28,6 +28,7 @@ import {
 } from "../../helpers/github-integration-helpers";
 import {
   getTaskByTitle,
+  waitForTaskProperty,
 } from "../../helpers/entity-helpers";
 
 test.describe("GitHub Status Syncing", { tag: '@github' }, () => {
@@ -189,6 +190,9 @@ test.describe("GitHub Status Syncing", { tag: '@github' }, () => {
         undefined,
         { timeout: 2500 }
       );
+
+      // Wait for the task to be updated with done=true
+      await waitForTaskProperty(page, "First test issue", "done", true);
 
       // THEN: The task should be updated with done=true AND status="Done"
       const updatedTask = await getTaskByTitle(page, "First test issue");

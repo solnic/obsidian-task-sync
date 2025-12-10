@@ -122,9 +122,23 @@ export class GitHubTaskSource implements DataSource<Task> {
         `[GitHubTaskSource] Fetched ${githubItems.length} ${filters.type} from GitHub API`
       );
 
+      // Get imported tasks that might have changed state (not in current filter results)
+      // This ensures we sync imported tasks even if they've moved to a different state
+      const additionalItemsToSync = await this.fetchMissingImportedItems(
+        filters,
+        githubItems
+      );
+
+      // Combine fetched items with additional imported items
+      const allItemsToProcess = [...githubItems, ...additionalItemsToSync];
+
+      console.log(
+        `[GitHubTaskSource] Processing ${allItemsToProcess.length} total items (${additionalItemsToSync.length} additional imported items)`
+      );
+
       // Transform GitHub items into tasks for the current repository
       const tasksForCurrentRepo = await this.transformGitHubItemsToTasks(
-        githubItems,
+        allItemsToProcess,
         filters
       );
 
@@ -214,6 +228,83 @@ export class GitHubTaskSource implements DataSource<Task> {
       );
       // Fallback to current entity store data on error
       return this.loadInitialData();
+    }
+  }
+
+  /**
+   * Fetch imported items that are not in the current filter results
+   * This ensures we sync imported tasks even if they've changed state (e.g., closed)
+   */
+  private async fetchMissingImportedItems(
+    filters: GitHubSourceFilters,
+    fetchedItems: (GitHubIssue | GitHubPullRequest)[]
+  ): Promise<(GitHubIssue | GitHubPullRequest)[]> {
+    // Get imported tasks for this repository
+    const state = get(taskStore);
+    const importedTasks = state.tasks.filter((task) => {
+      if (!task.source.keys.github || !task.source.keys.obsidian) return false;
+      const url = task.source.keys.github;
+      const taskRepository = extractRepositoryFromGitHubUrl(url);
+      return taskRepository === filters.repository;
+    });
+
+    if (importedTasks.length === 0) {
+      return [];
+    }
+
+    // Find imported tasks that are NOT in the current fetch results
+    const fetchedUrls = new Set(fetchedItems.map((item) => item.html_url));
+    const missingImportedTasks = importedTasks.filter(
+      (task) => !fetchedUrls.has(task.source.keys.github!)
+    );
+
+    if (missingImportedTasks.length === 0) {
+      return [];
+    }
+
+    console.log(
+      `[GitHubTaskSource] Found ${missingImportedTasks.length} imported tasks not in current filter results, fetching fresh data...`
+    );
+
+    // For missing imported tasks, we need to get their current state from stored data
+    // Since our stubs update the issues array, we can fetch with "all" state to get them
+    const fullFilters = get(this.githubExtension.getFilters());
+    
+    // Only fetch all if we're not already fetching all
+    if (fullFilters.state === "all") {
+      return [];
+    }
+
+    try {
+      // Fetch ALL issues/PRs to find the missing imported ones
+      const allItems =
+        filters.type === "issues"
+          ? await this.githubExtension.fetchIssues(filters.repository!, {
+              state: "all",
+            })
+          : await this.githubExtension.fetchPullRequests(filters.repository!, {
+              state: "all",
+            });
+
+      // Filter to only include the missing imported items
+      const missingUrls = new Set(
+        missingImportedTasks.map((t) => t.source.keys.github!)
+      );
+      const missingItems = allItems.filter((item) =>
+        missingUrls.has(item.html_url)
+      );
+
+      console.log(
+        `[GitHubTaskSource] Found ${missingItems.length} missing imported items with fresh data`
+      );
+
+      return missingItems;
+    } catch (error) {
+      console.error(
+        "[GitHubTaskSource] Failed to fetch missing imported items:",
+        error
+      );
+      return [];
     }
   }
 

@@ -76,6 +76,30 @@ export async function getTaskByTitle(page: ExtendedPage, title: string) {
 }
 
 /**
+ * Wait for a task's property to have a specific value
+ * Polls the task store until the condition is met or timeout
+ */
+export async function waitForTaskProperty(
+  page: ExtendedPage,
+  title: string,
+  property: string,
+  expectedValue: unknown,
+  timeout: number = 5000
+) {
+  await page.waitForFunction(
+    ({ title, property, expectedValue }) => {
+      const app = (window as any).app;
+      const plugin = app.plugins.plugins["obsidian-task-sync"];
+      const task = plugin.query.findTaskByTitle(title);
+      if (!task) return false;
+      return task[property] === expectedValue;
+    },
+    { title, property, expectedValue },
+    { timeout }
+  );
+}
+
+/**
  * Get all tasks from the task store
  */
 export async function getAllTasks(page: ExtendedPage) {
