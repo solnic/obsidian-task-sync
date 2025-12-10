@@ -16,7 +16,6 @@ import {
   enableIntegration,
   switchToTaskService,
   selectFromDropdown,
-  fileExists,
   readVaultFile,
   updateFileFrontmatter,
   waitForFileUpdate,
