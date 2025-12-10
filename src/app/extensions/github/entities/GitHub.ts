@@ -46,13 +46,16 @@ export class GitHubTaskOperations extends Tasks.Operations {
     issue: GitHubIssue,
     repository?: string
   ): Omit<Task, "id" | "createdAt" | "updatedAt"> {
+    const isClosed = issue.state === "closed";
+    const status = this.determineStatusFromGitHubState(isClosed);
+
     const baseTaskData = {
       title: issue.title,
       description: issue.body || "",
       category: this.extractCategoryFromLabels(issue.labels),
-      status: undefined as any, // Let schema apply default "Backlog" status
+      status: status,
       priority: this.extractPriorityFromLabels(issue.labels),
-      done: issue.state === "closed",
+      done: isClosed,
       project: repository || "",
       areas: [] as string[],
       parentTask: "",
@@ -101,13 +104,16 @@ export class GitHubTaskOperations extends Tasks.Operations {
     pr: GitHubPullRequest,
     repository?: string
   ): Omit<Task, "id" | "createdAt" | "updatedAt"> {
+    const isClosed = pr.state === "closed" || pr.merged_at !== null;
+    const status = this.determineStatusFromGitHubState(isClosed);
+
     const baseTaskData = {
       title: pr.title,
       description: pr.body || "",
       category: this.extractCategoryFromLabels(pr.labels),
-      status: undefined as any, // Let schema apply default "Backlog" status
+      status: status,
       priority: this.extractPriorityFromLabels(pr.labels),
-      done: pr.state === "closed" || pr.merged_at !== null,
+      done: isClosed,
       project: repository || "",
       areas: [] as string[],
       parentTask: "",
@@ -205,6 +211,34 @@ export class GitHubTaskOperations extends Tasks.Operations {
     }
 
     return ""; // No priority
+  }
+
+  /**
+   * Determine the appropriate status based on GitHub issue/PR state
+   * Uses the configured status options from settings
+   */
+  private determineStatusFromGitHubState(isClosed: boolean): string {
+    if (isClosed) {
+      // For closed issues/PRs, use the first configured status with isDone=true
+      const doneStatus = this.settings.taskStatuses.find(
+        (s) => s.isDone === true
+      );
+      if (doneStatus) {
+        return doneStatus.name;
+      }
+      // Fallback: if no isDone status configured, return first available status
+      return this.settings.taskStatuses[0]?.name || "Backlog";
+    } else {
+      // For open issues/PRs, use the first configured status that is NOT in progress and NOT done
+      const notStartedStatus = this.settings.taskStatuses.find(
+        (s) => s.isDone === false && s.isInProgress === false
+      );
+      if (notStartedStatus) {
+        return notStartedStatus.name;
+      }
+      // Fallback: if no not-started status configured, return first available status
+      return this.settings.taskStatuses[0]?.name || "Backlog";
+    }
   }
 }
 
