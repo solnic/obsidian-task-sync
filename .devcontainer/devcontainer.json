@@ -5,7 +5,11 @@
   "image": "mcr.microsoft.com/devcontainers/typescript-node",
   "features": {
     "ghcr.io/devcontainers/features/github-cli:latest": {},
-    "ghcr.io/nils-geistmann/devcontainers-features/zsh:latest": {}
+    "ghcr.io/nils-geistmann/devcontainers-features/zsh:latest": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/joshuanianji/devcontainer-features/github-cli-persistence:1": {},
+    "ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {},
+    "ghcr.io/devcontainers/features/copilot-cli:1": {}
   },
   "customizations": {
     "vscode": {
