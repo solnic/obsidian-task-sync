@@ -3,19 +3,23 @@
 {
   "name": "Obsidian Task Sync",
   "image": "mcr.microsoft.com/devcontainers/typescript-node",
+  "postCreateCommand": "cd /workspaces/obsidian-task-sync && npm install && npm run setup:e2e",
+  "initializeCommand": "[[ -f .devcontainer/.env ]] || op-secrets -o .devcontainer/.env",
+  "runArgs": ["--env-file", ".devcontainer/.env"],
   "features": {
     "ghcr.io/devcontainers/features/github-cli:latest": {},
     "ghcr.io/nils-geistmann/devcontainers-features/zsh:latest": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/joshuanianji/devcontainer-features/github-cli-persistence:1": {},
     "ghcr.io/nils-geistmann/devcontainers-features/zsh:0": {},
-    "ghcr.io/devcontainers/features/copilot-cli:1": {}
+    "ghcr.io/devcontainers/features/copilot-cli:1": {},
+    "ghcr.io/rocker-org/devcontainer-features/apt-packages:latest": {
+      "packages": "xvfb,xauth,neovim,iputils-ping"
+    }
   },
   "customizations": {
     "vscode": {
-      "extensions": [
-        "svelte.svelte-vscode"
-      ]
+      "extensions": ["svelte.svelte-vscode"]
     }
   }
 }
